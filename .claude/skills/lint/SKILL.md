@@ -5,7 +5,7 @@ description: 위키 상태를 점검한다. 사용자가 "위키 lint 돌려줘"
 
 # lint — 위키 상태 점검 워크플로우
 
-`wiki/` 전체를 점검해 문제를 보고한다. 세부 규칙은 항상 프로젝트 루트의 `CLAUDE.md`를 따른다.
+`wiki/` 전체를 점검해 문제를 보고한다. 세부 규칙은 항상 `wiki/CLAUDE.md`(위키 스키마)를 따른다.
 
 ## 점검 항목
 
@@ -18,5 +18,5 @@ description: 위키 상태를 점검한다. 사용자가 "위키 lint 돌려줘"
 
 ## 출력
 
-`wiki/synthesis/lint-YYYY-MM-DD.md`에 `CLAUDE.md`의 보고서 템플릿대로 저장한다.
+`wiki/synthesis/lint-YYYY-MM-DD.md`에 `wiki/CLAUDE.md`의 보고서 템플릿대로 저장한다.
 완료 후 `log.md` 끝에 `## [YYYY-MM-DD] lint | 점검 완료, N건 발견` 기록.
