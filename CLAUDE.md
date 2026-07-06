@@ -6,6 +6,17 @@
 
 항상 한국어로 답변한다.
 
+## Git 워크플로 (필수)
+
+이 public repo는 **`main`에 직접 커밋·푸시하지 않는다.** 모든 변경은:
+
+1. 브랜치 생성 (`git checkout -b <설명적-브랜치명>`)
+2. commit + push
+3. PR 생성 (`gh pr create`)
+4. `main`에 머지
+
+서브모듈(`wiki/personal-private/`) 변경 절차는 [Public repo 주의](#public-repo-주의) 참고.
+
 ## 먼저 읽어라
 
 위키 작업을 하기 전, 위키 진입 허브 **`wiki/index.md`** 부터 읽어라 — 전체 페이지 카탈로그와
