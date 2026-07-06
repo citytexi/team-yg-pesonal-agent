@@ -1,6 +1,3 @@
-# Personal private content — git 추적 제외
-wiki/personal-private/
-
 # Obsidian workspace (로컬 상태, 공유 불필요)
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json

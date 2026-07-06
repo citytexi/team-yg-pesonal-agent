@@ -1,0 +1,3 @@
+[submodule "wiki/personal-private"]
+	path = wiki/personal-private
+	url = git@github.com:citytexi/team-yg-pesonal-agent-privacy-data.git
