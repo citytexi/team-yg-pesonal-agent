@@ -8,7 +8,15 @@
 
 | ADR | Title | Status | Date | Postscript |
 |-----|-------|--------|------|-----------|
-| _(아직 없음 — 첫 결정을 기록하면 이 표에 한 줄 추가한다)_ | | | | |
+| [0001](0001-layered-multi-module.md) | 레이어드 다중 모듈 구조 (core/data/domain/feature) | accepted | 2026-04-19 | 의존 단방향 |
+| [0002](0002-feature-api-impl-split.md) | feature 모듈을 :api / :impl로 분리 | accepted | 2026-05-19 | feature 간 :api만 참조 |
+| [0003](0003-convention-plugins-version-catalog.md) | build-logic 컨벤션 플러그인 + 버전 카탈로그 | accepted | 2026-05-14 | 플러그인 ID `com.teamyg.parfait.plugin.*` |
+| [0004](0004-hilt-ksp-di.md) | Hilt + KSP DI, 스코프 분리 | accepted | 2026-05-14 | Singleton / ActivityRetained |
+| [0005](0005-custom-mvi-baseviewmodel.md) | 자체 MVI (BaseViewModel<S,I,E>) | accepted | 2026-05-09 | 외부 MVI 프레임워크 미사용 |
+| [0006](0006-navigation3-custom-navigator.md) | Navigation3 + 커스텀 Navigator + 엔트리 빌더 | accepted | 2026-05-19 | alpha(ResultEventBus 목적) |
+| [0007](0007-compose-material3-design-tokens.md) | Compose + Material3 + 디자인 토큰 | accepted | 2026-05-12 | XML 없음 |
+| [0008](0008-datastore-local-persistence.md) | 로컬 영속화 DataStore — Room 미채택 | accepted | 2026-06-10 | 파일+메타 이원 |
+| [0009](0009-usecase-injectable-invoke.md) | UseCase = 주입 클래스 + operator invoke | accepted | 2026-06-21 | 인터페이스 없이 |
 
 ## 작성 가이드
 
