@@ -11,3 +11,4 @@ append-only. 새 항목은 파일 끝에 추가.
 
 ## [2026-06-10] init | 위키 구조 초기화
 ## [2026-06-10] refactor | 피드백 반영 — 링크 규약 통일, overview/open-questions 추가, 프라이버시 정책 명문화
+## [2026-07-06] ingest | 기능정의서 MVP v2~v5 (배치) — 소스 4, 엔티티 1, 개념 5 생성, open-questions 4건 등록
