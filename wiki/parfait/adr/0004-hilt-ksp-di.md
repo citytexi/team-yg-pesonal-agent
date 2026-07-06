@@ -1,0 +1,37 @@
+# ADR-0004: Hilt + KSP 의존성 주입, 스코프 분리
+
+- 상태: accepted
+- 날짜: 2026-05-14
+- 결정자: Parfait 팀
+
+## 맥락
+다중 모듈·레이어 구조에서 Repository·DataSource·Navigator·ViewModel의 수명과 조립을 일관되게 관리할 DI가 필요하다. 수동 DI는 모듈 경계를 넘는 그래프에서 보일러플레이트가 폭증한다.
+
+## 결정
+**Hilt(Dagger)** 를 KSP로 채택한다. 컨벤션 플러그인(`DaggerHiltCoreConventionPlugin`, `DaggerHiltComposeConventionPlugin`)으로 모듈 타입별 세팅을 자동 적용한다.
+
+- 진입: `BaseApplication`에 `@HiltAndroidApp`, `MainActivity`에 `@AndroidEntryPoint`.
+- ViewModel: `@HiltViewModel` + `@Inject constructor`.
+- 스코프 사용 규칙:
+  - **SingletonComponent** — Repository·DataStore 등 앱 수명 서비스. DI 모듈: `RepositoryModule`, `SingletonInjectModule`, `LocalDataSourceModule`, `DataStoreModule`(모두 `data` 레이어).
+  - **ActivityRetainedComponent / ActivityRetainedScoped** — `Navigator`와 feature 엔트리 빌더(`NavigationModule`). 설정 변경을 넘어 백스택 유지.
+
+Repository·DataSource 인터페이스↔구현 바인딩은 `@Binds`로.
+
+## 대안
+- **Koin** — 런타임 DI, 학습 곡선 낮음. 그러나 컴파일 타임 검증 없음.
+  **→ 기각:** 다중 모듈 그래프 안정성 위해 컴파일 검증 선호.
+- **수동 DI(팩토리·서비스 로케이터)** — 의존 적으면 가능.
+  **→ 기각:** 모듈 경계·스코프 관리 비용 과다.
+
+## 영향
+
+**긍정**
+- 컴파일 타임 그래프 검증. 스코프로 수명 명확(앱 전역 vs 액티비티 유지).
+- feature 엔트리 빌더를 `Set<...>` 멀티바인딩으로 주입 → app이 impl을 직접 참조 안 함([[0002-feature-api-impl-split]]).
+
+**트레이드오프**
+- KSP 코드 생성으로 클린 빌드 시간 증가.
+
+**위험·방어**
+- 잘못된 스코프(예: Navigator를 Singleton으로) 사용 시 백스택 수명 버그 → 스코프 규칙을 이 ADR과 [[navigation-flow]]에 고정.
