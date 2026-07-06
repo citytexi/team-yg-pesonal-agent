@@ -2,6 +2,12 @@
 
 이 저장소는 **LLM이 운영·유지하는 개인 위키**(`wiki/`)와 그 원본(`raw/`)을 담는다.
 
+## 프로젝트 컨텍스트 (필수)
+
+이 repo는 **AI 스킬·위키 repo**이고, 실제 **코드 작업 대상은 별도 repo `TJYG-Android`**
+(`/Users/user/Documents/work_station/mashup/github/TJYG-Android`, remote `mash-up-kr/TJYG-Android`)다.
+여기서 지시를 받아 그 프로젝트를 작업한다. 자세한 내용은 [docs/project-context.md](docs/project-context.md).
+
 ## 언어
 
 항상 한국어로 답변한다.
