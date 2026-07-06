@@ -21,7 +21,7 @@ app / app-preview
 |------|------|------|----------------------|
 | 진입 | `app`, `app-preview` | 앱 진입점(`BaseApplication`, `MainActivity`, `MainRoute`), 전체 조립 | `AndroidApplication*`, 서명 |
 | core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 프리뷰 | android-library + compose |
-| core | `core:designsystem` | 테마(`YGMaterialTheme`)·토큰(`ColorSystem` 등) | android-library + compose |
+| core | `core:designsystem` | 테마(`YGMaterialTheme`)·토큰(`YGSemanticColors`, `SizeTokens` 등) | android-library + compose |
 | core | `core:navigation` | `Navigator`, NavKey 레지스트리, 엔트리 등록 | android-library |
 | core | `core:util:android` | Android 전용 유틸 | android-library |
 | core | `core:util:jvm` | 순수 Kotlin 유틸·로깅 | kotlin-jvm |
@@ -29,6 +29,7 @@ app / app-preview
 | data | `data` | Repository 구현, DataSource, DI 모듈 | `ModuleData` |
 | feature | `feature/{login,segmentation,camera,gallery,intro}/{api,impl}` | 화면·VM(impl) / NavKey 계약(api) | `ModuleFeatureApi` / `ModuleFeatureImpl` |
 | feature | `feature/groups/{canvas,enter,home,list,setting}/{api,impl}` | 그룹 관련 화면 묶음 | 동일 |
+| feature | `feature/app/setting/{api,impl}` | 앱 설정 화면(`NavKeyAppSetting`, `AppSettingRoute`) | 동일 |
 
 ## 규칙
 - feature 간 이동은 상대 **`:api`(NavKey)만** 참조. `:impl`끼리 직접 의존 금지([[0002-feature-api-impl-split]]).

@@ -15,3 +15,5 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-06] ingest | G-001 무한 파르페 정책 설계 — 소스 1, 개념 1(무한-파르페-그리드) 생성, 그룹·토핑·앱·overview 갱신, open-questions 2건 등록
 ## [2026-07-06] lint | 점검 완료, 3건 발견 (parfait 서브트리 메인 허브 미연결, index 페이지수 stale, parfait↔제품 브리지 부재). 민감데이터·모순·메인 고아 없음
 ## [2026-07-06] fix | lint 3건 자동 수정 — index Projects 섹션·페이지수 28·협업앱 parfait 브리지·보고서 카탈로그
+## [2026-07-06] lint | parfait 내용 정합성(문서 vs TJYG-Android 코드) — 링크·상태표·규율 통과, 코드 대조 발견 7건(중간 3·낮음 4). 병렬 3에이전트 검증
+## [2026-07-06] fix | parfait 중간 3건 문서 수정 — module-structure feature/app/setting 추가, ADR-0002 :api navigation 번들 명시, ADR-0007 토큰 심볼명 정정(YGSemanticColors/YGTypography)
