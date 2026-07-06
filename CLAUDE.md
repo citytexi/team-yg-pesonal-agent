@@ -5,7 +5,7 @@
 ## 프로젝트 컨텍스트 (필수)
 
 이 repo는 **AI 스킬·위키 repo**이고, 실제 **코드 작업 대상은 별도 repo `TJYG-Android`**
-(`/Users/jeonheehoon/Documents/work_station/mashup/github/TJYG-Android`, remote `mash-up-kr/TJYG-Android`)다.
+(`~/Documents/work_station/mashup/github/TJYG-Android`, remote `mash-up-kr/TJYG-Android`)다.
 여기서 지시를 받아 그 프로젝트를 작업한다. 자세한 내용은 [docs/project-context.md](docs/project-context.md).
 
 ## 언어
