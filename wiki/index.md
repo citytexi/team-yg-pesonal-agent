@@ -5,7 +5,7 @@ updated: 2026-07-06
 
 # Wiki Index
 
-> 마지막 업데이트: 2026-07-06 | 총 페이지 수: 28 (제품 위키 15 + [[parfait/index|Parfait 구현 위키]] 13)
+> 마지막 업데이트: 2026-07-06 | 총 페이지 수: 29 (제품 위키 16 + [[parfait/index|Parfait 구현 위키]] 13)
 
 ## Overview
 - [[overview]] — 위키 전체 논지 및 핵심 발견 (살아있는 문서)
@@ -34,3 +34,4 @@ updated: 2026-07-06
 ## Synthesis (분석·결과)
 - [[open-questions]] — 미해결 모순 및 열린 질문 추적
 - [[lint-2026-07-06]] — 위키 상태 점검 보고서(2026-07-06)
+- [[lint-2026-07-06-parfait]] — parfait 내용 정합성(문서 vs 코드) 점검, 코드 대조 발견 7건
