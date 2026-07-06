@@ -2,6 +2,10 @@
 
 이 저장소는 **LLM이 운영·유지하는 개인 위키**(`wiki/`)와 그 원본(`raw/`)을 담는다.
 
+## 언어
+
+항상 한국어로 답변한다.
+
 ## 먼저 읽어라
 
 위키 작업을 하기 전, 위키 진입 허브 **`wiki/index.md`** 부터 읽어라 — 전체 페이지 카탈로그와
@@ -17,4 +21,8 @@
 ## Public repo 주의
 
 이 repo는 public이다. 식별 가능한 개인정보(실명·연락처·주소·건강·재무·인증 등)는
-추적되는 파일에 커밋하지 않는다. 민감 콘텐츠는 `wiki/personal-private/`(git 추적 제외)에 둔다.
+이 public repo에 커밋하지 않는다. 민감 콘텐츠는 `wiki/personal-private/`에 둔다 —
+이 경로는 **private repo(`team-yg-pesonal-agent-privacy-data`)의 git submodule**이라
+내용은 private에만 저장되고, public repo에는 gitlink(commit SHA)만 남는다.
+서브모듈 내용 수정 후에는 (1) 서브모듈에서 commit+push, (2) public repo에서 gitlink 갱신 commit,
+두 단계를 모두 해야 한다.
