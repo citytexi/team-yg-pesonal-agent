@@ -1,0 +1,47 @@
+# Architecture Decision Records
+
+이 디렉토리는 Parfait 프로젝트의 주요 아키텍처 결정을 기록합니다.
+
+> ADR 형식: [Michael Nygard의 경량 ADR](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) 기반
+>
+> 형식 권위 출처: [`template.md`](template.md)
+
+| ADR | Title | Status | Date | Postscript |
+|-----|-------|--------|------|-----------|
+| _(아직 없음 — 첫 결정을 기록하면 이 표에 한 줄 추가한다)_ | | | | |
+
+## 작성 가이드
+
+- 파일명: `NNNN-kebab-case-title.md` (예: `0001-mvi-store-pattern.md`)
+- 번호는 4자리, 순차 증가
+- Status: `proposed` / `accepted` / `superseded` / `deprecated`
+- 결정이 다른 ADR을 대체하면 Postscript에 supersede 관계 명시
+- 새 ADR 추가 시 위 인덱스 테이블에 한 줄 등록 (ADR 파일과 README 인덱스는 같은 커밋)
+- 형식 권위 출처: [`template.md`](template.md)
+
+## ⛔ 라인번호·수치 금지 규칙 (가장 중요)
+
+이 wiki는 **"왜 이렇게 결정했는가"(구조 결정)** 만 기록한다. 코드와 함께 바뀌어 금방 거짓이 되는 정보는 **절대 적지 않는다.**
+
+**적지 말 것:**
+- **라인번호** — `Store.kt:34`, `:78` 같은 `:NN`. refactor 한 번에 전부 어긋난다.
+- **파일/화면 개수** — "화면 74개", "37개 레거시".
+- **진행률·비율** — "약 70% 이행".
+- **사용 횟수** — "특정 API 206회 호출".
+- **빌드 스크립트 라인 번호** — 파일명까지만.
+
+**적을 것 (안정적):**
+- **파일명 + 심볼명** — `Store.kt`의 `postState`, `FooRepositoryImpl`의 `flowItems`. 심볼명은 라인보다 훨씬 오래 산다.
+- **설계 결정·대안·트레이드오프** — ADR의 본질. 코드가 안 바뀌는 한 유효.
+- **방향성** — "A → B로 수렴", 수치 없이.
+
+**현재 수치가 필요하면 코드에서 직접 측정한다** (예시):
+
+```bash
+# 화면 수
+find . -name '*Screen*.kt' | wc -l
+# 특정 API 사용 횟수
+grep -rE '\bSomeApi\b' src | wc -l
+```
+
+**왜:** 한 번 거짓이 된 수치가 섞이면 문서 전체의 신뢰가 깨진다 — "없는 것보다 못한" 상태. 검증 불가능한 라인번호를 적느니, 검증 가능한 심볼명만 남긴다.
