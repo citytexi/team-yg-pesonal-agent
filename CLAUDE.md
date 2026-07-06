@@ -5,8 +5,9 @@
 ## 프로젝트 컨텍스트 (필수)
 
 이 repo는 **AI 스킬·위키 repo**이고, 실제 **코드 작업 대상은 별도 repo `TJYG-Android`**
-(`~/Documents/work_station/mashup/github/TJYG-Android`, remote `mash-up-kr/TJYG-Android`)다.
-여기서 지시를 받아 그 프로젝트를 작업한다. 자세한 내용은 [docs/project-context.md](docs/project-context.md).
+(remote `mash-up-kr/TJYG-Android`)다. 여기서 지시를 받아 그 프로젝트를 작업한다.
+로컬 절대경로는 개인정보라 private submodule의 `wiki/personal-private/project-paths.md`에 있다.
+자세한 내용은 [docs/project-context.md](docs/project-context.md).
 
 ## 언어
 
@@ -14,11 +15,15 @@
 
 ## Git 워크플로 (필수)
 
+**`git commit`, `git push`, PR 생성(`gh pr create`) 실행 전에는 무조건 사용자에게 먼저 물어보고
+확인받는다.** 사용자가 명시적으로 승인하기 전까지 이 세 작업을 자동으로 실행하지 않는다.
+(코드 편집·브랜치 생성 등은 물어보지 않아도 됨.)
+
 이 public repo는 **`main`에 직접 커밋·푸시하지 않는다.** 모든 변경은:
 
 1. 브랜치 생성 (`git checkout -b <설명적-브랜치명>`)
-2. commit + push
-3. PR 생성 (`gh pr create`)
+2. commit + push — **사용자 확인 후**
+3. PR 생성 (`gh pr create`) — **사용자 확인 후**
 4. `main`에 머지
 
 서브모듈(`wiki/personal-private/`) 변경 절차는 [Public repo 주의](#public-repo-주의) 참고.
