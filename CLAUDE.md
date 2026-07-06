@@ -24,5 +24,11 @@
 이 public repo에 커밋하지 않는다. 민감 콘텐츠는 `wiki/personal-private/`에 둔다 —
 이 경로는 **private repo(`team-yg-pesonal-agent-privacy-data`)의 git submodule**이라
 내용은 private에만 저장되고, public repo에는 gitlink(commit SHA)만 남는다.
-서브모듈 내용 수정 후에는 (1) 서브모듈에서 commit+push, (2) public repo에서 gitlink 갱신 commit,
-두 단계를 모두 해야 한다.
+서브모듈 내용 수정 시 절차:
+
+1. **서브모듈에서 브랜치 작업**: 부모(public) repo의 현재 브랜치와 **동일한 이름**의 브랜치를
+   서브모듈에서 만들고(`git checkout -b <부모-현재-브랜치>`) commit + push 한다.
+   서브모듈의 `main`에 직접 커밋하지 않는다.
+2. **PR → 머지**: push한 브랜치로 private repo에 PR을 만들고 `main`에 머지한다.
+   머지 후 서브모듈 로컬을 `main`으로 갱신(`git checkout main && git pull`).
+3. **gitlink 갱신**: public repo에서 `git add wiki/personal-private` 후 gitlink 갱신 commit.
