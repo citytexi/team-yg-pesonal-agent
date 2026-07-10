@@ -14,9 +14,10 @@
 | [0004](0004-hilt-ksp-di.md) | Hilt + KSP DI, 스코프 분리 | accepted | 2026-05-14 | Singleton / ActivityRetained |
 | [0005](0005-custom-mvi-baseviewmodel.md) | 자체 MVI (BaseViewModel<S,I,E>) | accepted | 2026-05-09 | 외부 MVI 프레임워크 미사용 |
 | [0006](0006-navigation3-custom-navigator.md) | Navigation3 + 커스텀 Navigator + 엔트리 빌더 | accepted | 2026-05-19 | alpha(ResultEventBus 목적) |
-| [0007](0007-compose-material3-design-tokens.md) | Compose + Material3 + 디자인 토큰 | accepted | 2026-05-12 | XML 없음 |
+| [0007](0007-compose-material3-design-tokens.md) | Compose + Material3 + 디자인 토큰 | superseded by 0010 | 2026-05-12 | 100% Compose 원칙은 0010에 승계 |
 | [0008](0008-datastore-local-persistence.md) | 로컬 영속화 DataStore — Room 미채택 | accepted | 2026-06-10 | 파일+메타 이원 |
 | [0009](0009-usecase-injectable-invoke.md) | UseCase = 주입 클래스 + operator invoke | accepted | 2026-06-21 | 인터페이스 없이 |
+| [0010](0010-custom-compositionlocal-theme.md) | 자체 CompositionLocal 디자인시스템 테마 | accepted | 2026-07-10 | 0007 대체, MaterialTheme·dynamic color 배제 |
 
 ## 작성 가이드
 

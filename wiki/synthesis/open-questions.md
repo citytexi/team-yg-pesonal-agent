@@ -1,6 +1,6 @@
 ---
 tags: [synthesis, open-questions, meta]
-updated: 2026-07-06
+updated: 2026-07-10
 ---
 
 # Open Questions — 미해결 모순 및 열린 질문
@@ -45,6 +45,12 @@ ingest·lint에서 감지된 모순과 미결 질문을 추적한다.
 - **출처 B**: 동일 문서 — 가입순/이름순 선택지도 병기, "투표"일 뿐 최종 확정 문구 없음.
 - **상태**: 보류
 - **해소 메모**: 활동순으로 잠정 채택. 정식 스펙 확정 시 [[그룹]] 목록 노출 섹션 갱신.
+
+### [2026-07-10] YGButton 디자인 토큰 규칙 미확정 (parfait 코드)
+- **출처**: `component/ygbutton/YGButtonType.kt` — 각 변형 `colors`가 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조, 값 잠정(mock). 코드 주석 "Design Token 규칙이 조금 이상… 컴포넌트 완성 시점에 문의 예정".
+- **항목**: ① 컴포넌트가 원자 색을 직접 읽는 것을 시맨틱 계층으로 정리할지, ② XSmall/Small/… 변형별 패딩·radius·textStyle 토큰 매핑 확정.
+- **상태**: 미해결
+- **해소 메모**: 컴포넌트 완성·디자인 토큰 규칙 확정 시 [[design-system]] 규약과 [[0010-custom-compositionlocal-theme|ADR-0010]] 원칙(시맨틱 우선)에 맞춰 정리.
 
 <!--
 항목 추가 형식:

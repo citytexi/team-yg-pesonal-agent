@@ -5,7 +5,7 @@ updated: 2026-07-06
 
 # Wiki Index
 
-> 마지막 업데이트: 2026-07-06 | 총 페이지 수: 29 (제품 위키 16 + [[parfait/index|Parfait 구현 위키]] 13)
+> 마지막 업데이트: 2026-07-10 | 총 페이지 수: 31 (제품 위키 16 + [[parfait/index|Parfait 구현 위키]] 15)
 
 ## Overview
 - [[overview]] — 위키 전체 논지 및 핵심 발견 (살아있는 문서)
@@ -29,7 +29,7 @@ updated: 2026-07-06
 - [[무한-파르페-그리드]] — G-001 그룹 목록의 2-1 스태거 배치·파르페 요소·라벨 정책
 
 ## Projects (구현 위키)
-- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 9건 + architecture 4건(모듈 구조·데이터·상태관리·내비게이션). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서.
+- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 10건(1건 superseded) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서.
 
 ## Synthesis (분석·결과)
 - [[open-questions]] — 미해결 모순 및 열린 질문 추적
