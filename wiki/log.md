@@ -18,3 +18,4 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-06] lint | parfait 내용 정합성(문서 vs TJYG-Android 코드) — 링크·상태표·규율 통과, 코드 대조 발견 7건(중간 3·낮음 4). 병렬 3에이전트 검증
 ## [2026-07-06] fix | parfait 중간 3건 문서 수정 — module-structure feature/app/setting 추가, ADR-0002 :api navigation 번들 명시, ADR-0007 토큰 심볼명 정정(YGSemanticColors/YGTypography)
 ## [2026-07-10] sync | parfait 코드 drift 반영 — 2026-07-06 이후 core:designsystem 재설계(#118 YGButton, #121 theme). ADR-0010 신설(자체 CompositionLocal 테마, 0007 supersede), architecture/design-system.md 신설, adr/architecture README·index 갱신
+## [2026-07-10] spec | parfait specs/ 신설 — 구현 전 설계 스펙 위치 도입. YGTextField 스펙(component/textfield, idle/focused/error/disabled) 작성. parfait/index·CLAUDE.md에 specs 라우팅 배선
