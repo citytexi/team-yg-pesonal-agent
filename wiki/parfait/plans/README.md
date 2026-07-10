@@ -6,7 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| _(아직 없음 — 계획을 작성하면 이 표에 한 줄 추가한다)_ | |
+| [2026-07-10-ygtextfield.md](2026-07-10-ygtextfield.md) | YGTextField 구현 계획(component/textfield). 구현·검증 완료, 커밋만 대기. 스펙: [specs](../specs/2026-07-10-ygtextfield.md) |
 
 ## 아카이브
 | 계획 | 내용 |
