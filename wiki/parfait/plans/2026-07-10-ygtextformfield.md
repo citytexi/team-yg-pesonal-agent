@@ -31,7 +31,7 @@ updated: 2026-07-10
 - Create: `core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/textfield/YGTextFormField.kt`
 
 **Interfaces:**
-- Consumes: `YGTextFieldImpl(value, onValueChange, modifier, placeholder, enabled, isError, maxLength, colors)`(YGTextField.kt, internal), `YGTextFieldColors.counterColor(isError: Boolean): Color`, `YGTextFieldDefaults.colors()`, `YGTheme.{layout.gap.gap3, typography.caption.c01R}`, `PreviewBox`·`@YGPreview`(utils.preview).
+- Consumes: `YGTextFieldImpl(value, onValueChange, modifier, placeholder, enabled, isError, maxLength, colors)`(YGTextField.kt, internal), `YGTextFieldColors.counterColor(isError: Boolean): Color`, `YGTextFieldDefaults.colors()`, `YGTheme.{layout.gap.gap2, typography.caption.c01R}`, `PreviewBox`·`@YGPreview`(utils.preview).
 - Produces: `@Composable fun YGTextFormField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String = "", enabled: Boolean = true, isError: Boolean = false, maxLength: Int? = null, description: String? = null, colors: YGTextFieldColors = YGTextFieldDefaults.colors())`.
 
 - [ ] **Step 1: 컴포저블 작성**
@@ -65,7 +65,7 @@ fun YGTextFormField(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(YGTheme.layout.gap.gap3),
+        verticalArrangement = Arrangement.spacedBy(YGTheme.layout.gap.gap2),
     ) {
         YGTextFieldImpl(
             value = value,
@@ -149,9 +149,9 @@ git commit -m "feat: YGTextFormField 추가 (YGTextField + description)"
 ---
 
 ## Self-Review
-- **Spec coverage**: 목표(description 얹기)·API(`description` 파라미터)·구성(Column+YGTextFieldImpl 재사용)·description 색(counterColor 재사용)·타이포(caption.c01R)·간격(gap3)·파일(YGTextFormField.kt만)·무변경 원칙 — 전부 Task 1에 대응.
+- **Spec coverage**: 목표(description 얹기)·API(`description` 파라미터)·구성(Column+YGTextFieldImpl 재사용)·description 색(counterColor 재사용)·타이포(caption.c01R)·간격(gap2)·파일(YGTextFormField.kt만)·무변경 원칙 — 전부 Task 1에 대응.
 - **Placeholder**: 없음(코드 전량 기재).
-- **Type consistency**: `YGTextFieldImpl` 시그니처·`counterColor(isError)`·`caption.c01R`·`layout.gap.gap3` 모두 기존 코드 심볼과 일치.
+- **Type consistency**: `YGTextFieldImpl` 시그니처·`counterColor(isError)`·`caption.c01R`·`layout.gap.gap2` 모두 기존 코드 심볼과 일치.
 
 ## 열린 질문
 - description 색을 counter 슬롯 재사용 — 디자인 분화 시 전용 슬롯 분리([open-questions](../../synthesis/open-questions.md), spec 참조).

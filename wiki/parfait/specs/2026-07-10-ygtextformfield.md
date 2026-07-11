@@ -37,9 +37,9 @@ fun YGTextFormField(
 - 호출측이 "항상 헬퍼" 또는 "error 시에만 메시지"를 모두 표현 가능(후자는 error 아닐 때 `null` 전달).
 
 ## 동작 / 구성
-- 루트 `Column`(`modifier` 적용):
+- 루트 `Column`(`modifier`, `verticalArrangement = spacedBy(layout.gap.gap2)`):
   1. `YGTextFieldImpl(value, onValueChange, Modifier.fillMaxWidth(), placeholder, enabled, isError, maxLength, colors)` — 필드 본체.
-  2. `description != null`이면 `Spacer(layout.gap.gap3)` 후 `Text(description)`.
+  2. `description != null`이면 `Text(description)`. Column `spacedBy(gap2)`가 필드와의 간격을 담당(description 없으면 자식 1개라 여백 없음).
 - **description 색**: `colors.counterColor(isError)` 재사용 → 일반 `Gray.Gray400`, error `colorScheme.danger`(빨강). 카운터와 값이 동일해 전용 슬롯을 신설하지 않는다.
 - **description 타이포**: `typography.caption.c01R`.
 - focus/enabled/isError 상태 파생·카운터·clear·패딩은 전부 `YGTextFieldImpl` 소관(이 컴포넌트는 관여 안 함).
