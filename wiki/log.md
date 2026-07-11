@@ -24,3 +24,4 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-10] spec | YGTextFormField 스펙 작성 — YGTextFieldImpl 재사용 + 하단 description(counterColor 재사용, caption c01R). YGTextField 스펙 상태 '구현 완료'로 갱신
 ## [2026-07-10] plan | YGTextFormField 구현 계획 작성 — Task 1(YGTextFieldImpl 재사용 + description Column, 전량 코드 포함). plans/README·index 갱신
 ## [2026-07-10] sync | textfield gap 조정 반영 — YGTextFieldImpl 트레일링 gap3→gap2 + 카운터/clear 내부 Row 그룹핑, YGTextFormField description gap3→gap2. spec/plan 2쌍 동기화. ADR 무관
+## [2026-07-10] sync | YGTextFormFieldColors 신설 반영 — description 색 전용 슬롯 분리(counter 재사용 폐기). spec/plan 갱신, 파일 3종(FormField+Colors+Defaults). 코드 compile·ktlint 통과. open-question 해소
