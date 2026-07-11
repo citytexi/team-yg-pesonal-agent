@@ -32,8 +32,9 @@ fun YGTextField(
 )
 ```
 - `maxLength`: `null`이면 무제한·카운터 없음. 지정 시 카운터 `${value.length}/${maxLength}` 표시 + 초과 입력 무시(자르기 아님).
-- `colors`: 상태별 색 묶음. 기본값은 `YGTextFieldDefaults.colors()`(테마 기반).
+- `colors`: 상태별 색 묶음. 기본값 `YGTextFieldDefaults.colors()`(테마 기반). `colors()`는 **각 색 슬롯을 파라미터로 오버라이드 가능**(기본값 채워진 named 파라미터).
 - `BasicTextField`(foundation) 기반, `cursorBrush = SolidColor(커서색)`.
+- **구조**: public `YGTextField`는 내부 `internal YGTextFieldImpl`(테스트/프리뷰용 `interactionSource` 주입 파라미터 보유)에 위임.
 
 ## 동작 / 상태
 상태는 prop + 런타임 focus 조합으로 파생(별도 variant 타입 없음).
@@ -42,24 +43,26 @@ fun YGTextField(
 
 | 요소 | idle | focused | error | disabled |
 |---|---|---|---|---|
-| 배경 | `Gray.Gray100` | `Gray.Gray100` | `Gray.Gray100` | `Gray.Gray50` |
-| 테두리 | transparent | `Cherry.Cherry200` | `colorScheme.danger` | transparent |
-| 입력 텍스트 | `Gray.Gray900` | `Gray.Gray900` | `Gray.Gray900` | `Gray.Gray400` |
-| placeholder | `Gray.Gray400` | — | — | — |
+| 배경 | `colorScheme.transparency.white75` | 동일 | 동일 | 동일(=배경) |
+| 테두리 | `Gray.Gray100` | `Cherry.Cherry200` | `colorScheme.danger` | `Gray.Gray100`(=idle) |
+| 입력 텍스트 | `Gray.Gray900` | `Gray.Gray900` | `Gray.Gray900` | `Gray.Gray900`(=텍스트) |
+| placeholder | `Gray.Gray300` | — | — | — |
 | 커서 | `Gray.Gray900` | — | — | — |
 | 카운터 | (숨김) | `Gray.Gray400` | `colorScheme.danger` | `Gray.Gray400` |
 | clear(X) tint | (숨김) | `Gray.Gray300` | `Gray.Gray300` | **숨김** |
 
-- 토큰: radius `shapes.radius.medium2`, 입력 텍스트 `typography.body.b01R`, 카운터 `typography.body.b02R`. clear 아이콘 `R.drawable.ic_close_round`.
-- error의 danger는 시맨틱 `YGTheme.colorScheme.danger`. 회색 음영(Gray50/100/300/400/900)은 시맨틱 grayScale(transparent/white/black만 노출)에 없어 `YGAtomicColors` 직접 참조.
+- 토큰: radius `shapes.radius.small`, 테두리 두께 `SizeTokens.Size1.getDp()`, 입력 텍스트 `typography.body.b01R`. clear 아이콘 `R.drawable.ic_close_round`.
+- **카운터 스타일**: error 시 `typography.body.b02SB`(강조), 그 외 `typography.body.b02R`.
+- 배경은 시맨틱 `YGTheme.colorScheme.transparency.white75`, error/카운터 danger도 시맨틱 `colorScheme.danger`. 나머지 회색 음영(Gray100/300/400/900)·연핑크(Cherry200)는 시맨틱에 없어 `YGAtomicColors` 직접 참조.
+- disabled는 배경·테두리·입력 텍스트가 enabled와 동일(현재 별도 dim 처리 없음). clear만 숨김.
 
 ## 표시·제어 규칙
 - **카운터**: `maxLength != null` **AND** `value.isNotEmpty()`.
-- **clear(X)**: `enabled` **AND** `value.isNotEmpty()`. 탭 시 `onValueChange("")`. bare 이미지 아닌 **아이콘 버튼**(자체 clickable + 내부 패딩).
+- **clear(X)**: `enabled` **AND** `value.isNotEmpty()`. 탭 시 `onValueChange("")`. 현재 고정 크기 박스(`SizeTokens.Size44` clickable, 아이콘 `SizeTokens.Size24` 중앙 정렬)로 구현. `contentDescription = "clear"`. → **TODO: IconButton으로 교체 예정**(코드 주석).
 - **입력 제어**: `onValueChange` 진입 시 `maxLength` 초과분은 반영하지 않음(콜백에서 게이트).
 
 ## 컨테이너 패딩
-clear 노출 유무로 분기(clear 아이콘 버튼이 자체 내부 패딩을 가져 end·vertical을 흡수).
+clear 노출 유무로 분기(clear 박스(`Size44`)가 end·vertical 공간을 흡수).
 
 | | start | end | top | bottom |
 |---|---|---|---|---|
@@ -67,9 +70,9 @@ clear 노출 유무로 분기(clear 아이콘 버튼이 자체 내부 패딩을 
 | clear 있음 | `padding.padding6`(16) | `padding.padding2`(4) | `padding.padding1`(2) | `padding.padding1`(2) |
 
 ## 파일 구성 (`component/textfield/`)
-- `YGTextField.kt` — 컴포저블 본체 + `@Preview`(idle/filled/error/disabled 상태 스택).
-- `YGTextFieldColors.kt` — `@Immutable data class`, 상태별 색 슬롯 + resolver 함수.
-- `YGTextFieldDefaults.kt` — `@Composable fun colors()`가 테마 기반 기본값 제공(theme `*Defaults` 네이밍 일치).
+- `YGTextField.kt` — public `YGTextField` + `internal YGTextFieldImpl`(interactionSource 주입) + `@YGPreview` 프리뷰(`PreviewBox`로 래핑, idle/filled/error/disabled 스택).
+- `YGTextFieldColors.kt` — `@Immutable data class`, 상태별 색 슬롯 + resolver 함수(`backgroundColor`/`borderColor`/`textColor`/`counterColor`).
+- `YGTextFieldDefaults.kt` — `@Composable @ReadOnlyComposable fun colors(...)`가 테마 기반 기본값(오버라이드 가능 named 파라미터) 제공(theme `*Defaults` 네이밍 일치).
 
 ## 주의 / 열린 질문
 - **과도기**: 컴포넌트가 시맨틱 grayScale 대신 `YGAtomicColors` 직접 참조 — YGButton 선례와 동일. 디자인 토큰 규칙 확정 시 시맨틱으로 정리 대상. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../synthesis/open-questions.md).

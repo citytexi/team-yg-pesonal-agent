@@ -20,3 +20,4 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-10] sync | parfait 코드 drift 반영 — 2026-07-06 이후 core:designsystem 재설계(#118 YGButton, #121 theme). ADR-0010 신설(자체 CompositionLocal 테마, 0007 supersede), architecture/design-system.md 신설, adr/architecture README·index 갱신
 ## [2026-07-10] spec | parfait specs/ 신설 — 구현 전 설계 스펙 위치 도입. YGTextField 스펙(component/textfield, idle/focused/error/disabled) 작성. parfait/index·CLAUDE.md에 specs 라우팅 배선
 ## [2026-07-10] plan | YGTextField 구현 계획(회고형, 완료 체크) 작성 — wiki/parfait/plans/2026-07-10-ygtextfield.md. plans/README 등록. 코드는 TJYG-Android feature/#134에 구현·검증 완료(커밋 대기)
+## [2026-07-10] sync | YGTextField 수동 코드 수정 반영 — spec/plan 현행화(배경 semantic white75, idle 테두리 Gray100, radius small, 테두리 Size1, clear 고정 Size44, error 카운터 b02SB, colors() 파라미터화, YGTextFieldImpl 분리, PreviewBox). ADR-0010 변경 없음

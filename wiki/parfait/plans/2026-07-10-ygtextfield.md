@@ -19,7 +19,7 @@ updated: 2026-07-10
 - 대상 repo: `TJYG-Android`, 브랜치 `feature/#134-text-field-form`.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.textfield`.
 - 테마 값은 `YGTheme.*`로만 접근. 크기는 `SizeTokens.*.getDp()`.
-- 회색 음영·연핑크 테두리는 시맨틱 슬롯에 없어 `YGAtomicColors` 직접 참조(과도기, YGButton 선례 — [open-questions](../../synthesis/open-questions.md)).
+- 배경·danger는 시맨틱(`colorScheme.transparency.white75`·`colorScheme.danger`) 채택. 나머지 회색 음영·연핑크는 시맨틱 슬롯에 없어 `YGAtomicColors` 직접 참조(과도기, YGButton 선례 — [open-questions](../../synthesis/open-questions.md)).
 - 검증: 유닛 TDD 인프라 없음(Compose UI). **compile(`compileReleaseKotlin`) + `ktlintMainSourceSetCheck` + `@Preview` 육안**으로 대체.
 - ktlint 엄격(단일 표현식 함수는 한 줄). 커밋 전 `ktlintMainSourceSetFormat`.
 
@@ -46,10 +46,10 @@ updated: 2026-07-10
 - Create: `core/designsystem/.../component/textfield/YGTextFieldDefaults.kt`
 
 **Interfaces:**
-- Consumes: `YGTextFieldColors`(Task 1), `YGTheme.colorScheme.danger`, `YGAtomicColors`.
-- Produces: `object YGTextFieldDefaults { @Composable @ReadOnlyComposable fun colors(): YGTextFieldColors }`.
+- Consumes: `YGTextFieldColors`(Task 1), `YGTheme.colorScheme.{transparency.white75,danger}`, `YGAtomicColors`.
+- Produces: `object YGTextFieldDefaults { @Composable @ReadOnlyComposable fun colors(...): YGTextFieldColors }` — 각 색 슬롯이 기본값 채워진 named 파라미터(오버라이드 가능).
 
-- [x] **Step 1: 파일 작성** — `colors()`가 background=`Gray.Gray100`, disabledBackground=`Gray.Gray50`, border=`Gray.Transparent`, focusedBorder=`Cherry.Cherry200`, errorBorder=`colorScheme.danger`, text=`Gray.Gray900`, disabledText=`Gray.Gray400`, placeholder=`Gray.Gray400`, cursor=`Gray.Gray900`, counter=`Gray.Gray400`, errorCounter=`colorScheme.danger`, clearIconTint=`Gray.Gray300` 반환. 원자 색 직접 참조 사유 주석.
+- [x] **Step 1: 파일 작성** — `colors()`가 background=`colorScheme.transparency.white75`, disabledBackground=`background`(동일), border=`Gray.Gray100`, focusedBorder=`Cherry.Cherry200`, errorBorder=`colorScheme.danger`, text=`Gray.Gray900`, disabledText=`text`(동일), placeholder=`Gray.Gray300`, cursor=`Gray.Gray900`, counter=`Gray.Gray400`, errorCounter=`colorScheme.danger`, clearIconTint=`Gray.Gray300` 반환.
 - [x] **Step 2: 컴파일** — BUILD SUCCESSFUL.
 
 ### Task 3: YGTextField — 컴포저블 본체 + Preview
@@ -58,20 +58,23 @@ updated: 2026-07-10
 - Create: `core/designsystem/.../component/textfield/YGTextField.kt`
 
 **Interfaces:**
-- Consumes: `YGTextFieldColors`, `YGTextFieldDefaults.colors()`, `YGTheme.{shapes,typography,layout}`, `SizeTokens`, `R.drawable.ic_close_round`, `YGCustomTheme`(preview).
-- Produces: `@Composable fun YGTextField(value, onValueChange, modifier, placeholder, enabled, isError, maxLength: Int? = null, colors = YGTextFieldDefaults.colors())`.
+- Consumes: `YGTextFieldColors`, `YGTextFieldDefaults.colors()`, `YGTheme.{shapes,typography,layout}`, `SizeTokens.{Size1,Size24,Size44}`, `R.drawable.ic_close_round`, `PreviewBox`·`@YGPreview`(utils.preview).
+- Produces: public `@Composable fun YGTextField(value, onValueChange, modifier, placeholder, enabled, isError, maxLength: Int? = null, colors = YGTextFieldDefaults.colors())` → 내부 `internal YGTextFieldImpl(..., interactionSource)`.
 
 - [x] **Step 1: 본체 작성** —
-  - focus: `remember { MutableInteractionSource() }` + `collectIsFocusedAsState()`, `BasicTextField(interactionSource=...)`에 전달.
+  - public `YGTextField`는 `internal YGTextFieldImpl`(테스트/프리뷰용 `interactionSource: MutableInteractionSource = remember { ... }` 주입)에 위임.
+  - focus: `interactionSource.collectIsFocusedAsState()`, `BasicTextField(interactionSource=...)`에 전달.
   - `showCounter = maxLength != null && value.isNotEmpty()`; `showClear = enabled && value.isNotEmpty()`.
-  - Row(spacedBy `layout.gap.gap3`, CenterVertically): background+border+clip `shapes.radius.medium2`, padding 분기(clear 있음 → start=`padding6`, end=`padding2`, vertical=`padding1`; 없음 → start/end=`padding6`, vertical=`padding5`).
+  - Row(spacedBy `layout.gap.gap3`, CenterVertically): background+border+clip `shapes.radius.small`(`commonShape`), 테두리 두께 `SizeTokens.Size1.getDp()`, padding 분기(clear 있음 → start=`padding6`, end=`padding2`, vertical=`padding1`; 없음 → start/end=`padding6`, vertical=`padding5`).
   - 텍스트 영역 Box(weight 1f): 빈값이면 placeholder `Text`(`typography.body.b01R`), `BasicTextField`(singleLine, `textStyle=body.b01R.copy(color=textColor)`, `cursorBrush=SolidColor(cursorColor)`), `onValueChange`에서 `maxLength` 초과 무시.
-  - `showCounter` → `Text("${value.length}/$maxLength", body.b02R, counterColor(isError))`.
-  - `showClear` → Box(clip CircleShape, clickable Role.Button → `onValueChange("")`, padding `layout.padding.padding4`) { `Image(ic_close_round, tint=clearIconTint, size=SizeTokens.Size24.getDp())` }.
-- [x] **Step 2: Preview 작성** — `YGCustomTheme { Column { idle/filled/error/disabled 4개 스택 } }`(focus 테두리는 런타임 전용, 프리뷰 제외).
+  - `showCounter` → `Text("${value.length}/$maxLength", style=if(isError) body.b02SB else body.b02R, counterColor(isError))`.
+  - `showClear` → Box(`size(SizeTokens.Size44.getDp())`, clickable Role.Button → `onValueChange("")`, contentAlignment Center) { `Image(ic_close_round, cd="clear", tint=clearIconTint, size=SizeTokens.Size24.getDp())` }. `// TODO Change IconButton`.
+- [x] **Step 2: Preview 작성** — `@YGPreview` + `PreviewBox { Column { idle/filled/error/disabled 4개 스택 } }`(focus 테두리는 런타임 전용, 프리뷰 제외).
 - [x] **Step 3: 컴파일** — BUILD SUCCESSFUL.
-- [x] **Step 4: ktlint** — `ktlintMainSourceSetFormat` 후 `ktlintMainSourceSetCheck` → BUILD SUCCESSFUL(단일 표현식 함수 inline 자동 수정됨).
+- [x] **Step 4: ktlint** — `ktlintMainSourceSetCheck` → BUILD SUCCESSFUL.
 - [ ] **Step 5: 커밋** — 사용자 승인 후 `feature/#134-text-field-form`에 commit.
+
+> **참고**: 초기 작성본을 사용자가 수동 조정(배경 semantic white75, idle 테두리 Gray100, radius small, 테두리 Size1, clear 고정 Size44 박스, error 카운터 b02SB, colors() 파라미터화, Impl 분리, PreviewBox). 위 서술은 조정 후 현행 기준. spec 색 매핑표도 동기화됨.
 
 ---
 
