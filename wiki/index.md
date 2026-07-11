@@ -5,7 +5,7 @@ updated: 2026-07-06
 
 # Wiki Index
 
-> 마지막 업데이트: 2026-07-10 | 총 페이지 수: 36 (제품 위키 16 + [[parfait/index|Parfait 구현 위키]] 20)
+> 마지막 업데이트: 2026-07-10 | 총 페이지 수: 37 (제품 위키 16 + [[parfait/index|Parfait 구현 위키]] 21)
 
 ## Overview
 - [[overview]] — 위키 전체 논지 및 핵심 발견 (살아있는 문서)
