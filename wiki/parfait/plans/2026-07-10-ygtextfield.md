@@ -65,16 +65,17 @@ updated: 2026-07-10
   - public `YGTextField`는 `internal YGTextFieldImpl`(테스트/프리뷰용 `interactionSource: MutableInteractionSource = remember { ... }` 주입)에 위임.
   - focus: `interactionSource.collectIsFocusedAsState()`, `BasicTextField(interactionSource=...)`에 전달.
   - `showCounter = maxLength != null && value.isNotEmpty()`; `showClear = enabled && value.isNotEmpty()`.
-  - Row(spacedBy `layout.gap.gap3`, CenterVertically): background+border+clip `shapes.radius.small`(`commonShape`), 테두리 두께 `SizeTokens.Size1.getDp()`, padding 분기(clear 있음 → start=`padding6`, end=`padding2`, vertical=`padding1`; 없음 → start/end=`padding6`, vertical=`padding5`).
+  - Row(spacedBy `layout.gap.gap2`, CenterVertically): background+border+clip `shapes.radius.small`(`commonShape`), 테두리 두께 `SizeTokens.Size1.getDp()`, padding 분기(clear 있음 → start=`padding6`, end=`padding2`, vertical=`padding1`; 없음 → start/end=`padding6`, vertical=`padding5`).
   - 텍스트 영역 Box(weight 1f): 빈값이면 placeholder `Text`(`typography.body.b01R`), `BasicTextField`(singleLine, `textStyle=body.b01R.copy(color=textColor)`, `cursorBrush=SolidColor(cursorColor)`), `onValueChange`에서 `maxLength` 초과 무시.
-  - `showCounter` → `Text("${value.length}/$maxLength", style=if(isError) body.b02SB else body.b02R, counterColor(isError))`.
-  - `showClear` → Box(`size(SizeTokens.Size44.getDp())`, clickable Role.Button → `onValueChange("")`, contentAlignment Center) { `Image(ic_close_round, cd="clear", tint=clearIconTint, size=SizeTokens.Size24.getDp())` }. `// TODO Change IconButton`.
+  - 트레일링: `showCounter || showClear`이면 내부 `Row`(CenterVertically)로 묶어 우측 배치.
+    - `showCounter` → `Text("${value.length}/$maxLength", style=if(isError) body.b02SB else body.b02R, counterColor(isError))`.
+    - `showClear` → Box(`size(SizeTokens.Size44.getDp())`, clickable Role.Button → `onValueChange("")`, contentAlignment Center) { `Image(ic_close_round, cd="clear", tint=clearIconTint, size=SizeTokens.Size24.getDp())` }. `// TODO Change IconButton`.
 - [x] **Step 2: Preview 작성** — `@YGPreview` + `PreviewBox { Column { idle/filled/error/disabled 4개 스택 } }`(focus 테두리는 런타임 전용, 프리뷰 제외).
 - [x] **Step 3: 컴파일** — BUILD SUCCESSFUL.
 - [x] **Step 4: ktlint** — `ktlintMainSourceSetCheck` → BUILD SUCCESSFUL.
 - [ ] **Step 5: 커밋** — 사용자 승인 후 `feature/#134-text-field-form`에 commit.
 
-> **참고**: 초기 작성본을 사용자가 수동 조정(배경 semantic white75, idle 테두리 Gray100, radius small, 테두리 Size1, clear 고정 Size44 박스, error 카운터 b02SB, colors() 파라미터화, Impl 분리, PreviewBox). 위 서술은 조정 후 현행 기준. spec 색 매핑표도 동기화됨.
+> **참고**: 초기 작성본을 사용자가 수동 조정(배경 semantic white75, idle 테두리 Gray100, radius small, 테두리 Size1, clear 고정 Size44 박스, error 카운터 b02SB, colors() 파라미터화, Impl 분리, PreviewBox, 트레일링 gap gap2, 카운터+clear 내부 Row 그룹핑). 위 서술은 조정 후 현행 기준. spec도 동기화됨.
 
 ---
 

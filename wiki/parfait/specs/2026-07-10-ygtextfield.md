@@ -53,6 +53,7 @@ fun YGTextField(
 
 - 토큰: radius `shapes.radius.small`, 테두리 두께 `SizeTokens.Size1.getDp()`, 입력 텍스트 `typography.body.b01R`. clear 아이콘 `R.drawable.ic_close_round`.
 - **카운터 스타일**: error 시 `typography.body.b02SB`(강조), 그 외 `typography.body.b02R`.
+- **트레일링 배치**: 카운터·clear는 `showCounter || showClear`일 때 하나의 내부 `Row`로 묶여 우측에 배치. 텍스트 영역(weight 1f)과 트레일링 그룹 사이 간격 `layout.gap.gap2`.
 - 배경은 시맨틱 `YGTheme.colorScheme.transparency.white75`, error/카운터 danger도 시맨틱 `colorScheme.danger`. 나머지 회색 음영(Gray100/300/400/900)·연핑크(Cherry200)는 시맨틱에 없어 `YGAtomicColors` 직접 참조.
 - disabled는 배경·테두리·입력 텍스트가 enabled와 동일(현재 별도 dim 처리 없음). clear만 숨김.
 
