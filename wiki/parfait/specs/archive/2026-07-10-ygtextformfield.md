@@ -5,10 +5,10 @@ updated: 2026-07-12
 
 # Spec: YGTextFormField
 
-- 상태: 구현 예정
+- 상태: 구현 완료
 - 날짜: 2026-07-10
 - 대상: `core:designsystem` — `component/textfield/`
-- 관련: [YGTextField 스펙](2026-07-10-ygtextfield.md) · [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md) · 이슈 #134
+- 관련: [YGTextField 스펙](2026-07-10-ygtextfield.md) · [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md) · [design-system](../../architecture/design-system.md) · 이슈 #134
 
 ## 목표
 [YGTextField](2026-07-10-ygtextfield.md) 아래에 **errorDescription(에러/안내 텍스트)** 을 붙인 폼 필드. 필드 본체는 기존 `internal YGTextFieldImpl`을 **그대로 재사용**하고, 이 컴포넌트는 errorDescription 표시만 얹는 얇은 래퍼.

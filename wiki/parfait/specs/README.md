@@ -10,15 +10,15 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 | 스펙 | 상태 | 내용 |
 |------|------|------|
-| [2026-07-10-ygtextfield.md](2026-07-10-ygtextfield.md) | 구현 완료 | `core:designsystem` `component/textfield` — YGTextField(단일 폼, idle/focused/error/disabled 런타임 상태) |
-| [2026-07-10-ygtextformfield.md](2026-07-10-ygtextformfield.md) | 구현 예정 | `component/textfield` — YGTextFormField(YGTextFieldImpl 재사용 + 하단 errorDescription) |
-| [2026-07-12-yghorizontaldivider.md](2026-07-12-yghorizontaldivider.md) | 구현 예정 | `component/etc` — YGHorizontalDivider(1dp 수평 구분선, Spacer 기반, 두께·색 오버라이드) |
-| [2026-07-12-yglistitem.md](2026-07-12-yglistitem.md) | 구현 예정 | `component/etc` — YGListItem(메인+옵션 sub 텍스트 + caret 버튼, caret만 clickable) |
+| _(진행 중 없음 — 완료분은 아카이브 참고)_ | | |
 
 ## 아카이브
 | 스펙 | 내용 |
 |------|------|
-| _(아직 없음)_ | |
+| [2026-07-10-ygtextfield.md](archive/2026-07-10-ygtextfield.md) | `component/textfield` — YGTextField(단일 폼, idle/focused/error/disabled 런타임 상태) |
+| [2026-07-10-ygtextformfield.md](archive/2026-07-10-ygtextformfield.md) | `component/textfield` — YGTextFormField(YGTextFieldImpl 재사용 + 하단 errorDescription) |
+| [2026-07-12-yghorizontaldivider.md](archive/2026-07-12-yghorizontaldivider.md) | `component/etc` — YGHorizontalDivider(1dp 수평 구분선, Spacer 기반, 두께·색 오버라이드) |
+| [2026-07-12-yglistitem.md](archive/2026-07-12-yglistitem.md) | `component/etc` — YGListItem(메인+옵션 sub 텍스트 + 옵션 trailing 아이콘 버튼, 아이콘만 clickable) |
 
 ## 작성 가이드
 - 형식 권위 출처: [`template.md`](template.md)
