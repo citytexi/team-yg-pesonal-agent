@@ -28,3 +28,5 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-12] adr | segmentation(subject detection) 머지 분석 — ADR-0011(크로스모듈 비트맵 추상 BitmapWrapper/AndroidBitmap)·ADR-0012(ML Kit Subject Segmentation 온디바이스) 신설. architecture(module-structure·data-layer) 갱신, open-questions 3건 등록(BitmapWrapper stub·ML Kit beta·예외 처리 불일치). adr/README·parfait index 갱신
 ## [2026-07-12] spec | YGHorizontalDivider 스펙 작성 — 피그마 Divider(1dp 수평선, gray-100) 브레인스토밍 확정. Spacer 기반, modifier/thickness/color 파라미터, Colors 홀더·vertical variant 제외. specs/README 등록
 ## [2026-07-12] plan | YGHorizontalDivider 구현 계획 작성 — component/etc 단일 파일 Task(본체+프리뷰, compile·ktlint·육안 검증). 구현 완료(서브에이전트, compile·ktlint 통과), 커밋 대기. plans/README 등록
+## [2026-07-12] spec | YGListItem 스펙 작성 — 피그마 List-Item(메인+옵션 sub 텍스트 + caret 버튼, caret만 clickable) 브레인스토밍 확정. b02R/gray-800 메인, sub는 caption c01R/gray-400 잠정. specs/README 등록
+## [2026-07-12] plan | YGListItem 구현 계획 작성 — component/etc 단일 파일 Task(Row+Column weight+caret Box, compile·ktlint·육안 검증). 구현 완료(서브에이전트, compile·ktlint 통과), 커밋 대기. plans/README 등록
