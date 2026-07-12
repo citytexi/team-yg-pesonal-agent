@@ -70,6 +70,13 @@ ingest·lint에서 감지된 모순과 미결 질문을 추적한다.
 - **상태**: 미해결
 - **해소 메모**: 코드 수정 대상(문서 아님). 처리 방식 확정 시 [[0012-mlkit-subject-segmentation|ADR-0012]] "위험·방어"와 정합 확인.
 
+### [2026-07-12] 디자인시스템 컴포넌트 컨벤션 분기 (parfait 코드)
+- **출처 A**: `component/ygbutton`·`ygiconbutton`·`ygactionitem` — 컴포넌트별 폴더 + `@Preview`/`YGCustomTheme`(+`PreviewParameterProvider`) 프리뷰.
+- **출처 B**: `component/textfield`·`etc` — 그룹 폴더 + `@YGPreview`/`PreviewBox` 프리뷰.
+- **항목**: ① 패키지 네이밍(컴포넌트별 vs 그룹 폴더) 표준, ② 프리뷰 방식(`@YGPreview`/`PreviewBox` vs `@Preview`/`PreviewParameterProvider`) 표준.
+- **상태**: 미해결
+- **해소 메모**: 표준 확정 시 [[design-system]] "컴포넌트 작성 규약"에 반영하고 기존 컴포넌트 정리.
+
 <!--
 항목 추가 형식:
 

@@ -66,6 +66,25 @@ res/drawable/             ← ic_* 아이콘 리소스
 
 > **Assumption / 과도기** — `YGButtonType`의 각 변형 `colors`가 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조하고, 값이 잠정(mock)이다. 코드 주석("Design Token 규칙이 조금 이상… 컴포넌트 완성 시점에 문의 예정")대로 **확정 전 상태**. 확정 시 원자 직접 참조를 시맨틱으로 정리 권장. → [open-questions](../../synthesis/open-questions.md) 후보.
 
+## 컴포넌트 인벤토리
+
+구현된 `component/*` 컴포넌트와 상세 설계(스펙). 심볼명 기준(개수·라인 미기재).
+
+| 컴포넌트 | 패키지 | 스펙 |
+|---|---|---|
+| `YGButton` | `component/ygbutton/` | (레퍼런스, 스펙 이전) |
+| `YGTextField` / `YGTextFormField` | `component/textfield/` | [ygtextfield](../specs/archive/2026-07-10-ygtextfield.md) · [ygtextformfield](../specs/archive/2026-07-10-ygtextformfield.md) |
+| `YGHorizontalDivider` / `YGListItem` | `component/etc/` | [yghorizontaldivider](../specs/archive/2026-07-12-yghorizontaldivider.md) · [yglistitem](../specs/archive/2026-07-12-yglistitem.md) |
+| `YGIconButton`(+`YGIconButtonSize`) | `component/ygiconbutton/` | [ygiconbutton](../specs/archive/2026-07-12-ygiconbutton.md) |
+| `YGActionItem` | `component/ygactionitem/` | [ygactionitem](../specs/archive/2026-07-12-ygactionitem.md) |
+
+- **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize`). YGListItem trailing caret·YGTextField clear의 인라인 `Box`+`Image`(`// TODO IconButton 컴포넌트`)를 치환할 대상.
+- **pressed 상태 관용구**: 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem)는 `MutableInteractionSource` + `collectIsPressedAsState()`로 pressed를 파생해 색/tint를 분기한다.
+
+> **과도기 — 컨벤션 분기(정리 대상)**
+> - **패키지 네이밍**: 컴포넌트별 폴더(`ygbutton/`·`ygiconbutton/`·`ygactionitem/`)와 그룹 폴더(`textfield/`·`etc/`)가 혼재. 규약(위 "컴포넌트 작성 규약")은 컴포넌트별 폴더 기준.
+> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열: YGListItem·YGHorizontalDivider)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem)가 공존. 어느 쪽으로 표준화할지 미확정. → [open-questions](../../synthesis/open-questions.md) 후보.
+
 ## 관련 ADR
 - [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) — 자체 CompositionLocal 테마(why).
 - [ADR-0007](../adr/0007-compose-material3-design-tokens.md) — 100% Compose·중앙화 원칙(superseded).
