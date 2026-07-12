@@ -11,9 +11,9 @@ updated: 2026-07-12
 
 **Architecture:** clear 블록을 `YGIconButton(iconResource, size = SIZE_44, contentDescription, onClick)` 한 줄로 치환(크기·기본 tint·아이콘·라벨·onClick 무손실 매핑). 그 뒤 `YGTextFieldColors`/`YGTextFieldDefaults`에서 더 이상 참조되지 않는 `clearIconTint` 필드·파라미터를 제거. `YGTextFormField`는 `YGTextFieldImpl`에 위임하므로 무편집 자동 반영.
 
-**Tech Stack:** Kotlin, Jetpack Compose(자체 테마 [ADR-0010](../adr/0010-custom-compositionlocal-theme.md)), `YGIconButton`([[2026-07-12-ygiconbutton|spec]]).
+**Tech Stack:** Kotlin, Jetpack Compose(자체 테마 [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)), `YGIconButton`([[2026-07-12-ygiconbutton|spec]]).
 
-**Spec:** [specs/2026-07-12-ygtextfield-clear-iconbutton.md](../specs/2026-07-12-ygtextfield-clear-iconbutton.md)
+**Spec:** [specs/2026-07-12-ygtextfield-clear-iconbutton.md](../../specs/archive/2026-07-12-ygtextfield-clear-iconbutton.md)
 
 ## Global Constraints
 - 대상 repo: `TJYG-Android`(별도 repo). 현재 브랜치에 `YGTextFieldImpl`·`YGIconButton` 모두 존재.
