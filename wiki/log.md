@@ -25,3 +25,4 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-10] plan | YGTextFormField 구현 계획 작성 — Task 1(YGTextFieldImpl 재사용 + description Column, 전량 코드 포함). plans/README·index 갱신
 ## [2026-07-10] sync | textfield gap 조정 반영 — YGTextFieldImpl 트레일링 gap3→gap2 + 카운터/clear 내부 Row 그룹핑, YGTextFormField description gap3→gap2. spec/plan 2쌍 동기화. ADR 무관
 ## [2026-07-10] sync | YGTextFormFieldColors 신설 반영 — description 색 전용 슬롯 분리(counter 재사용 폐기). spec/plan 갱신, 파일 3종(FormField+Colors+Defaults). 코드 compile·ktlint 통과. open-question 해소
+## [2026-07-12] adr | segmentation(subject detection) 머지 분석 — ADR-0011(크로스모듈 비트맵 추상 BitmapWrapper/AndroidBitmap)·ADR-0012(ML Kit Subject Segmentation 온디바이스) 신설. architecture(module-structure·data-layer) 갱신, open-questions 3건 등록(BitmapWrapper stub·ML Kit beta·예외 처리 불일치). adr/README·parfait index 갱신
