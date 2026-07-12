@@ -1,6 +1,6 @@
 ---
 tags: [synthesis, open-questions, meta]
-updated: 2026-07-10
+updated: 2026-07-12
 ---
 
 # Open Questions — 미해결 모순 및 열린 질문
@@ -51,6 +51,24 @@ ingest·lint에서 감지된 모순과 미결 질문을 추적한다.
 - **항목**: ① 컴포넌트가 원자 색을 직접 읽는 것을 시맨틱 계층으로 정리할지, ② XSmall/Small/… 변형별 패딩·radius·textStyle 토큰 매핑 확정.
 - **상태**: 미해결
 - **해소 메모**: 컴포넌트 완성·디자인 토큰 규칙 확정 시 [[design-system]] 규약과 [[0010-custom-compositionlocal-theme|ADR-0010]] 원칙(시맨틱 우선)에 맞춰 정리.
+
+### [2026-07-12] BitmapWrapper stub — 계약 없는 추상 (parfait 코드)
+- **출처**: `core/util/jvm`의 `BitmapWrapper`(멤버 없음, `// TODO 차후 비트맵 사용에 필요한 함수 구현`), `core/util/android`의 `AndroidBitmap`(`// TODO delegate 사용하도록 수정`).
+- **항목**: ① 도메인이 비트맵에 필요한 연산을 `BitmapWrapper` 계약으로 정의할지(현재는 `data`에서 `as? AndroidBitmap` 다운캐스트에 의존), ② `getRawData()` 직접 노출을 유지할지.
+- **상태**: 미해결
+- **해소 메모**: 필요한 연산 확정 시 [[0011-cross-module-bitmap-abstraction|ADR-0011]] 본문·`BitmapWrapper`에 반영해 다운캐스트 의존을 줄인다.
+
+### [2026-07-12] ML Kit Subject Segmentation beta 의존 (parfait 코드)
+- **출처**: `gradle/libs.versions.toml`의 `mlkitSubjectSegmentation`(beta), `feature/segmentation/impl`의 `AndroidManifest` install-time 모델. [[0012-mlkit-subject-segmentation|ADR-0012]].
+- **항목**: ① beta 승급·API 변동 추적, ② GMS 미탑재 기기 대응, ③ subject PNG 캐시 파일(`cacheDir`) 정리 정책, ④ [[누끼-따기]] "온디바이스 vs 서버" 미결의 온디바이스 잠정 확정 여부.
+- **상태**: 보류 (온디바이스로 잠정 채택, beta 추적 중)
+- **해소 메모**: 정식(GA) 승급 시 버전 고정·문서 갱신. 캐시 정리 정책 정하면 [[data-layer]] 갱신.
+
+### [2026-07-12] 세그멘테이션 예외 처리 불일치 (parfait 코드)
+- **출처**: `data`의 `ImageSegmentationRepositoryImpl.segmentImage` — `Result<SegmentationResult>`/`SegmentationException` 패턴을 쓰면서도 `foregroundConfidenceMask`가 null이면 `error("...")`(raw `IllegalStateException`)로 throw. Result로 감싸지 않아 호출부(effect→Toast)가 못 잡을 수 있음.
+- **항목**: null 마스크·`Tasks.await` 예외를 `SegmentationException`(예: 신규 케이스)으로 통합해 `Result.failure`로 반환할지.
+- **상태**: 미해결
+- **해소 메모**: 코드 수정 대상(문서 아님). 처리 방식 확정 시 [[0012-mlkit-subject-segmentation|ADR-0012]] "위험·방어"와 정합 확인.
 
 <!--
 항목 추가 형식:

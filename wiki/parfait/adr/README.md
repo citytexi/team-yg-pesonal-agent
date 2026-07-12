@@ -18,6 +18,8 @@
 | [0008](0008-datastore-local-persistence.md) | 로컬 영속화 DataStore — Room 미채택 | accepted | 2026-06-10 | 파일+메타 이원 |
 | [0009](0009-usecase-injectable-invoke.md) | UseCase = 주입 클래스 + operator invoke | accepted | 2026-06-21 | 인터페이스 없이 |
 | [0010](0010-custom-compositionlocal-theme.md) | 자체 CompositionLocal 디자인시스템 테마 | accepted | 2026-07-10 | 0007 대체, MaterialTheme·dynamic color 배제 |
+| [0011](0011-cross-module-bitmap-abstraction.md) | 크로스모듈 비트맵 추상화 (BitmapWrapper/AndroidBitmap) | accepted | 2026-07-12 | domain 순수성 유지, 현재 stub |
+| [0012](0012-mlkit-subject-segmentation.md) | 이미지 세그멘테이션 — ML Kit Subject Segmentation 온디바이스 | accepted | 2026-07-12 | beta·GMS·install-time 모델 |
 
 ## 작성 가이드
 
