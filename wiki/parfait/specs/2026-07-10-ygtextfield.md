@@ -1,6 +1,6 @@
 ---
 tags: [spec, parfait, designsystem]
-updated: 2026-07-10
+updated: 2026-07-12
 ---
 
 # Spec: YGTextField
@@ -34,7 +34,7 @@ fun YGTextField(
 - `maxLength`: `null`이면 무제한·카운터 없음. 지정 시 카운터 `${value.length}/${maxLength}` 표시 + 초과 입력 무시(자르기 아님).
 - `colors`: 상태별 색 묶음. 기본값 `YGTextFieldDefaults.colors()`(테마 기반). `colors()`는 **각 색 슬롯을 파라미터로 오버라이드 가능**(기본값 채워진 named 파라미터).
 - `BasicTextField`(foundation) 기반, `cursorBrush = SolidColor(커서색)`.
-- **구조**: public `YGTextField`는 내부 `internal YGTextFieldImpl`(테스트/프리뷰용 `interactionSource` 주입 파라미터 보유)에 위임.
+- **구조**: public `YGTextField`는 별도 파일 `YGTextFieldImpl.kt`의 `internal YGTextFieldImpl`(테스트/프리뷰용 `interactionSource` 주입 파라미터 보유)에 위임.
 
 ## 동작 / 상태
 상태는 prop + 런타임 focus 조합으로 파생(별도 variant 타입 없음).
@@ -53,7 +53,7 @@ fun YGTextField(
 
 - 토큰: radius `shapes.radius.small`, 테두리 두께 `SizeTokens.Size1.getDp()`, 입력 텍스트 `typography.body.b01R`. clear 아이콘 `R.drawable.ic_close_round`.
 - **카운터 스타일**: error 시 `typography.body.b02SB`(강조), 그 외 `typography.body.b02R`.
-- **트레일링 배치**: 카운터·clear는 `showCounter || showClear`일 때 하나의 내부 `Row`로 묶여 우측에 배치. 텍스트 영역(weight 1f)과 트레일링 그룹 사이 간격 `layout.gap.gap2`.
+- **트레일링 배치**: 카운터·clear는 `showCounter || showClear`일 때 하나의 내부 `Row`로 묶여 우측에 배치. 텍스트 영역(weight 1f)과 트레일링 그룹 사이 간격 `layout.gap.gap5`.
 - 배경은 시맨틱 `YGTheme.colorScheme.transparency.white75`, error/카운터 danger도 시맨틱 `colorScheme.danger`. 나머지 회색 음영(Gray100/300/400/900)·연핑크(Cherry200)는 시맨틱에 없어 `YGAtomicColors` 직접 참조.
 - disabled는 배경·테두리·입력 텍스트가 enabled와 동일(현재 별도 dim 처리 없음). clear만 숨김.
 
@@ -71,7 +71,8 @@ clear 노출 유무로 분기(clear 박스(`Size44`)가 end·vertical 공간을 
 | clear 있음 | `padding.padding6`(16) | `padding.padding2`(4) | `padding.padding1`(2) | `padding.padding1`(2) |
 
 ## 파일 구성 (`component/textfield/`)
-- `YGTextField.kt` — public `YGTextField` + `internal YGTextFieldImpl`(interactionSource 주입) + `@YGPreview` 프리뷰(`PreviewBox`로 래핑, idle/filled/error/disabled 스택).
+- `YGTextField.kt` — public `YGTextField`(→ `YGTextFieldImpl`에 위임) + `@YGPreview` 프리뷰(`PreviewBox`로 래핑, idle/filled/error/disabled 스택).
+- `YGTextFieldImpl.kt` — `internal YGTextFieldImpl`(interactionSource 주입, Row/Box/BasicTextField·카운터·clear 등 필드 본체 로직). YGTextFormField가 재사용하는 실제 구현체.
 - `YGTextFieldColors.kt` — `@Immutable data class`, 상태별 색 슬롯 + resolver 함수(`backgroundColor`/`borderColor`/`textColor`/`counterColor`).
 - `YGTextFieldDefaults.kt` — `@Composable @ReadOnlyComposable fun colors(...)`가 테마 기반 기본값(오버라이드 가능 named 파라미터) 제공(theme `*Defaults` 네이밍 일치).
 

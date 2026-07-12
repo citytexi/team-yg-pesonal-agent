@@ -1,6 +1,6 @@
 ---
 tags: [plan, parfait, designsystem]
-updated: 2026-07-10
+updated: 2026-07-12
 ---
 
 # YGTextField Implementation Plan
@@ -55,17 +55,18 @@ updated: 2026-07-10
 ### Task 3: YGTextField — 컴포저블 본체 + Preview
 
 **Files:**
-- Create: `core/designsystem/.../component/textfield/YGTextField.kt`
+- Create: `core/designsystem/.../component/textfield/YGTextField.kt` (public `YGTextField` + 프리뷰)
+- Create: `core/designsystem/.../component/textfield/YGTextFieldImpl.kt` (`internal YGTextFieldImpl` 본체)
 
 **Interfaces:**
 - Consumes: `YGTextFieldColors`, `YGTextFieldDefaults.colors()`, `YGTheme.{shapes,typography,layout}`, `SizeTokens.{Size1,Size24,Size44}`, `R.drawable.ic_close_round`, `PreviewBox`·`@YGPreview`(utils.preview).
-- Produces: public `@Composable fun YGTextField(value, onValueChange, modifier, placeholder, enabled, isError, maxLength: Int? = null, colors = YGTextFieldDefaults.colors())` → 내부 `internal YGTextFieldImpl(..., interactionSource)`.
+- Produces: public `@Composable fun YGTextField(value, onValueChange, modifier, placeholder, enabled, isError, maxLength: Int? = null, colors = YGTextFieldDefaults.colors())` → 별도 파일 `YGTextFieldImpl.kt`의 `internal YGTextFieldImpl(..., interactionSource)`.
 
 - [x] **Step 1: 본체 작성** —
   - public `YGTextField`는 `internal YGTextFieldImpl`(테스트/프리뷰용 `interactionSource: MutableInteractionSource = remember { ... }` 주입)에 위임.
   - focus: `interactionSource.collectIsFocusedAsState()`, `BasicTextField(interactionSource=...)`에 전달.
   - `showCounter = maxLength != null && value.isNotEmpty()`; `showClear = enabled && value.isNotEmpty()`.
-  - Row(spacedBy `layout.gap.gap2`, CenterVertically): background+border+clip `shapes.radius.small`(`commonShape`), 테두리 두께 `SizeTokens.Size1.getDp()`, padding 분기(clear 있음 → start=`padding6`, end=`padding2`, vertical=`padding1`; 없음 → start/end=`padding6`, vertical=`padding5`).
+  - Row(spacedBy `layout.gap.gap5`, CenterVertically): background+border+clip `shapes.radius.small`(`commonShape`), 테두리 두께 `SizeTokens.Size1.getDp()`, padding 분기(clear 있음 → start=`padding6`, end=`padding2`, vertical=`padding1`; 없음 → start/end=`padding6`, vertical=`padding5`).
   - 텍스트 영역 Box(weight 1f): 빈값이면 placeholder `Text`(`typography.body.b01R`), `BasicTextField`(singleLine, `textStyle=body.b01R.copy(color=textColor)`, `cursorBrush=SolidColor(cursorColor)`), `onValueChange`에서 `maxLength` 초과 무시.
   - 트레일링: `showCounter || showClear`이면 내부 `Row`(CenterVertically)로 묶어 우측 배치.
     - `showCounter` → `Text("${value.length}/$maxLength", style=if(isError) body.b02SB else body.b02R, counterColor(isError))`.
@@ -75,7 +76,7 @@ updated: 2026-07-10
 - [x] **Step 4: ktlint** — `ktlintMainSourceSetCheck` → BUILD SUCCESSFUL.
 - [ ] **Step 5: 커밋** — 사용자 승인 후 `feature/#134-text-field-form`에 commit.
 
-> **참고**: 초기 작성본을 사용자가 수동 조정(배경 semantic white75, idle 테두리 Gray100, radius small, 테두리 Size1, clear 고정 Size44 박스, error 카운터 b02SB, colors() 파라미터화, Impl 분리, PreviewBox, 트레일링 gap gap2, 카운터+clear 내부 Row 그룹핑). 위 서술은 조정 후 현행 기준. spec도 동기화됨.
+> **참고**: 초기 작성본을 사용자가 수동 조정(배경 semantic white75, idle 테두리 Gray100, radius small, 테두리 Size1, clear 고정 Size44 박스, error 카운터 b02SB, colors() 파라미터화, `YGTextFieldImpl`을 별도 `YGTextFieldImpl.kt`로 분리, PreviewBox, 트레일링 gap gap5, 카운터+clear 내부 Row 그룹핑). 위 서술은 조정 후 현행 기준. spec도 동기화됨.
 
 ---
 

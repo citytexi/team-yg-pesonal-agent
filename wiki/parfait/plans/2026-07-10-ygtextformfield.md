@@ -1,15 +1,15 @@
 ---
 tags: [plan, parfait, designsystem]
-updated: 2026-07-10
+updated: 2026-07-12
 ---
 
 # YGTextFormField Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** [YGTextField](2026-07-10-ygtextfield.md) 아래 description(헬퍼 텍스트)을 얹은 `YGTextFormField`를 `core:designsystem`에 추가한다.
+**Goal:** [YGTextField](2026-07-10-ygtextfield.md) 아래 errorDescription(에러/안내 텍스트)을 얹은 `YGTextFormField`를 `core:designsystem`에 추가한다.
 
-**Architecture:** 기존 `internal YGTextFieldImpl`을 재사용하고 그 아래 `description`을 `Column`으로 얹는 얇은 래퍼. 필드 로직은 재구현하지 않는다. 색은 전용 `YGTextFormFieldColors`(필드용 `textFieldColors` + description 전용 `descriptionColor`/`errorDescriptionColor`)로 묶고 `YGTextFormFieldDefaults.colors()`가 기본값(description 일반 Gray400 / error danger) 제공.
+**Architecture:** 기존 `internal YGTextFieldImpl`을 재사용하고 그 아래 `errorDescription`을 `Column`으로 얹는 얇은 래퍼. 필드 로직은 재구현하지 않는다. 색은 전용 `YGTextFormFieldColors`(필드용 `textFieldColors` + `errorDescriptionColor`)로 묶고 `YGTextFormFieldDefaults.colors()`가 기본값(errorDescription = error danger) 제공. errorDescription 색은 항상 error 단일(일반 헬퍼 슬롯 없음).
 
 **Tech Stack:** Kotlin, Jetpack Compose(foundation/layout, material3 `Text`), 자체 테마(`YGTheme.*`).
 
@@ -32,8 +32,8 @@ updated: 2026-07-10
 - Create: `.../component/textfield/YGTextFormFieldDefaults.kt`
 
 **Interfaces:**
-- Consumes: `YGTextFieldColors`, `YGTextFieldDefaults.colors()`, `YGTheme.colorScheme.danger`, `YGAtomicColors`.
-- Produces: `data class YGTextFormFieldColors(textFieldColors: YGTextFieldColors, descriptionColor: Color, errorDescriptionColor: Color) { fun descriptionColor(isError: Boolean): Color }` + `object YGTextFormFieldDefaults { @Composable @ReadOnlyComposable fun colors(...): YGTextFormFieldColors }`.
+- Consumes: `YGTextFieldColors`, `YGTextFieldDefaults.colors()`, `YGTheme.colorScheme.danger`.
+- Produces: `data class YGTextFormFieldColors(textFieldColors: YGTextFieldColors, errorDescriptionColor: Color)` + `object YGTextFormFieldDefaults { @Composable @ReadOnlyComposable fun colors(...): YGTextFormFieldColors }`.
 
 - [ ] **Step 1: YGTextFormFieldColors.kt 작성**
 
@@ -46,11 +46,8 @@ import androidx.compose.ui.graphics.Color
 @Immutable
 data class YGTextFormFieldColors(
     val textFieldColors: YGTextFieldColors,
-    val descriptionColor: Color,
     val errorDescriptionColor: Color,
-) {
-    fun descriptionColor(isError: Boolean): Color = if (isError) errorDescriptionColor else descriptionColor
-}
+)
 ```
 
 - [ ] **Step 2: YGTextFormFieldDefaults.kt 작성**
@@ -62,18 +59,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import com.teamyg.parfait.core.designsystem.theme.YGTheme
-import com.teamyg.parfait.core.designsystem.theme.colors.YGAtomicColors
 
 object YGTextFormFieldDefaults {
     @Composable
     @ReadOnlyComposable
     fun colors(
         textFieldColors: YGTextFieldColors = YGTextFieldDefaults.colors(),
-        descriptionColor: Color = YGAtomicColors.Gray.Gray400,
         errorDescriptionColor: Color = YGTheme.colorScheme.danger,
     ): YGTextFormFieldColors = YGTextFormFieldColors(
         textFieldColors = textFieldColors,
-        descriptionColor = descriptionColor,
         errorDescriptionColor = errorDescriptionColor,
     )
 }
@@ -87,8 +81,8 @@ object YGTextFormFieldDefaults {
 - Create: `.../component/textfield/YGTextFormField.kt`
 
 **Interfaces:**
-- Consumes: `YGTextFieldImpl(..., colors: YGTextFieldColors)`(internal), `YGTextFormFieldColors.{textFieldColors, descriptionColor(isError)}`(Task 1), `YGTextFormFieldDefaults.colors()`, `YGTheme.{layout.gap.gap2, typography.caption.c01R}`, `PreviewBox`·`@YGPreview`.
-- Produces: `@Composable fun YGTextFormField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String = "", enabled: Boolean = true, isError: Boolean = false, maxLength: Int? = null, description: String? = null, colors: YGTextFormFieldColors = YGTextFormFieldDefaults.colors())`.
+- Consumes: `YGTextFieldImpl(..., colors: YGTextFieldColors)`(internal), `YGTextFormFieldColors.{textFieldColors, errorDescriptionColor}`(Task 1), `YGTextFormFieldDefaults.colors()`, `YGTheme.{layout.gap.gap2, typography.caption.c01R}`, `PreviewBox`·`@YGPreview`.
+- Produces: `@Composable fun YGTextFormField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String = "", enabled: Boolean = true, isError: Boolean = false, maxLength: Int? = null, errorDescription: String? = null, colors: YGTextFormFieldColors = YGTextFormFieldDefaults.colors())`.
 
 - [ ] **Step 1: 컴포저블 작성**
 
@@ -116,7 +110,7 @@ fun YGTextFormField(
     enabled: Boolean = true,
     isError: Boolean = false,
     maxLength: Int? = null,
-    description: String? = null,
+    errorDescription: String? = null,
     colors: YGTextFormFieldColors = YGTextFormFieldDefaults.colors(),
 ) {
     Column(
@@ -133,11 +127,11 @@ fun YGTextFormField(
             maxLength = maxLength,
             colors = colors.textFieldColors,
         )
-        if (description != null) {
+        if (errorDescription != null) {
             Text(
-                text = description,
+                text = errorDescription,
                 style = YGTheme.typography.caption.c01R,
-                color = colors.descriptionColor(isError = isError),
+                color = colors.errorDescriptionColor,
             )
         }
     }
@@ -159,7 +153,7 @@ private fun YGTextFormFieldPreview() = PreviewBox {
             value = "Text",
             onValueChange = {},
             maxLength = 15,
-            description = "닉네임은 15자까지만 입력 가능해요",
+            errorDescription = "닉네임은 15자까지만 입력 가능해요",
             modifier = Modifier.fillMaxWidth(),
         )
         Text("error with description")
@@ -168,7 +162,7 @@ private fun YGTextFormFieldPreview() = PreviewBox {
             onValueChange = {},
             isError = true,
             maxLength = 15,
-            description = "닉네임은 15자까지만 입력 가능해요",
+            errorDescription = "닉네임은 15자까지만 입력 가능해요",
             modifier = Modifier.fillMaxWidth(),
         )
         Text("no description")
@@ -207,9 +201,9 @@ git commit -m "feat: YGTextFormField 추가 (YGTextField + description + 전용 
 ---
 
 ## Self-Review
-- **Spec coverage**: 목표(description 얹기)·API(`description` 파라미터, 전용 `YGTextFormFieldColors`)·구성(Column+YGTextFieldImpl 재사용)·description 색(전용 슬롯)·타이포(caption.c01R)·간격(gap2)·파일(3종 신설)·무변경 원칙 — Task 1·2에 대응.
+- **Spec coverage**: 목표(errorDescription 얹기)·API(`errorDescription` 파라미터, 전용 `YGTextFormFieldColors`)·구성(Column+YGTextFieldImpl 재사용)·errorDescription 색(error 단일 슬롯)·타이포(caption.c01R)·간격(gap2)·파일(3종 신설)·무변경 원칙 — Task 1·2에 대응.
 - **Placeholder**: 없음(코드 전량 기재).
-- **Type consistency**: `YGTextFieldImpl(colors: YGTextFieldColors)`·`colors.textFieldColors`·`descriptionColor(isError)`·`caption.c01R`·`layout.gap.gap2` 모두 코드 심볼과 일치.
+- **Type consistency**: `YGTextFieldImpl(colors: YGTextFieldColors)`·`colors.textFieldColors`·`colors.errorDescriptionColor`·`caption.c01R`·`layout.gap.gap2` 모두 코드 심볼과 일치.
 
 ## 열린 질문
-- (해소) description 색 슬롯을 `YGTextFormFieldColors`로 분리 완료. 초기 안(counter 재사용) 폐기.
+- errorDescription 색은 error 단일(`errorDescriptionColor`)로 확정. 일반(비에러) 헬퍼용 `descriptionColor` 슬롯·resolver는 미도입 — 필요 시 후속 추가.
