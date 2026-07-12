@@ -6,12 +6,12 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| [2026-07-10-ygtextfield.md](2026-07-10-ygtextfield.md) | YGTextField 구현 계획(component/textfield). 구현·검증 완료, 커밋만 대기. 스펙: [specs](../specs/2026-07-10-ygtextfield.md) |
-| [2026-07-10-ygtextformfield.md](2026-07-10-ygtextformfield.md) | YGTextFormField 구현 계획(YGTextFieldImpl 재사용 + errorDescription). 미구현. 스펙: [specs](../specs/2026-07-10-ygtextformfield.md) |
-| [2026-07-12-yghorizontaldivider.md](2026-07-12-yghorizontaldivider.md) | YGHorizontalDivider 구현 계획(component/etc, Spacer 1dp 수평선). 미구현. 스펙: [specs](../specs/2026-07-12-yghorizontaldivider.md) |
-| [2026-07-12-yglistitem.md](2026-07-12-yglistitem.md) | YGListItem 구현 계획(component/etc, Row+Column+caret Box). 미구현. 스펙: [specs](../specs/2026-07-12-yglistitem.md) |
+| _(진행 중 없음 — 완료분은 아카이브 참고)_ | |
 
 ## 아카이브
 | 계획 | 내용 |
 |------|------|
-| _(아직 없음)_ | |
+| [2026-07-10-ygtextfield.md](archive/2026-07-10-ygtextfield.md) | YGTextField 구현 계획(component/textfield). 구현 완료. 스펙: [specs](../specs/archive/2026-07-10-ygtextfield.md) |
+| [2026-07-10-ygtextformfield.md](archive/2026-07-10-ygtextformfield.md) | YGTextFormField 구현 계획(YGTextFieldImpl 재사용 + errorDescription). 구현 완료. 스펙: [specs](../specs/archive/2026-07-10-ygtextformfield.md) |
+| [2026-07-12-yghorizontaldivider.md](archive/2026-07-12-yghorizontaldivider.md) | YGHorizontalDivider 구현 계획(component/etc, Spacer 1dp 수평선). 구현 완료. 스펙: [specs](../specs/archive/2026-07-12-yghorizontaldivider.md) |
+| [2026-07-12-yglistitem.md](archive/2026-07-12-yglistitem.md) | YGListItem 구현 계획(component/etc, Row 가로: 메인+옵션 sub+옵션 trailing 아이콘 Box). 구현 완료. 스펙: [specs](../specs/archive/2026-07-12-yglistitem.md) |

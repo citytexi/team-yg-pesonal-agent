@@ -13,7 +13,7 @@ updated: 2026-07-12
 
 **Tech Stack:** Kotlin, Jetpack Compose(foundation/layout, material3 `Text`), 자체 테마(`YGTheme.*`).
 
-**Spec:** [specs/2026-07-10-ygtextformfield.md](../specs/2026-07-10-ygtextformfield.md)
+**Spec:** [specs/2026-07-10-ygtextformfield.md](../../specs/archive/2026-07-10-ygtextformfield.md)
 
 ## Global Constraints
 - 대상 repo: `TJYG-Android`, 브랜치 `feature/#134-text-field-form`.
