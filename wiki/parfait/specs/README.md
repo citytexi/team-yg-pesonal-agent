@@ -22,6 +22,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 | [2026-07-12-ygiconbutton.md](archive/2026-07-12-ygiconbutton.md) | `component/ygiconbutton` — YGIconButton(재사용 아이콘 버튼, 크기 프리셋 SIZE_44/48, enabled/pressed tint) + YGIconButtonSize enum. 인라인 아이콘 버튼 공통화 |
 | [2026-07-12-ygactionitem.md](archive/2026-07-12-ygactionitem.md) | `component/ygactionitem` — YGActionItem(텍스트 액션 항목, pressed 색, Role.Button) |
 | [2026-07-12-ygtextfield-clear-iconbutton.md](archive/2026-07-12-ygtextfield-clear-iconbutton.md) | `component/textfield` — YGTextField clear 버튼 인라인 Box+Image → YGIconButton 교체(clearIconTint 제거). FormField 무편집 반사 반영 |
+| [2026-07-12-yglistitem-trailingicon-iconbutton.md](archive/2026-07-12-yglistitem-trailingicon-iconbutton.md) | `component/etc` — YGListItem trailing 아이콘 인라인 Box+Image → YGIconButton 교체(trailingIconColor 제거). clear 교체에 이은 두 번째 통일 |
 
 ## 작성 가이드
 - 형식 권위 출처: [`template.md`](template.md)
