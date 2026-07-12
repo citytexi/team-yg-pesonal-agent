@@ -6,7 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| _(진행 중 없음 — 완료분은 아카이브 참고)_ | |
+| [2026-07-12-ygtextfield-clear-iconbutton.md](2026-07-12-ygtextfield-clear-iconbutton.md) | YGTextField clear→YGIconButton 교체(component/textfield, 2 Task: Impl 교체 → clearIconTint 제거). 미구현. 스펙: [specs](../specs/2026-07-12-ygtextfield-clear-iconbutton.md) |
 
 ## 아카이브
 | 계획 | 내용 |

@@ -10,7 +10,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 | 스펙 | 상태 | 내용 |
 |------|------|------|
-| _(진행 중 없음 — 완료분은 아카이브 참고)_ | | |
+| [2026-07-12-ygtextfield-clear-iconbutton.md](2026-07-12-ygtextfield-clear-iconbutton.md) | 구현 예정 | `component/textfield` — YGTextField clear 버튼 인라인 Box+Image → YGIconButton 교체(clearIconTint 제거). FormField 무편집 반사 반영 |
 
 ## 아카이브
 | 스펙 | 내용 |
