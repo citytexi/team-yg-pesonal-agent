@@ -12,6 +12,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 |------|------|------|
 | [2026-07-10-ygtextfield.md](2026-07-10-ygtextfield.md) | 구현 완료 | `core:designsystem` `component/textfield` — YGTextField(단일 폼, idle/focused/error/disabled 런타임 상태) |
 | [2026-07-10-ygtextformfield.md](2026-07-10-ygtextformfield.md) | 구현 예정 | `component/textfield` — YGTextFormField(YGTextFieldImpl 재사용 + 하단 errorDescription) |
+| [2026-07-12-yghorizontaldivider.md](2026-07-12-yghorizontaldivider.md) | 구현 예정 | `component/etc` — YGHorizontalDivider(1dp 수평 구분선, Spacer 기반, 두께·색 오버라이드) |
 
 ## 아카이브
 | 스펙 | 내용 |
