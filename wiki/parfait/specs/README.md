@@ -24,6 +24,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 | [2026-07-12-ygactionitem.md](archive/2026-07-12-ygactionitem.md) | `component/ygactionitem` — YGActionItem(텍스트 액션 항목, pressed 색, Role.Button) |
 | [2026-07-12-ygtextfield-clear-iconbutton.md](archive/2026-07-12-ygtextfield-clear-iconbutton.md) | `component/textfield` — YGTextField clear 버튼 인라인 Box+Image → YGIconButton 교체(clearIconTint 제거). FormField 무편집 반사 반영 |
 | [2026-07-12-yglistitem-trailingicon-iconbutton.md](archive/2026-07-12-yglistitem-trailingicon-iconbutton.md) | `component/etc` — YGListItem trailing 아이콘 인라인 Box+Image → YGIconButton 교체(trailingIconColor 제거). clear 교체에 이은 두 번째 통일 |
+| [2026-07-13-yginputnumber.md](archive/2026-07-13-yginputnumber.md) | `component/yginputnumber` — YGInputNumber(50×50 숫자 선택 셀, isSelected 반전, Role.Button). 사후 기록(develop #129/이슈 #125, 타 작업자) |
 
 ## 작성 가이드
 - 형식 권위 출처: [`template.md`](template.md)

@@ -77,6 +77,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 | `YGHorizontalDivider` / `YGListItem` | `component/etc/` | [yghorizontaldivider](../specs/archive/2026-07-12-yghorizontaldivider.md) · [yglistitem](../specs/archive/2026-07-12-yglistitem.md) |
 | `YGIconButton`(+`YGIconButtonSize`) | `component/ygiconbutton/` | [ygiconbutton](../specs/archive/2026-07-12-ygiconbutton.md) |
 | `YGActionItem` | `component/ygactionitem/` | [ygactionitem](../specs/archive/2026-07-12-ygactionitem.md) |
+| `YGInputNumber`(+`YGInputNumberPreviewData`) | `component/yginputnumber/` | [yginputnumber](../specs/archive/2026-07-13-yginputnumber.md) |
 
 - **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize`). YGListItem trailing caret·YGTextField clear의 인라인 `Box`+`Image`(`// TODO IconButton 컴포넌트`)를 치환할 대상.
 - **pressed 상태 관용구**: 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem)는 `MutableInteractionSource` + `collectIsPressedAsState()`로 pressed를 파생해 색/tint를 분기한다.
