@@ -6,9 +6,9 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| [2026-07-12-clickableyg-throttle.md](2026-07-12-clickableyg-throttle.md) | clickableYG 구현 계획(core:designsystem utils/clickable, Modifier.Node leading-throttle: Element+Node, delegated pointer-input/indication/semantics, TimeSource.Monotonic, indication 기본 ygDimRipple). 미구현. 스펙: [specs](../specs/2026-07-12-clickableyg-throttle.md) |
-| [2026-07-13-ygripple.md](2026-07-13-ygripple.md) | ygDimRipple 구현 계획(core:designsystem utils/clickable, 커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임). 미구현. 스펙: [specs](../specs/2026-07-13-ygripple.md) |
-| [2026-07-13-clickableyg-ripple-variants.md](2026-07-13-clickableyg-ripple-variants.md) | clickableYG 리플 변형(Dim/Scale/Merge, non-composable, indications 리스트) + ygScaleRipple 구현 계획(3 Task). 미구현. 스펙: [specs](../specs/2026-07-13-clickableyg-ripple-variants.md) |
+| [2026-07-12-clickableyg-throttle.md](2026-07-12-clickableyg-throttle.md) | clickableYG 구현 계획. **구현됨(브랜치 #94)** — 단 Approach 2 재설계(표준 clickable 위 throttle, @Composable) + `core:util:android`로 이동으로 코드블록은 역사 스냅샷. 현재는 스펙 참조. 스펙: [specs](../specs/2026-07-12-clickableyg-throttle.md) |
+| [2026-07-13-ygripple.md](2026-07-13-ygripple.md) | ygDimRipple 구현 계획(커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임). **구현됨(브랜치 #94)**, 현 위치 `core:util:android clickable/`. 스펙: [specs](../specs/2026-07-13-ygripple.md) |
+| [2026-07-13-clickableyg-ripple-variants.md](2026-07-13-clickableyg-ripple-variants.md) | clickableYG 리플 변형(Dim/Scale/Merge) + ygScaleRipple 구현 계획. **구현됨(브랜치 #94)** — Approach 2(@Composable, 합성 indication)로 재설계, `core:util:android`로 이동. 스펙: [specs](../specs/2026-07-13-clickableyg-ripple-variants.md) |
 
 ## 아카이브
 | 계획 | 내용 |
