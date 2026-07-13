@@ -20,7 +20,9 @@ tags: [spec, parfait, designsystem]
 - 관련: [[2026-07-12-clickableyg-throttle|clickableYG]](코어 throttle) · [[2026-07-13-ygripple|ygDimRipple]] · [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md) · 이슈 #94
 
 ## 목표
-clickableYG(중복 클릭 throttle)에 **리플 종류별 공개 변형**을 제공한다: dim ripple / scale(누르면 축소) / 둘 병합(merge). scale 효과용 `ygScaleRipple` `IndicationNodeFactory`를 신설(skt `ScaleNodeFactory` 포팅). **모두 non-`@Composable`** — Node가 자체 `interactionSource`에 여러 indication을 직접 delegate해 공유 source·`remember` 불필요.
+clickableYG(중복 클릭 throttle)에 **리플 종류별 공개 변형**을 제공한다: dim ripple / scale(누르면 축소) / 둘 병합(merge). scale 효과용 `ygScaleRipple` `IndicationNodeFactory`를 신설(skt `ScaleNodeFactory` 포팅).
+
+> **구현 방식 갱신(Approach 2, 2026-07-14)** — 최초 "모두 non-`@Composable`, 커스텀 Node가 다중 delegate" 설계였으나, 접근성 패리티(focus/키/hover) 확보를 위해 [[2026-07-12-clickableyg-throttle|throttle 스펙]]에서 **`Modifier.clickable` 위 throttle 래핑 + `@Composable`(remember)**으로 재설계됨. 변형은 여전히 얇은 팩토리(리플 리스트만 다름).
 
 ## 범위
 - **포함**: `ygScaleRipple` 신설. 코어 throttle modifier를 `indications: List<Indication>` 수용으로 전환. 공개 변형 `clickableYGDimRipple`·`clickableYGScaleRipple`·`clickableYGMergeRipple`·`clickableYG`(=Dim 위임). `YGRipple.kt`를 `YGDimRipple.kt`/`YGScaleRipple.kt`로 분리.
@@ -66,11 +68,10 @@ fun Modifier.clickableYG(/* 동일 파라미터 */): Modifier
 - 공통 파라미터: `interactionSource`(기본 null → Node 자체 생성), `enabled`/`onClickLabel`/`role`/`windowMillis`(300)/`onClick`. `indication`은 변형이 고정하므로 공개 시그니처에서 노출 안 함.
 
 ## 동작 / 구조
-- **다중 indication delegate**: 코어 Node(`ClickableYGNode`)의 `attachIndications()`가 `indications.filterIsInstance<IndicationNodeFactory>().map { delegate(it.create(source)) }`로 각 팩토리를 자기 source에 delegate. 이전 delegate는 재attach 시 `undelegate` 후 clear.
-- **Element equals/hashCode**: `ClickableYGElement`는 `data class` 아닌 수동 구현 — `onClick`은 참조 비교(`!==`), `indications`는 값 비교(`==`, 팩토리 equals 활용), 나머지 구조적. platform `CombinedClickableElement` 방식. `inspectableProperties`에 전 파라미터(onClick·interactionSource·indications 포함) 노출.
+- **다중 indication 합성**: (Approach 2, 2026-07-14) 코어는 커스텀 노드가 아니라 표준 `Modifier.clickable` 위에 얹는다. `indications`를 `toYGIndication()`으로 단일 `Indication?`으로 접어(다중이면 자식을 `onAttach`서 `delegate`하는 `YGCompositeIndicationNodeFactory`) `clickable(indication = …)`에 전달. focus/키/hover는 `clickable`이 제공. 상세 [[2026-07-12-clickableyg-throttle|throttle 스펙]] "구조(Approach 2)".
 - **merge draw 순서**: dim(리플 draw)과 scale(`DrawModifierNode`로 컨텐츠 scale)의 delegate 순서가 draw 레이어링에 영향 가능 → `ygDimRipple()` 먼저, `ygScaleRipple()` 나중 delegate를 기본으로 하되 **기기 육안으로 확정**(리플이 축소 콘텐츠 위/아래 어디 그려지는지).
-- **throttle**: [[2026-07-12-clickableyg-throttle|clickableYG]] 코어 그대로(leading-edge, `TimeSource.Monotonic`, `lastMark` Node 상태, onPress `enabled` 게이트).
-- **non-composable 근거**: Node가 source를 소유하고 모든 indication을 그 source에 delegate → 외부 공유 source·`remember` 불필요. 변형은 순수 Modifier 팩토리.
+- **throttle**: [[2026-07-12-clickableyg-throttle|clickableYG]] 코어 그대로(leading-edge, `TimeSource.Monotonic`). 상태는 `remember`된 `YGClickThrottleGate`(`lastMark`)가 `clickable`의 `onClick`을 감싸 판정. `enabled`/press/focus/키/hover는 `clickable`이 처리.
+- **@Composable 근거**: `Modifier.clickable` 위에 얹으려면 throttle 게이트·fallback source를 `remember`로 유지해야 함 → 변형·코어 모두 `@Composable` Modifier 확장. (초기 non-composable 목표는 `clickable`이 이미 Node 기반이라 성능 근거 소멸.)
 
 ### ygScaleRipple 구조 (`YGScaleRipple.kt`)
 - `YGScaleNodeFactory(scaleEnabled, scaleValue) : IndicationNodeFactory` — `create` → `DelegatingYGScaleRippleNode`, `equals`/`hashCode`(파라미터 기반).

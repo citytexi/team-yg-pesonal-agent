@@ -26,7 +26,11 @@ tags: [plan, parfait, designsystem]
 
 **Spec:** [specs/2026-07-13-clickableyg-ripple-variants.md](../specs/2026-07-13-clickableyg-ripple-variants.md)
 
-> **구현 후 갱신(2026-07-13)** — Task 3 코드블록 이후 정리 커밋에서 `ClickableYGElement`가 `data class`→수동 `equals`/`hashCode`(onClick `!==`, indications `==`)·`inspectableProperties` 전체 파라미터(onClick·interactionSource·indications 포함) 노출·`attachIndications`(forEach→`filterIsInstance<IndicationNodeFactory>().map { delegate(...) }`)로 정리됨. 동작 불변.
+> **구현 후 갱신** — Task 3 코드블록(커스텀 `ClickableYGNode`)은 이후:
+> - 정리 커밋에서 `ClickableYGElement` 수동 `equals`·inspector·`attachIndications` 정돈.
+> - (2026-07-14, **PR 리뷰 P1**) 접근성 패리티(focus/키/hover) 위해 **커스텀 노드를 버리고 `Modifier.clickable` 위 throttle 래핑(Approach 2)으로 재설계** — 변형·코어 `@Composable`, throttle은 `remember`된 `YGClickThrottleGate`, 다중 리플은 `YGCompositeIndicationNodeFactory`로 합성. `ClickableYGElement`/`ClickableYGNode` 제거. compile+ktlint 통과.
+>
+> 현재 코드 기준은 [throttle 스펙](../specs/2026-07-12-clickableyg-throttle.md) "구조(Approach 2)" 참조. 아래 코드블록은 역사 스냅샷.
 
 ## Global Constraints
 - 대상 repo: `TJYG-Android`. 패키지: `com.teamyg.parfait.core.designsystem.utils.clickable`.
