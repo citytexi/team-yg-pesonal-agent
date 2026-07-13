@@ -42,3 +42,9 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-13] sync | 리베이스 반영 — clickableYG를 core:ui→core:designsystem(utils/clickable/YGClickable.kt) 이동 + indication 기본값 ygDimRipple() 배선(themed 기본값을 wrapper 없이 clickableYG에 접음), ygRipple→ygDimRipple 리네임(YGRippleNodeFactory/DelegatingNode 포함), YGRipple.kt 위치 utils/clickable·패키지 버그(core.ui.ripple) 수정. 코드 compile+ktlint BUILD SUCCESSFUL(미커밋). clickableYG·ygRipple spec+plan, specs/plans README, design-system 인벤토리 갱신. ADR 무변경. YGInputNumber(develop #129, 타인) 문서 gap 미결
 ## [2026-07-13] spec/plan | YGInputNumber 사후 문서화 — develop #129(이슈 #125, 타 작업자) 머지분 기록. component/yginputnumber/YGInputNumber(+PreviewData): 50×50 고정 숫자 선택 셀, isSelected 반전(bg White↔Gray900·테두리 Gray100↔Gray900·텍스트 Gray900↔White), radius xSmall, b01R, Role.Button, @Preview+YGCustomTheme+PreviewParameterProvider. spec+plan archive에 작성(구현 완료), specs/plans README·design-system 인벤토리·index 갱신. 과도기: 50.dp/1.dp 리터럴·원자색 직접·프리뷰 방식 혼재
 ## [2026-07-13] spec/plan | clickableYG 리플 변형 + ygScaleRipple — 이슈 #94 후속. ygScaleRipple(YGScaleRipple.kt, Press 축소 tween150/Release spring bounce, DrawModifierNode) 신설, 코어를 indications: List로 전환(Node가 자체 source에 다중 delegate → non-composable), 공개 clickableYG(=Dim)/clickableYGDimRipple/clickableYGScaleRipple/clickableYGMergeRipple. YGRipple.kt→YGDimRipple.kt 리네임. skt ScaleNodeFactory/idClickable 포팅. 서브에이전트 3 Task 구현 API 보정 0, compile/ktlintCheck BUILD SUCCESSFUL, 코드 미커밋. merge draw 순서·색/scaleValue 토큰화 후속. spec+plan(active)·specs/plans README·index 갱신
+
+## [2026-07-13] ingest | 토핑 정책 (G-001 · Topping) v0.1
+
+## [2026-07-13] ingest | 무한 파르페 정책 · 간격(갭) (G-001) v0.1
+
+## [2026-07-13] ingest | 그룹명 정책 (A-005) v0.1
