@@ -29,8 +29,9 @@ tags: [plan, parfait, designsystem]
 > **구현 후 갱신** — 아래 Task 1 코드블록은 최초 설계(단일 `indication`, 커스텀 `ClickableYGNode`)의 스냅샷이다. 이후:
 > - (2026-07-13) [리플 변형 플랜](2026-07-13-clickableyg-ripple-variants.md)에서 `indications: List` + 공개 변형 4종으로 대체.
 > - (2026-07-14, **PR 리뷰 P1**) 접근성 패리티(focus/하드웨어 키/hover) 확보 위해 **커스텀 노드를 버리고 표준 `Modifier.clickable` 위에 throttle 게이트를 얹는 방식(Approach 2)으로 재설계** — `clickableYG`·변형이 `@Composable`로 전환, `ClickableYGElement`/`ClickableYGNode` 제거. compile+ktlint 통과.
+> - (2026-07-14) **`core:designsystem` → `core:util:android` `clickable/`로 이동** — 테마 의존 끊고 ripple 기본색 리터럴화(`YGDimRippleColor`), util:android에 compose 플러그인 추가. 아래 코드블록의 패키지·경로(`core.designsystem.utils.clickable`)는 옛 위치.
 >
-> **현재 코드 기준은 [throttle 스펙](../specs/2026-07-12-clickableyg-throttle.md) "구조(Approach 2)" 참조.** 아래 코드블록은 역사 스냅샷.
+> **현재 코드 기준은 [throttle 스펙](../specs/2026-07-12-clickableyg-throttle.md) "구조(Approach 2)"·"파일 구성" 참조.** 아래 코드블록은 역사 스냅샷.
 
 ## Global Constraints
 - 대상 repo: `TJYG-Android`, 브랜치 `feature/#94-solve-duplicate-clickable-issue`.

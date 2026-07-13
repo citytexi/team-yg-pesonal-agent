@@ -5,7 +5,7 @@ status: draft
 category: behavior-spec
 platforms: android
 verified: 2026-07-13
-related_code: core:designsystem utils/clickable/YGClickable.kt — Modifier.clickableYG
+related_code: core:util:android clickable/YGClickable.kt — Modifier.clickableYG
 related_adr: ADR-0010
 related_spec: ygripple
 related_architecture: design-system
@@ -16,7 +16,7 @@ tags: [spec, parfait, designsystem]
 
 # Spec: clickableYG — Node 기반 중복 클릭 방지 Modifier
 
-- 대상: `core:designsystem` — `utils/clickable/YGClickable.kt`
+- 대상: `core:util:android` — `clickable/YGClickable.kt` (2026-07-14 `core:designsystem`에서 이동 — 테마 비의존 범용 clickable 유틸로 재배치)
 - 관련: [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md) · [[2026-07-13-ygripple|ygDimRipple]](기본 indication) · 이슈 #94
 
 ## 목표
@@ -86,18 +86,19 @@ internal fun Modifier.clickableYGThrottle(
 - **인디케이션**: `List<Indication>`을 `toYGIndication()`으로 단일 `Indication?`으로 접음 — 비면 `null`, 1개면 그대로, 다중이면 자식들을 `onAttach`에서 `delegate`하는 `internal YGCompositeIndicationNodeFactory`(`equals`/`hashCode`는 `factories` 리스트 기반). 이를 `clickable(indication = …)`에 전달.
 - **@Composable**: 위 `remember` 때문에 `clickableYG`·변형·`clickableYGThrottle`는 `@Composable` Modifier 확장이다.
 
-> Compose BOM `2026.06.00`(`androidx.compose.foundation.clickable`) 기준. `:core:designsystem:compileReleaseKotlin` + ktlint 통과 확인(2026-07-14).
+> Compose BOM `2026.06.00`(`androidx.compose.foundation.clickable`) 기준. `:core:util:android:compileReleaseKotlin` + ktlint 통과 확인(2026-07-14).
 
 ## 표시·제어 규칙
 - 게이트 통과 조건: `enabled` **AND** (`lastMark == null` **OR** `lastMark.elapsedNow() >= window`).
 - 통과 시에만 `lastMark` 갱신·`onClick` 발화.
 
-## 파일 구성 (`core:designsystem`)
-- `utils/clickable/YGClickable.kt` — `@Composable` public `Modifier.clickableYG(...)` + 변형 3종 + `@Composable internal clickableYGThrottle(indications: List)` + `private class YGClickThrottleGate`(throttle 상태) + `private List<Indication>.toYGIndication()` + `internal YGCompositeIndicationNodeFactory`/`private YGCompositeIndicationNode`(다중 리플 합성). 커스텀 `ModifierNodeElement`/`Modifier.Node`는 없음(clickable 위임). 같은 패키지 `utils/clickable/`의 리플 파일 [[2026-07-13-ygripple|YGDimRipple.kt]]·`YGScaleRipple.kt`와 함께 위치.
-- (이력) 초기 `core:ui`의 `utils/extensions/Modifier.kt`로 구현 후 리베이스에서 `core:designsystem utils/clickable/YGClickable.kt`로 이동 — ygDimRipple을 기본값으로 쓰려면 같은 모듈이어야 해서.
+## 파일 구성 (`core:util:android`)
+- `clickable/YGClickable.kt`(패키지 `com.teamyg.parfait.core.util.android.clickable`) — `@Composable` public `Modifier.clickableYG(...)` + 변형 3종 + `@Composable internal clickableYGThrottle(indications: List)` + `private class YGClickThrottleGate`(throttle 상태) + `private List<Indication>.toYGIndication()` + `internal YGCompositeIndicationNodeFactory`/`private YGCompositeIndicationNode`(다중 리플 합성). 커스텀 `ModifierNodeElement`/`Modifier.Node`는 없음(clickable 위임). 같은 패키지 `clickable/`의 리플 파일 [[2026-07-13-ygripple|YGDimRipple.kt]]·`YGScaleRipple.kt`와 함께 위치.
+- (이력) 초기 `core:ui`의 `utils/extensions/Modifier.kt` stub → 리베이스에서 `core:designsystem utils/clickable/`로 이동(ygDimRipple 기본값 주입 위해) → **2026-07-14 `core:util:android clickable/`로 재이동**. 재이동 시 테마 의존(`YGAtomicColors`)을 끊고 ripple 기본색을 리터럴(`YGDimRippleColor = Color(0xFF29292C)`)로 바꿔 designsystem 비의존 유틸로 만듦. `core:util:android`에 `parfait.jetpack.compose` 플러그인 추가.
 
 ## 주의 / 열린 질문
 - **접근성 패리티(P1, 미구현 → 반영 필요)**: 초기 구현은 focus/하드웨어 키/hover 누락(터치·TalkBack 시맨틱만). 앱 전역 대체 스코프 확정으로 위 "접근성 패리티" 3종을 구현해야 함. 구현 방식(node delegate vs `clickable` 위 throttle 래핑)은 plan에서 compile로 확정.
 - **검증 한계**: throttle 타이밍은 유닛 테스트 인프라 부재(Compose UI)로 compile + ktlint + `@Preview`/기기 연타 육안으로 확인. 정밀 타이밍 테스트는 별도.
 - **첫 Modifier.Node**: 프로젝트에 Node 선례 없음. 성공 시 이후 커스텀 modifier의 참조 패턴이 됨(아키텍처 결정화되면 ADR 검토).
-- **indication 기본값 = ygDimRipple (해소)**: 초기에는 `core:ui`(디자인시스템 하위)라 테마·리플을 못 읽어 `indication`을 필수 파라미터로 받고 themed 기본값은 designsystem wrapper 후속으로 미뤘음. 리베이스에서 `clickableYG`를 **`core:designsystem`으로 이동**해 같은 모듈의 [[2026-07-13-ygripple|ygDimRipple]]을 `indication` 기본값으로 직접 주입 → 별도 wrapper 없이 해소. `null` 전달로 무인디케이션, 다른 `IndicationNodeFactory`로 교체 가능.
+- **indication 기본값 = ygDimRipple**: 변형 함수가 리플을 고정(`clickableYGDimRipple` → `listOf(ygDimRipple())` 등). `ygDimRipple`은 같은 모듈(`core:util:android clickable/`)에 있어 별도 wrapper 불필요.
+- **테마 비의존(재이동 결과)**: `core:util:android`는 `core:designsystem`을 의존하지 않으므로 ripple 색을 테마(`YGAtomicColors`)에서 읽지 못한다. 기본색을 리터럴 `YGDimRippleColor = Color(0xFF29292C)`로 둠. 시맨틱 토큰화하려면 색을 호출측(designsystem 컴포넌트)에서 파라미터로 주입해야 함 → [open-questions](../open-questions.md).

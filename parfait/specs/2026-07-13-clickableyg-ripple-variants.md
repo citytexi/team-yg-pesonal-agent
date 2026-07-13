@@ -5,7 +5,7 @@ status: draft
 category: behavior-spec
 platforms: android
 verified: 2026-07-13
-related_code: core:designsystem utils/clickable/ — clickableYGDimRipple, clickableYGScaleRipple, clickableYGMergeRipple, ygScaleRipple
+related_code: core:util:android clickable/ — clickableYGDimRipple, clickableYGScaleRipple, clickableYGMergeRipple, ygScaleRipple
 related_adr: ADR-0010
 related_spec: clickableyg-throttle, ygripple
 related_architecture: design-system
@@ -16,7 +16,7 @@ tags: [spec, parfait, designsystem]
 
 # Spec: clickableYG 리플 변형 세트 + ygScaleRipple
 
-- 대상: `core:designsystem` — `utils/clickable/`
+- 대상: `core:util:android` — `clickable/` (2026-07-14 `core:designsystem`에서 이동)
 - 관련: [[2026-07-12-clickableyg-throttle|clickableYG]](코어 throttle) · [[2026-07-13-ygripple|ygDimRipple]] · [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md) · 이슈 #94
 
 ## 목표
@@ -77,13 +77,13 @@ fun Modifier.clickableYG(/* 동일 파라미터 */): Modifier
 - `YGScaleNodeFactory(scaleEnabled, scaleValue) : IndicationNodeFactory` — `create` → `DelegatingYGScaleRippleNode`, `equals`/`hashCode`(파라미터 기반).
 - `DelegatingYGScaleRippleNode : DelegatingNode, DrawModifierNode` — `onAttach`서 `interactionSource.interactions` 수집해 `Animatable` 애니메이트, `draw()`서 `scale(animatable.value) { drawContent() }`. `scaleEnabled=false`면 애니메이션·scale 없이 `drawContent()`.
 
-## 파일 구성 (`core:designsystem` `utils/clickable/`)
+## 파일 구성 (`core:util:android` `clickable/`)
 - `YGDimRipple.kt` — 기존 `YGRipple.kt`를 리네임. `ygDimRipple` + `YGDimRippleAlpha` + `YGDimRippleNodeFactory` + `DelegatingYGDimRippleNode`.
 - `YGScaleRipple.kt` — 신설. `ygScaleRipple` + `YGScaleNodeFactory` + `DelegatingYGScaleRippleNode`.
 - `YGClickable.kt` — 코어 `internal clickableYGThrottle`(indications: List) + 공개 `clickableYG`·`clickableYGDimRipple`·`clickableYGScaleRipple`·`clickableYGMergeRipple`.
 
 ## 주의 / 열린 질문
 - **merge delegate 순서**: draw 레이어링 정답은 기기 확인 후 확정(dim↔scale 순서).
-- **과도기**: 리플 색(`Gray.Gray900`)·`scaleValue`(0.98)가 토큰 아닌 리터럴/기본값. 디자인 토큰 확정 시 정리 → [open-questions](../open-questions.md).
+- **테마 비의존 리터럴**: 리플 색(`YGDimRippleColor = Color(0xFF29292C)`)·`scaleValue`(0.98)가 토큰 아닌 리터럴. `core:util:android`가 designsystem 테마 비의존이라 색은 리터럴 고정 또는 호출측 주입 → [open-questions](../open-questions.md).
 - **기존 스펙 관계**: [[2026-07-12-clickableyg-throttle]](코어 throttle)·[[2026-07-13-ygripple]](ygDimRipple)의 API 일부(단일 `indication`, `YGRipple.kt` 파일명)를 이 스펙이 갱신. 구현 시 두 스펙의 해당 부분 동기화.
 - **검증**: compile + ktlint + 기기 육안(dim 리플/scale 축소/merge 동시). 정적 프리뷰로 리플·애니메이션 안 보임.
