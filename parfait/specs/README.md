@@ -31,3 +31,8 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 - 형식 권위 출처: [`template.md`](template.md)
 - 새 스펙 = 위 인덱스 테이블에 한 줄 등록(스펙 파일과 README는 같은 커밋)
 - 스펙이 새 아키텍처 결정을 유발하면 대응 ADR을 함께 만든다([`../adr/`](../adr/README.md))
+
+### Frontmatter (필수)
+모든 스펙은 YAML frontmatter로 메타데이터를 단다(상태·날짜·대상·관련의 단일 출처). 필드:
+`id`(=파일명 topic, 날짜 접두사 제외) · `title` · `status`(**draft / in-progress / implemented / superseded**) · `category`(ui-spec / behavior-spec …) · `platforms`(=android) · `verified`(코드 대조일) · `related_code`(파일명#심볼, **라인번호·hex·변동수치 금지**) · `related_adr` · `related_spec` · `related_architecture` · `supersedes` · `superseded_by` · `tags`.
+- 구현 완료 → `status: implemented` + `archive/` 이동. 대체 → 구 문서 `superseded` + `superseded_by`, 신 문서 `supersedes`.

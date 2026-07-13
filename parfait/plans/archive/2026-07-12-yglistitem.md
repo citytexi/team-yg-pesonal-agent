@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: yglistitem
+title: YGListItem Implementation Plan
+status: done
+type: work-order
+created: 2026-07-12
 updated: 2026-07-12
+platforms: android
+owner:
+related_adr: ADR-0010
+related_spec: yglistitem
+related_code: YGListItem.kt#YGListItem
+archived_reason: 구현 완료
+tags: [plan, parfait, designsystem]
 ---
 
 # YGListItem Implementation Plan
@@ -18,7 +29,7 @@ updated: 2026-07-12
 ## Global Constraints
 - 대상 repo: `TJYG-Android`, 브랜치 `feature/#136-etc-component`.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.etc`.
-- 테마 값은 `YGTheme.*`로만 접근. 크기는 `SizeTokens.*.getDp()`. 색은 `YGAtomicColors.*`(gray 음영·아이콘 tint는 시맨틱 슬롯 없어 원자색 직접 참조 — YGButton·YGTextField 선례, 과도기 → [open-questions](../../../synthesis/open-questions.md)).
+- 테마 값은 `YGTheme.*`로만 접근. 크기는 `SizeTokens.*.getDp()`. 색은 `YGAtomicColors.*`(gray 음영·아이콘 tint는 시맨틱 슬롯 없어 원자색 직접 참조 — YGButton·YGTextField 선례, 과도기 → [open-questions](../../../wiki/synthesis/open-questions.md)).
 - 검증: 유닛 TDD 인프라 없음(Compose UI). **compile(`compileReleaseKotlin`) + `ktlintMainSourceSetCheck` + `@Preview` 육안**으로 대체.
 - ktlint 엄격(단일 표현식 함수 한 줄). 커밋 전 `ktlintMainSourceSetFormat`.
 
@@ -190,4 +201,4 @@ git commit -m "feat: YGListItem 구현"
 ## 열린 질문
 - **아이콘 접근성**: `contentDescription = null`(장식 취급). clickable Box에 라벨이 없어 스크린리더가 무명 버튼으로 읽음 — 실제 라벨(예: 행 텍스트 연동)은 후속 a11y 개선 대상. 스펙이 라벨 미정의라 현재는 null.
 - **sub 텍스트 스타일**: 우측 값 텍스트로 `body.b02SB`+`Gray.Gray400` 채택. 피그마 확정본과 어긋나면 갱신.
-- gray 원자색 직접 참조 → 시맨틱 정리 대상([open-questions](../../../synthesis/open-questions.md), YGButton 디자인 토큰 항목과 동일 성격).
+- gray 원자색 직접 참조 → 시맨틱 정리 대상([open-questions](../../../wiki/synthesis/open-questions.md), YGButton 디자인 토큰 항목과 동일 성격).

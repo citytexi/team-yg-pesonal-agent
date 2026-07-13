@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: ygtextformfield
+title: YGTextFormField Implementation Plan
+status: done
+type: work-order
+created: 2026-07-10
 updated: 2026-07-12
+platforms: android
+owner:
+related_adr:
+related_spec: ygtextformfield
+related_code: YGTextFormFieldColors, YGTextFormFieldDefaults
+archived_reason: 구현 완료
+tags: [plan, parfait, designsystem]
 ---
 
 # YGTextFormField Implementation Plan

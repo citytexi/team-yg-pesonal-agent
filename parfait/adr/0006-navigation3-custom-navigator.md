@@ -1,8 +1,18 @@
+---
+id: ADR-0006
+title: Navigation3 + 커스텀 Navigator + feature 엔트리 빌더
+status: accepted
+date: 2026-05-19
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr:
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0006: Navigation3 + 커스텀 Navigator + feature 엔트리 빌더
-
-- 상태: accepted
-- 날짜: 2026-05-19
-- 결정자: Parfait 팀
 
 ## 맥락
 feature :api/:impl 분리([[0002-feature-api-impl-split]]) 상태에서 app이 각 화면을 직접 알지 않으면서도 목적지로 이동하고 결과를 주고받아야 한다. 화면 간 결과 전달·공유 요소 전환도 필요했다.

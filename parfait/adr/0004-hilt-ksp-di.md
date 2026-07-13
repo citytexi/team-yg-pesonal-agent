@@ -1,8 +1,18 @@
+---
+id: ADR-0004
+title: Hilt + KSP 의존성 주입, 스코프 분리
+status: accepted
+date: 2026-05-14
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr: ADR-0002
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0004: Hilt + KSP 의존성 주입, 스코프 분리
-
-- 상태: accepted
-- 날짜: 2026-05-14
-- 결정자: Parfait 팀
 
 ## 맥락
 다중 모듈·레이어 구조에서 Repository·DataSource·Navigator·ViewModel의 수명과 조립을 일관되게 관리할 DI가 필요하다. 수동 DI는 모듈 경계를 넘는 그래프에서 보일러플레이트가 폭증한다.

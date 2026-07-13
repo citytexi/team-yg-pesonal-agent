@@ -1,12 +1,21 @@
 ---
+id: ygactionitem
+title: YGActionItem
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-07-12
+related_code: core:designsystem component/ygactionitem/ YGActionItem
+related_adr: ADR-0010
+related_spec:
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-12
 ---
 
 # Spec: YGActionItem
 
-- 상태: 구현 완료
-- 날짜: 2026-07-12
 - 대상: `core:designsystem` — `component/ygactionitem/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)(컴포넌트 작성 규약)
 
@@ -51,6 +60,6 @@ fun YGActionItem(
 - `YGActionItem.kt` — public 컴포저블 본체 + `@Preview`(public `YGActionItemPreview`).
 
 ## 주의 / 열린 질문
-- **원자 색 직접 참조(과도기)**: `YGAtomicColors.Gray.{Gray500,Gray700}` 직접 참조. 시맨틱 슬롯 없음 — YGButton·YGTextField 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../synthesis/open-questions.md).
+- **원자 색 직접 참조(과도기)**: `YGAtomicColors.Gray.{Gray500,Gray700}` 직접 참조. 시맨틱 슬롯 없음 — YGButton·YGTextField 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../wiki/synthesis/open-questions.md).
 - **disabled 미지원**: enabled/pressed만. 비활성 상태 필요 시 후속 확장.
 - **프리뷰 컨벤션 분기**: `@Preview` + `YGCustomTheme` 사용(etc 계열의 `@YGPreview`/`PreviewBox`와 다른 방식 공존). → [design-system](../../architecture/design-system.md) 프리뷰 규약 정리 대상.

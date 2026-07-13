@@ -1,3 +1,16 @@
+---
+id: navigation-flow
+title: 내비게이션 흐름 (Navigation3 + Navigator)
+category: architecture
+status: living
+platforms: android
+verified: 2026-07-12
+related_spec:
+related_adr: ADR-0002, ADR-0006
+related_architecture:
+related_code: core:navigation, Navigator
+tags: [architecture, parfait]
+---
 # 내비게이션 흐름 (Navigation3 + Navigator)
 
 Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근거는 [[0006-navigation3-custom-navigator]]·[[0002-feature-api-impl-split]].

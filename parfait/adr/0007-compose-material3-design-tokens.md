@@ -1,8 +1,18 @@
+---
+id: ADR-0007
+title: Jetpack Compose + Material3 + 디자인 토큰 시스템
+status: superseded
+date: 2026-05-12
+deciders: Parfait 팀
+supersedes:
+superseded_by: ADR-0010
+related_adr:
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0007: Jetpack Compose + Material3 + 디자인 토큰 시스템
-
-- 상태: superseded by ADR-0010
-- 날짜: 2026-05-12
-- 결정자: Parfait 팀
 
 > ⚠️ **superseded** — 테마·토큰 메커니즘(Material3 `MaterialTheme` + dynamic color + 플랫 토큰 object)은 [ADR-0010](0010-custom-compositionlocal-theme.md)이 자체 CompositionLocal 테마 시스템으로 대체했다. 이 문서의 유효한 부분(**UI 100% Compose, XML 없음, 디자인 값 중앙화 원칙**)은 0010에 승계됐다. 현행 구현은 0010과 [architecture/design-system.md](../architecture/design-system.md)를 본다.
 

@@ -1,12 +1,21 @@
 ---
+id: ygtextfield
+title: YGTextField
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-07-10
+related_code: core:designsystem component/textfield/ YGTextField
+related_adr: ADR-0010
+related_spec:
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-12
 ---
 
 # Spec: YGTextField
 
-- 상태: 구현 완료
-- 날짜: 2026-07-10
 - 대상: `core:designsystem` — `component/textfield/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)(컴포넌트 작성 규약) · 이슈 #134
 
@@ -77,5 +86,5 @@ clear 노출 유무로 분기(clear 박스(`Size44`)가 end·vertical 공간을 
 - `YGTextFieldDefaults.kt` — `@Composable @ReadOnlyComposable fun colors(...)`가 테마 기반 기본값(오버라이드 가능 named 파라미터) 제공(theme `*Defaults` 네이밍 일치).
 
 ## 주의 / 열린 질문
-- **과도기**: 컴포넌트가 시맨틱 grayScale 대신 `YGAtomicColors` 직접 참조 — YGButton 선례와 동일. 디자인 토큰 규칙 확정 시 시맨틱으로 정리 대상. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../synthesis/open-questions.md).
+- **과도기**: 컴포넌트가 시맨틱 grayScale 대신 `YGAtomicColors` 직접 참조 — YGButton 선례와 동일. 디자인 토큰 규칙 확정 시 시맨틱으로 정리 대상. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../wiki/synthesis/open-questions.md).
 - focused 테두리(pink)는 실제 focus에서만 보임 → 프리뷰는 idle/filled/error/disabled 중심, focus는 기기 확인.

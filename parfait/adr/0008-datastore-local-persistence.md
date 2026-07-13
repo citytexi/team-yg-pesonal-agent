@@ -1,8 +1,18 @@
+---
+id: ADR-0008
+title: 로컬 영속화는 DataStore(Preferences) — Room 미채택
+status: accepted
+date: 2026-06-10
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr:
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0008: 로컬 영속화는 DataStore(Preferences) — Room 미채택
-
-- 상태: accepted
-- 날짜: 2026-06-10
-- 결정자: Parfait 팀
 
 ## 맥락
 최근 이미지 URI 등 가벼운 메타데이터를 로컬에 저장해야 한다. 관계형 쿼리나 대량 엔티티가 필요한 요구는 아직 없다.

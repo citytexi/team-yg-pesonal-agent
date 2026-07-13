@@ -1,12 +1,21 @@
 ---
+id: yglistitem
+title: YGListItem
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-07-12
+related_code: core:designsystem component/etc/ YGListItem
+related_adr: ADR-0010
+related_spec:
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-12
 ---
 
 # Spec: YGListItem
 
-- 상태: 구현 완료
-- 날짜: 2026-07-12
 - 대상: `core:designsystem` — `component/etc/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)(컴포넌트 작성 규약) · 이슈 #136
 
@@ -64,5 +73,5 @@ fun YGListItem(
 
 ## 주의 / 열린 질문
 - **sub 텍스트 스타일**: 우측 값 텍스트로 `body.b02SB` + `Gray.Gray400` 채택. 피그마 확정본과 어긋나면 갱신.
-- **과도기**: gray 음영·아이콘 tint가 시맨틱 슬롯 없어 `YGAtomicColors` 직접 참조 — YGButton·YGTextField 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../synthesis/open-questions.md).
+- **과도기**: gray 음영·아이콘 tint가 시맨틱 슬롯 없어 `YGAtomicColors` 직접 참조 — YGButton·YGTextField 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../wiki/synthesis/open-questions.md).
 - **아이콘 인라인**: trailing 아이콘이 별도 Button-Icon 컴포넌트가 아니라 인라인 Box+Image(textfield clear와 중복 패턴). 공통 icon-button 컴포넌트가 생기면 양쪽 교체 대상.

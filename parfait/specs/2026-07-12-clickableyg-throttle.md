@@ -1,12 +1,21 @@
 ---
+id: clickableyg-throttle
+title: clickableYG — Node 기반 중복 클릭 방지 Modifier
+status: draft
+category: behavior-spec
+platforms: android
+verified: 2026-07-12
+related_code: core:designsystem utils/clickable/YGClickable.kt — Modifier.clickableYG
+related_adr: ADR-0010
+related_spec: ygripple
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-13
 ---
 
 # Spec: clickableYG — Node 기반 중복 클릭 방지 Modifier
 
-- 상태: 구현 예정
-- 날짜: 2026-07-12 (업데이트: 2026-07-13 — `core:ui` → `core:designsystem` 이동, indication 기본값 `ygDimRipple()` 반영)
 - 대상: `core:designsystem` — `utils/clickable/YGClickable.kt`
 - 관련: [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md) · [[2026-07-13-ygripple|ygDimRipple]](기본 indication) · 이슈 #94
 

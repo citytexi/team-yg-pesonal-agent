@@ -1,12 +1,21 @@
 ---
+id: clickableyg-ripple-variants
+title: clickableYG 리플 변형 세트 + ygScaleRipple
+status: draft
+category: behavior-spec
+platforms: android
+verified: 2026-07-13
+related_code: core:designsystem utils/clickable/ — clickableYGDimRipple, clickableYGScaleRipple, clickableYGMergeRipple, ygScaleRipple
+related_adr: ADR-0010
+related_spec: clickableyg-throttle, ygripple
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-13
 ---
 
 # Spec: clickableYG 리플 변형 세트 + ygScaleRipple
 
-- 상태: 구현 예정
-- 날짜: 2026-07-13
 - 대상: `core:designsystem` — `utils/clickable/`
 - 관련: [[2026-07-12-clickableyg-throttle|clickableYG]](코어 throttle) · [[2026-07-13-ygripple|ygDimRipple]] · [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md) · 이슈 #94
 
@@ -73,6 +82,6 @@ fun Modifier.clickableYG(/* 동일 파라미터 */): Modifier
 
 ## 주의 / 열린 질문
 - **merge delegate 순서**: draw 레이어링 정답은 기기 확인 후 확정(dim↔scale 순서).
-- **과도기**: 리플 색(`Gray.Gray900`)·`scaleValue`(0.98)가 토큰 아닌 리터럴/기본값. 디자인 토큰 확정 시 정리 → [open-questions](../../synthesis/open-questions.md).
+- **과도기**: 리플 색(`Gray.Gray900`)·`scaleValue`(0.98)가 토큰 아닌 리터럴/기본값. 디자인 토큰 확정 시 정리 → [open-questions](../../wiki/synthesis/open-questions.md).
 - **기존 스펙 관계**: [[2026-07-12-clickableyg-throttle]](코어 throttle)·[[2026-07-13-ygripple]](ygDimRipple)의 API 일부(단일 `indication`, `YGRipple.kt` 파일명)를 이 스펙이 갱신. 구현 시 두 스펙의 해당 부분 동기화.
 - **검증**: compile + ktlint + 기기 육안(dim 리플/scale 축소/merge 동시). 정적 프리뷰로 리플·애니메이션 안 보임.

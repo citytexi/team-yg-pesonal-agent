@@ -1,8 +1,18 @@
+---
+id: ADR-0003
+title: build-logic 컨벤션 플러그인 + 버전 카탈로그
+status: accepted
+date: 2026-05-14
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr: ADR-0001, ADR-0004
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0003: build-logic 컨벤션 플러그인 + 버전 카탈로그
-
-- 상태: accepted
-- 날짜: 2026-05-14
-- 결정자: Parfait 팀
 
 ## 맥락
 다중 모듈([[0001-layered-multi-module]])이면 모듈마다 `build.gradle.kts`에 compileSdk·Java 버전·플러그인·공통 의존을 반복 선언하게 된다. 복붙은 곧 드리프트(모듈마다 설정이 미묘하게 다름)를 낳는다.

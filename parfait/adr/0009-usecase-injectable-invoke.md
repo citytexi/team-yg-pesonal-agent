@@ -1,8 +1,18 @@
+---
+id: ADR-0009
+title: UseCase는 주입 가능한 클래스 + operator invoke
+status: accepted
+date: 2026-06-21
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr:
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0009: UseCase는 주입 가능한 클래스 + operator invoke
-
-- 상태: accepted
-- 날짜: 2026-06-21
-- 결정자: Parfait 팀
 
 ## 맥락
 도메인 로직을 ViewModel에 직접 쓰면 재사용·테스트가 어렵고 레이어 경계가 흐려진다. `domain` 레이어(순수 Kotlin, [[0001-layered-multi-module]])에 비즈니스 동작을 담는 표준 단위가 필요했다.

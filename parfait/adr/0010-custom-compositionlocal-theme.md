@@ -1,8 +1,19 @@
+---
+id: ADR-0010
+title: 자체 CompositionLocal 디자인시스템 테마 (Material3 MaterialTheme·dynamic color 대체)
+status: accepted
+date: 2026-07-10
+deciders: Parfait 팀
+supersedes: ADR-0007
+superseded_by:
+related_adr:
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0010: 자체 CompositionLocal 디자인시스템 테마 (Material3 MaterialTheme·dynamic color 대체)
 
-- 상태: accepted
-- 날짜: 2026-07-10
-- 결정자: Parfait 팀
 - 대체: [ADR-0007](0007-compose-material3-design-tokens.md)의 테마·토큰 메커니즘
 
 ## 맥락

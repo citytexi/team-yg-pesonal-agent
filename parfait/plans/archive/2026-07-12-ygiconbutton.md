@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: ygiconbutton
+title: YGIconButton Implementation Plan
+status: done
+type: work-order
+created: 2026-07-12
 updated: 2026-07-12
+platforms: android
+owner:
+related_adr: ADR-0010
+related_spec: ygiconbutton
+related_code: YGIconButton
+archived_reason: 구현 완료
+tags: [plan, parfait, designsystem]
 ---
 
 # YGIconButton Implementation Plan
@@ -18,7 +29,7 @@ updated: 2026-07-12
 ## Global Constraints
 - 대상 repo: `TJYG-Android`, 브랜치 `feature/#126-buton-icon`.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.ygiconbutton`.
-- 색은 상태별 `YGAtomicColors.Gray.*` 직접 참조(시맨틱 슬롯 없음 — YGButton·YGTextField 선례, 과도기 → [open-questions](../../../synthesis/open-questions.md)).
+- 색은 상태별 `YGAtomicColors.Gray.*` 직접 참조(시맨틱 슬롯 없음 — YGButton·YGTextField 선례, 과도기 → [open-questions](../../../wiki/synthesis/open-questions.md)).
 - 검증: compile + ktlint + `@Preview` 육안.
 
 ---
@@ -41,4 +52,4 @@ updated: 2026-07-12
 ## 열린 질문
 - `isEnabled = false`여도 `clickable` 유지 → tint만 흐려지고 탭은 동작. 비활성 차단은 후속/호출부 책임.
 - 프리뷰 컨벤션(`@Preview`+`PreviewParameterProvider`)이 etc 계열(`@YGPreview`/`PreviewBox`)과 분기 → [design-system](../../architecture/design-system.md) 정리 대상.
-- 원자 색 직접 참조 → 시맨틱 정리([open-questions](../../../synthesis/open-questions.md)).
+- 원자 색 직접 참조 → 시맨틱 정리([open-questions](../../../wiki/synthesis/open-questions.md)).

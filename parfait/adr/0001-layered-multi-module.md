@@ -1,8 +1,18 @@
+---
+id: ADR-0001
+title: 레이어드 다중 모듈 구조 (core / data / domain / feature)
+status: accepted
+date: 2026-04-19
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr: ADR-0003, ADR-0002
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0001: 레이어드 다중 모듈 구조 (core / data / domain / feature)
-
-- 상태: accepted
-- 날짜: 2026-04-19
-- 결정자: Parfait 팀
 
 ## 맥락
 단일 모듈로 시작하면 화면·비즈니스 로직·플랫폼 코드가 뒤섞여 빌드가 느려지고 경계가 무너진다. 프로젝트 초기부터(멀티모듈 base, `feature/multi-module-base`) 명시적 레이어와 모듈 경계를 세워야 했다.

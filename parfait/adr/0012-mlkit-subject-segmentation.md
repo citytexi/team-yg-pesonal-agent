@@ -1,11 +1,21 @@
+---
+id: ADR-0012
+title: 이미지 세그멘테이션 — ML Kit Subject Segmentation 온디바이스 채택
+status: accepted
+date: 2026-07-12
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr:
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0012: 이미지 세그멘테이션 — ML Kit Subject Segmentation 온디바이스 채택
 
-- 상태: accepted
-- 날짜: 2026-07-12
-- 결정자: Parfait 팀
-
 ## 맥락
-이미지에서 주요 피사체(전경)를 분리하는 [[누끼-따기]] 기능이 필요하다. MVP 미결 항목이던 "누끼 온디바이스 vs 서버"(→ [open-questions 2026-07-06 MVP 미결 정책](../../synthesis/open-questions.md)) 중 처리 위치와 라이브러리를 정해야 했다.
+이미지에서 주요 피사체(전경)를 분리하는 [[누끼-따기]] 기능이 필요하다. MVP 미결 항목이던 "누끼 온디바이스 vs 서버"(→ [open-questions 2026-07-06 MVP 미결 정책](../../wiki/synthesis/open-questions.md)) 중 처리 위치와 라이브러리를 정해야 했다.
 
 ## 결정
 Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation`, GMS/Play services 기반)을 **온디바이스**로 채택한다.
@@ -37,4 +47,4 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 
 **위험·방어**
 - 실패는 `Result<SegmentationResult>` + sealed `SegmentationException`(`ClientInit`·`ImageNotFound`)로 표현, ViewModel이 effect로 받아 Toast + back 처리.
-- beta 승급·API 변동 추적 필요 → [open-questions 2026-07-12 ML Kit beta](../../synthesis/open-questions.md).
+- beta 승급·API 변동 추적 필요 → [open-questions 2026-07-12 ML Kit beta](../../wiki/synthesis/open-questions.md).

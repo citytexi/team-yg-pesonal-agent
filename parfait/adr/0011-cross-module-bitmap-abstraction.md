@@ -1,8 +1,18 @@
+---
+id: ADR-0011
+title: 크로스모듈 비트맵 추상화 (BitmapWrapper / AndroidBitmap)
+status: accepted
+date: 2026-07-12
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr:
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0011: 크로스모듈 비트맵 추상화 (BitmapWrapper / AndroidBitmap)
-
-- 상태: accepted
-- 날짜: 2026-07-12
-- 결정자: Parfait 팀
 
 ## 맥락
 `domain`은 순수 Kotlin(kotlin-jvm) 모듈로 Android 의존을 금지한다([[0001-layered-multi-module]]·[[module-structure]]). 그런데 이미지 세그멘테이션 기능은 도메인 인터페이스(`ImageSegmentationRepository`)와 모델(`SegmentationResult`)이 **비트맵**을 다뤄야 한다. `android.graphics.Bitmap`은 Android 타입이라 domain에서 직접 참조할 수 없다.
@@ -34,4 +44,4 @@
 
 **위험·방어**
 - 다운캐스트 실패는 `Result.failure(SegmentationException.ImageNotFound)`로 처리.
-- 필요한 비트맵 연산이 정해지면 `BitmapWrapper`에 메서드를 정의해 다운캐스트 의존을 줄인다 → [open-questions 2026-07-12 BitmapWrapper stub](../../synthesis/open-questions.md).
+- 필요한 비트맵 연산이 정해지면 `BitmapWrapper`에 메서드를 정의해 다운캐스트 의존을 줄인다 → [open-questions 2026-07-12 BitmapWrapper stub](../../wiki/synthesis/open-questions.md).

@@ -1,12 +1,21 @@
 ---
+id: yghorizontaldivider
+title: YGHorizontalDivider
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-07-12
+related_code: core:designsystem component/etc/ YGHorizontalDivider
+related_adr: ADR-0010
+related_spec:
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-12
 ---
 
 # Spec: YGHorizontalDivider
 
-- 상태: 구현 완료
-- 날짜: 2026-07-12
 - 대상: `core:designsystem` — `component/etc/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)(컴포넌트 작성 규약) · 이슈 #136
 
@@ -42,5 +51,5 @@ fun YGHorizontalDivider(
 - `YGHorizontalDivider.kt` — public `YGHorizontalDivider` 컴포저블 + `@YGPreview`/`PreviewBox` 프리뷰(기본선 + 두께/색 오버라이드 예시).
 
 ## 주의 / 열린 질문
-- **과도기**: `gray-100`은 시맨틱 슬롯(`YGTheme.colorScheme`)에 없어 `YGAtomicColors.Gray.Gray100` 직접 참조 — YGButton·YGTextField 선례와 동일. 디자인 토큰 규칙 확정 시 시맨틱 정리 대상 → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../synthesis/open-questions.md).
+- **과도기**: `gray-100`은 시맨틱 슬롯(`YGTheme.colorScheme`)에 없어 `YGAtomicColors.Gray.Gray100` 직접 참조 — YGButton·YGTextField 선례와 동일. 디자인 토큰 규칙 확정 시 시맨틱 정리 대상 → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../wiki/synthesis/open-questions.md).
 - `YGVerticalDivider`가 필요해지면 별도 스펙 없이 이 파일에 대칭 추가 검토(축만 다름).

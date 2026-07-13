@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: ygactionitem
+title: YGActionItem Implementation Plan
+status: done
+type: work-order
+created: 2026-07-12
 updated: 2026-07-12
+platforms: android
+owner:
+related_adr: ADR-0010
+related_spec: ygactionitem
+related_code: YGActionItem
+archived_reason: 구현 완료
+tags: [plan, parfait, designsystem]
 ---
 
 # YGActionItem Implementation Plan
@@ -18,7 +29,7 @@ updated: 2026-07-12
 ## Global Constraints
 - 대상 repo: `TJYG-Android`.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.ygactionitem`.
-- 색은 `YGAtomicColors.Gray.{Gray500,Gray700}` 직접 참조(과도기 → [open-questions](../../../synthesis/open-questions.md)). 타이포 `YGTheme.typography.body.b02R`, 패딩 `layout.padding.{padding5,padding6}`.
+- 색은 `YGAtomicColors.Gray.{Gray500,Gray700}` 직접 참조(과도기 → [open-questions](../../../wiki/synthesis/open-questions.md)). 타이포 `YGTheme.typography.body.b02R`, 패딩 `layout.padding.{padding5,padding6}`.
 - 검증: compile + ktlint + `@Preview` 육안.
 
 ---
@@ -35,4 +46,4 @@ updated: 2026-07-12
 ## 열린 질문
 - disabled 상태 미지원(enabled/pressed만) — 필요 시 후속.
 - 프리뷰 컨벤션 분기(`@Preview`+`YGCustomTheme`) → [design-system](../../architecture/design-system.md) 정리 대상.
-- 원자 색 직접 참조 → 시맨틱 정리([open-questions](../../../synthesis/open-questions.md)).
+- 원자 색 직접 참조 → 시맨틱 정리([open-questions](../../../wiki/synthesis/open-questions.md)).
