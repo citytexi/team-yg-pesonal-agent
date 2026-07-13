@@ -8,6 +8,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 |------|------|
 | [2026-07-12-clickableyg-throttle.md](2026-07-12-clickableyg-throttle.md) | clickableYG 구현 계획(core:designsystem utils/clickable, Modifier.Node leading-throttle: Element+Node, delegated pointer-input/indication/semantics, TimeSource.Monotonic, indication 기본 ygDimRipple). 미구현. 스펙: [specs](../specs/2026-07-12-clickableyg-throttle.md) |
 | [2026-07-13-ygripple.md](2026-07-13-ygripple.md) | ygDimRipple 구현 계획(core:designsystem utils/clickable, 커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임). 미구현. 스펙: [specs](../specs/2026-07-13-ygripple.md) |
+| [2026-07-13-clickableyg-ripple-variants.md](2026-07-13-clickableyg-ripple-variants.md) | clickableYG 리플 변형(Dim/Scale/Merge, non-composable, indications 리스트) + ygScaleRipple 구현 계획(3 Task). 미구현. 스펙: [specs](../specs/2026-07-13-clickableyg-ripple-variants.md) |
 
 ## 아카이브
 | 계획 | 내용 |
