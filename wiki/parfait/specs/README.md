@@ -11,6 +11,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 | 스펙 | 상태 | 내용 |
 |------|------|------|
 | [2026-07-12-clickableyg-throttle.md](2026-07-12-clickableyg-throttle.md) | 구현 예정 | `core:ui` — clickableYG(Node 기반 leading-throttle 중복 클릭 방지 Modifier, windowMillis 기본 300ms) |
+| [2026-07-13-ygripple.md](2026-07-13-ygripple.md) | 구현 예정 | `core:designsystem` — ygRipple(커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임, alpha 0.15, 기본 Gray900) |
 
 ## 아카이브
 | 스펙 | 내용 |
