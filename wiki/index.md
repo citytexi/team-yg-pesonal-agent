@@ -46,6 +46,5 @@ updated: 2026-07-06
 - [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 12건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, YGTextField). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서. **repo 루트 `parfait/`로 분리**(2026-07-13), 링크는 repo-root Obsidian vault 기준 resolve.
 
 ## Synthesis (분석·결과)
-- [[open-questions]] — 미해결 모순 및 열린 질문 추적
+- [[open-questions]] — 정책·기획 미해결 모순 및 열린 질문 추적 (구현 미결은 [[parfait/open-questions|parfait open-questions]]로 분리)
 - [[lint-2026-07-06]] — 위키 상태 점검 보고서(2026-07-06)
-- [[lint-2026-07-06-parfait]] — parfait 내용 정합성(문서 vs 코드) 점검, 코드 대조 발견 7건
