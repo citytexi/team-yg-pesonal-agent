@@ -80,6 +80,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 
 - **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize`). YGListItem trailing caret·YGTextField clear의 인라인 `Box`+`Image`(`// TODO IconButton 컴포넌트`)를 치환할 대상.
 - **pressed 상태 관용구**: 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem)는 `MutableInteractionSource` + `collectIsPressedAsState()`로 pressed를 파생해 색/tint를 분기한다.
+- **`utils/clickable/` 프리미티브**(`component/*` 아님 — Modifier·Indication): `Modifier.clickableYG`(중복 클릭 방지 leading-throttle, 커스텀 `Modifier.Node`, `TimeSource.Monotonic`) + `ygDimRipple`(커스텀 dim ripple `IndicationNodeFactory`, `createRippleModifierNode` 위임, clickableYG의 기본 `indication`). 초기 `core:ui`에 있던 clickableYG를 리베이스에서 이 모듈로 이동해 ygDimRipple을 기본값으로 주입. → [clickableyg-throttle](../specs/2026-07-12-clickableyg-throttle.md) · [ygripple](../specs/2026-07-13-ygripple.md).
 
 > **과도기 — 컨벤션 분기(정리 대상)**
 > - **패키지 네이밍**: 컴포넌트별 폴더(`ygbutton/`·`ygiconbutton/`·`ygactionitem/`)와 그룹 폴더(`textfield/`·`etc/`)가 혼재. 규약(위 "컴포넌트 작성 규약")은 컴포넌트별 폴더 기준.

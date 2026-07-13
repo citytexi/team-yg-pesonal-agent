@@ -1,14 +1,14 @@
 ---
-tags: [spec, parfait, ui]
-updated: 2026-07-12
+tags: [spec, parfait, designsystem]
+updated: 2026-07-13
 ---
 
 # Spec: clickableYG — Node 기반 중복 클릭 방지 Modifier
 
 - 상태: 구현 예정
-- 날짜: 2026-07-12
-- 대상: `core:ui` — `utils/extensions/Modifier.kt`
-- 관련: [module-structure](../architecture/module-structure.md)(core:ui) · 이슈 #94
+- 날짜: 2026-07-12 (업데이트: 2026-07-13 — `core:ui` → `core:designsystem` 이동, indication 기본값 `ygDimRipple()` 반영)
+- 대상: `core:designsystem` — `utils/clickable/YGClickable.kt`
+- 관련: [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md) · [[2026-07-13-ygripple|ygDimRipple]](기본 indication) · 이슈 #94
 
 ## 목표
 연타·중복 탭으로 `onClick`이 여러 번 발화하는 문제를 막는 재사용 clickable modifier `Modifier.clickableYG`를 만든다. 커스텀 `Modifier.Node`로 구현해 `composed{}` 오버헤드 없이 리스트 등 광범위 재사용에 적합하게 한다. (프로젝트 첫 `Modifier.Node`.)
@@ -26,8 +26,8 @@ updated: 2026-07-12
 ## API / 인터페이스
 ```kotlin
 fun Modifier.clickableYG(
-    interactionSource: MutableInteractionSource?,
-    indication: Indication?,
+    interactionSource: MutableInteractionSource? = null,
+    indication: Indication? = ygDimRipple(),
     enabled: Boolean = true,
     onClickLabel: String? = null,
     role: Role? = null,
@@ -35,10 +35,10 @@ fun Modifier.clickableYG(
     onClick: () -> Unit,
 ): Modifier
 ```
-- 기존 stub 시그니처 유지 + `windowMillis: Long = 300L` 추가.
-- `interactionSource`/`indication`: ripple 등 인디케이션 연결. `interactionSource == null`이면 노드가 내부 `MutableInteractionSource`를 생성해 사용.
+- `interactionSource`: 기본 `null` → 노드가 내부 `MutableInteractionSource`를 생성해 사용.
+- `indication`: 기본 **`ygDimRipple()`**([[2026-07-13-ygripple|ygDimRipple]]) — 같은 모듈(`core:designsystem`)이라 YG 커스텀 리플을 기본값으로 주입. `null` 전달 시 인디케이션 없음, 다른 `IndicationNodeFactory` 전달로 교체 가능.
 - `windowMillis`: throttle 창(기본 300ms). 화면별 조정 가능.
-- `onClick`: 게이트를 통과한 탭에서만 호출(현재 stub은 본문이 비어 **호출되지 않는 버그** — 이 스펙으로 정상화).
+- `onClick`: 게이트를 통과한 탭에서만 호출.
 
 ## 구조 (Node)
 - `ModifierNodeElement<ClickableYGNode>` — 파라미터 보유. `create()`로 노드 생성, `update()`로 파라미터 변경 반영(`windowMillis`/`enabled`/`onClick`/`role` 등). `equals`/`hashCode`는 파라미터 기반.
@@ -54,11 +54,12 @@ fun Modifier.clickableYG(
 - 게이트 통과 조건: `enabled` **AND** (`lastMark == null` **OR** `lastMark.elapsedNow() >= window`).
 - 통과 시에만 `lastMark` 갱신·`onClick` 발화.
 
-## 파일 구성 (`core:ui`)
-- `utils/extensions/Modifier.kt` — 기존 stub 교체. public `Modifier.clickableYG(...)` 팩토리 + `private ClickableYGElement`(`ModifierNodeElement`) + `private ClickableYGNode`(`Modifier.Node`).
+## 파일 구성 (`core:designsystem`)
+- `utils/clickable/YGClickable.kt` — public `Modifier.clickableYG(...)` 팩토리 + `private ClickableYGElement`(`ModifierNodeElement`) + `private ClickableYGNode`(`DelegatingNode`, `SemanticsModifierNode`). 같은 패키지 `utils/clickable/`의 [[2026-07-13-ygripple|YGRipple.kt]]와 함께 위치.
+- (이력) 초기 `core:ui`의 `utils/extensions/Modifier.kt`로 구현 후 리베이스에서 `core:designsystem utils/clickable/YGClickable.kt`로 이동 — ygDimRipple을 기본값으로 쓰려면 같은 모듈이어야 해서.
 
 ## 주의 / 열린 질문
 - **키보드/hover 미지원**: `clickable` 대비 물리 키보드·DPAD-center·hover 클릭 경로 미구현(터치·TalkBack 시맨틱만). 필요 시 후속 확장.
 - **검증 한계**: throttle 타이밍은 유닛 테스트 인프라 부재(Compose UI)로 compile + ktlint + `@Preview`/기기 연타 육안으로 확인. 정밀 타이밍 테스트는 별도.
 - **첫 Modifier.Node**: 프로젝트에 Node 선례 없음. 성공 시 이후 커스텀 modifier의 참조 패턴이 됨(아키텍처 결정화되면 ADR 검토).
-- **indication은 theme-agnostic 파라미터로 유지**: `clickableYG`는 `core:ui`(디자인시스템 하위)라 테마색(`LocalYGColorScheme`은 designsystem `internal`)을 못 읽음. 따라서 "null → 테마색 커스텀 ripple 기본값"(참고: 타 프로젝트 `idClickable`) 같은 패턴은 여기 두지 않고, 호출측이 `indication`을 넘기게 한다. 테마 ripple 기본값을 원하면 `core:designsystem` 레이어에 별도 wrapper(+ripple 색 토큰 + YG 커스텀 `IndicationNodeFactory`)로 후속.
+- **indication 기본값 = ygDimRipple (해소)**: 초기에는 `core:ui`(디자인시스템 하위)라 테마·리플을 못 읽어 `indication`을 필수 파라미터로 받고 themed 기본값은 designsystem wrapper 후속으로 미뤘음. 리베이스에서 `clickableYG`를 **`core:designsystem`으로 이동**해 같은 모듈의 [[2026-07-13-ygripple|ygDimRipple]]을 `indication` 기본값으로 직접 주입 → 별도 wrapper 없이 해소. `null` 전달로 무인디케이션, 다른 `IndicationNodeFactory`로 교체 가능.
