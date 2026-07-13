@@ -42,13 +42,16 @@
 
 ## 설계 스펙 위치 (TJYG-Android 구현)
 
-`TJYG-Android` 기능·컴포넌트를 만들기 전 확정하는 **설계 스펙은 `wiki/parfait/specs/`에 작성한다.**
+`TJYG-Android` 기능·컴포넌트를 만들기 전 확정하는 **설계 스펙은 `parfait/specs/`에 작성한다.**
 (브레인스토밍의 기본 위치 `docs/superpowers/specs/`를 이 경로로 override.)
 
+> `parfait/`는 저장소 루트의 별도 디렉토리다(`raw/`·`wiki/`와 형제). TJYG-Android 구현
+> 문서(ADR·architecture·specs·plans) 전용이며, LLM 위키(`wiki/`) 스키마의 적용을 받지 않는다.
+
 - 파일명 `YYYY-MM-DD-kebab-topic.md`, 구현 완료분은 `specs/archive/`로 이동.
-- 형식·인덱스 등록 규칙은 [`wiki/parfait/specs/README.md`](wiki/parfait/specs/README.md).
-- 스펙이 새 아키텍처 결정을 유발하면 대응 ADR을 `wiki/parfait/adr/`에 함께 만든다.
-- 진입 시 [`wiki/parfait/index.md`](wiki/parfait/index.md) 허브에서 adr/architecture/specs/plans 라우팅을 본다.
+- 형식·인덱스 등록 규칙은 [`parfait/specs/README.md`](parfait/specs/README.md).
+- 스펙이 새 아키텍처 결정을 유발하면 대응 ADR을 `parfait/adr/`에 함께 만든다.
+- 진입 시 [`parfait/index.md`](parfait/index.md) 허브에서 adr/architecture/specs/plans 라우팅을 본다.
 
 ## Public repo 주의
 
