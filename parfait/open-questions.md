@@ -52,6 +52,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결
 - **해소 메모**: 표준 확정 시 [design-system](architecture/design-system.md) "컴포넌트 작성 규약"에 반영하고 기존 컴포넌트 정리.
 
+### [2026-07-13] design-system.md가 develop 미머지 브랜치 작업을 구현됨으로 기술
+- **출처**: `architecture/design-system.md` — 인벤토리·규약이 아래 심볼을 구현됨으로 기술하나 `origin/develop`에 부재. `YGListItem`·`YGHorizontalDivider`(`component/etc/`)는 브랜치 `feature/#136-etc-component`에만, `utils/clickable/`(`clickableYG`·`ygDimRipple`)는 브랜치 `feature/#94-solve-duplicate-clickable-issue`에만 존재. specs/plans도 이미 작성/archive됨.
+- **항목**: ① 문서 기준선을 develop로 볼지(파르페 규율 "코드>문서, drift 금지" + "구조 변경=같은 PR에서 문서 갱신"), ② 미머지 컴포넌트를 "머지 예정/브랜치" 마커로 남길지 인벤토리에서 잠정 뺄지.
+- **상태**: 보류 (해당 브랜치 develop 머지 시 자연 해소 예상)
+- **해소 메모**: #136·#94가 develop에 머지되면 이 항목 해소하고 마커 정리. 그 전 문서 재검증 시 "미머지" 주석 유지.
+
 <!--
 항목 추가 형식:
 

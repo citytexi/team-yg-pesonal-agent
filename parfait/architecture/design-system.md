@@ -4,7 +4,7 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-07-12
+verified: 2026-07-13
 related_spec:
 related_adr: ADR-0007, ADR-0010
 related_architecture:
@@ -44,7 +44,7 @@ res/drawable/             ← ic_* 아이콘 리소스
   - 예: `YGTheme.typography.body.b01SB`, `YGTheme.layout.padding.padding4`, `YGTheme.shapes.radius.round`.
 - **크기만 예외**: `SizeTokens.Size24.getDp()`로 직접(`SizeToken`은 `@JvmInline value class`, 홀더 밖).
 - `Local*` CompositionLocal은 `internal` + 미초기화 시 `error(...)`. → **모든 UI·프리뷰는 `YGCustomTheme { }`로 감싸야** 크래시 안 남.
-- **원자 색 직접 참조 금지 원칙** — 컴포넌트는 시맨틱(`YGTheme.colorScheme`)을 읽는다. `YGAtomicColors`는 `internal`이며 시맨틱 매핑(`YGSemanticColorDefaults`)에서만 소비하는 것이 규칙. (현재 `YGButton`은 과도기라 원자 직접 참조 — 아래 참고.)
+- **원자 색 직접 참조 금지 원칙** — 컴포넌트는 시맨틱(`YGTheme.colorScheme`)을 읽는다. `YGAtomicColors`는 `internal`이며 시맨틱 매핑(`YGSemanticColorDefaults`)에서만 소비하는 것이 규칙. (현재 `YGButton`뿐 아니라 `YGActionItem`·`YGIconButton`·`YGInputNumber`도 과도기라 `YGAtomicColors`를 직접 참조 — 아래 참고.)
 
 ## 토큰 계층
 
@@ -54,7 +54,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 | 타이포 | `YGTypography` | title/body/caption 그룹, 각 웨이트·크기 변형(`b01B/b01SB/b01R/b02...`) | `YGTypographyDefaults` |
 | 모양 | `YGShapes.radius`(`YGShapeRadius`) | xSmall/small/medium1/medium2/large/xLarge1/xLarge2/round | `YGShapesDefaults` |
 | 레이아웃 | `YGLayout.gap`/`.padding` | gap1.. / padding1.. (명명 스케일) | `YGLayoutDefaults` |
-| 크기 | `SizeTokens`(홀더 밖) | Size2/4/6/…/80 (`SizeToken`) | — |
+| 크기 | `SizeTokens`(홀더 밖) | Size1/2/4/6/…/44/48/64/80 (`SizeToken`) | — |
 
 색 2계층: `YGAtomicColors`(브랜드 팔레트 — Cherry가 primary 계열, Melon=secondary, Pudding=tertiary, Soda=info 등) → `YGSemanticColorDefaults`가 라이트/다크 스킴으로 매핑. **다크는 현재 라이트와 동일**(`YGDarkColorScheme = YGLightColorScheme`, 코드 `TODO`).
 
@@ -77,7 +77,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 - **토큰 참조**: 변형 내부에서 `YGTheme.layout.padding.*`, `YGTheme.shapes.radius.*`, `YGTheme.typography.body.*`, `SizeTokens.*.getDp()`로 읽는다.
 - **프리뷰**: `YGCustomTheme { }`로 감싼다(Local 미초기화 크래시 방지). Coil 프리뷰는 `YGCustomTheme`이 `LocalAsyncImagePreviewHandler`를 이미 심음.
 
-> **Assumption / 과도기** — `YGButtonType`의 각 변형 `colors`가 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조하고, 값이 잠정(mock)이다. 코드 주석("Design Token 규칙이 조금 이상… 컴포넌트 완성 시점에 문의 예정")대로 **확정 전 상태**. 확정 시 원자 직접 참조를 시맨틱으로 정리 권장. → [open-questions](../../wiki/synthesis/open-questions.md) 후보.
+> **Assumption / 과도기** — `YGButtonType`의 각 변형 `colors`가 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조하고, 값이 잠정(mock)이다. 코드 주석("Design Token 규칙이 조금 이상… 컴포넌트 완성 시점에 문의 예정")대로 **확정 전 상태**. 이 원자 직접 참조는 `YGButton`에 국한되지 않고 이후 컴포넌트(`YGActionItem`·`YGIconButton`·`YGInputNumber`, 대체로 `YGAtomicColors.Gray.*`)로 확산됨. 확정 시 시맨틱으로 정리 권장. → [open-questions](../open-questions.md) 후보.
 
 ## 컴포넌트 인벤토리
 
@@ -92,13 +92,14 @@ res/drawable/             ← ic_* 아이콘 리소스
 | `YGActionItem` | `component/ygactionitem/` | [ygactionitem](../specs/archive/2026-07-12-ygactionitem.md) |
 | `YGInputNumber`(+`YGInputNumberPreviewData`) | `component/yginputnumber/` | [yginputnumber](../specs/archive/2026-07-13-yginputnumber.md) |
 
-- **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize`). YGListItem trailing caret·YGTextField clear의 인라인 `Box`+`Image`(`// TODO IconButton 컴포넌트`)를 치환할 대상.
+- **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize`). `YGTextField`의 clear 아이콘은 이미 인라인 `Box`+`Image`에서 `YGIconButton(size = YGIconButtonSize.SIZE_44)`로 치환됨(`YGTextFieldImpl.kt`). (`YGListItem` trailing caret은 해당 컴포넌트가 아직 develop 미머지 — 미적용.)
+- **`YGInputNumber`**: 숫자 셀. 컨테이너 크기·보더는 토큰 대신 고정 dp로 하드코딩(코드 주석: 디자인가이드 고정 크기)이라 토큰화 예외 사례. shape·typography는 `YGTheme.*` 사용, 색은 `YGAtomicColors.Gray.*` 직접 참조.
 - **pressed 상태 관용구**: 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem)는 `MutableInteractionSource` + `collectIsPressedAsState()`로 pressed를 파생해 색/tint를 분기한다.
 - **`utils/clickable/` 프리미티브**(`component/*` 아님 — Modifier·Indication): `Modifier.clickableYG`(중복 클릭 방지 leading-throttle, 커스텀 `Modifier.Node`, `TimeSource.Monotonic`) + `ygDimRipple`(커스텀 dim ripple `IndicationNodeFactory`, `createRippleModifierNode` 위임, clickableYG의 기본 `indication`). 초기 `core:ui`에 있던 clickableYG를 리베이스에서 이 모듈로 이동해 ygDimRipple을 기본값으로 주입. → [clickableyg-throttle](../specs/2026-07-12-clickableyg-throttle.md) · [ygripple](../specs/2026-07-13-ygripple.md).
 
 > **과도기 — 컨벤션 분기(정리 대상)**
 > - **패키지 네이밍**: 컴포넌트별 폴더(`ygbutton/`·`ygiconbutton/`·`ygactionitem/`)와 그룹 폴더(`textfield/`·`etc/`)가 혼재. 규약(위 "컴포넌트 작성 규약")은 컴포넌트별 폴더 기준.
-> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열: YGListItem·YGHorizontalDivider)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem)가 공존. 어느 쪽으로 표준화할지 미확정. → [open-questions](../../wiki/synthesis/open-questions.md) 후보.
+> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열: YGListItem·YGHorizontalDivider — 아직 develop 미머지)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem·YGInputNumber)가 공존. 어느 쪽으로 표준화할지 미확정. → [open-questions](../open-questions.md) 후보.
 
 ## 관련 ADR
 - [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) — 자체 CompositionLocal 테마(why).

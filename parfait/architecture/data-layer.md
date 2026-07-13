@@ -4,7 +4,7 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-07-12
+verified: 2026-07-13
 related_spec:
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012
 related_architecture: state-management
@@ -23,7 +23,7 @@ tags: [architecture, parfait]
 
 ## DataSource 종류
 - **파일 기반** — `FileRecentImageLocalDataSource`, `FileCameraCacheLocalDataSource`(내부 저장소 이미지 I/O).
-- **DataStore 기반** — `RecentImageLocalDataSource`(메타데이터), `RecentImageEditor`(DataStore 접근 추상화).
+- **DataStore 기반** — `RecentImageLocalDataSource`(메타데이터), `RecentImageEditor`(`data/datastore/`, DataStore 접근 추상화 — 단일 키 `get()`/`set()` 동기 인터페이스로, suspend/flow가 아님).
 - **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근).
 
 ## DI 모듈 (data, `@InstallIn(SingletonComponent::class)`)
