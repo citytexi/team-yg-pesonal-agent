@@ -6,7 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| _(진행 중 없음 — 완료분은 아카이브 참고)_ | |
+| [2026-07-12-clickableyg-throttle.md](2026-07-12-clickableyg-throttle.md) | clickableYG 구현 계획(core:ui, Modifier.Node leading-throttle: Element+Node, delegated pointer-input/indication/semantics, TimeSource.Monotonic). 미구현. 스펙: [specs](../specs/2026-07-12-clickableyg-throttle.md) |
 
 ## 아카이브
 | 계획 | 내용 |
