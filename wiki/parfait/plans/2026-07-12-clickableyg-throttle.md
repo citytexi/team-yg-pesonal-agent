@@ -1,13 +1,13 @@
 ---
-tags: [plan, parfait, ui]
-updated: 2026-07-12
+tags: [plan, parfait, designsystem]
+updated: 2026-07-13
 ---
 
 # clickableYG (Node throttle) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `core:ui`에 연타·중복 클릭을 막는 `Modifier.clickableYG`를 커스텀 `Modifier.Node`(leading-edge throttle)로 구현한다.
+**Goal:** `core:designsystem`에 연타·중복 클릭을 막는 `Modifier.clickableYG`를 커스텀 `Modifier.Node`(leading-edge throttle)로 구현한다. (초기 `core:ui`에 구현 후 리베이스에서 `core:designsystem`으로 이동 — `ygDimRipple` 기본 indication 주입 위해 같은 모듈 필요.)
 
 **Architecture:** `Modifier.clickableYG` 팩토리가 `ClickableYGElement`(`ModifierNodeElement`)를 붙이고, `ClickableYGNode`(`DelegatingNode`)가 (1) delegated `SuspendingPointerInputModifierNode`로 탭 감지 + press/release 인터랙션 emit, (2) `IndicationNodeFactory` 인디케이션 delegate, (3) `SemanticsModifierNode`로 role/onClick 시맨틱을 담당. throttle 상태(`lastMark: TimeSource.Monotonic.ValueTimeMark?`)를 노드에 보관하고 `elapsedNow() >= window`일 때만 통과. `composed{}` 미사용.
 
@@ -17,9 +17,9 @@ updated: 2026-07-12
 
 ## Global Constraints
 - 대상 repo: `TJYG-Android`, 브랜치 `feature/#94-solve-duplicate-clickable-issue`.
-- 패키지: `com.teamyg.parfait.core.ui.utils.extensions`.
+- 패키지: `com.teamyg.parfait.core.designsystem.utils.clickable`.
 - 시간원 `kotlin.time.TimeSource.Monotonic`만(monotonic). `System.currentTimeMillis()`·kotlinx.datetime `Clock` 금지(wall clock 점프).
-- 검증: 유닛 TDD 인프라 없음(Compose UI). **compile(`:core:ui:compileReleaseKotlin`) + `:core:ui:ktlintMainSourceSetCheck` + 기기 연타 육안**으로 대체. Node API 시그니처는 **compile이 최종 판정**(foundation 1.11.0 기준 아래 코드 작성, 불일치 시 컴파일 에러 따라 최소 보정).
+- 검증: 유닛 TDD 인프라 없음(Compose UI). **compile(`:core:designsystem:compileReleaseKotlin`) + `:core:designsystem:ktlintMainSourceSetCheck` + 기기 연타 육안**으로 대체. Node API 시그니처는 **compile이 최종 판정**(foundation 1.11.0 기준 아래 코드 작성, 불일치 시 컴파일 에러 따라 최소 보정).
 - ktlint 엄격. 커밋 전 `ktlintMainSourceSetFormat`.
 - public API: `clickableYG` 시그니처(= 기존 stub + `windowMillis`) 확정.
 
@@ -28,16 +28,16 @@ updated: 2026-07-12
 ### Task 1: clickableYG 팩토리 + ClickableYGElement + ClickableYGNode
 
 **Files:**
-- Modify: `core/ui/src/main/java/com/teamyg/parfait/core/ui/utils/extensions/Modifier.kt` (현재 빈 스텁 교체)
+- Create: `core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/utils/clickable/YGClickable.kt` (초기 `core/ui/.../utils/extensions/Modifier.kt` stub 교체 후 리베이스에서 이 경로로 이동)
 
 **Interfaces:**
 - Consumes: `ModifierNodeElement`, `DelegatingNode`, `SemanticsModifierNode`(ui.node), `SuspendingPointerInputModifierNode`(ui.input.pointer), `detectTapGestures`(foundation.gestures), `Indication`/`IndicationNodeFactory`/`MutableInteractionSource`/`PressInteraction`(foundation), `TimeSource`(kotlin.time).
-- Produces: public `fun Modifier.clickableYG(interactionSource: MutableInteractionSource?, indication: Indication?, enabled: Boolean = true, onClickLabel: String? = null, role: Role? = null, windowMillis: Long = 300L, onClick: () -> Unit): Modifier`.
+- Produces: public `fun Modifier.clickableYG(interactionSource: MutableInteractionSource? = null, indication: Indication? = ygDimRipple(), enabled: Boolean = true, onClickLabel: String? = null, role: Role? = null, windowMillis: Long = 300L, onClick: () -> Unit): Modifier`. (`ygDimRipple`은 같은 패키지 [[2026-07-13-ygripple|YGRipple.kt]].)
 
 - [ ] **Step 1: 파일 전체 교체** — 스텁을 아래로 교체.
 
 ```kotlin
-package com.teamyg.parfait.core.ui.utils.extensions
+package com.teamyg.parfait.core.designsystem.utils.clickable
 
 import androidx.compose.foundation.Indication
 import androidx.compose.foundation.IndicationNodeFactory
@@ -61,8 +61,8 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
 fun Modifier.clickableYG(
-    interactionSource: MutableInteractionSource?,
-    indication: Indication?,
+    interactionSource: MutableInteractionSource? = null,
+    indication: Indication? = ygDimRipple(),
     enabled: Boolean = true,
     onClickLabel: String? = null,
     role: Role? = null,
@@ -221,13 +221,13 @@ private class ClickableYGNode(
 
 - [ ] **Step 2: 컴파일 검증**
 
-Run: `./gradlew :core:ui:compileReleaseKotlin --offline`
+Run: `./gradlew :core:designsystem:compileReleaseKotlin --offline`
 Expected: `BUILD SUCCESSFUL`
 불일치 발생 시(예: `SuspendingPointerInputModifierNode` 팩토리 시그니처, `detectTapGestures` 파라미터, `undelegate` 이름) — 컴파일 에러 메시지에 맞춰 **동일 의미 유지**하며 심볼만 보정(스펙 동작 불변). foundation `1.11.0` 기준.
 
 - [ ] **Step 3: ktlint 검증**
 
-Run: `./gradlew :core:ui:ktlintMainSourceSetFormat :core:ui:ktlintMainSourceSetCheck --offline`
+Run: `./gradlew :core:designsystem:ktlintMainSourceSetFormat :core:designsystem:ktlintMainSourceSetCheck --offline`
 Expected: `BUILD SUCCESSFUL`
 
 - [ ] **Step 4: 기기 연타 육안 확인** — `clickableYG`를 임시 버튼(예: 카운터 증가)에 붙여 빠르게 연타. 첫 탭만 반영되고 300ms 내 추가 탭 무시, 창 이후 다시 반영. ripple(터치 피드백)이 정상 표시. TalkBack 더블탭 활성화 동작. (임시 확인 코드는 커밋 제외.)
@@ -235,7 +235,7 @@ Expected: `BUILD SUCCESSFUL`
 - [ ] **Step 5: 커밋** (사용자 승인 후)
 
 ```bash
-git add core/ui/src/main/java/com/teamyg/parfait/core/ui/utils/extensions/Modifier.kt
+git add core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/utils/clickable/YGClickable.kt
 git commit -m "feat: 중복 클릭 방지 clickableYG modifier (Node throttle)"
 ```
 
