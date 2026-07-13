@@ -66,7 +66,8 @@ fun Modifier.clickableYG(/* 동일 파라미터 */): Modifier
 - 공통 파라미터: `interactionSource`(기본 null → Node 자체 생성), `enabled`/`onClickLabel`/`role`/`windowMillis`(300)/`onClick`. `indication`은 변형이 고정하므로 공개 시그니처에서 노출 안 함.
 
 ## 동작 / 구조
-- **다중 indication delegate**: 코어 Node(`ClickableYGNode`)의 `attachIndication`이 `indications`를 순회하며 `is IndicationNodeFactory`인 것마다 `delegate(it.create(source))`. 이전 delegate는 재attach 시 `undelegate`.
+- **다중 indication delegate**: 코어 Node(`ClickableYGNode`)의 `attachIndications()`가 `indications.filterIsInstance<IndicationNodeFactory>().map { delegate(it.create(source)) }`로 각 팩토리를 자기 source에 delegate. 이전 delegate는 재attach 시 `undelegate` 후 clear.
+- **Element equals/hashCode**: `ClickableYGElement`는 `data class` 아닌 수동 구현 — `onClick`은 참조 비교(`!==`), `indications`는 값 비교(`==`, 팩토리 equals 활용), 나머지 구조적. platform `CombinedClickableElement` 방식. `inspectableProperties`에 전 파라미터(onClick·interactionSource·indications 포함) 노출.
 - **merge draw 순서**: dim(리플 draw)과 scale(`DrawModifierNode`로 컨텐츠 scale)의 delegate 순서가 draw 레이어링에 영향 가능 → `ygDimRipple()` 먼저, `ygScaleRipple()` 나중 delegate를 기본으로 하되 **기기 육안으로 확정**(리플이 축소 콘텐츠 위/아래 어디 그려지는지).
 - **throttle**: [[2026-07-12-clickableyg-throttle|clickableYG]] 코어 그대로(leading-edge, `TimeSource.Monotonic`, `lastMark` Node 상태, onPress `enabled` 게이트).
 - **non-composable 근거**: Node가 source를 소유하고 모든 indication을 그 source에 delegate → 외부 공유 source·`remember` 불필요. 변형은 순수 Modifier 팩토리.
@@ -82,6 +83,6 @@ fun Modifier.clickableYG(/* 동일 파라미터 */): Modifier
 
 ## 주의 / 열린 질문
 - **merge delegate 순서**: draw 레이어링 정답은 기기 확인 후 확정(dim↔scale 순서).
-- **과도기**: 리플 색(`Gray.Gray900`)·`scaleValue`(0.98)가 토큰 아닌 리터럴/기본값. 디자인 토큰 확정 시 정리 → [open-questions](../../wiki/synthesis/open-questions.md).
+- **과도기**: 리플 색(`Gray.Gray900`)·`scaleValue`(0.98)가 토큰 아닌 리터럴/기본값. 디자인 토큰 확정 시 정리 → [open-questions](../open-questions.md).
 - **기존 스펙 관계**: [[2026-07-12-clickableyg-throttle]](코어 throttle)·[[2026-07-13-ygripple]](ygDimRipple)의 API 일부(단일 `indication`, `YGRipple.kt` 파일명)를 이 스펙이 갱신. 구현 시 두 스펙의 해당 부분 동기화.
 - **검증**: compile + ktlint + 기기 육안(dim 리플/scale 축소/merge 동시). 정적 프리뷰로 리플·애니메이션 안 보임.

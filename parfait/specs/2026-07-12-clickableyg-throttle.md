@@ -4,7 +4,7 @@ title: clickableYG — Node 기반 중복 클릭 방지 Modifier
 status: draft
 category: behavior-spec
 platforms: android
-verified: 2026-07-12
+verified: 2026-07-13
 related_code: core:designsystem utils/clickable/YGClickable.kt — Modifier.clickableYG
 related_adr: ADR-0010
 related_spec: ygripple
@@ -33,10 +33,24 @@ tags: [spec, parfait, designsystem]
 - **enabled=false**: 클릭·시맨틱 액션 무반응. `onPress`도 진입 시 live `enabled` 체크(`if (!enabled) return`)로 press interaction을 emit하지 않음 → **ripple도 안 뜸**(clickable disabled와 동일). `enabled`를 이벤트 시점에 읽으므로 `resetPointerInputHandler()` 불필요.
 
 ## API / 인터페이스
+
+> **갱신(2026-07-13)** — 최초 이 스펙은 단일 `indication: Indication?` 파라미터를 받았으나, [[2026-07-13-clickableyg-ripple-variants|리플 변형 스펙]]에서 **`indication` 파라미터를 제거**하고 리플 종류별 공개 변형(`clickableYGDimRipple`/`clickableYGScaleRipple`/`clickableYGMergeRipple`)으로 대체했다. 코어는 `indications: List<Indication>`을 받는 `internal clickableYGThrottle`. **공개 API의 정본은 변형 스펙 참조.** 아래는 현재 코드 기준 코어 진입점만.
+
 ```kotlin
+// 공개 진입점 — indication 파라미터 없음(변형이 리플 고정). 상세는 리플 변형 스펙.
 fun Modifier.clickableYG(
     interactionSource: MutableInteractionSource? = null,
-    indication: Indication? = ygDimRipple(),
+    enabled: Boolean = true,
+    onClickLabel: String? = null,
+    role: Role? = null,
+    windowMillis: Long = 300L,
+    onClick: () -> Unit,
+): Modifier   // → clickableYGDimRipple(...) 위임
+
+// 코어(internal) — indication을 리스트로 수용
+internal fun Modifier.clickableYGThrottle(
+    interactionSource: MutableInteractionSource? = null,
+    indications: List<Indication>,
     enabled: Boolean = true,
     onClickLabel: String? = null,
     role: Role? = null,
@@ -45,17 +59,17 @@ fun Modifier.clickableYG(
 ): Modifier
 ```
 - `interactionSource`: 기본 `null` → 노드가 내부 `MutableInteractionSource`를 생성해 사용.
-- `indication`: 기본 **`ygDimRipple()`**([[2026-07-13-ygripple|ygDimRipple]]) — 같은 모듈(`core:designsystem`)이라 YG 커스텀 리플을 기본값으로 주입. `null` 전달 시 인디케이션 없음, 다른 `IndicationNodeFactory` 전달로 교체 가능.
+- `indications`(코어): 코어가 받는 리플 목록. 각 `IndicationNodeFactory`를 노드가 자기 source에 delegate(다중). 기본 리플 주입은 변형 함수가 담당(`clickableYGDimRipple` → `listOf(ygDimRipple())` 등).
 - `windowMillis`: throttle 창(기본 300ms). 화면별 조정 가능.
 - `onClick`: 게이트를 통과한 탭에서만 호출.
 
 ## 구조 (Node)
-- `ModifierNodeElement<ClickableYGNode>` — 파라미터 보유. `create()`로 노드 생성, `update()`로 파라미터 변경 반영(`windowMillis`/`enabled`/`onClick`/`role` 등). `equals`/`hashCode`는 파라미터 기반.
-- `ClickableYGNode : Modifier.Node` — 상태 `lastClickMillis: Long` 보유.
+- `ModifierNodeElement<ClickableYGNode>`(`private class ClickableYGElement`) — 파라미터 보유. `create()`로 노드 생성, `update()`로 파라미터 변경 반영(`windowMillis`/`enabled`/`onClick`/`role` 등). **`equals`/`hashCode`는 수동 구현**: `onClick`은 참조 비교(`!==`, 매 recomposition 새 람다), `indications`는 값 비교(`==`, 팩토리 equals 활용), 나머지는 구조적 비교(`data class` 아님 — `copy()`/`componentN()` 미노출, platform `CombinedClickableElement` 방식). `inspectableProperties`에 enabled·onClick·onClickLabel·role·interactionSource·indications·windowMillis 노출.
+- `ClickableYGNode : DelegatingNode, SemanticsModifierNode` — 상태 `lastMark: TimeSource.Monotonic.ValueTimeMark?` 보유(연타 게이트).
   - **탭 감지**: delegated `SuspendingPointerInputModifierNode`(`detectTapGestures`). 탭 발생 시 게이트 통과하면 `onClick` 호출 + `interactionSource`에 `PressInteraction.Press`/`Release` emit(인디케이션 반응).
-  - **시맨틱**: delegated `SemanticsModifierNode` — `role`, `onClickLabel`, `onClick` 액션 등록(TalkBack 더블탭 활성화 경로).
+  - **시맨틱**: `SemanticsModifierNode` — `role`, `onClickLabel`, `onClick` 액션 등록(TalkBack 더블탭 활성화 경로).
   - `enabled`에 따라 탭·시맨틱 액션 게이팅.
-- **인디케이션 연결**: 팩토리에서 public `Modifier.indication(interactionSource, indication)` 체이닝 + `then(ClickableYGElement(...))`.
+- **인디케이션 연결**: `Modifier.indication` 체이닝이 **아니라** 노드가 `attachIndications()`에서 `indications`의 각 `IndicationNodeFactory`를 자기 `source`에 직접 `delegate(it.create(source))`(다중). `indications`/`interactionSource` 변경 시 기존 delegate를 `undelegate` 후 재attach.
 
 > 정확한 delegated node API·`detectTapGestures` 시그니처·`update()` 무효화 처리는 [plan](../plans/2026-07-12-clickableyg-throttle.md)에서 Compose BOM `2026.06.00` 기준으로 확정.
 
@@ -64,7 +78,7 @@ fun Modifier.clickableYG(
 - 통과 시에만 `lastMark` 갱신·`onClick` 발화.
 
 ## 파일 구성 (`core:designsystem`)
-- `utils/clickable/YGClickable.kt` — public `Modifier.clickableYG(...)` 팩토리 + `private ClickableYGElement`(`ModifierNodeElement`) + `private ClickableYGNode`(`DelegatingNode`, `SemanticsModifierNode`). 같은 패키지 `utils/clickable/`의 [[2026-07-13-ygripple|YGRipple.kt]]와 함께 위치.
+- `utils/clickable/YGClickable.kt` — public `Modifier.clickableYG(...)` + 변형 3종 + `internal clickableYGThrottle(indications: List)` + `private ClickableYGElement`(`ModifierNodeElement`) + `private ClickableYGNode`(`DelegatingNode`, `SemanticsModifierNode`). 같은 패키지 `utils/clickable/`의 리플 파일 [[2026-07-13-ygripple|YGDimRipple.kt]]·`YGScaleRipple.kt`와 함께 위치.
 - (이력) 초기 `core:ui`의 `utils/extensions/Modifier.kt`로 구현 후 리베이스에서 `core:designsystem utils/clickable/YGClickable.kt`로 이동 — ygDimRipple을 기본값으로 쓰려면 같은 모듈이어야 해서.
 
 ## 주의 / 열린 질문

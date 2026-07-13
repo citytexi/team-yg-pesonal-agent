@@ -26,6 +26,8 @@ tags: [plan, parfait, designsystem]
 
 **Spec:** [specs/2026-07-13-clickableyg-ripple-variants.md](../specs/2026-07-13-clickableyg-ripple-variants.md)
 
+> **구현 후 갱신(2026-07-13)** — Task 3 코드블록 이후 정리 커밋에서 `ClickableYGElement`가 `data class`→수동 `equals`/`hashCode`(onClick `!==`, indications `==`)·`inspectableProperties` 전체 파라미터(onClick·interactionSource·indications 포함) 노출·`attachIndications`(forEach→`filterIsInstance<IndicationNodeFactory>().map { delegate(...) }`)로 정리됨. 동작 불변.
+
 ## Global Constraints
 - 대상 repo: `TJYG-Android`. 패키지: `com.teamyg.parfait.core.designsystem.utils.clickable`.
 - non-`@Composable` — Node가 source 소유·다중 indication delegate.
@@ -458,4 +460,4 @@ git commit -m "feat: clickableYG 리플 변형(Dim/Scale/Merge) + ygScaleRipple"
 ## 열린 질문
 - **merge draw 순서**: dim↔scale delegate 순서의 시각 정답은 기기 확인 후 확정.
 - **기존 clickableYG 호출부**: `indication` 인자를 쓰던 곳 있으면 변형으로 이관(Task 3 Step 2).
-- **과도기**: 리플 색 Gray900·scaleValue 0.98 리터럴 → 토큰화 후속([open-questions](../../wiki/synthesis/open-questions.md)).
+- **과도기**: 리플 색 Gray900·scaleValue 0.98 리터럴 → 토큰화 후속([open-questions](../open-questions.md)).

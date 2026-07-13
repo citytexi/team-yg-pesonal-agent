@@ -26,6 +26,8 @@ tags: [plan, parfait, designsystem]
 
 **Spec:** [specs/2026-07-12-clickableyg-throttle.md](../specs/2026-07-12-clickableyg-throttle.md)
 
+> **구현 후 갱신(2026-07-13)** — 아래 Task 1 코드블록은 최초 설계(단일 `indication`, `data class ClickableYGElement`, `attachIndication` 단일, `inspectableProperties` 4항목)의 스냅샷이다. 이후 [리플 변형 플랜](2026-07-13-clickableyg-ripple-variants.md)에서 `indications: List` + 공개 변형 4종으로 대체되고, 정리 커밋에서 `ClickableYGElement`가 수동 `equals`(onClick `!==`, `data` 제거)·`inspectableProperties` 전체 파라미터 노출·`attachIndications`(filterIsInstance+map)로 바뀌었다(동작 불변). **현재 코드 기준은 변형 스펙/플랜 참조.**
+
 ## Global Constraints
 - 대상 repo: `TJYG-Android`, 브랜치 `feature/#94-solve-duplicate-clickable-issue`.
 - 패키지: `com.teamyg.parfait.core.designsystem.utils.clickable`.
