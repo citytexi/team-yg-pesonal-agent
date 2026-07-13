@@ -58,3 +58,5 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-13] ingest | 캔버스 정책 (C-001) v0.1 + 개념 캔버스-반응형-레이아웃 신설
 
 ## [2026-07-13] ingest | 캘린더 컴포넌트 정의 (C-201) v0.1 + 개념 캘린더-컴포넌트 신설
+
+## [2026-07-13] refactor | wiki/parfait → repo-root parfait/ 분리 (wiki=정책 지식 전용). CLAUDE.md·README.md·wiki/index.md 경로/프레이밍 갱신, [[parfait/index]] 링크는 repo-root vault 기준 유지

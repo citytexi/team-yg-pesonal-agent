@@ -5,7 +5,8 @@ updated: 2026-07-06
 
 # Wiki Index
 
-> 마지막 업데이트: 2026-07-13 | 총 페이지 수: 66 (제품 위키 29 + [[parfait/index|Parfait 구현 위키]] 37)
+> 마지막 업데이트: 2026-07-13 | 총 페이지 수: 29 (정책 지식 위키 전용)
+> 구현 문서는 별도 루트 디렉토리 [[parfait/index|Parfait 구현 위키]](`parfait/`, 37페이지)로 분리 — 위키 스키마 미적용.
 
 ## Overview
 - [[overview]] — 위키 전체 논지 및 핵심 발견 (살아있는 문서)
@@ -41,8 +42,8 @@ updated: 2026-07-06
 - [[캔버스-반응형-레이아웃]] — C-001 캔버스 16:9 반응형 배치·gap 12px·Background Blur 레이어
 - [[캘린더-컴포넌트]] — C-201 캘린더 Button-Date(4상태)·Chip-Indicator·List-Date 정의
 
-## Projects (구현 위키)
-- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 12건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, YGTextField). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서.
+## 구현 위키 (별도 디렉토리 — `parfait/`, 위키 스키마 밖)
+- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 12건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, YGTextField). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서. **repo 루트 `parfait/`로 분리**(2026-07-13), 링크는 repo-root Obsidian vault 기준 resolve.
 
 ## Synthesis (분석·결과)
 - [[open-questions]] — 미해결 모순 및 열린 질문 추적
