@@ -64,3 +64,6 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-13] lint | 점검 완료, stale 3건(overview 대량·옛 lint 2건·parfait open-questions 위치) + 닉네임 부분해소 미반영 1건. 민감데이터·모순·고아 0
 
 ## [2026-07-13] fix | lint 후속 — overview 갱신(정책 8건·개념 4종·논지 확장), open-questions 닉네임 정책 부분해소(⑤ 글자수 확정, 금칙어·중복만 잔존) 반영
+
+## [2026-07-13] maintenance | open-questions parfait 코드 항목 5건 → parfait/open-questions.md 분리
+## [2026-07-13] maintenance | lint-2026-07-06-parfait.md(코드 대조 보고서) wiki/synthesis → parfait/ 이동, index 링크 갱신
