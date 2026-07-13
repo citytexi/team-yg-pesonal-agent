@@ -60,3 +60,7 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-13] ingest | 캘린더 컴포넌트 정의 (C-201) v0.1 + 개념 캘린더-컴포넌트 신설
 
 ## [2026-07-13] refactor | wiki/parfait → repo-root parfait/ 분리 (wiki=정책 지식 전용). CLAUDE.md·README.md·wiki/index.md 경로/프레이밍 갱신, [[parfait/index]] 링크는 repo-root vault 기준 유지
+
+## [2026-07-13] lint | 점검 완료, stale 3건(overview 대량·옛 lint 2건·parfait open-questions 위치) + 닉네임 부분해소 미반영 1건. 민감데이터·모순·고아 0
+
+## [2026-07-13] fix | lint 후속 — overview 갱신(정책 8건·개념 4종·논지 확장), open-questions 닉네임 정책 부분해소(⑤ 글자수 확정, 금칙어·중복만 잔존) 반영
