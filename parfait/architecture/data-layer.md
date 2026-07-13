@@ -1,3 +1,16 @@
+---
+id: data-layer
+title: 데이터 레이어 (Repository · DataSource · DI)
+category: architecture
+status: living
+platforms: android
+verified: 2026-07-12
+related_spec:
+related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012
+related_architecture: state-management
+related_code: RecentImageRepository, ImageSegmentationRepository, RepositoryModule
+tags: [architecture, parfait]
+---
 # 데이터 레이어 (Repository · DataSource · DI)
 
 도메인 인터페이스와 데이터 구현의 분리, 로컬 영속화 흐름. 결정 근거는 [[0001-layered-multi-module]]·[[0004-hilt-ksp-di]]·[[0008-datastore-local-persistence]].

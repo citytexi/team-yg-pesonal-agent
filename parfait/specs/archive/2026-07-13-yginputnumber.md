@@ -1,12 +1,21 @@
 ---
+id: yginputnumber
+title: YGInputNumber
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-07-13
+related_code: core:designsystem component/yginputnumber/ YGInputNumber
+related_adr: ADR-0010
+related_spec:
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-13
 ---
 
 # Spec: YGInputNumber
 
-- 상태: 구현 완료 (사후 기록 — develop `#129`/이슈 `#125` 머지분, 타 작업자)
-- 날짜: 2026-07-13
 - 대상: `core:designsystem` — `component/yginputnumber/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md) · 이슈 #125
 
@@ -51,6 +60,6 @@ fun YGInputNumber(
 
 ## 주의 / 열린 질문
 - **하드코딩 치수**: `50.dp`·`1.dp`가 `SizeTokens`가 아닌 리터럴(디자인가이드 50 고정). `SizeTokens`에 50 프리셋 없음(Size48/Size64 존재). 토큰화 시 정리 대상.
-- **과도기 색**: `YGAtomicColors`(White/Gray900/Gray100) 직접 참조 — YGButton·YGIconButton 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../synthesis/open-questions.md).
+- **과도기 색**: `YGAtomicColors`(White/Gray900/Gray100) 직접 참조 — YGButton·YGIconButton 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../wiki/synthesis/open-questions.md).
 - **프리뷰 방식**: `@Preview` + `YGCustomTheme` + `PreviewParameterProvider`(YGIconButton·YGActionItem 계열). etc 계열의 `@YGPreview`/`PreviewBox`와 혼재 — 표준화 미확정([design-system](../../architecture/design-system.md) 컨벤션 분기 노트).
 - **사후 문서**: 코드가 타 작업자 PR(#129)로 develop에 이미 머지됨. 본 스펙은 현행 코드를 기록한 것(설계 선행 아님).

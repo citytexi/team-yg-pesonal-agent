@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: yginputnumber
+title: YGInputNumber Implementation Plan (사후 기록)
+status: done
+type: work-order
+created: 2026-07-13
 updated: 2026-07-13
+platforms: android
+owner:
+related_adr: ADR-0010
+related_spec: yginputnumber
+related_code: YGInputNumber#YGInputNumber
+archived_reason: 구현 완료
+tags: [plan, parfait, designsystem]
 ---
 
 # YGInputNumber Implementation Plan (사후 기록)
@@ -55,4 +66,4 @@ updated: 2026-07-13
 - **Type consistency**: `YGTheme.shapes.radius.xSmall`·`typography.body.b01R`·`YGAtomicColors.Gray.{White,Gray900,Gray100}`·`Role.Button` 코드 심볼과 일치.
 
 ## 열린 질문
-- 리터럴 `50.dp`/`1.dp`(SizeTokens 미사용), 원자색 직접, 프리뷰 방식 혼재 — [spec](../../specs/archive/2026-07-13-yginputnumber.md) 및 [open-questions](../../../synthesis/open-questions.md) 참고.
+- 리터럴 `50.dp`/`1.dp`(SizeTokens 미사용), 원자색 직접, 프리뷰 방식 혼재 — [spec](../../specs/archive/2026-07-13-yginputnumber.md) 및 [open-questions](../../../wiki/synthesis/open-questions.md) 참고.

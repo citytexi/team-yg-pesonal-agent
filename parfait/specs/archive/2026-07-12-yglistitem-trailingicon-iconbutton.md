@@ -1,12 +1,21 @@
 ---
+id: yglistitem-trailingicon-iconbutton
+title: YGListItem trailing 아이콘 → YGIconButton 교체
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-07-12
+related_code: core:designsystem component/etc/ YGListItem
+related_adr: ADR-0010
+related_spec: ygiconbutton, yglistitem, ygtextfield-clear-iconbutton
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-12
 ---
 
 # Spec: YGListItem trailing 아이콘 → YGIconButton 교체
 
-- 상태: 구현 완료
-- 날짜: 2026-07-12
 - 대상: `core:designsystem` — `component/etc/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)(컴포넌트 작성 규약) · [[2026-07-12-ygiconbutton|YGIconButton]](공통 아이콘 버튼) · [[2026-07-12-yglistitem|YGListItem]] · [[2026-07-12-ygtextfield-clear-iconbutton]](동일 패턴 선행)
 
@@ -77,4 +86,4 @@ trailingIcon?.let {
 ## 주의 / 열린 질문
 - **`trailingIconColor` 색 커스터마이즈 소멸**: 호출부가 trailing tint를 개별 지정하던 경로 제거(기본 Gray300 외 사용처 없음 전제). 향후 색 분기 필요 시 YGIconButton에 색 파라미터 도입 재검토.
 - **contentDescription `null` 유지**: 아이콘을 장식 취급. clickable 라벨 부재는 후속 a11y 개선 대상([[2026-07-12-yglistitem|YGListItem]]과 동일 이슈).
-- **과도기 색**: YGIconButton이 `YGAtomicColors.Gray.*`를 직접 참조(시맨틱 슬롯 없음) — 이 교체로 trailing의 원자색 참조도 YGIconButton 내부로 이관. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../synthesis/open-questions.md).
+- **과도기 색**: YGIconButton이 `YGAtomicColors.Gray.*`를 직접 참조(시맨틱 슬롯 없음) — 이 교체로 trailing의 원자색 참조도 YGIconButton 내부로 이관. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../wiki/synthesis/open-questions.md).

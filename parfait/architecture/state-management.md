@@ -1,3 +1,16 @@
+---
+id: state-management
+title: 상태 관리 (MVI) · 데이터 흐름
+category: architecture
+status: living
+platforms: android
+verified: 2026-07-12
+related_spec:
+related_adr: ADR-0001, ADR-0005, ADR-0009
+related_architecture: data-layer, navigation-flow
+related_code: core:ui, BaseViewModel
+tags: [architecture, parfait]
+---
 # 상태 관리 (MVI) · 데이터 흐름
 
 화면 상태를 `core:ui`의 MVI 베이스로 다룬다. 결정 근거는 [[0005-custom-mvi-baseviewmodel]]. 레이어 흐름은 [[0001-layered-multi-module]]·[[data-layer]].

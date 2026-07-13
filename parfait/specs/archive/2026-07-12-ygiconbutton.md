@@ -1,12 +1,21 @@
 ---
+id: ygiconbutton
+title: YGIconButton
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-07-12
+related_code: core:designsystem component/ygiconbutton/ YGIconButton, YGIconButtonSize
+related_adr: ADR-0010
+related_spec:
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-12
 ---
 
 # Spec: YGIconButton
 
-- 상태: 구현 완료
-- 날짜: 2026-07-12
 - 대상: `core:designsystem` — `component/ygiconbutton/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)(컴포넌트 작성 규약) · 이슈 #126(button-icon)
 
@@ -66,7 +75,7 @@ enum class YGIconButtonSize(val containerSize: Dp, val iconSize: Dp) {
 - `YGIconButtonPreviewData.kt` — `YGIconButtonPreviewData` data class + `YGIconButtonPreviewParameterProvider`(SIZE_44/48 × enabled/disabled 4종).
 
 ## 주의 / 열린 질문
-- **원자 색 직접 참조(과도기)**: 상태별 `YGAtomicColors.Gray.*`를 직접 참조. 시맨틱 슬롯 없음 — YGButton·YGTextField 선례와 동일. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../synthesis/open-questions.md).
+- **원자 색 직접 참조(과도기)**: 상태별 `YGAtomicColors.Gray.*`를 직접 참조. 시맨틱 슬롯 없음 — YGButton·YGTextField 선례와 동일. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../wiki/synthesis/open-questions.md).
 - **`isEnabled`와 클릭 분리**: `isEnabled = false`여도 `clickable`은 그대로라 tint만 흐려지고 **탭은 여전히 동작**. 실제 비활성 동작 차단은 호출부 책임 또는 후속 개선 대상.
 - **프리뷰 컨벤션 분기**: 이 컴포넌트는 `@Preview` + `YGCustomTheme` + `PreviewParameterProvider`를 쓴다. etc 계열([[2026-07-12-yglistitem|YGListItem]]·[[2026-07-12-yghorizontaldivider|YGHorizontalDivider]])의 `@YGPreview`/`PreviewBox`와 다른 방식이 공존. → [design-system](../../architecture/design-system.md) 프리뷰 규약 정리 대상.
 - **인라인 아이콘 버튼 교체**: YGListItem caret·YGTextField clear의 인라인 `Box`+`Image`(`// TODO IconButton 컴포넌트`)를 이 컴포넌트로 치환 가능. 후속 리팩터 과제.

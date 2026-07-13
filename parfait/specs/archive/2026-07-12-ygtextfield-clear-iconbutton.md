@@ -1,12 +1,21 @@
 ---
+id: ygtextfield-clear-iconbutton
+title: YGTextField clear 버튼 → YGIconButton 교체
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-07-12
+related_code: core:designsystem component/textfield/ YGTextFieldImpl
+related_adr: ADR-0010
+related_spec: ygiconbutton, ygtextfield
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-12
 ---
 
 # Spec: YGTextField clear 버튼 → YGIconButton 교체
 
-- 상태: 구현 완료
-- 날짜: 2026-07-12
 - 대상: `core:designsystem` — `component/textfield/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)(컴포넌트 작성 규약) · [[2026-07-12-ygiconbutton|YGIconButton]](공통 아이콘 버튼 컴포넌트) · [[2026-07-10-ygtextfield|YGTextField]]
 
@@ -80,4 +89,4 @@ if (showClear) {
 ## 주의 / 열린 질문
 - **`clearIconTint` 색 커스터마이즈 소멸**: 호출부가 clear tint를 개별 지정하던 경로 제거(현재 기본값 Gray300 외 사용처 없음 전제). 향후 색 분기 필요 시 YGIconButton에 색 파라미터 도입 재검토([design-system](../../architecture/design-system.md) 원자색 정리 이슈와 함께).
 - **YGListItem 미포함**: 동일 인라인 패턴(trailing 아이콘)은 현재 브랜치에 없어 이 스펙 범위 밖. YGIconButton 통일 완결을 위해 별도 후속 스펙 필요.
-- **과도기 색**: YGIconButton이 `YGAtomicColors.Gray.*`를 직접 참조(시맨틱 슬롯 없음) — 이 교체로 clear의 원자색 참조도 YGIconButton 내부로 이관. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../synthesis/open-questions.md).
+- **과도기 색**: YGIconButton이 `YGAtomicColors.Gray.*`를 직접 참조(시맨틱 슬롯 없음) — 이 교체로 clear의 원자색 참조도 YGIconButton 내부로 이관. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../../wiki/synthesis/open-questions.md).

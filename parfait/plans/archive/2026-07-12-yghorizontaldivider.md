@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: yghorizontaldivider
+title: YGHorizontalDivider Implementation Plan
+status: done
+type: work-order
+created: 2026-07-12
 updated: 2026-07-12
+platforms: android
+owner:
+related_adr: ADR-0010
+related_spec: yghorizontaldivider
+related_code: YGHorizontalDivider
+archived_reason: 구현 완료
+tags: [plan, parfait, designsystem]
 ---
 
 # YGHorizontalDivider Implementation Plan
@@ -18,7 +29,7 @@ updated: 2026-07-12
 ## Global Constraints
 - 대상 repo: `TJYG-Android`, 브랜치 `feature/#136-etc-component`.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.etc`.
-- 크기는 `SizeTokens.*.getDp()`, 색은 `YGAtomicColors.*`(gray-100은 시맨틱 슬롯 없어 원자색 직접 참조 — YGButton·YGTextField 선례, 과도기 → [open-questions](../../../synthesis/open-questions.md)).
+- 크기는 `SizeTokens.*.getDp()`, 색은 `YGAtomicColors.*`(gray-100은 시맨틱 슬롯 없어 원자색 직접 참조 — YGButton·YGTextField 선례, 과도기 → [open-questions](../../../wiki/synthesis/open-questions.md)).
 - 검증: 유닛 TDD 인프라 없음(Compose UI). **compile(`compileReleaseKotlin`) + `ktlintMainSourceSetCheck` + `@Preview` 육안**으로 대체.
 - ktlint 엄격(단일 표현식 함수 한 줄). 커밋 전 `ktlintMainSourceSetFormat`.
 
@@ -123,4 +134,4 @@ git commit -m "feat: YGHorizontalDivider 구현"
 - **Type consistency**: `SizeTokens.Size1.getDp()`·`YGAtomicColors.Gray.Gray100`·`Dp`·`Color`·`Modifier` 모두 스펙·코드 심볼과 일치.
 
 ## 열린 질문
-- gray-100 원자색 직접 참조 → 시맨틱 정리 대상([open-questions](../../../synthesis/open-questions.md), YGButton 디자인 토큰 항목과 동일 성격).
+- gray-100 원자색 직접 참조 → 시맨틱 정리 대상([open-questions](../../../wiki/synthesis/open-questions.md), YGButton 디자인 토큰 항목과 동일 성격).

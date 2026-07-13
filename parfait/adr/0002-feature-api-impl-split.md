@@ -1,8 +1,18 @@
+---
+id: ADR-0002
+title: feature 모듈을 :api / :impl로 분리
+status: accepted
+date: 2026-05-19
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr: ADR-0006
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0002: feature 모듈을 :api / :impl로 분리
-
-- 상태: accepted
-- 날짜: 2026-05-19
-- 결정자: Parfait 팀
 
 ## 맥락
 feature가 다른 feature로 이동(navigate)하려면 목적지를 알아야 한다. feature 전체를 서로 참조하게 두면 화면·ViewModel·UI까지 컴파일 의존이 걸려 결합이 커지고 증분 빌드가 무너진다.

@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: ygtextfield-clear-iconbutton
+title: YGTextField clear → YGIconButton 교체 Implementation Plan
+status: done
+type: work-order
+created: 2026-07-12
 updated: 2026-07-12
+platforms: android
+owner:
+related_adr: ADR-0010
+related_spec: ygtextfield-clear-iconbutton
+related_code: YGTextFieldImpl.kt
+archived_reason: 구현 완료
+tags: [plan, parfait, designsystem]
 ---
 
 # YGTextField clear → YGIconButton 교체 Implementation Plan

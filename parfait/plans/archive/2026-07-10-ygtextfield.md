@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: ygtextfield
+title: YGTextField Implementation Plan
+status: done
+type: work-order
+created: 2026-07-10
 updated: 2026-07-12
+platforms: android
+owner:
+related_adr: ADR-0010
+related_spec: ygtextfield
+related_code: YGTextField, YGTextFieldColors, YGTextFieldDefaults
+archived_reason: 구현 완료
+tags: [plan, parfait, designsystem]
 ---
 
 # YGTextField Implementation Plan
@@ -19,7 +30,7 @@ updated: 2026-07-12
 - 대상 repo: `TJYG-Android`, 브랜치 `feature/#134-text-field-form`.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.textfield`.
 - 테마 값은 `YGTheme.*`로만 접근. 크기는 `SizeTokens.*.getDp()`.
-- 배경·danger는 시맨틱(`colorScheme.transparency.white75`·`colorScheme.danger`) 채택. 나머지 회색 음영·연핑크는 시맨틱 슬롯에 없어 `YGAtomicColors` 직접 참조(과도기, YGButton 선례 — [open-questions](../../../synthesis/open-questions.md)).
+- 배경·danger는 시맨틱(`colorScheme.transparency.white75`·`colorScheme.danger`) 채택. 나머지 회색 음영·연핑크는 시맨틱 슬롯에 없어 `YGAtomicColors` 직접 참조(과도기, YGButton 선례 — [open-questions](../../../wiki/synthesis/open-questions.md)).
 - 검증: 유닛 TDD 인프라 없음(Compose UI). **compile(`compileReleaseKotlin`) + `ktlintMainSourceSetCheck` + `@Preview` 육안**으로 대체.
 - ktlint 엄격(단일 표현식 함수는 한 줄). 커밋 전 `ktlintMainSourceSetFormat`.
 
@@ -86,4 +97,4 @@ updated: 2026-07-12
 - 육안 프리뷰(idle/filled/error/disabled) — 스펙 부합. focus 핑크 테두리는 기기 확인 필요.
 
 ## 열린 질문
-- YGButton과 동일하게 원자 색 직접 참조 → 시맨틱 정리 대상([open-questions](../../../synthesis/open-questions.md)).
+- YGButton과 동일하게 원자 색 직접 참조 → 시맨틱 정리 대상([open-questions](../../../wiki/synthesis/open-questions.md)).

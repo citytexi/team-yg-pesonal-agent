@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: clickableyg-throttle
+title: clickableYG (Node throttle) Implementation Plan
+status: draft
+type: work-order
+created: 2026-07-12
 updated: 2026-07-13
+platforms: android
+owner:
+related_adr:
+related_spec: clickableyg-throttle
+related_code: YGClickable.kt#clickableYG
+archived_reason:
+tags: [plan, parfait, designsystem]
 ---
 
 # clickableYG (Node throttle) Implementation Plan

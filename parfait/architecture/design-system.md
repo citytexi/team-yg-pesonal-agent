@@ -1,3 +1,16 @@
+---
+id: design-system
+title: Design System — 테마·토큰·컴포넌트 작성 가이드
+category: architecture
+status: living
+platforms: android
+verified: 2026-07-12
+related_spec:
+related_adr: ADR-0007, ADR-0010
+related_architecture:
+related_code: core:designsystem, YGTheme
+tags: [architecture, parfait]
+---
 # Design System — 테마·토큰·컴포넌트 작성 가이드
 
 `core:designsystem` 모듈의 테마 홀더·토큰 계층·컴포넌트 작성 규약. "왜"는 [ADR-0010](../adr/0010-custom-compositionlocal-theme.md)(테마 메커니즘), [ADR-0007](../adr/0007-compose-material3-design-tokens.md)(100% Compose·중앙화 원칙, superseded).
@@ -64,7 +77,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 - **토큰 참조**: 변형 내부에서 `YGTheme.layout.padding.*`, `YGTheme.shapes.radius.*`, `YGTheme.typography.body.*`, `SizeTokens.*.getDp()`로 읽는다.
 - **프리뷰**: `YGCustomTheme { }`로 감싼다(Local 미초기화 크래시 방지). Coil 프리뷰는 `YGCustomTheme`이 `LocalAsyncImagePreviewHandler`를 이미 심음.
 
-> **Assumption / 과도기** — `YGButtonType`의 각 변형 `colors`가 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조하고, 값이 잠정(mock)이다. 코드 주석("Design Token 규칙이 조금 이상… 컴포넌트 완성 시점에 문의 예정")대로 **확정 전 상태**. 확정 시 원자 직접 참조를 시맨틱으로 정리 권장. → [open-questions](../../synthesis/open-questions.md) 후보.
+> **Assumption / 과도기** — `YGButtonType`의 각 변형 `colors`가 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조하고, 값이 잠정(mock)이다. 코드 주석("Design Token 규칙이 조금 이상… 컴포넌트 완성 시점에 문의 예정")대로 **확정 전 상태**. 확정 시 원자 직접 참조를 시맨틱으로 정리 권장. → [open-questions](../../wiki/synthesis/open-questions.md) 후보.
 
 ## 컴포넌트 인벤토리
 
@@ -85,7 +98,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 
 > **과도기 — 컨벤션 분기(정리 대상)**
 > - **패키지 네이밍**: 컴포넌트별 폴더(`ygbutton/`·`ygiconbutton/`·`ygactionitem/`)와 그룹 폴더(`textfield/`·`etc/`)가 혼재. 규약(위 "컴포넌트 작성 규약")은 컴포넌트별 폴더 기준.
-> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열: YGListItem·YGHorizontalDivider)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem)가 공존. 어느 쪽으로 표준화할지 미확정. → [open-questions](../../synthesis/open-questions.md) 후보.
+> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열: YGListItem·YGHorizontalDivider)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem)가 공존. 어느 쪽으로 표준화할지 미확정. → [open-questions](../../wiki/synthesis/open-questions.md) 후보.
 
 ## 관련 ADR
 - [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) — 자체 CompositionLocal 테마(why).

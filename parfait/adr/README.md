@@ -56,3 +56,6 @@ grep -rE '\bSomeApi\b' src | wc -l
 ```
 
 **왜:** 한 번 거짓이 된 수치가 섞이면 문서 전체의 신뢰가 깨진다 — "없는 것보다 못한" 상태. 검증 불가능한 라인번호를 적느니, 검증 가능한 심볼명만 남긴다.
+
+## Frontmatter (필수)
+모든 ADR은 YAML frontmatter로 메타를 단다(형식 권위: [`template.md`](template.md)). 필드: `id`(ADR-NNNN) · `title` · `status`(**proposed / accepted / superseded / deprecated**) · `date` · `deciders`(팀/역할, **실명 금지**) · `supersedes` · `superseded_by` · `related_adr` · `related_spec` · `related_architecture` · `platforms`(=android) · `tags`. 대체 시 구 문서 `superseded`+`superseded_by`, 신 문서 `supersedes`.

@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: yglistitem-trailingicon-iconbutton
+title: YGListItem trailing 아이콘 → YGIconButton 교체 Implementation Plan
+status: done
+type: work-order
+created: 2026-07-12
 updated: 2026-07-12
+platforms: android
+owner:
+related_adr: ADR-0010
+related_spec: yglistitem-trailingicon-iconbutton
+related_code: YGListItem.kt#YGListItem
+archived_reason: 구현 완료
+tags: [plan, parfait, designsystem]
 ---
 
 # YGListItem trailing 아이콘 → YGIconButton 교체 Implementation Plan

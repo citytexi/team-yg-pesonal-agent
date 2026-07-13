@@ -1,8 +1,18 @@
+---
+id: ADR-0005
+title: 자체 MVI 패턴 (BaseViewModel<State, Intent, SideEffect>)
+status: accepted
+date: 2026-05-09
+deciders: Parfait 팀
+supersedes:
+superseded_by:
+related_adr:
+related_spec:
+related_architecture:
+platforms: android
+tags: [adr, parfait]
+---
 # ADR-0005: 자체 MVI 패턴 (BaseViewModel<State, Intent, SideEffect>)
-
-- 상태: accepted
-- 날짜: 2026-05-09
-- 결정자: Parfait 팀
 
 ## 맥락
 화면 상태 관리 방식이 화면마다 제각각이면 리뷰·재사용·테스트가 어렵다. 초기(`feature/mvi base code`)에 단방향 데이터 흐름(UDF) 규약을 하나로 못박아야 했다.

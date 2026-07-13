@@ -22,3 +22,6 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 | [2026-07-12-ygtextfield-clear-iconbutton.md](archive/2026-07-12-ygtextfield-clear-iconbutton.md) | YGTextField clear→YGIconButton 교체(component/textfield, 2 Task: Impl 교체 → clearIconTint 제거). 구현 완료(코드는 별도 커밋 예정). 스펙: [specs](../specs/archive/2026-07-12-ygtextfield-clear-iconbutton.md) |
 | [2026-07-12-yglistitem-trailingicon-iconbutton.md](archive/2026-07-12-yglistitem-trailingicon-iconbutton.md) | YGListItem trailing 아이콘→YGIconButton 교체(component/etc, 1 Task: 블록 치환 + trailingIconColor 제거). 구현 완료(compile·ktlint 통과, 코드는 별도 커밋 예정). 스펙: [specs](../specs/archive/2026-07-12-yglistitem-trailingicon-iconbutton.md) |
 | [2026-07-13-yginputnumber.md](archive/2026-07-13-yginputnumber.md) | YGInputNumber 구현 계획(component/yginputnumber, 50×50 선택 셀). 사후 기록(develop #129 머지 완료). 스펙: [specs](../specs/archive/2026-07-13-yginputnumber.md) |
+
+## Frontmatter (필수)
+모든 plan은 YAML frontmatter를 단다(형식 권위: [`template.md`](template.md)). 필드: `id`(slug) · `title` · `status`(**draft / in-progress / done / abandoned / superseded**) · `type`(work-order / handoff) · `created` · `updated` · `platforms`(=android) · `owner`(**실명 금지**) · `related_adr` · `related_spec` · `related_code`(심볼명, 라인번호 금지) · `archived_reason` · `tags`. 완료/폐기 시 `archive/`로 이동.

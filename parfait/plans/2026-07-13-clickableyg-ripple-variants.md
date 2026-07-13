@@ -1,6 +1,17 @@
 ---
-tags: [plan, parfait, designsystem]
+id: clickableyg-ripple-variants
+title: clickableYG 리플 변형 + ygScaleRipple Implementation Plan
+status: draft
+type: work-order
+created: 2026-07-13
 updated: 2026-07-13
+platforms: android
+owner:
+related_adr: ADR-0010
+related_spec: clickableyg-ripple-variants
+related_code: YGScaleRipple.kt#ygScaleRipple, YGClickable.kt#clickableYG
+archived_reason:
+tags: [plan, parfait, designsystem]
 ---
 
 # clickableYG 리플 변형 + ygScaleRipple Implementation Plan
@@ -447,4 +458,4 @@ git commit -m "feat: clickableYG 리플 변형(Dim/Scale/Merge) + ygScaleRipple"
 ## 열린 질문
 - **merge draw 순서**: dim↔scale delegate 순서의 시각 정답은 기기 확인 후 확정.
 - **기존 clickableYG 호출부**: `indication` 인자를 쓰던 곳 있으면 변형으로 이관(Task 3 Step 2).
-- **과도기**: 리플 색 Gray900·scaleValue 0.98 리터럴 → 토큰화 후속([open-questions](../../synthesis/open-questions.md)).
+- **과도기**: 리플 색 Gray900·scaleValue 0.98 리터럴 → 토큰화 후속([open-questions](../../wiki/synthesis/open-questions.md)).

@@ -1,8 +1,21 @@
+---
+id: ADR-NNNN
+title: [Decision Title]
+status: proposed             # proposed | accepted | superseded | deprecated
+date: YYYY-MM-DD
+deciders: Parfait 팀          # 팀/역할 (실명·개인정보 금지 — public repo)
+supersedes:                   # 이 ADR이 대체하는 ADR-NNNN (없으면 비움)
+superseded_by:                # 이 ADR을 대체한 ADR-NNNN (없으면 비움)
+related_adr:
+related_spec:
+related_architecture:
+platforms: android            # 이 repo는 TJYG-Android(Kotlin/Compose) 전용
+tags: [adr, parfait]
+---
+
 # ADR-NNNN: 결정 제목
 
-- 상태: proposed | accepted | deprecated | superseded by ADR-NNNN
-- 날짜: YYYY-MM-DD
-- 결정자: [결정에 참여한 사람/팀]
+> 상태·날짜·결정자·대체 관계는 위 frontmatter가 단일 출처. 본문은 결정 내용에 집중.
 
 ## 맥락
 무엇이 문제이고 왜 이 결정이 필요한가. (배경이 자명하면 생략 가능)
@@ -32,6 +45,6 @@
 
 ---
 작성 규칙
-- 본문은 **현재 결정의 최종상태**만 담는다. 번복·보강 시 본문을 갱신하고 "이전엔/번복" 식 이력은 누적하지 않는다. 한 결정이 다른 ADR을 대체하면 본문을 병합하고 상태에 `superseded by ADR-NNNN` 표기.
+- 본문은 **현재 결정의 최종상태**만 담는다. 번복·보강 시 본문을 갱신하고 "이전엔/번복" 식 이력은 누적하지 않는다. 한 결정이 다른 ADR을 대체하면 본문을 병합하고, frontmatter에 구 문서 `status: superseded` + `superseded_by`, 신 문서 `supersedes` 지정.
 - 근거는 **파일명 + 심볼명**으로. 라인번호(`파일.kt:NN`)·변동 수치(파일 수·진행률·사용 횟수) 금지 — 자세한 규칙은 `README.md`.
 - 파일명 `NNNN-kebab-case-title.md`, README 인덱스 테이블에 같은 커밋으로 한 줄 등록.

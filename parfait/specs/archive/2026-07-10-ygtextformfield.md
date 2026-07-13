@@ -1,12 +1,21 @@
 ---
+id: ygtextformfield
+title: YGTextFormField
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-07-10
+related_code: core:designsystem component/textfield/ YGTextFormField
+related_adr: ADR-0010
+related_spec: ygtextfield
+related_architecture: design-system
+supersedes:
+superseded_by:
 tags: [spec, parfait, designsystem]
-updated: 2026-07-12
 ---
 
 # Spec: YGTextFormField
 
-- 상태: 구현 완료
-- 날짜: 2026-07-10
 - 대상: `core:designsystem` — `component/textfield/`
 - 관련: [YGTextField 스펙](2026-07-10-ygtextfield.md) · [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md) · [design-system](../../architecture/design-system.md) · 이슈 #134
 

@@ -1,3 +1,16 @@
+---
+id: module-structure
+title: 모듈 구조
+category: architecture
+status: living
+platforms: android
+verified: 2026-07-12
+related_spec:
+related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011
+related_architecture:
+related_code: settings.gradle.kts
+tags: [architecture, parfait]
+---
 # 모듈 구조
 
 전체 모듈의 목적·주요 의존·레이어 그룹. 결정 근거는 [[0001-layered-multi-module]]·[[0002-feature-api-impl-split]]·[[0003-convention-plugins-version-catalog]].
