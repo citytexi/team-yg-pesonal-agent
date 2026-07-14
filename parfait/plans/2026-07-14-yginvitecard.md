@@ -33,7 +33,7 @@ tags: [plan, parfait, designsystem, card]
 - 타이포 `YGTheme.typography.body.b02R`(라벨·subText) / `b01SB`(코드), 간격·모양 토큰 `YGTheme.layout.*` / `YGTheme.shapes.radius.*`.
 - 복사 버튼 색은 손대지 않는다(`YGButtonType.SmallSquare` 소관, 별도 브랜치). 카드는 `isEnabled`만 제어.
 - 검증: `:core:designsystem:compileReleaseKotlin` + `:core:designsystem:ktlintMainSourceSetCheck` + `@YGPreview` 육안(Active/Invalid). 유닛 테스트 없음(모듈 관례).
-- 문자열 "그룹 초대 코드"·"복사"는 컴포넌트 내부 리터럴(subText는 파라미터).
+- 라벨(`label`)·복사 버튼 텍스트(`copyButtonText`)·복사 아이콘(`endIconResource`)은 파라미터로 주입. `endIconResource` 기본값만 `R.drawable.ic_copy`. 컴포넌트 내부 텍스트 리터럴 없음.
 
 ---
 
@@ -73,13 +73,14 @@ git commit -m "feat(designsystem): YGInviteCardStatus enum 추가"
 
 **Interfaces:**
 - Consumes: `YGInviteCardStatus`(Task 1), `YGButton`/`YGButtonType.SmallSquare`, `YGAtomicColors`, `YGTheme`, `R.drawable.ic_copy`.
-- Produces: `@Composable fun YGInviteCard(inviteCode: String, subText: String, status: YGInviteCardStatus, onCopyClick: () -> Unit, modifier: Modifier = Modifier)`
+- Produces: `@Composable fun YGInviteCard(label: String, inviteCode: String, subText: String, status: YGInviteCardStatus, copyButtonText: String, onCopyClick: () -> Unit, modifier: Modifier = Modifier, @DrawableRes endIconResource: Int? = R.drawable.ic_copy)`
 
 - [ ] **Step 1: import + YGInviteCard 본체 작성** (stub의 빈 `YGInviteCard()`·preview 교체)
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.card
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -103,14 +104,18 @@ import com.teamyg.parfait.core.designsystem.component.ygbutton.YGButton
 import com.teamyg.parfait.core.designsystem.component.ygbutton.YGButtonType
 import com.teamyg.parfait.core.designsystem.theme.YGTheme
 import com.teamyg.parfait.core.designsystem.theme.colors.YGAtomicColors
+import com.teamyg.parfait.core.designsystem.theme.size.SizeTokens
 
 @Composable
 fun YGInviteCard(
+    label: String,
     inviteCode: String,
     subText: String,
     status: YGInviteCardStatus,
+    copyButtonText: String,
     onCopyClick: () -> Unit,
     modifier: Modifier = Modifier,
+    @DrawableRes endIconResource: Int? = R.drawable.ic_copy,
 ) {
     val borderColor = when (status) {
         YGInviteCardStatus.Active -> YGAtomicColors.Cherry.Cherry100
@@ -122,8 +127,11 @@ fun YGInviteCard(
     }
     Column(
         modifier = modifier
-            .border(1.dp, borderColor, YGTheme.shapes.radius.medium1)
-            .clip(YGTheme.shapes.radius.medium1)
+            .border(
+                width = SizeTokens.Size1.getDp(),
+                color = borderColor,
+                shape = YGTheme.shapes.radius.medium1,
+            ).clip(YGTheme.shapes.radius.medium1)
             .background(YGAtomicColors.Gray.White)
             .padding(
                 horizontal = YGTheme.layout.padding.padding6,
@@ -133,11 +141,11 @@ fun YGInviteCard(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(YGTheme.layout.gap.gap3),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "그룹 초대 코드",
+                text = label,
                 style = YGTheme.typography.body.b02R,
                 color = YGAtomicColors.Gray.Gray400,
             )
@@ -164,11 +172,11 @@ fun YGInviteCard(
                     .fillMaxHeight(),
             )
             YGButton(
-                text = "복사",
+                text = copyButtonText,
                 buttonType = YGButtonType.SmallSquare,
                 isEnabled = status == YGInviteCardStatus.Active,
                 onClick = onCopyClick,
-                endIconResource = R.drawable.ic_copy,
+                endIconResource = endIconResource,
             )
         }
     }
@@ -193,7 +201,7 @@ private fun InviteCodeBox(
             .clip(YGTheme.shapes.radius.small)
             .background(backgroundColor)
             .padding(
-                horizontal = 24.dp,
+                horizontal = YGTheme.layout.gap.gap7,
                 vertical = YGTheme.layout.gap.gap3,
             ),
         contentAlignment = Alignment.Center,
@@ -244,15 +252,19 @@ import com.teamyg.parfait.core.designsystem.utils.preview.YGPreview
 private fun PreviewYGInviteCard() = PreviewBox {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         YGInviteCard(
+            label = "그룹 초대 코드",
             inviteCode = "WDIDCJ",
             subText = "1명 남음",
             status = YGInviteCardStatus.Active,
+            copyButtonText = "복사",
             onCopyClick = {},
         )
         YGInviteCard(
+            label = "그룹 초대 코드",
             inviteCode = "WDIDCJ",
             subText = "최대 인원 도달",
             status = YGInviteCardStatus.Invalid,
+            copyButtonText = "복사",
             onCopyClick = {},
         )
     }
@@ -282,5 +294,5 @@ Expected: BUILD SUCCESSFUL, ktlint 위반 0
 
 ## 열린 질문
 - 코드 텍스트 수평 정렬(center vs start): Figma 미명시. 현재 `contentAlignment = Alignment.Center`. 디자이너 확인 후 확정.
-- 코드박스 가로 padding 24dp literal(토큰 아님): SmallSquare 색 정비 브랜치의 토큰 정리와 함께 재확인.
+- 코드박스 가로 padding·라벨 Row 간격·border 두께: 리터럴 dp → 디자인 토큰(`gap.gap7`·`gap.gap3`·`SizeTokens.Size1`) 치환됨. 토큰 실값이 Figma(24/8/1px)와 일치하는지 프리뷰 육안 확인.
 - `InviteCodeBox`의 `fillMaxHeight`(부모 `IntrinsicSize.Min`)로 코드박스 높이를 복사 버튼 높이에 맞춤 — Figma "Code Fill 42" 재현. 프리뷰에서 높이 일치 확인.
