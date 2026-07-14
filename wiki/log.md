@@ -67,3 +67,5 @@ append-only. 새 항목은 파일 끝에 추가.
 
 ## [2026-07-13] maintenance | open-questions parfait 코드 항목 5건 → parfait/open-questions.md 분리
 ## [2026-07-13] maintenance | lint-2026-07-06-parfait.md(코드 대조 보고서) wiki/synthesis → parfait/ 이동, index 링크 갱신
+
+## [2026-07-14] ingest | C-202 토핑 편집자 확인 규칙 v0.1 + Toast 공통 정책 배치 — sources 2·concepts 2(토핑-spotlight·toast) 신설, 토핑·그룹·nametag-chip 갱신

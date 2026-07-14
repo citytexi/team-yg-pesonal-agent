@@ -1,7 +1,7 @@
 ---
 tags: [concept, product]
-sources: [S-101-프로필-닉네임-컬러-규칙-v0.1.md, S-101-프로필-닉네임-컬러-규칙-v0.2.md]
-updated: 2026-07-13
+sources: [S-101-프로필-닉네임-컬러-규칙-v0.1.md, S-101-프로필-닉네임-컬러-규칙-v0.2.md, Toast-공통-정책.md, C-202-토핑-편집자-확인-규칙-v0.1.md]
+updated: 2026-07-14
 ---
 
 # Nametag-Chip (프로필·닉네임 컬러 규칙)
@@ -36,3 +36,4 @@ updated: 2026-07-13
 
 ## 연관
 - [[토핑]] Grouptag-Chip Timestamp 컬러가 이 규칙을 준수 ([[G-001-토핑-정책-v0.1]]).
+- [[toast|Toast]] 닉네임 텍스트 컬러도 이 규칙 준수. C-202 [[토핑-spotlight|Spotlight]] 진입 Toast에 적용.
