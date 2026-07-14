@@ -13,6 +13,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 | [2026-07-12-clickableyg-throttle.md](2026-07-12-clickableyg-throttle.md) | 구현(브랜치 #94, develop 미머지) | `core:util:android` `clickable/` — clickableYG(@Composable, 표준 clickable 위 leading-throttle 게이트, windowMillis 기본 300ms, 기본 리플 ygDimRipple). focus/키/hover는 clickable에서 확보 |
 | [2026-07-13-ygripple.md](2026-07-13-ygripple.md) | 구현(브랜치 #94, develop 미머지) | `core:util:android` `clickable/` — ygDimRipple(커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임, alpha 0.15, 기본 리터럴색 YGDimRippleColor) |
 | [2026-07-13-clickableyg-ripple-variants.md](2026-07-13-clickableyg-ripple-variants.md) | 구현(브랜치 #94, develop 미머지) | `core:util:android` `clickable/` — clickableYG 리플 변형(Dim/Scale/Merge, @Composable, 합성 indication) + ygScaleRipple(누르면 축소). YGDimRipple/YGScaleRipple 파일 분리 |
+| [2026-07-14-yginvitecard.md](2026-07-14-yginvitecard.md) | draft | `component/card` — YGInviteCard(그룹 초대 코드 + 복사 버튼, Active/Invalid 상태별 색·버튼 활성 분기, subText 문자열 주입, onCopyClick 콜백, YGButton SmallSquare 재사용) + YGInviteCardStatus enum |
 
 ## 아카이브
 | 스펙 | 내용 |
