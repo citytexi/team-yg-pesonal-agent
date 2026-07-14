@@ -35,7 +35,7 @@ tags: [spec, parfait, designsystem]
 > **구현 방식 (Approach 2 확정, 2026-07-14)** — focus/키/hover를 손으로 재구현(clickable 재발명)하지 않고 **표준 `Modifier.clickable` 위에 throttle을 얹는다.** 3종 접근성은 `clickable`에서 그대로 확보. 구조:
 > - `clickableYG`·변형은 **`@Composable` Modifier 확장**으로 전환(`remember`로 상태 유지 — 초기 non-composable 목표는 `clickable`이 이미 Node 기반이라 근거 소멸).
 > - throttle: `remember`된 게이트 객체(`lastMark: TimeSource.Monotonic.ValueTimeMark`)가 `onClick`을 감싸 leading-edge 통과 판정. 탭·키보드·TalkBack 모든 활성화 경로가 이 단일 `onClick`을 지나 throttle이 균일 적용.
-> - `interactionSource` null이면 `remember { MutableInteractionSource() }` fallback(항상 remember 호출 — 조건부 금지).
+> - `interactionSource`는 `clickable`에 그대로 전달. null이면 `clickable`이 내부에서 source를 lazy 생성(indication이 `IndicationNodeFactory`라 가능) — YG 자체 fallback 없음.
 > - 커스텀 리플: 리스트를 단일 `Indication`으로 접어 `clickable(indication=…)`에 전달(size 1은 그대로, 다중은 자식 delegate하는 합성 `IndicationNodeFactory`).
 > - `ClickableYGElement`/`ClickableYGNode`(커스텀 노드)는 제거. (TalkBack 시맨틱은 `clickable`이 role/onClickLabel로 제공 — 회귀 없음.)
 
@@ -64,7 +64,7 @@ fun Modifier.clickableYG(
 // 코어(internal) — indication을 리스트로 수용, clickable 위에 throttle
 @Composable
 internal fun Modifier.clickableYGThrottle(
-    interactionSource: MutableInteractionSource? = null,
+    interactionSource: MutableInteractionSource? = remember { MutableInteractionSource() },
     indications: List<Indication>,
     enabled: Boolean = true,
     onClickLabel: String? = null,
@@ -73,16 +73,16 @@ internal fun Modifier.clickableYGThrottle(
     onClick: () -> Unit,
 ): Modifier
 ```
-- `interactionSource`: 기본 `null` → 노드가 내부 `MutableInteractionSource`를 생성해 사용.
+- `interactionSource`: `clickable`에 그대로 전달. null이면 `clickable`이 내부 `MutableInteractionSource`를 lazy 생성. (throttle 파라미터 default `= remember { MutableInteractionSource() }`는 공개 변형이 항상 `interactionSource`를 명시 전달하므로 실제로는 안 터지는 형식상 값 — 실질 fallback은 `clickable`이 담당.)
 - `indications`(코어): 코어가 받는 리플 목록. 각 `IndicationNodeFactory`를 노드가 자기 source에 delegate(다중). 기본 리플 주입은 변형 함수가 담당(`clickableYGDimRipple` → `listOf(ygDimRipple())` 등).
 - `windowMillis`: throttle 창(기본 300ms). 화면별 조정 가능.
 - `onClick`: 게이트를 통과한 탭에서만 호출.
 
 ## 구조 (Approach 2 — `clickable` 위 throttle)
 커스텀 `Modifier.Node`(초기 `ClickableYGElement`/`ClickableYGNode`)는 **제거**. 대신:
-- **`clickable` 위임**: `clickableYGThrottle`가 `this.clickable(interactionSource = source, indication = …, enabled, onClickLabel, role) { if (gate.tryPass(windowMillis)) onClick() }`. focus·하드웨어 키·hover·press emit·시맨틱은 전부 `clickable`이 제공.
+- **`clickable` 위임**: `clickableYGThrottle`가 `this.clickable(interactionSource = interactionSource, indication = …, enabled, onClickLabel, role) { if (gate.tryPass(windowMillis)) onClick() }`. focus·하드웨어 키·hover·press emit·시맨틱은 전부 `clickable`이 제공.
 - **throttle 게이트**: `private class YGClickThrottleGate` — `lastMark: TimeSource.Monotonic.ValueTimeMark?` 보유, `tryPass(windowMillis)`가 `lastMark == null || elapsedNow() >= window`면 `markNow()` 후 `true`. `remember { YGClickThrottleGate() }`로 recomposition 무관하게 유지. 탭·키보드·TalkBack 모든 활성화가 이 단일 `onClick`을 지나 균일 throttle.
-- **interactionSource**: null이면 `remember { MutableInteractionSource() }` fallback(항상 remember 호출). 제공 시 그대로 사용.
+- **interactionSource**: `clickable(interactionSource = interactionSource)`로 그대로 전달. null이면 `clickable`이 내부 source를 lazy 생성(indication이 `IndicationNodeFactory`). YG 코드에 별도 fallback `remember` 없음.
 - **인디케이션**: `List<Indication>`을 `toYGIndication()`으로 단일 `Indication?`으로 접음 — 비면 `null`, 1개면 그대로, 다중이면 자식들을 `onAttach`에서 `delegate`하는 `internal YGCompositeIndicationNodeFactory`(`equals`/`hashCode`는 `factories` 리스트 기반). 이를 `clickable(indication = …)`에 전달.
 - **@Composable**: 위 `remember` 때문에 `clickableYG`·변형·`clickableYGThrottle`는 `@Composable` Modifier 확장이다.
 
