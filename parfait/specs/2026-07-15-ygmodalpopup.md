@@ -84,7 +84,7 @@ fun YGModalPopup(
 | 아이콘 박스 크기 | `SizeTokens.Size48` |
 | 아이콘 틴트 | `iconTint`(기본 `Cherry.Cherry600`) |
 | Title 타이포 | `YGTheme.typography.title.t03SB`, center |
-| Title 색 | `Color(0xFF333333)` (리터럴, 아래 열린 질문 참고) |
+| Title 색 | `YGAtomicColors.Gray.Gray900` |
 | Body 타이포 | `YGTheme.typography.body.b02R`, center |
 | Body 색 | `YGAtomicColors.Gray.Gray500` |
 | Title↔Body 세로 간격 | `YGTheme.layout.gap.gap2` |
@@ -102,7 +102,7 @@ fun YGModalPopup(
 - 프리뷰: `@YGPreview` + `PreviewBox`(모듈 관례). Figma 예시("그룹에서 나갈까요?" + `ic_warning_round` + 확인/취소).
 
 ## 주의 / 열린 질문
-- **Title 색 리터럴**: Figma `#333333`. 정확 매칭 아토믹 토큰 없음(`Gray.Gray850`=#333537 근사). 사용자 결정으로 `Color(0xFF333333)` 하드코딩 채택 → **디자인 토큰 체계 이탈**(스펙의 hex 미기재 관례와도 상충). 후속으로 토큰화(디자이너 합의 후 아토믹 추가) 권장. 현재는 의도된 예외.
+- **Title 색**: Figma `#333333`. 정확 매칭 아토믹 토큰 없음(`Gray.Gray850`=#333537 근사, `Gray.Gray900`=#29292C). **해소** — 구현(#135 `5dcd419` refactor)에서 `YGAtomicColors.Gray.Gray900` 채택(하드코딩 리터럴 폐기, 아토믹 토큰 사용). Figma #333333과 미세 차이(#29292C)는 디자인 토큰 우선 방침에 따라 수용. 육안 확인 대상.
 - **아이콘 에셋 스케일**: Figma `Ic_Warning_Round` 48×48(내부 Union 원 ~25px). 리소스 `ic_warning_round.xml`은 24dp viewport. `SizeTokens.Size48` 박스에 그리면 2배 스케일 → 링 두께·비율 미세 차이 가능. 프리뷰 육안 확인 대상, 필요 시 48dp 전용 에셋.
 - **width**: 고정 제어 안 함(플랫폼 기본 폭). Figma Hug(312)·Contents 206·Action 280 프레임 수치는 예시로 간주. 본문 줄바꿈은 실제 다이얼로그 폭 파생.
 - **iconRes 필수 여부**: 현재 non-null 필수. 아이콘 없는 팝업 요구 시 nullable 확장.
