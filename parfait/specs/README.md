@@ -14,6 +14,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 | [2026-07-13-ygripple.md](2026-07-13-ygripple.md) | 구현(브랜치 #94, develop 미머지) | `core:util:android` `clickable/` — ygDimRipple(커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임, alpha 0.15, 기본 리터럴색 YGDimRippleColor) |
 | [2026-07-13-clickableyg-ripple-variants.md](2026-07-13-clickableyg-ripple-variants.md) | 구현(브랜치 #94, develop 미머지) | `core:util:android` `clickable/` — clickableYG 리플 변형(Dim/Scale/Merge, @Composable, 합성 indication) + ygScaleRipple(누르면 축소). YGDimRipple/YGScaleRipple 파일 분리 |
 | [2026-07-14-yginvitecard.md](2026-07-14-yginvitecard.md) | draft | `component/card` — YGInviteCard(그룹 초대 코드 + 복사 버튼, Active/Invalid 상태별 색·버튼 활성 분기, subText 문자열 주입, onCopyClick 콜백, YGButton SmallSquare 재사용) + YGInviteCardStatus enum |
+| [2026-07-15-ygmodalpopup.md](2026-07-15-ygmodalpopup.md) | draft | `component/modal` — YGModalPopup(아이콘+제목+본문+2버튼 중앙 모달, Compose Dialog 래핑, confirm=Secondary·cancel=Primary 매핑, iconRes @DrawableRes+iconTint, onDismissRequest+DialogProperties 노출, YGButton Medium 재사용) |
 
 ## 아카이브
 | 스펙 | 내용 |
