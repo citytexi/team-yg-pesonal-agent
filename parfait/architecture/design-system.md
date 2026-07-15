@@ -71,8 +71,8 @@ res/drawable/             ← ic_* 아이콘 리소스
 
 - **패키지**: `component/<컴포넌트명 소문자>/`. 한 컴포넌트당 파일 분리:
   - `YGButton.kt` — 컴포저블 본체(`clickable`·semantic·`enabled`·`isPressed` 내재화).
-  - `YGButtonType.kt` — `sealed interface`로 변형(variant) 정의. 각 변형이 자기 토큰(패딩·radius·textStyle·iconSize·gap·colors)을 `@get:Composable`로 노출. 현재 변형: `XSmall`/`Small`/`SmallSquare`/`Medium.{Primary,Secondary,Transparency}`/`Large`.
-  - `YGButtonColors.kt` — 상태별 색 묶음 data class(enabled/disabled/pressed × foreground/background/border/icon).
+  - `YGButtonType.kt` — `sealed interface`로 변형(variant) 정의. 각 변형이 자기 토큰(패딩·radius·textStyle·iconSize·gap·colors)을 `@get:Composable`로 노출. 현재 변형: `SmallSquare`/`Medium.{Primary,Secondary,Transparency}`/`Large`. (fix/ygbutton **#140 develop 머지**로 `XSmall`/`Small` 제거.)
+  - `YGButtonColors.kt` — 상태별 색 묶음 data class(enabled/disabled/pressed × foreground/background). (#140에서 `borderColor` 제거·`iconColor`→`foregroundColor` 통합.)
   - `YGButtonPreviewData.kt` — 프리뷰용 데이터.
 - **토큰 참조**: 변형 내부에서 `YGTheme.layout.padding.*`, `YGTheme.shapes.radius.*`, `YGTheme.typography.body.*`, `SizeTokens.*.getDp()`로 읽는다.
 - **프리뷰**: `YGCustomTheme { }`로 감싼다(Local 미초기화 크래시 방지). Coil 프리뷰는 `YGCustomTheme`이 `LocalAsyncImagePreviewHandler`를 이미 심음.
