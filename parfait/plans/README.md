@@ -10,6 +10,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 | [2026-07-13-ygripple.md](2026-07-13-ygripple.md) | ygDimRipple 구현 계획(커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임). **구현됨(브랜치 #94)**, 현 위치 `core:util:android clickable/`. 스펙: [specs](../specs/2026-07-13-ygripple.md) |
 | [2026-07-13-clickableyg-ripple-variants.md](2026-07-13-clickableyg-ripple-variants.md) | clickableYG 리플 변형(Dim/Scale/Merge) + ygScaleRipple 구현 계획. **구현됨(브랜치 #94)** — Approach 2(@Composable, 합성 indication)로 재설계, `core:util:android`로 이동. 스펙: [specs](../specs/2026-07-13-clickableyg-ripple-variants.md) |
 | [2026-07-14-yginvitecard.md](2026-07-14-yginvitecard.md) | YGInviteCard 구현 계획(component/card, Column+라벨 Row+코드박스 Row, Active/Invalid when 분기, YGButton SmallSquare 재사용, @YGPreview). draft. 스펙: [specs](../specs/2026-07-14-yginvitecard.md) |
+| [2026-07-15-ygmodalpopup.md](2026-07-15-ygmodalpopup.md) | YGModalPopup 구현 계획(component/modal, Dialog 래퍼 + private YGModalPopupContent 분리, Contents Column[아이콘+텍스트]+Action Row[확인 Secondary/취소 Primary weight1f], iconTint 기본 cherry-600, @YGPreview는 content 직접 렌더). draft. 스펙: [specs](../specs/2026-07-15-ygmodalpopup.md) |
 
 ## 아카이브
 | 계획 | 내용 |
