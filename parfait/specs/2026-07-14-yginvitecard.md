@@ -27,7 +27,7 @@ tags: [spec, parfait, designsystem, card]
 - 제외:
   - subText 문구 생성("N명 남음"/"최대 인원 도달") — 호출자(feature) 소유. 컴포넌트는 완성된 문자열만 받는다.
   - 클립보드 복사·토스트 — `onCopyClick` 콜백만 노출, 실제 복사는 feature 레이어.
-  - 복사 버튼 색 정의 — `YGButtonType.SmallSquare` 소관(별도 브랜치에서 색 정비 중). 본 카드는 상태로 `isEnabled`만 제어.
+  - 복사 버튼 색 정의 — `YGButtonType.SmallSquare` 소관(fix/ygbutton #140 develop 머지됨). 본 카드는 상태로 `isEnabled`만 제어.
   - 카드 너비 고정 — `modifier`로 호출자가 결정(Figma의 335 고정폭은 프레임 예시).
 
 ## API / 인터페이스
