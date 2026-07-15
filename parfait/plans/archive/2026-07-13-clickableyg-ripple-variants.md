@@ -1,10 +1,10 @@
 ---
 id: clickableyg-ripple-variants
 title: clickableYG 리플 변형 + ygScaleRipple Implementation Plan
-status: draft
+status: done
 type: work-order
 created: 2026-07-13
-updated: 2026-07-13
+updated: 2026-07-15
 platforms: android
 owner:
 related_adr: ADR-0010
@@ -22,16 +22,16 @@ tags: [plan, parfait, designsystem]
 
 **Architecture:** 코어 `internal Modifier.clickableYGThrottle(indications: List<Indication>, ...)`의 Node가 자체 `interactionSource`에 리스트의 각 `IndicationNodeFactory`를 delegate(다중). 공개 변형은 적절한 리플 리스트를 넘기는 얇은 팩토리. throttle 상태는 Node에 유지(변경 없음). ripple 파일은 `YGDimRipple.kt`/`YGScaleRipple.kt`로 분리.
 
-**Tech Stack:** Kotlin, Jetpack Compose foundation(`IndicationNodeFactory`)/ui.node(`DelegatingNode`·`DrawModifierNode`)/animation-core(`Animatable`), material.ripple. 자체 테마([ADR-0010](../adr/0010-custom-compositionlocal-theme.md)).
+**Tech Stack:** Kotlin, Jetpack Compose foundation(`IndicationNodeFactory`)/ui.node(`DelegatingNode`·`DrawModifierNode`)/animation-core(`Animatable`), material.ripple. 자체 테마([ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)).
 
-**Spec:** [specs/2026-07-13-clickableyg-ripple-variants.md](../specs/2026-07-13-clickableyg-ripple-variants.md)
+**Spec:** [specs/2026-07-13-clickableyg-ripple-variants.md](../../specs/archive/2026-07-13-clickableyg-ripple-variants.md)
 
 > **구현 후 갱신** — Task 3 코드블록(커스텀 `ClickableYGNode`)은 이후:
 > - 정리 커밋에서 `ClickableYGElement` 수동 `equals`·inspector·`attachIndications` 정돈.
 > - (2026-07-14, **PR 리뷰 P1**) 접근성 패리티(focus/키/hover) 위해 **커스텀 노드를 버리고 `Modifier.clickable` 위 throttle 래핑(Approach 2)으로 재설계** — 변형·코어 `@Composable`, throttle은 `remember`된 `YGClickThrottleGate`, 다중 리플은 `YGCompositeIndicationNodeFactory`로 합성. `ClickableYGElement`/`ClickableYGNode` 제거. compile+ktlint 통과.
 > - (2026-07-14) **`core:designsystem` → `core:util:android` `clickable/`로 이동**(ripple 색 리터럴화, util:android compose 플러그인). 아래 코드블록의 패키지·경로는 옛 위치.
 >
-> 현재 코드 기준은 [throttle 스펙](../specs/2026-07-12-clickableyg-throttle.md) "구조(Approach 2)"·"파일 구성" 참조. 아래 코드블록은 역사 스냅샷.
+> 현재 코드 기준은 [throttle 스펙](../../specs/archive/2026-07-12-clickableyg-throttle.md) "구조(Approach 2)"·"파일 구성" 참조. 아래 코드블록은 역사 스냅샷.
 
 ## Global Constraints
 - 대상 repo: `TJYG-Android`. 패키지: `com.teamyg.parfait.core.designsystem.utils.clickable`.
@@ -465,4 +465,4 @@ git commit -m "feat: clickableYG 리플 변형(Dim/Scale/Merge) + ygScaleRipple"
 ## 열린 질문
 - **merge draw 순서**: dim↔scale delegate 순서의 시각 정답은 기기 확인 후 확정.
 - **기존 clickableYG 호출부**: `indication` 인자를 쓰던 곳 있으면 변형으로 이관(Task 3 Step 2).
-- **과도기**: 리플 색 Gray900·scaleValue 0.98 리터럴 → 토큰화 후속([open-questions](../open-questions.md)).
+- **과도기**: 리플 색 Gray900·scaleValue 0.98 리터럴 → 토큰화 후속([open-questions](../../open-questions.md)).

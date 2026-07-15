@@ -1,10 +1,10 @@
 ---
 id: clickableyg-ripple-variants
 title: clickableYG 리플 변형 세트 + ygScaleRipple
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-07-13
+verified: 2026-07-15
 related_code: core:util:android clickable/ — clickableYGDimRipple, clickableYGScaleRipple, clickableYGMergeRipple, ygScaleRipple
 related_adr: ADR-0010
 related_spec: clickableyg-throttle, ygripple
@@ -17,7 +17,7 @@ tags: [spec, parfait, designsystem]
 # Spec: clickableYG 리플 변형 세트 + ygScaleRipple
 
 - 대상: `core:util:android` — `clickable/` (2026-07-14 `core:designsystem`에서 이동)
-- 관련: [[2026-07-12-clickableyg-throttle|clickableYG]](코어 throttle) · [[2026-07-13-ygripple|ygDimRipple]] · [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md) · 이슈 #94
+- 관련: [[2026-07-12-clickableyg-throttle|clickableYG]](코어 throttle) · [[2026-07-13-ygripple|ygDimRipple]] · [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md) · [design-system](../../architecture/design-system.md) · 이슈 #94
 
 ## 목표
 clickableYG(중복 클릭 throttle)에 **리플 종류별 공개 변형**을 제공한다: dim ripple / scale(누르면 축소) / 둘 병합(merge). scale 효과용 `ygScaleRipple` `IndicationNodeFactory`를 신설(skt `ScaleNodeFactory` 포팅).
@@ -84,6 +84,6 @@ fun Modifier.clickableYG(/* 동일 파라미터 */): Modifier
 
 ## 주의 / 열린 질문
 - **merge delegate 순서**: draw 레이어링 정답은 기기 확인 후 확정(dim↔scale 순서).
-- **테마 비의존 리터럴**: 리플 색(`YGDimRippleColor = Color(0xFF29292C)`)·`scaleValue`(0.98)가 토큰 아닌 리터럴. `core:util:android`가 designsystem 테마 비의존이라 색은 리터럴 고정 또는 호출측 주입 → [open-questions](../open-questions.md).
+- **테마 비의존 리터럴**: 리플 색(`YGDimRippleColor = Color(0xFF29292C)`)·`scaleValue`(0.98)가 토큰 아닌 리터럴. `core:util:android`가 designsystem 테마 비의존이라 색은 리터럴 고정 또는 호출측 주입 → [open-questions](../../open-questions.md).
 - **기존 스펙 관계**: [[2026-07-12-clickableyg-throttle]](코어 throttle)·[[2026-07-13-ygripple]](ygDimRipple)의 API 일부(단일 `indication`, `YGRipple.kt` 파일명)를 이 스펙이 갱신. 구현 시 두 스펙의 해당 부분 동기화.
 - **검증**: compile + ktlint + 기기 육안(dim 리플/scale 축소/merge 동시). 정적 프리뷰로 리플·애니메이션 안 보임.

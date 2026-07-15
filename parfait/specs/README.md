@@ -10,9 +10,6 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 | 스펙 | 상태 | 내용 |
 |------|------|------|
-| [2026-07-12-clickableyg-throttle.md](2026-07-12-clickableyg-throttle.md) | 구현(브랜치 #94, develop 미머지) | `core:util:android` `clickable/` — clickableYG(@Composable, 표준 clickable 위 leading-throttle 게이트, windowMillis 기본 300ms, 기본 리플 ygDimRipple). focus/키/hover는 clickable에서 확보 |
-| [2026-07-13-ygripple.md](2026-07-13-ygripple.md) | 구현(브랜치 #94, develop 미머지) | `core:util:android` `clickable/` — ygDimRipple(커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임, alpha 0.15, 기본 리터럴색 YGDimRippleColor) |
-| [2026-07-13-clickableyg-ripple-variants.md](2026-07-13-clickableyg-ripple-variants.md) | 구현(브랜치 #94, develop 미머지) | `core:util:android` `clickable/` — clickableYG 리플 변형(Dim/Scale/Merge, @Composable, 합성 indication) + ygScaleRipple(누르면 축소). YGDimRipple/YGScaleRipple 파일 분리 |
 | [2026-07-14-yginvitecard.md](2026-07-14-yginvitecard.md) | draft | `component/card` — YGInviteCard(그룹 초대 코드 + 복사 버튼, Active/Invalid 상태별 색·버튼 활성 분기, subText 문자열 주입, onCopyClick 콜백, YGButton SmallSquare 재사용) + YGInviteCardStatus enum |
 | [2026-07-15-ygmodalpopup.md](2026-07-15-ygmodalpopup.md) | draft | `component/modal` — YGModalPopup(아이콘+제목+본문+2버튼 중앙 모달, Compose Dialog 래핑, confirm=Secondary·cancel=Primary 매핑, iconRes @DrawableRes+iconTint, onDismissRequest+DialogProperties 노출, YGButton Medium 재사용) |
 
@@ -28,6 +25,9 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 | [2026-07-12-ygtextfield-clear-iconbutton.md](archive/2026-07-12-ygtextfield-clear-iconbutton.md) | `component/textfield` — YGTextField clear 버튼 인라인 Box+Image → YGIconButton 교체(clearIconTint 제거). FormField 무편집 반사 반영 |
 | [2026-07-12-yglistitem-trailingicon-iconbutton.md](archive/2026-07-12-yglistitem-trailingicon-iconbutton.md) | `component/etc` — YGListItem trailing 아이콘 인라인 Box+Image → YGIconButton 교체(trailingIconColor 제거). clear 교체에 이은 두 번째 통일 |
 | [2026-07-13-yginputnumber.md](archive/2026-07-13-yginputnumber.md) | `component/yginputnumber` — YGInputNumber(50×50 숫자 선택 셀, isSelected 반전, Role.Button). 사후 기록(develop #129/이슈 #125, 타 작업자) |
+| [2026-07-12-clickableyg-throttle.md](archive/2026-07-12-clickableyg-throttle.md) | `core:util:android` `clickable/` — clickableYG(@Composable, 표준 clickable 위 leading-throttle 게이트, windowMillis 기본 300ms, 기본 리플 ygDimRipple). **develop 머지(#143)** |
+| [2026-07-13-ygripple.md](archive/2026-07-13-ygripple.md) | `core:util:android` `clickable/` — ygDimRipple(커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임, alpha 0.15, 기본 리터럴색 YGDimRippleColor). **develop 머지(#143)** |
+| [2026-07-13-clickableyg-ripple-variants.md](archive/2026-07-13-clickableyg-ripple-variants.md) | `core:util:android` `clickable/` — clickableYG 리플 변형(Dim/Scale/Merge, @Composable, 합성 indication) + ygScaleRipple(누르면 축소). YGDimRipple/YGScaleRipple 파일 분리. **develop 머지(#143)** |
 
 ## 작성 가이드
 - 형식 권위 출처: [`template.md`](template.md)

@@ -1,10 +1,10 @@
 ---
 id: clickableyg-throttle
 title: clickableYG — Node 기반 중복 클릭 방지 Modifier
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-07-13
+verified: 2026-07-15
 related_code: core:util:android clickable/YGClickable.kt — Modifier.clickableYG
 related_adr: ADR-0010
 related_spec: ygripple
@@ -17,7 +17,7 @@ tags: [spec, parfait, designsystem]
 # Spec: clickableYG — Node 기반 중복 클릭 방지 Modifier
 
 - 대상: `core:util:android` — `clickable/YGClickable.kt` (2026-07-14 `core:designsystem`에서 이동 — 테마 비의존 범용 clickable 유틸로 재배치)
-- 관련: [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md) · [[2026-07-13-ygripple|ygDimRipple]](기본 indication) · 이슈 #94
+- 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md) · [design-system](../../architecture/design-system.md) · [[2026-07-13-ygripple|ygDimRipple]](기본 indication) · 이슈 #94
 
 ## 목표
 연타·중복 탭으로 `onClick`이 여러 번 발화하는 문제를 막는 재사용 clickable modifier `Modifier.clickableYG`를 만든다. 커스텀 `Modifier.Node`로 구현해 `composed{}` 오버헤드 없이 리스트 등 광범위 재사용에 적합하게 한다. (프로젝트 첫 `Modifier.Node`.)
@@ -101,4 +101,4 @@ internal fun Modifier.clickableYGThrottle(
 - **검증 한계**: throttle 타이밍은 유닛 테스트 인프라 부재(Compose UI)로 compile + ktlint + `@Preview`/기기 연타 육안으로 확인. 정밀 타이밍 테스트는 별도.
 - **첫 Modifier.Node**: 프로젝트에 Node 선례 없음. 성공 시 이후 커스텀 modifier의 참조 패턴이 됨(아키텍처 결정화되면 ADR 검토).
 - **indication 기본값 = ygDimRipple**: 변형 함수가 리플을 고정(`clickableYGDimRipple` → `listOf(ygDimRipple())` 등). `ygDimRipple`은 같은 모듈(`core:util:android clickable/`)에 있어 별도 wrapper 불필요.
-- **테마 비의존(재이동 결과)**: `core:util:android`는 `core:designsystem`을 의존하지 않으므로 ripple 색을 테마(`YGAtomicColors`)에서 읽지 못한다. 기본색을 리터럴 `YGDimRippleColor = Color(0xFF29292C)`로 둠. 시맨틱 토큰화하려면 색을 호출측(designsystem 컴포넌트)에서 파라미터로 주입해야 함 → [open-questions](../open-questions.md).
+- **테마 비의존(재이동 결과)**: `core:util:android`는 `core:designsystem`을 의존하지 않으므로 ripple 색을 테마(`YGAtomicColors`)에서 읽지 못한다. 기본색을 리터럴 `YGDimRippleColor = Color(0xFF29292C)`로 둠. 시맨틱 토큰화하려면 색을 호출측(designsystem 컴포넌트)에서 파라미터로 주입해야 함 → [open-questions](../../open-questions.md).
