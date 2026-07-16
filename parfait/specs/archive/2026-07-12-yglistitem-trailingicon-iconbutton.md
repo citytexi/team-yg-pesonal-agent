@@ -4,7 +4,7 @@ title: YGListItem trailing 아이콘 → YGIconButton 교체
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-12
+verified: 2026-07-16
 related_code: core:designsystem component/etc/ YGListItem
 related_adr: ADR-0010
 related_spec: ygiconbutton, yglistitem, ygtextfield-clear-iconbutton
@@ -27,7 +27,9 @@ tags: [spec, parfait, designsystem]
 - **제외**: `YGIconButton` 자체 변경(색 override 파라미터 추가 안 함 — 고정 상태 tint 수용), `YGListItem`의 다른 동작(메인/sub 텍스트·패딩·`trailingIcon != null` 노출 규칙·onClick 대상) 변경, 아이콘·문자열 리소스화.
 
 ## API / 인터페이스
-public 시그니처 변화: `trailingIconColor: Color` 파라미터 **제거**(tint를 `YGIconButton` 내부 상태 tint로 이관). 나머지 파라미터(`text`, `subText`, `trailingIcon`, `textColor`, `subTextColor`, `onClick`)는 불변.
+public 시그니처 변화: `trailingIconColor: Color` 파라미터 **제거**(tint를 `YGIconButton` 내부 상태 tint로 이관).
+
+> **후속 변경(#136 브랜치 refactor, 2026-07-16)**: 이 교체 시점엔 단일 함수(nullable `subText`/`trailingIcon` + `onClick`)였으나, 이후 `YGListItem`이 **오버로드 2개 + `YGListItemImpl` 슬롯**으로 재설계됨. 그 결과 `onClick`→`onClickTrailingIcon` 개명, `trailingIcon`은 non-null 필수. 이 교체(인라인→YGIconButton)의 무손실 매핑 근거 자체는 유효(trailing 슬롯이 여전히 `YGIconButton(SIZE_44)`). 현행 시그니처는 [[2026-07-12-yglistitem]] 참고.
 
 교체 전(`trailingIcon?.let` 블록):
 ```kotlin
