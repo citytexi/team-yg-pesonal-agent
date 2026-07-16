@@ -4,7 +4,7 @@ title: 그룹 초대 카드 (YGInviteCard)
 status: draft
 category: ui-spec
 platforms: android
-verified: 2026-07-14
+verified: 2026-07-16
 related_code: YGInviteCard.kt#YGInviteCard, YGButton.kt#YGButton, YGButtonType.kt#SmallSquare
 related_adr:
 related_spec:
@@ -81,7 +81,7 @@ fun YGInviteCard(
 | 라벨 Row 간격 | `YGTheme.layout.gap.gap3` |
 | 코드 박스 컨테이너 Row 간격 | `YGTheme.layout.gap.gap4` |
 | 코드 박스 radius | `YGTheme.shapes.radius.small` |
-| 코드 박스 padding | 세로 `YGTheme.layout.gap.gap3`, 가로 `YGTheme.layout.gap.gap7` |
+| 코드 박스 padding | 세로 `YGTheme.layout.padding.padding3`, 가로 `YGTheme.layout.padding.padding8` |
 | 코드 텍스트 타이포 | `YGTheme.typography.body.b01SB` |
 
 ## 표시·제어 규칙
@@ -96,4 +96,4 @@ fun YGInviteCard(
 
 ## 주의 / 열린 질문
 - 코드 텍스트 수평 정렬(center vs start): Figma 미명시. 현재 center 가정. 디자이너 확인 후 확정.
-- 코드 박스 가로 padding·라벨 Row 간격·border 두께는 리터럴 dp에서 디자인 토큰(`YGTheme.layout.gap.gap7`·`gap3`·`SizeTokens.Size1`)으로 치환됨(해소). 토큰 실값이 Figma(24/8/1px)와 일치하는지는 프리뷰 육안 확인 대상.
+- 코드 박스 padding은 gap 토큰(`layout.gap.gap7`/`gap3`)에서 **padding 토큰(`layout.padding.padding8`/`padding3`)으로 교정**됨(refactor `YGInviteCard gap 호출 수정`, #136 브랜치 — 패딩에는 padding 토큰 사용). 라벨 Row 간격·border 두께(`SizeTokens.Size1`) 치환은 유지. 토큰 실값이 Figma(8/1px 등)와 일치하는지는 프리뷰 육안 확인 대상.
