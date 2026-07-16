@@ -43,6 +43,31 @@
 
 위키와 무관한 작업에는 위 스키마를 적용하지 않는다.
 
+## 작업 유형별 워크플로 라우팅 (필수)
+
+작업 시작 시 **유형을 먼저 판별**하고 아래 워크플로를 탄다.
+공통 진입은 항상 `superpowers:brainstorming`(의도·요구 정리) — 코드든 문서든 동일.
+그 다음 갈래가 나뉜다.
+
+### A. TJYG-Android 코드 구현 (`.kt`/gradle 편집, 기능·컴포넌트·버그픽스)
+→ **superpowers 체인**:
+1. `superpowers:brainstorming` → 설계 스펙 확정 (`parfait/specs/`, 아래 [설계 스펙 위치](#설계-스펙-위치-tjyg-android-구현))
+2. `superpowers:writing-plans` → 구현 계획 (`parfait/plans/`. writing-plans 기본 위치 `docs/superpowers/plans/`를 이 경로로 override)
+3. `superpowers:subagent-driven-development` 또는 `superpowers:executing-plans` → TDD로 실행
+- `writing-plans`·`test-driven-development`·`executing-plans`는 **코드 작업 전용**. 제품 문서엔 쓰지 않는다.
+
+### B. 제품 문서 작업 (PRD·positioning·roadmap·user story·discovery 등)
+→ **PM-Skills 사용** (`writing-plans` 대신 이쪽이 문서판 대응물):
+- PRD → `prd-development` / 포지셔닝 → `positioning-statement`·`positioning-workshop`
+- 우선순위 → `prioritization-advisor` / 로드맵 → `roadmap-planning`
+- 유저스토리·에픽 → `user-story`·`epic-breakdown-advisor` / 디스커버리 → `discovery-process`·`jobs-to-be-done`
+- 그 외 PM 작업은 해당 PM-Skills 스킬 목록에서 선택.
+- **출력물은 `parfait/pm/`에 저장**하고 parfait 규약(파일명 `YYYY-MM-DD-kebab-topic.md`)을 따른다.
+  (PM-Skills 기본 출력은 일반 템플릿 → 저장 시 이 규약으로 맞춘다.)
+
+### C. 정책 지식 위키 (`wiki/`·`raw/`)
+→ 기존 `ingest`/`query`/`lint` 워크플로. `wiki/CLAUDE.md` 스키마를 따른다(변경 없음).
+
 ## 설계 스펙 위치 (TJYG-Android 구현)
 
 `TJYG-Android` 기능·컴포넌트를 만들기 전 확정하는 **설계 스펙은 `parfait/specs/`에 작성한다.**
