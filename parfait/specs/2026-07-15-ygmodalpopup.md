@@ -4,7 +4,7 @@ title: 모달 팝업 (YGModalPopup)
 status: draft
 category: ui-spec
 platforms: android
-verified: 2026-07-15
+verified: 2026-07-16
 related_code: YGModalPopup.kt#YGModalPopup, YGButton.kt#YGButton, YGButtonType.kt#Medium.Secondary, YGButtonType.kt#Medium.Primary
 related_adr:
 related_spec:
@@ -80,8 +80,9 @@ fun YGModalPopup(
 | 루트 padding | top `YGTheme.layout.padding.padding5`, 좌/우/하 `YGTheme.layout.padding.padding6` |
 | 루트 세로 간격(Contents↔Action) | `YGTheme.layout.gap.gap5` |
 | 루트 정렬 | `Alignment.CenterHorizontally`, 폭은 `fillMaxWidth` |
-| Contents 세로 간격(아이콘↔텍스트) | `YGTheme.layout.padding.padding2` |
+| Contents 세로 간격(아이콘↔텍스트) | `YGTheme.layout.gap.gap2`(`spacedBy`) |
 | 아이콘 박스 크기 | `SizeTokens.Size48` |
+| 아이콘 이미지 크기 | `SizeTokens.Size32`(박스 안 중앙) |
 | 아이콘 틴트 | `iconTint`(기본 `Cherry.Cherry600`) |
 | Title 타이포 | `YGTheme.typography.title.t03SB`, center |
 | Title 색 | `YGAtomicColors.Gray.Gray900` |
@@ -93,7 +94,7 @@ fun YGModalPopup(
 
 ## 표시·제어 규칙
 - 루트: `Dialog(onDismissRequest, properties)` 내부 `Column`(`fillMaxWidth` + 배경·radius·clip·padding).
-- Contents `Column`: 아이콘(`SizeTokens.Size48` 박스, `iconRes` 틴트 `iconTint`) + 텍스트 `Column`(Title/Body, center).
+- Contents `Column`: 아이콘(`SizeTokens.Size48` 박스 안 `SizeTokens.Size32` 이미지, `iconRes` 틴트 `iconTint`) + 텍스트 `Column`(Title/Body, center).
 - Action Area `Row`: 확인 버튼(Secondary, `weight(1f)`) → 취소 버튼(Primary, `weight(1f)`).
 - 두 버튼 폭은 `weight(1f)`로 균등 분할.
 
@@ -102,7 +103,7 @@ fun YGModalPopup(
 - 프리뷰: `@YGPreview` + `PreviewBox`(모듈 관례). Figma 예시("그룹에서 나갈까요?" + `ic_warning_round` + 확인/취소).
 
 ## 주의 / 열린 질문
-- **Title 색**: Figma `#333333`. 정확 매칭 아토믹 토큰 없음(`Gray.Gray850`=#333537 근사, `Gray.Gray900`=#29292C). **해소** — 구현(#135 `5dcd419` refactor)에서 `YGAtomicColors.Gray.Gray900` 채택(하드코딩 리터럴 폐기, 아토믹 토큰 사용). Figma #333333과 미세 차이(#29292C)는 디자인 토큰 우선 방침에 따라 수용. 육안 확인 대상.
-- **아이콘 에셋 스케일**: Figma `Ic_Warning_Round` 48×48(내부 Union 원 ~25px). 리소스 `ic_warning_round.xml`은 24dp viewport. `SizeTokens.Size48` 박스에 그리면 2배 스케일 → 링 두께·비율 미세 차이 가능. 프리뷰 육안 확인 대상, 필요 시 48dp 전용 에셋.
+- **Title 색**: Figma `#333333`. 정확 매칭 아토믹 토큰 없음(`Gray.Gray850`=#333537 근사, `Gray.Gray900`=#29292C). **해소** — 구현(#135 브랜치 atomic color refactor)에서 `YGAtomicColors.Gray.Gray900` 채택(하드코딩 리터럴 폐기, 아토믹 토큰 사용). Figma #333333과 미세 차이(#29292C)는 디자인 토큰 우선 방침에 따라 수용. 육안 확인 대상.
+- **아이콘 에셋 스케일**: Figma `Ic_Warning_Round` 48×48(내부 Union 원 ~25px). 리소스 `ic_warning_round.xml`은 24dp viewport. 구현은 `SizeTokens.Size48` 박스 안에 `SizeTokens.Size32` 이미지로 그림(24dp 에셋 → ~1.33배 스케일) → 링 두께·비율 미세 차이 가능. 프리뷰 육안 확인 대상, 필요 시 전용 에셋.
 - **width**: 고정 제어 안 함(플랫폼 기본 폭). Figma Hug(312)·Contents 206·Action 280 프레임 수치는 예시로 간주. 본문 줄바꿈은 실제 다이얼로그 폭 파생.
 - **iconRes 필수 여부**: 현재 non-null 필수. 아이콘 없는 팝업 요구 시 nullable 확장.
