@@ -28,6 +28,8 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 | [2026-07-12-clickableyg-throttle.md](archive/2026-07-12-clickableyg-throttle.md) | `core:util:android` `clickable/` — clickableYG(@Composable, 표준 clickable 위 leading-throttle 게이트, windowMillis 기본 300ms, 기본 리플 ygDimRipple). **develop 머지(#143)** |
 | [2026-07-13-ygripple.md](archive/2026-07-13-ygripple.md) | `core:util:android` `clickable/` — ygDimRipple(커스텀 dim ripple IndicationNodeFactory, createRippleModifierNode 위임, alpha 0.15, 기본 리터럴색 YGDimRippleColor). **develop 머지(#143)** |
 | [2026-07-13-clickableyg-ripple-variants.md](archive/2026-07-13-clickableyg-ripple-variants.md) | `core:util:android` `clickable/` — clickableYG 리플 변형(Dim/Scale/Merge, @Composable, 합성 indication) + ygScaleRipple(누르면 축소). YGDimRipple/YGScaleRipple 파일 분리. **develop 머지(#143)** |
+| [2026-07-16-ygchipbutton.md](archive/2026-07-16-ygchipbutton.md) | `component/ygchipbutton` — YGChipButton(pill 칩 버튼, text + 선택 start/end 아이콘, YGChipButtonColors 주입 + Defaults 프리셋 2종, pressed 색 분기, 아이콘 유무 비대칭 패딩). **develop 머지(#141)** |
+| [2026-07-16-ygtogglebutton.md](archive/2026-07-16-ygtogglebutton.md) | `component/ygtogglebutton` — YGToggleButton(pill 선택형 버튼, isSelected 반전 배경/전경/타이포, selectable Role.Button, Colors 미분리·색 인라인 하드결선). **develop 머지(#142)** |
 
 ## 작성 가이드
 - 형식 권위 출처: [`template.md`](template.md)
