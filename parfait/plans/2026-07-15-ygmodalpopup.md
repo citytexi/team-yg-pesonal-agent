@@ -26,6 +26,8 @@ tags: [plan, parfait, designsystem, modal, dialog]
 
 **Spec:** [specs/2026-07-15-ygmodalpopup.md](../specs/2026-07-15-ygmodalpopup.md)
 
+> ⚠️ **이 계획은 최초 구현 시점(2026-07-15) 기준 기록.** 이후 #135 브랜치 refactor(`ba8d4aa`)로 API가 바뀜: `confirmText`/`onConfirm`/`cancelText`/`onCancel` → `secondaryText`/`onSecondaryClick`/`primaryText`/`onPrimaryClick`(confirm/cancel 의미 제거), `confirmEnabled`/`cancelEnabled` → 단일 `isEnabledButton`. **현행 API는 스펙이 SoT** — 아래 task 본문의 시그니처는 당시 스냅샷.
+
 ## Global Constraints
 - 대상 repo: `TJYG-Android`. 브랜치: 스텁(`YGModalPopup.kt`)이 `feature/#135-modal-component`에 존재 — 동일 브랜치 계속.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.modal`.
