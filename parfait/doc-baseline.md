@@ -5,9 +5,9 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `9085bc7534c276728e3d31271d445c8f31d342c7`
-- **요약**: `Merge pull request #143 from mash-up-kr/feature/#94-solve-duplicate-clickable-issue`
-- **검증일**: 2026-07-15
+- **커밋**: `bd844a5e1bd9acef709cac5e8c709189528c5969`
+- **요약**: `Merge pull request #141 from mash-up-kr/feature/ygchipbutton`
+- **검증일**: 2026-07-16
 - **미머지 제외 항목**(문서 인벤토리에서 "미머지" 주석 유지): `#135` modal(`feature/#135-modal-component`), `#136` etc(`feature/#136-etc-component`)
 
 ## 점검 절차 (다음 요청 시)
@@ -29,3 +29,4 @@
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
 | 2026-07-15 | `9085bc7` | Merge #143 (#94 clickable) | #94 clickable 반영(PR #47) + #140 ygbutton 드리프트 수정(PR #48). 미머지: #135 modal·#136 etc |
+| 2026-07-16 | `bd844a5` | Merge #141 (ygchipbutton) | 신규 컴포넌트 2건 스펙 작성(implemented·archive): #141 YGChipButton·#142 YGToggleButton. design-system 인벤토리·원자색 확산 노트 갱신, open-questions에 YGToggleButton 규약 이탈 등록. 미머지: #135 modal·#136 etc |
