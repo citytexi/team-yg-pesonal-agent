@@ -100,6 +100,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결
 - **해소 메모**: 방침 확정 시 [ADR-0014](adr/0014-logging-abstraction-kermit.md) 본문·`LoggerInitializer` 갱신.
 
+### [2026-07-18] YGAtomicColors public 전환 — 시맨틱 우선 원칙 실질 이탈
+- **출처**: `theme/colors/YGAtomicColors.kt` — `internal object YGAtomicColors` → `object YGAtomicColors`(public) 변경. 브랜치 `refactor/design-system-preview`, **develop 미머지**(미커밋 working tree 단계).
+- **배경**: 디자인이 GUI에서 시맨틱(`YGColorScheme`) 개념을 쓰지 않고 원자 색을 그대로 끌고 가 사용 → 컴포넌트·피처가 원자 색 직접 참조하는 게 현실. `internal` 유지가 외부 모듈 사용을 막아 불가피하게 public 전환.
+- **항목**: ① [ADR-0010](adr/0010-custom-compositionlocal-theme.md) "컴포넌트는 시맨틱을 읽는다" 원칙을 폐기/완화할지(원자 색이 실질 SoT), ② [design-system](architecture/design-system.md) "원자 색 직접 참조 금지 원칙" 서술 개정, ③ 시맨틱 레이어(`YGColorScheme`/`YGSemanticColorDefaults`)를 유지할지 걷어낼지, ④ 방향 전환을 신규 ADR로 남길지 ADR-0010 갱신할지.
+- **상태**: 미해결 (develop 미머지 — 문서는 미머지 마커만)
+- **해소 메모**: develop 머지 시 design-system·ADR-0010 갱신(또는 신규 ADR로 "원자 색 직접 노출 채택" 기록), 마커 제거. 기존 [2026-07-10 YGButton 디자인 토큰](#2026-07-10-ygbutton-디자인-토큰-규칙-미확정) "시맨틱 정리" 방향과 상반 — 함께 재정리.
+
 <!--
 항목 추가 형식:
 

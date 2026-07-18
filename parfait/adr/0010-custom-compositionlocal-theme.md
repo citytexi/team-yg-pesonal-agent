@@ -36,6 +36,7 @@ tags: [adr, parfait]
   - `YGShapes` — `radius: YGShapeRadius`(`xSmall`~`round` 명명 스케일).
   - `YGLayout` — `gap: YGLayoutGap` + `padding: YGLayoutPadding`(`gap1..`, `padding1..` 명명 스케일).
 - **색 2계층**: 원자 색 `YGAtomicColors`(팔레트: `Cherry/Melon/Pudding/Soda/Gray/Transparency`, `internal`) → 시맨틱 `YGColorScheme`. 원자→시맨틱 매핑은 `YGSemanticColorDefaults`(`YGLightColorScheme`, `YGDarkColorScheme`)가 담당. 컴포넌트는 시맨틱을 읽는 것이 원칙.
+  > ⚠️ **원칙 재검토 진행(브랜치 `refactor/design-system-preview`, develop 미머지)** — 디자인이 GUI에서 시맨틱 대신 원자 색을 직접 쓰는 것이 현실이라 `YGAtomicColors`를 `internal`→public으로 여는 변경이 있음. "컴포넌트는 시맨틱을 읽는다" 원칙의 실질 이탈 → 머지 시 이 ADR 본문 갱신 또는 신규 ADR로 방향 전환 기록. 추적 [open-questions](../open-questions.md).
 - **기본값 제공 object**: `YGSemanticColorDefaults`·`YGTypographyDefaults`·`YGShapesDefaults`·`YGLayoutDefaults`가 각 홀더의 `YGDefault*` 인스턴스를 만들어 `YGCustomTheme`에 주입.
 - **크기 토큰만 별도**: `SizeTokens`(object) + `SizeToken`(`@JvmInline value class`, `.getDp()`)는 테마 홀더 밖에 유지 — 컴포넌트가 `SizeTokens.Size24.getDp()`로 직접 참조.
 - **다크 모드**: 스캐폴딩만(`YGDarkColorScheme = YGLightColorScheme`, 코드 `TODO`). 실제 다크 팔레트는 후속.
