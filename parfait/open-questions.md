@@ -49,8 +49,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처 A**: `component/ygbutton`·`ygiconbutton`·`ygactionitem` — 컴포넌트별 폴더 + `@Preview`/`YGCustomTheme`(+`PreviewParameterProvider`) 프리뷰.
 - **출처 B**: `component/textfield`·`etc` — 그룹 폴더 + `@YGPreview`/`PreviewBox` 프리뷰.
 - **항목**: ① 패키지 네이밍(컴포넌트별 vs 그룹 폴더) 표준, ② 프리뷰 방식(`@YGPreview`/`PreviewBox` vs `@Preview`/`PreviewParameterProvider`) 표준.
-- **상태**: 미해결
-- **해소 메모**: 표준 확정 시 [design-system](architecture/design-system.md) "컴포넌트 작성 규약"에 반영하고 기존 컴포넌트 정리.
+- **상태**: 미해결 (② 프리뷰 방식은 브랜치 `refactor/design-system-preview`에서 `@YGPreview`+`PreviewBox` 통일 진행 중 — **develop 미머지**. ① 패키지 네이밍은 잔존.)
+- **해소 메모**: ② 프리뷰 방식 — 리팩터([designsystem-preview-migration 스펙](specs/2026-07-18-designsystem-preview-migration.md)/[plan](plans/2026-07-18-designsystem-preview-migration.md))로 18파일 전부 `@YGPreview`+`PreviewBox` 전환·컴파일/ktlint 통과. **develop 머지 시** ② 해소 처리하고 [design-system](architecture/design-system.md) 프리뷰 노트를 "표준 통일 완료"로 갱신. 그 전엔 "미머지" 유지. ① 패키지 네이밍 표준 확정 시 "컴포넌트 작성 규약"에 반영하고 기존 컴포넌트 정리(YGColorChip 패키지 불일치 포함).
 
 ### [2026-07-13] design-system.md가 develop 미머지 브랜치 작업을 구현됨으로 기술
 - **출처**: 문서가 일부 심볼을 구현됨으로 기술하나 `origin/develop`에 부재. `YGListItem`·`YGHorizontalDivider`(`component/etc/`, design-system.md 인벤토리)는 브랜치 `feature/#136-etc-component`에만 존재. (`YGModalPopup`은 `feature/#135-modal-component`에만 — 아직 인벤토리 미기재.)
