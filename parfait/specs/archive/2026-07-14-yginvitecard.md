@@ -1,11 +1,11 @@
 ---
 id: yginvitecard
 title: 그룹 초대 카드 (YGInviteCard)
-status: draft
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-16
-related_code: YGInviteCard.kt#YGInviteCard, YGButton.kt#YGButton, YGButtonType.kt#SmallSquare
+verified: 2026-07-18
+related_code: YGInviteCard.kt#YGInviteCard, YGInviteCardStatus.kt#YGInviteCardStatus, YGButton.kt#YGButton, YGButtonType.kt#SmallSquare
 related_adr:
 related_spec:
 related_architecture: design-system

@@ -6,7 +6,7 @@ updated: 2026-07-06
 # Wiki Index
 
 > 마지막 업데이트: 2026-07-14 | 총 페이지 수: 33 (정책 지식 위키 전용)
-> 구현 문서는 별도 루트 디렉토리 [[parfait/index|Parfait 구현 위키]](`parfait/`, 37페이지)로 분리 — 위키 스키마 미적용.
+> 구현 문서는 별도 루트 디렉토리 [[parfait/index|Parfait 구현 위키]](`parfait/`)로 분리 — 위키 스키마 미적용.
 
 ## Overview
 - [[overview]] — 위키 전체 논지 및 핵심 발견 (살아있는 문서)
@@ -47,7 +47,7 @@ updated: 2026-07-06
 - [[toast]] — Toast 공통 정책(위→아래 노출·스와이프업/2초 닫기·스택)·닉네임 컬러 nametag-chip 매핑
 
 ## 구현 위키 (별도 디렉토리 — `parfait/`, 위키 스키마 밖)
-- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 12건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, YGTextField). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서. **repo 루트 `parfait/`로 분리**(2026-07-13), 링크는 repo-root Obsidian vault 기준 resolve.
+- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 14건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션·Firebase FCM·로깅 추상화 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, 디자인시스템 컴포넌트 다수). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서. **repo 루트 `parfait/`로 분리**(2026-07-13), 링크는 repo-root Obsidian vault 기준 resolve.
 
 ## Synthesis (분석·결과)
 - [[open-questions]] — 정책·기획 미해결 모순 및 열린 질문 추적 (구현 미결은 [[parfait/open-questions|parfait open-questions]]로 분리)

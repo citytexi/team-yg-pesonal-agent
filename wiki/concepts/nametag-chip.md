@@ -12,6 +12,8 @@ updated: 2026-07-14
 - **6개 컬러**(연핑크·진핑크·체리·그레이·멜론·푸딩) × **각 2타입** = **총 12종**.
 - 계정당 **12종 중 1종 랜덤** 배정.
 
+> ⚠️ 2026-07-18 TJYG-Android 구현(`YGColorChipType`)과 상충 — 코드는 `NametagChip1`~`NametagChip13`(13종) + `NametagChipPlus`(추가용)로 정의돼 **정책 12종과 개수 불일치**. → [[open-questions]] 등록, parfait `open-questions`([2026-07-18])에도 교차 기록.
+
 ## 컬러 매핑 (토스트 닉네임 텍스트 + Grouptag-Chip Timestamp)
 공용 캔버스 액션 발생 시 동접 그룹원에게 뜨는 토스트의 **닉네임 텍스트**, 그리고 Grouptag-Chip의 **Timestamp 텍스트** 컬러는 유저 Nametag-Chip 타입에 **강제 매핑**된다.
 

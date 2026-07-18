@@ -69,3 +69,4 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-13] maintenance | lint-2026-07-06-parfait.md(코드 대조 보고서) wiki/synthesis → parfait/ 이동, index 링크 갱신
 
 ## [2026-07-14] ingest | C-202 토핑 편집자 확인 규칙 v0.1 + Toast 공통 정책 배치 — sources 2·concepts 2(토핑-spotlight·toast) 신설, 토핑·그룹·nametag-chip 갱신
+## [2026-07-18] lint | nametag-chip 정책(12종) vs TJYG-Android YGColorChipType(13+Plus종) 개수 상충 감지 → nametag-chip ⚠️ 마커 + open-questions 등록. parfait 문서 develop 기준선 점검(8cdf942)과 연동
