@@ -10,12 +10,18 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 | 스펙 | 상태 | 내용 |
 |------|------|------|
-| [2026-07-14-yginvitecard.md](2026-07-14-yginvitecard.md) | draft | `component/card` — YGInviteCard(그룹 초대 코드 + 복사 버튼, Active/Invalid 상태별 색·버튼 활성 분기, subText 문자열 주입, onCopyClick 콜백, YGButton SmallSquare 재사용) + YGInviteCardStatus enum |
-| [2026-07-15-ygmodalpopup.md](2026-07-15-ygmodalpopup.md) | draft | `component/modal` — YGModalPopup(아이콘+제목+본문+2버튼 중앙 모달, Compose Dialog 래핑, Secondary(좌)·Primary(우) 버튼 타입 기준 파라미터(confirm/cancel 의미 미규정)·단일 isEnabledButton, iconRes @DrawableRes+iconTint, onDismissRequest+DialogProperties 노출, YGButton Medium 재사용) |
+| _(활성 스펙 없음 — 모두 구현 완료로 아카이브됨)_ | | |
 
 ## 아카이브
 | 스펙 | 내용 |
 |------|------|
+| [2026-07-14-yginvitecard.md](archive/2026-07-14-yginvitecard.md) | `component/card` — YGInviteCard(그룹 초대 코드 + 복사 버튼, Active/Invalid 상태별 색·버튼 활성 분기, subText 문자열 주입, onCopyClick 콜백, YGButton SmallSquare 재사용) + YGInviteCardStatus enum. **develop 머지(#148/#136)** |
+| [2026-07-15-ygmodalpopup.md](archive/2026-07-15-ygmodalpopup.md) | `component/modal` — YGModalPopup(아이콘+제목+본문+2버튼 중앙 모달, Compose Dialog 래핑, Secondary(좌)·Primary(우) 버튼 타입 기준 파라미터(confirm/cancel 의미 미규정)·단일 isEnabledButton, iconRes @DrawableRes+iconTint, onDismissRequest+DialogProperties 노출, YGButton Medium 재사용). **develop 머지(#151/#135)** |
+| [2026-07-18-ygcolorchip.md](archive/2026-07-18-ygcolorchip.md) | `component/ygcolorchip` — YGColorChip(원형 네임태그 컬러칩, YGColorChipType 14종 fill/stroke/text 색, YGColorChipStyle 2크기). ⚠️패키지↔폴더 불일치·타입 12/14 정책 드리프트. **develop 머지(#150)** |
+| [2026-07-18-ygtext-date-label.md](archive/2026-07-18-ygtext-date-label.md) | `component/ygtext` — YGDate(날짜 라벨, 패딩 하드코딩)·YGLabel(보조 라벨) 텍스트 프리셋. **develop 머지(#150)** |
+| [2026-07-18-ygtopbar.md](archive/2026-07-18-ygtopbar.md) | `component/ygtopbar` — YGTopBar 4변형(Back/Detail/Empty/Default) + private YGTopBarContent, YGIconButton·YGChipButton 재사용, 로고 placeholder(ic_plus). **develop 머지(#152/#127)** |
+| [2026-07-18-ygdatebutton.md](archive/2026-07-18-ygdatebutton.md) | `component/ygdatebutton` — YGDateButton(캘린더 날짜 셀, selected/today/disabled/기본 4상태). ⚠️clickableYG 미사용(규약 이탈). **develop 머지(#147/#146)** |
+| [2026-07-18-ygdangerzone.md](archive/2026-07-18-ygdangerzone.md) | `component/ygdangerzone` — YGDangerZone(상/하 2슬롯 + 구분선 반투명 컨테이너, IntrinsicSize.Max, YGHorizontalDivider·YGActionItem 조합). **develop 머지(#148/#136)** |
 | [2026-07-10-ygtextfield.md](archive/2026-07-10-ygtextfield.md) | `component/textfield` — YGTextField(단일 폼, idle/focused/error/disabled 런타임 상태) |
 | [2026-07-10-ygtextformfield.md](archive/2026-07-10-ygtextformfield.md) | `component/textfield` — YGTextFormField(YGTextFieldImpl 재사용 + 하단 errorDescription) |
 | [2026-07-12-yghorizontaldivider.md](archive/2026-07-12-yghorizontaldivider.md) | `component/etc` — YGHorizontalDivider(1dp 수평 구분선, Spacer 기반, 두께·색 오버라이드) |

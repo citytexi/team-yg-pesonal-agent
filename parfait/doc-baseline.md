@@ -5,10 +5,10 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `bd844a5e1bd9acef709cac5e8c709189528c5969`
-- **요약**: `Merge pull request #141 from mash-up-kr/feature/ygchipbutton`
-- **검증일**: 2026-07-16
-- **미머지 제외 항목**(문서 인벤토리에서 "미머지" 주석 유지): `#135` modal(`feature/#135-modal-component`), `#136` etc(`feature/#136-etc-component`)
+- **커밋**: `8cdf9421a8ae38b5d1d42d860b4642b4c9a9f2f3`
+- **요약**: `Merge pull request #151 from mash-up-kr/feature/#135-modal-component`
+- **검증일**: 2026-07-18
+- **미머지 제외 항목**: 없음(기존 `#135` modal·`#136` etc 모두 develop 머지됨).
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
@@ -30,3 +30,4 @@
 |--------|-------------|------|------|
 | 2026-07-15 | `9085bc7` | Merge #143 (#94 clickable) | #94 clickable 반영(PR #47) + #140 ygbutton 드리프트 수정(PR #48). 미머지: #135 modal·#136 etc |
 | 2026-07-16 | `bd844a5` | Merge #141 (ygchipbutton) | 신규 컴포넌트 2건 스펙 작성(implemented·archive): #141 YGChipButton·#142 YGToggleButton. design-system 인벤토리·원자색 확산 노트 갱신, open-questions에 YGToggleButton 규약 이탈 등록. 미머지: #135 modal·#136 etc |
+| 2026-07-18 | `8cdf942` | Merge #151 (#135 modal) | 신규 머지 6건 반영. modal(#151/#135)·invitecard(#148/#136) spec·plan `implemented`/`done`·archive 이동(드리프트 없음). 신규 컴포넌트 spec 5건 작성(implemented·archive): YGColorChip·YGDate/YGLabel·YGTopBar·YGDateButton·YGDangerZone(#150/#152/#147/#148). ADR-0013(Firebase FCM)·ADR-0014(로깅 추상화 backfill) 신규. design-system 인벤토리·원자색·프리뷰·미머지 마커 정리. open-questions: [2026-07-13] 해소 + 신규 5건(YGColorChip 패키지 불일치·nametag 12/14·YGDateButton clickableYG·FCM 토큰·analytics 패키지). 미머지: 없음 |

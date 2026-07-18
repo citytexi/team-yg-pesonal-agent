@@ -1,10 +1,10 @@
 ---
 id: ygmodalpopup
 title: 모달 팝업 (YGModalPopup)
-status: draft
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-16
+verified: 2026-07-18
 related_code: YGModalPopup.kt#YGModalPopup, YGButton.kt#YGButton, YGButtonType.kt#Medium.Secondary, YGButtonType.kt#Medium.Primary
 related_adr:
 related_spec:

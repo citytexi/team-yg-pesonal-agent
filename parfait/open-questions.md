@@ -4,9 +4,9 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-07-15
+verified: 2026-07-18
 related_spec:
-related_adr: ADR-0010, ADR-0011, ADR-0012
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014
 related_architecture: design-system, data-layer
 related_code:
 tags: [meta, parfait]
@@ -55,8 +55,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-13] design-system.md가 develop 미머지 브랜치 작업을 구현됨으로 기술
 - **출처**: 문서가 일부 심볼을 구현됨으로 기술하나 `origin/develop`에 부재. `YGListItem`·`YGHorizontalDivider`(`component/etc/`, design-system.md 인벤토리)는 브랜치 `feature/#136-etc-component`에만 존재. (`YGModalPopup`은 `feature/#135-modal-component`에만 — 아직 인벤토리 미기재.)
 - **항목**: ① 문서 기준선을 develop로 볼지(파르페 규율 "코드>문서, drift 금지"), ② 미머지 항목을 "머지 예정/브랜치" 마커로 남길지 인벤토리에서 잠정 뺄지.
-- **상태**: 보류 (해당 브랜치 develop 머지 시 자연 해소 예상)
-- **해소 메모**: clickable 유틸(`clickableYG`·`ygDimRipple`·`ygScaleRipple`)은 **#94 develop 머지(#143)로 해소**(2026-07-15, specs/plans `implemented`·archive, design-system.md "머지" 갱신). #136(etc)·#135(modal)이 develop에 머지되면 잔여 해소하고 마커 정리. 그 전 재검증 시 "미머지" 주석 유지.
+- **상태**: 해소됨
+- **해소 메모**: clickable 유틸(`clickableYG`·`ygDimRipple`·`ygScaleRipple`)은 **#94 develop 머지(#143)로 해소**(2026-07-15). **#136(etc: YGListItem·YGHorizontalDivider·YGActionItem·YGDangerZone·YGInviteCard)은 PR #148, #135(modal: YGModalPopup)은 PR #151로 2026-07-18 기준선 점검 시 develop 머지 확인** → 잔여 해소. design-system.md 인벤토리에 전 컴포넌트 등록·"미머지" 마커 제거 완료.
 
 ### [2026-07-14] clickable 유틸이 `core:util:android`로 이동 — ripple 색 테마 비의존
 - **출처**: `core:util:android clickable/`(#94에서 `core:designsystem`→이동). `YGDimRipple`의 기본색이 `YGAtomicColors.Gray.Gray900`(테마)에서 리터럴 `YGDimRippleColor = Color(0xFF29292C)`로 바뀜 — util:android가 `core:designsystem` 비의존이라 테마 색을 못 읽음.
@@ -69,6 +69,36 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 색을 `YGToggleButtonColors`(+Defaults) 패턴으로 분리할지(YGChipButton 선례), ② `24.dp`를 `SizeTokens`로 토큰화할지, ③ `selectable` 관용구를 선택형 컴포넌트 표준으로 채택할지.
 - **상태**: 미해결
 - **해소 메모**: 디자인 토큰 규칙 확정 시 [design-system](architecture/design-system.md) "컴포넌트 작성 규약" + [2026-07-10 YGButton 디자인 토큰](#2026-07-10-ygbutton-디자인-토큰-규칙-미확정)과 정합해 정리.
+
+### [2026-07-18] YGColorChip 패키지↔폴더 불일치
+- **출처**: `component/ygcolorchip/` — `YGColorChip.kt`·`YGColorChipPreviewData.kt`는 `package …component.ygchip` 선언, `YGColorChipType.kt`만 `package …component.ygcolorchip`. 폴더는 `ygcolorchip/`인데 패키지가 둘로 갈림.
+- **항목**: 패키지를 폴더명(`ygcolorchip`)으로 통일할지(권장), 폴더를 패키지명(`ygchip`)에 맞출지.
+- **상태**: 미해결 (코드 수정 대상)
+- **해소 메모**: 컨벤션 정리 시 [design-system](architecture/design-system.md) "컴포넌트 작성 규약"과 정합. [2026-07-12 컨벤션 분기](#2026-07-12-디자인시스템-컴포넌트-컨벤션-분기)와 함께 처리.
+
+### [2026-07-18] 네임태그 컬러칩 타입 개수 — 코드 14종 vs 정책 12종
+- **출처**: `component/ygcolorchip/YGColorChipType.kt` — `NametagChip1`~`NametagChip13` + `NametagChipPlus`(추가용) = **14종**(숫자 13 + Plus). 위키 정책 [[nametag-chip]]([[S-101-프로필-닉네임-컬러-규칙-v0.2]])은 **Nametag-Chip 12종**으로 기술.
+- **항목**: ① 실제 매핑이 12종인지 13(+Plus)종인지 확정, ② 코드↔정책 중 어느 쪽이 SoT인지(원칙: 코드>정책, 단 색 규칙은 디자인 정책 소관). 위키 정책 재확인 필요.
+- **상태**: 미해결 (코드/정책 정합)
+- **해소 메모**: 정책 확정 시 위키 [[nametag-chip]]·[[S-101-프로필-닉네임-컬러-규칙-v0.2]] 갱신, 코드 타입 개수 정합. parfait [ygcolorchip 스펙](specs/archive/2026-07-18-ygcolorchip.md)의 타입 표 반영.
+
+### [2026-07-18] YGDateButton clickableYG 미사용 — 스로틀 규약 이탈
+- **출처**: `component/ygdatebutton/YGDateButton.kt` — 클릭을 표준 `Modifier.clickable(indication = null)` + `semantics { role = Role.Button }`로 직접 구현. 다른 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem·YGChipButton)가 쓰는 `core:util:android`의 중복 클릭 leading-throttle 유틸(`clickableYG`)을 안 씀 → 빠른 연타 방어 부재.
+- **항목**: `YGDateButton`을 `clickableYG`(또는 변형)로 전환할지, 캘린더 셀은 스로틀 예외로 둘지.
+- **상태**: 미해결 (코드 수정 대상)
+- **해소 메모**: 방침 확정 시 [design-system](architecture/design-system.md) "pressed 상태 관용구"·clickable 규약과 정합. [clickableyg-throttle 스펙](specs/archive/2026-07-12-clickableyg-throttle.md) 참조.
+
+### [2026-07-18] FCM 토큰 서버 전송 미구현
+- **출처**: `app/fcm/YGFirebaseMessagingService.kt` — `onNewToken`이 `TODO("서버에 FCM 토큰 전송")`. [ADR-0013](adr/0013-firebase-fcm-crashlytics.md).
+- **항목**: 토큰 갱신 시 서버 등록 흐름(원격 API·재시도·로그인 연계). 원격 네트워킹 자체가 후속 과제([data-layer](architecture/data-layer.md)).
+- **상태**: 보류 (원격 연동 이후)
+- **해소 메모**: 원격 연동 준비 시 구현하고 [ADR-0013](adr/0013-firebase-fcm-crashlytics.md) "위험·방어" 갱신.
+
+### [2026-07-18] `analytics` 패키지가 순수 로깅만 — 이름/기능 범위 불일치
+- **출처**: `core:util:jvm`의 `analytics` 패키지에 `Logger`/`Loggers`/`KermitLoggerImpl`/`LoggerInitializer`가 있으나 실제 애널리틱스(이벤트 전송·Firebase Analytics 연동)는 없음. [ADR-0014](adr/0014-logging-abstraction-kermit.md).
+- **항목**: ① 릴리즈 로그 라이터 정책(로그 억제·Crashlytics 연동)을 `LoggerInitializer`에 둘지, ② `analytics` 패키지에 실제 이벤트 트래킹을 붙일지 패키지명을 `logging`으로 좁힐지.
+- **상태**: 미해결
+- **해소 메모**: 방침 확정 시 [ADR-0014](adr/0014-logging-abstraction-kermit.md) 본문·`LoggerInitializer` 갱신.
 
 <!--
 항목 추가 형식:

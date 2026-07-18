@@ -20,6 +20,8 @@
 | [0010](0010-custom-compositionlocal-theme.md) | 자체 CompositionLocal 디자인시스템 테마 | accepted | 2026-07-10 | 0007 대체, MaterialTheme·dynamic color 배제 |
 | [0011](0011-cross-module-bitmap-abstraction.md) | 크로스모듈 비트맵 추상화 (BitmapWrapper/AndroidBitmap) | accepted | 2026-07-12 | domain 순수성 유지, 현재 stub |
 | [0012](0012-mlkit-subject-segmentation.md) | 이미지 세그멘테이션 — ML Kit Subject Segmentation 온디바이스 | accepted | 2026-07-12 | beta·GMS·install-time 모델 |
+| [0013](0013-firebase-fcm-crashlytics.md) | Firebase 도입 — FCM 푸시 + Crashlytics + Analytics | accepted | 2026-07-18 | app 모듈 집중·토큰 서버전송 후속·GMS 의존 |
+| [0014](0014-logging-abstraction-kermit.md) | 로깅 추상화 — Kermit 위임 Logger 인터페이스 | accepted | 2026-07-18 | core:util:jvm, backfill(기준선 이전 존재) |
 
 ## 작성 가이드
 

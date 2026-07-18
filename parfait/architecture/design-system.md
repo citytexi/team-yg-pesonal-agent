@@ -4,7 +4,7 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-07-13
+verified: 2026-07-18
 related_spec:
 related_adr: ADR-0007, ADR-0010
 related_architecture:
@@ -44,7 +44,7 @@ res/drawable/             ← ic_* 아이콘 리소스
   - 예: `YGTheme.typography.body.b01SB`, `YGTheme.layout.padding.padding4`, `YGTheme.shapes.radius.round`.
 - **크기만 예외**: `SizeTokens.Size24.getDp()`로 직접(`SizeToken`은 `@JvmInline value class`, 홀더 밖).
 - `Local*` CompositionLocal은 `internal` + 미초기화 시 `error(...)`. → **모든 UI·프리뷰는 `YGCustomTheme { }`로 감싸야** 크래시 안 남.
-- **원자 색 직접 참조 금지 원칙** — 컴포넌트는 시맨틱(`YGTheme.colorScheme`)을 읽는다. `YGAtomicColors`는 `internal`이며 시맨틱 매핑(`YGSemanticColorDefaults`)에서만 소비하는 것이 규칙. (현재 `YGButton`뿐 아니라 `YGActionItem`·`YGIconButton`·`YGInputNumber`·`YGChipButton`·`YGToggleButton`도 과도기라 `YGAtomicColors`를 직접 참조 — 아래 참고.)
+- **원자 색 직접 참조 금지 원칙** — 컴포넌트는 시맨틱(`YGTheme.colorScheme`)을 읽는다. `YGAtomicColors`는 `internal`이며 시맨틱 매핑(`YGSemanticColorDefaults`)에서만 소비하는 것이 규칙. (현재 `YGButton`뿐 아니라 `YGActionItem`·`YGIconButton`·`YGInputNumber`·`YGChipButton`·`YGToggleButton`·`YGModalPopup`·`YGInviteCard`·`YGColorChip`·`YGTopBar`·`YGDateButton`·`YGDate`·`YGLabel`·`YGDangerZone`도 과도기라 `YGAtomicColors`를 직접 참조 — 아래 참고.)
 
 ## 토큰 계층
 
@@ -77,7 +77,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 - **토큰 참조**: 변형 내부에서 `YGTheme.layout.padding.*`, `YGTheme.shapes.radius.*`, `YGTheme.typography.body.*`, `SizeTokens.*.getDp()`로 읽는다.
 - **프리뷰**: `YGCustomTheme { }`로 감싼다(Local 미초기화 크래시 방지). Coil 프리뷰는 `YGCustomTheme`이 `LocalAsyncImagePreviewHandler`를 이미 심음.
 
-> **Assumption / 과도기** — `YGButtonType`의 각 변형 `colors`가 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조하고, 값이 잠정(mock)이다. 코드 주석("Design Token 규칙이 조금 이상… 컴포넌트 완성 시점에 문의 예정")대로 **확정 전 상태**. 이 원자 직접 참조는 `YGButton`에 국한되지 않고 이후 컴포넌트(`YGActionItem`·`YGIconButton`·`YGInputNumber`·`YGChipButton`·`YGToggleButton`, 대체로 `YGAtomicColors.Gray.*`·`Cherry.*`·`Transparency.*`)로 확산됨. 확정 시 시맨틱으로 정리 권장. → [open-questions](../open-questions.md) 후보.
+> **Assumption / 과도기** — `YGButtonType`의 각 변형 `colors`가 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조하고, 값이 잠정(mock)이다. 코드 주석("Design Token 규칙이 조금 이상… 컴포넌트 완성 시점에 문의 예정")대로 **확정 전 상태**. 이 원자 직접 참조는 `YGButton`에 국한되지 않고 이후 대부분 컴포넌트(`YGActionItem`·`YGIconButton`·`YGInputNumber`·`YGChipButton`·`YGToggleButton`·`YGModalPopup`·`YGInviteCard`·`YGColorChip`·`YGTopBar`·`YGDateButton`·`YGDate`·`YGLabel`·`YGDangerZone`, 대체로 `YGAtomicColors.Gray.*`·`Cherry.*`·`Transparency.*`)로 확산됨. 확정 시 시맨틱으로 정리 권장. → [open-questions](../open-questions.md) 후보.
 
 ## 컴포넌트 인벤토리
 
@@ -93,17 +93,30 @@ res/drawable/             ← ic_* 아이콘 리소스
 | `YGInputNumber`(+`YGInputNumberPreviewData`) | `component/yginputnumber/` | [yginputnumber](../specs/archive/2026-07-13-yginputnumber.md) |
 | `YGChipButton`(+`YGChipButtonColors`·`YGChipButtonColorsDefaults`) | `component/ygchipbutton/` | [ygchipbutton](../specs/archive/2026-07-16-ygchipbutton.md) |
 | `YGToggleButton`(+`YGToggleButtonPreviewData`) | `component/ygtogglebutton/` | [ygtogglebutton](../specs/archive/2026-07-16-ygtogglebutton.md) |
+| `YGInviteCard`(+`YGInviteCardStatus`) | `component/card/` | [yginvitecard](../specs/archive/2026-07-14-yginvitecard.md) |
+| `YGModalPopup` | `component/modal/` | [ygmodalpopup](../specs/archive/2026-07-15-ygmodalpopup.md) |
+| `YGColorChip`(+`YGColorChipStyle`·`YGColorChipType`·`YGColorChipPreviewData`) | `component/ygcolorchip/` ⚠️패키지 불일치 | [ygcolorchip](../specs/archive/2026-07-18-ygcolorchip.md) |
+| `YGDate` / `YGLabel` | `component/ygtext/` | [ygtext-date-label](../specs/archive/2026-07-18-ygtext-date-label.md) |
+| `YGTopBar`(Back/Detail/Empty/Default 변형 + private `YGTopBarContent`) | `component/ygtopbar/` | [ygtopbar](../specs/archive/2026-07-18-ygtopbar.md) |
+| `YGDateButton` | `component/ygdatebutton/` | [ygdatebutton](../specs/archive/2026-07-18-ygdatebutton.md) |
+| `YGDangerZone` | `component/ygdangerzone/` | [ygdangerzone](../specs/archive/2026-07-18-ygdangerzone.md) |
 
-- **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize`). `YGTextField`의 clear 아이콘은 이미 인라인 `Box`+`Image`에서 `YGIconButton(size = YGIconButtonSize.SIZE_44)`로 치환됨(`YGTextFieldImpl.kt`). (`YGListItem` trailing caret은 해당 컴포넌트가 아직 develop 미머지 — 미적용.)
+- **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize`). `YGTextField`의 clear 아이콘은 이미 인라인 `Box`+`Image`에서 `YGIconButton(size = YGIconButtonSize.SIZE_44)`로 치환됨(`YGTextFieldImpl.kt`). `YGListItem` trailing caret도 `YGIconButton`으로 치환(#136 develop 머지 #148).
 - **`YGInputNumber`**: 숫자 셀. 컨테이너 크기·보더는 토큰 대신 고정 dp로 하드코딩(코드 주석: 디자인가이드 고정 크기)이라 토큰화 예외 사례. shape·typography는 `YGTheme.*` 사용, 색은 `YGAtomicColors.Gray.*` 직접 참조.
 - **`YGChipButton`**: pill(`shapes.radius.round`) 칩 버튼. text + 선택 start/end 아이콘, 아이콘 유무로 좌/우 패딩 비대칭. **Colors 패턴 준수** — `YGChipButtonColors`(@Immutable, default/pressed×fg/bg/border) 주입 + `YGChipButtonColorsDefaults` 프리셋(`CherryBorderPressed`·`CherryBackgroundPressed`). pressed 분기(아래 관용구). 프리셋 색은 `YGAtomicColors` 직접 참조(과도기).
 - **`YGToggleButton`**: pill 선택형 버튼. `isSelected`(prop) 하나로 배경/전경/타이포 반전, `selectable(Role.Button)` 사용. **규약 이탈** — Colors data class 미분리, 색을 컴포저블 본문에서 `YGAtomicColors.{Gray,Transparency}` 인라인 조건 분기(커스터마이즈 불가). 아이콘 `24.dp` 하드코딩. → [open-questions](../open-questions.md).
-- **pressed 상태 관용구**: 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem·YGChipButton)는 `MutableInteractionSource` + `collectIsPressedAsState()`로 pressed를 파생해 색/tint를 분기한다. (예외: `YGToggleButton`은 pressed 대신 `selectable`의 selected 상태로 분기.)
+- **`YGModalPopup`**: Compose `Dialog` 위 중앙 팝업. 아이콘+제목+본문 + 2버튼(`YGButton.Medium.Secondary` 좌/`Primary` 우, `weight(1f)` 균등). 버튼 confirm/cancel 의미 미규정(타입만 노출), 단일 `isEnabledButton`. 프리뷰 `@YGPreview`/`PreviewBox`.
+- **`YGInviteCard`**(+`YGInviteCardStatus` enum): 그룹 초대 코드 카드. Active/Invalid 상태로 border·subText·코드박스 배경·복사 버튼 활성 분기. 복사 버튼은 `YGButton.SmallSquare` 재사용. 프리뷰 `@YGPreview`/`PreviewBox`.
+- **`YGColorChip`**(+`YGColorChipStyle`·`YGColorChipType`): 원형 네임태그 컬러칩. `YGColorChipType` 14종(`NametagChip1~13`+`Plus`)이 fill/stroke/text 색을, `YGColorChipStyle`(`Style28`/`Style40`)가 지름·테두리·타이포를 고정. 위키 정책 [[nametag-chip]] 구현체(단 코드 14종 vs 정책 12종 드리프트 → [open-questions](../open-questions.md)). **⚠️ 패키지↔폴더 불일치**(`YGColorChip.kt`/`PreviewData`는 `package …ygchip`, `Type`만 `…ygcolorchip`) → [open-questions](../open-questions.md).
+- **`YGDate` / `YGLabel`**(`component/ygtext/`): 타이포+색 프리셋 텍스트 래퍼. `YGDate`는 패딩 하드코딩(토큰 예외, `YGInputNumber`류).
+- **`YGTopBar`**: 상단 바 4변형(Back/Detail/Empty/Default) 공유 레이아웃 private `YGTopBarContent`. 좌측 `YGIconButton.SIZE_44` + 우측 타이틀/`YGChipButton` 슬롯. 로고 자리는 `ic_plus` placeholder(코드 `todo: parfait logo`).
+- **`YGDangerZone`**: 상/하 2슬롯 + 사이 `YGHorizontalDivider` 반투명 컨테이너(`Transparency.Black5` 배경, `IntrinsicSize.Max`). 슬롯에 대개 `YGActionItem` 주입(로그아웃/탈퇴 묶음).
+- **pressed 상태 관용구**: 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem·YGChipButton)는 `MutableInteractionSource` + `collectIsPressedAsState()`로 pressed를 파생해 색/tint를 분기한다. (예외: `YGToggleButton`은 pressed 대신 `selectable`의 selected 상태로 분기. `YGDateButton`은 상태(selected/today/enabled) prop `when` 분기만 하고 `clickableYG` 대신 표준 `clickable(indication=null)` 사용 — **스로틀 규약 이탈**, → [open-questions](../open-questions.md).)
 - **clickable 유틸(`clickableYG`·`ygDimRipple`·`ygScaleRipple`)은 `core:designsystem`이 아니라 [`core:util:android`](module-structure.md)의 `clickable/` 패키지에 있다**(2026-07-14 이동, develop 머지 #143). `@Composable Modifier.clickableYG`(중복 클릭 leading-throttle) + 변형 3종(Dim/Scale/Merge)이 표준 `Modifier.clickable` 위에 throttle을 얹어 focus/키/hover/시맨틱을 확보. 테마 비의존이라 ripple 색은 리터럴(`YGDimRippleColor`). 상세 → [clickableyg-throttle](../specs/archive/2026-07-12-clickableyg-throttle.md) · [ygripple](../specs/archive/2026-07-13-ygripple.md) · [clickableyg-ripple-variants](../specs/archive/2026-07-13-clickableyg-ripple-variants.md).
 
 > **과도기 — 컨벤션 분기(정리 대상)**
-> - **패키지 네이밍**: 컴포넌트별 폴더(`ygbutton/`·`ygiconbutton/`·`ygactionitem/`)와 그룹 폴더(`textfield/`·`etc/`)가 혼재. 규약(위 "컴포넌트 작성 규약")은 컴포넌트별 폴더 기준.
-> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열: YGListItem·YGHorizontalDivider — 아직 develop 미머지)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem·YGInputNumber)가 공존. 어느 쪽으로 표준화할지 미확정. → [open-questions](../open-questions.md) 후보.
+> - **패키지 네이밍**: 컴포넌트별 폴더(`ygbutton/`·`ygiconbutton/`·`ygactionitem/`·`ygcolorchip/`·`ygtopbar/`·`ygdatebutton/`·`ygdangerzone/`·`ygtext/`)와 그룹 폴더(`textfield/`·`etc/`·`card/`·`modal/`)가 혼재. 규약(위 "컴포넌트 작성 규약")은 컴포넌트별 폴더 기준. 추가로 `ygcolorchip/`는 패키지 선언이 폴더명과 어긋남(`ygchip`) → [open-questions](../open-questions.md).
+> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열 YGListItem·YGHorizontalDivider, card/modal 계열 YGInviteCard·YGModalPopup)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem·YGInputNumber·YGColorChip·YGTopBar·YGDateButton·YGDangerZone·YGDate·YGLabel)가 공존. 어느 쪽으로 표준화할지 미확정. → [open-questions](../open-questions.md) 후보.
 
 ## 관련 ADR
 - [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) — 자체 CompositionLocal 테마(why).

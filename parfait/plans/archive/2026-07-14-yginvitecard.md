@@ -1,16 +1,16 @@
 ---
 id: yginvitecard
 title: YGInviteCard Implementation Plan
-status: draft
+status: done
 type: work-order
 created: 2026-07-14
-updated: 2026-07-14
+updated: 2026-07-18
 platforms: android
 owner:
 related_adr: ADR-0010
 related_spec: yginvitecard
 related_code: YGInviteCard, YGInviteCardStatus, YGButton, YGButtonType
-archived_reason:
+archived_reason: PR #148(feature/#136-etc-component) develop 머지 완료(2026-07-18 기준선 점검). 스펙 대조 드리프트 없음.
 tags: [plan, parfait, designsystem, card]
 ---
 
@@ -22,14 +22,14 @@ tags: [plan, parfait, designsystem, card]
 
 **Architecture:** `Column`(border+clip+background+padding) 안에 두 개의 `Row` — (1) 라벨 Row("그룹 초대 코드" + subText, subText는 `weight(1f)`+우측 정렬), (2) 코드박스 Row(private `InviteCodeBox` `weight(1f)`+`fillMaxHeight` + `YGButton` SmallSquare). 상태는 `status: YGInviteCardStatus` prop, 색은 `when(status)`로 파생. stateless presentational.
 
-**Tech Stack:** Kotlin, Jetpack Compose(foundation `Column`/`Row`/`Box`/`border`/`background`/`clip`/`padding`, material3 `Text`), 자체 테마([ADR-0010](../adr/0010-custom-compositionlocal-theme.md)), 기존 `YGButton`(`YGButtonType.SmallSquare`) 재사용.
+**Tech Stack:** Kotlin, Jetpack Compose(foundation `Column`/`Row`/`Box`/`border`/`background`/`clip`/`padding`, material3 `Text`), 자체 테마([ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)), 기존 `YGButton`(`YGButtonType.SmallSquare`) 재사용.
 
-**Spec:** [specs/2026-07-14-yginvitecard.md](../specs/2026-07-14-yginvitecard.md)
+**Spec:** [specs/archive/2026-07-14-yginvitecard.md](../../specs/archive/2026-07-14-yginvitecard.md)
 
 ## Global Constraints
 - 대상 repo: `TJYG-Android`. 브랜치: 스텁(`YGInviteCard.kt`)이 `feature/#136-etc-component`에 존재 — 동일 브랜치 계속 or 신규 feature 브랜치는 담당자 확정.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.card`.
-- 색은 상태별 `YGAtomicColors.Gray.*` / `YGAtomicColors.Cherry.*` 직접 참조(YGButton·YGIconButton 선례, 시맨틱 슬롯 없음 → 과도기 [open-questions](../../wiki/synthesis/open-questions.md)).
+- 색은 상태별 `YGAtomicColors.Gray.*` / `YGAtomicColors.Cherry.*` 직접 참조(YGButton·YGIconButton 선례, 시맨틱 슬롯 없음 → 과도기 [open-questions](../../open-questions.md)).
 - 타이포 `YGTheme.typography.body.b02R`(라벨·subText) / `b01SB`(코드), 간격·모양 토큰 `YGTheme.layout.*` / `YGTheme.shapes.radius.*`.
 - 복사 버튼 색은 손대지 않는다(`YGButtonType.SmallSquare` 소관, 별도 브랜치). 카드는 `isEnabled`만 제어.
 - 검증: `:core:designsystem:compileReleaseKotlin` + `:core:designsystem:ktlintMainSourceSetCheck` + `@YGPreview` 육안(Active/Invalid). 유닛 테스트 없음(모듈 관례).
