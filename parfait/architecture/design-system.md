@@ -23,7 +23,7 @@ tags: [architecture, parfait]
 core/designsystem/.../theme/
   YGTheme.kt              ← 진입점 YGCustomTheme() + 접근자 object YGTheme + Local* CompositionLocal
   colors/                 ← 색 2계층 (원자 → 시맨틱)
-    YGAtomicColors        원자 팔레트 (Cherry/Melon/Pudding/Soda/Gray/Transparency) — internal
+    YGAtomicColors        원자 팔레트 (Cherry/Melon/Pudding/Soda/Gray/Transparency) — internal (⚠️ 브랜치 refactor/design-system-preview서 public 전환 중, develop 미머지)
     YGColorScheme         시맨틱 홀더 (primary/secondary/tertiary/danger/warning/success/info/grayScale/transparency)
     YGColorGrayScale, YGColorTransparency   서브 홀더
     YGSemanticColorDefaults    원자→시맨틱 매핑 (YGLightColorScheme / YGDarkColorScheme)
@@ -44,7 +44,8 @@ res/drawable/             ← ic_* 아이콘 리소스
   - 예: `YGTheme.typography.body.b01SB`, `YGTheme.layout.padding.padding4`, `YGTheme.shapes.radius.round`.
 - **크기만 예외**: `SizeTokens.Size24.getDp()`로 직접(`SizeToken`은 `@JvmInline value class`, 홀더 밖).
 - `Local*` CompositionLocal은 `internal` + 미초기화 시 `error(...)`. → **모든 UI·프리뷰는 `YGCustomTheme { }`로 감싸야** 크래시 안 남.
-- **원자 색 직접 참조 금지 원칙** — 컴포넌트는 시맨틱(`YGTheme.colorScheme`)을 읽는다. `YGAtomicColors`는 `internal`이며 시맨틱 매핑(`YGSemanticColorDefaults`)에서만 소비하는 것이 규칙. (현재 `YGButton`뿐 아니라 `YGActionItem`·`YGIconButton`·`YGInputNumber`·`YGChipButton`·`YGToggleButton`·`YGModalPopup`·`YGInviteCard`·`YGColorChip`·`YGTopBar`·`YGDateButton`·`YGDate`·`YGLabel`·`YGDangerZone`도 과도기라 `YGAtomicColors`를 직접 참조 — 아래 참고.)
+- **원자 색 직접 참조 금지 원칙(develop 기준)** — 컴포넌트는 시맨틱(`YGTheme.colorScheme`)을 읽는다. `YGAtomicColors`는 `internal`이며 시맨틱 매핑(`YGSemanticColorDefaults`)에서만 소비하는 것이 규칙. (현재 `YGButton`뿐 아니라 `YGActionItem`·`YGIconButton`·`YGInputNumber`·`YGChipButton`·`YGToggleButton`·`YGModalPopup`·`YGInviteCard`·`YGColorChip`·`YGTopBar`·`YGDateButton`·`YGDate`·`YGLabel`·`YGDangerZone`도 과도기라 `YGAtomicColors`를 직접 참조 — 아래 참고.)
+  > ⚠️ **원칙 방향 전환 진행(브랜치 `refactor/design-system-preview`, develop 미머지)** — 디자인이 GUI에서 시맨틱 개념을 쓰지 않고 원자 색을 그대로 사용하는 것이 현실이라, `YGAtomicColors`를 **`internal`→public**으로 여는 변경이 있음. 이 경우 "원자 직접 참조 금지"의 강제 메커니즘(외부 모듈 접근 차단)이 사라지고 원자 색이 실질 SoT가 됨 → [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) "시맨틱 우선" 원칙 재검토 대상. 머지 시 원칙 서술·ADR 갱신(또는 신규 ADR). → [open-questions](../open-questions.md).
 
 ## 토큰 계층
 
