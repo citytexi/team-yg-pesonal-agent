@@ -116,7 +116,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 
 > **과도기 — 컨벤션 분기(정리 대상)**
 > - **패키지 네이밍**: 컴포넌트별 폴더(`ygbutton/`·`ygiconbutton/`·`ygactionitem/`·`ygcolorchip/`·`ygtopbar/`·`ygdatebutton/`·`ygdangerzone/`·`ygtext/`)와 그룹 폴더(`textfield/`·`etc/`·`card/`·`modal/`)가 혼재. 규약(위 "컴포넌트 작성 규약")은 컴포넌트별 폴더 기준. 추가로 `ygcolorchip/`는 패키지 선언이 폴더명과 어긋남(`ygchip`) → [open-questions](../open-questions.md).
-> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열 YGListItem·YGHorizontalDivider, card/modal 계열 YGInviteCard·YGModalPopup)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem·YGInputNumber·YGColorChip·YGTopBar·YGDateButton·YGDangerZone·YGDate·YGLabel)가 공존. 어느 쪽으로 표준화할지 미확정. → [open-questions](../open-questions.md) 후보.
+> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열 YGListItem·YGHorizontalDivider, card/modal 계열 YGInviteCard·YGModalPopup)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem·YGInputNumber·YGColorChip·YGTopBar·YGDateButton·YGDangerZone·YGDate·YGLabel)가 develop 기준 공존. **`@YGPreview`+`PreviewBox`로 통일하는 리팩터가 브랜치 `refactor/design-system-preview`에서 진행 중(아직 develop 미머지)** — 컴포넌트 18파일 전부 `@YGPreview` 전환·컴파일/ktlint 통과. 머지 시 이 노트를 "표준 통일 완료"로 갱신하고 아래 open-questions 프리뷰 항목 해소. 상세 [designsystem-preview-migration 스펙](../specs/2026-07-18-designsystem-preview-migration.md). → [open-questions](../open-questions.md).
 
 ## 관련 ADR
 - [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) — 자체 CompositionLocal 테마(why).
