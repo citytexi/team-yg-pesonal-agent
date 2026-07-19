@@ -20,6 +20,7 @@ tags: [spec, parfait, designsystem]
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md) · [yghorizontaldivider](2026-07-12-yghorizontaldivider.md) · [ygactionitem](2026-07-12-ygactionitem.md) · PR #148(`feature/#136-etc-component`)
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+> ⚠️ [2026-07-19] 이 스펙은 **develop baseline(solid 채움 + solid 구분선)**. 점선 재설계는 브랜치 `feature/sync-design-system-260719`에서 진행 중 → [2026-07-19-ygdangerzone-dashed](../2026-07-19-ygdangerzone-dashed.md). develop 머지 시 본 스펙과의 supersede 관계 확정.
 
 ## 목표
 두 개의 슬롯(위/아래)을 구분선으로 나눠 담는 반투명 컨테이너. 설정 화면의 "로그아웃 / 서비스 탈퇴" 같은 위험 액션 묶음이 대표 유스케이스. 자식 컴포넌트는 호출자가 주입(대개 `YGActionItem`).

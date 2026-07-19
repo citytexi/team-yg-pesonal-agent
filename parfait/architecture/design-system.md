@@ -34,6 +34,8 @@ core/designsystem/.../theme/
   size/SizeTokens.kt      ← SizeTokens(object) + SizeToken(value class .getDp()) — 홀더 밖 별도
 component/
   ygbutton/               ← YGButton (첫 컴포넌트, 작성 패턴 레퍼런스)
+border/
+  DashedBorder.kt         ← dashedBorder() Modifier (점선 사각형 테두리, drawBehind+dashPathEffect) ⚠️브랜치 feature/sync-design-system-260719, develop 미머지
 res/font/                 ← suit_regular/medium/semi_bold/bold.ttf
 res/drawable/             ← ic_* 아이콘 리소스
 ```
@@ -53,7 +55,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 |---|---|---|---|
 | 색 | `YGColorScheme` | primary/secondary/tertiary + danger/warning/success/info + grayScale/transparency | `YGSemanticColorDefaults` |
 | 타이포 | `YGTypography` | title/body/caption 그룹, 각 웨이트·크기 변형(`b01B/b01SB/b01R/b02...`) | `YGTypographyDefaults` |
-| 모양 | `YGShapes.radius`(`YGShapeRadius`) | xSmall/small/medium1/medium2/large/xLarge1/xLarge2/round | `YGShapesDefaults` |
+| 모양 | `YGShapes.radius`(`YGShapeRadius`) | none/xSmall/small/medium1/medium2/large/xLarge1/xLarge2/round (`none`=RectangleShape 각짐 ⚠️브랜치 feature/sync-design-system-260719, develop 미머지) | `YGShapesDefaults` |
 | 레이아웃 | `YGLayout.gap`/`.padding` | gap1.. / padding1.. (명명 스케일) | `YGLayoutDefaults` |
 | 크기 | `SizeTokens`(홀더 밖) | Size1/2/4/6/…/44/48/64/80 (`SizeToken`) | — |
 
