@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-07-18
+verified: 2026-07-20
 related_spec:
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014
 related_architecture: design-system, data-layer
@@ -106,6 +106,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① [ADR-0010](adr/0010-custom-compositionlocal-theme.md) "컴포넌트는 시맨틱을 읽는다" 원칙을 폐기/완화할지(원자 색이 실질 SoT), ② [design-system](architecture/design-system.md) "원자 색 직접 참조 금지 원칙" 서술 개정, ③ 시맨틱 레이어(`YGColorScheme`/`YGSemanticColorDefaults`)를 유지할지 걷어낼지, ④ 방향 전환을 신규 ADR로 남길지 ADR-0010 갱신할지.
 - **상태**: 미해결 — **코드는 머지됨(public 확정)**, 그러나 원칙 문서화(①~④) 미결. design-system·ADR-0010에는 "머지됨+원칙 이탈" 마커 반영했으나 **방향 전환 ADR 미작성**.
 - **해소 메모**: 원칙 결정 시 신규 ADR로 "원자 색 직접 노출 채택" 기록 또는 ADR-0010 개정. 기존 [2026-07-10 YGButton 디자인 토큰](#2026-07-10-ygbutton-디자인-토큰-규칙-미확정) "시맨틱 정리" 방향과 상반 — 함께 재정리.
+
+### [2026-07-20] ProfileCard 각짐 — `radius.none` 토큰 부재로 `RectangleShape` 직접 참조
+- **출처**: `feature/app/setting/impl/component/ProfileCard.kt`(PR #160 develop 머지) — 배경·보더 both `shape = RectangleShape`(직접 참조). 설계([app-setting-s001 스펙](specs/archive/2026-07-19-app-setting-s001.md))는 `YGTheme.shapes.radius.none`을 전제했으나, 해당 토큰이 develop 미머지(브랜치 `feature/sync-design-system-260719`, [designsystem-radius-none-sync 스펙](specs/2026-07-19-designsystem-radius-none-sync.md))라 우회.
+- **항목**: `radius.none` 토큰이 develop에 머지되면 ProfileCard의 `RectangleShape` 직접 참조를 `YGTheme.shapes.radius.none`으로 승격(그 스펙의 "각짐도 테마 경유" 원칙 정합).
+- **상태**: 미해결 (코드 수정 대상 — radius-none-sync 머지에 종속)
+- **해소 메모**: radius-none-sync develop 머지 시 ProfileCard `shape`를 토큰으로 교체하고 이 항목 해소. [design-system](architecture/design-system.md) radius 마커와 함께 정리.
 
 <!--
 항목 추가 형식:
