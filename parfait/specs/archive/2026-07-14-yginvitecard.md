@@ -17,6 +17,7 @@ tags: [spec, parfait, designsystem, card]
 # Spec: 그룹 초대 카드 (YGInviteCard)
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+> ⚠️ [2026-07-19] 이 스펙은 develop baseline. 브랜치 `feature/sync-design-system-260719`에서 테두리 `shape`·`.clip` 모두 `medium1→none`(카드 각짐)·`InviteCodeBox` clip `small→none` 변경 진행 중 → [2026-07-19-designsystem-radius-none-sync](../2026-07-19-designsystem-radius-none-sync.md).
 
 ## 목표
 그룹 초대 코드를 노출하고 복사 버튼을 제공하는 `core:designsystem` 카드 컴포넌트.

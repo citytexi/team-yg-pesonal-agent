@@ -10,7 +10,8 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 | 스펙 | 상태 | 내용 |
 |------|------|------|
-| _(활성 스펙 없음 — 모두 구현 완료로 아카이브됨)_ | | |
+| [2026-07-19-ygdangerzone-dashed.md](2026-07-19-ygdangerzone-dashed.md) | in-progress | `component/ygdangerzone`·`border`·`component/etc` — YGDangerZone 점선 재설계(채움 박스→점선 테두리, solid 구분선→점선) + 신규 프리미티브 `dashedBorder()` Modifier·`YGHorizontalDashedDivider`. modifier 체이닝(`dashedBorder().padding()`) 규칙. **브랜치 `feature/sync-design-system-260719`, develop 미머지** |
+| [2026-07-19-designsystem-radius-none-sync.md](2026-07-19-designsystem-radius-none-sync.md) | in-progress | `theme/shapes`·`textfield`·`card`·`ygbutton` — radius `none`(0/RectangleShape) 토큰 신설 + YGTextField(commonShape→none·배경 grayScale.white)·YGInviteCard(테두리·clip 모두 none)·YGButtonType SmallSquare(→none) 각진 corner sync. **브랜치 `feature/sync-design-system-260719`, develop 미머지** |
 
 ## 아카이브
 | 스펙 | 내용 |
@@ -21,7 +22,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 | [2026-07-18-ygtext-date-label.md](archive/2026-07-18-ygtext-date-label.md) | `component/ygtext` — YGDate(날짜 라벨, 패딩 하드코딩)·YGLabel(보조 라벨) 텍스트 프리셋. **develop 머지(#150)** |
 | [2026-07-18-ygtopbar.md](archive/2026-07-18-ygtopbar.md) | `component/ygtopbar` — YGTopBar 4변형(Back/Detail/Empty/Default) + private YGTopBarContent, YGIconButton·YGChipButton 재사용, 로고 placeholder(ic_plus). **develop 머지(#152/#127)** |
 | [2026-07-18-ygdatebutton.md](archive/2026-07-18-ygdatebutton.md) | `component/ygdatebutton` — YGDateButton(캘린더 날짜 셀, selected/today/disabled/기본 4상태). ⚠️clickableYG 미사용(규약 이탈). **develop 머지(#147/#146)** |
-| [2026-07-18-ygdangerzone.md](archive/2026-07-18-ygdangerzone.md) | `component/ygdangerzone` — YGDangerZone(상/하 2슬롯 + 구분선 반투명 컨테이너, IntrinsicSize.Max, YGHorizontalDivider·YGActionItem 조합). **develop 머지(#148/#136)** |
+| [2026-07-18-ygdangerzone.md](archive/2026-07-18-ygdangerzone.md) | `component/ygdangerzone` — YGDangerZone(상/하 2슬롯 + 구분선 반투명 컨테이너, IntrinsicSize.Max, YGHorizontalDivider·YGActionItem 조합). **develop 머지(#148/#136)**. ⚠️점선 재설계 진행 중 → [활성 스펙 2026-07-19-ygdangerzone-dashed](2026-07-19-ygdangerzone-dashed.md) |
 | [2026-07-10-ygtextfield.md](archive/2026-07-10-ygtextfield.md) | `component/textfield` — YGTextField(단일 폼, idle/focused/error/disabled 런타임 상태) |
 | [2026-07-10-ygtextformfield.md](archive/2026-07-10-ygtextformfield.md) | `component/textfield` — YGTextFormField(YGTextFieldImpl 재사용 + 하단 errorDescription) |
 | [2026-07-12-yghorizontaldivider.md](archive/2026-07-12-yghorizontaldivider.md) | `component/etc` — YGHorizontalDivider(1dp 수평 구분선, Spacer 기반, 두께·색 오버라이드) |
