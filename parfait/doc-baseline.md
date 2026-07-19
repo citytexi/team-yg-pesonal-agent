@@ -5,9 +5,9 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `ce4e9b8abdedbffed32fc5de2fc1ef75e08afe82`
-- **요약**: `Merge pull request #158 from mash-up-kr/refactor/design-system-preview`
-- **검증일**: 2026-07-19
+- **커밋**: `7b954a86c2bba4414ef222fd5e06c4b3c8ba7466`
+- **요약**: `Merge pull request #160 from mash-up-kr/feature/#85-app-side-menu`
+- **검증일**: 2026-07-20
 - **미머지 제외 항목**: 브랜치 `feature/sync-design-system-260719`(YGDangerZone dashed 재설계·radius none 토큰·YGTextField/YGInviteCard/YGButtonType 각진 corner sync) — **develop 미머지**. in-progress 스펙 2건([ygdangerzone-dashed](specs/2026-07-19-ygdangerzone-dashed.md)·[radius-none-sync](specs/2026-07-19-designsystem-radius-none-sync.md))·design-system radius/border 마커·아카이브 포인터로 추적. 머지 시 implemented·archive 이동·baseline 스펙 갱신.
 
 ## 점검 절차 (다음 요청 시)
@@ -33,3 +33,4 @@
 | 2026-07-18 | `8f63945` | Merge #157 (YGButton-fix) | delta 머지 1건(#157 fix/YGButton-fix): `YGButtonType.kt` 변형별 disabled/pressed foreground·background 색값 스왑 수정만. API·심볼·구조·변형 목록 불변 → 파르페 규율상 색값 미기재라 **문서 콘텐츠 변경 없음**. 기준선 해시만 갱신. 미머지: `refactor/design-system-preview`(프리뷰 통일·YGAtomicColors public) |
 | 2026-07-18 | `8cdf942` | Merge #151 (#135 modal) | 신규 머지 6건 반영. modal(#151/#135)·invitecard(#148/#136) spec·plan `implemented`/`done`·archive 이동(드리프트 없음). 신규 컴포넌트 spec 5건 작성(implemented·archive): YGColorChip·YGDate/YGLabel·YGTopBar·YGDateButton·YGDangerZone(#150/#152/#147/#148). ADR-0013(Firebase FCM)·ADR-0014(로깅 추상화 backfill) 신규. design-system 인벤토리·원자색·프리뷰·미머지 마커 정리. open-questions: [2026-07-13] 해소 + 신규 5건(YGColorChip 패키지 불일치·nametag 12/14·YGDateButton clickableYG·FCM 토큰·analytics 패키지). 미머지: 없음 |
 | 2026-07-19 | `ce4e9b8` | Merge #158 (design-system-preview) | delta 머지 1건(#158, 이전 미머지 추적 항목). 프리뷰 관용구 `@YGPreview`+`PreviewBox` 통일 + `YGAtomicColors` internal→public. preview-migration spec `implemented`·plan `done`·archive 이동(+README 등록). design-system(YGAtomicColors public·원자참조 원칙 이탈·프리뷰 통일 완료)·ADR-0010·open-questions(프리뷰 ② 해소, YGAtomicColors public 코드머지·원칙 ADR 잔존) 마커 해소. 미머지: `feature/sync-design-system-260719`(dashed·radius none, in-progress 스펙 2건) |
+| 2026-07-20 | `7b954a8` | Merge #160 (#85 app-side-menu) | delta 머지 1건(#160). S-001 앱 설정 화면 구현(ProfileCard+List 4항목·MVI ViewModel·계정/약관/개인정보 NavKey+stub Route+entry). 선작성 spec/plan과 대조: VM·Route·EntryBuilder·Screen·stub·strings 전부 설계 일치. **드리프트 1건**: ProfileCard 각짐이 설계 `radius.none` → 실제 `RectangleShape` 직접 참조(토큰 미머지 우회). app-setting-s001 spec `implemented`·plan `done`·archive 이동(+README 등록), spec/plan 각짐 문구·코드 실제 반영, open-questions [2026-07-20] 등록(radius-none-sync 머지에 종속). 미머지: `feature/sync-design-system-260719`(dashed·radius none, in-progress 스펙 2건) 유지 |

@@ -4,13 +4,12 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 > **참고** — 파일명 컨벤션: `YYYY-MM-DD-kebab-case-topic.md`. 완료/폐기된 계획은 `archive/` 하위로 이동합니다.
 
-| 계획 | 내용 |
-|------|------|
-| [2026-07-19-app-setting-s001.md](2026-07-19-app-setting-s001.md) | `:feature:app:setting` — S-001 앱 설정 화면 구현(7 Task: NavKey3 → ViewModel/State → strings+ProfileCard → Screen → Route배선 → stub Route → EntryBuilder). MVI BaseViewModel, YGListItem·YGTopBarBack 재사용, 계정/약관/개인정보 nav stub. 테스트 없음(compile+ktlint+프리뷰 검증). 스펙: [specs](../specs/2026-07-19-app-setting-s001.md) |
+_(활성 계획 없음 — 완료분은 아카이브 참조)_
 
 ## 아카이브
 | 계획 | 내용 |
 |------|------|
+| [2026-07-19-app-setting-s001.md](archive/2026-07-19-app-setting-s001.md) | `:feature:app:setting` — S-001 앱 설정 화면 구현(7 Task: NavKey3 → ViewModel/State → strings+ProfileCard → Screen → Route배선 → stub Route → EntryBuilder). MVI BaseViewModel, YGListItem·YGTopBarBack 재사용, 계정/약관/개인정보 nav stub. 테스트 없음(compile+ktlint+프리뷰 검증). **develop 머지(#160)**. ProfileCard 각짐만 `RectangleShape` 대체. 스펙: [specs](../specs/archive/2026-07-19-app-setting-s001.md) |
 | [2026-07-18-designsystem-preview-migration.md](archive/2026-07-18-designsystem-preview-migration.md) | 프리뷰 관용구 통일 계획(4 Task: 파일럿 YGColorChip → param 5파일 → 무param 6파일 → 검증+문서). `@YGPreview`+`PreviewBox` 전환. **develop 머지(#158)**. 스펙: [specs](../specs/archive/2026-07-18-designsystem-preview-migration.md) |
 | [2026-07-14-yginvitecard.md](archive/2026-07-14-yginvitecard.md) | YGInviteCard 구현 계획(component/card, Column+라벨 Row+코드박스 Row, Active/Invalid when 분기, YGButton SmallSquare 재사용, @YGPreview). **develop 머지(#148/#136)**. 스펙: [specs](../specs/archive/2026-07-14-yginvitecard.md) |
 | [2026-07-15-ygmodalpopup.md](archive/2026-07-15-ygmodalpopup.md) | YGModalPopup 구현 계획(component/modal, Dialog 래퍼 + private YGModalPopupContent 분리, Contents Column[아이콘+텍스트]+Action Row[확인 Secondary/취소 Primary weight1f], iconTint 기본 cherry-600, @YGPreview는 content 직접 렌더). **develop 머지(#151/#135)**. 스펙: [specs](../specs/archive/2026-07-15-ygmodalpopup.md) |
