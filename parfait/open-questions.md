@@ -49,8 +49,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처 A**: `component/ygbutton`·`ygiconbutton`·`ygactionitem` — 컴포넌트별 폴더 + `@Preview`/`YGCustomTheme`(+`PreviewParameterProvider`) 프리뷰.
 - **출처 B**: `component/textfield`·`etc` — 그룹 폴더 + `@YGPreview`/`PreviewBox` 프리뷰.
 - **항목**: ① 패키지 네이밍(컴포넌트별 vs 그룹 폴더) 표준, ② 프리뷰 방식(`@YGPreview`/`PreviewBox` vs `@Preview`/`PreviewParameterProvider`) 표준.
-- **상태**: 미해결 (② 프리뷰 방식은 브랜치 `refactor/design-system-preview`에서 `@YGPreview`+`PreviewBox` 통일 진행 중 — **develop 미머지**. ① 패키지 네이밍은 잔존.)
-- **해소 메모**: ② 프리뷰 방식 — 리팩터([designsystem-preview-migration 스펙](specs/2026-07-18-designsystem-preview-migration.md)/[plan](plans/2026-07-18-designsystem-preview-migration.md))로 18파일 전부 `@YGPreview`+`PreviewBox` 전환·컴파일/ktlint 통과. **develop 머지 시** ② 해소 처리하고 [design-system](architecture/design-system.md) 프리뷰 노트를 "표준 통일 완료"로 갱신. 그 전엔 "미머지" 유지. ① 패키지 네이밍 표준 확정 시 "컴포넌트 작성 규약"에 반영하고 기존 컴포넌트 정리(YGColorChip 패키지 불일치 포함).
+- **상태**: 부분 해소 (② 프리뷰 방식 — **#158 develop 머지(2026-07-19)로 해소**. ① 패키지 네이밍은 잔존 미해결.)
+- **해소 메모**: ② 프리뷰 방식 — 리팩터([designsystem-preview-migration 스펙](specs/archive/2026-07-18-designsystem-preview-migration.md)/[plan](plans/archive/2026-07-18-designsystem-preview-migration.md))로 컴포넌트 프리뷰 전부 `@YGPreview`+`PreviewBox` 전환, **PR #158 develop 머지 완료**(`ce4e9b8`). [design-system](architecture/design-system.md) 프리뷰 노트 "표준 통일 완료"로 갱신함. ① 패키지 네이밍 표준 확정 시 "컴포넌트 작성 규약"에 반영하고 기존 컴포넌트 정리(YGColorChip 패키지 불일치 포함).
 
 ### [2026-07-13] design-system.md가 develop 미머지 브랜치 작업을 구현됨으로 기술
 - **출처**: 문서가 일부 심볼을 구현됨으로 기술하나 `origin/develop`에 부재. `YGListItem`·`YGHorizontalDivider`(`component/etc/`, design-system.md 인벤토리)는 브랜치 `feature/#136-etc-component`에만 존재. (`YGModalPopup`은 `feature/#135-modal-component`에만 — 아직 인벤토리 미기재.)
@@ -101,11 +101,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 방침 확정 시 [ADR-0014](adr/0014-logging-abstraction-kermit.md) 본문·`LoggerInitializer` 갱신.
 
 ### [2026-07-18] YGAtomicColors public 전환 — 시맨틱 우선 원칙 실질 이탈
-- **출처**: `theme/colors/YGAtomicColors.kt` — `internal object YGAtomicColors` → `object YGAtomicColors`(public) 변경. 브랜치 `refactor/design-system-preview`, **develop 미머지**(미커밋 working tree 단계).
+- **출처**: `theme/colors/YGAtomicColors.kt` — `internal object YGAtomicColors` → `object YGAtomicColors`(public) 변경. **PR #158(`refactor/design-system-preview`) develop 머지 완료**(2026-07-19, `ce4e9b8`).
 - **배경**: 디자인이 GUI에서 시맨틱(`YGColorScheme`) 개념을 쓰지 않고 원자 색을 그대로 끌고 가 사용 → 컴포넌트·피처가 원자 색 직접 참조하는 게 현실. `internal` 유지가 외부 모듈 사용을 막아 불가피하게 public 전환.
 - **항목**: ① [ADR-0010](adr/0010-custom-compositionlocal-theme.md) "컴포넌트는 시맨틱을 읽는다" 원칙을 폐기/완화할지(원자 색이 실질 SoT), ② [design-system](architecture/design-system.md) "원자 색 직접 참조 금지 원칙" 서술 개정, ③ 시맨틱 레이어(`YGColorScheme`/`YGSemanticColorDefaults`)를 유지할지 걷어낼지, ④ 방향 전환을 신규 ADR로 남길지 ADR-0010 갱신할지.
-- **상태**: 미해결 (develop 미머지 — 문서는 미머지 마커만)
-- **해소 메모**: develop 머지 시 design-system·ADR-0010 갱신(또는 신규 ADR로 "원자 색 직접 노출 채택" 기록), 마커 제거. 기존 [2026-07-10 YGButton 디자인 토큰](#2026-07-10-ygbutton-디자인-토큰-규칙-미확정) "시맨틱 정리" 방향과 상반 — 함께 재정리.
+- **상태**: 미해결 — **코드는 머지됨(public 확정)**, 그러나 원칙 문서화(①~④) 미결. design-system·ADR-0010에는 "머지됨+원칙 이탈" 마커 반영했으나 **방향 전환 ADR 미작성**.
+- **해소 메모**: 원칙 결정 시 신규 ADR로 "원자 색 직접 노출 채택" 기록 또는 ADR-0010 개정. 기존 [2026-07-10 YGButton 디자인 토큰](#2026-07-10-ygbutton-디자인-토큰-규칙-미확정) "시맨틱 정리" 방향과 상반 — 함께 재정리.
 
 <!--
 항목 추가 형식:

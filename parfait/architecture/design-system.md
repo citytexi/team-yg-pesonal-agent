@@ -23,7 +23,7 @@ tags: [architecture, parfait]
 core/designsystem/.../theme/
   YGTheme.kt              ← 진입점 YGCustomTheme() + 접근자 object YGTheme + Local* CompositionLocal
   colors/                 ← 색 2계층 (원자 → 시맨틱)
-    YGAtomicColors        원자 팔레트 (Cherry/Melon/Pudding/Soda/Gray/Transparency) — internal (⚠️ 브랜치 refactor/design-system-preview서 public 전환 중, develop 미머지)
+    YGAtomicColors        원자 팔레트 (Cherry/Melon/Pudding/Soda/Gray/Transparency) — **public** (#158로 internal→public 머지, 2026-07-19)
     YGColorScheme         시맨틱 홀더 (primary/secondary/tertiary/danger/warning/success/info/grayScale/transparency)
     YGColorGrayScale, YGColorTransparency   서브 홀더
     YGSemanticColorDefaults    원자→시맨틱 매핑 (YGLightColorScheme / YGDarkColorScheme)
@@ -46,8 +46,8 @@ res/drawable/             ← ic_* 아이콘 리소스
   - 예: `YGTheme.typography.body.b01SB`, `YGTheme.layout.padding.padding4`, `YGTheme.shapes.radius.round`.
 - **크기만 예외**: `SizeTokens.Size24.getDp()`로 직접(`SizeToken`은 `@JvmInline value class`, 홀더 밖).
 - `Local*` CompositionLocal은 `internal` + 미초기화 시 `error(...)`. → **모든 UI·프리뷰는 `YGCustomTheme { }`로 감싸야** 크래시 안 남.
-- **원자 색 직접 참조 금지 원칙(develop 기준)** — 컴포넌트는 시맨틱(`YGTheme.colorScheme`)을 읽는다. `YGAtomicColors`는 `internal`이며 시맨틱 매핑(`YGSemanticColorDefaults`)에서만 소비하는 것이 규칙. (현재 `YGButton`뿐 아니라 `YGActionItem`·`YGIconButton`·`YGInputNumber`·`YGChipButton`·`YGToggleButton`·`YGModalPopup`·`YGInviteCard`·`YGColorChip`·`YGTopBar`·`YGDateButton`·`YGDate`·`YGLabel`·`YGDangerZone`도 과도기라 `YGAtomicColors`를 직접 참조 — 아래 참고.)
-  > ⚠️ **원칙 방향 전환 진행(브랜치 `refactor/design-system-preview`, develop 미머지)** — 디자인이 GUI에서 시맨틱 개념을 쓰지 않고 원자 색을 그대로 사용하는 것이 현실이라, `YGAtomicColors`를 **`internal`→public**으로 여는 변경이 있음. 이 경우 "원자 직접 참조 금지"의 강제 메커니즘(외부 모듈 접근 차단)이 사라지고 원자 색이 실질 SoT가 됨 → [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) "시맨틱 우선" 원칙 재검토 대상. 머지 시 원칙 서술·ADR 갱신(또는 신규 ADR). → [open-questions](../open-questions.md).
+- **원자 색 직접 참조 — develop 실질 허용(#158 이후)** — 컴포넌트 대부분(`YGButton`·`YGActionItem`·`YGIconButton`·`YGInputNumber`·`YGChipButton`·`YGToggleButton`·`YGModalPopup`·`YGInviteCard`·`YGColorChip`·`YGTopBar`·`YGDateButton`·`YGDate`·`YGLabel`·`YGDangerZone`)이 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조. 원래 규칙은 "시맨틱만 읽고 `YGAtomicColors`는 `internal`+시맨틱 매핑에서만 소비"였으나 —
+  > ✅ **방향 전환 머지됨(#158, develop `ce4e9b8`, 2026-07-19)** — `YGAtomicColors` **`internal`→public**. "원자 직접 참조 금지"의 강제 메커니즘(외부 모듈 접근 차단)이 사라지고 원자 색이 실질 SoT가 됨. [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) "시맨틱 우선" 원칙 재검토/신규 ADR 필요(잔존) → [open-questions](../open-questions.md).
 
 ## 토큰 계층
 
@@ -119,7 +119,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 
 > **과도기 — 컨벤션 분기(정리 대상)**
 > - **패키지 네이밍**: 컴포넌트별 폴더(`ygbutton/`·`ygiconbutton/`·`ygactionitem/`·`ygcolorchip/`·`ygtopbar/`·`ygdatebutton/`·`ygdangerzone/`·`ygtext/`)와 그룹 폴더(`textfield/`·`etc/`·`card/`·`modal/`)가 혼재. 규약(위 "컴포넌트 작성 규약")은 컴포넌트별 폴더 기준. 추가로 `ygcolorchip/`는 패키지 선언이 폴더명과 어긋남(`ygchip`) → [open-questions](../open-questions.md).
-> - **프리뷰 방식**: `@YGPreview`/`PreviewBox`(etc 계열 YGListItem·YGHorizontalDivider, card/modal 계열 YGInviteCard·YGModalPopup)와 `@Preview`+`YGCustomTheme`(+`PreviewParameterProvider`)(YGIconButton·YGActionItem·YGInputNumber·YGColorChip·YGTopBar·YGDateButton·YGDangerZone·YGDate·YGLabel)가 develop 기준 공존. **`@YGPreview`+`PreviewBox`로 통일하는 리팩터가 브랜치 `refactor/design-system-preview`에서 진행 중(아직 develop 미머지)** — 컴포넌트 18파일 전부 `@YGPreview` 전환·컴파일/ktlint 통과. 머지 시 이 노트를 "표준 통일 완료"로 갱신하고 아래 open-questions 프리뷰 항목 해소. 상세 [designsystem-preview-migration 스펙](../specs/2026-07-18-designsystem-preview-migration.md). → [open-questions](../open-questions.md).
+> - **프리뷰 방식**: ✅ **`@YGPreview`+`PreviewBox`로 표준 통일 완료(#158 develop 머지, 2026-07-19)** — 컴포넌트 프리뷰 전부 `@YGPreview` 전환(공용 유틸 `YGPreview.kt` 정의 제외 `@Preview` 없음). 상세 [designsystem-preview-migration 스펙](../specs/archive/2026-07-18-designsystem-preview-migration.md). open-questions 프리뷰 항목 해소.
 
 ## 관련 ADR
 - [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) — 자체 CompositionLocal 테마(why).

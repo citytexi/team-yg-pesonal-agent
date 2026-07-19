@@ -11,6 +11,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 ## 아카이브
 | 계획 | 내용 |
 |------|------|
+| [2026-07-18-designsystem-preview-migration.md](archive/2026-07-18-designsystem-preview-migration.md) | 프리뷰 관용구 통일 계획(4 Task: 파일럿 YGColorChip → param 5파일 → 무param 6파일 → 검증+문서). `@YGPreview`+`PreviewBox` 전환. **develop 머지(#158)**. 스펙: [specs](../specs/archive/2026-07-18-designsystem-preview-migration.md) |
 | [2026-07-14-yginvitecard.md](archive/2026-07-14-yginvitecard.md) | YGInviteCard 구현 계획(component/card, Column+라벨 Row+코드박스 Row, Active/Invalid when 분기, YGButton SmallSquare 재사용, @YGPreview). **develop 머지(#148/#136)**. 스펙: [specs](../specs/archive/2026-07-14-yginvitecard.md) |
 | [2026-07-15-ygmodalpopup.md](archive/2026-07-15-ygmodalpopup.md) | YGModalPopup 구현 계획(component/modal, Dialog 래퍼 + private YGModalPopupContent 분리, Contents Column[아이콘+텍스트]+Action Row[확인 Secondary/취소 Primary weight1f], iconTint 기본 cherry-600, @YGPreview는 content 직접 렌더). **develop 머지(#151/#135)**. 스펙: [specs](../specs/archive/2026-07-15-ygmodalpopup.md) |
 | [2026-07-10-ygtextfield.md](archive/2026-07-10-ygtextfield.md) | YGTextField 구현 계획(component/textfield). 구현 완료. 스펙: [specs](../specs/archive/2026-07-10-ygtextfield.md) |

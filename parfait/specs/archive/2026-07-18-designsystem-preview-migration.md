@@ -1,10 +1,10 @@
 ---
 id: designsystem-preview-migration
 title: designsystem 프리뷰 관용구 통일 (@YGPreview + PreviewBox)
-status: draft
+status: implemented
 category: refactor-spec
 platforms: android
-verified: 2026-07-18
+verified: 2026-07-19
 related_code: YGPreview.kt#YGPreview, PreviewComponent.kt#PreviewBox
 related_adr: ADR-0010
 related_spec:
@@ -17,10 +17,11 @@ tags: [spec, parfait, designsystem, refactor, preview]
 # Spec: designsystem 프리뷰 관용구 통일 (@YGPreview + PreviewBox)
 
 - 대상: `core:designsystem` — `component/*` 프리뷰
-- 관련: [ADR-0010](../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../architecture/design-system.md) · 브랜치 `refactor/design-system-preview`
-- SoT 브랜치: TJYG-Android `refactor/design-system-preview`(develop 기준)
+- 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)
+- SoT: TJYG-Android `develop` — **PR #158(`refactor/design-system-preview`) 머지 완료**(2026-07-19, `ce4e9b8`).
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+> ✅ [2026-07-19] develop 머지(#158). 함께 `YGAtomicColors` internal→public 전환 반영 → [design-system](../../architecture/design-system.md)·[open-questions](../../open-questions.md).
 
 ## 목표
 `core:designsystem` 컴포넌트 프리뷰에 혼재된 두 관용구 —
@@ -30,7 +31,7 @@ tags: [spec, parfait, designsystem, refactor, preview]
 ## 배경
 - `@YGPreview`(`utils/preview/YGPreview.kt`) = `@Preview` 6개(phone·phone-night·foldable·foldable-night·foldable-fold·foldable-fold-night) 묶은 다중 프리뷰 애노테이션.
 - `PreviewBox`(`utils/preview/PreviewComponent.kt`) = `YGCustomTheme { Box(fillMaxSize) { content } }` 래퍼(Local 미초기화 크래시 방지 + 프리뷰 배치 컨테이너).
-- design-system.md·[open-questions](../open-questions.md) "[2026-07-12] 컨벤션 분기"에서 미확정으로 추적하던 프리뷰 방식 표준화를 (B)로 확정.
+- design-system.md·[open-questions](../../open-questions.md) "[2026-07-12] 컨벤션 분기"에서 미확정으로 추적하던 프리뷰 방식 표준화를 (B)로 확정.
 
 ## 범위
 - **포함**: 아래 12개 컴포넌트 파일의 프리뷰를 (B) 관용구로 변환.
@@ -82,4 +83,4 @@ tags: [spec, parfait, designsystem, refactor, preview]
 ## 주의 / 열린 질문
 - **`@YGPreview` + `@PreviewParameter` 첫 사례**: 기존 (B) 준수 6파일엔 PreviewParameter가 없음. 조합이 IDE 프리뷰에서 정상 렌더되는지(각 config × 각 값) 확인 필요. 문제 시 해당 파일만 파라미터 합침(본문 나열) 대안 검토.
 - **프리뷰 수 폭증**: `YGColorChip`(14타입 × 6 = 84) 등. IDE 렌더 부하만 있고 빌드 산출물 영향 없음. 수용.
-- 완료 시 [open-questions](../open-questions.md) "[2026-07-12] 컨벤션 분기"의 프리뷰 방식 항목 해소 + design-system.md 프리뷰 방식 노트 갱신(혼재 → @YGPreview/PreviewBox 표준).
+- 완료 시 [open-questions](../../open-questions.md) "[2026-07-12] 컨벤션 분기"의 프리뷰 방식 항목 해소 + design-system.md 프리뷰 방식 노트 갱신(혼재 → @YGPreview/PreviewBox 표준).
