@@ -1,16 +1,16 @@
 ---
 id: designsystem-preview-migration
 title: designsystem 프리뷰 관용구 통일 Implementation Plan
-status: draft
+status: done
 type: work-order
 created: 2026-07-18
-updated: 2026-07-18
+updated: 2026-07-19
 platforms: android
 owner:
 related_adr: ADR-0010
 related_spec: designsystem-preview-migration
 related_code: YGPreview, PreviewBox, YGColorChip, YGButton, YGChipButton, YGIconButton, YGInputNumber, YGToggleButton, YGActionItem, YGDate, YGLabel, YGTopBar, YGDateButton, YGDangerZone
-archived_reason:
+archived_reason: PR #158(refactor/design-system-preview) develop 머지 완료(2026-07-19, ce4e9b8)
 tags: [plan, parfait, designsystem, refactor, preview]
 ---
 
@@ -22,11 +22,11 @@ tags: [plan, parfait, designsystem, refactor, preview]
 
 **Architecture:** 프리뷰 전용 애노테이션·테마 래퍼만 교체(런타임 코드·API 불변). 공용 유틸(`YGPreview`·`PreviewBox`)은 손대지 않는다. 배경은 `PreviewBox`가 아니라 content 람다 내부 `Modifier`로 보존. `@PreviewParameter`는 유지한 채 애노테이션만 교체.
 
-**Tech Stack:** Kotlin, Jetpack Compose Preview(`@Preview` 다중 애노테이션 `@YGPreview`), 자체 테마([ADR-0010](../adr/0010-custom-compositionlocal-theme.md)).
+**Tech Stack:** Kotlin, Jetpack Compose Preview(`@Preview` 다중 애노테이션 `@YGPreview`), 자체 테마([ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)).
 
-**Spec:** [specs/2026-07-18-designsystem-preview-migration.md](../specs/2026-07-18-designsystem-preview-migration.md)
+**Spec:** [specs/archive/2026-07-18-designsystem-preview-migration.md](../../specs/archive/2026-07-18-designsystem-preview-migration.md)
 
-**작업 repo:** TJYG-Android, 브랜치 `refactor/design-system-preview`. 로컬 경로는 `wiki/personal-private/project-paths.md`.
+**작업 repo:** TJYG-Android, 브랜치 `refactor/design-system-preview` → **PR #158 develop 머지 완료(2026-07-19, `ce4e9b8`)**. 로컬 경로는 `wiki/personal-private/project-paths.md`.
 
 ## Global Constraints
 - **TJYG-Android 코드는 커밋하지 않는다**(사용자 지시). 각 task는 컴파일·ktlint까지만 하고 git commit 스텝 없음. (parfait 문서만 별도 커밋 대상.)

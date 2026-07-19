@@ -16,6 +16,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 ## 아카이브
 | 스펙 | 내용 |
 |------|------|
+| [2026-07-18-designsystem-preview-migration.md](archive/2026-07-18-designsystem-preview-migration.md) | `component/*` 프리뷰 — 프리뷰 관용구 `@Preview`+`YGCustomTheme` → `@YGPreview`+`PreviewBox` 통일(런타임 무변경, 프리뷰 애노테이션·래퍼만). **develop 머지(#158)**. 함께 YGAtomicColors internal→public |
 | [2026-07-14-yginvitecard.md](archive/2026-07-14-yginvitecard.md) | `component/card` — YGInviteCard(그룹 초대 코드 + 복사 버튼, Active/Invalid 상태별 색·버튼 활성 분기, subText 문자열 주입, onCopyClick 콜백, YGButton SmallSquare 재사용) + YGInviteCardStatus enum. **develop 머지(#148/#136)** |
 | [2026-07-15-ygmodalpopup.md](archive/2026-07-15-ygmodalpopup.md) | `component/modal` — YGModalPopup(아이콘+제목+본문+2버튼 중앙 모달, Compose Dialog 래핑, Secondary(좌)·Primary(우) 버튼 타입 기준 파라미터(confirm/cancel 의미 미규정)·단일 isEnabledButton, iconRes @DrawableRes+iconTint, onDismissRequest+DialogProperties 노출, YGButton Medium 재사용). **develop 머지(#151/#135)** |
 | [2026-07-18-ygcolorchip.md](archive/2026-07-18-ygcolorchip.md) | `component/ygcolorchip` — YGColorChip(원형 네임태그 컬러칩, YGColorChipType 14종 fill/stroke/text 색, YGColorChipStyle 2크기). ⚠️패키지↔폴더 불일치·타입 12/14 정책 드리프트. **develop 머지(#150)** |

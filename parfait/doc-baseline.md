@@ -5,10 +5,10 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `8f63945c2f6019f3982253ff9017c6e2bbde4bc7`
-- **요약**: `Merge pull request #157 from mash-up-kr/fix/YGButton-fix`
-- **검증일**: 2026-07-18
-- **미머지 제외 항목**: 브랜치 `refactor/design-system-preview`(프리뷰 `@YGPreview`+`PreviewBox` 통일 + `YGAtomicColors` internal→public) — **develop 미머지**. design-system·open-questions·ADR-0010에 미머지 마커 유지. 머지 시 마커 제거·완료 갱신.
+- **커밋**: `ce4e9b8abdedbffed32fc5de2fc1ef75e08afe82`
+- **요약**: `Merge pull request #158 from mash-up-kr/refactor/design-system-preview`
+- **검증일**: 2026-07-19
+- **미머지 제외 항목**: 브랜치 `feature/sync-design-system-260719`(YGDangerZone dashed 재설계·radius none 토큰·YGTextField/YGInviteCard/YGButtonType 각진 corner sync) — **develop 미머지**. in-progress 스펙 2건([ygdangerzone-dashed](specs/2026-07-19-ygdangerzone-dashed.md)·[radius-none-sync](specs/2026-07-19-designsystem-radius-none-sync.md))·design-system radius/border 마커·아카이브 포인터로 추적. 머지 시 implemented·archive 이동·baseline 스펙 갱신.
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
@@ -32,3 +32,4 @@
 | 2026-07-16 | `bd844a5` | Merge #141 (ygchipbutton) | 신규 컴포넌트 2건 스펙 작성(implemented·archive): #141 YGChipButton·#142 YGToggleButton. design-system 인벤토리·원자색 확산 노트 갱신, open-questions에 YGToggleButton 규약 이탈 등록. 미머지: #135 modal·#136 etc |
 | 2026-07-18 | `8f63945` | Merge #157 (YGButton-fix) | delta 머지 1건(#157 fix/YGButton-fix): `YGButtonType.kt` 변형별 disabled/pressed foreground·background 색값 스왑 수정만. API·심볼·구조·변형 목록 불변 → 파르페 규율상 색값 미기재라 **문서 콘텐츠 변경 없음**. 기준선 해시만 갱신. 미머지: `refactor/design-system-preview`(프리뷰 통일·YGAtomicColors public) |
 | 2026-07-18 | `8cdf942` | Merge #151 (#135 modal) | 신규 머지 6건 반영. modal(#151/#135)·invitecard(#148/#136) spec·plan `implemented`/`done`·archive 이동(드리프트 없음). 신규 컴포넌트 spec 5건 작성(implemented·archive): YGColorChip·YGDate/YGLabel·YGTopBar·YGDateButton·YGDangerZone(#150/#152/#147/#148). ADR-0013(Firebase FCM)·ADR-0014(로깅 추상화 backfill) 신규. design-system 인벤토리·원자색·프리뷰·미머지 마커 정리. open-questions: [2026-07-13] 해소 + 신규 5건(YGColorChip 패키지 불일치·nametag 12/14·YGDateButton clickableYG·FCM 토큰·analytics 패키지). 미머지: 없음 |
+| 2026-07-19 | `ce4e9b8` | Merge #158 (design-system-preview) | delta 머지 1건(#158, 이전 미머지 추적 항목). 프리뷰 관용구 `@YGPreview`+`PreviewBox` 통일 + `YGAtomicColors` internal→public. preview-migration spec `implemented`·plan `done`·archive 이동(+README 등록). design-system(YGAtomicColors public·원자참조 원칙 이탈·프리뷰 통일 완료)·ADR-0010·open-questions(프리뷰 ② 해소, YGAtomicColors public 코드머지·원칙 ADR 잔존) 마커 해소. 미머지: `feature/sync-design-system-260719`(dashed·radius none, in-progress 스펙 2건) |
