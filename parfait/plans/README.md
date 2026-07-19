@@ -6,7 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| _(활성 계획 없음 — 모두 완료로 아카이브됨)_ | |
+| [2026-07-19-app-setting-s001.md](2026-07-19-app-setting-s001.md) | `:feature:app:setting` — S-001 앱 설정 화면 구현(7 Task: NavKey3 → ViewModel/State → strings+ProfileCard → Screen → Route배선 → stub Route → EntryBuilder). MVI BaseViewModel, YGListItem·YGTopBarBack 재사용, 계정/약관/개인정보 nav stub. 테스트 없음(compile+ktlint+프리뷰 검증). 스펙: [specs](../specs/2026-07-19-app-setting-s001.md) |
 
 ## 아카이브
 | 계획 | 내용 |
