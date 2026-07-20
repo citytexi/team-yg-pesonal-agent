@@ -1,0 +1,121 @@
+---
+id: s004-terms-privacy-webview
+title: S-004 약관/개인정보 처리 방침 화면 분리 + Notion 웹뷰 (ServiceTerms / PrivacyPolicy WebView)
+status: draft
+category: ui-spec
+platforms: android
+verified: 2026-07-20
+related_code:
+  - EntryBuilder.kt#featureAppSettingEntryBuilder
+  - ServiceTermsRoute.kt#ServiceTermsRoute
+  - PrivacyPolicyRoute.kt#PrivacyPolicyRoute
+  - ServiceTermsScreen.kt#ServiceTermsScreen
+  - PrivacyPolicyScreen.kt#PrivacyPolicyScreen
+  - ServiceTermsViewModel.kt#ServiceTermsViewModel
+  - PrivacyPolicyViewModel.kt#PrivacyPolicyViewModel
+  - NotionWebView.kt#NotionWebView
+  - YGTopBar.kt#YGTopBarDetail
+related_adr:
+related_spec: app-setting-s001
+related_architecture:
+supersedes:
+superseded_by:
+tags: [spec, parfait, setting, webview, s004]
+---
+
+# S-004 약관 / 개인정보 처리 방침 화면 분리 + Notion 웹뷰
+
+> 상태·날짜·대상·관련은 frontmatter가 단일 출처. 본문은 설계에 집중.
+
+- **화면 ID**: S-004 (서비스 이용약관 / 개인정보 처리 방침)
+- **대상 모듈**: `feature/app/setting/impl`
+- **Figma**: 서비스 이용약관 `220-2220`, 개인정보 처리 방침 `220-2225` (파르페 v0.1, fileKey `QPoxqbNMNktsi8ktua3gMN`)
+
+## 배경 / 문제
+
+`EntryBuilder.kt`에서 `NavKeyServiceTerms`·`NavKeyPrivacyPolicy` 두 NavKey가 **동일한 `TermsRoute`**
+하나를 가리킨다. `TermsRoute`는 TODO stub. 두 화면은 탑바 타이틀과 본문 콘텐츠만 다르고 구조는 같다.
+
+두 화면 모두:
+- **탑바**: 디자인시스템 기존 컴포넌트 `YGTopBarDetail`(back caret + title) 형태와 일치.
+- **본문**: 정적 텍스트가 아니라 **Notion 공개 페이지를 WebView로** 렌더.
+
+## 목표
+
+1. 라우팅을 `TermsRoute` / `PrivacyPolicyRoute` 두 갈래로 분리.
+2. 각 화면은 `YGTopBarDetail` + Notion WebView 구성.
+3. Notion URL은 ViewModel `State` 기본값(placeholder)으로 두어, 추후 UseCase 주입 지점 확보.
+4. WebView 로딩/에러 폴백 처리.
+
+## 비목표 (YAGNI)
+
+- WebView 내부 히스토리 back 네비게이션 (단일 Notion 페이지 → route pop만).
+- 새 재사용 core 모듈 (WebView는 `setting/impl` 로컬 컴포넌트, 현재 사용처 1곳).
+- BuildConfig / string resource 기반 URL 주입 (지금은 오버킬).
+- 테스트 코드 (현재 프로젝트에 테스트 인프라 미적용 → 스코프 제외).
+
+## 설계
+
+### 1. 라우팅 분리 — `navigation/EntryBuilder.kt`
+
+`entry<NavKeyServiceTerms>` → **`ServiceTermsRoute`**(기존 `TermsRoute` 리네임), `entry<NavKeyPrivacyPolicy>` → **`PrivacyPolicyRoute`**.
+(현재 둘 다 `TermsRoute` 가리키는 것을 분리.) NavKey 2개는 이미 `api` 모듈에 존재 — 수정 없음.
+
+### 2. 화면 2벌 — MVI 세트 (기존 `AppSetting*` 패턴 복제)
+
+두 화면 구조 동일, `title`·`url`만 다름. `BaseViewModel<State, Intent, SideEffect>`(`core.ui`) 준수.
+
+| 파일 | 내용 |
+|---|---|
+| `viewmodel/ServiceTermsViewModel.kt` | `ServiceTermsState(url: String = <placeholder>)` + `Intent.ClickBack` + `SideEffect.NavigateBack`. `@HiltViewModel @Inject constructor()`. `url` 기본값 placeholder = **추후 UseCase 주입 지점** |
+| `viewmodel/PrivacyPolicyViewModel.kt` | 동일 구조, placeholder url만 다름 |
+| `route/ServiceTermsRoute.kt` | 기존 `TermsRoute` 리네임 + 구현: `hiltViewModel()` + `state`/`effect` collect, `NavigateBack` → `navigator.onBack()`, `ServiceTermsScreen` 렌더 |
+| `route/PrivacyPolicyRoute.kt` | 신규, 동일 골격 |
+| `screen/ServiceTermsScreen.kt` | stateless. `Column { YGTopBarDetail(title="서비스 이용약관", onIconClick=onClickBack); NotionWebView(url, Modifier.weight(1f)) }` |
+| `screen/PrivacyPolicyScreen.kt` | 동일, `title="개인정보 처리 방침"` |
+
+- `title`은 화면 고정값 → Screen 내 상수(또는 string resource). `State`에 넣지 않음.
+- `url`만 `State` 필드 → ViewModel이 소유(주입 대상).
+- VM 2개 분리(통합 VM 아님): route·NavKey별 1 VM 관례 유지.
+
+### 3. Notion WebView 컴포넌트 — `component/NotionWebView.kt` (로컬)
+
+```
+NotionWebView(url: String, modifier: Modifier)
+  Box(modifier) {
+    AndroidView(factory = { WebView(it).apply {
+        settings.javaScriptEnabled = true      // notion 렌더에 필요
+        settings.domStorageEnabled = true
+        webViewClient = <상태 콜백 클라이언트>
+    }}, update = { if (현재 url 다르면) loadUrl(url) })
+    if (loading) CircularProgressIndicator(center)
+    if (error)   에러 메시지 + 재시도 버튼
+  }
+```
+
+- **⚠️ 컨테이너 `Box`에 `Modifier.clipToBounds()` 필수.** 없으면 네이티브 WebView가 초기 로드 프레임 동안 자기 layout bounds를 넘어 상위(탑바 영역)까지 overdraw → 로딩 중 탑바가 안 보이다 `onPageFinished` recomposition 때 나타남(실기기 재현·검증). clip으로 weight 영역 밖 draw 차단.
+- **로딩/에러 상태는 컴포넌트 로컬 `remember`.** WebViewClient 콜백:
+  `onPageStarted` → loading=true·error=false, `onPageFinished` → loading=false,
+  `onReceivedError`(main frame) → error=true·loading=false.
+- ViewModel `State`에 로딩/에러를 넣지 않음 → VM은 url 데이터만 소유(주입 의도 유지).
+- 재시도 = error=false 후 `reload()`.
+
+### 4. 뒤로가기
+
+탑바 back → `Intent.ClickBack` → `SideEffect.NavigateBack` → `navigator.onBack()`.
+WebView 내부 back 미구현(비목표).
+
+### 5. 의존성 / 권한
+
+- 새 라이브러리 **0개** — WebView는 Android 프레임워크.
+- `INTERNET` 권한 이미 `app/src/main/AndroidManifest.xml`에 존재.
+
+## 변경 파일 요약
+
+**신규**: `PrivacyPolicyRoute.kt`, `ServiceTermsScreen.kt`, `PrivacyPolicyScreen.kt`,
+`ServiceTermsViewModel.kt`, `PrivacyPolicyViewModel.kt`, `component/NotionWebView.kt`
+**수정**: `navigation/EntryBuilder.kt`, `route/TermsRoute.kt` → `route/ServiceTermsRoute.kt` 리네임+구현
+
+## 열린 질문
+
+- 실제 Notion 공개 URL 2개 — 현재 placeholder. 확정 시 각 ViewModel `State` 기본값 교체(또는 UseCase 주입).
