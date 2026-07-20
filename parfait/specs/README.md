@@ -12,6 +12,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 |------|------|------|
 | [2026-07-19-ygdangerzone-dashed.md](2026-07-19-ygdangerzone-dashed.md) | in-progress | `component/ygdangerzone`·`border`·`component/etc` — YGDangerZone 점선 재설계(채움 박스→점선 테두리, solid 구분선→점선) + 신규 프리미티브 `dashedBorder()` Modifier·`YGHorizontalDashedDivider`. modifier 체이닝(`dashedBorder().padding()`) 규칙. **브랜치 `feature/sync-design-system-260719`, develop 미머지** |
 | [2026-07-19-designsystem-radius-none-sync.md](2026-07-19-designsystem-radius-none-sync.md) | in-progress | `theme/shapes`·`textfield`·`card`·`ygbutton` — radius `none`(0/RectangleShape) 토큰 신설 + YGTextField(commonShape→none·배경 grayScale.white)·YGInviteCard(테두리·clip 모두 none)·YGButtonType SmallSquare(→none) 각진 corner sync. **브랜치 `feature/sync-design-system-260719`, develop 미머지** |
+| [2026-07-20-s004-terms-privacy-webview.md](2026-07-20-s004-terms-privacy-webview.md) | draft | `:feature:app:setting:impl` — S-004 약관/개인정보 화면 분리. EntryBuilder 두 NavKey를 TermsRoute/PrivacyPolicyRoute로 분리, 각 화면 = YGTopBarDetail(title 고정) + Notion 공개페이지 WebView. url은 ViewModel State 기본값(placeholder, 추후 UseCase 주입). NotionWebView 로컬 컴포넌트(로딩/에러 폴백 로컬 remember). 새 라이브러리 0개. 테스트 제외(프로젝트 미적용) |
 
 ## 아카이브
 | 스펙 | 내용 |

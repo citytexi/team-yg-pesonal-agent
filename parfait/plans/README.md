@@ -4,7 +4,9 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 > **참고** — 파일명 컨벤션: `YYYY-MM-DD-kebab-case-topic.md`. 완료/폐기된 계획은 `archive/` 하위로 이동합니다.
 
-_(활성 계획 없음 — 완료분은 아카이브 참조)_
+| 계획 | 내용 |
+|------|------|
+| [2026-07-20-s004-terms-privacy-webview.md](2026-07-20-s004-terms-privacy-webview.md) | `:feature:app:setting:impl` — S-004 약관/개인정보 화면 분리 구현(7 Task: NotionWebView+strings → ServiceTerms VM → PrivacyPolicy VM → ServiceTermsScreen → PrivacyPolicyScreen → TermsRoute배선+PrivacyPolicyRoute신규 → EntryBuilder 분리). MVI BaseViewModel, YGTopBarDetail 재사용, WebView(AndroidView) 로딩/에러 폴백, url은 State placeholder(추후 UseCase 주입). 테스트 없음(compile+ktlint+에뮬). 스펙: [specs](../specs/2026-07-20-s004-terms-privacy-webview.md) |
 
 ## 아카이브
 | 계획 | 내용 |
