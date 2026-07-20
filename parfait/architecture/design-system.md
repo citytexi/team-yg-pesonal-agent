@@ -4,8 +4,8 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-07-18
-related_spec:
+verified: 2026-07-20
+related_spec: designsystem-ygscreen-scaffold
 related_adr: ADR-0007, ADR-0010
 related_architecture:
 related_code: core:designsystem, YGTheme
@@ -36,6 +36,10 @@ component/
   ygbutton/               ← YGButton (첫 컴포넌트, 작성 패턴 레퍼런스)
 border/
   DashedBorder.kt         ← dashedBorder() Modifier (점선 사각형 테두리, drawBehind+dashPathEffect) ⚠️브랜치 feature/sync-design-system-260719, develop 미머지
+screen/                   ← 화면 루트 컨테이너 (아래 "화면 컨테이너")
+  YGScreen.kt             Surface 래퍼 + YGScreenScope 리시버 (화면 최외곽)
+  YGScaffold.kt           Material3 Scaffold 래퍼 (nav/EntryBuilder)
+  YGScreenScope.kt        YGScreenScope + OnBack(@Composable, BackHandler 래핑)
 res/font/                 ← suit_regular/medium/semi_bold/bold.ttf
 res/drawable/             ← ic_* 아이콘 리소스
 ```
@@ -82,6 +86,16 @@ res/drawable/             ← ic_* 아이콘 리소스
 
 > **Assumption / 과도기** — `YGButtonType`의 각 변형 `colors`가 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors`를 직접 참조하고, 값이 잠정(mock)이다. 코드 주석("Design Token 규칙이 조금 이상… 컴포넌트 완성 시점에 문의 예정")대로 **확정 전 상태**. 이 원자 직접 참조는 `YGButton`에 국한되지 않고 이후 대부분 컴포넌트(`YGActionItem`·`YGIconButton`·`YGInputNumber`·`YGChipButton`·`YGToggleButton`·`YGModalPopup`·`YGInviteCard`·`YGColorChip`·`YGTopBar`·`YGDateButton`·`YGDate`·`YGLabel`·`YGDangerZone`, 대체로 `YGAtomicColors.Gray.*`·`Cherry.*`·`Transparency.*`)로 확산됨. 확정 시 시맨틱으로 정리 권장. → [open-questions](../open-questions.md) 후보.
 
+## 화면 컨테이너 (`screen/`)
+
+화면 루트에 쓰는 컨테이너 2종 + 뒤로가기 스코프. 설계 상세 → [designsystem-ygscreen-scaffold 스펙](../specs/2026-07-20-designsystem-ygscreen-scaffold.md).
+
+- **역할 분리 (컨벤션)**:
+  - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.
+  - **`YGScreen` = 화면 최외곽(Screen 컴포저블)** — `internal fun XxxScreen(...) { YGScreen(modifier = modifier) { ... } }`. `Surface` 래퍼(기본 각짐·흰 배경) + `YGScreenScope` 리시버. 화면 `modifier`는 `YGScreen`에 전달(관례).
+- **뒤로가기**: `YGScreen`의 content는 `YGScreenScope` 리시버라 `OnBack(enabled, handler) { }`(@Composable, 내부 `BackHandler` emit)로 처리. 호출한 화면만 back 가로챔 — 안 쓰면 안 부르면 됨(강제 리턴 없음). `OnBack`은 @Composable node-emit이라 PascalCase(`BackHandler` 동일 규칙).
+- **주의**: 현재 `YGScreen`↔`YGScaffold` 미통합(`YGScaffold`는 `YGScreenScope`/OnBack 없음). 통합·역할 정리는 [open-questions](../open-questions.md) 미결(머지 후 ADR 예정).
+
 ## 컴포넌트 인벤토리
 
 구현된 `component/*` 컴포넌트와 상세 설계(스펙). 심볼명 기준(개수·라인 미기재).
@@ -103,6 +117,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 | `YGTopBar`(Back/Detail/Empty/Default 변형 + private `YGTopBarContent`) | `component/ygtopbar/` | [ygtopbar](../specs/archive/2026-07-18-ygtopbar.md) |
 | `YGDateButton` | `component/ygdatebutton/` | [ygdatebutton](../specs/archive/2026-07-18-ygdatebutton.md) |
 | `YGDangerZone` | `component/ygdangerzone/` | [ygdangerzone](../specs/archive/2026-07-18-ygdangerzone.md) |
+| `YGScreen` / `YGScaffold`(+`YGScreenScope`·`OnBack`) | `screen/` | [designsystem-ygscreen-scaffold](../specs/2026-07-20-designsystem-ygscreen-scaffold.md) (위 "화면 컨테이너") |
 
 - **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize`). `YGTextField`의 clear 아이콘은 이미 인라인 `Box`+`Image`에서 `YGIconButton(size = YGIconButtonSize.SIZE_44)`로 치환됨(`YGTextFieldImpl.kt`). `YGListItem` trailing caret도 `YGIconButton`으로 치환(#136 develop 머지 #148).
 - **`YGInputNumber`**: 숫자 셀. 컨테이너 크기·보더는 토큰 대신 고정 dp로 하드코딩(코드 주석: 디자인가이드 고정 크기)이라 토큰화 예외 사례. shape·typography는 `YGTheme.*` 사용, 색은 `YGAtomicColors.Gray.*` 직접 참조.
