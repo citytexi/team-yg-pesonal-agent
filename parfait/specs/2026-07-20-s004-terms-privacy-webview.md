@@ -82,18 +82,26 @@ tags: [spec, parfait, setting, webview, s004]
 
 ```
 NotionWebView(url: String, modifier: Modifier)
-  Box(modifier) {
-    AndroidView(factory = { WebView(it).apply {
-        settings.javaScriptEnabled = true      // notion 렌더에 필요
-        settings.domStorageEnabled = true
-        webViewClient = <상태 콜백 클라이언트>
-    }}, update = { if (현재 url 다르면) loadUrl(url) })
+  if (LocalInspectionMode.current) { PreviewPlaceholder(url); return }   // 프리뷰 대응
+  Box(modifier.clipToBounds()) {
+    AndroidView(
+      factory = { WebView(it).apply {
+          settings.javaScriptEnabled = true      // notion 렌더에 필요
+          settings.domStorageEnabled = true
+          webViewClient = <상태 콜백 클라이언트>   // loadUrl 은 factory에서 안 함
+      }},
+      update   = { if (it.tag != url) { it.tag = url; it.loadUrl(url) } },  // url 변경 시만
+      onRelease = { it.destroy() },              // 컴포지션 이탈 시 리소스 해제
+    )
     if (loading) CircularProgressIndicator(center)
     if (error)   에러 메시지 + 재시도 버튼
   }
 ```
 
 - **⚠️ 컨테이너 `Box`에 `Modifier.clipToBounds()` 필수.** 없으면 네이티브 WebView가 초기 로드 프레임 동안 자기 layout bounds를 넘어 상위(탑바 영역)까지 overdraw → 로딩 중 탑바가 안 보이다 `onPageFinished` recomposition 때 나타남(실기기 재현·검증). clip으로 weight 영역 밖 draw 차단.
+- **⚠️ WebView 리소스 해제**: `AndroidView`는 뷰 제거만 하고 `WebView.destroy()`를 안 부른다. JS/DOM storage 켜진 상태라 렌더러·DOM 스토리지가 누수됨 → `onRelease = { it.destroy() }`로 명시 해제.
+- **⚠️ url 로드는 `update`에서 tag 가드로.** `update`는 매 recomposition마다 실행되므로 무조건 `loadUrl` 하면 `onPageStarted`→`loading` 갱신→recompose→재로드 **무한 루프**가 된다. 마지막 로드 url을 `webView.tag`에 저장해 실제 변경 시에만 `loadUrl`. redirect로 `webView.url`이 바뀌어도 tag는 요청 url이라 안전. factory에서는 `loadUrl` 하지 않음(중복 로드 방지).
+- **프리뷰**: WebView(`AndroidView`)는 `@Preview`에서 렌더 안 됨 → `LocalInspectionMode.current`면 `NotionWebViewPreviewPlaceholder`(Gray100 배경 + 라벨/url)로 대체, early return. Screen 프리뷰(`@YGPreview`)가 정상 렌더됨.
 - **로딩/에러 상태는 컴포넌트 로컬 `remember`.** WebViewClient 콜백:
   `onPageStarted` → loading=true·error=false, `onPageFinished` → loading=false,
   `onReceivedError`(main frame) → error=true·loading=false.

@@ -42,6 +42,12 @@ tags: [plan, parfait, feature, setting, webview, s004]
 
 ### Task 1: NotionWebView 컴포넌트 + 에러 문자열
 
+> **실행 후 정합(2026-07-20)**: 아래 Step 2 원본 코드블록에서 4건 변경됨(실기기 검증 + 코드리뷰 반영). 최신 설계는 [spec §3](../specs/2026-07-20-s004-terms-privacy-webview.md) 참조.
+> - 컨테이너 `Box(modifier.clipToBounds())` — 로딩 중 네이티브 WebView가 탑바 위로 overdraw 방지(실기기 재현).
+> - `onRelease = { it.destroy() }` — `AndroidView`가 `destroy()` 미호출 → 렌더러·DOM 스토리지 누수 방지.
+> - `loadUrl`을 factory에서 제거하고 `update = { if (it.tag != url) { it.tag = url; it.loadUrl(url) } }`로 이동 — `update` 매 recomposition 실행 → 무가드 `loadUrl`은 무한 리로드. tag로 url 변경 시만 로드.
+> - `LocalInspectionMode` 분기 + `NotionWebViewPreviewPlaceholder` — WebView는 `@Preview` 렌더 불가라 프리뷰용 대체 렌더.
+
 **Files:**
 - Create: `feature/app/setting/impl/.../component/NotionWebView.kt`
 - Modify: `feature/app/setting/impl/src/main/res/values/strings.xml` (문자열 2개 추가)
