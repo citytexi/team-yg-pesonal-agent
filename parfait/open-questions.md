@@ -113,6 +113,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (코드 수정 대상 — radius-none-sync 머지에 종속)
 - **해소 메모**: radius-none-sync develop 머지 시 ProfileCard `shape`를 토큰으로 교체하고 이 항목 해소. [design-system](architecture/design-system.md) radius 마커와 함께 정리.
 
+### [2026-07-20] 화면 컨테이너(YGScreen/YGScaffold) 컨벤션 — ADR 미작성
+- **출처**: `core:designsystem` `screen/`(`YGScreen`·`YGScaffold`·`YGScreenScope.OnBack`). 설계 [designsystem-ygscreen-scaffold 스펙](specs/2026-07-20-designsystem-ygscreen-scaffold.md), architecture [design-system](architecture/design-system.md) "화면 컨테이너"·[navigation-flow](architecture/navigation-flow.md) 체크리스트에 컨벤션(YGScaffold=nav, YGScreen=화면 최외곽) 반영. **초안 `OnBackResult` 반환 강제 → `OnBack` @Composable(내부 BackHandler emit)로 전환**한 결정 근거는 스펙에만 있고 ADR 미작성.
+- **항목**: ① 화면 컨테이너를 DS 레벨에서 제공하고 뒤로가기를 `YGScreenScope`로 노출하는 결정을 ADR로 남길지, ② `YGScreen`↔`YGScaffold` 미통합(`YGScaffold`는 `YGScreenScope`/OnBack 없음)을 통합할지 별도 유지할지 — 이 통합 방향이 정해져야 ADR 내용이 확정됨.
+- **상태**: 보류 (코드 develop 머지 + 통합 방향 결정 대기 — 사용자 요청으로 머지 후 ADR 작성 예정)
+- **해소 메모**: 코드가 develop 머지되고 ①②가 정해지면 신규 ADR 작성(화면 컨테이너·뒤로가기 스코프 채택 근거) 후 [design-system](architecture/design-system.md)·[navigation-flow](architecture/navigation-flow.md)의 `related_adr`에 연결하고 이 항목 해소.
+
 <!--
 항목 추가 형식:
 
