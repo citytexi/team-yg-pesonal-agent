@@ -6,6 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
+| [2026-07-21-feature-common-terms-module.md](2026-07-21-feature-common-terms-module.md) | `:feature:common:terms:{api,impl}` 신규 이동(5 Task: api모듈+NavKey → impl모듈+7파일이동+entry+strings → app배선 → setting정리 → 빌드검증+1커밋). A-003 재사용 위한 feature/common 공유 레이어(ADR-0015). git mv 히스토리 보존, 동작 무변경, 문자열 키 terms_* 리네임. 원자적 이동이라 커밋 1회. 스펙: [specs](../specs/2026-07-21-feature-common-terms-module.md) |
 | [2026-07-20-s004-terms-privacy-webview.md](2026-07-20-s004-terms-privacy-webview.md) | `:feature:app:setting:impl` — S-004 약관/개인정보 화면 분리 구현(7 Task: NotionWebView+strings → ServiceTerms VM → PrivacyPolicy VM → ServiceTermsScreen → PrivacyPolicyScreen → TermsRoute배선+PrivacyPolicyRoute신규 → EntryBuilder 분리). MVI BaseViewModel, YGTopBarDetail 재사용, WebView(AndroidView) 로딩/에러 폴백, url은 State placeholder(추후 UseCase 주입). 테스트 없음(compile+ktlint+에뮬). 스펙: [specs](../specs/2026-07-20-s004-terms-privacy-webview.md) |
 
 ## 아카이브

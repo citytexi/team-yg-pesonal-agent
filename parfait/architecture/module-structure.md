@@ -4,9 +4,9 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-07-12
+verified: 2026-07-21
 related_spec:
-related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011
+related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015
 related_architecture:
 related_code: settings.gradle.kts
 tags: [architecture, parfait]
@@ -43,11 +43,13 @@ app / app-preview
 | feature | `feature/{login,segmentation,camera,gallery,intro}/{api,impl}` | 화면·VM(impl) / NavKey 계약(api) | `ModuleFeatureApi` / `ModuleFeatureImpl` |
 | feature | `feature/groups/{canvas,enter,home,list,setting}/{api,impl}` | 그룹 관련 화면 묶음 | 동일 |
 | feature | `feature/app/setting/{api,impl}` | 앱 설정 화면(`NavKeyAppSetting`, `AppSettingRoute`) | 동일 |
+| feature | `feature/common/terms/{api,impl}` | 약관·개인정보 화면(`NavKeyServiceTerms`/`NavKeyPrivacyPolicy`, `ServiceTermsRoute`/`PrivacyPolicyRoute`, `NotionWebView`) — 여러 feature 공유([[0015-feature-common-shared-layer]]) | 동일 |
 
 ## 규칙
 - feature 간 이동은 상대 **`:api`(NavKey)만** 참조. `:impl`끼리 직접 의존 금지([[0002-feature-api-impl-split]]).
 - `domain`은 Android 의존 금지(순수 Kotlin 유지). Android 타입이 도메인에 필요하면 `core:util:jvm`의 플랫폼 무관 추상으로 감싼다 — 비트맵은 `BitmapWrapper`([[0011-cross-module-bitmap-abstraction]]).
 - 새 모듈 = 알맞은 컨벤션 플러그인 적용 + `settings.gradle.kts` 등록(같은 커밋).
+- **여러 feature가 공유하는 화면**은 특정 도메인 feature 밑이 아니라 `feature/common/*`에 둔다([[0015-feature-common-shared-layer]]). 단, **2개 이상 소비처가 확정된 경우에만**(단일 소비면 소유 feature 유지).
 
 ## 현재 수치가 필요하면 코드에서 측정
 ```bash
