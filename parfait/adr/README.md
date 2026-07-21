@@ -22,6 +22,7 @@
 | [0012](0012-mlkit-subject-segmentation.md) | 이미지 세그멘테이션 — ML Kit Subject Segmentation 온디바이스 | accepted | 2026-07-12 | beta·GMS·install-time 모델 |
 | [0013](0013-firebase-fcm-crashlytics.md) | Firebase 도입 — FCM 푸시 + Crashlytics + Analytics | accepted | 2026-07-18 | app 모듈 집중·토큰 서버전송 후속·GMS 의존 |
 | [0014](0014-logging-abstraction-kermit.md) | 로깅 추상화 — Kermit 위임 Logger 인터페이스 | accepted | 2026-07-18 | core:util:jvm, backfill(기준선 이전 존재) |
+| [0015](0015-feature-common-shared-layer.md) | feature/common 공유 feature 레이어 도입 | accepted | 2026-07-21 | terms를 S-001+A-003 공유·2소비처 확정 시에만 common |
 
 ## 작성 가이드
 
