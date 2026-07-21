@@ -4,7 +4,7 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-07-20
+verified: 2026-07-21
 related_spec: designsystem-ygscreen-scaffold
 related_adr: ADR-0007, ADR-0010
 related_architecture:
@@ -92,7 +92,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 
 - **역할 분리 (컨벤션)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.
-  - **`YGScreen` = 화면 최외곽(Screen 컴포저블)** — `internal fun XxxScreen(...) { YGScreen(modifier = modifier) { ... } }`. `Surface` 래퍼(기본 각짐·흰 배경) + `YGScreenScope` 리시버. 화면 `modifier`는 `YGScreen`에 전달(관례).
+  - **`YGScreen` = 화면 최외곽(Screen 컴포저블)** — `internal fun XxxScreen(...) { YGScreen(modifier = modifier) { ... } }`. `Surface` 래퍼(`modifier` + `content`만) + `YGScreenScope` 리시버. `Surface`는 `color`를 항상 칠하므로(기본 Material surface 불투명) 내부 `color = YGAtomicColors.Gray.Transparent` 고정 → 배경 미페인트, 실제 배경은 nav의 `YGScaffold` containerColor가 담당(레이어 분리). 화면 `modifier`는 `YGScreen`에 전달(관례).
 - **뒤로가기**: `YGScreen`의 content는 `YGScreenScope` 리시버라 `OnBack(enabled, handler) { }`(@Composable, 내부 `BackHandler` emit)로 처리. 호출한 화면만 back 가로챔 — 안 쓰면 안 부르면 됨(강제 리턴 없음). `OnBack`은 @Composable node-emit이라 PascalCase(`BackHandler` 동일 규칙).
 - **주의**: 현재 `YGScreen`↔`YGScaffold` 미통합(`YGScaffold`는 `YGScreenScope`/OnBack 없음). 통합·역할 정리는 [open-questions](../open-questions.md) 미결(머지 후 ADR 예정).
 

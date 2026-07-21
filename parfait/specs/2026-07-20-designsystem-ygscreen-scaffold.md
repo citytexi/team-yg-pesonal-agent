@@ -4,7 +4,7 @@ title: 화면 컨테이너 컴포넌트 (YGScreen · YGScaffold · YGScreenScope
 status: in-progress
 category: ui-spec
 platforms: android
-verified: 2026-07-20
+verified: 2026-07-21
 related_code:
   - YGScreen.kt#YGScreen
   - YGScreenScope.kt#YGScreenScope
@@ -41,10 +41,8 @@ tags: [spec, parfait, designsystem, screen]
 @Composable
 fun YGScreen(
     modifier: Modifier = Modifier,
-    shape: Shape = RectangleShape,
-    color: Color = YGAtomicColors.Gray.White,
     content: @Composable YGScreenScope.() -> Unit,
-)
+)   // shape/color 파라미터 미노출. 내부에서 Surface color = YGAtomicColors.Gray.Transparent 고정(배경 안 칠함), shape는 Surface 기본.
 
 @Composable
 fun YGScaffold(
@@ -63,7 +61,7 @@ class YGScreenScope {
     )   // 내부에서 BackHandler(enabled, onBack = handler) emit
 }
 ```
-- `YGScreen.shape` / `color` — `Surface`에 위임. 기본 각짐(`RectangleShape`) + 흰 배경(`YGAtomicColors.Gray.White`).
+- `YGScreen` — `shape`/`color` 파라미터 미노출(초기엔 있었으나 제거). **`color`는 내부에서 `YGAtomicColors.Gray.Transparent`(=`Color.Transparent`) 고정** — `Surface`는 `color`를 area에 항상 칠하므로(기본 `MaterialTheme.colorScheme.surface`, 불투명) 배경을 강제 칠하지 않으려면 Transparent가 필요. 배경은 상위 컨테이너(nav의 `YGScaffold` containerColor)가 담당. `shape`는 `Surface` 기본. 커스터마이즈 필요 시 파라미터 재도입 검토.
 - `YGScaffold.containerColor` — `Scaffold`에 위임. 기본 흰 배경.
 - `YGScaffold.contentWindowInsets` — `Scaffold`에 위임. 기본 `ScaffoldDefaults.contentWindowInsets`. inset 무시가 필요한 화면은 `WindowInsets(0.dp)` 주입(예: `groups/enter`).
 - `OnBack.enabled` — false면 뒤로가기 가로채지 않음(시스템 back 통과). 기본 true.
@@ -76,8 +74,8 @@ class YGScreenScope {
 
 | 심볼 | 토큰/기본값 | 위임 대상 |
 |------|-------------|-----------|
-| `YGScreen.color` | `YGAtomicColors.Gray.White` | `Surface.color` |
-| `YGScreen.shape` | `RectangleShape` | `Surface.shape` |
+| `YGScreen` color | `YGAtomicColors.Gray.Transparent`(내부 고정, 미노출) | `Surface.color` |
+| `YGScreen` shape | `Surface` 기본값(미노출) | `Surface.shape` |
 | `YGScaffold.containerColor` | `YGAtomicColors.Gray.White` | `Scaffold.containerColor` |
 | `YGScaffold.contentWindowInsets` | `ScaffoldDefaults.contentWindowInsets` | `Scaffold.contentWindowInsets` |
 
@@ -112,6 +110,8 @@ class YGScreenScope {
   - 검증: 대상 12개 모듈 `compileDebugKotlin` + `ktlintMainSourceSetCheck` 통과.
 - **YGScreenScope.onBack → OnBack 개명** (2026-07-20): @Composable + node-emit이라 Compose 관례상 PascalCase(`BackHandler`와 동일). API 시그니처·동작 동일.
 - **YGScreen 첫 실사용** (2026-07-20): `AppSettingScreen`이 `YGScreen(modifier = modifier) { ... OnBack { onClickBack() } }`로 적용, A안 사용성 검증. 화면 `modifier`는 최외곽 `YGScreen`에 전달(관례 준수), 내부 최상위 `Column`은 `fillMaxSize()`.
+- **YGScreen `shape`·`color` 파라미터 제거 → color Transparent 고정** (2026-07-21): 초기 시그니처의 `shape: Shape = RectangleShape`·`color: Color = YGAtomicColors.Gray.White` 두 파라미터 삭제 → `modifier` + `content`만. 단 `Surface`는 `color`를 항상 area에 칠하므로(파라미터 없이 두면 Material surface 색으로 강제 페인트) 내부 `color = YGAtomicColors.Gray.Transparent` 고정으로 배경 미페인트 처리. 실제 배경은 nav의 `YGScaffold` containerColor가 담당(레이어 분리).
+- **EntryBuilder YGScaffold import 그룹 정렬** (2026-07-21): 마이그레이션이 import-ordering disabled 전제로 in-place 교체해 `androidx` 블록에 남았던 `YGScaffold` import를 9파일에서 `com.teamyg` 블록으로 이동(코스메틱, 런타임 무관).
 
 ## 주의 / 열린 질문
 - **YGScreen ↔ YGScaffold 관계 미통합**: 둘 다 흰 배경 컨테이너지만 서로 조합/합성하지 않는다.
