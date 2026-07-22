@@ -1,7 +1,7 @@
 ---
 id: vendor-android-kotlin-skills
 title: Android/Kotlin/Compose 스킬 벤더링 + 탐색·업데이트 체계
-status: draft
+status: implemented
 category: tooling-spec
 platforms: android
 verified: 2026-07-22
@@ -45,7 +45,7 @@ spec/plan 작성 시 관련 스킬이 **적재적소에 로드**되게 배선하
 | `skydoves/compose-performance-skills` | 카테고리 dir(raw) | 26 |
 | `chrisbanes/skills` | `.claude-plugin` 마켓플레이스 + `skills/` | 22 |
 
-합계 **74개**. leaf 디렉토리명 충돌 0(검증), 기존 프로젝트 스킬(ingest·lint·query·start-session·sync-tjyg-develop-baseline)과도 무충돌.
+합계 **73개**. leaf 디렉토리명 충돌 0(검증), 기존 프로젝트 스킬(ingest·lint·query·start-session·sync-tjyg-develop-baseline)과도 무충돌.
 
 ## 배경 — Claude Code 스킬 메커니즘 (설계 전제)
 
@@ -58,9 +58,9 @@ spec/plan 작성 시 관련 스킬이 **적재적소에 로드**되게 배선하
 
 즉 tao-agent-os의 `workflow_search.py`식 검색은 "문서가 자동 주입 안 되는" 시스템용이라 CC엔 그대로 이식할 필요 없음(의존 모듈 3개 + wikimap 인프라도 필요). 대신 **경량 자체 검색 스킬**로 정밀도·확장성만 취한다.
 
-## 아키텍처 결정: C안 (네이티브 74 + 경량 search)
+## 아키텍처 결정: C안 (네이티브 73 + 경량 search)
 
-- 74개를 **네이티브 스킬로 설치**(Skill 툴 호출·context:fork·allowed-tools 등 CC 기능 유지).
+- 73개를 **네이티브 스킬로 설치**(Skill 툴 호출·context:fork·allowed-tools 등 CC 기능 유지).
 - description 자동주입에 따른 컨텍스트 증가는 수용(전량 도입 선택의 대가). 검색으로 **선택 정밀도**를 보완.
 - 반려: A(search 없음 — 규모 확장 시 선택 흐림), B(문서+search만 — 네이티브 기능 상실·구현 부담 최대).
 
@@ -76,7 +76,7 @@ spec/plan 작성 시 관련 스킬이 **적재적소에 로드**되게 배선하
 
 - **CLAUDE.md 워크플로 A**(TJYG-Android 코드 구현: brainstorming→writing-plans→TDD)에 규칙 추가:
   > spec(brainstorming)·plan(writing-plans) 작성 단계에서, 주제(예: recomposition·stability·navigation·coroutines·testing·gradle)에 대해 **`skill-finder`로 먼저 검색**해 매칭 스킬을 로드한 뒤 설계/계획을 확정한다. (확정적 조건 — 생략 금지.)
-- `.claude/skills-vendor/CATALOG.md` — 74개를 주제별 그룹핑한 브라우즈 보조(사람·모델용 목차). 검색의 1차 수단은 skill-finder, CATALOG는 개요.
+- `.claude/skills-vendor/CATALOG.md` — 73개를 주제별 그룹핑한 브라우즈 보조(사람·모델용 목차). 검색의 1차 수단은 skill-finder, CATALOG는 개요.
 
 ### C. `skill-finder` (검색 스킬)
 
@@ -106,7 +106,7 @@ parfait/script/              # 파이썬 툴링 홈(규약: parfait/script/READM
   search.py + test_search.py # 검색 랭킹
   _script-template.py · SKILL.template.md   # 템플릿
 .claude/skills/
-  <74 vendored>/SKILL.md (+부속파일)
+  <73 vendored>/SKILL.md (+부속파일)
   skill-finder/SKILL.md            # search.py(parfait/script) 호출
   update-injected-skills/SKILL.md  # vendor.py(parfait/script) 호출
   (기존) ingest/ lint/ query/ start-session/ sync-tjyg-develop-baseline/
@@ -123,11 +123,11 @@ parfait/script/              # 파이썬 툴링 홈(규약: parfait/script/READM
 - tao-agent-os `workflow_search.py`/wikimap/doc-graph 이식(중복·인프라 과다).
 - 마켓플레이스 방식 설치(팀원 수동 install 필요).
 - 컨텍스트 절감(네이티브 설치 선택 → description 주입 불가피, 수용).
-- 74개 큐레이션(전량 벤더링 확정 — 타 프로젝트 재사용 목적).
+- 73개 큐레이션(전량 벤더링 확정 — 타 프로젝트 재사용 목적).
 - 스킬 내용 자체 수정(순수 벤더 — upstream 원본 보존, 로컬 편집 금지).
 
 ## 열린 질문
 
-- `skill-finder` 랭킹: 순수 키워드 vs 경량 BM25 — 74개 규모엔 키워드 가중(제목>description>본문)로 충분할 수 있음. 구현 시 확정.
+- `skill-finder` 랭킹: 순수 키워드 vs 경량 BM25 — 73개 규모엔 키워드 가중(제목>description>본문)로 충분할 수 있음. 구현 시 확정.
 - CATALOG 주제 그룹 경계(성능/recomposition/stability 중복 스킬을 어느 그룹에) — 초안 후 조정.
 - 평면화로 생기는 제네릭 이름(`styles`·`adaptive`·`shepherd`·`implement-issue` 등)이 향후 personal 스킬과 그림자 충돌 가능(personal>project) — 낮음, MANIFEST로 추적.
