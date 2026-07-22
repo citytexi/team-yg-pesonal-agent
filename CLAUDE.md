@@ -55,6 +55,11 @@
 2. `superpowers:writing-plans` → 구현 계획 (`parfait/plans/`. writing-plans 기본 위치 `docs/superpowers/plans/`를 이 경로로 override)
 3. `superpowers:subagent-driven-development` 또는 `superpowers:executing-plans` → TDD로 실행
 - `writing-plans`·`test-driven-development`·`executing-plans`는 **코드 작업 전용**. 제품 문서엔 쓰지 않는다.
+- **스킬 적재적소(필수)**: brainstorming(스펙)·writing-plans(계획) 단계에서, 다룰 주제
+  (Compose UI/state·recomposition·stability·side-effects·navigation·coroutines·testing·gradle·마이그레이션 등)에 대해
+  **`skill-finder`로 먼저 검색**(`python3 parfait/script/search.py "<주제>"`)하고, 상위 후보 중 관련
+  벤더 스킬을 네이티브 `Skill`로 로드한 뒤 설계/계획을 확정한다. 전체 목차는
+  `.claude/skills-vendor/CATALOG.md`. 벤더 스킬 갱신은 `update-injected-skills`.
 
 ### B. 제품 문서 작업 (PRD·positioning·roadmap·user story·discovery 등)
 → **PM-Skills 사용** (`writing-plans` 대신 이쪽이 문서판 대응물):
