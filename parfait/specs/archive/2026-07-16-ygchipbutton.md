@@ -70,7 +70,7 @@ fun YGChipButton(
 - `YGChipButtonPreviewData.kt` — `data class YGChipButtonPreviewData(startIconResource, endIconResource, colors)` + `YGChipButtonPreviewParameterProvider`(3종: 아이콘 없음·start 아이콘·end 아이콘).
 
 ## 주의 / 열린 질문
-- **과도기 색**: 프리셋이 `YGAtomicColors.{Gray,Cherry,Transparency}`를 직접 참조(시맨틱 아님) — YGButton·YGInputNumber 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../open-questions.md).
+- **과도기 색**: 프리셋이 `YGAtomicColors.{Gray,Cherry,Transparency}`를 직접 참조(시맨틱 아님) — YGButton·YGInputNumber 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../synthesis/open-questions.md).
 - **YGButton 패턴 준수**: Colors data class + Defaults object 분리로 규약을 잘 따름(cf. YGToggleButton은 미분리).
-- **프리뷰 방식**: `@Preview` + `YGCustomTheme` + `PreviewParameterProvider`(YGIconButton·YGActionItem 계열). etc 계열과 혼재 — 표준화 미확정([open-questions 2026-07-12 컨벤션 분기](../../open-questions.md)).
+- **프리뷰 방식**: `@Preview` + `YGCustomTheme` + `PreviewParameterProvider`(YGIconButton·YGActionItem 계열). etc 계열과 혼재 — 표준화 미확정([open-questions 2026-07-12 컨벤션 분기](../../synthesis/open-questions.md)).
 - **사후 문서**: 코드가 PR #141로 develop에 이미 머지(2026-07-16). 본 스펙은 현행 코드 기록(설계 선행 아님).

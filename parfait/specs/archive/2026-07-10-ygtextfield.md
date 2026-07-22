@@ -16,7 +16,7 @@ tags: [spec, parfait, designsystem]
 
 # Spec: YGTextField
 
-> ⚠️ [2026-07-19] 이 스펙은 develop baseline. 브랜치 `feature/sync-design-system-260719`에서 `commonShape` `radius.small→none`(각짐)·배경 `transparency.white75→grayScale.white` 변경 진행 중 → [2026-07-19-designsystem-radius-none-sync](../2026-07-19-designsystem-radius-none-sync.md).
+> 🔁 [2026-07-22] 이 스펙은 초기 baseline. `commonShape` `radius.small→none`(각짐)·배경 `transparency.white75→grayScale.white` 변경이 PR #159로 **develop 머지 완료** → [2026-07-19-designsystem-radius-none-sync](2026-07-19-designsystem-radius-none-sync.md)(현행 값의 단일 출처).
 
 - 대상: `core:designsystem` — `component/textfield/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)(컴포넌트 작성 규약) · 이슈 #134

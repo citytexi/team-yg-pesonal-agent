@@ -1,7 +1,7 @@
 ---
 id: ygdangerzone
 title: 위험 구역 컨테이너 (YGDangerZone)
-status: implemented
+status: superseded
 category: ui-spec
 platforms: android
 verified: 2026-07-18
@@ -10,7 +10,7 @@ related_adr: ADR-0010
 related_spec: yghorizontaldivider, ygactionitem
 related_architecture: design-system
 supersedes:
-superseded_by:
+superseded_by: ygdangerzone-dashed
 tags: [spec, parfait, designsystem]
 ---
 
@@ -20,7 +20,7 @@ tags: [spec, parfait, designsystem]
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md) · [yghorizontaldivider](2026-07-12-yghorizontaldivider.md) · [ygactionitem](2026-07-12-ygactionitem.md) · PR #148(`feature/#136-etc-component`)
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
-> ⚠️ [2026-07-19] 이 스펙은 **develop baseline(solid 채움 + solid 구분선)**. 점선 재설계는 브랜치 `feature/sync-design-system-260719`에서 진행 중 → [2026-07-19-ygdangerzone-dashed](../2026-07-19-ygdangerzone-dashed.md). develop 머지 시 본 스펙과의 supersede 관계 확정.
+> 🔁 [2026-07-22] **superseded** — 점선 재설계 [2026-07-19-ygdangerzone-dashed](2026-07-19-ygdangerzone-dashed.md)가 PR #159로 develop 머지되며 이 solid 채움 baseline을 대체. 현행 YGDangerZone(점선 테두리)은 dashed 스펙 참조.
 
 ## 목표
 두 개의 슬롯(위/아래)을 구분선으로 나눠 담는 반투명 컨테이너. 설정 화면의 "로그아웃 / 서비스 탈퇴" 같은 위험 액션 묶음이 대표 유스케이스. 자식 컴포넌트는 호출자가 주입(대개 `YGActionItem`).
@@ -63,5 +63,5 @@ fun YGDangerZone(
 - 프리뷰: `@Preview` + `YGCustomTheme`(검정 배경 위에 `YGActionItem` 2개 조합).
 
 ## 주의 / 열린 질문
-- **원자 색 직접 참조(과도기)**: 배경·구분선 색이 `YGAtomicColors.Transparency.*` 직접 참조(시맨틱 슬롯 미경유). 설계 전반의 과도기 패턴과 동일 → [design-system](../../architecture/design-system.md) · [open-questions](../../open-questions.md).
+- **원자 색 직접 참조(과도기)**: 배경·구분선 색이 `YGAtomicColors.Transparency.*` 직접 참조(시맨틱 슬롯 미경유). 설계 전반의 과도기 패턴과 동일 → [design-system](../../architecture/design-system.md) · [open-questions](../../synthesis/open-questions.md).
 - **프리뷰 방식**: `@Preview`+`YGCustomTheme` 계열(그룹 폴더 `etc/`의 `@YGPreview`/`PreviewBox`와 상이) — 표준화 미확정.

@@ -31,7 +31,7 @@ tags: [plan, parfait, designsystem, modal, dialog]
 ## Global Constraints
 - 대상 repo: `TJYG-Android`. 브랜치: 스텁(`YGModalPopup.kt`)이 `feature/#135-modal-component`에 존재 — 동일 브랜치 계속.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.modal`.
-- 색은 `YGAtomicColors.Gray.*` / `YGAtomicColors.Cherry.*` 직접 참조(YGButton 선례, 시맨틱 슬롯 없음 → 과도기 [open-questions](../../open-questions.md)). `YGAtomicColors`는 `internal`이지만 동일 모듈(`core:designsystem`)이라 접근 가능.
+- 색은 `YGAtomicColors.Gray.*` / `YGAtomicColors.Cherry.*` 직접 참조(YGButton 선례, 시맨틱 슬롯 없음 → 과도기 [open-questions](../../synthesis/open-questions.md)). `YGAtomicColors`는 `internal`이지만 동일 모듈(`core:designsystem`)이라 접근 가능.
 - Title 색은 **`YGAtomicColors.Gray.Gray900`**(#135 `5dcd419`에서 하드코딩 `Color(0xFF333333)` → 아토믹 토큰으로 전환). Body는 `YGAtomicColors.Gray.Gray500`.
 - 타이포 `YGTheme.typography.title.t03SB`(제목) / `body.b02R`(본문), 간격·모양 토큰 `YGTheme.layout.*` / `YGTheme.shapes.radius.medium1`, 아이콘 크기 `SizeTokens.Size48.getDp()`.
 - 버튼 role↔style: 확인(`confirmText`/`onConfirm`)=`Medium.Secondary`(좌), 취소(`cancelText`/`onCancel`)=`Medium.Primary`(우). 활성은 `confirmEnabled`/`cancelEnabled` param(기본 `true`)로 제어.

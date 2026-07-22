@@ -45,4 +45,4 @@ tags: [adr, parfait]
 
 **위험·방어**
 - 알림 표시 전 `NotificationManagerCompat.areNotificationsEnabled()` 확인, `onMessageReceived`에 `@RequiresPermission(POST_NOTIFICATIONS)` 명시.
-- 토큰 서버 전송 미구현은 코드 `TODO` + 본 ADR에 명시 → [open-questions](../open-questions.md)에서 추적.
+- 토큰 서버 전송 미구현은 코드 `TODO` + 본 ADR에 명시 → [open-questions](../synthesis/open-questions.md)에서 추적.

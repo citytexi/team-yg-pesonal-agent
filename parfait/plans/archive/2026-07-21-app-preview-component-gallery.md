@@ -1,10 +1,11 @@
 ---
 id: app-preview-component-gallery
 title: 컴포넌트 프리뷰 갤러리 앱 (app-preview) Implementation Plan
-status: draft
+status: done
 type: work-order
 created: 2026-07-21
-updated: 2026-07-21
+updated: 2026-07-22
+archived_reason: PR #163 develop 머지 완료(2026-07-22) — 카탈로그·NavKey17·showcase 17·DI 배선 코드 반영, 구조=설계 일치
 platforms: android
 owner: TJYG-Android 클라이언트
 related_adr:

@@ -374,7 +374,7 @@ Expected: BUILD SUCCESSFUL.
 
 **Files:**
 - (검증만) TJYG-Android `core:designsystem`
-- Modify(parfait): `parfait/architecture/design-system.md`, `parfait/open-questions.md`
+- Modify(parfait): `parfait/architecture/design-system.md`, `parfait/synthesis/open-questions.md`
 
 - [ ] **Step 1: 전체 모듈 컴파일**
 
@@ -397,7 +397,7 @@ Expected: 결과 없음(공용 유틸 정의 제외 모든 프리뷰가 `@YGPrev
 
 - [ ] **Step 5: open-questions "[2026-07-12] 컨벤션 분기" 프리뷰 항목 부분 해소**
 
-프리뷰 방식 항목을 해소 처리(패키지 네이밍 항목은 잔존). 해소 메모에 `@YGPreview`+`PreviewBox` 표준 채택 기록. (파일: `parfait/open-questions.md`)
+프리뷰 방식 항목을 해소 처리(패키지 네이밍 항목은 잔존). 해소 메모에 `@YGPreview`+`PreviewBox` 표준 채택 기록. (파일: `parfait/synthesis/open-questions.md`)
 
 - [ ] **Step 6: parfait 문서 커밋 여부 사용자 확인**
 

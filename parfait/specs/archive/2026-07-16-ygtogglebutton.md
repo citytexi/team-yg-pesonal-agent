@@ -66,8 +66,8 @@ fun YGToggleButton(
 - `YGToggleButtonPreviewData.kt` — `data class YGToggleButtonPreviewData(isSelected, iconResource)` + `YGToggleButtonPreviewParameterProvider`(4종: selected×아이콘 유무).
 
 ## 주의 / 열린 질문
-- **규약 이탈**: 다른 상호작용 컴포넌트(YGButton·YGChipButton 등)와 달리 **Colors data class를 분리하지 않고** `YGAtomicColors.{Gray,Transparency}`를 컴포저블 본문에서 인라인 조건 분기. 색 커스터마이즈 불가·과도기 색 직접 참조. → [open-questions 2026-07-16 YGToggleButton 규약 이탈](../../open-questions.md).
+- **규약 이탈**: 다른 상호작용 컴포넌트(YGButton·YGChipButton 등)와 달리 **Colors data class를 분리하지 않고** `YGAtomicColors.{Gray,Transparency}`를 컴포저블 본문에서 인라인 조건 분기. 색 커스터마이즈 불가·과도기 색 직접 참조. → [open-questions 2026-07-16 YGToggleButton 규약 이탈](../../synthesis/open-questions.md).
 - **하드코딩 아이콘 크기**: `24.dp` 리터럴(`SizeTokens` 미사용) — YGInputNumber `50.dp` 선례와 유사. 토큰화 시 정리 대상.
 - **`selectable` 관용구**: pressed 파생(`clickable`+`collectIsPressedAsState`) 대신 `selectable`(selected 시맨틱)을 씀 — 기존 컴포넌트와 다른 신규 상호작용 관용구.
-- **프리뷰 방식**: `@Preview` + `YGCustomTheme` + `PreviewParameterProvider` 계열. etc 계열과 혼재 — 표준화 미확정([open-questions 2026-07-12 컨벤션 분기](../../open-questions.md)).
+- **프리뷰 방식**: `@Preview` + `YGCustomTheme` + `PreviewParameterProvider` 계열. etc 계열과 혼재 — 표준화 미확정([open-questions 2026-07-12 컨벤션 분기](../../synthesis/open-questions.md)).
 - **사후 문서**: 코드가 PR #142로 develop에 이미 머지(2026-07-16). 본 스펙은 현행 코드 기록(설계 선행 아님).

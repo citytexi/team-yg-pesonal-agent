@@ -36,7 +36,7 @@ tags: [adr, parfait]
   - `YGShapes` — `radius: YGShapeRadius`(`xSmall`~`round` 명명 스케일).
   - `YGLayout` — `gap: YGLayoutGap` + `padding: YGLayoutPadding`(`gap1..`, `padding1..` 명명 스케일).
 - **색 2계층**: 원자 색 `YGAtomicColors`(팔레트: `Cherry/Melon/Pudding/Soda/Gray/Transparency`, **public** — #158 이후) → 시맨틱 `YGColorScheme`. 원자→시맨틱 매핑은 `YGSemanticColorDefaults`(`YGLightColorScheme`, `YGDarkColorScheme`)가 담당. 원래 "컴포넌트는 시맨틱을 읽는다"가 원칙이었으나 —
-  > ⚠️ **원칙 실질 이탈 머지됨(#158, develop `ce4e9b8`, 2026-07-19)** — 디자인이 GUI에서 시맨틱 대신 원자 색을 직접 쓰는 현실을 반영해 `YGAtomicColors`를 `internal`→public으로 개방. "컴포넌트는 시맨틱을 읽는다" 강제 메커니즘 소멸, 원자 색이 실질 SoT. 이 ADR 본문 갱신 또는 방향 전환 신규 ADR **아직 미작성(잔존)** → [open-questions](../open-questions.md).
+  > ⚠️ **원칙 실질 이탈 머지됨(#158, develop `ce4e9b8`, 2026-07-19)** — 디자인이 GUI에서 시맨틱 대신 원자 색을 직접 쓰는 현실을 반영해 `YGAtomicColors`를 `internal`→public으로 개방. "컴포넌트는 시맨틱을 읽는다" 강제 메커니즘 소멸, 원자 색이 실질 SoT. 이 ADR 본문 갱신 또는 방향 전환 신규 ADR **아직 미작성(잔존)** → [open-questions](../synthesis/open-questions.md).
 - **기본값 제공 object**: `YGSemanticColorDefaults`·`YGTypographyDefaults`·`YGShapesDefaults`·`YGLayoutDefaults`가 각 홀더의 `YGDefault*` 인스턴스를 만들어 `YGCustomTheme`에 주입.
 - **크기 토큰만 별도**: `SizeTokens`(object) + `SizeToken`(`@JvmInline value class`, `.getDp()`)는 테마 홀더 밖에 유지 — 컴포넌트가 `SizeTokens.Size24.getDp()`로 직접 참조.
 - **다크 모드**: 스캐폴딩만(`YGDarkColorScheme = YGLightColorScheme`, 코드 `TODO`). 실제 다크 팔레트는 후속.
