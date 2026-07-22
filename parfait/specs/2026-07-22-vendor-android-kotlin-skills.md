@@ -6,10 +6,11 @@ category: tooling-spec
 platforms: android
 verified: 2026-07-22
 related_code:
-  - .claude/skills/skill-finder/search.py
-  - .claude/skills/update-injected-skills/vendor.py
-  - .claude/skills-vendor/baseline.md
-  - .claude/skills-vendor/MANIFEST.md
+  - parfait/script/search.py
+  - parfait/script/vendor.py
+  - .claude/skills/skill-finder/SKILL.md
+  - .claude/skills/update-injected-skills/SKILL.md
+  - .claude/skills-vendor/baseline.json
   - .claude/skills-vendor/CATALOG.md
 related_adr:
 related_spec:
@@ -79,7 +80,7 @@ spec/plan 작성 시 관련 스킬이 **적재적소에 로드**되게 배선하
 
 ### C. `skill-finder` (검색 스킬)
 
-- 위치: `.claude/skills/skill-finder/{SKILL.md, search.py}`.
+- 위치: SKILL.md는 `.claude/skills/skill-finder/`, 로직은 `parfait/script/search.py`(스크립트 규약).
 - 동작: 형제 `.claude/skills/*/SKILL.md`의 frontmatter(name·description)+제목을 스캔해 자연어 쿼리로 **키워드/BM25 랭킹** 후 상위 N개를 `이름 — description (score)` 형태로 반환. 자체 완결(외부 인덱스·wikimap 불필요, 표준 라이브러리만).
 - 용도: spec/plan 단계에서 모델이 `skill-finder "<주제>"` 호출 → 랭킹 결과 중 관련 스킬을 네이티브 `Skill`로 호출.
 - **문서화**: 이 용법을 CLAUDE.md 워크플로 A(위 B)와 skill-finder SKILL.md에 명시 → 다음 세션 spec/plan 작성 때 재사용되게 한다.
@@ -87,8 +88,8 @@ spec/plan 작성 시 관련 스킬이 **적재적소에 로드**되게 배선하
 ### D. `update-injected-skills` (baseline+diff 업데이트 스킬)
 
 기존 `sync-tjyg-develop-baseline`(doc-baseline SoT + delta)과 **동형**.
-- **baseline SoT**: `.claude/skills-vendor/baseline.md` — 소스 repo별 `repo · branch · 마지막 벤더 commit SHA · 벤더일`(4행) + 이력 표.
-- 위치: `.claude/skills/update-injected-skills/{SKILL.md, vendor.py}`.
+- **baseline SoT**: `.claude/skills-vendor/baseline.json` — 소스 repo별 `sha·branch·url`. 사람용 `baseline.md`는 렌더 산출물.
+- 위치: SKILL.md는 `.claude/skills/update-injected-skills/`, 로직은 `parfait/script/vendor.py`(스크립트 규약).
 - **동작**:
   1. 각 소스 repo `git ls-remote`로 현재 HEAD SHA 취득.
   2. baseline SHA와 동일하면 skip. 다르면 `baseline_sha..HEAD` 범위에서 **변경된 SKILL 디렉토리만** 판별(추가/수정/삭제).
@@ -100,16 +101,21 @@ spec/plan 작성 시 관련 스킬이 **적재적소에 로드**되게 배선하
 ## 레이아웃
 
 ```
+parfait/script/              # 파이썬 툴링 홈(규약: parfait/script/README.md)
+  vendor.py + test_vendor.py # 벤더/업데이트 엔진
+  search.py + test_search.py # 검색 랭킹
+  _script-template.py · SKILL.template.md   # 템플릿
 .claude/skills/
   <74 vendored>/SKILL.md (+부속파일)
-  skill-finder/            { SKILL.md, search.py }
-  update-injected-skills/  { SKILL.md, vendor.py }
+  skill-finder/SKILL.md            # search.py(parfait/script) 호출
+  update-injected-skills/SKILL.md  # vendor.py(parfait/script) 호출
   (기존) ingest/ lint/ query/ start-session/ sync-tjyg-develop-baseline/
 .claude/skills-vendor/       # 비-스킬 지원 디렉토리(SKILL.md 없음 → CC 무시)
-  baseline.md                # 4 repo SHA baseline (SoT)
-  MANIFEST.md                # 벤더 스킬 → 출처 repo·원본 경로 매핑
-  CATALOG.md                 # 74개 주제 그룹핑(브라우즈 보조)
+  sources.json               # 입력: 4 repo
+  baseline.json / manifest.json   # 머신 SoT
+  baseline.md / MANIFEST.md / CATALOG.md   # 사람용 렌더 산출물
   licenses/<repo>.LICENSE    # repo별 라이선스 보존
+  .cache/                    # blobless clone (gitignore)
 ```
 
 ## 비목표 (YAGNI)

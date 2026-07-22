@@ -6,7 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| _(현재 active 계획 없음 — 전부 아카이브)_ | |
+| [2026-07-22-vendor-android-kotlin-skills.md](2026-07-22-vendor-android-kotlin-skills.md) | 스킬 벤더링(11 Task): skills-vendor 스캐폴드 → vendor.py(clone/discover/full/render/update+CLI, TDD) → update-injected-skills 스킬 → **74개 전량 벤더 실행** → search.py(TDD) → skill-finder 스킬 → CLAUDE.md 워크플로 A 라우팅 → 검증·아카이브. stdlib 전용, baseline+diff 업데이트. 스펙: [specs](../specs/2026-07-22-vendor-android-kotlin-skills.md) |
 
 ## 아카이브
 | 계획 | 내용 |
