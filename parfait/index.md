@@ -22,6 +22,7 @@ Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data
 | 이미지 세그멘테이션(누끼)·ML Kit | [ADR-0012](adr/0012-mlkit-subject-segmentation.md) + [data-layer](architecture/data-layer.md) |
 | 푸시(FCM)·Crashlytics·Firebase 설정 | [ADR-0013](adr/0013-firebase-fcm-crashlytics.md) |
 | 로깅·Logger 추상화(Kermit) | [ADR-0014](adr/0014-logging-abstraction-kermit.md) |
+| 유효성 결과·에러 문자열 다국어 매핑(domain 의미↔표시 분리) | [ADR-0016](adr/0016-domain-result-presentation-string-mapping.md) + [state-management](architecture/state-management.md) |
 | 구현 직전 기능·컴포넌트 설계 스펙 | [specs/README.md](specs/README.md) |
 | 작업 계획·진행 중/완료 작업 | [plans/README.md](plans/README.md) |
 | 제품 문서(PRD·positioning·roadmap 등, PM-Skills 산출물) | [pm/README.md](pm/README.md) |

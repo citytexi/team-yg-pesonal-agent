@@ -10,7 +10,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 | 스펙 | 상태 | 내용 |
 |------|------|------|
-| _(현재 active 스펙 없음 — 전부 아카이브)_ | | |
+| [2026-07-22-s002-account-info.md](2026-07-22-s002-account-info.md) | draft | `feature/app/setting/impl`(route/screen/viewmodel) + `domain` + `core:ui` — S-002 계정 정보 화면(AccountInfo). S-001에서 만든 Route stub·entry·NavKey 본문 채움. MVI + 공유 `CheckNameValidUseCase`에 `CheckEmpty` 규칙 선두 추가(4케이스=위키 정책 이미지 일치)·입력 시 실시간 검증·YGTextFormField(maxLength 15)·YGDangerZone(로그아웃/탈퇴). **i18n 리팩터([ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md))**: NicknameResult sealed 전환·에러 문자열 core:ui `toStringResource`+strings.xml로 이동(S-102 동반 리팩터). 저장 API·로그아웃/탈퇴는 미연동(Intent만 정의, VM stub). 유효성 [[S-002-앱닉네임-정책-v0.1]] 일치 |
 
 ## 아카이브
 | 스펙 | 내용 |

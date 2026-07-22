@@ -11,12 +11,14 @@ related_code:
   - GroupNickNameScreen.kt#GroupNickNameScreen
   - GroupNickNameViewModel.kt#GroupNickNameViewModel
   - CheckNameValidUseCase.kt#CheckNameValidUseCase
-  - NickNameResult.kt#NickNameResult
+  - NicknameResult.kt#NicknameResult
+  - NickNameResultUiText.kt#toStringResource
   - CharExtension.kt#isKorean
   - EntryBuilder.kt#featureGroupNickNameEntryBuilder
-related_adr: ADR-0005, ADR-0006, ADR-0009
+related_adr: ADR-0005, ADR-0006, ADR-0009, ADR-0016
 related_spec:
 related_architecture: state-management, navigation-flow
+related_spec: s002-account-info
 supersedes:
 superseded_by:
 tags: [spec, parfait, groups, nickname, s102]
@@ -50,12 +52,17 @@ tags: [spec, parfait, groups, nickname, s102]
 
 // domain — UseCase(ADR-0009: @Inject + operator invoke)
 class CheckNameValidUseCase @Inject constructor() {
-    operator fun invoke(nickName: String): NickNameResult
+    operator fun invoke(nickName: String): NicknameResult
 }
-data class NickNameResult(val isSuccess: Boolean, val errorMessage: String?)
+// 🔁 ADR-0016 리팩터 후: NicknameResult는 sealed(Success/Error.*), 문자열 미보유.
+//    표시 문자열은 core:ui NickNameResultUiText.kt#toStringResource가 매핑.
+sealed interface NicknameResult {
+    data object Success : NicknameResult
+    sealed interface Error : NicknameResult { /* Empty, SpaceAtEdge, DuplicatedSpace, InvalidCharacter */ }
+}
 
-// impl — MVI
-data class GroupNickNameUiState(val nickName: String = "", val errorMessage: String? = null) : UiState
+// impl — MVI (🔁 ADR-0016 후 errorMessage:String? → nickNameError:NicknameResult.Error?)
+data class GroupNickNameUiState(val nickName: String = "", val nickNameError: NicknameResult.Error? = null) : UiState
 sealed interface GroupNickNameIntent {
     data object ClickNextButton; data object ClickBackButton
     data class InputWord(val nickName: String)
@@ -73,11 +80,13 @@ sealed interface GroupNickNameSideEffect { data object NavigateToBack; data obje
 
 ### 유효성 규칙 (`CheckNameValidUseCase`, 순차 검사 — 첫 실패 반환)
 
-| 규칙(enum) | 조건 | 에러 메시지 |
+> 🔁 **ADR-0016 후**: 각 규칙은 문자열 대신 `NicknameResult.Error` 변형을 반환하고, 표시 문자열은 core:ui가 매핑. 아래 "에러 메시지"는 매핑 결과값. 또한 S-002 도입 시 `CheckEmpty`(빈 값→`Error.Empty`, "닉네임은 비워둘 수 없어요")가 선두에 추가됨(S-102는 확인 버튼 `isNotEmpty()` 비활성으로 미도달).
+
+| 규칙(enum) | 조건 | 반환 Error / 표시 문자열 |
 |---|---|---|
-| `CheckSpaceStartOrEnd` | 처음/끝 공백 불가 | "닉네임의 처음과 끝에는 공백을 사용할 수 없어요" |
-| `CheckDuplicatedSpace` | 연속 공백(`"  "`) 불가 | "공백은 글자 사이에 1칸만 사용할 수 있어요" |
-| `CheckValidCharacter` | 한글/영문/숫자/공백만(`isKorean`·`isDigit`·`isLetter`·`isWhitespace`) | "한글, 영문, 숫자, 띄어쓰기만 사용할 수 있어요" |
+| `CheckSpaceStartOrEnd` | 처음/끝 공백 불가 | `Error.SpaceAtEdge` — "닉네임의 처음과 끝에는 공백을 사용할 수 없어요" |
+| `CheckDuplicatedSpace` | 연속 공백(`"  "`) 불가 | `Error.DuplicatedSpace` — "공백은 글자 사이에 1칸만 사용할 수 있어요" |
+| `CheckValidCharacter` | 한글/영문/숫자/공백만(`isKorean`·`isDigit`·`isLetter`·`isWhitespace`) | `Error.InvalidCharacter` — "한글, 영문, 숫자, 띄어쓰기만 사용할 수 있어요" |
 
 - **길이 상한 15자**: `GroupNickNameScreen`의 `NICKNAME_MAX_LENGTH = 15` → `YGTextFormField(maxLength = 15)`로 입력 단계에서 강제(UseCase는 길이 미검사). 위키 [[S-102-닉네임-정책-v0.1]] "1~15자"와 일치.
 - `Char.isKorean()`(`core/util/jvm`) — 자모(`ㄱ..ㆎ`, `ㅏ..ㅣ`) + 완성형(`가..힣`) 허용.
@@ -90,7 +99,8 @@ sealed interface GroupNickNameSideEffect { data object NavigateToBack; data obje
 ## 파일 구성
 
 - `api/NavKeyGroupNickName.kt` — 목적지 키.
-- `domain/usecase/group/CheckNameValidUseCase.kt` + `domain/model/NickNameResult.kt` — 유효성 도메인 로직.
+- `domain/usecase/group/CheckNameValidUseCase.kt` + `domain/model/NicknameResult.kt` — 유효성 도메인 로직(🔁 ADR-0016 후 NicknameResult sealed·문자열 미보유).
+- `core/ui/text/NickNameResultUiText.kt#toStringResource` — 에러→표시 문자열 매핑(🔁 ADR-0016 신규, S-002와 공용).
 - `core/util/jvm/extension/CharExtension.kt#isKorean` — 한글 판별 확장(신규).
 - `impl/nickname/GroupNickNameScreen.kt` — stateless UI + 상수 `NICKNAME_MAX_LENGTH`.
 - `impl/nickname/GroupNickNameRoute.kt` — VM 배선, back→onBack, next stub.

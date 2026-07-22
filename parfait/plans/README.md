@@ -6,7 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| _(현재 active 계획 없음 — 전부 아카이브)_ | |
+| [2026-07-22-s002-account-info.md](2026-07-22-s002-account-info.md) | S-002 계정 정보 화면 구현(6 Task): domain `CheckNameValidUseCase`에 `CheckEmpty` 규칙 추가 → AccountInfoViewModel(MVI, 실시간 검증·로그아웃/탈퇴 stub) → strings 4 → AccountInfoScreen(YGTopBarDetail·YGTextFormField maxLength15·YGDangerZone·프리뷰) → Route 배선 → 통합 빌드/동작 확인. 테스트 없음(compile+ktlint+프리뷰 검증). 스펙: [specs](../specs/2026-07-22-s002-account-info.md) |
 
 ## 아카이브
 | 계획 | 내용 |
