@@ -73,3 +73,4 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-22] ingest | G-001 간격정책 v0.2 + S-101 컬러규칙 v0.3 배치 — sources 2 신설, 정책설계·간격v0.1·S-101 v0.2 대체 마킹, 개념 3종 갱신(무한-파르페-그리드·토핑·nametag-chip), overview·index 갱신, open-questions 상충 1건(v0.2 160/6타입 vs 토핑-정책-v0.1 180/3타입) 등록
 ## [2026-07-22] ingest | S-101 그룹칩 Timestamp 컬러 규칙 v0.1 — v0.3에서 분리된 Grouptag-Chip Timestamp 매핑(Cherry-100/200/300, 마지막 변화 유저 기준). sources 1 신설, nametag-chip 개념을 요소별 별개 매핑(토스트 ①/그룹칩 ②) 2표로 정정(이전 "동일 매핑" 오기술 수정), S-101 v0.3 소스/raw 문구 정정, overview·index(36) 갱신. 상충 아님(별개 UI 요소)
 ## [2026-07-22] lint | 점검 완료, 발견 2건(고아 lint-2026-07-13 index 미등록→등록, stale parfait 링크 방치). 민감데이터·신규 모순 0. 그룹칩 Timestamp vs 토스트 별개 매핑 확인(모순 아님)
+## [2026-07-22] lint | parfait 링크 stale 후속 — wiki/index parfait 라인 ADR 개수 정정(14→15, ADR-0015 feature/common 공유 레이어 누락). architecture 5건은 오탐(template 제외 정확)
