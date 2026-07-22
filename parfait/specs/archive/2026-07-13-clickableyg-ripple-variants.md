@@ -84,6 +84,6 @@ fun Modifier.clickableYG(/* 동일 파라미터 */): Modifier
 
 ## 주의 / 열린 질문
 - **merge delegate 순서**: draw 레이어링 정답은 기기 확인 후 확정(dim↔scale 순서).
-- **테마 비의존 리터럴**: 리플 색(`YGDimRippleColor = Color(0xFF29292C)`)·`scaleValue`(0.98)가 토큰 아닌 리터럴. `core:util:android`가 designsystem 테마 비의존이라 색은 리터럴 고정 또는 호출측 주입 → [open-questions](../../open-questions.md).
+- **테마 비의존 리터럴**: 리플 색(`YGDimRippleColor = Color(0xFF29292C)`)·`scaleValue`(0.98)가 토큰 아닌 리터럴. `core:util:android`가 designsystem 테마 비의존이라 색은 리터럴 고정 또는 호출측 주입 → [open-questions](../../synthesis/open-questions.md).
 - **기존 스펙 관계**: [[2026-07-12-clickableyg-throttle]](코어 throttle)·[[2026-07-13-ygripple]](ygDimRipple)의 API 일부(단일 `indication`, `YGRipple.kt` 파일명)를 이 스펙이 갱신. 구현 시 두 스펙의 해당 부분 동기화.
 - **검증**: compile + ktlint + 기기 육안(dim 리플/scale 축소/merge 동시). 정적 프리뷰로 리플·애니메이션 안 보임.

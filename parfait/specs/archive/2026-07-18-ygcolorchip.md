@@ -80,6 +80,6 @@ fun YGColorChip(
 - 프리뷰: `@Preview` + `YGCustomTheme` + `@PreviewParameter`(타입 전수).
 
 ## 주의 / 열린 질문
-- **⚠️ 패키지↔폴더 불일치(코드 결함)**: 세 파일이 `component/ygcolorchip/` 폴더에 있으나, `YGColorChip.kt`·`YGColorChipPreviewData.kt`는 `package ...component.ygchip`, `YGColorChipType.kt`만 `package ...component.ygcolorchip`로 선언 — 폴더와 패키지가 어긋남. → [open-questions](../../open-questions.md).
-- **⚠️ 타입 개수 정책 드리프트**: 코드는 `NametagChip1~13` + `Plus` = **14종**. 위키 정책 [[nametag-chip]]([[S-101-프로필-닉네임-컬러-규칙-v0.2]])은 **Nametag-Chip 12종**으로 기술. 개수·매핑 불일치 → [open-questions](../../open-questions.md) + 위키 정책 재확인 필요.
+- **⚠️ 패키지↔폴더 불일치(코드 결함)**: 세 파일이 `component/ygcolorchip/` 폴더에 있으나, `YGColorChip.kt`·`YGColorChipPreviewData.kt`는 `package ...component.ygchip`, `YGColorChipType.kt`만 `package ...component.ygcolorchip`로 선언 — 폴더와 패키지가 어긋남. → [open-questions](../../synthesis/open-questions.md).
+- **⚠️ 타입 개수 정책 드리프트**: 코드는 `NametagChip1~13` + `Plus` = **14종**. 위키 정책 [[nametag-chip]]([[S-101-프로필-닉네임-컬러-규칙-v0.2]])은 **Nametag-Chip 12종**으로 기술. 개수·매핑 불일치 → [open-questions](../../synthesis/open-questions.md) + 위키 정책 재확인 필요.
 - **원자 색 직접 참조(과도기)**: 타입 색이 시맨틱(`YGTheme.colorScheme`) 대신 `YGAtomicColors` 직접 참조. 설계 전반 과도기 패턴 → [design-system](../../architecture/design-system.md).

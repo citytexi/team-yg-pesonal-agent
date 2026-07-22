@@ -29,7 +29,7 @@ tags: [plan, parfait, designsystem, card]
 ## Global Constraints
 - 대상 repo: `TJYG-Android`. 브랜치: 스텁(`YGInviteCard.kt`)이 `feature/#136-etc-component`에 존재 — 동일 브랜치 계속 or 신규 feature 브랜치는 담당자 확정.
 - 패키지: `com.teamyg.parfait.core.designsystem.component.card`.
-- 색은 상태별 `YGAtomicColors.Gray.*` / `YGAtomicColors.Cherry.*` 직접 참조(YGButton·YGIconButton 선례, 시맨틱 슬롯 없음 → 과도기 [open-questions](../../open-questions.md)).
+- 색은 상태별 `YGAtomicColors.Gray.*` / `YGAtomicColors.Cherry.*` 직접 참조(YGButton·YGIconButton 선례, 시맨틱 슬롯 없음 → 과도기 [open-questions](../../synthesis/open-questions.md)).
 - 타이포 `YGTheme.typography.body.b02R`(라벨·subText) / `b01SB`(코드), 간격·모양 토큰 `YGTheme.layout.*` / `YGTheme.shapes.radius.*`.
 - 복사 버튼 색은 손대지 않는다(`YGButtonType.SmallSquare` 소관, 별도 브랜치). 카드는 `isEnabled`만 제어.
 - 검증: `:core:designsystem:compileReleaseKotlin` + `:core:designsystem:ktlintMainSourceSetCheck` + `@YGPreview` 육안(Active/Invalid). 유닛 테스트 없음(모듈 관례).

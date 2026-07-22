@@ -1,10 +1,10 @@
 ---
 id: app-preview-component-gallery
 title: 컴포넌트 프리뷰 갤러리 앱 (app-preview Component Gallery)
-status: draft
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-21
+verified: 2026-07-22
 related_code:
   - MainScreen.kt
   - MainEntryBuilder.kt
@@ -22,6 +22,7 @@ tags: [spec, parfait, app-preview, designsystem]
 # Spec: 컴포넌트 프리뷰 갤러리 앱 (app-preview)
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+> ✅ **develop 머지 완료**(PR #163 `feature/design-system-preview-app-component`, 2026-07-22). 카탈로그(5카테고리)·NavKey 17·showcase 화면 17·`PreviewSection`·`ComponentEntryModule`(@IntoSet) 배선 모두 코드 반영. 구조=설계 일치.
 
 ## 목표
 

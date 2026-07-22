@@ -1,15 +1,15 @@
 ---
 id: ygdangerzone-dashed
 title: YGDangerZone 점선 재설계 + 점선 프리미티브 (dashedBorder · YGHorizontalDashedDivider)
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-19
+verified: 2026-07-22
 related_code: YGDangerZone.kt#YGDangerZone, DashedBorder.kt#dashedBorder, YGHorizontalDashedDivider.kt#YGHorizontalDashedDivider
 related_adr: ADR-0010
 related_spec: ygdangerzone, yghorizontaldivider, ygactionitem
 related_architecture: design-system
-supersedes:
+supersedes: ygdangerzone
 superseded_by:
 tags: [spec, parfait, designsystem]
 ---
@@ -17,10 +17,10 @@ tags: [spec, parfait, designsystem]
 # Spec: YGDangerZone 점선 재설계 + 점선 프리미티브
 
 - 대상: `core:designsystem` — `component/ygdangerzone/`, `border/`, `component/etc/`
-- 관련: [ADR-0010](../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../architecture/design-system.md) · [ygdangerzone(develop baseline)](archive/2026-07-18-ygdangerzone.md) · [yghorizontaldivider(solid 원본)](archive/2026-07-12-yghorizontaldivider.md) · 브랜치 `feature/sync-design-system-260719`
+- 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md) · [ygdangerzone(구 solid baseline, superseded)](2026-07-18-ygdangerzone.md) · [yghorizontaldivider(solid 원본)](2026-07-12-yghorizontaldivider.md)
 
 > 상태·날짜·대상·관련은 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
-> ⚠️ **develop 미머지**: 이 스펙의 변경은 브랜치 `feature/sync-design-system-260719`에만 존재. develop baseline은 여전히 [archive/2026-07-18-ygdangerzone.md](archive/2026-07-18-ygdangerzone.md)(solid 채움 + solid 구분선).
+> ✅ **develop 머지 완료**(PR #159 `feature/sync-design-system-260719`, 2026-07-22). 코드=설계 일치. 이 스펙이 구 solid 채움 baseline [2026-07-18-ygdangerzone.md](2026-07-18-ygdangerzone.md)를 supersede.
 
 ## 목표
 피그마 Danger-Zone 갱신 반영 — 반투명 **채움 박스 → 점선 테두리 박스**, **solid 구분선 → 점선 구분선**으로 시각 재설계. 재설계 과정에서 재사용 점선 프리미티브 2종을 신설한다.
@@ -31,7 +31,7 @@ tags: [spec, parfait, designsystem]
   - 신규 `dashedBorder()` Modifier 확장(`border/DashedBorder.kt`) — 점선 사각형 테두리.
   - 신규 `YGHorizontalDashedDivider`(`component/etc/`) — 점선 수평 구분선. 기존 solid `YGHorizontalDivider` 대체 사용(DangerZone 한정).
 - 제외:
-  - 슬롯 내용·개수 가변·액션 동작 — 기존 [ygdangerzone](archive/2026-07-18-ygdangerzone.md) 스펙과 동일(상/하 2슬롯 고정, 호출자 주입).
+  - 슬롯 내용·개수 가변·액션 동작 — 기존 [ygdangerzone](2026-07-18-ygdangerzone.md) 스펙과 동일(상/하 2슬롯 고정, 호출자 주입).
   - solid `YGHorizontalDivider` 제거 — 유지(타 사용처 보존).
 
 ## API / 인터페이스
@@ -92,10 +92,8 @@ Column(
 - `core/designsystem/.../component/ygdangerzone/YGDangerZone.kt` — 루트 modifier 체인 교체 + `YGHorizontalDashedDivider` 사용.
 
 ## 주의 / 열린 질문
-- **피그마 대비 미반영 델타**(develop 머지 전 확정 필요):
-  - 좌우 패딩 `gap-5` 미적용 — 코드는 `vertical = padding2`만. 피그마는 상하 padding-2 **+ 좌우 gap-5**.
-  - 폭 `Fixed 335px` vs 코드 `IntrinsicSize.Max`(Hug). 피그마 Width Fixed 335 / Height Hug 98.
-- **원자 색 직접 참조(과도기)**: `gray-100`을 `YGAtomicColors.Gray.Gray100` 직접 참조(시맨틱 슬롯 미경유). YGButton·YGHorizontalDivider 선례와 동일 → [design-system](../architecture/design-system.md) · [open-questions](../open-questions.md).
-- **프리뷰 방식 불일치**: `YGDangerZone`은 `@Preview`+`YGCustomTheme`, `YGHorizontalDashedDivider`는 `@YGPreview`+`PreviewBox` — 표준화 미확정([designsystem-preview-migration](2026-07-18-designsystem-preview-migration.md)).
+- **피그마 대비 미반영 델타(머지 후 잔존)**: 코드는 `vertical = padding2` + `IntrinsicSize.Max`로 머지됨. 피그마는 상하 padding-2 **+ 좌우 gap-5**, 폭 `Fixed 335px`. 좌우 gap-5·고정 폭 미반영 상태로 머지 → [open-questions](../../synthesis/open-questions.md) [2026-07-22] 등록.
+- **원자 색 직접 참조(과도기)**: `gray-100`을 `YGAtomicColors.Gray.Gray100` 직접 참조(시맨틱 슬롯 미경유). YGButton·YGHorizontalDivider 선례와 동일 → [design-system](../../architecture/design-system.md) · [open-questions](../../synthesis/open-questions.md).
+- **프리뷰 방식**: `YGDangerZone`·`YGHorizontalDashedDivider` 모두 `@YGPreview`+`PreviewBox`로 통일 머지(#158 프리뷰 표준 정합).
 - **점선 프리미티브 재사용 범위**: 현재 DangerZone 전용. 타 컴포넌트 확산 시 `dash` 토큰화·시맨틱 색 정리 재검토.
-- 구현 완료(develop 머지) 시 `status: implemented` + `archive/` 이동, 기존 [archive/2026-07-18-ygdangerzone.md](archive/2026-07-18-ygdangerzone.md)와의 관계(supersede 여부) 확정.
+- **supersede**: 이 스펙이 구 solid 채움 [2026-07-18-ygdangerzone.md](2026-07-18-ygdangerzone.md)를 대체(frontmatter `supersedes: ygdangerzone`).

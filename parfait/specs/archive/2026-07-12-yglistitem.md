@@ -90,6 +90,6 @@ private fun YGListItemImpl(
 
 ## 주의 / 열린 질문
 - **API 재설계 이력**: 초기 단일 함수(nullable `subText`/`trailingIcon` + `onClick`)에서 오버로드 2개 + 슬롯으로 변경(#136 브랜치 refactor). sub·trailing 동시/무 케이스가 타입 레벨로 배제됨. `onClick`→`onClickTrailingIcon` 개명.
-- **미머지**: #136(`feature/#136-etc-component`) develop 미머지 — [open-questions 2026-07-13](../../open-questions.md). 머지 시 최종 시그니처 재확인.
+- **미머지**: #136(`feature/#136-etc-component`) develop 미머지 — [open-questions 2026-07-13](../../synthesis/open-questions.md). 머지 시 최종 시그니처 재확인.
 - **sub 텍스트 스타일**: 우측 값 텍스트로 `body.b02SB` + `Gray.Gray400` 채택. 피그마 확정본과 어긋나면 갱신.
-- **과도기**: gray 음영·아이콘 tint가 시맨틱 슬롯 없어 `YGAtomicColors` 직접 참조 — YGButton·YGTextField 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../open-questions.md).
+- **과도기**: gray 음영·아이콘 tint가 시맨틱 슬롯 없어 `YGAtomicColors` 직접 참조 — YGButton·YGTextField 선례. → [open-questions 2026-07-10 YGButton 디자인 토큰](../../synthesis/open-questions.md).

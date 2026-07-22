@@ -101,4 +101,4 @@ internal fun Modifier.clickableYGThrottle(
 - **검증 한계**: throttle 타이밍은 유닛 테스트 인프라 부재(Compose UI)로 compile + ktlint + `@Preview`/기기 연타 육안으로 확인. 정밀 타이밍 테스트는 별도.
 - **첫 Modifier.Node**: 프로젝트에 Node 선례 없음. 성공 시 이후 커스텀 modifier의 참조 패턴이 됨(아키텍처 결정화되면 ADR 검토).
 - **indication 기본값 = ygDimRipple**: 변형 함수가 리플을 고정(`clickableYGDimRipple` → `listOf(ygDimRipple())` 등). `ygDimRipple`은 같은 모듈(`core:util:android clickable/`)에 있어 별도 wrapper 불필요.
-- **테마 비의존(재이동 결과)**: `core:util:android`는 `core:designsystem`을 의존하지 않으므로 ripple 색을 테마(`YGAtomicColors`)에서 읽지 못한다. 기본색을 리터럴 `YGDimRippleColor = Color(0xFF29292C)`로 둠. 시맨틱 토큰화하려면 색을 호출측(designsystem 컴포넌트)에서 파라미터로 주입해야 함 → [open-questions](../../open-questions.md).
+- **테마 비의존(재이동 결과)**: `core:util:android`는 `core:designsystem`을 의존하지 않으므로 ripple 색을 테마(`YGAtomicColors`)에서 읽지 못한다. 기본색을 리터럴 `YGDimRippleColor = Color(0xFF29292C)`로 둠. 시맨틱 토큰화하려면 색을 호출측(designsystem 컴포넌트)에서 파라미터로 주입해야 함 → [open-questions](../../synthesis/open-questions.md).

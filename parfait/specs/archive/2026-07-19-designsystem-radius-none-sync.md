@@ -1,10 +1,10 @@
 ---
 id: designsystem-radius-none-sync
 title: radius none(0) 토큰 추가 + 컴포넌트 각진 corner 동기화
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-19
+verified: 2026-07-22
 related_code: YGShapeRadius.kt#none, YGShapesDefaults.kt#radius0, YGTextFieldDefaults.kt#colors, YGTextFieldImpl.kt#commonShape, YGInviteCard.kt#YGInviteCard, YGButtonType.kt#SmallSquare
 related_adr: ADR-0010
 related_spec: ygtextfield, yginvitecard, ygdangerzone-dashed
@@ -17,10 +17,10 @@ tags: [spec, parfait, designsystem]
 # Spec: radius none(0) 토큰 추가 + 컴포넌트 각진 corner 동기화
 
 - 대상: `core:designsystem` — `theme/shapes/`, `component/textfield`, `component/card`, `component/ygbutton`
-- 관련: [ADR-0010](../adr/0010-custom-compositionlocal-theme.md) · [design-system](../architecture/design-system.md)(radius 토큰 목록) · [ygtextfield](archive/2026-07-10-ygtextfield.md) · [yginvitecard](archive/2026-07-14-yginvitecard.md) · [ygdangerzone-dashed](2026-07-19-ygdangerzone-dashed.md) · 브랜치 `feature/sync-design-system-260719`
+- 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md) · [design-system](../../architecture/design-system.md)(radius 토큰 목록) · [ygtextfield](2026-07-10-ygtextfield.md) · [yginvitecard](2026-07-14-yginvitecard.md) · [ygdangerzone-dashed](2026-07-19-ygdangerzone-dashed.md)
 
 > 상태·날짜·대상·관련은 frontmatter가 단일 출처.
-> ⚠️ **develop 미머지**: 브랜치 `feature/sync-design-system-260719` 한정. develop baseline은 아래 "이전(baseline)" 열.
+> ✅ **develop 머지 완료**(PR #159 `feature/sync-design-system-260719`, 2026-07-22). `radius.none`(=RectangleShape) 토큰 신설 + YGTextField·YGInviteCard·YGButtonType SmallSquare 각짐 sync 모두 코드 반영. 아래 "이전(baseline)" 열은 머지 전 값.
 
 ## 목표
 피그마 갱신 sync — radius 스케일에 **`none`(0, 각진 corner)** 토큰을 신설하고, 각진 처리가 필요한 컴포넌트를 이 토큰으로 통일. 함께 YGTextField 배경색을 반투명→불투명 흰색으로 정정.
@@ -49,5 +49,5 @@ private val radius0: Shape = RectangleShape   // 각진 corner
 ## 주의 / 열린 질문
 - ~~**YGInviteCard 테두리/클립 비대칭**: 테두리 `radius.none` vs clip `radius.medium1`.~~ → **해소**(커밋 `refactor: YGInviteCard clip shape 수정`): `.clip`도 `radius.none`으로 통일, 카드 전체 각짐.
 - **`none` 시맨틱 vs 하드코딩 `RectangleShape`**: 각진 처리를 토큰(`radius.none`)으로 승격 → 컴포넌트 내 `RectangleShape` 직접 참조 대신 테마 경유. 신규 컴포넌트도 각짐 필요 시 `radius.none` 사용 권장.
-- **YGButton 전용 스펙 없음**: SmallSquare radius 변경은 [design-system](../architecture/design-system.md)(`YGButtonType` 변형 서술)이 유일 문서 지점. 값 변동은 소스(`YGButtonType.kt`)가 단일 출처.
-- develop 머지 시 `status: implemented` + `archive/` 이동, 해당 컴포넌트 아카이브 스펙(ygtextfield·yginvitecard) baseline 수치 갱신.
+- **YGButton 전용 스펙 없음**: SmallSquare radius 변경은 [design-system](../../architecture/design-system.md)(`YGButtonType` 변형 서술)이 유일 문서 지점. 값 변동은 소스(`YGButtonType.kt`)가 단일 출처.
+- **아카이브 스펙 마커**: baseline 스펙([ygtextfield](2026-07-10-ygtextfield.md)·[yginvitecard](2026-07-14-yginvitecard.md))의 "진행 중" 마커는 본 스펙 머지 반영으로 "머지됨(#159)"으로 갱신함(before→after는 위 범위 표가 단일 출처).

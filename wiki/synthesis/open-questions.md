@@ -52,7 +52,7 @@ ingest·lint에서 감지된 모순과 미결 질문을 추적한다.
 - **상태**: 미해결
 - **해소 메모**: 실제 매핑이 12종인지 13(+Plus)종인지 디자인·정책 확인 필요. 확정 시 [[nametag-chip]]·[[S-101-프로필-닉네임-컬러-규칙-v0.2]] 갱신 + `⚠️` 마커 제거, 코드 타입 개수 정합. 구현 측 추적은 parfait `open-questions`([2026-07-18]).
 
-> **구현(코드·ADR·architecture) 미결은 여기 없다.** `parfait/open-questions.md`로 분리(2026-07-13). 이 파일은 정책·기획 미결만 추적한다.
+> **구현(코드·ADR·architecture) 미결은 여기 없다.** `parfait/synthesis/open-questions.md`로 분리(2026-07-13). 이 파일은 정책·기획 미결만 추적한다.
 
 <!--
 항목 추가 형식:

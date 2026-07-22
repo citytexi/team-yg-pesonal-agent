@@ -73,6 +73,6 @@ fun YGDateButton(
 - 프리뷰: `@Preview` + `YGCustomTheme`(기본/선택/오늘/비활성 4종).
 
 ## 주의 / 열린 질문
-- **⚠️ `clickableYG` 미사용(규약 이탈)**: 클릭을 표준 `Modifier.clickable(indication = null, ...)` + `semantics { role = Role.Button }`로 직접 구현 — `core:util:android`의 중복 클릭 leading-throttle 유틸(`clickableYG`) 미적용. 다른 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem·YGChipButton)와 스로틀 규약 불일치, 빠른 연타 방어 없음. → [open-questions](../../open-questions.md).
+- **⚠️ `clickableYG` 미사용(규약 이탈)**: 클릭을 표준 `Modifier.clickable(indication = null, ...)` + `semantics { role = Role.Button }`로 직접 구현 — `core:util:android`의 중복 클릭 leading-throttle 유틸(`clickableYG`) 미적용. 다른 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem·YGChipButton)와 스로틀 규약 불일치, 빠른 연타 방어 없음. → [open-questions](../../synthesis/open-questions.md).
 - **원자 색 직접 참조(과도기)**: 전 상태 색이 `YGAtomicColors.Gray.*` 직접 참조.
 - **today 배경/테두리 미세**: today는 배경 투명 + `Gray.Gray850` 테두리로만 구분(선택과 대비). Figma 육안 확인 대상.

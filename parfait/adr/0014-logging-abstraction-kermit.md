@@ -51,4 +51,4 @@ tags: [adr, parfait]
 
 **위험·방어**
 - `KermitLoggerImpl`는 `internal` — 모듈 외부는 `Logger` 인터페이스+`Loggers` 팩토리로만 접근.
-- 프로덕션 로그 라이터 정책(릴리즈 시 로그 억제·Crashlytics 연동 등)은 `LoggerInitializer` 확장 여지로 남김 → [open-questions](../open-questions.md).
+- 프로덕션 로그 라이터 정책(릴리즈 시 로그 억제·Crashlytics 연동 등)은 `LoggerInitializer` 확장 여지로 남김 → [open-questions](../synthesis/open-questions.md).
