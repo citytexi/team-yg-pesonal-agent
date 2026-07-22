@@ -1,10 +1,10 @@
 ---
 id: s004-terms-privacy-webview
 title: S-004 약관/개인정보 처리 방침 화면 분리 + Notion 웹뷰 (ServiceTerms / PrivacyPolicy WebView)
-status: draft
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-20
+verified: 2026-07-22
 related_code:
   - EntryBuilder.kt#featureAppSettingEntryBuilder
   - ServiceTermsRoute.kt#ServiceTermsRoute
@@ -26,6 +26,12 @@ tags: [spec, parfait, setting, webview, s004]
 # S-004 약관 / 개인정보 처리 방침 화면 분리 + Notion 웹뷰
 
 > 상태·날짜·대상·관련은 frontmatter가 단일 출처. 본문은 설계에 집중.
+>
+> **구현 완료(2026-07-22, develop 머지 #161)**: 이 설계는 `feature/app/setting/impl`를 전제로 작성됐으나,
+> 실제 코드는 곧바로 **`:feature:common:terms:{api,impl}`** 신규 모듈에 안착했다(모듈 분리 설계
+> [feature-common-terms-module](2026-07-21-feature-common-terms-module.md), [ADR-0015](../../adr/0015-feature-common-shared-layer.md)).
+> 따라서 아래 본문의 "대상 모듈 = setting/impl"·`EntryBuilder#featureAppSettingEntryBuilder` 등 경로는
+> 최종 위치가 `common:terms:impl`(`featureCommonTermsEntryBuilder`)로 대체됨. 화면 구조·MVI·NotionWebView 설계 자체는 코드와 일치.
 
 - **화면 ID**: S-004 (서비스 이용약관 / 개인정보 처리 방침)
 - **대상 모듈**: `feature/app/setting/impl`

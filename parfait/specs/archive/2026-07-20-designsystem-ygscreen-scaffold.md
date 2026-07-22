@@ -1,10 +1,10 @@
 ---
 id: designsystem-ygscreen-scaffold
 title: 화면 컨테이너 컴포넌트 (YGScreen · YGScaffold · YGScreenScope)
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-21
+verified: 2026-07-22
 related_code:
   - YGScreen.kt#YGScreen
   - YGScreenScope.kt#YGScreenScope

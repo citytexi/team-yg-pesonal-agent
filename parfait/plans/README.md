@@ -6,12 +6,13 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| [2026-07-21-feature-common-terms-module.md](2026-07-21-feature-common-terms-module.md) | `:feature:common:terms:{api,impl}` 신규 이동(5 Task: api모듈+NavKey → impl모듈+7파일이동+entry+strings → app배선 → setting정리 → 빌드검증+1커밋). A-003 재사용 위한 feature/common 공유 레이어(ADR-0015). git mv 히스토리 보존, 동작 무변경, 문자열 키 terms_* 리네임. 원자적 이동이라 커밋 1회. 스펙: [specs](../specs/2026-07-21-feature-common-terms-module.md) |
-| [2026-07-20-s004-terms-privacy-webview.md](2026-07-20-s004-terms-privacy-webview.md) | `:feature:app:setting:impl` — S-004 약관/개인정보 화면 분리 구현(7 Task: NotionWebView+strings → ServiceTerms VM → PrivacyPolicy VM → ServiceTermsScreen → PrivacyPolicyScreen → TermsRoute배선+PrivacyPolicyRoute신규 → EntryBuilder 분리). MVI BaseViewModel, YGTopBarDetail 재사용, WebView(AndroidView) 로딩/에러 폴백, url은 State placeholder(추후 UseCase 주입). 테스트 없음(compile+ktlint+에뮬). 스펙: [specs](../specs/2026-07-20-s004-terms-privacy-webview.md) |
+| _(현재 active 계획 없음 — 전부 아카이브)_ | |
 
 ## 아카이브
 | 계획 | 내용 |
 |------|------|
+| [2026-07-21-feature-common-terms-module.md](archive/2026-07-21-feature-common-terms-module.md) | `:feature:common:terms:{api,impl}` 신규 이동(5 Task: api모듈+NavKey → impl모듈+7파일이동+entry+strings → app배선 → setting정리 → 빌드검증). A-003 재사용 위한 feature/common 공유 레이어([ADR-0015](../adr/0015-feature-common-shared-layer.md)). git mv 히스토리 보존, 동작 무변경. **develop 머지(#161)**. 스펙: [specs](../specs/archive/2026-07-21-feature-common-terms-module.md) |
+| [2026-07-20-s004-terms-privacy-webview.md](archive/2026-07-20-s004-terms-privacy-webview.md) | S-004 약관/개인정보 화면 분리 구현(7 Task: NotionWebView+strings → ServiceTerms/PrivacyPolicy VM → Screen 2 → Route 배선 → EntryBuilder 분리). MVI BaseViewModel, YGTopBarDetail 재사용, WebView(AndroidView) 로딩/에러 폴백, url State placeholder. **develop 머지(#161)** — 최종 위치 common:terms(모듈 분리 plan과 동일 PR). 스펙: [specs](../specs/archive/2026-07-20-s004-terms-privacy-webview.md) |
 | [2026-07-21-app-preview-component-gallery.md](archive/2026-07-21-app-preview-component-gallery.md) | `:app-preview` 컴포넌트 갤러리 앱(10 Task: 카탈로그+NavKey17 → PreviewSection → Button6화면 → Input2 → Text3 → Container5 → Bar1 → EntryBuilders+DI배선 → MainScreen그룹목록+Route → 실기기검증). core:designsystem YG* 17종 실렌더 갤러리, 상태형은 remember 인터랙션, navigator.goTo/onBack. NavKey 파일당 1개(17). 기존 Navigation3+Hilt multibinding 확장. **develop 머지(#163)**. 스펙: [specs](../specs/archive/2026-07-21-app-preview-component-gallery.md) |
 | [2026-07-19-app-setting-s001.md](archive/2026-07-19-app-setting-s001.md) | `:feature:app:setting` — S-001 앱 설정 화면 구현(7 Task: NavKey3 → ViewModel/State → strings+ProfileCard → Screen → Route배선 → stub Route → EntryBuilder). MVI BaseViewModel, YGListItem·YGTopBarBack 재사용, 계정/약관/개인정보 nav stub. 테스트 없음(compile+ktlint+프리뷰 검증). **develop 머지(#160)**. ProfileCard 각짐만 `RectangleShape` 대체. 스펙: [specs](../specs/archive/2026-07-19-app-setting-s001.md) |
 | [2026-07-18-designsystem-preview-migration.md](archive/2026-07-18-designsystem-preview-migration.md) | 프리뷰 관용구 통일 계획(4 Task: 파일럿 YGColorChip → param 5파일 → 무param 6파일 → 검증+문서). `@YGPreview`+`PreviewBox` 전환. **develop 머지(#158)**. 스펙: [specs](../specs/archive/2026-07-18-designsystem-preview-migration.md) |

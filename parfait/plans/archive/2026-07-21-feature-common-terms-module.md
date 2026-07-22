@@ -1,16 +1,16 @@
 ---
 id: feature-common-terms-module
 title: 약관/개인정보 :feature:common:terms 모듈 분리 Implementation Plan
-status: draft
+status: done
 type: work-order
 created: 2026-07-21
-updated: 2026-07-21
+updated: 2026-07-22
 platforms: android
 owner:
 related_adr: ADR-0015
 related_spec: feature-common-terms-module
 related_code: settings.gradle.kts, NavKeyServiceTerms, NavKeyPrivacyPolicy, ServiceTermsRoute, PrivacyPolicyRoute, ServiceTermsScreen, PrivacyPolicyScreen, ServiceTermsViewModel, PrivacyPolicyViewModel, NotionWebView, EntryBuilder, AppSettingRoute
-archived_reason:
+archived_reason: 구현 완료 — develop 머지 #161(:feature:common:terms:{api,impl} 신설·setting에서 이동).
 tags: [plan, parfait, module, terms, common]
 ---
 
@@ -24,7 +24,7 @@ tags: [plan, parfait, module, terms, common]
 
 **Tech Stack:** Kotlin, Jetpack Compose, Hilt, navigation3, 컨벤션 플러그인, Android WebView.
 
-**Spec:** [specs/2026-07-21-feature-common-terms-module.md](../specs/2026-07-21-feature-common-terms-module.md) · **ADR:** [adr/0015](../adr/0015-feature-common-shared-layer.md)
+**Spec:** [specs/2026-07-21-feature-common-terms-module.md](../../specs/archive/2026-07-21-feature-common-terms-module.md) · **ADR:** [adr/0015](../../adr/0015-feature-common-shared-layer.md)
 
 **작업 repo:** TJYG-Android, 신규 브랜치 `feature/common-terms-module`(사용자 확인 후 생성).
 

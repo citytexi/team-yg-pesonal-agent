@@ -1,10 +1,10 @@
 ---
 id: feature-common-terms-module
 title: 약관/개인정보 화면 :feature:common:terms 모듈 분리 (feature/common shared layer)
-status: draft
+status: implemented
 category: architecture-spec
 platforms: android
-verified: 2026-07-21
+verified: 2026-07-22
 related_code:
   - settings.gradle.kts
   - NavKeyServiceTerms
