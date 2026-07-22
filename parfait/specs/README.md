@@ -10,7 +10,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 | 스펙 | 상태 | 내용 |
 |------|------|------|
-| _(현재 active 스펙 없음 — 전부 아카이브)_ | | |
+| [2026-07-22-vendor-android-kotlin-skills.md](2026-07-22-vendor-android-kotlin-skills.md) | draft | **하니스/툴링**(워크플로 A TJYG 코드 구현에 복무) — android/Kotlin/skydoves/chrisbanes 4repo 74스킬을 `.claude/skills/`에 전량 벤더링 + `skill-finder`(경량 검색 스킬, spec/plan 시 적재적소 로드) + `update-injected-skills`(baseline SHA+diff 업데이트, sync-tjyg-develop-baseline 동형) + CLAUDE.md 라우팅. C안(네이티브74+경량search). tao workflow_search 이식은 비목표 |
 
 ## 아카이브
 | 스펙 | 내용 |
