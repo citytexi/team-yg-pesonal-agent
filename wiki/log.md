@@ -70,3 +70,4 @@ append-only. 새 항목은 파일 끝에 추가.
 
 ## [2026-07-14] ingest | C-202 토핑 편집자 확인 규칙 v0.1 + Toast 공통 정책 배치 — sources 2·concepts 2(토핑-spotlight·toast) 신설, 토핑·그룹·nametag-chip 갱신
 ## [2026-07-18] lint | nametag-chip 정책(12종) vs TJYG-Android YGColorChipType(13+Plus종) 개수 상충 감지 → nametag-chip ⚠️ 마커 + open-questions 등록. parfait 문서 develop 기준선 점검(8cdf942)과 연동
+## [2026-07-22] ingest | G-001 간격정책 v0.2 + S-101 컬러규칙 v0.3 배치 — sources 2 신설, 정책설계·간격v0.1·S-101 v0.2 대체 마킹, 개념 3종 갱신(무한-파르페-그리드·토핑·nametag-chip), overview·index 갱신, open-questions 상충 1건(v0.2 160/6타입 vs 토핑-정책-v0.1 180/3타입) 등록
