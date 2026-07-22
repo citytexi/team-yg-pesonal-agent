@@ -1,0 +1,367 @@
+{
+  "agp-9-upgrade": {
+    "repo": "android-skills",
+    "path": "build/agp/agp-9-upgrade/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "camerax": {
+    "repo": "android-skills",
+    "path": "camera/camerax/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "appfunctions": {
+    "repo": "android-skills",
+    "path": "device-ai/appfunctions/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "android-cli": {
+    "repo": "android-skills",
+    "path": "devtools/android-cli/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "verified-email": {
+    "repo": "android-skills",
+    "path": "identity/verified-email/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "adaptive": {
+    "repo": "android-skills",
+    "path": "jetpack-compose/adaptive/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "migrate-xml-views-to-jetpack-compose": {
+    "repo": "android-skills",
+    "path": "jetpack-compose/migration/migrate-xml-views-to-jetpack-compose/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "styles": {
+    "repo": "android-skills",
+    "path": "jetpack-compose/theming/styles/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "navigation-3": {
+    "repo": "android-skills",
+    "path": "navigation/navigation-3/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "r8-analyzer": {
+    "repo": "android-skills",
+    "path": "performance/r8-analyzer/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "engage-sdk-integration": {
+    "repo": "android-skills",
+    "path": "play/engage-sdk-integration/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "play-billing-library-version-upgrade": {
+    "repo": "android-skills",
+    "path": "play/play-billing-library-version-upgrade/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "play-policy-insights": {
+    "repo": "android-skills",
+    "path": "play/play-policy-insights/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "perfetto-sql": {
+    "repo": "android-skills",
+    "path": "profilers/perfetto-sql/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "perfetto-trace-analysis": {
+    "repo": "android-skills",
+    "path": "profilers/perfetto-trace-analysis/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "android-intent-security": {
+    "repo": "android-skills",
+    "path": "security/android-intent-security/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "edge-to-edge": {
+    "repo": "android-skills",
+    "path": "system/edge-to-edge/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "testing-setup": {
+    "repo": "android-skills",
+    "path": "testing/testing-setup/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "wear-compose-m3": {
+    "repo": "android-skills",
+    "path": "wear/wear-compose-m3/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "display-glasses-with-jetpack-compose-glimmer": {
+    "repo": "android-skills",
+    "path": "xr/display-glasses-with-jetpack-compose-glimmer/SKILL.md",
+    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+  },
+  "kotlin-backend-jpa-entity-mapping": {
+    "repo": "kotlin-agent-skills",
+    "path": "skills/kotlin-backend-jpa-entity-mapping/SKILL.md",
+    "sha": "08d7ad0d74a9a5a548287b2bd4926180fab56cac"
+  },
+  "kotlin-tooling-agp9-migration": {
+    "repo": "kotlin-agent-skills",
+    "path": "skills/kotlin-tooling-agp9-migration/SKILL.md",
+    "sha": "08d7ad0d74a9a5a548287b2bd4926180fab56cac"
+  },
+  "kotlin-tooling-cocoapods-spm-migration": {
+    "repo": "kotlin-agent-skills",
+    "path": "skills/kotlin-tooling-cocoapods-spm-migration/SKILL.md",
+    "sha": "08d7ad0d74a9a5a548287b2bd4926180fab56cac"
+  },
+  "kotlin-tooling-immutable-collections-0-5-x-migration": {
+    "repo": "kotlin-agent-skills",
+    "path": "skills/kotlin-tooling-immutable-collections-0-5-x-migration/SKILL.md",
+    "sha": "08d7ad0d74a9a5a548287b2bd4926180fab56cac"
+  },
+  "kotlin-tooling-java-to-kotlin": {
+    "repo": "kotlin-agent-skills",
+    "path": "skills/kotlin-tooling-java-to-kotlin/SKILL.md",
+    "sha": "08d7ad0d74a9a5a548287b2bd4926180fab56cac"
+  },
+  "kotlin-tooling-native-build-performance": {
+    "repo": "kotlin-agent-skills",
+    "path": "skills/kotlin-tooling-native-build-performance/SKILL.md",
+    "sha": "08d7ad0d74a9a5a548287b2bd4926180fab56cac"
+  },
+  "auditing-compose-performance": {
+    "repo": "compose-performance-skills",
+    "path": "audit/auditing-compose-performance/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "configuring-r8-for-compose": {
+    "repo": "compose-performance-skills",
+    "path": "build/configuring-r8-for-compose/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "iterating-with-ai-and-mcp": {
+    "repo": "compose-performance-skills",
+    "path": "hot-reload/iterating-with-ai-and-mcp/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "preserving-state-across-reloads": {
+    "repo": "compose-performance-skills",
+    "path": "hot-reload/preserving-state-across-reloads/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "setting-up-compose-hotswan": {
+    "repo": "compose-performance-skills",
+    "path": "hot-reload/setting-up-compose-hotswan/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "understanding-hot-reload-limits": {
+    "repo": "compose-performance-skills",
+    "path": "hot-reload/understanding-hot-reload-limits/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "configuring-lazy-prefetch": {
+    "repo": "compose-performance-skills",
+    "path": "lists/configuring-lazy-prefetch/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "optimizing-lazy-layouts": {
+    "repo": "compose-performance-skills",
+    "path": "lists/optimizing-lazy-layouts/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "generating-baseline-profiles": {
+    "repo": "compose-performance-skills",
+    "path": "measurement/generating-baseline-profiles/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "testing-compose-in-release-mode": {
+    "repo": "compose-performance-skills",
+    "path": "measurement/testing-compose-in-release-mode/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "tracing-recompositions-at-runtime": {
+    "repo": "compose-performance-skills",
+    "path": "measurement/tracing-recompositions-at-runtime/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "migrating-to-modifier-node": {
+    "repo": "compose-performance-skills",
+    "path": "modifiers/migrating-to-modifier-node/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "ordering-modifier-chains": {
+    "repo": "compose-performance-skills",
+    "path": "modifiers/ordering-modifier-chains/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "avoiding-subcomposition-pitfalls": {
+    "repo": "compose-performance-skills",
+    "path": "recomposition/avoiding-subcomposition-pitfalls/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "choosing-derivedstateof": {
+    "repo": "compose-performance-skills",
+    "path": "recomposition/choosing-derivedstateof/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "debugging-recompositions": {
+    "repo": "compose-performance-skills",
+    "path": "recomposition/debugging-recompositions/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "deferring-state-reads": {
+    "repo": "compose-performance-skills",
+    "path": "recomposition/deferring-state-reads/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "using-strong-skipping-correctly": {
+    "repo": "compose-performance-skills",
+    "path": "recomposition/using-strong-skipping-correctly/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "collecting-flows-safely": {
+    "repo": "compose-performance-skills",
+    "path": "side-effects/collecting-flows-safely/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "using-efficient-effects": {
+    "repo": "compose-performance-skills",
+    "path": "side-effects/using-efficient-effects/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "diagnosing-compose-stability": {
+    "repo": "compose-performance-skills",
+    "path": "stability/diagnosing-compose-stability/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "enforcing-stability-in-ci": {
+    "repo": "compose-performance-skills",
+    "path": "stability/enforcing-stability-in-ci/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "stabilizing-compose-types": {
+    "repo": "compose-performance-skills",
+    "path": "stability/stabilizing-compose-types/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "understanding-stability-inference": {
+    "repo": "compose-performance-skills",
+    "path": "stability/understanding-stability-inference/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "using-stability-analyzer-ide-plugin": {
+    "repo": "compose-performance-skills",
+    "path": "stability/using-stability-analyzer-ide-plugin/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "visualizing-recomposition-cascades": {
+    "repo": "compose-performance-skills",
+    "path": "stability/visualizing-recomposition-cascades/SKILL.md",
+    "sha": "1b32f81724c0d71fe9ef093ca44697f559fdab6e"
+  },
+  "compose-animations": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-animations/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-focus-navigation": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-focus-navigation/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-modifier-and-layout-style": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-modifier-and-layout-style/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-recomposition-performance": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-recomposition-performance/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-side-effects": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-side-effects/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-slot-api-pattern": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-slot-api-pattern/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-stability-diagnostics": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-stability-diagnostics/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-state-authoring": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-state-authoring/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-state-deferred-reads": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-state-deferred-reads/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-state-hoisting": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-state-hoisting/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-state-holder-ui-split": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-state-holder-ui-split/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "compose-ui-testing-patterns": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/compose-ui-testing-patterns/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "implement-issue": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/implement-issue/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "kotlin-control-flow": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/kotlin-control-flow/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "kotlin-coroutines-structured-concurrency": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/kotlin-coroutines-structured-concurrency/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "kotlin-flow-state-event-modeling": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/kotlin-flow-state-event-modeling/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "kotlin-functions": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/kotlin-functions/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "kotlin-multiplatform-expect-actual": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/kotlin-multiplatform-expect-actual/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "kotlin-types-value-class": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/kotlin-types-value-class/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "shepherd": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/shepherd/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  },
+  "using-chrisbanes-skills": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/using-chrisbanes-skills/SKILL.md",
+    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+  }
+}
