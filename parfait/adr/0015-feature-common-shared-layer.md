@@ -29,7 +29,7 @@ tags: [adr, parfait, module, common]
 
 - 구조·컨벤션은 기존 feature와 동일: `:api`(NavKey 계약) + `:impl`(화면·VM·엔트리 빌더),
   각각 `ModuleFeatureApi`/`ModuleFeatureImpl` 컨벤션 플러그인.
-- 소비 feature는 상대 `:impl`이 아니라 **`common:terms:api`(NavKey)만** 참조해 `goTo` — [[0002]] 그대로.
+- 소비 feature는 상대 `:impl`이 아니라 **`common:terms:api`(NavKey)만** 참조해 `goTo` — [[0002-feature-api-impl-split]] 그대로.
 - 화면 렌더는 `common:terms:impl`의 엔트리 빌더가 `@IntoSet`으로 공급 → `MainRoute`가 자동 조립([[0006-navigation3-custom-navigator]]). app만 impl을 알면 됨.
 
 ## 대안

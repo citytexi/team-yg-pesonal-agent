@@ -1,10 +1,10 @@
 ---
 id: feature-common-terms-module
 title: 약관/개인정보 화면 :feature:common:terms 모듈 분리 (feature/common shared layer)
-status: draft
+status: implemented
 category: architecture-spec
 platforms: android
-verified: 2026-07-21
+verified: 2026-07-22
 related_code:
   - settings.gradle.kts
   - NavKeyServiceTerms
@@ -33,7 +33,7 @@ tags: [spec, parfait, module, terms, common, s004, a003]
 
 ## 목표
 
-S-004 약관/개인정보 화면(구현: [[s004-terms-privacy-webview]])을 `:feature:app:setting`에서 신규
+S-004 약관/개인정보 화면(구현: [s004-terms-privacy-webview](2026-07-20-s004-terms-privacy-webview.md))을 `:feature:app:setting`에서 신규
 **`:feature:common:terms`** 모듈로 분리한다. **A-003 서비스 이용약관** 화면에서도 동일 항목을
 세부 정보 뷰로 재사용해야 하므로, 특정 feature 도메인에 묶이지 않는 공유 위치가 필요하다.
 

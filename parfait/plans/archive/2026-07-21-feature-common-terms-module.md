@@ -1,16 +1,16 @@
 ---
 id: feature-common-terms-module
 title: 약관/개인정보 :feature:common:terms 모듈 분리 Implementation Plan
-status: draft
+status: done
 type: work-order
 created: 2026-07-21
-updated: 2026-07-21
+updated: 2026-07-22
 platforms: android
 owner:
 related_adr: ADR-0015
 related_spec: feature-common-terms-module
 related_code: settings.gradle.kts, NavKeyServiceTerms, NavKeyPrivacyPolicy, ServiceTermsRoute, PrivacyPolicyRoute, ServiceTermsScreen, PrivacyPolicyScreen, ServiceTermsViewModel, PrivacyPolicyViewModel, NotionWebView, EntryBuilder, AppSettingRoute
-archived_reason:
+archived_reason: 구현 완료 — develop 머지 #161(:feature:common:terms:{api,impl} 신설·setting에서 이동).
 tags: [plan, parfait, module, terms, common]
 ---
 
@@ -20,11 +20,11 @@ tags: [plan, parfait, module, terms, common]
 
 **Goal:** S-004 약관/개인정보 화면(NavKey 2 + Route/Screen/VM 2세트 + NotionWebView + EntryBuilder)을 `:feature:app:setting`에서 신규 `:feature:common:terms:{api,impl}`로 이동해, A-003 등 다른 feature가 `common:terms:api`로 재사용할 수 있게 한다.
 
-**Architecture:** 기존 feature 관례(`:api` NavKey + `:impl` 화면/VM/엔트리, 컨벤션 플러그인 `parfait.module.feature.api`/`.impl`). 이동 후 소비 feature는 상대 `:api`(NavKey)만 참조해 `goTo`([[ADR-0002]]), 화면 렌더는 impl의 `@IntoSet` 엔트리 빌더가 `MainRoute` Set 주입에 자동 합류([[ADR-0006]]). 순수 이동 — 동작·UI 무변경.
+**Architecture:** 기존 feature 관례(`:api` NavKey + `:impl` 화면/VM/엔트리, 컨벤션 플러그인 `parfait.module.feature.api`/`.impl`). 이동 후 소비 feature는 상대 `:api`(NavKey)만 참조해 `goTo`([[0002-feature-api-impl-split]]), 화면 렌더는 impl의 `@IntoSet` 엔트리 빌더가 `MainRoute` Set 주입에 자동 합류([[0006-navigation3-custom-navigator]]). 순수 이동 — 동작·UI 무변경.
 
 **Tech Stack:** Kotlin, Jetpack Compose, Hilt, navigation3, 컨벤션 플러그인, Android WebView.
 
-**Spec:** [specs/2026-07-21-feature-common-terms-module.md](../specs/2026-07-21-feature-common-terms-module.md) · **ADR:** [adr/0015](../adr/0015-feature-common-shared-layer.md)
+**Spec:** [specs/2026-07-21-feature-common-terms-module.md](../../specs/archive/2026-07-21-feature-common-terms-module.md) · **ADR:** [adr/0015](../../adr/0015-feature-common-shared-layer.md)
 
 **작업 repo:** TJYG-Android, 신규 브랜치 `feature/common-terms-module`(사용자 확인 후 생성).
 

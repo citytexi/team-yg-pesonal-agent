@@ -90,7 +90,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 
 ## 화면 컨테이너 (`screen/`)
 
-화면 루트에 쓰는 컨테이너 2종 + 뒤로가기 스코프. 설계 상세 → [designsystem-ygscreen-scaffold 스펙](../specs/2026-07-20-designsystem-ygscreen-scaffold.md).
+화면 루트에 쓰는 컨테이너 2종 + 뒤로가기 스코프. 설계 상세 → [designsystem-ygscreen-scaffold 스펙](../specs/archive/2026-07-20-designsystem-ygscreen-scaffold.md).
 
 - **역할 분리 (컨벤션)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.
@@ -120,7 +120,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 | `YGTopBar`(Back/Detail/Empty/Default 변형 + private `YGTopBarContent`) | `component/ygtopbar/` | [ygtopbar](../specs/archive/2026-07-18-ygtopbar.md) |
 | `YGDateButton` | `component/ygdatebutton/` | [ygdatebutton](../specs/archive/2026-07-18-ygdatebutton.md) |
 | `YGDangerZone` | `component/ygdangerzone/` | [ygdangerzone-dashed](../specs/archive/2026-07-19-ygdangerzone-dashed.md)(현행 점선, #159) · [ygdangerzone](../specs/archive/2026-07-18-ygdangerzone.md)(구 solid, superseded) |
-| `YGScreen` / `YGScaffold`(+`YGScreenScope`·`OnBack`) | `screen/` | [designsystem-ygscreen-scaffold](../specs/2026-07-20-designsystem-ygscreen-scaffold.md) (위 "화면 컨테이너") |
+| `YGScreen` / `YGScaffold`(+`YGScreenScope`·`OnBack`) | `screen/` | [designsystem-ygscreen-scaffold](../specs/archive/2026-07-20-designsystem-ygscreen-scaffold.md) (위 "화면 컨테이너") |
 
 - **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize`). `YGTextField`의 clear 아이콘은 이미 인라인 `Box`+`Image`에서 `YGIconButton(size = YGIconButtonSize.SIZE_44)`로 치환됨(`YGTextFieldImpl.kt`). `YGListItem` trailing caret도 `YGIconButton`으로 치환(#136 develop 머지 #148).
 - **`YGInputNumber`**: 숫자 셀. 컨테이너 크기·보더는 토큰 대신 고정 dp로 하드코딩(코드 주석: 디자인가이드 고정 크기)이라 토큰화 예외 사례. shape·typography는 `YGTheme.*` 사용, 색은 `YGAtomicColors.Gray.*` 직접 참조.
