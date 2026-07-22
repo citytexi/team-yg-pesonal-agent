@@ -1,0 +1,8 @@
+{
+  "repos": [
+    { "name": "android-skills", "url": "https://github.com/android/skills.git" },
+    { "name": "kotlin-agent-skills", "url": "https://github.com/Kotlin/kotlin-agent-skills.git" },
+    { "name": "compose-performance-skills", "url": "https://github.com/skydoves/compose-performance-skills.git" },
+    { "name": "chrisbanes-skills", "url": "https://github.com/chrisbanes/skills.git" }
+  ]
+}
