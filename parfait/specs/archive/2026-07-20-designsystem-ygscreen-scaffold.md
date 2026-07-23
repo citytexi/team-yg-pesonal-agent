@@ -69,6 +69,7 @@ class YGScreenScope {
 
 ## 동작 / 상태
 - **뒤로가기(YGScreenScope.OnBack)**: content 안에서 `OnBack { ... }`을 **호출한 화면만** 뒤로가기를 가로챈다. 호출하지 않으면 `BackHandler` 자체가 emit되지 않아 시스템 기본 동작. → 처리 안 하는 화면에 강제 리턴/no-op 불필요.
+- **배경 탭 → 포커스 해제**(🔁 2026-07-23 추가): `YGScreen`의 `Surface`에 `clickableYGNoRipple { focusManager.clearFocus() }`(`LocalFocusManager`) 결선. 빈 영역 탭 시 포커스·키보드 해제. YGScreen 쓰는 전 화면 공통(닉네임 입력 화면 등 IME 닫기 UX).
 - **scope 인스턴스**: `YGScreen` 내부에서 `remember { YGScreenScope() }`로 1회 생성(recomposition마다 재할당 안 함). stateless지만 `@Stable`.
 - **컨테이너 색·모양**: 런타임 상태 없음. 전부 prop 기본값(토큰).
 
