@@ -74,3 +74,5 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-22] ingest | S-101 그룹칩 Timestamp 컬러 규칙 v0.1 — v0.3에서 분리된 Grouptag-Chip Timestamp 매핑(Cherry-100/200/300, 마지막 변화 유저 기준). sources 1 신설, nametag-chip 개념을 요소별 별개 매핑(토스트 ①/그룹칩 ②) 2표로 정정(이전 "동일 매핑" 오기술 수정), S-101 v0.3 소스/raw 문구 정정, overview·index(36) 갱신. 상충 아님(별개 UI 요소)
 ## [2026-07-22] lint | 점검 완료, 발견 2건(고아 lint-2026-07-13 index 미등록→등록, stale parfait 링크 방치). 민감데이터·신규 모순 0. 그룹칩 Timestamp vs 토스트 별개 매핑 확인(모순 아님)
 ## [2026-07-22] lint | parfait 링크 stale 후속 — wiki/index parfait 라인 ADR 개수 정정(14→15, ADR-0015 feature/common 공유 레이어 누락). architecture 5건은 오탐(template 제외 정확)
+## [2026-07-23] ingest | 무한 파르페 정책 설계서 v0.2 (G-001) — v0.1 전면 대체, 운영 스펙 확정, open-questions 3해소·1신규
+## [2026-07-23] lint | 점검 완료, 이슈 0건 (민감데이터·모순·고아 0). open-questions 3해소 확인, 설계서 v0.2 정합 양호
