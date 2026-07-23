@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-07-22
+verified: 2026-07-23
 related_spec:
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014
 related_architecture: design-system, data-layer
@@ -124,6 +124,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 좌우 패딩(gap-5)을 추가할지, ② 폭을 고정(335)으로 둘지 `IntrinsicSize.Max`(Hug) 유지할지 — 디자인 확인 필요.
 - **상태**: 미해결 (코드 수정 대상 — 디자인 확정 대기)
 - **해소 메모**: 디자인 확정 시 코드 반영 후 [ygdangerzone-dashed 스펙](../specs/archive/2026-07-19-ygdangerzone-dashed.md) "주의/열린 질문" 정리.
+
+### [2026-07-23] 프리뷰 관용구 부분 회귀 — 신규 컴포넌트가 @YGPreview 표준 이탈
+- **출처**: `component/ygalert/YGAlert.kt`·`component/ygtoast/YGToast.kt`(PR #149 develop 머지) — 프리뷰가 `@Preview` + `YGCustomTheme`. `component/ygtext/YGDate.kt`는 `@YGPreview`이나 `PreviewBox` 대신 `YGCustomTheme` 직접 래핑. #158로 "전 컴포넌트 `@YGPreview`+`PreviewBox` 통일"([2026-07-12 컨벤션 분기](#2026-07-12-디자인시스템-컴포넌트-컨벤션-분기) ② 해소)한 뒤 신규 컴포넌트에서 표준이 다시 갈라짐.
+- **항목**: 신규 컴포넌트 프리뷰를 `@YGPreview`+`PreviewBox`로 정렬할지(권장), 프리뷰 표준을 강제할 방법(리뷰 체크리스트·lint)이 필요한지.
+- **상태**: 미해결 (코드 수정 대상)
+- **해소 메모**: 정렬 시 [design-system](../architecture/design-system.md) "프리뷰 방식" 마커를 "통일"로 되돌리고 이 항목 해소. [2026-07-12 컨벤션 분기](#2026-07-12-디자인시스템-컴포넌트-컨벤션-분기) ②와 함께 관리.
 
 <!--
 항목 추가 형식:
