@@ -76,3 +76,7 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-22] lint | parfait 링크 stale 후속 — wiki/index parfait 라인 ADR 개수 정정(14→15, ADR-0015 feature/common 공유 레이어 누락). architecture 5건은 오탐(template 제외 정확)
 ## [2026-07-23] ingest | 무한 파르페 정책 설계서 v0.2 (G-001) — v0.1 전면 대체, 운영 스펙 확정, open-questions 3해소·1신규
 ## [2026-07-23] lint | 점검 완료, 이슈 0건 (민감데이터·모순·고아 0). open-questions 3해소 확인, 설계서 v0.2 정합 양호
+
+## [2026-07-25] ingest | 기능정의서_MVP v6 (6차) — G-002 삭제·C-001 직접 진입, 담당자/진행상황 컬럼 raw 미포함
+
+## [2026-07-25] lint | 점검 완료, 이슈 0건 (민감데이터·실명·고아·신규 깨진링크 0). G-002 미포착 미결 해소 확인, v6 정합 양호
