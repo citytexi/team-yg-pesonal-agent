@@ -6,6 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
+| [2026-07-26-data-network-setup.md](2026-07-26-data-network-setup.md) | `:data` 원격 네트워크 기초 구조(6 Task): network 컨벤션 플러그인(`AndroidNetworkConventionPlugin`+`NetworkConfig`+`PropertySettingManager.loadBaseUrl`, network 의존 이관) → `ApiResponse`+`safeApiCall` → `AuthInterceptor`+`TokenProvider` stub → `NetworkModule`(OkHttp·Retrofit, 기존 Json 재사용) → Temp 예시 1세트+`RemoteDataSourceModule` → ADR-0017+data-layer 갱신. 테스트 없음(`:data:assembleDebug`+ktlint, Hilt는 `:app:assembleDebug`). 스펙: [specs](../specs/2026-07-26-data-network-setup.md) |
 | [2026-07-22-s002-account-info.md](2026-07-22-s002-account-info.md) | S-002 계정 정보 화면 구현(6 Task): domain `CheckNameValidUseCase`에 `CheckEmpty` 규칙 추가 → AccountInfoViewModel(MVI, 실시간 검증·로그아웃/탈퇴 stub) → strings 4 → AccountInfoScreen(YGTopBarDetail·YGTextFormField maxLength15·YGDangerZone·프리뷰) → Route 배선 → 통합 빌드/동작 확인. 테스트 없음(compile+ktlint+프리뷰 검증). 스펙: [specs](../specs/2026-07-22-s002-account-info.md) |
 
 ## 아카이브
