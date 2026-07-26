@@ -4,7 +4,7 @@ title: 온보딩 약관 동의 화면 (TermAgree)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-22
+verified: 2026-07-26
 related_code:
   - NavKeyTermAgree
   - TermAgreeRoute.kt#TermAgreeRoute
@@ -12,7 +12,8 @@ related_code:
   - TermAgreeViewModel.kt#TermAgreeViewModel
   - TermContent.kt#TermContent
   - EntryBuilder.kt#featureTermAgreeEntryBuilder
-related_adr: ADR-0005, ADR-0006
+  - feature/intro/impl/res/values/strings.xml
+related_adr: ADR-0005, ADR-0006, ADR-0016
 related_spec: s004-terms-privacy-webview
 related_architecture: state-management, navigation-flow
 supersedes:
@@ -26,6 +27,8 @@ tags: [spec, parfait, intro, terms, onboarding]
 >
 > **사후 기록(post-hoc)**: 타 작업자 구현이 선작성 스펙 없이 develop 머지(#153, 2026-07-22)됨.
 > 파르페 완성도 유지를 위해 as-built로 역기록. 코드가 SoT.
+>
+> **as-built 갱신(2026-07-26, #166)**: 화면 정적 문자열이 하드코딩 → `strings.xml` + `stringResource`로 이동. 문구 자체는 불변.
 
 - **대상 모듈**: `feature/intro/impl`(`termagree/`) + `feature/intro/api`(NavKey)
 - **흐름 위치**: 온보딩 intro 플로우(splash/login 계열)의 약관 동의 단계.
@@ -84,7 +87,7 @@ sealed interface TermAgreeSideEffect {
 | 상단 | `YGTopBarBack` |
 | 제목 | `typography.title.t01B` / `Gray.Gray900` |
 | 모두동의 박스 | 배경 `Gray.Gray100` + `shapes.radius.small`, 체크 tint 선택 `Gray.Black` / 비선택 `Gray.Gray200` |
-| 항목 라벨 | 선택 `Gray.Gray800` / 비선택 `Gray.Gray500`, `body.b02R`, 필수 접두 "(필수)" |
+| 항목 라벨 | 선택 `Gray.Gray800` / 비선택 `Gray.Gray500`, `body.b02R`, 필수 접두 `R.string.prefix_required`("(필수)") |
 | 상세 진입 | `ic_caret_right`(tint `Gray.Gray500`) 탭 → `onClickTermLandingUrl` |
 | 확인 버튼 | `YGButton` `YGButtonType.Large` |
 
@@ -92,6 +95,7 @@ sealed interface TermAgreeSideEffect {
 
 - 개별 라벨 영역 탭 = 토글, caret 탭 = 상세 랜딩(두 클릭 영역 분리).
 - 필수 미충족 시 확인 버튼 비활성.
+- **정적 UI 라벨은 `feature/intro/impl` `res/values/strings.xml` + `stringResource(R.string.*)`**(제목·"모두 동의하기"·"(필수)"·확인 버튼). S-001/S-004 플랜이 세운 관용구와 동일. 단, `TERM_CONTENT_LIST`의 약관 항목 title은 여전히 코틀린 리터럴 — [open-questions](../../synthesis/open-questions.md) [2026-07-26] 참고.
 
 ## 파일 구성
 
@@ -100,6 +104,7 @@ sealed interface TermAgreeSideEffect {
 - `impl/termagree/TermAgreeRoute.kt` — `hiltViewModel()` + state/effect collect, back→`navigator.onBack()`, url/next stub.
 - `impl/termagree/TermAgreeViewModel.kt` — MVI State/Intent/SideEffect + `processIntent`.
 - `impl/termagree/model/TermContent.kt` — 데이터 클래스 + `TERM_CONTENT_LIST` 상수.
+- `impl/res/values/strings.xml` — 화면 정적 라벨(제목·모두동의·(필수)·확인). #166 신설.
 - `impl/EntryBuilder.kt#featureTermAgreeEntryBuilder` — `entry<NavKeyTermAgree> { YGScaffold { TermAgreeRoute(...) } }`(nav 컨테이너 [YGScaffold](../archive/2026-07-20-designsystem-ygscreen-scaffold.md)).
 
 ## 주의 / 열린 질문

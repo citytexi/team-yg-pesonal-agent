@@ -4,7 +4,7 @@ title: S-102 그룹 내 닉네임 입력 화면 (GroupNickName)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-22
+verified: 2026-07-26
 related_code:
   - NavKeyGroupNickName
   - GroupNickNameRoute.kt#GroupNickNameRoute
@@ -15,6 +15,7 @@ related_code:
   - NickNameResultUiText.kt#toStringResource
   - CharExtension.kt#isKorean
   - EntryBuilder.kt#featureGroupNickNameEntryBuilder
+  - feature/groups/enter/impl/res/values/strings.xml
 related_adr: ADR-0005, ADR-0006, ADR-0009, ADR-0016
 related_spec:
 related_architecture: state-management, navigation-flow
@@ -30,6 +31,8 @@ tags: [spec, parfait, groups, nickname, s102]
 >
 > **사후 기록(post-hoc)**: 타 작업자 구현이 선작성 스펙 없이 develop 머지(#154, 2026-07-22)됨.
 > as-built 역기록. 코드가 SoT. 입력 유효성은 위키 정책 [[S-102-닉네임-정책-v0.1]]·[[이름-입력-규칙]]과 대조 완료(일치).
+>
+> **as-built 갱신(2026-07-26, #166)**: 화면 정적 문자열이 하드코딩 → `strings.xml` + `stringResource`로 이동. 문구 자체는 불변.
 
 - **화면 ID**: S-102 (그룹 참여 시 그룹 내 닉네임)
 - **대상 모듈**: `feature/groups/enter/impl`(`nickname/`) + `feature/groups/enter/api`(NavKey) + `domain`(UseCase/model) + `core/util/jvm`(CharExtension)
@@ -93,8 +96,9 @@ sealed interface GroupNickNameSideEffect { data object NavigateToBack; data obje
 
 ## 표시·제어 규칙
 
-- 상단 `YGTopBarDetail(title="그룹 참여하기")`, 제목/부제 텍스트, `YGTextFormField`(placeholder·isError·errorDescription·maxLength), 하단 `YGButton` `Large`.
+- 상단 `YGTopBarDetail(title=R.string.group_enter, "그룹 참여하기")`, 제목/부제 텍스트, `YGTextFormField`(placeholder·isError·errorDescription·maxLength), 하단 `YGButton` `Large`.
 - 에러 상태는 `uiState.errorMessage != null` → `isError` + 하단 `errorDescription`.
+- **정적 UI 라벨은 `feature/groups/enter/impl` `res/values/strings.xml` + `stringResource(R.string.*)`**(상단 타이틀·제목·부제·placeholder·확인 버튼, #166). 같은 모듈의 G-002 초대코드 화면과 문자열 파일 공용(`submit`·`group_enter` 공유). 에러 문자열은 별개 경로 — `core:ui` `toStringResource` 매핑(ADR-0016).
 
 ## 파일 구성
 
@@ -103,6 +107,7 @@ sealed interface GroupNickNameSideEffect { data object NavigateToBack; data obje
 - `core/ui/text/NickNameResultUiText.kt#toStringResource` — 에러→표시 문자열 매핑(🔁 ADR-0016 신규, S-002와 공용).
 - `core/util/jvm/extension/CharExtension.kt#isKorean` — 한글 판별 확장(신규).
 - `impl/nickname/GroupNickNameScreen.kt` — stateless UI + 상수 `NICKNAME_MAX_LENGTH`.
+- `impl/res/values/strings.xml` — 그룹 참여 플로우(S-102 + G-002 초대코드) 공용 정적 라벨. #166 신설.
 - `impl/nickname/GroupNickNameRoute.kt` — VM 배선, back→onBack, next stub.
 - `impl/nickname/GroupNickNameViewModel.kt` — MVI, `CheckNameValidUseCase` 주입.
 - `impl/navigation/EntryBuilder.kt#featureGroupNickNameEntryBuilder` — `entry<NavKeyGroupNickName> { YGScaffold(contentWindowInsets = WindowInsets(0.dp)) { GroupNickNameRoute(...) } }`(ime 패딩 직접 처리).

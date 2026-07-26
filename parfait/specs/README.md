@@ -10,6 +10,7 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 | 스펙 | 상태 | 내용 |
 |------|------|------|
+| [2026-07-26-data-network-setup.md](2026-07-26-data-network-setup.md) | implemented | `:data` 원격 네트워크 기초 구조(Retrofit·OkHttp·kotlinx-serialization). **network 컨벤션 플러그인**(`AndroidNetworkConventionPlugin` + `NetworkConfig`·`PropertySettingManager.loadBaseUrl` — 서명 플러그인 패턴, `BASE_URL`을 properties에서 로드→buildConfigField, network bundle·serialization 이관) + `NetworkModule`(OkHttp·Retrofit·예시 Service, 기존 `DataStoreModule` Json 재사용) + 공통 envelope `ApiResponse<T>`+`safeApiCall`→`Result<T>` + `AuthInterceptor`/`TokenProvider`(빈 stub) + 예시 1세트(`TempService`·DTO·`source/temp/remote`·`RemoteDataSourceModule`). 실제 API·DTO→도메인 매핑·토큰 소스는 후속. [ADR-0017](../adr/0017-remote-network-datasource.md) 동반 |
 | [2026-07-22-s002-account-info.md](2026-07-22-s002-account-info.md) | draft | `feature/app/setting/impl`(route/screen/viewmodel) + `domain` + `core:ui` — S-002 계정 정보 화면(AccountInfo). S-001에서 만든 Route stub·entry·NavKey 본문 채움. MVI + 공유 `CheckNameValidUseCase`에 `CheckEmpty` 규칙 선두 추가(4케이스=위키 정책 이미지 일치)·입력 시 실시간 검증·YGTextFormField(maxLength 15)·YGDangerZone(로그아웃/탈퇴). **i18n 리팩터([ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md))**: NicknameResult sealed 전환·에러 문자열 core:ui `toStringResource`+strings.xml로 이동(S-102 동반 리팩터). 저장 API·로그아웃/탈퇴는 미연동(Intent만 정의, VM stub). 유효성 [[S-002-앱닉네임-정책-v0.1]] 일치 |
 
 ## 아카이브

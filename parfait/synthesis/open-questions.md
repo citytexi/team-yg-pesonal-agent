@@ -4,9 +4,9 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-07-23
+verified: 2026-07-26
 related_spec:
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016
 related_architecture: design-system, data-layer
 related_code:
 tags: [meta, parfait]
@@ -130,6 +130,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: 신규 컴포넌트 프리뷰를 `@YGPreview`+`PreviewBox`로 정렬할지(권장), 프리뷰 표준을 강제할 방법(리뷰 체크리스트·lint)이 필요한지.
 - **상태**: 미해결 (코드 수정 대상)
 - **해소 메모**: 정렬 시 [design-system](../architecture/design-system.md) "프리뷰 방식" 마커를 "통일"로 되돌리고 이 항목 해소. [2026-07-12 컨벤션 분기](#2026-07-12-디자인시스템-컴포넌트-컨벤션-분기) ②와 함께 관리.
+
+### [2026-07-26] 문자열 리소스화 부분 적용 — 잔존 하드코딩·domain 표시문자열
+- **출처**: PR #166(`feature/intro/impl`·`feature/groups/enter/impl` `strings.xml` 신설)로 TermAgree·GroupNickName·GroupInviteCode 화면 정적 라벨은 리소스화됐으나, ① `feature/intro/impl`의 `TermContent.kt#TERM_CONTENT_LIST` 약관 항목 title이 코틀린 리터럴로 잔존, ② `domain`의 `InviteCodeResult`가 `errorMessage: String?`로 **표시 문자열을 도메인이 보유** — [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)이 `NicknameResult`에서 걷어낸 패턴과 동일, ③ `feature/groups/canvas/impl`의 `CanvasImageAddScreen` 등 미착수 화면은 리터럴 그대로.
+- **항목**: ① 정적 라벨 = `strings.xml` 관용구를 전 feature 모듈 규약으로 문서화할지(현재는 각 plan에만 기술, architecture 미기재), ② `InviteCodeResult`를 sealed + `core:ui` 매핑(ADR-0016 패턴)으로 정렬할지, ③ 약관 항목 title 리소스화 여부(랜딩 URL TODO와 함께 처리 후보).
+- **상태**: 미해결
+- **해소 메모**: ① 확정 시 [module-structure](../architecture/module-structure.md) 또는 [state-management](../architecture/state-management.md)에 규약 한 줄 추가. ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, G-002 후속) 시점에 함께 정리. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
 
 <!--
 항목 추가 형식:
