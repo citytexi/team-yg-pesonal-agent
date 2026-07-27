@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-07-26
-related_spec:
+verified: 2026-07-27
+related_spec: designsystem-text-component-sync
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016
 related_architecture: design-system, data-layer
 related_code:
@@ -16,6 +16,12 @@ tags: [meta, parfait]
 TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 정합 이슈를 추적한다.
 정책 기획 쪽 미결은 위키 [[open-questions]]에 있다. 여기는 **코드·ADR·architecture 소관**만 둔다.
 해소된 항목은 상태를 "해소됨"으로 바꾸고 관련 ADR/architecture 문서에 반영한다.
+
+> **읽는 법 — 부정 매칭.** 상태는 열거형이 아니라 자유 서술이다(`미해결 (코드 수정 대상)`,
+> `부분 해소 (② 해소, ① 잔존)`, `보류 (온디바이스로 잠정 채택, beta 추적 중)` 등).
+> **`해소됨`으로 시작하지 않는 모든 항목은 미결**로 취급한다 — `미해결` 문자열 검색은
+> `부분 해소 (…잔존)` 항목을 통째로 놓친다. `해소됨`이어도 메모에 잔존 조건이 있으면 살아 있다.
+> 괄호 안까지 그대로 읽을 것.
 
 > 링크 규약: parfait 내부 문서는 상대 md 링크(`../adr/…`, `../architecture/…`). 위키 개념 참조만 `[[…]]`.
 
@@ -136,6 +142,30 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 정적 라벨 = `strings.xml` 관용구를 전 feature 모듈 규약으로 문서화할지(현재는 각 plan에만 기술, architecture 미기재), ② `InviteCodeResult`를 sealed + `core:ui` 매핑(ADR-0016 패턴)으로 정렬할지, ③ 약관 항목 title 리소스화 여부(랜딩 URL TODO와 함께 처리 후보).
 - **상태**: 미해결
 - **해소 메모**: ① 확정 시 [module-structure](../architecture/module-structure.md) 또는 [state-management](../architecture/state-management.md)에 규약 한 줄 추가. ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, G-002 후속) 시점에 함께 정리. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
+
+### [2026-07-27] Toast·Alert 호스트 노출 애니메이션이 동작하지 않음
+- **출처**: `component/ygtoast/YGToastPolicy.kt#YGToastHost`·`component/ygalert/YGAlertPolicy.kt#YGAlertHost` — `AnimatedVisibility`가 `visible = true`인 상태로 최초 컴포즈돼 입장 transition이 돌지 않고(`updateTransition`의 `currentState == targetState`), 퇴장은 `setVisible(false)` 직후 같은 프레임에 목록에서 제거된다(Alert은 `clearAlert()`로 즉시 해체). 결과적으로 `YGToastItem.visible`·`YGAlertItem.visible`·`setVisible()`·양쪽 `exit =` 인자가 모두 死코드. [텍스트 영역 sync 스펙](../specs/2026-07-27-designsystem-text-component-sync.md)의 갤러리 화면이 두 호스트를 처음 실행시키면서 최종 리뷰에서 드러남.
+- **항목**: ① 입장은 `MutableTransitionState(false).apply { targetState = true }`로, 퇴장은 제거 전 `delay(ANIMATION_DURATION)`로 살릴지, ② 아니면 애니메이션 의도를 접고 `visible`·`setVisible`·`exit` 死코드를 걷어낼지.
+- **상태**: 미해결
+- **해소 메모**: 위키 [[Toast-공통-정책]]은 노출 방식만 규정하고 애니메이션은 규정하지 않는다 — 디자인 의도 확인 후 ①/② 택일. 처리 시 sync 스펙의 "일치 확인" 정정 노트도 갱신.
+
+### [2026-07-27] YGToastHost 다중 스택이 겹쳐 그려짐
+- **출처**: `component/ygtoast/YGToastPolicy.kt#YGToastHost` — 컨테이너가 `Box`라 동시 노출된 토스트가 같은 원점에 겹쳐 그려진다. `Black75` 배경이 중첩돼 어두워지고 텍스트가 포개진다. `YGToastPolicy.show`가 `add(0, …)`로 앞에 넣으므로 최신 토스트가 오히려 아래 깔린다. 위키 [[Toast-공통-정책]]의 "나중 것을 이전 것 위에 노출(쌓임)"과 어긋난다.
+- **항목**: `Box` → `Column(verticalArrangement = Arrangement.spacedBy(...))`로 바꿀지(1줄), 바꾼다면 최신 것이 위로 오도록 삽입 순서(`add(0, …)`)와 배치 방향이 맞는지 함께 확인.
+- **상태**: 미해결
+- **해소 메모**: 위 애니메이션 항목과 같은 파일이라 한 라운드에서 함께 처리하는 편이 낫다. 처리 시 sync 스펙 정정 노트 갱신.
+
+### [2026-07-27] YGChipButton 세로 패딩 Figma 불일치
+- **출처**: `component/ygchipbutton/YGChipButton.kt#YGChipButton` — 상/하 패딩이 `padding.padding3`. Figma `Button-Chip-Right`/`Button-Chip-Left` 변형은 세로 `padding-2`로, 칩 높이가 코드 39 vs 디자인 29로 어긋난다. [텍스트 영역 sync 스펙](../specs/2026-07-27-designsystem-text-component-sync.md) 대조 중 `YGAlert` 칩에서 발견.
+- **항목**: ① 세로 패딩을 `padding2`로 내릴지, ② 내릴 경우 `YGAlert`·`YGTopBar` 등 공통 사용처의 높이 변화를 함께 검수할지.
+- **상태**: 보류 (텍스트 영역 sync 범위 밖 — 칩 영역 sync 라운드로 이월)
+- **해소 메모**: 칩 영역 Figma sync 시 처리하고 해당 스펙에 기록.
+
+### [2026-07-27] YGToast.Record 표시 문자열 하드코딩
+- **출처**: `component/ygtoast/YGToast.kt#YGToast` — `Record` 분기가 `"님이 … 전에 쌓았어요"` 한국어 문구를 `core:designsystem` 안에 리터럴로 보유. 같은 sealed의 `InviteCode`·`Edit`·`Fail`은 완성 문장을 호출자가 주입받는 것과 규약이 어긋난다.
+- **항목**: ① 조사·문구를 `strings.xml`(표현 계층)로 옮겨 [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md) 방향에 맞출지, ② 아니면 `Record`도 완성 문장 주입형으로 통일해 designsystem에서 문자열을 걷어낼지.
+- **상태**: 미해결
+- **해소 메모**: Toast 실사용처(캔버스 토핑 추가 알림) 구현 시점에 정리. 확정 시 [design-system](../architecture/design-system.md)에 "designsystem 컴포넌트는 표시 문자열을 보유하지 않는다" 규약으로 반영 검토.
 
 <!--
 항목 추가 형식:
