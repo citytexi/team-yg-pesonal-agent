@@ -110,3 +110,5 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-27] lint | 점검 완료, 차단 이슈 0건 (민감데이터·실명·고아·깨진링크·raw↔sources 정합 0). stale 4건 수정(v0.2 정본 표기 → v0.3 현행화·index updated 정합)
 
 ## [2026-07-27] schema | 근거 우선순위·판본 상태(status) 스키마 도입 — 리뷰 지적 3건 반영. sources/ 프론트매터에 status(current/superseded/partial)+superseded_by/supersedes/scope 필수화(28건 부여), index는 투영으로 격하, 근거 우선순위 concepts→open-questions→sources로 명문화(sources 한정 금지), open-questions 상태는 부정 매칭(해소됨 아니면 미결), lint 점검 항목 7 신설 + wiki/script/check-status.py 검사 자동화
+
+## [2026-07-27] lint | 2차 점검(status 스키마 도입 후) 완료, 차단 이슈 0건. status 무결성 28건 위반 0·민감데이터 0·고아 0·깨진링크 실질 0. stale 6건 수정(폐기본을 현행 근거로 인용 — overview 토핑 v0.2→v0.3, 그룹 조회근거 설계서 v0.1→v0.2, nametag-chip 토핑규격 v0.2→v0.3, open-questions 3곳), 마커 공백 3곳 보강(화면-ID-체계 G-002 권한검증·에딧모드, 무한-파르페-그리드 크림/체리). raw/C-001-캔버스-정책-v0.1.md 파일명 NFD 1건 미수정(raw 불변, 사용자 확인 대기)

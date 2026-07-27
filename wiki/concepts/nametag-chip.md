@@ -55,5 +55,5 @@ G-001에서 그룹 대표 토핑과 노출되는 Grouptag-Chip의 **Timestamp �
 - 닉네임 규칙 v0.1(2026-07-02): 1. Nametag-Chip + 2. Toast > Username만 → [[S-101-프로필-닉네임-컬러-규칙-v0.1]] (대체됨).
 
 ## 연관
-- [[토핑]] Grouptag-Chip Timestamp 컬러 = 위 ② 매핑([[S-101-프로필-이미지-및-그룹칩-내-타임스탬프-컬러-규칙-v0.1]]). Grouptag-Chip이 노출되는 토핑 규격은 [[G-001-무한파르페-간격-정책-v0.2]].
+- [[토핑]] Grouptag-Chip Timestamp 컬러 = 위 ② 매핑([[S-101-프로필-이미지-및-그룹칩-내-타임스탬프-컬러-규칙-v0.1]]). Grouptag-Chip이 노출되는 토핑 규격은 [[G-001-무한파르페-간격-정책-v0.3]](현행 정본).
 - [[toast|Toast]] 닉네임 텍스트 컬러 = 위 ① 매핑. C-202 [[토핑-spotlight|Spotlight]] 진입 Toast에 적용.
