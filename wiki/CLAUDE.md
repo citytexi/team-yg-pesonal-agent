@@ -11,6 +11,9 @@
 raw/              ← 불변 원본. 절대 수정 금지. 읽기만 가능.
   assets/         ← 로컬 이미지 및 첨부파일
 wiki/             ← LLM이 생성·관리하는 전체 위키
+  templates/      ← 페이지 템플릿(source·concept·entity·synthesis-analysis·synthesis-lint)
+                    스키마 산출물. lint의 고아·깨진링크·frontmatter 검사 대상에서 제외.
+  script/         ← 검사 스크립트(check-status.py)
   index.md        ← 전체 페이지 카탈로그 (항상 최신 상태 유지)
   log.md          ← append-only 이력 로그
   overview.md     ← 위키 전체를 관통하는 살아있는 개요/논지 (핵심)
@@ -160,33 +163,27 @@ scope: 규격·상수만 (배치 좌표 미대체) # partial 필수 — 자유 �
 - 전체 완료 후 요약 보고서를 사용자에게 한 번에 제공한다: "N개 소스 처리, M개 페이지 생성/업데이트, K건 모순 발견".
 - 모순이나 불명확한 판단이 필요한 경우만 중간에 사용자에게 확인한다.
 
-### sources/ 페이지 템플릿
+### 페이지 템플릿
 
-```markdown
----
-tags: [source, 도메인]
-sources: [원본파일명.md]
-updated: YYYY-MM-DD
-status: current
-# superseded_by: [대체본-파일명]   # superseded·partial일 때
-# scope: 규격·상수만               # partial일 때
----
+템플릿은 `wiki/templates/`에 **파일로** 둔다(Obsidian에서 그대로 쓰기 위함). 여기 인라인 복제하지 않는다 — 두 곳에 두면 드리프트한다.
 
-# [원본 제목]
+| 대상 | 템플릿 |
+|---|---|
+| `sources/` | `wiki/templates/source.md` |
+| `concepts/` | `wiki/templates/concept.md` |
+| `entities/` | `wiki/templates/entity.md` |
+| `synthesis/` 분석·비교(query 산출물) | `wiki/templates/synthesis-analysis.md` |
+| `synthesis/` lint 보고서 | `wiki/templates/synthesis-lint.md` |
 
-- **원본**: `raw/파일명.md`
-- **날짜**: YYYY-MM-DD
-- **도메인**: research | personal
+공통 규약(템플릿이 강제하는 것):
 
-## 핵심 요점
-- ...
-
-## 관련 엔티티
-- [[엔티티명]]
-
-## 관련 개념
-- [[개념명]]
-```
+- **frontmatter 필수** — `tags`·`updated`, `sources/`·`concepts/`·`entities/`는 `sources`도. `sources/`는 추가로 `status`.
+- **본문 섹션 구성은 자유.** 페이지마다 주제가 달라서 섹션을 강제하면 빈 껍데기가 생긴다. 해당 없는 섹션은 **지운다.**
+- 대신 아래 셋은 고정:
+  - 말미 연결 섹션은 **`## 연관`** (`## 관련`·`## 참고` 쓰지 않는다)
+  - 미확정 항목 섹션은 **`## 미결`** (`## 미해결` 쓰지 않는다) — 반드시 `open-questions.md` 등록 + 링크
+  - 판본이 걸린 섹션 제목엔 **`(vX 현행, [[소스]])`** 표기
+- 상충 인라인 마커: `> ⚠️ [YYYY-MM-DD] [[대상]] 와 상충 — 무엇이 어긋나는지 → [[open-questions]]`
 
 ---
 

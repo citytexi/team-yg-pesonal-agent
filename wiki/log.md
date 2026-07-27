@@ -112,3 +112,5 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-27] schema | 근거 우선순위·판본 상태(status) 스키마 도입 — 리뷰 지적 3건 반영. sources/ 프론트매터에 status(current/superseded/partial)+superseded_by/supersedes/scope 필수화(28건 부여), index는 투영으로 격하, 근거 우선순위 concepts→open-questions→sources로 명문화(sources 한정 금지), open-questions 상태는 부정 매칭(해소됨 아니면 미결), lint 점검 항목 7 신설 + wiki/script/check-status.py 검사 자동화
 
 ## [2026-07-27] lint | 2차 점검(status 스키마 도입 후) 완료, 차단 이슈 0건. status 무결성 28건 위반 0·민감데이터 0·고아 0·깨진링크 실질 0. stale 6건 수정(폐기본을 현행 근거로 인용 — overview 토핑 v0.2→v0.3, 그룹 조회근거 설계서 v0.1→v0.2, nametag-chip 토핑규격 v0.2→v0.3, open-questions 3곳), 마커 공백 3곳 보강(화면-ID-체계 G-002 권한검증·에딧모드, 무한-파르페-그리드 크림/체리). raw/C-001-캔버스-정책-v0.1.md 파일명 NFD 1건 미수정(raw 불변, 사용자 확인 대기)
+
+## [2026-07-27] schema | wiki/templates/ 5종 신설(source·concept·entity·synthesis-analysis·synthesis-lint). 본문 섹션 미강제, frontmatter 필수 필드·`## 연관`/`## 미결` 섹션명·판본 표기 `(vX 현행, [[소스]])`·⚠️ 마커 형식만 고정. CLAUDE.md 템플릿 위치 규약으로 교체(인라인 복제 제거), lint에 templates·script 검사 제외 + 항목 2에 "해소분 하류 반영" 검사 추가. 섹션명 정규화 4건(관련/참고→연관, 미해결→미결), 2차 lint가 놓친 stale 3건 수정(그룹 정렬 "확정 아님"→활동순 확정·2-1 스태거→지그재그, 협업-캔버스-앱 2-1 스태거)
