@@ -64,7 +64,11 @@ updated: 2026-07-27
 - [[토핑-spotlight]] — C-202 타인 토핑 탭 Spotlight(강조+Dim Black-50, z: Spotlight>Dim>토핑>배경)+작성자 Toast, 본인→C-305
 - [[toast]] — Toast 공통 정책(위→아래 노출·스와이프업/2초 닫기·스택)·닉네임 컬러 nametag-chip 매핑
 
-## 구현 위키 (별도 디렉토리 — `parfait/`, 위키 스키마 밖)
+## 구현 문서 (플랫폼별 — 위키 스키마 밖)
+> **의존 방향은 구현 → 위키 단방향.** 이 위키는 플랫폼 비종속 정책 SoT이므로 구현 문서를
+> 링크하지 않는다(아래 허브 포인터 1개만 예외). 구현과의 상충은 링크가 아니라
+> **플랫폼 + 심볼 데이터**로 적는다(예: "Android `YGColorChipType` 14종"). iOS 등 다른 플랫폼이
+> 붙어도 위키는 그대로 재사용된다.
 - [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 16건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션·Firebase FCM·로깅 추상화·feature/common 공유 레이어·i18n 결과 매핑 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, 디자인시스템 컴포넌트 다수). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서. **repo 루트 `parfait/`로 분리**(2026-07-13), 링크는 repo-root Obsidian vault 기준 resolve.
 
 ## Synthesis (분석·결과)
