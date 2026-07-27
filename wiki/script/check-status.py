@@ -93,8 +93,12 @@ for name, fm in pages.items():
         errs.append(f"index 불일치: {name} — status=current인데 '현행 정본' 표기 없음")
     if fm.get("status") in ("superseded", "partial") and not has_sup:
         errs.append(f"index 불일치: {name} — status={fm['status']}인데 🔁 표기 없음")
-    if fm.get("status") in ("superseded", "partial") and has_cur:
-        errs.append(f"index 불일치: {name} — 폐기본인데 '현행 정본' 표기")
+    # 전면 폐기본만 '현행 정본' 표기를 금한다.
+    # partial은 "일부는 현행, 일부는 대체"라 두 토큰이 함께 있어야 정확한 투영이다.
+    if fm.get("status") == "superseded" and has_cur:
+        errs.append(f"index 불일치: {name} — 전면 폐기본인데 '현행 정본' 표기")
+    if fm.get("status") == "partial" and not (has_cur and has_sup):
+        errs.append(f"index 불일치: {name} — partial은 현행 범위와 🔁 대체 범위를 모두 표기해야 함")
 
 print(f"소스 {len(pages)}건 검사")
 print("\n".join(errs) if errs else "위반 0건")
