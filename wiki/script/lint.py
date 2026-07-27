@@ -30,6 +30,7 @@ IMPL_PREFIXES = ("parfait/",)
 
 LINK = re.compile(r"\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]")
 COMMENT = re.compile(r"<!--.*?-->", re.S)  # 템플릿·주석 블록의 플레이스홀더는 링크가 아니다
+FENCE = re.compile(r"```.*?```", re.S)     # 코드 펜스 안 예시도 실제 링크가 아니다
 SENSITIVE = {
     "email": r"[\w.+-]+@[\w-]+\.[\w.]+",
     "phone": r"01[016-9][-\s.]?\d{3,4}[-\s.]?\d{4}",
@@ -61,8 +62,8 @@ def frontmatter(p):
 
 
 def text(p):
-    """주석 블록을 제거한 본문 — 링크 검사는 항상 이걸 쓴다."""
-    return COMMENT.sub("", p.read_text(encoding="utf-8"))
+    """주석 블록·코드 펜스를 제거한 본문 — 링크 검사는 항상 이걸 쓴다."""
+    return FENCE.sub("", COMMENT.sub("", p.read_text(encoding="utf-8")))
 
 
 def body(p):
