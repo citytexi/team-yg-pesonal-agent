@@ -2,6 +2,7 @@
 tags: [source, product]
 sources: [Toast-공통-정책.md]
 updated: 2026-07-14
+status: current
 ---
 
 # Toast 공통 정책

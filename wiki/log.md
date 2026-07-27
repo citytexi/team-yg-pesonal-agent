@@ -108,3 +108,5 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-27] ingest | G-001 무한파르페 간격 정책 v0.3 — 그룹 토핑 인셋 정책 변경(좌/우 인셋 4·같은 side 갭 -12·Left 268/416/564·Right 354/502/650·템플릿 고정 갭·저개수 좌표화·정렬 동률 타이브레이크). v0.2 대체, 개념 2건 갱신(무한-파르페-그리드·토핑), open-questions 2건 신규
 
 ## [2026-07-27] lint | 점검 완료, 차단 이슈 0건 (민감데이터·실명·고아·깨진링크·raw↔sources 정합 0). stale 4건 수정(v0.2 정본 표기 → v0.3 현행화·index updated 정합)
+
+## [2026-07-27] schema | 근거 우선순위·판본 상태(status) 스키마 도입 — 리뷰 지적 3건 반영. sources/ 프론트매터에 status(current/superseded/partial)+superseded_by/supersedes/scope 필수화(28건 부여), index는 투영으로 격하, 근거 우선순위 concepts→open-questions→sources로 명문화(sources 한정 금지), open-questions 상태는 부정 매칭(해소됨 아니면 미결), lint 점검 항목 7 신설 + wiki/script/check-status.py 검사 자동화

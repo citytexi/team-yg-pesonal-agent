@@ -2,6 +2,7 @@
 tags: [source, product]
 sources: [C-103-Selected-누끼-이미지-정책-v0.1.md]
 updated: 2026-07-25
+status: current
 ---
 
 # 누끼 이미지 정책 (C-103-Selected · 객체 선택 영역) v0.1
