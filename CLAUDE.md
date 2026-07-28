@@ -60,6 +60,9 @@
   **`skill-finder`로 먼저 검색**(`python3 parfait/script/search.py "<주제>"`)하고, 상위 후보 중 관련
   벤더 스킬을 네이티브 `Skill`로 로드한 뒤 설계/계획을 확정한다. 전체 목차는
   `.claude/skills-vendor/CATALOG.md`. 벤더 스킬 갱신은 `update-injected-skills`.
+- **실행 표면**: 스펙·계획 산출, plan phase 전환, 테스트 실행, 아티팩트 생성처럼 사용자가
+  볼 만한 결과가 나오면 `surfacing-work-in-cmux`를 따른다. cmux가 아닌 터미널에서는
+  게이트에서 no-op 되므로 동작이 달라지지 않는다.
 
 ### B. 제품 문서 작업 (PRD·positioning·roadmap·user story·discovery 등)
 → **PM-Skills 사용** (`writing-plans` 대신 이쪽이 문서판 대응물):
