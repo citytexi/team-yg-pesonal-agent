@@ -1,10 +1,10 @@
 ---
 id: designsystem-text-component-sync
 title: 디자인시스템 텍스트 영역 컴포넌트 Figma 동기화 (Design System Text Components Figma Sync)
-status: draft
+status: done
 type: work-order
 created: 2026-07-27
-updated: 2026-07-27
+updated: 2026-07-29
 platforms: android
 owner:
 related_adr: ADR-0010
@@ -14,7 +14,7 @@ related_code:
   - YGToast.kt#YGToastType
   - YGAlertPolicy.kt#YGAlertPolicy
   - ComponentCatalog.kt#componentCatalog
-archived_reason:
+archived_reason: PR #181 develop 머지 완료(2026-07-29) — Task 1~6 전량 수행, 코드=설계 일치
 tags: [plan, parfait, designsystem, figma-sync]
 ---
 
@@ -28,7 +28,7 @@ tags: [plan, parfait, designsystem, figma-sync]
 
 **Tech Stack:** Kotlin, Jetpack Compose, Navigation3, Hilt, Gradle(컨벤션 플러그인), ktlint
 
-**Spec:** [`parfait/specs/2026-07-27-designsystem-text-component-sync.md`](../specs/2026-07-27-designsystem-text-component-sync.md)
+**Spec:** [`parfait/specs/2026-07-27-designsystem-text-component-sync.md`](../../specs/archive/2026-07-27-designsystem-text-component-sync.md)
 
 ## Global Constraints
 
@@ -91,7 +91,7 @@ NavKey는 파일당 1개 — 기존 17개 키 파일의 관용구를 따른다.
 
 modifier 체인 순서는 `background` → `border` → `padding`이다. `background`를 `border` 앞에 둬야 테두리가 배경 위에 그려지고, 둘 다 `padding` 위에 있어야 패딩이 안쪽 여백으로 동작한다.
 
-- [ ] **Step 1: `YGDate.kt` 전체를 아래 내용으로 교체**
+- [x] **Step 1: `YGDate.kt` 전체를 아래 내용으로 교체**
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.ygtext
@@ -151,23 +151,23 @@ private fun YGDatePreview() = PreviewBox {
 
 바뀐 점: `background` 추가, `Modifier` 리터럴 → `modifier` 파라미터, `Arrangement.spacedBy`, 두 `Text`에서 `modifier` 인자 제거, `"(" + day + ")"` → `"($day)"` 문자열 템플릿, `YGCustomTheme` → `PreviewBox`. `YGCustomTheme` import는 제거된다.
 
-- [ ] **Step 2: 컴파일 확인**
+- [x] **Step 2: 컴파일 확인**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin --console=plain`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 3: ktlint 확인**
+- [x] **Step 3: ktlint 확인**
 
 Run: `./gradlew :core:designsystem:ktlintCheck --console=plain`
 Expected: `BUILD SUCCESSFUL`. 실패하면 `./gradlew :core:designsystem:ktlintFormat` 후 재실행.
 
-- [ ] **Step 4: 프리뷰 육안 확인**
+- [x] **Step 4: 프리뷰 육안 확인**
 
 Android Studio에서 `YGDate.kt`의 `YGDatePreview`를 연다.
 Expected: 흰(`#FAFAFA`) 배경 위에 회색 테두리 박스, `December 31` (진회색) + `(Wed)` (연회색), 두 텍스트 사이 8dp.
 night 프리뷰에서도 배경이 흰색이어야 한다 — Figma가 고정 흰 채움이므로 테마 반전은 없다.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygtext/YGDate.kt
@@ -196,7 +196,7 @@ git commit -m "refactor: sync YGDate with Figma text components"
 
 `YGToastType`은 sealed interface이므로 `Fail` 추가 시 `when`이 non-exhaustive가 되어 컴파일러가 분기 누락을 잡아준다.
 
-- [ ] **Step 1: `YGToast.kt` 전체를 아래 내용으로 교체**
+- [x] **Step 1: `YGToast.kt` 전체를 아래 내용으로 교체**
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.ygtoast
@@ -302,23 +302,23 @@ private fun YGToastPreview() = PreviewBox {
 `Record` 분기는 손대지 않는다 — 한국어 문구 하드코딩은 open-questions로 이월된 별건이다.
 `androidx.compose.ui.tooling.preview.Preview`와 `YGCustomTheme` import는 제거된다.
 
-- [ ] **Step 2: 컴파일 확인**
+- [x] **Step 2: 컴파일 확인**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin --console=plain`
 Expected: `BUILD SUCCESSFUL`. `YGToastPolicy.kt`는 `YGToastType`을 그대로 전달만 하므로 수정 없이 통과해야 한다 — 여기서 에러가 나면 정책 쪽에 숨은 `when` 분기가 있다는 뜻이니 그 분기에도 `Fail`을 추가한다.
 
-- [ ] **Step 3: ktlint 확인**
+- [x] **Step 3: ktlint 확인**
 
 Run: `./gradlew :core:designsystem:ktlintCheck --console=plain`
 Expected: `BUILD SUCCESSFUL`. 실패 시 `ktlintFormat` 후 재실행.
 
-- [ ] **Step 4: 프리뷰 육안 확인**
+- [x] **Step 4: 프리뷰 육안 확인**
 
 Android Studio에서 `YGToastPreview`를 연다.
 Expected: 검정 반투명 배너 4개. 위에서부터 노랑 이름 + 연회색 본문 / 형광노랑 / 민트 / **빨강(Cherry500)**.
 높이가 이전보다 **줄고** 좌우 여백은 **늘었어야** 한다 — 이게 T1 교정의 눈에 보이는 증거다.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygtoast/YGToast.kt
@@ -347,7 +347,7 @@ git commit -m "refactor: sync YGToast padding and add Fail type"
 
 `YGAlert` 컴포저블 본문은 Figma와 대조 결과 일치하므로 건드리지 않는다. 버튼 노출 분기(`buttonText != null`)는 이미 `YGAlert` 안에 있으므로 호스트에 조건 분기를 두지 않고 값만 흘린다.
 
-- [ ] **Step 1: `YGAlert.kt`의 프리뷰 블록 교체**
+- [x] **Step 1: `YGAlert.kt`의 프리뷰 블록 교체**
 
 파일 하단의 프리뷰를 아래로 바꾼다.
 
@@ -381,7 +381,7 @@ import com.teamyg.parfait.core.designsystem.utils.preview.YGPreview
 
 버튼 텍스트를 기존 `"확인"`에서 Figma 노드와 같은 `"Text"`로 맞춘다. `Column`·`Arrangement`·`dp` import는 이미 있으므로 유지한다.
 
-- [ ] **Step 2: `YGAlertPolicy.kt`의 `YGAlertItem`에 필드 2개 추가**
+- [x] **Step 2: `YGAlertPolicy.kt`의 `YGAlertItem`에 필드 2개 추가**
 
 ```kotlin
 data class YGAlertItem(
@@ -394,7 +394,7 @@ data class YGAlertItem(
 )
 ```
 
-- [ ] **Step 3: `YGAlertPolicy.show`가 두 값을 받아 전달하도록 수정**
+- [x] **Step 3: `YGAlertPolicy.show`가 두 값을 받아 전달하도록 수정**
 
 ```kotlin
 fun show(
@@ -413,7 +413,7 @@ fun show(
 }
 ```
 
-- [ ] **Step 4: `YGAlertHost`가 두 값을 `YGAlert`에 넘기도록 수정**
+- [x] **Step 4: `YGAlertHost`가 두 값을 `YGAlert`에 넘기도록 수정**
 
 `YGAlertHost` 안의 `YGAlert(...)` 호출을 아래로 바꾼다. `modifier` 인자(draggable + offset 체인)는 기존 그대로 둔다.
 
@@ -443,22 +443,22 @@ YGAlert(
 )
 ```
 
-- [ ] **Step 5: 컴파일 확인**
+- [x] **Step 5: 컴파일 확인**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin --console=plain`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 6: ktlint 확인**
+- [x] **Step 6: ktlint 확인**
 
 Run: `./gradlew :core:designsystem:ktlintCheck --console=plain`
 Expected: `BUILD SUCCESSFUL`. 실패 시 `ktlintFormat` 후 재실행.
 
-- [ ] **Step 7: 프리뷰 육안 확인**
+- [x] **Step 7: 프리뷰 육안 확인**
 
 Android Studio에서 `YGAlertPreview`를 연다.
 Expected: 검정 반투명 배너 2개. 위쪽은 분홍 `Title` + 반투명 흰 `Sub` + 우측에 연분홍 pill 칩(`Text` + 오른쪽 캐럿), 아래쪽은 칩 없음.
 
-- [ ] **Step 8: 커밋**
+- [x] **Step 8: 커밋**
 
 ```bash
 git add core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygalert/
@@ -481,7 +481,7 @@ git commit -m "feat: pass alert button variant through YGAlertPolicy"
 
 화면은 `Box` 루트에 본문 `Column`을 깔고 `YGToastHost`를 상단에 오버레이한다. 정적 4변형은 색을 천천히 검수하는 용도이고, 트리거 버튼은 스와이프·2초 자동 소멸을 확인하는 용도다. (가로 패딩은 정적 섹션의 `contentPadding` 16dp에 가려지므로 트리거로 띄운 배너에서 봐야 한다.)
 
-- [ ] **Step 1: NavKey 생성**
+- [x] **Step 1: NavKey 생성**
 
 `NavKeyYGToast.kt`:
 
@@ -495,7 +495,7 @@ import kotlinx.serialization.Serializable
 data object NavKeyYGToast : NavKey
 ```
 
-- [ ] **Step 2: showcase 화면 생성**
+- [x] **Step 2: showcase 화면 생성**
 
 `YGToastPreviewScreen.kt`:
 
@@ -600,7 +600,7 @@ private fun PreviewYGToastPreviewScreen() = PreviewBox {
 
 `YGToastHost`의 `modifier`는 기본값이 없으므로 반드시 넘긴다.
 
-- [ ] **Step 3: 카탈로그에 등록**
+- [x] **Step 3: 카탈로그에 등록**
 
 `ComponentCatalog.kt`의 import 목록에 알파벳 순서에 맞춰 추가:
 
@@ -618,7 +618,7 @@ import com.teamyg.parfait.preview.navigation.key.NavKeyYGToast
     ),
 ```
 
-- [ ] **Step 4: EntryBuilder에 배선**
+- [x] **Step 4: EntryBuilder에 배선**
 
 `ComponentEntryBuilders.kt`의 import 목록에 2줄 추가:
 
@@ -642,17 +642,17 @@ import com.teamyg.parfait.preview.screen.component.YGToastPreviewScreen
 
 `ComponentEntryModule.kt`는 건드리지 않는다 — `@IntoSet` 바인딩이 `componentEntryBuilders` 함수 단위다.
 
-- [ ] **Step 5: 컴파일 확인**
+- [x] **Step 5: 컴파일 확인**
 
 Run: `./gradlew :app-preview:compileDebugKotlin --console=plain`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 6: ktlint 확인**
+- [x] **Step 6: ktlint 확인**
 
 Run: `./gradlew :app-preview:ktlintCheck --console=plain`
 Expected: `BUILD SUCCESSFUL`. 실패 시 `ktlintFormat` 후 재실행.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add app-preview/src/main/kotlin/com/teamyg/parfait/preview/navigation/key/NavKeyYGToast.kt \
@@ -678,7 +678,7 @@ git commit -m "feat: add YGToast showcase to component gallery"
 
 Task 4와 같은 골격이되 변형이 2개(버튼 유/무)라 리스트 대신 `item` 블록 4개를 쓴다. 트리거 두 개가 각각 Task 3에서 연 버튼 전달 경로와 기존 경로를 실제로 태운다.
 
-- [ ] **Step 1: NavKey 생성**
+- [x] **Step 1: NavKey 생성**
 
 `NavKeyYGAlert.kt`:
 
@@ -692,7 +692,7 @@ import kotlinx.serialization.Serializable
 data object NavKeyYGAlert : NavKey
 ```
 
-- [ ] **Step 2: showcase 화면 생성**
+- [x] **Step 2: showcase 화면 생성**
 
 `YGAlertPreviewScreen.kt`:
 
@@ -808,7 +808,7 @@ private fun PreviewYGAlertPreviewScreen() = PreviewBox {
 }
 ```
 
-- [ ] **Step 3: 카탈로그에 등록**
+- [x] **Step 3: 카탈로그에 등록**
 
 `ComponentCatalog.kt`의 import 목록에 알파벳 순서에 맞춰 추가:
 
@@ -826,7 +826,7 @@ import com.teamyg.parfait.preview.navigation.key.NavKeyYGAlert
     ),
 ```
 
-- [ ] **Step 4: EntryBuilder에 배선**
+- [x] **Step 4: EntryBuilder에 배선**
 
 `ComponentEntryBuilders.kt`의 import 목록에 2줄 추가:
 
@@ -848,17 +848,17 @@ Task 4가 넣은 `entry<NavKeyYGToast> { … }` 블록 **뒤**에 추가:
     }
 ```
 
-- [ ] **Step 5: 컴파일 확인**
+- [x] **Step 5: 컴파일 확인**
 
 Run: `./gradlew :app-preview:compileDebugKotlin --console=plain`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 6: ktlint 확인**
+- [x] **Step 6: ktlint 확인**
 
 Run: `./gradlew :app-preview:ktlintCheck --console=plain`
 Expected: `BUILD SUCCESSFUL`. 실패 시 `ktlintFormat` 후 재실행.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add app-preview/src/main/kotlin/com/teamyg/parfait/preview/navigation/key/NavKeyYGAlert.kt \
@@ -897,7 +897,7 @@ git commit -m "feat: add YGAlert showcase to component gallery"
 
 `YGToastType` 4종을 `listOf`로 두고 `forEach`로 **타입마다 정책 1개 + 호스트 1개**를 세로로 나열한다.
 호스트 1개에 4건을 `show`하면 컨테이너가 `Box`라 같은 원점에 겹쳐 그려져 맨 위 1건만 보인다
-(스택 결함 — [open-questions](../synthesis/open-questions.md) [2026-07-27] 등록분).
+(스택 결함 — [open-questions](../../synthesis/open-questions.md) [2026-07-27] 등록분).
 
 - [x] **Step 3: 컴파일 + ktlint 확인**
 
@@ -921,12 +921,12 @@ Expected: `BUILD SUCCESSFUL` (2026-07-27 확인).
 
 여기부터는 `TJYG-Android`가 아니라 **위키 repo**(`team-yg-pesonal-agent`) 작업이다. 두 repo의 커밋을 섞지 않는다.
 
-- [ ] **Step 1: 전체 빌드 확인**
+- [x] **Step 1: 전체 빌드 확인**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :app-preview:assembleDebug ktlintCheck --console=plain`
 Expected: `BUILD SUCCESSFUL`. `:app` 모듈도 `core:designsystem`에 의존하므로 `ktlintCheck`(루트 태스크)가 전 모듈을 훑는다.
 
-- [ ] **Step 2: 갤러리 앱 실기기/에뮬레이터 실행 검증**
+- [x] **Step 2: 갤러리 앱 실기기/에뮬레이터 실행 검증**
 
 `:app-preview`를 설치·실행하고 메인 목록의 **Text** 그룹을 연다.
 
@@ -936,7 +936,7 @@ Expected:
 3. `YGToast` — 정적 4변형(노랑이름/형광노랑/민트/빨강)이 보이고, "띄우기" 4개가 각각 배너를 띄운다 → **2초 후 자동 소멸**. 위로 스와이프하면 즉시 닫힌다.
 4. `YGAlert` — 정적 2변형(칩 유/무)이 보이고, "show: with button" 트리거가 **칩이 있는** 배너를, "show: without button"이 **칩이 없는** 배너를 띄운다. 칩을 탭하면 `clicked` 배너로 교체된다(A3 콜백 전달 확인). **2.5초 후 자동 소멸**, 위로 스와이프 시 즉시 닫힘.
 
-> **기존 결함 2건 — 이번 브랜치 소관 아님, 발견해도 재보고 불필요** (최종 리뷰에서 확인, [open-questions](../synthesis/open-questions.md) [2026-07-27] 등록):
+> **기존 결함 2건 — 이번 브랜치 소관 아님, 발견해도 재보고 불필요** (최종 리뷰에서 확인, [open-questions](../../synthesis/open-questions.md) [2026-07-27] 등록):
 > - **슬라이드 인/아웃이 안 난다.** 토스트·알럿 모두 그냥 나타났다 사라진다. 호스트의 `AnimatedVisibility` 배선 결함.
 > - **토스트를 2초 안에 연달아 띄우면 쌓이지 않고 겹친다.** `Black75`가 중첩돼 어두워지고 최신 것이 아래 깔린다. 호스트가 `Box`라서 그렇다.
 >
@@ -944,26 +944,26 @@ Expected:
 
 4번의 "칩이 있는 배너가 실제로 뜬다"가 Task 3(A3)의 회귀 검증 포인트다 — 수정 전에는 호스트로 칩 변형을 띄울 방법이 없었다.
 
-- [ ] **Step 3: Figma 최종 대조**
+- [x] **Step 3: Figma 최종 대조**
 
 Figma 텍스트 영역(`Label`·`Date`·`Toast` 4변형·`Alert`)과 갤러리 화면을 나란히 놓고 색·패딩·문구를 확인한다.
-남은 차이가 있으면 이 계획에 Task를 추가하거나, 범위 밖이면 [parfait open-questions](../synthesis/open-questions.md)에 등록한다.
+남은 차이가 있으면 이 계획에 Task를 추가하거나, 범위 밖이면 [parfait open-questions](../../synthesis/open-questions.md)에 등록한다.
 
-- [ ] **Step 4: 스펙 상태를 `implemented`로 바꾸고 아카이브**
+- [x] **Step 4: 스펙 상태를 `implemented`로 바꾸고 아카이브**
 
 위키 repo에서:
 1. `parfait/specs/2026-07-27-designsystem-text-component-sync.md`의 frontmatter를 `status: implemented`로 바꾸고 `verified`를 실제 검증일로 갱신한다.
 2. 파일을 `parfait/specs/archive/`로 옮긴다.
 3. `parfait/specs/README.md`에서 해당 줄을 활성 테이블 → 아카이브 테이블로 옮기고 링크 경로에 `archive/`를 넣는다. 머지된 PR 번호를 한 줄 요약에 덧붙인다.
 
-- [ ] **Step 5: 계획 상태를 `done`으로 바꾸고 아카이브**
+- [x] **Step 5: 계획 상태를 `done`으로 바꾸고 아카이브**
 
 위키 repo에서:
 1. 이 계획 파일의 frontmatter를 `status: done`으로 바꾸고 `updated`를 갱신한다.
 2. `parfait/plans/archive/`로 옮긴다.
 3. `parfait/plans/README.md`의 아카이브 테이블에 한 줄 등록한다(활성 테이블에는 애초에 이 줄이 있어야 하므로 이동시킨다).
 
-- [ ] **Step 6: 두 repo 각각 커밋**
+- [x] **Step 6: 두 repo 각각 커밋**
 
 `TJYG-Android`에 잔여 변경이 있으면 먼저 커밋한다. 그 다음 위키 repo에서:
 

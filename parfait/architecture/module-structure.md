@@ -4,9 +4,9 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-07-21
-related_spec:
-related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015
+verified: 2026-07-29
+related_spec: a005-group-create
+related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
 related_code: settings.gradle.kts
 tags: [architecture, parfait]
@@ -33,7 +33,7 @@ app / app-preview
 | 그룹 | 모듈 | 목적 | 적용 컨벤션 플러그인 |
 |------|------|------|----------------------|
 | 진입 | `app`, `app-preview` | 앱 진입점(`BaseApplication`, `MainActivity`, `MainRoute`), 전체 조립 | `AndroidApplication*`, 서명 |
-| core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 프리뷰 | android-library + compose |
+| core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 여러 feature 공용 레이아웃(`VerticalGridLayout`)·공용 문자열 리소스(유효성 에러 문구, [[0016-domain-result-presentation-string-mapping]]) | android-library + compose |
 | core | `core:designsystem` | 테마(`YGMaterialTheme`)·토큰(`YGSemanticColors`, `SizeTokens` 등) | android-library + compose |
 | core | `core:navigation` | `Navigator`, NavKey 레지스트리, 엔트리 등록 | android-library |
 | core | `core:util:android` | Android 전용 유틸(`decodeUriToBitmap`, `AndroidBitmap`) + Compose clickable 유틸(`clickable/`: `clickableYG`·`ygDimRipple`·`ygScaleRipple`, 테마 비의존). `core:util:jvm` 의존 | android-library + compose |
@@ -50,6 +50,9 @@ app / app-preview
 - `domain`은 Android 의존 금지(순수 Kotlin 유지). Android 타입이 도메인에 필요하면 `core:util:jvm`의 플랫폼 무관 추상으로 감싼다 — 비트맵은 `BitmapWrapper`([[0011-cross-module-bitmap-abstraction]]).
 - 새 모듈 = 알맞은 컨벤션 플러그인 적용 + `settings.gradle.kts` 등록(같은 커밋).
 - **여러 feature가 공유하는 화면**은 특정 도메인 feature 밑이 아니라 `feature/common/*`에 둔다([[0015-feature-common-shared-layer]]). 단, **2개 이상 소비처가 확정된 경우에만**(단일 소비면 소유 feature 유지).
+- **표시 문자열은 `strings.xml` + `stringResource`**(코틀린 리터럴 금지). 화면 전용 정적 라벨은 그 화면의 `feature/*/impl` `res/values/strings.xml`
+  (같은 모듈의 여러 화면이 한 파일 공용), **여러 feature가 공유하는 문구**(유효성 에러 등)는 `core:ui` `res/values/strings.xml`([[0016-domain-result-presentation-string-mapping]]).
+  `domain`은 표시 문자열을 보유하지 않는다. 미착수 화면에 잔존한 리터럴은 [open-questions](../synthesis/open-questions.md) [2026-07-26]에서 추적.
 
 ## 현재 수치가 필요하면 코드에서 측정
 ```bash

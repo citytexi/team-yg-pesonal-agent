@@ -1,10 +1,10 @@
 ---
 id: designsystem-text-component-sync
 title: 디자인시스템 텍스트 영역 컴포넌트 Figma 동기화 (Design System Text Components Figma Sync)
-status: draft
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-27
+verified: 2026-07-29
 related_code:
   - YGDate.kt#YGDate
   - YGLabel.kt#YGLabel
@@ -36,6 +36,11 @@ tags: [spec, parfait, designsystem, figma-sync]
 # Spec: 디자인시스템 텍스트 영역 컴포넌트 Figma 동기화
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+>
+> **구현 완료(2026-07-29, PR #181 develop 머지)** — 코드=설계 일치. D1~D4·T1~T4·A1·A3·P1·P2 전부 반영,
+> 갤러리 showcase 2화면(`YGToast`·`YGAlert`) 등록 확인. `YGAlert` 트리거의 `onButtonClick`은 스펙 요구대로
+> 관찰 가능한 동작(`title = "clicked"` 재노출)으로 배선됨. 남은 항목(호스트 애니메이션·스택 결함,
+> `YGChipButton` 세로 패딩, `Record` 문구 하드코딩)은 [open-questions](../../synthesis/open-questions.md) [2026-07-27]에서 추적.
 
 ## 목표
 
@@ -53,7 +58,7 @@ Figma `[디자인] 파르페 v0.1` 파일의 **Components 섹션 > Detail Type "
   - `YGToast` — 패딩 교정, `Fail` 타입 신설
   - `YGAlert` — 컴포저블 무변경. `YGAlertPolicy`/`YGAlertItem`/`YGAlertHost`에 버튼 변형 전달 경로 추가
   - `YGDate`·`YGToast`·`YGAlert` 프리뷰를 `@YGPreview` + `PreviewBox` 규약으로 통일
-    ([designsystem-preview-migration](archive/2026-07-18-designsystem-preview-migration.md)에서 누락된 3건)
+    ([designsystem-preview-migration](2026-07-18-designsystem-preview-migration.md)에서 누락된 3건)
   - `YGToastHost`·`YGAlertHost` 프리뷰 신설 — 정책 파일 2개에 프리뷰가 아예 없었다(P1·P2)
   - `:app-preview` 갤러리에 `YGToast`·`YGAlert` showcase 화면 추가
 - **제외**
@@ -89,7 +94,7 @@ Figma `[디자인] 파르페 v0.1` 파일의 **Components 섹션 > Detail Type "
 > - **Toast 다중 스택 미동작** — `YGToastHost`가 `Box`라 동시 토스트가 쌓이지 않고 겹쳐 그려진다.
 >   `show`가 `add(0, …)`로 앞에 넣으므로 최신 토스트가 오히려 아래 깔린다.
 >
-> 둘 다 [parfait open-questions](../synthesis/open-questions.md) [2026-07-27] 항목으로 등록. 별도 라운드에서 처리한다.
+> 둘 다 [parfait open-questions](../../synthesis/open-questions.md) [2026-07-27] 항목으로 등록. 별도 라운드에서 처리한다.
 
 ### 드리프트 (수정 대상)
 
@@ -298,10 +303,10 @@ Box                                  // Host 오버레이를 얹기 위한 루�
 - **`YGChipButton` 세로 패딩** — 현행 `padding3` 대비 Figma `Button-Chip-Right`는 `padding-2`.
   칩 높이가 39 vs 29로 어긋난다. `YGAlert`·`YGTopBar` 등 공통 사용처에 전파되므로
   이번 텍스트 영역 sync에서 제외하고 칩 영역 sync 라운드에서 처리한다.
-  → [parfait open-questions](../synthesis/open-questions.md) 등록
+  → [parfait open-questions](../../synthesis/open-questions.md) 등록
 - **`YGToast.Record`의 한국어 하드코딩** — `"님이 … 전에 쌓았어요"` 문구가
   `core:designsystem` 안에 문자열로 박혀 있다. 표시 문자열은 표현 계층에서 매핑한다는
-  [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md) 방향과 상충 소지가 있다.
+  [ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md) 방향과 상충 소지가 있다.
   이번 범위에서는 손대지 않는다. → open-questions 등록
 - **원자 색 직접 참조** — 네 컴포넌트 모두 `YGAtomicColors`를 직접 읽는다(시맨틱 색 미경유).
   기존 `ygtoast`·`ygalert` 스펙에서 이미 open-questions에 등록된 사항으로, 이번에도 유지한다.

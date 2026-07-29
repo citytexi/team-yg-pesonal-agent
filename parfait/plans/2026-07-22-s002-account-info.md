@@ -14,6 +14,15 @@
 > - UI State는 `nickNameError: NicknameResult.Error?` 보유(문자열 아님), Screen이 `toStringResource()`로 매핑.
 > - S-102(GroupNickName VM/Screen) 동반 리팩터. 확정 API는 스펙 [2026-07-22-s002-account-info.md](../specs/2026-07-22-s002-account-info.md) 참조.
 
+> **⚠️ 2차 애드덤 (2026-07-29, PR #179 develop 머지)** — **Task 1은 이미 완료된 것으로 간주하고 건너뛴다.**
+> A-005 그룹 생성 작업이 같은 domain 리팩터를 먼저 머지했다. 단 형태가 위 1차 애드덤과 다르다:
+> `NicknameResult` → **`NameValidResult`**, `Error.Empty` → **`Error.EmptyString`**(enum 마지막 — 결과 동일),
+> UseCase 패키지 `domain.usecase`(`.group` 제거)·인자명 `name`, 길이 상한은 `domain` **`GroupCreateConfig.NICKNAME_MAX_LENGTH`**
+> (Global Constraints의 `NICKNAME_MAX_LENGTH = 15` 지역 상수 항목은 무효 — 새로 정의하지 말 것),
+> 에러 문자열은 `core:ui` `strings.xml`에 존재하나 **`toStringResource()` 확장은 없다** → 매핑은 ViewModel `when`이 `@StringRes` ID 산출.
+> Task 2·4는 `nickNameErrorResId: Int?` 기준으로 읽는다. 재작성 시 `GroupNickNameViewModel`을 미러하고,
+> 매핑 위치 수렴 여부는 [open-questions](../synthesis/open-questions.md) [2026-07-29] 결정 후 반영한다.
+
 ## Global Constraints
 
 - 코드 대상 repo: `TJYG-Android`(remote `mash-up-kr/TJYG-Android`). 브랜치 `feature/#86-app-setting-account-info-screen`(이미 체크아웃됨).
