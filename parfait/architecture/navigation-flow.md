@@ -4,8 +4,8 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-07-20
-related_spec: designsystem-ygscreen-scaffold
+verified: 2026-07-29
+related_spec: designsystem-ygscreen-scaffold, a005-group-create
 related_adr: ADR-0002, ADR-0006
 related_architecture:
 related_code: core:navigation, Navigator
@@ -37,3 +37,12 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 3. 빌더를 Hilt 모듈(`NavigationModule`, ActivityRetainedComponent)의 `Set<...>` 멀티바인딩에 `@IntoSet`으로 제공.
 4. 이동 원하는 feature는 대상의 `:api`에 의존 추가(`settings.gradle.kts`/build 파일).
 5. 결과가 필요하면 `ResultEventBus` 데코레이터 경로 사용.
+6. **`goTo` 호출자를 같은 PR에 넣는다** — entry만 등록하고 진입 경로가 없으면 도달 불가 화면이 된다(선례: `NavKeyGroupCreate`, [open-questions](../synthesis/open-questions.md) [2026-07-29]).
+
+## 인자 있는 목적지 (`data class NavKey`)
+
+목적지가 값을 받으면 `data object`가 아니라 `@Serializable data class NavKeyXxx(val …)`로 정의한다
+(`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupHome`·`NavKeyGroupCreate`).
+그 값을 ViewModel 초기 상태로 넘길 때는 **Assisted 주입**을 쓴다 — `@HiltViewModel(assistedFactory = …)` + `@AssistedInject` +
+`@Assisted` 파라미터, 엔트리 빌더에서 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.…) })`로 생성해 Route에 넘긴다
+(`GroupCreateViewModel`·`SegmentationViewModel`).

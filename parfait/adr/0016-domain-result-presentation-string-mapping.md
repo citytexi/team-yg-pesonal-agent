@@ -7,7 +7,7 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr: ADR-0001, ADR-0005, ADR-0009
-related_spec: s002-account-info, s102-group-nickname
+related_spec: s002-account-info, s102-group-nickname, a005-group-create
 related_architecture: state-management
 platforms: android
 tags: [adr, parfait, i18n, domain, presentation]
@@ -16,6 +16,22 @@ tags: [adr, parfait, i18n, domain, presentation]
 # ADR-0016: 유효성 결과 — domain 의미 sealed 반환 + 표시 문자열 프레젠테이션 매핑
 
 > 상태·날짜·결정자·대체 관계는 위 frontmatter가 단일 출처. 본문은 결정 내용에 집중.
+
+> ⚠️ **as-built 이탈(2026-07-29, PR #179 develop 머지)** — 결정의 **핵심 방향(domain은 의미만, 표시 문자열은 프레젠테이션 소관)은
+> 코드로 실현됐으나 형태가 다르다.** 아래 "결정"은 원안이고, 실제 머지된 코드는 다음과 같다.
+>
+> | 항목 | 원안(이 ADR) | as-built(#179) |
+> |---|---|---|
+> | 결과 타입 | `NicknameResult` sealed(`Error.Empty` 등) | `NameValidResult` sealed(`Error.EmptyString` 등), 그룹명에도 공용 |
+> | UseCase 위치·인자 | `domain.usecase.group`, `nickName` | `domain.usecase`, `name` |
+> | 표시 매핑 소유 | `core:ui` `NicknameResult.Error.toStringResource()`(@Composable) | **각 feature ViewModel의 `when`**이 `@StringRes` ID 산출 |
+> | UI State 보유 | `NicknameResult.Error?`(도메인 의미) | `errorMessageResId: Int?`(리소스 ID) |
+> | 문자열 소유 | `core:ui` `strings.xml` | 동일 — `core:ui` `strings.xml`(닉네임용/그룹명용 항목 분리) |
+> | `core:ui` → `:domain` 의존 | 추가 | **추가되지 않음**(매핑이 feature에 있어 불필요) |
+>
+> 즉 **문자열 리소스는 공용화됐지만 매핑 로직은 feature마다 중복**된다 — 이 ADR이 "기각"한 대안(feature마다 매핑 보유)에 가깝다.
+> 원안으로 수렴할지 as-built를 정본으로 개정할지 미결 → [open-questions](../synthesis/open-questions.md) [2026-07-29].
+> 미구현 화면(S-002)의 스펙은 as-built 계약을 기준으로 재정렬해야 한다.
 
 ## 맥락
 
