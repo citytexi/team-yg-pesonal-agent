@@ -33,6 +33,8 @@ tags: [plan, parfait]
 >   기존 Repository·LocalDataSource 모듈도 `di/repository/<도메인>`·`di/source/<종류>`로 함께 분할.
 > - **반환 타입**: `TempRemoteDataSource.getTemp`가 `Result<TempDto>` → `Result<TempVO>`(`:domain`).
 >   data 전용 `TempDto` 폐지, `source/temp/mapper/VOMapper.kt`의 `toTempVO()`가 변환.
+> - **`SafeApiCall.kt`**(코드리뷰 반영): 단일 `safeApiCall` → payload 유무별 진입점 2개
+>   (`safeApiCall`·`safeApiCallWithoutData`) + `ApiException.EmptyBody` 신설.
 
 ## Global Constraints
 

@@ -54,11 +54,17 @@ DataSource 배치 관례를 확립한다.
   현재 두 인스턴스의 직렬화 설정(`ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`)은
   동일하나, 원격은 서버 응답 규약에 맞춰 독립적으로 조정할 수 있다.
 - **응답 계약**: 공통 `ApiResponse<T>`(`code`/`message`/`data`, `@Serializable`, `isSuccess`
-  프로퍼티)를 모든 서비스 응답 타입으로 쓰고, `safeApiCall`(함수, `SafeApiCall.kt`)이 이를
-  `Result<T>`로 변환한다.
+  프로퍼티)를 모든 서비스 응답 타입으로 쓰고, `SafeApiCall.kt`의 함수가 이를 `Result<T>`로 변환한다.
+  **진입점은 payload 유무로 둘**이다 — `safeApiCall`(payload 필요: 성공 코드 + `data` 존재를 모두
+  요구)과 `safeApiCallWithoutData`(payload 없음: `ApiResponse<Unit>`를 받아 성공 코드만 검사하고
+  `data`를 보지 않음, `Result<Unit>` 반환). 삭제·설정 변경처럼 본문 없는 응답을 단일 진입점에서
+  `data != null`로 판정하면 성공 호출이 실패로 분류되기 때문이다.
 - **에러 타입 계층**: 실패는 sealed `ApiException`(`ApiException.kt`)으로 분류한다 — `Business`(HTTP
-  성공이나 envelope 실패 코드), `Http`(4xx/5xx, `HttpException` + `statusCode`), `Network`
-  (`IOException`), `Unknown`(그 외). `safeApiCall`이 `try/catch`로 예외를 이 타입들에 매핑하고,
+  성공이나 envelope 실패 코드), `EmptyBody`(envelope 성공 코드인데 `data` 없음 — payload가 필요한
+  호출에서만 실패), `Http`(4xx/5xx, `HttpException` + `statusCode`), `Network`
+  (`IOException`), `Unknown`(그 외). `Business`와 `EmptyBody`를 나눈 이유는 "서버가 거절"과 "계약과
+  다른 빈 응답"의 대응(재시도·재인증 vs 계약 점검)이 다르기 때문이다.
+  `safeApiCall`이 `try/catch`로 예외를 이 타입들에 매핑하고,
   `CancellationException`은 다시 던져 코루틴 취소 전파를 보존한다(`runCatching`의 취소 삼킴 회피).
   소비자는 `Result.exceptionOrNull()`을 `ApiException`으로 분기해 재시도·재인증 등을 판단할 수 있다.
 - **인증**: `AuthInterceptor`가 `TokenProvider`(인터페이스, stub 구현 `EmptyTokenProvider`)로부터

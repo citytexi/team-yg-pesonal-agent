@@ -26,6 +26,9 @@ tags: [spec, parfait]
 >   루트 `JsonModule`). `Json` 2종은 `DataStoreModule`이 아니라 `JsonModule`이 제공.
 > - **매핑 위치**: 예외적으로 범위를 넘어섰다 — "DTO→도메인 매핑은 제외"였으나, remote DataSource가
 >   도메인 모델(`TempVO`)을 반환하고 `source.temp.mapper`가 변환하도록 확정. data 전용 DTO는 폐지.
+> - **`safeApiCall` 진입점 2개**(코드리뷰 반영): 단일 진입점이 `isSuccess && data != null`을 성공
+>   조건으로 삼아 payload 없는 성공 응답(`ApiResponse<Unit>`)을 실패로 분류하던 문제 → payload 유무로
+>   함수를 나누고 `ApiException.EmptyBody`를 신설해 "서버 실패"와 "성공인데 본문 없음"을 구분.
 
 ## 목표
 `:data` 모듈에 Retrofit·OkHttp·kotlinx-serialization 기반 **원격 네트워크 기초 구조**를 세운다.
@@ -36,7 +39,7 @@ tags: [spec, parfait]
 - **포함**:
   - network용 **컨벤션 플러그인** 신설(`AndroidNetworkConventionPlugin`): `buildConfig` 활성 + `BASE_URL` buildConfigField(properties 로드) + `libs.bundles.network`·serialization 의존 이관.
   - Hilt DI: `NetworkModule`이 `OkHttpClient`·`Retrofit`, `TempServiceModule`이 예시 `Service` provide. `Json`(`@LocalJson`·`@RemoteJson`)은 `JsonModule`이 제공.
-  - 공통 응답 envelope `ApiResponse<T>` + `safeApiCall` 헬퍼(→ `Result<T>`).
+  - 공통 응답 envelope `ApiResponse<T>` + `safeApiCall`/`safeApiCallWithoutData` 헬퍼(→ `Result<T>`).
   - `AuthInterceptor` + `TokenProvider`(빈 stub, 헤더 주입 자리만).
   - 예시 1세트: `TempService` + `TempRequest`/`TempResponse` + `domain.model.TempVO` + `source/temp/mapper/VOMapper` + `source/temp/remote/TempRemoteDataSource(+Impl)` + `TempRemoteDataSourceModule`.
   - 응답→도메인 매핑 지점 확정(remote DataSource가 도메인 모델 반환, data 전용 DTO 없음).
@@ -45,7 +48,7 @@ tags: [spec, parfait]
   - 실제 백엔드 엔드포인트 연동, domain Repository/UseCase 소비.
   - 실제 인증 토큰 소스(로그인/토큰 저장) 연동 — `TokenProvider`는 빈 반환 + TODO.
   - debug/release baseUrl 분기(단일 `defaultConfig` buildConfigField로 시작, 후속 확장).
-  - ~~구체 에러 타입 계층~~ — 완료: sealed `ApiException`(`Business`/`Http`/`Network`/`Unknown`) 도입([ADR-0017](../adr/0017-remote-network-datasource.md)).
+  - ~~구체 에러 타입 계층~~ — 완료: sealed `ApiException`(`Business`/`EmptyBody`/`Http`/`Network`/`Unknown`) 도입([ADR-0017](../adr/0017-remote-network-datasource.md)).
 
 ## 컨벤션 플러그인 (build-logic)
 서명 플러그인(`AndroidApplicationSigningConventionPlugin` + `PropertySettingManager`) 패턴을 따른다.
@@ -80,10 +83,13 @@ data class ApiResponse<T>(
     val data: T?,
 )
 
-// network/safeApiCall.kt
-suspend fun <T> safeApiCall(block: suspend () -> ApiResponse<T>): Result<T>
-//  runCatching { block() } → envelope.code 성공 검사 → data non-null → Result.success(data)
-//  실패/예외(HttpException·IOException) → Result.failure
+// network/SafeApiCall.kt
+suspend fun <T : Any> safeApiCall(block: suspend () -> ApiResponse<T>): Result<T>
+//  envelope.code 성공 검사 → data non-null → Result.success(data)
+//  성공 코드 + data 없음 → ApiException.EmptyBody / 실패 코드 → ApiException.Business
+//  예외(HttpException·IOException·기타) → Http·Network·Unknown, CancellationException은 재던짐
+suspend fun safeApiCallWithoutData(block: suspend () -> ApiResponse<Unit>): Result<Unit>
+//  payload 없는 API(삭제·설정 변경 등) — 성공 코드만 검사, data 미검사
 
 // network/TokenProvider.kt
 interface TokenProvider { fun getToken(): String? }          // stub: 항상 null 반환 + TODO
@@ -114,7 +120,11 @@ interface TempRemoteDataSource {
 ## 동작 / 데이터 흐름
 `RemoteDataSourceImpl` → `ExampleService`(suspend, `ApiResponse<T>` 반환) → `safeApiCall { }`로 감쌈:
 - 정상 2xx + envelope 성공 코드 + `data != null` → `Result.success(data)`.
-- `HttpException`(4xx/5xx)·`IOException`(네트워크)·envelope 실패 코드·`data == null` → `Result.failure`.
+- envelope 실패 코드 → `ApiException.Business` / 성공 코드인데 `data == null` → `ApiException.EmptyBody`.
+- `HttpException`(4xx/5xx)·`IOException`(네트워크)·그 외 예외 → `Http`·`Network`·`Unknown`.
+
+본문 없는 API는 `ApiResponse<Unit>` + `safeApiCallWithoutData { }` — `data`를 판정에 쓰지 않는다.
+단일 진입점이 `data != null`을 요구하면 payload 없는 성공 응답이 실패로 분류되기 때문.
 
 `TempRemoteDataSourceImpl`은 `safeApiCall` 결과를 `map { it.toTempVO() }`로 도메인 모델에 실어 반환한다
 — `TempResponse`는 data 밖으로 나가지 않는다.
@@ -142,7 +152,7 @@ interface TempRemoteDataSource {
 | `data/.../di/source/temp/TempRemoteDataSourceModule.kt` | remote DataSource `@Binds` |
 | `data/.../network/AuthInterceptor.kt` | 토큰 헤더 주입 자리 |
 | `data/.../network/TokenProvider.kt` | 토큰 소스 인터페이스 + 빈 stub |
-| `data/.../network/safeApiCall.kt` | `ApiResponse` → `Result` 매핑 |
+| `data/.../network/SafeApiCall.kt` | `ApiResponse` → `Result` 매핑(payload 유무별 진입점 2개) |
 | `data/.../service/TempService.kt` | 예시 Retrofit 서비스 |
 | `data/.../service/model/ApiResponse.kt` | 공통 응답 envelope |
 | `data/.../service/model/TempResponse.kt`·`TempRequest.kt` | 예시 서버 응답·요청 타입(data 내부 전용) |

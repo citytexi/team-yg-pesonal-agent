@@ -75,8 +75,10 @@ tags: [architecture, parfait]
   둘 다 `JsonModule` 제공. 한정자는 `model/qualifier` 패키지. 같은 타입이어도 한정자로 구분돼 중복
   바인딩이 아니며, 설정을 용도별로 독립 조정 가능(현재 두 설정은 동일).
 - **응답 계약**: 공통 `ApiResponse<T>`(`code`/`message`/`data`, `@Serializable`, `isSuccess`) +
-  `safeApiCall`(함수)이 서비스 응답을 `Result<T>`로 변환. 실패는 sealed `ApiException`
-  (`Business`/`Http`/`Network`/`Unknown`)으로 분류하고 `CancellationException`은 재던진다(취소 전파 보존).
+  `SafeApiCall.kt`가 서비스 응답을 `Result<T>`로 변환. 진입점 2개 — payload 있는 API는 `safeApiCall`
+  (성공 코드 + `data` 존재), 본문 없는 API(`ApiResponse<Unit>`)는 `safeApiCallWithoutData`(성공 코드만
+  검사). 실패는 sealed `ApiException`(`Business`/`EmptyBody`/`Http`/`Network`/`Unknown`)으로 분류하고
+  `CancellationException`은 재던진다(취소 전파 보존).
 - **인증**: `AuthInterceptor` + `TokenProvider`(인터페이스, stub `EmptyTokenProvider`)가
   `Authorization: Bearer` 헤더 주입 자리를 제공. 실제 토큰 소스 연동은 후속.
 - **로깅**: `HttpLoggingInterceptor` 레벨은 `BuildConfig.DEBUG`로 게이팅(debug=`BODY`,
