@@ -6,9 +6,9 @@ date: 2026-05-14
 deciders: Parfait 팀
 supersedes:
 superseded_by:
-related_adr: ADR-0002
+related_adr: ADR-0002, ADR-0017
 related_spec:
-related_architecture:
+related_architecture: data-layer
 platforms: android
 tags: [adr, parfait]
 ---
@@ -23,7 +23,7 @@ tags: [adr, parfait]
 - 진입: `BaseApplication`에 `@HiltAndroidApp`, `MainActivity`에 `@AndroidEntryPoint`.
 - ViewModel: `@HiltViewModel` + `@Inject constructor`.
 - 스코프 사용 규칙:
-  - **SingletonComponent** — Repository·DataStore 등 앱 수명 서비스. DI 모듈: `RepositoryModule`, `SingletonInjectModule`, `LocalDataSourceModule`, `DataStoreModule`(모두 `data` 레이어).
+  - **SingletonComponent** — Repository·DataSource·DataStore·네트워크 등 앱 수명 서비스. DI 모듈은 모두 `data` 레이어의 `di/` 아래 관심사(+도메인)별 하위 패키지에 둔다(`di/repository/<도메인>`·`di/source/…`·`di/service/<도메인>`·`di/network`·`di/datastore`, 도메인 비종속만 루트 `JsonModule`·`SingletonInjectModule`) — 배치 규칙은 [[0017-remote-network-datasource]]·[[data-layer]].
   - **ActivityRetainedComponent / ActivityRetainedScoped** — `Navigator`와 feature 엔트리 빌더(`NavigationModule`). 설정 변경을 넘어 백스택 유지.
 
 Repository·DataSource 인터페이스↔구현 바인딩은 `@Binds`로.

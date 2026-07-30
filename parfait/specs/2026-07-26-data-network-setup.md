@@ -4,8 +4,8 @@ title: 데이터 모듈 원격 네트워크 기초 구조 (Retrofit · OkHttp Ne
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-07-26
-related_code: ModuleDataConventionPlugin, PropertySettingManager, DataStoreModule, RepositoryModule, LocalDataSourceModule
+verified: 2026-07-30
+related_code: ModuleDataConventionPlugin, PropertySettingManager, NetworkModule, JsonModule, TempServiceModule, TempRemoteDataSourceModule
 related_adr: ADR-0017
 related_spec:
 related_architecture: data-layer
@@ -18,6 +18,15 @@ tags: [spec, parfait]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 
+> ⚠️ **as-built 정정(2026-07-30, `feature/network-set-up` 브랜치 — develop 미머지)** — 구현 중
+> 두 가지가 설계와 갈렸다. 아래 본문은 정정 반영본이고, 결정 근거는
+> [ADR-0017](../adr/0017-remote-network-datasource.md)에 있다.
+> - **DI 배치**: 단일 `NetworkModule`+`RemoteDataSourceModule` → `di/` 아래 관심사·도메인별 분할
+>   (`di/network`·`di/service/temp`·`di/source/temp`·`di/datastore`·`di/repository/<도메인>`,
+>   루트 `JsonModule`). `Json` 2종은 `DataStoreModule`이 아니라 `JsonModule`이 제공.
+> - **매핑 위치**: 예외적으로 범위를 넘어섰다 — "DTO→도메인 매핑은 제외"였으나, remote DataSource가
+>   도메인 모델(`TempVO`)을 반환하고 `source.temp.mapper`가 변환하도록 확정. data 전용 DTO는 폐지.
+
 ## 목표
 `:data` 모듈에 Retrofit·OkHttp·kotlinx-serialization 기반 **원격 네트워크 기초 구조**를 세운다.
 `data-layer.md`의 "네트워킹(Assumption)"(의존만 준비, 서비스 미정의)을 실제 구조로 확정한다.
@@ -26,13 +35,14 @@ tags: [spec, parfait]
 ## 범위
 - **포함**:
   - network용 **컨벤션 플러그인** 신설(`AndroidNetworkConventionPlugin`): `buildConfig` 활성 + `BASE_URL` buildConfigField(properties 로드) + `libs.bundles.network`·serialization 의존 이관.
-  - `NetworkModule`(Hilt): `OkHttpClient`·`Retrofit`·예시 `Service` provide. `Json`은 기존 `DataStoreModule` 것 재사용(주입).
+  - Hilt DI: `NetworkModule`이 `OkHttpClient`·`Retrofit`, `TempServiceModule`이 예시 `Service` provide. `Json`(`@LocalJson`·`@RemoteJson`)은 `JsonModule`이 제공.
   - 공통 응답 envelope `ApiResponse<T>` + `safeApiCall` 헬퍼(→ `Result<T>`).
   - `AuthInterceptor` + `TokenProvider`(빈 stub, 헤더 주입 자리만).
-  - 예시 1세트: `TempService` + `TempRequest`/`TempResponse` + `source/temp/remote/TempRemoteDataSource(+Impl)` + `RemoteDataSourceModule`.
+  - 예시 1세트: `TempService` + `TempRequest`/`TempResponse` + `domain.model.TempVO` + `source/temp/mapper/VOMapper` + `source/temp/remote/TempRemoteDataSource(+Impl)` + `TempRemoteDataSourceModule`.
+  - 응답→도메인 매핑 지점 확정(remote DataSource가 도메인 모델 반환, data 전용 DTO 없음).
   - ADR-0017 신설 + `data-layer.md` 네트워킹 섹션 갱신(같은 PR).
 - **제외**:
-  - 실제 백엔드 엔드포인트 연동, DTO→도메인 매핑, domain Repository/UseCase 소비.
+  - 실제 백엔드 엔드포인트 연동, domain Repository/UseCase 소비.
   - 실제 인증 토큰 소스(로그인/토큰 저장) 연동 — `TokenProvider`는 빈 반환 + TODO.
   - debug/release baseUrl 분기(단일 `defaultConfig` buildConfigField로 시작, 후속 확장).
   - ~~구체 에러 타입 계층~~ — 완료: sealed `ApiException`(`Business`/`Http`/`Network`/`Unknown`) 도입([ADR-0017](../adr/0017-remote-network-datasource.md)).
@@ -89,9 +99,15 @@ interface TempService {
     suspend fun getTemp(@Path("id") id: String): ApiResponse<TempResponse>
 }
 
+// domain/model/TempVO.kt  (:domain)
+data class TempVO(val id: String, val name: String)
+
+// source/temp/mapper/VOMapper.kt
+internal fun TempResponse.toTempVO(): TempVO
+
 // source/temp/remote/TempRemoteDataSource.kt
 interface TempRemoteDataSource {
-    suspend fun getTemp(id: String): Result<TempResponse>
+    suspend fun getTemp(id: String): Result<TempVO>      // 도메인 모델 반환
 }
 ```
 
@@ -100,12 +116,17 @@ interface TempRemoteDataSource {
 - 정상 2xx + envelope 성공 코드 + `data != null` → `Result.success(data)`.
 - `HttpException`(4xx/5xx)·`IOException`(네트워크)·envelope 실패 코드·`data == null` → `Result.failure`.
 
-`NetworkModule`(`@InstallIn(SingletonComponent)`, `object`):
-- `provideOkHttpClient(authInterceptor)` — `HttpLoggingInterceptor(BODY)` + `AuthInterceptor` + 타임아웃.
-- `provideRetrofit(okHttp, json)` — `BuildConfig.BASE_URL` + `json.asConverterFactory(...)`. `json`은 기존 `provideDataStoreJsonParser()` 싱글톤 주입(중복 `@Provides Json` 금지).
-- `provideTempService(retrofit)` — `retrofit.create()`.
+`TempRemoteDataSourceImpl`은 `safeApiCall` 결과를 `map { it.toTempVO() }`로 도메인 모델에 실어 반환한다
+— `TempResponse`는 data 밖으로 나가지 않는다.
 
-`RemoteDataSourceModule`(`interface`, `@Binds`): `TempRemoteDataSourceImpl` → `TempRemoteDataSource`.
+`NetworkModule`(`di/network`, `@InstallIn(SingletonComponent)`, `object`):
+- `provideTokenProvider`·`provideAuthInterceptor`.
+- `provideOkHttpClient(authInterceptor)` — `HttpLoggingInterceptor`(`BuildConfig.DEBUG` 게이팅) + `AuthInterceptor` + 타임아웃.
+- `provideRetrofit(okHttp, @RemoteJson json)` — `BuildConfig.BASE_URL` + `json.asConverterFactory(...)`.
+
+`JsonModule`(`di/` 루트, `object`): `provideLocalJson`(`@LocalJson`)·`provideRemoteJson`(`@RemoteJson`).
+`TempServiceModule`(`di/service/temp`, `object`): `provideTempService(retrofit)` — `retrofit.create()`.
+`TempRemoteDataSourceModule`(`di/source/temp`, `interface`, `@Binds`): `TempRemoteDataSourceImpl` → `TempRemoteDataSource`.
 
 ## 파일 구성
 | 파일 | 역할 |
@@ -115,18 +136,23 @@ interface TempRemoteDataSource {
 | `build-logic/.../buildlogic/utils/PropertySettingManager.kt` | `loadBaseUrl()` 추가 |
 | `build-logic/convention/build.gradle.kts` | `pluginRegister("android.network", ...)` |
 | `gradle/libs.versions.toml` | `parfait-android-network` plugin alias |
-| `data/.../di/NetworkModule.kt` | OkHttp·Retrofit·TempService provide |
-| `data/.../di/RemoteDataSourceModule.kt` | remote DataSource `@Binds` |
+| `data/.../di/network/NetworkModule.kt` | TokenProvider·AuthInterceptor·OkHttp·Retrofit provide |
+| `data/.../di/JsonModule.kt` | `@LocalJson`·`@RemoteJson` `Json` provide |
+| `data/.../di/service/temp/TempServiceModule.kt` | `TempService` provide |
+| `data/.../di/source/temp/TempRemoteDataSourceModule.kt` | remote DataSource `@Binds` |
 | `data/.../network/AuthInterceptor.kt` | 토큰 헤더 주입 자리 |
 | `data/.../network/TokenProvider.kt` | 토큰 소스 인터페이스 + 빈 stub |
 | `data/.../network/safeApiCall.kt` | `ApiResponse` → `Result` 매핑 |
 | `data/.../service/TempService.kt` | 예시 Retrofit 서비스 |
 | `data/.../service/model/ApiResponse.kt` | 공통 응답 envelope |
-| `data/.../service/model/TempResponse.kt`·`TempRequest.kt` | 예시 DTO |
+| `data/.../service/model/TempResponse.kt`·`TempRequest.kt` | 예시 서버 응답·요청 타입(data 내부 전용) |
+| `domain/.../model/TempVO.kt` | 예시 도메인 모델(DataSource 반환 타입) |
+| `data/.../source/temp/mapper/VOMapper.kt` | `TempResponse.toTempVO()` 변환 |
 | `data/.../source/temp/remote/TempRemoteDataSource.kt`·`...Impl.kt` | 예시 remote DataSource |
 
 ## 주의 / 열린 질문
 - **예시 도메인 이름**: `temp`로 스캐폴딩(실제 첫 도메인 확정 전 임시 placeholder). 실제 API 시 교체·삭제.
-- `TokenProvider` stub 바인딩 위치(`RemoteDataSourceModule` 또는 별도) — 구현 시 확정.
+- `TokenProvider` stub 바인딩 위치 — `NetworkModule.provideTokenProvider`로 확정.
+- **`VO` 접미사 규약 미결**: `TempVO`는 접미사를 쓰지만 기존 `domain.model`은 무접미사 → [open-questions](../synthesis/open-questions.md) [2026-07-30].
 - envelope `code` 성공 판정 규칙은 실제 백엔드 규약 확정 후 조정 → open-questions 연동 가능.
 - debug/release baseUrl 분기·구체 에러 타입은 후속 ADR/스펙.
