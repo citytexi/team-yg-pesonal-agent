@@ -5,7 +5,7 @@ status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-07-30
-related_code: ModuleDataConventionPlugin, PropertySettingManager, NetworkModule, JsonModule, TempServiceModule, TempRemoteDataSourceModule
+related_code: ModuleDataConventionPlugin, PropertySettingManager, NetworkModule, JsonModule, ServiceModule, RemoteDataSourceModule
 related_adr: ADR-0017
 related_spec:
 related_architecture: data-layer
@@ -21,9 +21,10 @@ tags: [spec, parfait]
 > ⚠️ **as-built 정정(2026-07-30, `feature/network-set-up` 브랜치 — develop 미머지)** — 구현 중
 > 두 가지가 설계와 갈렸다. 아래 본문은 정정 반영본이고, 결정 근거는
 > [ADR-0017](../adr/0017-remote-network-datasource.md)에 있다.
-> - **DI 배치**: 단일 `NetworkModule`+`RemoteDataSourceModule` → `di/` 아래 관심사·도메인별 분할
->   (`di/network`·`di/service/temp`·`di/source/temp`·`di/datastore`·`di/repository/<도메인>`,
->   루트 `JsonModule`). `Json` 2종은 `DataStoreModule`이 아니라 `JsonModule`이 제공.
+> - **DI 배치**: `di/` 평면 유지 + 역할당 1파일 — `ServiceModule`(설계에선 `NetworkModule`이 서비스까지
+>   provide)·`JsonModule` 신설. `Json` 2종은 `DataStoreModule`이 아니라 `JsonModule`이 제공. 구현 중
+>   도메인별 하위 패키지(`di/repository/<도메인>` 등)로 분할했다가 코드리뷰에서 기각돼 되돌렸다
+>   ([ADR-0017](../adr/0017-remote-network-datasource.md) 대안 E).
 > - **매핑 위치**: 예외적으로 범위를 넘어섰다 — "DTO→도메인 매핑은 제외"였으나, remote DataSource가
 >   도메인 모델(`TempVO`)을 반환하고 `source.temp.mapper`가 변환하도록 확정. data 전용 DTO는 폐지.
 > - **`safeApiCall` 진입점 2개**(코드리뷰 반영): 단일 진입점이 `isSuccess && data != null`을 성공
@@ -38,10 +39,10 @@ tags: [spec, parfait]
 ## 범위
 - **포함**:
   - network용 **컨벤션 플러그인** 신설(`AndroidNetworkConventionPlugin`): `buildConfig` 활성 + `BASE_URL` buildConfigField(properties 로드) + `libs.bundles.network`·serialization 의존 이관.
-  - Hilt DI: `NetworkModule`이 `OkHttpClient`·`Retrofit`, `TempServiceModule`이 예시 `Service` provide. `Json`(`@LocalJson`·`@RemoteJson`)은 `JsonModule`이 제공.
+  - Hilt DI: `NetworkModule`이 `OkHttpClient`·`Retrofit`, `ServiceModule`이 예시 `Service` provide. `Json`(`@LocalJson`·`@RemoteJson`)은 `JsonModule`이 제공.
   - 공통 응답 envelope `ApiResponse<T>` + `safeApiCall`/`safeApiCallWithoutData` 헬퍼(→ `Result<T>`).
   - `AuthInterceptor` + `TokenProvider`(빈 stub, 헤더 주입 자리만).
-  - 예시 1세트: `TempService` + `TempRequest`/`TempResponse` + `domain.model.TempVO` + `source/temp/mapper/VOMapper` + `source/temp/remote/TempRemoteDataSource(+Impl)` + `TempRemoteDataSourceModule`.
+  - 예시 1세트: `TempService` + `TempRequest`/`TempResponse` + `domain.model.TempVO` + `source/temp/mapper/VOMapper` + `source/temp/remote/TempRemoteDataSource(+Impl)` + `RemoteDataSourceModule`.
   - 응답→도메인 매핑 지점 확정(remote DataSource가 도메인 모델 반환, data 전용 DTO 없음).
   - ADR-0017 신설 + `data-layer.md` 네트워킹 섹션 갱신(같은 PR).
 - **제외**:
@@ -129,14 +130,16 @@ interface TempRemoteDataSource {
 `TempRemoteDataSourceImpl`은 `safeApiCall` 결과를 `map { it.toTempVO() }`로 도메인 모델에 실어 반환한다
 — `TempResponse`는 data 밖으로 나가지 않는다.
 
-`NetworkModule`(`di/network`, `@InstallIn(SingletonComponent)`, `object`):
+`NetworkModule`(`di/`, `@InstallIn(SingletonComponent)`, `object`):
 - `provideTokenProvider`·`provideAuthInterceptor`.
 - `provideOkHttpClient(authInterceptor)` — `HttpLoggingInterceptor`(`BuildConfig.DEBUG` 게이팅) + `AuthInterceptor` + 타임아웃.
 - `provideRetrofit(okHttp, @RemoteJson json)` — `BuildConfig.BASE_URL` + `json.asConverterFactory(...)`.
 
-`JsonModule`(`di/` 루트, `object`): `provideLocalJson`(`@LocalJson`)·`provideRemoteJson`(`@RemoteJson`).
-`TempServiceModule`(`di/service/temp`, `object`): `provideTempService(retrofit)` — `retrofit.create()`.
-`TempRemoteDataSourceModule`(`di/source/temp`, `interface`, `@Binds`): `TempRemoteDataSourceImpl` → `TempRemoteDataSource`.
+`JsonModule`(`object`): `provideLocalJson`(`@LocalJson`)·`provideRemoteJson`(`@RemoteJson`).
+`ServiceModule`(`object`): `provideTempService(retrofit)` — `retrofit.create()`.
+`RemoteDataSourceModule`(`interface`, `@Binds`): `TempRemoteDataSourceImpl` → `TempRemoteDataSource`.
+
+DI 모듈은 `di/` 평면 배치·역할당 1파일(도메인별 하위 패키지 분할은 기각 — [ADR-0017](../adr/0017-remote-network-datasource.md) 대안 E).
 
 ## 파일 구성
 | 파일 | 역할 |
@@ -146,10 +149,10 @@ interface TempRemoteDataSource {
 | `build-logic/.../buildlogic/utils/PropertySettingManager.kt` | `loadBaseUrl()` 추가 |
 | `build-logic/convention/build.gradle.kts` | `pluginRegister("android.network", ...)` |
 | `gradle/libs.versions.toml` | `parfait-android-network` plugin alias |
-| `data/.../di/network/NetworkModule.kt` | TokenProvider·AuthInterceptor·OkHttp·Retrofit provide |
+| `data/.../di/NetworkModule.kt` | TokenProvider·AuthInterceptor·OkHttp·Retrofit provide |
 | `data/.../di/JsonModule.kt` | `@LocalJson`·`@RemoteJson` `Json` provide |
-| `data/.../di/service/temp/TempServiceModule.kt` | `TempService` provide |
-| `data/.../di/source/temp/TempRemoteDataSourceModule.kt` | remote DataSource `@Binds` |
+| `data/.../di/ServiceModule.kt` | Retrofit 서비스 provide(`TempService` 등) |
+| `data/.../di/RemoteDataSourceModule.kt` | remote DataSource `@Binds` |
 | `data/.../network/AuthInterceptor.kt` | 토큰 헤더 주입 자리 |
 | `data/.../network/TokenProvider.kt` | 토큰 소스 인터페이스 + 빈 stub |
 | `data/.../network/SafeApiCall.kt` | `ApiResponse` → `Result` 매핑(payload 유무별 진입점 2개) |

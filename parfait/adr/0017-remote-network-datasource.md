@@ -35,17 +35,19 @@ DataSource 배치 관례를 확립한다.
   `loadBaseUrl`이 project property → `local.properties`(`YG_BASE_URL`) → placeholder fallback
   순으로 조회한다(서명 키 로드 관례와 동형). `libs.bundles.network`·kotlinx-serialization 의존과
   serialization 플러그인 적용을 `ModuleDataConventionPlugin`에서 이 플러그인으로 이관한다.
-- **DI 배치**: DI 모듈은 `di/` 아래 **관심사(+도메인)별 하위 패키지**로 쪼갠다 —
-  `di/network/NetworkModule`, `di/service/<도메인>/TempServiceModule`,
-  `di/source/<도메인>/TempRemoteDataSourceModule`, `di/datastore/DataStoreModule`,
-  `di/repository/<도메인>/…`, `di/source/{file,image}/…`. 관심사가 도메인에 매이지 않는 것만
-  `di/` 루트에 둔다(`JsonModule`, `SingletonInjectModule`). 도메인이 늘 때 기존 모듈 파일을
-  키우지 않고 같은 패턴으로 파일을 추가하는 것이 목적이다.
+- **DI 배치**: DI 모듈은 `di/` **평면 배치 + 역할당 파일 1개**다(하위 패키지를 만들지 않는다) —
+  `RepositoryModule`·`LocalDataSourceModule`·`RemoteDataSourceModule`·`ServiceModule`·
+  `NetworkModule`·`JsonModule`·`DataStoreModule`·`SingletonInjectModule`. 도메인이 늘면 해당 역할
+  파일에 바인딩을 **추가**한다.
   - `NetworkModule`(object, `@InstallIn(SingletonComponent::class)`): `provideTokenProvider`
     (=`EmptyTokenProvider`)·`provideAuthInterceptor`·`provideOkHttpClient`·`provideRetrofit`.
-  - `TempServiceModule`(object): `provideTempService(retrofit)` — Retrofit 서비스 생성은
-    도메인별 모듈 소관이라 `NetworkModule`에 쌓지 않는다.
-  - `TempRemoteDataSourceModule`(interface, `@Binds`): `TempRemoteDataSourceImpl` → 인터페이스.
+  - `ServiceModule`(object): Retrofit 서비스 생성(`provideTempService` 등). 설정 코드인
+    `NetworkModule`과 서비스 목록을 분리해 둔다.
+  - `RemoteDataSourceModule`(interface, `@Binds`): `TempRemoteDataSourceImpl` → 인터페이스.
+  - 도메인별(`di/repository/<도메인>` 등) 하위 패키지 분할은 **하지 않는다**: 바인딩 1개짜리 파일이
+    양산돼 "이 Repository가 어디 묶였나"를 매번 찾게 된다. 분할의 근거였던 rebase 충돌은 `@Binds`
+    append라 해소가 기계적이고(양쪽 유지), 실제로 DI를 동시에 건드리는 병렬 브랜치도 관측되지
+    않았다. 역할 파일 하나가 감당하기 어려울 만큼 커지면 그때 그 파일만 쪼갠다.
 - **`Json` 한정자**: `Json`은 용도별로 분리해 `@Qualifier`로 구분한다 — 로컬(DataStore)용
   `@LocalJson`, 원격(Retrofit)용 `@RemoteJson`. 두 한정자는 `model/qualifier` 패키지에 두고,
   **두 인스턴스 모두 `JsonModule`(`provideLocalJson`·`provideRemoteJson`)이 제공**한다(같은 관심사를
@@ -75,7 +77,7 @@ DataSource 배치 관례를 확립한다.
   막기 위한 결정이다. `OkHttpClient`는 connect/read/write 타임아웃 3종을 설정한다.
 - **remote DataSource 배치**: 원격 DataSource는 `source.<도메인>.remote` 패키지에 인터페이스+`Impl`
   쌍으로 둔다. 예시 1세트로 `TempService`+`TempRequest`/`TempResponse`+`TempRemoteDataSource`(+`Impl`)를
-  두고, `TempRemoteDataSourceModule`(`@Binds`)로 바인딩한다.
+  두고, `RemoteDataSourceModule`(`@Binds`)로 바인딩한다.
 - **응답 → 도메인 매핑 위치**: 원격 DataSource의 **반환 타입은 도메인 모델**이다
   (`TempRemoteDataSource.getTemp(id): Result<TempVO>`). 서버 응답 타입(`service.model`의
   `TempResponse`)은 data 안에서만 살고, `source.<도메인>.mapper`의 확장 함수
@@ -107,6 +109,13 @@ DataSource 배치 관례를 확립한다.
   **→ 기각:** DTO를 제거하고 DataSource가 도메인 모델을 반환한다. `:data`는 이미 `:domain`에
   의존하므로([[0001-layered-multi-module]]) 레이어 역전은 아니다. 응답이 도메인과 크게 어긋나는
   도메인이 나오면 그 도메인에 한해 중간 모델을 되살린다.
+- **대안 E — DI 모듈을 도메인별 하위 패키지로 분할**(`di/repository/<도메인>`·`di/source/<도메인>` 등)
+  — 도메인마다 파일이 따로라 병렬 브랜치가 같은 파일 끝에 `@Binds`를 append하며 생기는 rebase 충돌이
+  사라진다. 그러나 현재 바인딩 총량 대비 파일이 과하게 쪼개져(절반이 바인딩 1개짜리) 바인딩 위치
+  추적 비용이 상시 발생하는 반면, 충돌은 발생 빈도가 낮고(관측상 DI를 건드리는 병렬 브랜치 거의 없음)
+  해소도 "양쪽 유지"로 기계적이다.
+  **→ 기각:** 상시 비용(추적)이 간헐 비용(충돌 해소)보다 크다. 역할별 평면 배치를 채택하고, 역할 파일이
+  비대해지면 그 파일에 한해 분할한다.
 
 ## 영향
 
@@ -117,8 +126,7 @@ DataSource 배치 관례를 확립한다.
 - `BASE_URL`이 properties/`local.properties`에서 로드되어 VCS에 원문이 노출되지 않는다.
 - `source.<도메인>.remote` + `ApiResponse`/`safeApiCall` 패턴이 확립되어, 다음 도메인의 remote
   DataSource 추가가 예시(`TempRemoteDataSource`)를 복제하는 수준으로 단순해진다.
-- DI 모듈이 관심사·도메인별 파일로 갈려 도메인 추가 시 기존 파일 수정 대신 파일 추가로 끝난다
-  (머지 충돌 면적도 줄어든다).
+- DI 모듈이 역할당 1파일이라 "이 Repository/DataSource가 어디 바인딩됐나"를 파일명으로 바로 찾는다.
 - Repository가 서버 응답 타입을 몰라도 되어, 도메인 소비자까지 오는 변환 단계가 1회로 줄었다.
 
 **트레이드오프**
@@ -127,8 +135,8 @@ DataSource 배치 관례를 확립한다.
   (모듈이 늘 때 재사용성으로 상쇄될 것으로 본다).
 - `TempService`/`TempRequest`/`TempResponse`/`TempVO`/`TempRemoteDataSource` 예시 세트가 실제
   도메인 API 확정 전까지 코드베이스에 placeholder로 남는다.
-- DI 모듈 파일 수가 늘어난다(바인딩 하나짜리 파일 다수). 어느 파일에 있는지는 패키지 규칙으로
-  찾는다.
+- 같은 역할 파일을 여러 브랜치가 동시에 고치면 append 지점에서 충돌이 난다(해소는 양쪽 유지로
+  기계적). 파일이 커지면 그 파일만 쪼개는 것으로 대응한다.
 - DataSource 시그니처가 도메인 타입에 묶여, 서버 응답이 도메인과 갈라지는 도메인이 나오면 그때
   중간 모델을 되살려야 한다(대안 D).
 

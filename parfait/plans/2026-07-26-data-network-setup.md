@@ -9,7 +9,7 @@ platforms: android
 owner: Parfait 팀
 related_adr: ADR-0017
 related_spec: data-network-setup
-related_code: ModuleDataConventionPlugin, PropertySettingManager, NetworkModule, JsonModule, TempServiceModule, TempRemoteDataSourceModule
+related_code: ModuleDataConventionPlugin, PropertySettingManager, NetworkModule, JsonModule, ServiceModule, RemoteDataSourceModule
 archived_reason: 코드 구현·리뷰 완료(develop 미머지 — `feature/network-set-up`)
 tags: [plan, parfait]
 ---
@@ -27,10 +27,10 @@ tags: [plan, parfait]
 > ⚠️ **as-built 정정(2026-07-30)** — 실행 후 두 가지가 아래 Task 서술과 다르다. 정본은
 > [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md)이고,
 > Task 4·5의 코드 블록은 실행 당시 안이다.
-> - **DI 파일 배치**: `di/NetworkModule.kt`·`di/RemoteDataSourceModule.kt` 평면 → `di/network/NetworkModule.kt`·
->   `di/service/temp/TempServiceModule.kt`(`provideTempService` 이관)·`di/source/temp/TempRemoteDataSourceModule.kt`,
->   `Json` 2종은 `di/JsonModule.kt`(`DataStoreModule`에서 분리), `DataStoreModule`은 `di/datastore/`로 이동.
->   기존 Repository·LocalDataSource 모듈도 `di/repository/<도메인>`·`di/source/<종류>`로 함께 분할.
+> - **DI 파일 배치**: `di/` 평면 유지, 역할당 1파일 — `ServiceModule.kt`(`provideTempService`가 `NetworkModule`에서
+>   이관)·`RemoteDataSourceModule.kt`·`JsonModule.kt`(`Json` 2종, `DataStoreModule`에서 분리) 신설.
+>   중간에 도메인별 하위 패키지(`di/repository/<도메인>` 등)로 분할했다가 코드리뷰에서 기각돼 되돌림
+>   ([ADR-0017](../adr/0017-remote-network-datasource.md) 대안 E).
 > - **반환 타입**: `TempRemoteDataSource.getTemp`가 `Result<TempDto>` → `Result<TempVO>`(`:domain`).
 >   data 전용 `TempDto` 폐지, `source/temp/mapper/VOMapper.kt`의 `toTempVO()`가 변환.
 > - **`SafeApiCall.kt`**(코드리뷰 반영): 단일 `safeApiCall` → payload 유무별 진입점 2개
@@ -41,7 +41,7 @@ tags: [plan, parfait]
 - 대상 repo: `TJYG-Android`(`mash-up-kr/TJYG-Android`), 로컬 경로는 private submodule `project-paths.md` 참조. **이 plan repo가 아니라 그쪽에서 코드 작업.**
 - 브랜치: 현재 `feature/network-set-up`(이미 체크아웃됨) 위에서 작업. `main`/`develop` 직접 커밋 금지.
 - 네트워크 의존은 `libs.bundles.network`(okhttp·okhttp-logging-interceptor·retrofit·retrofit-kotlin-serialization-converter)만 사용. 신규 라이브러리 추가 금지.
-- 패키지 루트: `com.teamyg.parfait.data`. 서비스=`.service`, 응답·요청 타입=`.service.model`, remote DataSource=`.source.<도메인>.remote`, 매퍼=`.source.<도메인>.mapper`, 인프라=`.network`, DI=`.di.<관심사>[.<도메인>]`(as-built).
+- 패키지 루트: `com.teamyg.parfait.data`. 서비스=`.service`, 응답·요청 타입=`.service.model`, remote DataSource=`.source.<도메인>.remote`, 매퍼=`.source.<도메인>.mapper`, 인프라=`.network`, DI=`.di`(평면, 역할당 1파일 — as-built).
 - `Json` 중복 `@Provides` 금지 — `@LocalJson`/`@RemoteJson` 한정자로 구분하고 `JsonModule` 한 곳에서만 제공(as-built).
 - 검증: 각 Task 끝에 `./gradlew :data:assembleDebug` + `./gradlew :data:ktlintFormat`(테스트 코드 없음 — 코드베이스 무테스트 관례). Hilt 전체 그래프는 최종 Task에서 `./gradlew :app:assembleDebug`.
 - parfait 문서 규칙: 라인번호·변동수치·hex 금지, 근거는 파일명+심볼명.
