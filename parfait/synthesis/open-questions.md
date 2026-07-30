@@ -203,6 +203,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (실제 도메인 API 연동 전까지 영향 없음 — 예시 세트만 존재)
 - **해소 메모**: 확정 시 [data-layer](../architecture/data-layer.md) "신규 데이터 추가 체크리스트"에 DataSource 반환 타입 규칙으로 한 줄 고정.
 
+### [2026-07-30] 사진 업로드 경로의 타임아웃 정책 미정
+- **출처**: `data/di/NetworkModule.kt#provideOkHttpClient`(`feature/network-set-up`, develop 미머지) — 단일 `OkHttpClient`가 connect/read/write 타임아웃을 모든 호출에 공통 적용하고 `callTimeout`은 설정하지 않는다(=전체 소요 무제한). 코드리뷰에서 30초가 과하다는 지적을 받아 값을 낮췄으나, 토핑 사진 업로드(누끼 PNG) API는 아직 없어 실제 전송·서버 처리 시간을 모른 채 정한 값이다. OkHttp의 read/write는 전체 전송 시간이 아니라 바이트 간 유휴 상한이라, 업로드가 느린 것 자체는 이 값으로 잡히지 않는다.
+- **항목**: ① 업로드 API 확정 후 전체 소요 상한(`callTimeout`)을 둘지 — 두면 스피너·취소 UX와 값이 묶인다. ② 업로드 전용 `OkHttpClient`(`@Qualifier`)를 분리해 read/write만 늘릴지, 아니면 단일 클라이언트 값을 상향할지. ③ 실패 시 재시도(멱등성 확인 필요)를 어디에 둘지 — 인터셉터 vs 호출부.
+- **상태**: 미해결 (업로드 API 미구현 — 값 확정에 필요한 실측 데이터 없음)
+- **해소 메모**: 업로드 엔드포인트 붙일 때 실측 후 결정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅"·타임아웃 서술과 [data-layer](../architecture/data-layer.md) 네트워킹 섹션에 반영. 파르페 규율상 문서에 수치는 적지 않고 구조(클라이언트 분리 여부·callTimeout 유무)만 기록한다.
+
 <!--
 항목 추가 형식:
 
