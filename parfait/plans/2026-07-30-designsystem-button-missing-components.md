@@ -1,7 +1,7 @@
 ---
 id: designsystem-button-missing-components
 title: 디자인시스템 버튼 영역 미구현 컴포넌트 5종 신설 구현 계획
-status: draft
+status: in-progress
 type: work-order
 created: 2026-07-30
 updated: 2026-07-30
@@ -34,6 +34,20 @@ tags: [plan, parfait, designsystem, figma-sync]
 **Architecture:** 크기 토큰(`Size18`·`Size28`)을 먼저 넣고, 컴포넌트를 하나씩 만들면서 각 컴포넌트의 프리뷰와 `:app-preview` 갤러리 화면까지 같은 Task에서 끝낸다. 그래야 Task마다 실기기에서 눈으로 볼 수 있는 결과가 남는다. 삭제는 신규 5종이 다 들어온 뒤 별도 Task로 처리한다.
 
 **Tech Stack:** Kotlin, Jetpack Compose, `core:designsystem`(`YGTheme` + `YGAtomicColors` + `SizeTokens`), `:app-preview`(Navigation3 + Hilt multibinding 갤러리), Gradle, ktlint.
+
+## 실행 기록 (2026-07-30)
+
+Task 1~7 전량 수행. Task 8은 검증까지 수행하고 문서 처리 일부를 의도적으로 보류했다.
+
+- **통과**: Task별 `compileDebugKotlin`·`ktlintMainSourceSetCheck`, 최종 `:core:designsystem`·`:app-preview` `assembleDebug`, repo 전체 `ktlintCheck`. 실기기 갤러리에서 5종 육안 대조 + `BUTTON` 카테고리에 신규 5종 등록·`YGToggleButton` 소멸 확인, 삭제 후 잔존 참조 0건
+- **계획과 달라진 점 2건**(둘 다 갤러리 검증에서 드러난 결함 수정):
+  - `YGCircleButtonType`에 **`iconTint` 추가** — 계획은 tint를 걸지 않기로 했으나 저장소 아이콘 드로어블이 전부 검정이라 `Secondary`(어두운 원)에서 아이콘이 묻혔다. Figma 스크린샷으로 Secondary 아이콘이 흰색임을 확인하고 `Default`·`Small` = `Gray.Gray900`, `Secondary` = `Gray.White`로 지정
+  - `YGEditTabButton`에 **`width(IntrinsicSize.Max)` 추가** — 밑줄 `fillMaxWidth`가 부모 최대 폭을 채워 화면 전체로 늘어나고 나머지 탭이 밖으로 밀렸다
+- **미검증**: pressed 상태 전반. `adb shell input`으로 누른 상태가 Compose `interactionSource`에 반영되지 않는다(선행 라운드와 같은 한계)
+- **as-built 차이(계획 코드블록 대비)**: `YGCircleButtonType`의 변형별·속성별 KDoc은 최종 코드에 없다. 파일 상단 컴포넌트 KDoc이 Figma 대응을 밝히고 변형명이 Figma 변형명과 같아 중복이라는 판단이다. KDoc 병기 규약은 컴포넌트 단위로 적용된다. 그 외 인자 순서·주석 형식·`Spacer` 사용 등 스타일 차이는 문서가 기술하는 층위가 아니다
+- **IDE 프리뷰 렌더**: 에이전트가 실행할 수 없어 갤러리 실기기 확인으로 대체했다
+- **보류(계획 Step 5·6 일부)**: 코드가 TJYG-Android에 **미커밋**이라 `design-system.md` as-built 갱신, 스펙·계획 `implemented`/`done` 전환, 아카이브 이동, open-questions `해소됨` 전환은 머지 후로 옮긴다
+- **커밋**: 에이전트는 TJYG-Android를 커밋하지 않았다(Global Constraints)
 
 ## Global Constraints
 

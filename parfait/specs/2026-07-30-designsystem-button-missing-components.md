@@ -1,7 +1,7 @@
 ---
 id: designsystem-button-missing-components
 title: 디자인시스템 버튼 영역 미구현 컴포넌트 신설 (Design System Missing Button Components)
-status: draft
+status: in-progress
 category: ui-spec
 platforms: android
 verified: 2026-07-30
@@ -32,6 +32,25 @@ tags: [spec, parfait, designsystem, figma-sync]
 # Spec: 디자인시스템 버튼 영역 미구현 컴포넌트 신설
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+>
+> **구현 상태(2026-07-30)** — 5종 신설 + `YGToggleButton` 삭제 + `SizeTokens` `Size18`·`Size28` 추가
+> 전량 완료. `:core:designsystem`·`:app-preview` `assembleDebug` + repo 전체 `ktlintCheck` 통과,
+> 실기기 갤러리에서 5종 육안 대조 완료. **TJYG-Android 커밋은 하지 않았다**(작업자 지시) —
+> develop 반영 전이므로 [design-system](../architecture/design-system.md) as-built 갱신과
+> `implemented`·아카이브 전환은 머지 후로 보류한다.
+>
+> **설계에서 달라진 점 2건** — 둘 다 갤러리 실기기 검증에서 드러난 결함을 고친 것이다.
+> - **`YGCircleButtonType`에 `iconTint` 추가** — 스펙은 "Figma가 아이콘 색을 에셋에 담아 대조값이
+>   없으니 리소스 색을 그대로 쓴다"고 했으나, 저장소 아이콘 드로어블이 전부 검정이어서
+>   `Type=Secondary`(어두운 원)에서 아이콘이 배경에 묻혔다. Figma 스크린샷으로 Secondary 아이콘이
+>   흰색임을 확인하고 tint를 타입 속성으로 올렸다: `Default`·`Small` = `Gray.Gray900`,
+>   `Secondary` = `Gray.White`.
+> - **`YGEditTabButton` 밑줄 폭 제약** — 밑줄에 `fillMaxWidth`만 걸면 "부모가 준 최대 폭"을 채워
+>   화면 전체로 늘어나고 나머지 탭이 밀려난다. 컴포넌트 `Column`에 `width(IntrinsicSize.Max)`를
+>   더해 텍스트 폭으로 묶었다.
+>
+> **미검증**: pressed 상태 전반(자동 입력이 Compose `interactionSource`에 반영되지 않는다 —
+> 선행 라운드와 같은 한계). 손으로 눌러 확인해야 한다.
 
 ## 목표
 
@@ -116,18 +135,21 @@ sealed interface YGCircleButtonType {
     @get:Composable
     val borderColor: Color
 
+    val iconTint: Color
+
     val iconSize: Dp
 
-    /** Figma Button-Circle Type=Default */
     data object Default : YGCircleButtonType
 
-    /** Figma Button-Circle Type=Secondary */
     data object Secondary : YGCircleButtonType
 
-    /** Figma Button-Circle Type=Small — 44 터치 영역 안에 작은 원을 그린다 */
+    /** 44 터치 영역 안에 작은 원을 그린다 */
     data object Small : YGCircleButtonType
 }
 ```
+
+as-built에서는 변형별 KDoc을 달지 않았다 — 파일 상단 컴포넌트 KDoc(`Figma Button-Circle`)이 대응을 이미 밝히고, 변형명이 Figma 변형명(`Type=Default`/`Secondary`/`Small`)과 같아 중복이다.
+아래 "명명·패키지"의 KDoc 병기 규약은 **컴포넌트 단위**에 적용된다.
 
 `YGButtonType`과 같은 "변형이 자기 토큰을 `@get:Composable`로 노출" 패턴이다.
 `Small`만 바깥 터치 영역이 별도로 필요하므로 컴포저블이 타입으로 분기한다.
@@ -183,6 +205,9 @@ fun YGEditTabButton(
 밑줄은 그 안쪽 텍스트 컨테이너 하단에 그린다. 두께는 `1.4.dp` 리터럴을 쓴다
 (`YGDate`의 `0.75.dp` 선례 — 테두리 두께에 토큰 스케일이 없다).
 
+**폭 제약이 필수다.** 밑줄에 `fillMaxWidth`만 주면 부모가 준 최대 폭을 채워 화면 전체로 늘어난다.
+컴포넌트 `Column`에 `width(IntrinsicSize.Max)`를 걸어야 텍스트 폭으로 묶인다(구현 중 확인).
+
 ### `YGEditActionButton`
 
 ```kotlin
@@ -217,11 +242,11 @@ fun YGCameraShutter(
 
 ### `YGCircleButton`
 
-| 타입 | 배경 | pressed 배경 | 테두리 | 아이콘 | 기본 사용 글리프 |
-|---|---|---|---|---|---|
-| `Default` | `Gray.White` | `Gray.Gray100` | 1dp `Transparency.Black5` | `Size28` | `ic_caret_left` |
-| `Secondary` | `Gray.Gray900` | `Gray.Gray950` | 1dp `Transparency.White25` | `Size28` | `ic_plus` |
-| `Small` | `Gray.White` | `Gray.Gray100` | 1dp `Transparency.Black5` | `Size18` | `ic_rotate` |
+| 타입 | 배경 | pressed 배경 | 테두리 | 아이콘 | 아이콘 tint | 기본 사용 글리프 |
+|---|---|---|---|---|---|---|
+| `Default` | `Gray.White` | `Gray.Gray100` | 1dp `Transparency.Black5` | `Size28` | `Gray.Gray900` | `ic_caret_left` |
+| `Secondary` | `Gray.Gray900` | `Gray.Gray950` | 1dp `Transparency.White25` | `Size28` | `Gray.White` | `ic_plus` |
+| `Small` | `Gray.White` | `Gray.Gray100` | 1dp `Transparency.Black5` | `Size18` | `Gray.Gray900` | `ic_rotate` |
 
 공통: `shapes.radius.round`.
 `Default`·`Secondary`는 원 지름이 `padding3` + 아이콘에서 도출되고, 배경·테두리가 그 원에 걸린다.
