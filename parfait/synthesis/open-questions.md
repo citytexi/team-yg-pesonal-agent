@@ -159,7 +159,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `component/ygchipbutton/YGChipButton.kt#YGChipButton` — 상/하 패딩이 `padding.padding3`. Figma `Button-Chip-Right`/`Button-Chip-Left` 변형은 세로 `padding-2`로, 칩 높이가 코드 39 vs 디자인 29로 어긋난다. [텍스트 영역 sync 스펙](../specs/archive/2026-07-27-designsystem-text-component-sync.md) 대조 중 `YGAlert` 칩에서 발견.
 - **항목**: ① 세로 패딩을 `padding2`로 내릴지, ② 내릴 경우 `YGAlert`·`YGTopBar` 등 공통 사용처의 높이 변화를 함께 검수할지.
 - **상태**: 보류 (텍스트 영역 sync 범위 밖 — 칩 영역 sync 라운드로 이월). **처리 라운드 지정됨(2026-07-30)** → [버튼 영역 sync 스펙](../specs/2026-07-30-designsystem-button-component-sync.md) 드리프트 V2
-- **해소 메모**: 위 스펙 구현 시 `padding2`로 내리고 `YGAlert`·`YGTopBar` 높이 변화를 갤러리에서 함께 검수한 뒤 해소 처리.
+- **해소 메모**: `padding2`로 내리고 `YGAlert`·`YGTopBar` 높이 변화를 실기기 갤러리에서 확인했다(2026-07-30). **다만 `feature/sync-button-component`(`aee2378a`)에만 있고 develop 미머지**라 반영 전까지 `해소됨`으로 넘기지 않는다. 머지 후 상태를 바꾼다.
 
 ### [2026-07-27] YGToast.Record 표시 문자열 하드코딩
 - **출처**: `component/ygtoast/YGToast.kt#YGToast` — `Record` 분기가 `"님이 … 전에 쌓았어요"` 한국어 문구를 `core:designsystem` 안에 리터럴로 보유. 같은 sealed의 `InviteCode`·`Edit`·`Fail`은 완성 문장을 호출자가 주입받는 것과 규약이 어긋난다.

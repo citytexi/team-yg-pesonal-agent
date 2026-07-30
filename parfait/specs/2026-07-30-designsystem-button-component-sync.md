@@ -1,7 +1,7 @@
 ---
 id: designsystem-button-component-sync
 title: 디자인시스템 버튼 영역 컴포넌트 Figma 동기화 (Design System Button Components Figma Sync)
-status: draft
+status: in-progress
 category: ui-spec
 platforms: android
 verified: 2026-07-30
@@ -37,6 +37,22 @@ tags: [spec, parfait, designsystem, figma-sync]
 # Spec: 디자인시스템 버튼 영역 컴포넌트 Figma 동기화
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+>
+> **구현 상태(2026-07-30)** — 드리프트 B1·B2·R1·R2·V1~V5 **전량 코드 반영 완료**.
+> `feature/sync-button-component` 브랜치에 커밋(`aee2378a`)됐고 **develop 미머지**다.
+> develop에 없으므로 [design-system](../architecture/design-system.md) as-built 갱신과
+> 이 스펙의 `implemented`·아카이브 전환은 **머지 후로 보류**한다.
+>
+> 검증 결과(`:core:designsystem`·`:app-preview` `assembleDebug` + repo 전체 `ktlintCheck` 통과,
+> 실기기 갤러리 육안 대조):
+> - `Medium`·`Large`·`YGInputNumber` 각짐 적용 확인
+> - `Medium.Secondary` 테두리 렌더 확인 — enabled/disabled 테두리 단계 차이도 육안 구분됨
+> - 아이콘 크기 파이프 작동 확인(`with icons` 섹션 아이콘이 본문 대비 작아짐)
+> - `YGIconButton` `SIZE_48` 아이콘이 `SIZE_44`보다 크게 렌더
+> - 칩 높이 감소 + 갤러리 라벨이 `CherrySubtle`/`CherrySolid`로 교체
+> - `YGActionItem` `show icon` 섹션에 선두 아이콘 렌더, 아이콘 없는 항목은 무변화
+> - **미검증: pressed 상태 전반** — `adb shell input motionevent`로 누른 상태가 Compose
+>   `interactionSource`에 반영되지 않아 자동 캡처로 확인하지 못했다. 손으로 눌러 확인해야 한다.
 
 ## 목표
 
