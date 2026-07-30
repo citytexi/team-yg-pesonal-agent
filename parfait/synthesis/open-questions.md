@@ -73,8 +73,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-16] YGToggleButton 규약 이탈 — Colors 미분리·색 하드결선·하드코딩 치수
 - **출처**: `component/ygtogglebutton/YGToggleButton.kt`(PR #142 develop 머지) — 다른 상호작용 컴포넌트(YGButton·YGChipButton)와 달리 Colors data class를 분리하지 않고 `YGAtomicColors.{Gray.White,Gray.Gray900,Transparency.Black50}`를 컴포저블 본문에서 `isSelected` 인라인 조건 분기(색 커스터마이즈 불가). 아이콘 크기 `24.dp` 리터럴(`SizeTokens` 미사용). 상호작용은 `clickable`+pressed 대신 `selectable`(selected 시맨틱).
 - **항목**: ① 색을 `YGToggleButtonColors`(+Defaults) 패턴으로 분리할지(YGChipButton 선례), ② `24.dp`를 `SizeTokens`로 토큰화할지, ③ `selectable` 관용구를 선택형 컴포넌트 표준으로 채택할지.
-- **상태**: 미해결
-- **해소 메모**: 디자인 토큰 규칙 확정 시 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약" + [2026-07-10 YGButton 디자인 토큰](#2026-07-10-ygbutton-디자인-토큰-규칙-미확정)과 정합해 정리.
+- **상태**: 미해결 → **삭제로 해소 예정(2026-07-30)** — [미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md)이 이 컴포넌트를 지우기로 정했다(대응 Figma 원본 없음·실화면 미사용, 대체물 `Button-Edit` 신설). 대상 코드가 사라지므로 ①~③이 무효가 된다.
+- **해소 메모**: 삭제 구현이 develop에 머지되면 `해소됨`으로 바꾼다. 단 "Colors 분리 조건" 자체는 [2026-07-30 신규 버튼군 항목](#2026-07-30-신규-버튼군이-colors-data-class를-분리하지-않음--규약-적용-조건-미정)으로 이어진다.
 
 ### [2026-07-18] YGColorChip 패키지↔폴더 불일치
 - **출처**: `component/ygcolorchip/` — `YGColorChip.kt`·`YGColorChipPreviewData.kt`는 `package …component.ygchip` 선언, `YGColorChipType.kt`만 `package …component.ygcolorchip`. 폴더는 `ygcolorchip/`인데 패키지가 둘로 갈림.
@@ -220,6 +220,31 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 디자인에서 pressed 값을 `transparency/*` 변수로 승격 요청할지, ② 승격 시 `YGAtomicColors.Transparency`에 대응 단계를 추가하고 `copy(alpha = …)` 리터럴을 걷어낼지.
 - **상태**: 미해결 (디자인 토큰 쪽 선행 필요)
 - **해소 메모**: 토큰 확정 시 `YGAtomicColors.Transparency` 단계 추가 + `Medium.Transparency` 색 매핑 교체, [design-system](../architecture/design-system.md) 토큰 계층 표 갱신.
+
+### [2026-07-30] 카메라 컨트롤 임시 구현체 잔존 — 셔터 구현이 두 곳에 공존
+- **출처**: `feature/camera/impl` `component/controls/ShutterButton.kt`·`FlipCameraButton.kt`·`component/CameraControlComponent.kt` vs 신설 예정 `core/designsystem` `component/ygcamerashutter/YGCameraShutter.kt`([미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md)) — feature 쪽 셔터는 디자인 정본보다 큰 고정 크기 + `Color.Gray` 리터럴 테두리 + pressed 없음, flip 버튼은 이모지 문자 + `Color` 리터럴 배경, 취소는 맨 Material3 `TextButton`이다. 컴포넌트 스펙은 Figma 정본이 있는 `Camera-Shutter`만 designsystem에 만들고 화면 치환은 하지 않기로 정했다(작업자 결정) — 즉 셔터가 두 구현으로 공존한다.
+- **항목**: ① 카메라 화면(C-101) 라운드에서 `ShutterButton`을 `YGCameraShutter`로 치환하고 feature 쪽을 지울지, ② flip 버튼이 Figma `Button-Circle` `Type=Small`(`ic_rotate`)에 대응하는지 화면 노드로 확인할지 — 컴포넌트 시트만으로는 단정할 수 없다, ③ 취소·줌 컨트롤의 Figma 대응을 찾을지.
+- **상태**: 미해결 (의도된 이월 — 컴포넌트 sync 범위 밖)
+- **해소 메모**: C-101 카메라 화면 sync 시 처리하고 해당 스펙에 기록. 치환 완료 시 [design-system](../architecture/design-system.md) 인벤토리에서 셔터 소유를 designsystem으로 정리.
+
+### [2026-07-30] Button-Edit-Action이 정수 토큰 재조립으로 2dp 커짐 + Small 테두리 소수 잔존
+- **출처**: [미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md) "치수 도출 원칙" — Figma `Button-Edit-Action`은 아이콘 프레임이 22이고 `SizeTokens`에 대응 스케일이 없다. 스펙은 `Size22`를 만들지 않고 `Size24`로 옮기기로 정했고, 그 결과 내부 원과 바깥 프레임이 각각 2dp 커진다. 또 `Button-Circle` `Type=Small`의 테두리는 재조회 후에도 소수(0.636)로 남아 1dp로 정규화한다.
+  > ✅ **부분 해소(2026-07-30 재조회)** — `Button-Circle` `Type=Small`이 Figma에서 **정수 치수로 정리**됐다(내부 원 28 명시·아이콘 18·글리프 12·바깥 폭 44 명시, 구조도 "패딩 도출"에서 "지름 고정 + 중앙 아이콘"으로 바뀜). `SizeTokens.Size18` 추가를 합의해 Circle 3변형의 치수 오차는 없어졌다. 남은 것은 Edit-Action 2dp와 Small 테두리 두께다.
+- **항목**: ① Edit-Action의 2dp 차이를 디자이너가 수용하는지, 아니면 Figma를 정수 치수(아이콘 24 또는 원 40)로 정리해줄 수 있는지, ② 수용도 정리도 안 되면 `Size22`를 스케일에 넣을지 해당 컴포넌트만 리터럴 dp를 허용할지, ③ Small 테두리 0.636을 1로 정리해줄 수 있는지.
+- **상태**: 미해결 (의도된 절충 — 구현은 정수 토큰으로 진행)
+- **해소 메모**: 확인 후 값이 바뀌면 해당 컴포넌트 치수와 스펙 "치수 도출 원칙" 표를 함께 고친다.
+
+### [2026-07-30] Camera-Shutter에 바인딩된 Transparency.Black5의 용도 불명
+- **출처**: Figma `Camera-Shutter` 노드의 디자인 변수 목록에 `Transparency/Black-5`가 잡히지만, 셔터는 흰 외곽 원 + 어두운 내부 원 두 도형으로만 보인다([미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md)). 두 원은 래스터 에셋으로 내보내져 코드 응답에 색·효과가 드러나지 않는다. 외곽 테두리나 그림자일 가능성이 있다.
+- **항목**: ① `Black-5`가 외곽 원 테두리인지 그림자인지 디자이너 확인, ② 그림자라면 Compose에서 `shadow`로 재현할지(현재 designsystem에 그림자 관용구가 없다).
+- **상태**: 미해결 (구현은 두 원만 그린다)
+- **해소 메모**: 확인 후 필요하면 `YGCameraShutter`에 테두리/그림자를 더하고 스펙 상태 표를 갱신.
+
+### [2026-07-30] 신규 버튼군이 Colors data class를 분리하지 않음 — 규약 적용 조건 미정
+- **출처**: [미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md) "Colors 분리 판단" — 신설 5종(`YGEditTabButton`·`YGEditButton`·`YGCircleButton`·`YGEditActionButton`·`YGCameraShutter`)은 색 주입 data class를 만들지 않고 변형 타입(`YGCircleButtonType`) 또는 컴포저블 본문에서 상태 분기한다. Figma가 색을 고정하고 주입 사용처가 없다는 판단이다. [design-system](../architecture/design-system.md) 컴포넌트 작성 규약은 `YGButton` 기준으로 "Colors data class 분리"를 적어 두었으므로 이 판단은 규약과 갈린다. 같은 이탈로 등록된 [2026-07-16 YGToggleButton 항목](#2026-07-16-ygtogglebutton-규약-이탈--colors-미분리색-하드결선하드코딩-치수)은 그 컴포넌트 삭제로 없어질 예정이다.
+- **항목**: ① 규약을 "색 주입 요구가 있을 때만 Colors를 분리한다"로 다듬을지, ② 아니면 신규 5종도 일괄 분리해 규약을 그대로 지킬지(사용처가 없는 API가 5개 늘어난다).
+- **상태**: 미해결
+- **해소 메모**: 방침 확정 시 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 분리 조건을 한 줄로 고정한다.
 
 <!--
 항목 추가 형식:
