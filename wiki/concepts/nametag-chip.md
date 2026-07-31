@@ -1,7 +1,7 @@
 ---
 tags: [concept, product]
 sources: [S-101-프로필-닉네임-컬러-규칙-v0.1.md, S-101-프로필-닉네임-컬러-규칙-v0.2.md, S-101-프로필-닉네임-컬러-규칙-v0.3.md, S-101-프로필-이미지-및-그룹칩-내-타임스탬프-컬러-규칙-v0.1.md, Toast-공통-정책.md, C-202-토핑-편집자-확인-규칙-v0.1.md, G-001-무한파르페-간격-정책-v0.3.md]
-updated: 2026-07-22
+updated: 2026-07-31
 ---
 
 # Nametag-Chip (프로필·닉네임 컬러 규칙)
@@ -12,7 +12,7 @@ updated: 2026-07-22
 - **6개 컬러**(연핑크·진핑크·체리·그레이·멜론·푸딩) × **각 2타입** = **총 12종**.
 - 계정당 **12종 중 1종 랜덤** 배정.
 
-> ⚠️ 2026-07-18 TJYG-Android 구현(`YGColorChipType`)과 상충 — 코드는 `NametagChip1`~`NametagChip13`(13종) + `NametagChipPlus`(추가용)로 정의돼 **정책 12종과 개수 불일치**. → [[open-questions]] 등록. 구현 측(Android) 추적은 해당 플랫폼 구현 문서의 open-questions([2026-07-18])에 교차 기록.
+> ⚠️ 2026-07-18 TJYG-Android 구현(`YGColorChipType`)과 상충 — 코드는 `NametagChip1`~`NametagChip13`(13종) + `NametagChipPlus`로 정의돼 **정책 12종과 개수 불일치**. `NametagChipPlus`는 2026-07-31 구현 갱신에서 **멤버 5명 이상일 때의 "+" 집계 칩**(색 타입 아님)으로 확정 → 쟁점은 정책 12종 vs 코드 13종. → [[open-questions]] 등록. 구현 측(Android) 추적은 해당 플랫폼 구현 문서의 open-questions([2026-07-18])에 교차 기록.
 
 ## 컬러 매핑 (요소별 별개 — 상충 아님)
 
