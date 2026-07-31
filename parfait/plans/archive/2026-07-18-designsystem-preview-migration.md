@@ -20,6 +20,8 @@ tags: [plan, parfait, designsystem, refactor, preview]
 
 **Goal:** `core:designsystem` 컴포넌트 프리뷰 12개를 `@Preview`+`YGCustomTheme { }` 관용구에서 `@YGPreview`+`PreviewBox { }` 관용구로 통일한다.
 
+> 📌 **심볼 개명(2026-07-31, PR #165)** — 아래 코드 스니펫의 `YGColorChip`·`YGColorChipStyle`·파라미터 `text`는 현재 코드에서 `YGNametagChip`·`YGNametagChipStyle`·`userFirstName`이다. 이 계획서는 작성 시점(#158) 기준이므로 스니펫은 그대로 둔다 → 현행은 [ygcolorchip 스펙](../../specs/archive/2026-07-18-ygcolorchip.md).
+
 **Architecture:** 프리뷰 전용 애노테이션·테마 래퍼만 교체(런타임 코드·API 불변). 공용 유틸(`YGPreview`·`PreviewBox`)은 손대지 않는다. 배경은 `PreviewBox`가 아니라 content 람다 내부 `Modifier`로 보존. `@PreviewParameter`는 유지한 채 애노테이션만 교체.
 
 **Tech Stack:** Kotlin, Jetpack Compose Preview(`@Preview` 다중 애노테이션 `@YGPreview`), 자체 테마([ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)).
