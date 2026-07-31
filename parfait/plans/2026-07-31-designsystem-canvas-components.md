@@ -26,6 +26,8 @@
 > Coil 3는 네트워크 페처를 별도 아티팩트(`coil-network-okhttp`)로 분리하는데 이 프로젝트는
 > `coil-compose`만 물려 있어 원격 URL이 로드되지 않는다. 의존 추가는 `build-logic` 전역 변경이라
 > 다음 라운드로 미뤘다(스펙 open-questions).
+> **✅ [2026-07-31] 해소** — 후속 Grouptag·Topping 라운드가 `coil-network-okhttp`를 추가하고
+> 실기기에서 원격 URL 로딩을 확인했다. `YGCanvasBackground.Image` 화면 자체의 렌더 검증은 별개로 남는다.
 >
 > **실행 후 API 변경(작업자 요청)** — 상태 조건을 "값의 유무"에서 불리언 플래그로 통일했다.
 > `YGCanvasMenu(… isExpanded: Boolean = false, expandedItems)`,
