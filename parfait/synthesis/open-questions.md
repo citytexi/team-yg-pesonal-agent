@@ -79,14 +79,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-18] YGColorChip 패키지↔폴더 불일치
 - **출처**: `component/ygcolorchip/` — `YGColorChip.kt`·`YGColorChipPreviewData.kt`는 `package …component.ygchip` 선언, `YGColorChipType.kt`만 `package …component.ygcolorchip`. 폴더는 `ygcolorchip/`인데 패키지가 둘로 갈림.
 - **항목**: 패키지를 폴더명(`ygcolorchip`)으로 통일할지(권장), 폴더를 패키지명(`ygchip`)에 맞출지.
-- **상태**: 미해결 (코드 수정 대상)
-- **해소 메모**: 컨벤션 정리 시 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"과 정합. [2026-07-12 컨벤션 분기](#2026-07-12-디자인시스템-컴포넌트-컨벤션-분기)와 함께 처리.
+- **상태**: 해소됨 (**PR #165 develop 머지, 2026-07-31** — 권장안대로 폴더명 `ygcolorchip`으로 통일)
+- **해소 메모**: #165(개명 `YGColorChip`→`YGNametagChip` + `YGUserChip`·`YGChipColorIndicator` 신설)에서 패키지 선언이 전 파일 `…component.ygcolorchip`으로 정리됨. [design-system](../architecture/design-system.md) 인벤토리·과도기 마커에서 "패키지 불일치" 제거함. [2026-07-12 컨벤션 분기](#2026-07-12-디자인시스템-컴포넌트-컨벤션-분기) ①(컴포넌트별 vs 그룹 폴더 혼재)은 별개로 잔존.
 
 ### [2026-07-18] 네임태그 컬러칩 타입 개수 — 코드 14종 vs 정책 12종
-- **출처**: `component/ygcolorchip/YGColorChipType.kt` — `NametagChip1`~`NametagChip13` + `NametagChipPlus`(추가용) = **14종**(숫자 13 + Plus). 위키 정책 [[nametag-chip]]([[S-101-프로필-닉네임-컬러-규칙-v0.2]])은 **Nametag-Chip 12종**으로 기술.
-- **항목**: ① 실제 매핑이 12종인지 13(+Plus)종인지 확정, ② 코드↔정책 중 어느 쪽이 SoT인지(원칙: 코드>정책, 단 색 규칙은 디자인 정책 소관). 위키 정책 재확인 필요.
-- **상태**: 미해결 (코드/정책 정합)
-- **해소 메모**: 정책 확정 시 위키 [[nametag-chip]]·[[S-101-프로필-닉네임-컬러-규칙-v0.2]] 갱신, 코드 타입 개수 정합. parfait [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md)의 타입 표 반영.
+- **출처**: `component/ygcolorchip/YGColorChipType.kt` — `NametagChip1`~`NametagChip13` + `NametagChipPlus` = **14종**(숫자 13 + Plus). 위키 정책 [[nametag-chip]]([[S-101-프로필-닉네임-컬러-규칙-v0.3]])은 **Nametag-Chip 12종**으로 기술. **#165(2026-07-31 머지)에서 `NametagChipPlus`의 용도가 코드 주석으로 확정**됐다(멤버 5명 이상일 때의 "+" 칩 = 색 타입이 아니라 접기 표시) — 즉 정책 대응 색 타입은 13종이고 정책은 12종이라 **숫자 타입 1종 초과가 실질 쟁점**으로 좁혀졌다.
+- **항목**: ① 실제 색 매핑이 12종인지 13종인지 확정(`Plus`는 집계 표시용으로 제외), ② 코드↔정책 중 어느 쪽이 SoT인지(원칙: 코드>정책, 단 색 규칙은 디자인 정책 소관). 위키 정책 재확인 필요.
+- **상태**: 미해결 (코드/정책 정합 — #165는 개명만 하고 타입 목록은 손대지 않음)
+- **해소 메모**: 정책 확정 시 위키 [[nametag-chip]]·[[S-101-프로필-닉네임-컬러-규칙-v0.3]] 갱신, 코드 타입 개수 정합. parfait [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md)의 타입 표 반영.
 
 ### [2026-07-18] YGDateButton clickableYG 미사용 — 스로틀 규약 이탈
 - **출처**: `component/ygdatebutton/YGDateButton.kt` — 클릭을 표준 `Modifier.clickable(indication = null)` + `semantics { role = Role.Button }`로 직접 구현. 다른 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem·YGChipButton)가 쓰는 `core:util:android`의 중복 클릭 leading-throttle 유틸(`clickableYG`)을 안 씀 → 빠른 연타 방어 부재.
@@ -132,7 +132,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 디자인 확정 시 코드 반영 후 [ygdangerzone-dashed 스펙](../specs/archive/2026-07-19-ygdangerzone-dashed.md) "주의/열린 질문" 정리.
 
 ### [2026-07-23] 프리뷰 관용구 부분 회귀 — 신규 컴포넌트가 @YGPreview 표준 이탈
-- **출처**: `component/ygalert/YGAlert.kt`·`component/ygtoast/YGToast.kt`(PR #149 develop 머지) — 프리뷰가 `@Preview` + `YGCustomTheme`. `component/ygtext/YGDate.kt`는 `@YGPreview`이나 `PreviewBox` 대신 `YGCustomTheme` 직접 래핑. #158로 "전 컴포넌트 `@YGPreview`+`PreviewBox` 통일"([2026-07-12 컨벤션 분기](#2026-07-12-디자인시스템-컴포넌트-컨벤션-분기) ② 해소)한 뒤 신규 컴포넌트에서 표준이 다시 갈라짐.
+- **출처**: `component/ygalert/YGAlert.kt`·`component/ygtoast/YGToast.kt`(PR #149 develop 머지)·`component/ygcolorchip/YGUserChip.kt`(PR #165 develop 머지, 2026-07-31) — 프리뷰가 `@Preview` + `YGCustomTheme`. `component/ygtext/YGDate.kt`는 `@YGPreview`이나 `PreviewBox` 대신 `YGCustomTheme` 직접 래핑. #158로 "전 컴포넌트 `@YGPreview`+`PreviewBox` 통일"([2026-07-12 컨벤션 분기](#2026-07-12-디자인시스템-컴포넌트-컨벤션-분기) ② 해소)한 뒤 신규 컴포넌트에서 표준이 다시 갈라짐. 같은 #165의 `YGChipColorIndicator`·`YGNametagChip`은 표준을 따르므로 **같은 PR 안에서도 갈린다**.
 - **항목**: 신규 컴포넌트 프리뷰를 `@YGPreview`+`PreviewBox`로 정렬할지(권장), 프리뷰 표준을 강제할 방법(리뷰 체크리스트·lint)이 필요한지.
 - **상태**: 미해결 (코드 수정 대상)
 - **해소 메모**: 정렬 시 [design-system](../architecture/design-system.md) "프리뷰 방식" 마커를 "통일"로 되돌리고 이 항목 해소. [2026-07-12 컨벤션 분기](#2026-07-12-디자인시스템-컴포넌트-컨벤션-분기) ②와 함께 관리.
@@ -259,6 +259,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: 디자인 의도인지 Figma 변형 작성 누락인지. 누락이면 Left 회전각의 부호가 바뀌어야 한다.
 - **상태**: 미해결 (Figma 원본대로 구현, 실기기에서 두 변형이 시각적으로 구분되지 않음을 확인)
 - **해소 메모**: 확정 시 `YGToppingGroupType`의 해당 두 엔트리와 코드 주석을 함께 고친다.
+
+### [2026-07-31] `YGChipColorIndicator`의 정책 근거·용도 불명
+- **출처**: `component/ygcolorchip/YGChipColorIndicator.kt#YGChipColorIndicator`(PR #165 develop 머지) — `isChecked`로 Cherry ↔ 투명을 분기하는 작은 원. 대응 위키 정책 문서가 없다(위키 Chip-Indicator는 [[캘린더-컴포넌트]] C-201 소관으로 이 컴포넌트와 별개). 사용처도 0건이고 `:app-preview` 갤러리에도 미등록이라, 어느 화면의 어떤 선택 상태를 표시하는지 문서만으로는 확정할 수 없다.
+- **항목**: ① 이 인디케이터가 붙는 화면·요소가 무엇인지(프로필 색 선택? 멤버 선택?), ② 그 정책이 위키에 있어야 하는지(있어야 하면 소스 수집 대상), ③ 이름이 `Chip`을 달고 있는데 실제로는 칩 외부에서 쓰이는지.
+- **상태**: 미해결 (사용처 붙기 전까지 확인 불가)
+- **해소 메모**: 사용 화면 확정 시 [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md)에 유스케이스를 적고, 정책이 필요하면 위키 쪽 소스 수집을 요청한다.
+
+### [2026-07-31] `YGUserChip`·`YGChipColorIndicator`가 갤러리 미등록
+- **출처**: `component/ygcolorchip/YGUserChip.kt`·`YGChipColorIndicator.kt`(PR #165 develop 머지) — `:app-preview` 컴포넌트 갤러리(카탈로그 + showcase + `@IntoSet` 배선)에 두 신규 컴포넌트가 등록되지 않았다. `ygcolorchip` 계열은 원래부터 갤러리에 없어(`YGNametagChip`도 미등록) 이번 PR만의 누락은 아니다.
+- **항목**: ① 갤러리 등록을 신규 컴포넌트 완료 조건(DoD)으로 규약화할지, ② `ygcolorchip` 계열 3종을 묶어 showcase를 추가할지.
+- **상태**: 미해결
+- **해소 메모**: 규약화하면 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 한 줄 고정하고, 등록 시 갤러리 카탈로그 카테고리를 함께 정한다.
 
 ### [2026-07-31] 토핑 템플릿 6종 부여 주체 미정 — 서버 필드 부재
 - **출처**: [grouptag-topping 스펙](../specs/2026-07-31-designsystem-grouptag-topping-components.md) "계층 분할" — 제품 정책은 "6종 중 1종 랜덤 최초 부여 → 첫 토핑 등록 전까지 고정, 새로고침·재접속·타 그룹 갱신에도 불변"인데, 클라이언트가 랜덤을 뽑아 로컬에 영속하면 기기 변경에서 깨진다. 디자인시스템은 `YGToppingImage.Template(type)`으로 결정된 값을 주입받기만 한다.
