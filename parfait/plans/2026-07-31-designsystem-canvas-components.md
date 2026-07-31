@@ -24,10 +24,12 @@
 > **계획에 없던 보완 1건** — Task 7의 `Image` 배경 showcase가 렌더되지 않아
 > `:app-preview` 매니페스트에 `INTERNET` 권한을 추가했다.
 >
-> **실행 후 API 변경 1건(작업자 요청)** — 메뉴 펼침 제어를 리스트 유무에서 불리언으로 옮겼다.
-> `YGCanvasMenu(… isExpanded: Boolean = false, expandedItems)`, `YGCanvas(… isMenuExpanded: Boolean = false,
-> expandedItems)`. `expandedItems`는 접힌 상태에서도 목록을 유지하고, `YGCanvas`의 승격 조건도
-> `expandedItems.isNotEmpty()` → `isMenuExpanded`로 바뀌었다. 갤러리 두 화면의 호출부도 따라 고쳤다.
+> **실행 후 API 변경(작업자 요청)** — 상태 조건을 "값의 유무"에서 불리언 플래그로 통일했다.
+> `YGCanvasMenu(… isExpanded: Boolean = false, expandedItems)`,
+> `YGCanvas(… isMenuExpanded: Boolean = false, isEmpty: Boolean = false, expandedItems, emptyMessage: String = "")`.
+> `YGCanvas`의 승격 조건은 `expandedItems.isNotEmpty()` → `isMenuExpanded`, 안내문 노출은
+> `emptyMessage != null` → `isEmpty`로 바뀌었고 `emptyMessage`는 논널이 됐다.
+> 갤러리 두 화면의 호출부도 따라 고쳤다.
 > **아래 Task 4·6·7의 코드 블록은 계획 당시 시그니처 그대로다** — 현행 API는
 > [스펙](../specs/2026-07-31-designsystem-canvas-components.md)이 정본이다.
 >

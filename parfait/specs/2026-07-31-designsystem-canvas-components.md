@@ -36,11 +36,14 @@ tags: [spec, parfait, designsystem, figma-sync, canvas]
 > `assembleDebug` + repo 전체 `ktlintCheck` 통과, 실기기 갤러리에서 5종 및 `YGCanvas` 5상태 전부
 > Figma와 육안 대조 완료. **TJYG-Android 커밋은 하지 않았다**(작업자 지시).
 >
-> **구현 후 API 변경 1건(2026-07-31, 작업자 요청)** — 펼침 제어를 리스트 유무에서 **불리언**으로 옮겼다.
-> `YGCanvasMenu`에 `isExpanded`, `YGCanvas`에 `isMenuExpanded`를 신설하고, `expandedItems`는 접힌
-> 상태에서도 목록을 그대로 들고 있게 했다. 호출자가 리스트를 비웠다 되채우지 않아도 되고, 캔버스와
-> 메뉴의 제어 방식이 하나로 맞는다. 대가로 "펼쳤는데 항목 없음"(`isExpanded = true` + 빈 리스트)이
-> 컴파일된다 — 버튼 행만 보이며, 방지 책임은 호출자에게 있다. 본문 API 표기는 이 변경을 반영한 것이다.
+> **구현 후 API 변경(2026-07-31, 작업자 요청)** — 상태 조건을 "값의 유무"에서 **불리언 플래그**로
+> 통일했다. 값 파라미터는 내용만 들고, 노출 여부는 플래그가 결정한다.
+> - 메뉴 펼침: `YGCanvasMenu.isExpanded` / `YGCanvas.isMenuExpanded` 신설. `expandedItems`는 접힌
+>   상태에서도 목록을 유지하므로 호출자가 리스트를 비웠다 되채울 필요가 없다.
+> - 빈 상태: `YGCanvas.isEmpty` 신설, `emptyMessage`를 `String?`(기본 `null`) → **`String`(기본 `""`)**.
+>
+> 대가로 모순 조합이 컴파일된다 — `isExpanded = true` + 빈 리스트(버튼 행만 보임), `isEmpty = true` +
+> 빈 문구(안내문 자리에 아무것도 없음). 방지 책임은 호출자에게 있다. 본문 API 표기는 이 변경을 반영한 것이다.
 >
 > **설계에서 달라진 점 2건** — 둘 다 리뷰·실기기 검증에서 드러난 결함을 고친 것이다.
 > - **Expanded 상태의 총높이 복원** — 설계 코드는 메뉴가 승격될 때 하단 행을 아예 안 그려서 컨테이너가
@@ -213,8 +216,9 @@ fun YGCanvas(
     background: YGCanvasBackground = YGCanvasBackground.Solid(YGAtomicColors.Gray.Gray100),
     isDimmed: Boolean = false,
     isMenuExpanded: Boolean = false,
+    isEmpty: Boolean = false,
     expandedItems: List<YGCanvasMenuItem> = emptyList(),
-    emptyMessage: String? = null,
+    emptyMessage: String = "",
     calendarContent: (@Composable () -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit = {},
 )
@@ -222,7 +226,8 @@ fun YGCanvas(
 
 - `date`·`day`는 이미 포맷된 문자열 2개다(`YGDate(date, day)` 선례). 로케일·포맷은 호출자 책임.
 - `content`는 토핑 레이어다. 캔버스 영역 안쪽에 놓이고 컷 도형으로 클립된다.
-- `emptyMessage`가 `null`이 아니면 캔버스 영역 중앙에 안내문을 그린다. 문구는 주입받는다.
+- `isEmpty`면 캔버스 영역 중앙에 안내문을 그린다. 문구는 `emptyMessage`로 주입받는다(논널, 기본 `""`).
+  플래그가 조건이고 문자열은 내용만 든다 — 메뉴 펼침(`isMenuExpanded` + `expandedItems`)과 같은 구조다.
 - Figma 5상태를 **직교 파라미터의 조합**으로 표현한다. 실화면은 "비었는데 메뉴를 펼친" 같은 조합을
   만들어내므로 단일 enum으로는 부족하다.
 - 메뉴 펼침은 `isMenuExpanded`가 결정하고 `expandedItems`는 목록만 들고 있다(`YGCanvasMenu`와 같은 계약).
@@ -230,7 +235,7 @@ fun YGCanvas(
 | Figma `Status` | 대응 조합 |
 |---|---|
 | `Default` | 기본값 |
-| `Empty` | `emptyMessage != null` |
+| `Empty` | `isEmpty = true` |
 | `Expanded` | `isDimmed = true` + `isMenuExpanded = true` |
 | `Spotlighted` | `isDimmed = true` |
 | `Calendar` | `isDimmed = true` + `calendarContent != null` |
