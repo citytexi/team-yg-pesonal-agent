@@ -22,20 +22,23 @@
 >   Dim `Box`에 소비 전용 `pointerInput`을 추가. `onDimClick`은 추가하지 않았다.
 >
 > **계획에 없던 보완 1건** — Task 7의 `Image` 배경 showcase가 렌더되지 않아
-> `:app-preview` 매니페스트에 `INTERNET` 권한을 추가했다.
+> `:app-preview` 매니페스트에 `INTERNET` 권한을 추가했다. 다만 진짜 원인은 따로 있었다 —
+> Coil 3는 네트워크 페처를 별도 아티팩트(`coil-network-okhttp`)로 분리하는데 이 프로젝트는
+> `coil-compose`만 물려 있어 원격 URL이 로드되지 않는다. 의존 추가는 `build-logic` 전역 변경이라
+> 다음 라운드로 미뤘다(스펙 open-questions).
 >
 > **실행 후 API 변경(작업자 요청)** — 상태 조건을 "값의 유무"에서 불리언 플래그로 통일했다.
 > `YGCanvasMenu(… isExpanded: Boolean = false, expandedItems)`,
-> `YGCanvas(… isMenuExpanded: Boolean = false, isEmpty: Boolean = false, expandedItems, emptyMessage: String = "")`.
-> `YGCanvas`의 승격 조건은 `expandedItems.isNotEmpty()` → `isMenuExpanded`, 안내문 노출은
-> `emptyMessage != null` → `isEmpty`로 바뀌었고 `emptyMessage`는 논널이 됐다.
-> 갤러리 두 화면의 호출부도 따라 고쳤다.
+> `YGCanvas(… isMenuExpanded, isEmpty, isCalendarVisible: Boolean = false, expandedItems,
+> emptyMessage: String = "", calendarContent: @Composable () -> Unit = {})`.
+> `YGCanvas`의 조건이 전부 플래그로 바뀌었다 — 메뉴 승격 `expandedItems.isNotEmpty()` → `isMenuExpanded`,
+> 안내문 `emptyMessage != null` → `isEmpty`, 캘린더 승격 `calendarContent != null` → `isCalendarVisible`.
+> `emptyMessage`·`calendarContent`는 논널이 됐다. 갤러리 두 화면의 호출부도 따라 고쳤다.
 > **아래 Task 4·6·7의 코드 블록은 계획 당시 시그니처 그대로다** — 현행 API는
 > [스펙](../specs/2026-07-31-designsystem-canvas-components.md)이 정본이다.
 >
 > **미검증 2건** — pressed 상태(자동 입력이 `interactionSource`에 안 잡힘, 선행 라운드와 같은 한계),
-> `YGCanvasBackground.Image`의 원격 이미지 실렌더(권한은 고쳤으나 Dim이 드래그까지 소비해
-> 갤러리에서 해당 섹션까지 스크롤이 막힘 — 손으로 확인 필요).
+> `YGCanvasBackground.Image`의 원격 이미지 실렌더(위 Coil 네트워크 페처 부재로 로드 자체가 안 됨).
 >
 > **통합 리뷰에서 결함 아님으로 판정** — 컴포넌트 접합부 2dp 테두리(Figma도 인접 인스턴스마다 1px
 > stroke), `isSelected`가 `YGCanvasMenu`까지 안 이어짐(Figma Expanded 하단 버튼이 `Base/White`라

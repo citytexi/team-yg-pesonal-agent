@@ -41,9 +41,11 @@ tags: [spec, parfait, designsystem, figma-sync, canvas]
 > - 메뉴 펼침: `YGCanvasMenu.isExpanded` / `YGCanvas.isMenuExpanded` 신설. `expandedItems`는 접힌
 >   상태에서도 목록을 유지하므로 호출자가 리스트를 비웠다 되채울 필요가 없다.
 > - 빈 상태: `YGCanvas.isEmpty` 신설, `emptyMessage`를 `String?`(기본 `null`) → **`String`(기본 `""`)**.
+> - 캘린더: `YGCanvas.isCalendarVisible` 신설, `calendarContent`를 `(@Composable () -> Unit)?`(기본 `null`)
+>   → **`@Composable () -> Unit`(기본 `{}`)**.
 >
-> 대가로 모순 조합이 컴파일된다 — `isExpanded = true` + 빈 리스트(버튼 행만 보임), `isEmpty = true` +
-> 빈 문구(안내문 자리에 아무것도 없음). 방지 책임은 호출자에게 있다. 본문 API 표기는 이 변경을 반영한 것이다.
+> 대가로 모순 조합이 컴파일된다 — 플래그를 켰는데 값이 비어 있는 경우(빈 리스트·빈 문구·빈 슬롯)가
+> 그것이다. 방지 책임은 호출자에게 있다. 본문 API 표기는 이 변경을 반영한 것이다.
 >
 > **설계에서 달라진 점 2건** — 둘 다 리뷰·실기기 검증에서 드러난 결함을 고친 것이다.
 > - **Expanded 상태의 총높이 복원** — 설계 코드는 메뉴가 승격될 때 하단 행을 아예 안 그려서 컨테이너가
@@ -56,8 +58,8 @@ tags: [spec, parfait, designsystem, figma-sync, canvas]
 >   부작용으로 드래그도 막히는데, 스크림으로선 의도한 동작이다.
 >
 > **미검증**: pressed 상태(자동 입력이 Compose `interactionSource`에 반영되지 않는다 — 선행 라운드와
-> 같은 한계), `YGCanvasBackground.Image`의 실제 이미지 렌더(`:app-preview` 매니페스트에 INTERNET
-> 권한이 없어 로드 실패 → 권한 추가로 보완).
+> 같은 한계), `YGCanvasBackground.Image`의 실제 이미지 렌더 — 아래 열린 질문의 Coil 네트워크 페처
+> 부재 때문에 이번 라운드에서 확인할 수 없다.
 
 ## 목표
 
@@ -200,6 +202,7 @@ sealed interface YGCanvasBackground {
 
 캔버스 배경은 **사용자가 올린 이미지(URL) 또는 제시된 단색 중 택1**이라는 제품 규칙을 그대로 옮긴 것이다.
 `Image`는 Coil `AsyncImage` + `ContentScale.Crop`으로 그린다(`YGTheme`가 프리뷰 핸들러를 이미 심어 둔다).
+단 현재 프로젝트에 Coil 네트워크 페처가 없어 원격 URL은 실제로 로드되지 않는다(아래 열린 질문).
 Figma `Status=Default`의 크림색+분홍 도트 배경은 디자이너 샘플이므로 재현하지 않는다.
 
 ### `YGCanvas`
@@ -217,9 +220,10 @@ fun YGCanvas(
     isDimmed: Boolean = false,
     isMenuExpanded: Boolean = false,
     isEmpty: Boolean = false,
+    isCalendarVisible: Boolean = false,
     expandedItems: List<YGCanvasMenuItem> = emptyList(),
     emptyMessage: String = "",
-    calendarContent: (@Composable () -> Unit)? = null,
+    calendarContent: @Composable () -> Unit = {},
     content: @Composable BoxScope.() -> Unit = {},
 )
 ```
@@ -238,7 +242,7 @@ fun YGCanvas(
 | `Empty` | `isEmpty = true` |
 | `Expanded` | `isDimmed = true` + `isMenuExpanded = true` |
 | `Spotlighted` | `isDimmed = true` |
-| `Calendar` | `isDimmed = true` + `calendarContent != null` |
+| `Calendar` | `isDimmed = true` + `isCalendarVisible = true` |
 
 ## 동작 / 상태
 
@@ -250,7 +254,7 @@ fun YGCanvas(
 | 조건 | Dim 위로 올라가는 것 |
 |---|---|
 | `isMenuExpanded = true` | `YGCanvasMenu` 전체 |
-| `calendarContent != null` | 날짜바 + 캘린더 슬롯 |
+| `isCalendarVisible = true` | 날짜바 + 캘린더 슬롯 |
 
 둘 다 아니면 Dim이 전부를 덮는다(= `Spotlighted`). Figma 3개 변형의 z-order가 이 규칙으로 재현된다.
 
@@ -394,8 +398,15 @@ pressed와 selected가 겹치면 같은 색이라 분기 순서가 결과를 바
 - **Dim 탭으로 닫기(`onDimClick`)가 없다** — 구현에서 Dim이 터치를 **소비하도록** 고쳤지만(위
   "설계에서 달라진 점"), 탭했을 때 `Expanded`·`Calendar`를 닫을지는 규정하지 않았다. Figma가
   다루지 않는 영역이라 화면 라운드의 결정이다. → open-questions 등록
-- **`:app-preview`에 INTERNET 권한이 없었다** — `YGCanvasBackground.Image` showcase가 렌더되지 않아
-  권한을 추가했다. 갤러리 앱 한정 변경이며 프로덕션 앱 매니페스트와는 무관하다.
+- **Coil 3 네트워크 페처가 프로젝트에 없다 — `YGCanvasBackground.Image`가 실제로 로드되지 않는다.**
+  Coil 3는 네트워크 페처를 별도 아티팩트로 분리했는데(`coil-network-okhttp`), 이 프로젝트는
+  `coil-compose`만 물려 있다(버전 카탈로그·`ComposeConfig`). 기존 `AsyncImage` 사용처가 전부 로컬
+  MediaStore URI라 지금까지 드러나지 않았다. 즉 갤러리뿐 아니라 **실화면에서도 원격 배경 이미지는
+  뜨지 않는다.** 의존 추가가 `build-logic` 전역 변경이라 **다음 라운드로 미룬다**(2026-07-31 판정).
+  → open-questions 등록
+- **`:app-preview`에 INTERNET 권한 추가** — Image showcase 렌더 실패를 좇다 발견해 넣었다(권한 자체는
+  필요하다). 다만 위 페처 부재가 진짜 원인이라 권한만으로는 로드되지 않는다. 갤러리 앱 한정 변경이며
+  프로덕션 앱 매니페스트와는 무관하다.
 - **Background Blur(C-001 v0.1) 존폐 미확정** — 위키 [[open-questions]]에 이미 등록된 항목.
   Dot Grid로 대체인지 병존인지 미정이라 `YGCanvas`는 블러를 넣지 않는다.
 - **원자 색 직접 참조** — 5종 모두 `YGAtomicColors`를 직접 읽는다. 기존 등록 사항이며 이번에도 유지한다.
