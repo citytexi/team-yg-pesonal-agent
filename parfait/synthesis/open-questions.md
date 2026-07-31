@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-07-30
-related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup
+verified: 2026-07-31
+related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017
 related_architecture: design-system, data-layer
 related_code:
@@ -247,6 +247,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 규약을 "색 주입 요구가 있을 때만 Colors를 분리한다"로 다듬을지, ② 아니면 신규 5종도 일괄 분리해 규약을 그대로 지킬지(사용처가 없는 API가 5개 늘어난다).
 - **상태**: 미해결 (구현 완료 — 5종 모두 미분리로 반영)
 - **해소 메모**: `YGCircleButton`만 변형 타입(`YGCircleButtonType`)이 색·아이콘 크기·tint를 들고 있고 나머지 4종은 컴포저블 본문 상태 분기다(2026-07-30). 방침 확정 시 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 분리 조건을 한 줄로 고정한다.
+
+### [2026-07-31] Grouptag-Chip 그레이 타입 타임스탬프 색 — 정책 문서 `White` vs Figma `Gray-200`
+- **출처**: [grouptag-topping 스펙](../specs/2026-07-31-designsystem-grouptag-topping-components.md) 타입 매핑 표 — `YGGrouptagChipType.TYPE_7_8`(그레이)의 타임스탬프 색을 Figma 컴포넌트가 `Gray-200`으로 주는데, 정책 문서(S-101에서 분리된 그룹칩 Timestamp 컬러 규칙)의 표는 같은 자리를 `White`로 적는다. 나머지 5종(Cherry-100/200/300·Melon·Pudding)은 양쪽이 일치한다.
+- **항목**: 어느 쪽이 정본인지. Figma가 맞으면 정책 문서를 정정해야 하고, 정책이 맞으면 코드와 Figma를 함께 고쳐야 한다.
+- **상태**: 미해결 (구현은 Figma를 따라 `Gray.Gray200`으로 반영)
+- **해소 메모**: 정책 SoT는 위키이므로 위키 open-questions에도 같은 항목을 등록해야 한다(디자인 파일 ↔ 정책 문서 불일치라 구현 밖에서 결론이 나야 한다). **위키 등록은 develop 머지 후 sync 시점으로 미뤘다**(2026-07-31 작업자 판단) — 등록 대상은 `wiki/synthesis/open-questions.md` 항목 + `wiki/concepts/nametag-chip.md` ② 표의 ⚠️ 마커다.
+
+### [2026-07-31] `YGToppingGroupType`의 `TYPE_3_LEFT`·`TYPE_3_RIGHT`가 완전히 동일
+- **출처**: [grouptag-topping 스펙](../specs/2026-07-31-designsystem-grouptag-topping-components.md) 배치 변형 표 — Figma `Topping-Group`의 `Type=3, Direction=Left`와 `Type=3, Direction=Right`가 회전(+8°)·이미지 오프셋·칩 오프셋이 모두 같다. 다른 Left 변형(`Type=1`·`2`)은 전부 음수 회전인데 3번만 Left도 양수다.
+- **항목**: 디자인 의도인지 Figma 변형 작성 누락인지. 누락이면 Left 회전각의 부호가 바뀌어야 한다.
+- **상태**: 미해결 (Figma 원본대로 구현, 실기기에서 두 변형이 시각적으로 구분되지 않음을 확인)
+- **해소 메모**: 확정 시 `YGToppingGroupType`의 해당 두 엔트리와 코드 주석을 함께 고친다.
+
+### [2026-07-31] 토핑 템플릿 6종 부여 주체 미정 — 서버 필드 부재
+- **출처**: [grouptag-topping 스펙](../specs/2026-07-31-designsystem-grouptag-topping-components.md) "계층 분할" — 제품 정책은 "6종 중 1종 랜덤 최초 부여 → 첫 토핑 등록 전까지 고정, 새로고침·재접속·타 그룹 갱신에도 불변"인데, 클라이언트가 랜덤을 뽑아 로컬에 영속하면 기기 변경에서 깨진다. 디자인시스템은 `YGToppingImage.Template(type)`으로 결정된 값을 주입받기만 한다.
+- **항목**: 서버가 그룹 조회 응답에 템플릿 종류 필드를 내려줄지, 아니면 클라이언트가 뽑아 저장할지. 서버가 내려주면 기기 변경·플랫폼 간(iOS) 일관성이 확보된다.
+- **상태**: 미해결 (G-001 목록 API 미확정)
+- **해소 메모**: 결정 시 [data-layer](../architecture/data-layer.md) DTO와 G-001 화면 스펙에 반영한다.
 
 <!--
 항목 추가 형식:

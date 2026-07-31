@@ -60,6 +60,13 @@ tags: [spec, parfait, designsystem, figma-sync, canvas]
 > **미검증**: pressed 상태(자동 입력이 Compose `interactionSource`에 반영되지 않는다 — 선행 라운드와
 > 같은 한계), `YGCanvasBackground.Image`의 실제 이미지 렌더 — 아래 열린 질문의 Coil 네트워크 페처
 > 부재 때문에 이번 라운드에서 확인할 수 없다.
+>
+> **⚠️ [2026-07-31 갱신] Coil 네트워크 페처 부재는 해소됐다.** 후속 Grouptag·Topping 라운드가
+> `coil-network-okhttp`를 버전 카탈로그와 `ComposeConfig`에 추가했고, 실기기에서 원격 URL 로딩을
+> 확인했다(`YGToppingGroup`의 `Remote` 상태). 따라서 위 "다음 라운드로 미룬다" 판정은 종결됐다.
+> 다만 **`YGCanvasBackground.Image` 화면 자체의 렌더는 그 라운드의 검증 범위가 아니었으므로 여전히
+> 미검증**이다 — 막고 있던 원인만 사라졌다. 상세는
+> [designsystem-grouptag-topping-components](2026-07-31-designsystem-grouptag-topping-components.md).
 
 ## 목표
 
@@ -403,7 +410,9 @@ pressed와 selected가 겹치면 같은 색이라 분기 순서가 결과를 바
   `coil-compose`만 물려 있다(버전 카탈로그·`ComposeConfig`). 기존 `AsyncImage` 사용처가 전부 로컬
   MediaStore URI라 지금까지 드러나지 않았다. 즉 갤러리뿐 아니라 **실화면에서도 원격 배경 이미지는
   뜨지 않는다.** 의존 추가가 `build-logic` 전역 변경이라 **다음 라운드로 미룬다**(2026-07-31 판정).
-  → open-questions 등록
+  - **✅ 해소(2026-07-31)** — 후속 Grouptag·Topping 라운드가 `coil-network-okhttp`를 버전 카탈로그와
+    `ComposeConfig`에 추가하고 실기기에서 원격 URL 로딩을 확인했다. 이 항목은 종결이며
+    open-questions 등록 대상이 아니다. `YGCanvasBackground.Image` 화면의 렌더 검증은 별개로 남는다.
 - **`:app-preview`에 INTERNET 권한 추가** — Image showcase 렌더 실패를 좇다 발견해 넣었다(권한 자체는
   필요하다). 다만 위 페처 부재가 진짜 원인이라 권한만으로는 로드되지 않는다. 갤러리 앱 한정 변경이며
   프로덕션 앱 매니페스트와는 무관하다.

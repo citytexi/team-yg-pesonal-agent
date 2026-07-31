@@ -1,7 +1,7 @@
 ---
 id: designsystem-grouptag-topping-components
 title: 디자인시스템 Grouptag-Chip·Topping-Group 컴포넌트 신설 (Grouptag & Topping Group Components)
-status: draft
+status: in-progress
 category: ui-spec
 platforms: android
 verified: 2026-07-31
@@ -15,6 +15,7 @@ related_code:
   - SizeTokens.kt#SizeTokens
   - ComposeConfig.kt#ComposeConfig
   - ComponentCatalog.kt#componentCatalog
+  - ComponentEntryBuilders.kt#componentEntryBuilders
 related_adr:
 related_spec:
   - designsystem-canvas-components
@@ -30,6 +31,60 @@ tags: [spec, parfait, designsystem, figma-sync, g-001, topping]
 # Spec: 디자인시스템 Grouptag-Chip·Topping-Group 컴포넌트 신설
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+>
+> **구현 상태(2026-07-31)** — 2종 + 모델 3종 + 에셋 7종 + 갤러리 등록 전량 완료. repo 전체
+> `assembleDebug` + `ktlintCheck` 통과, 실기기(Galaxy A35) 갤러리에서 Grouptag-Chip 6타입·말줄임,
+> Topping-Group 배치 7변형·템플릿 6종·Remote 3상태를 Figma와 육안 대조 완료.
+> **TJYG-Android 커밋은 하지 않았다**(작업자 지시). 브랜치 `feature/grouptag-topping-component`에
+> 작업 트리 변경만 남아 있다.
+>
+> **설계대로 확인된 것** — 회전·오프셋 7변형이 육안으로 구분되고, 칩이 160dp 프레임을 넘어가도
+> 잘리지 않으며, 템플릿 6종 에셋이 위키 [[G-001-그룹-토핑-템플릿-정책-v0.2]] 시트(별×2·음표×2·
+> 소용돌이×2)와 일치한다. `AsyncImage`의 `error` 폴백도 의도대로 동작해 로드 실패가 물음표로 떨어진다.
+>
+> **Coil 네트워크 페처 도입 효과 검증됨** — `Remote` 성공 항목에 실제 원격 이미지가 렌더된다.
+> 캔버스 라운드에서 미검증으로 남았던 `YGCanvasBackground.Image`의 원인도 이로써 해소됐다(다만
+> 그쪽 화면 자체의 검증은 이번 범위가 아니다).
+>
+> **육안 검증에서 드러난 결함 2건(수정 완료)** — 둘 다 `:app-preview` 갤러리 화면 한정이고
+> `:core:designsystem` 컴포넌트에는 결함이 없었다.
+> - **샘플 URL이 죽어 있었다.** 계획서가 지정한 coil 저장소의 샘플 jpg 주소가 404였다. 그래서 "정상
+>   로딩" 항목이 error 폴백으로 떨어져 물음표가 떴고, **이 라운드의 핵심 검증 지점이 무력화된
+>   상태**였다. live 확인한 주소로 교체해 해결했다. 컴포넌트가 아니라 검증 픽스처의 결함이다.
+> - **배치 7변형 라벨을 읽을 수 없었다.** 갤러리가 `type.name`을 칩 이름으로 넘겨 80dp 말줄임에
+>   걸렸고, 화면에 `TYPE_1_…`·`TYPE_3_…`으로 잘려 어느 변형인지 구분할 수 없었다. 말줄임 자체는
+>   정상 동작이므로 갤러리 쪽 라벨을 짧게(`1-L`·`1-R`·`2-L`·`2-R`·`3-L`·`3-R`·`TPL`) 바꿨다.
+>
+> **최종 전체 브랜치 리뷰에서 드러난 결함 2건(수정 완료)** — Task 단위 리뷰 5회가 전부 통과한 뒤
+> 나온 것들이다. 둘 다 **Task 하나만 보면 보이지 않는 결함**이라는 공통점이 있다.
+> - **칩이 프레임의 측정 제약에 갇혀 있었다.** `Box(Modifier.size(160dp))`는 자식에게
+>   `maxWidth = 160dp`를 **제약으로** 내리는데, `Modifier.offset`은 배치 위치만 옮길 뿐 제약을 풀지
+>   못한다. 그래서 이름이 80dp 캡에 닿으면 타임스탬프에 46.75dp만 남아 `23시간 전` 같은 **실제
+>   프로덕션 문자열이 2줄로 래핑**됐다. 설계가 다룬 "클리핑 없음"은 *그리기* 문제이고 이것은 *측정*
+>   문제라 별개다 — 스펙이 이 구분을 놓쳤다. 위키 라벨 정책의 "칩 폭은 내용 기준(토핑 폭 비종속)"·
+>   "상대시간 항상 전체 노출" 위반. 칩에 `wrapContentWidth(unbounded = true)`를 걸어 제약을 풀고,
+>   타임스탬프에 `maxLines = 1` + `softWrap = false` 가드를 더해 해결했다.
+>   Task 2는 폭 무제한 부모에서만, Task 4는 짧은 이름으로만 칩을 렌더해서 이 조합이 어느 갤러리에도
+>   없었던 것이 놓친 경위다.
+> - **`Remote` 이미지가 96dp를 넘쳐 나왔다.** `ContentScale.Crop`인데 클리핑이 없어 **비정사각**
+>   원격 사진이 프레임과 인접 셀을 덮는다. 첫 검증 URL이 정사각이라 이 경로가 한 번도 실행되지
+>   않았고, URL 교체 때 하필 또 정사각을 골라 두 번 가려졌다. `imageModifier` 체인 **맨 끝**
+>   (= `rotate` 뒤, 콘텐츠에 더 가까운 안쪽)에 `.clip(RectangleShape)`를 넣어 해결했다. 순서가
+>   중요하다 — `clip`이 `rotate`보다 바깥이면 회전 오버행까지 잘려 요구사항을 위반한다.
+>
+> 재발 방지로 갤러리에 **경계 케이스 섹션**(긴 이름 + `23시간 전` / 비정사각 원격 이미지)을 추가했고,
+> 실기기에서 칩이 한 줄로 유지되며 프레임 밖으로 확장되는 것과 비정사각 사진이 96dp로 잘리는 것을
+> 확인했다.
+>
+> 함께 반영한 것: `YGToppingImage`에 `@Immutable`(선례 `YGCanvasBackground`와 동일 방식 —
+> 소비처가 G-001 스크롤 그리드라 skippable 유지가 셀마다 값어치가 있다).
+>
+> **반영하지 않은 리뷰 지적 1건** — `Remote`의 error 폴백이 `Crop`, `YGToppingImage.Error` 분기가
+> `Fit`으로 같은 물음표를 다르게 그린다는 지적. 정사각 에셋을 정사각 박스에 넣으면 두 스케일의 배율이
+> 같아 **렌더 결과가 동일**하고, 이를 맞추려면 순수 렌더 컴포넌트에 `mutableStateOf` + `onError`
+> 콜백이라는 상태와 재컴포지션 경로가 생긴다. 비용이 이득을 넘어 원래 형태로 되돌렸다.
+>
+> **미검증**: pressed 상태 — 이 두 컴포넌트는 상호작용이 없어 애초에 해당 없음.
 
 ## 목표
 
@@ -239,6 +294,9 @@ enum class YGToppingGroupType(
 - **TJYG-Android 커밋은 하지 않는다**(작업자 지시). 작업 트리 변경만 남기고 보고한다.
 
 ## 열린 질문
+
+아래 1~3은 [parfait open-questions](../synthesis/open-questions.md)에 [2026-07-31] 항목으로 등록했다.
+1번은 정책 문서 자체의 문제이므로 위키 open-questions에도 등록 대상이다(정책 SoT는 위키).
 
 1. **그레이 타입 타임스탬프 색** — 위키 [[nametag-chip]] ② 표는 Type 7/8 = `White`, Figma는
    `Gray-200`. Figma 우선 구현했으나 어느 쪽이 정본인지 확인 필요. 위키 정정 대상일 수 있다.
