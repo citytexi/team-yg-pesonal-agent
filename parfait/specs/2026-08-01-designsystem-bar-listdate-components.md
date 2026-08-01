@@ -14,6 +14,7 @@ related_code:
   - YGTopBar.kt#YGTopBarCanvas
   - YGTopBar.kt#YGTopBarEmpty
   - YGTopBar.kt#YGTopBarContent
+  - YGChipButtonColorsDefaults.kt#GrayOutline
   - YGDateButton.kt#YGDateButton
   - YGChipColorIndicator.kt#YGChipColorIndicator
   - YGCircleButton.kt#YGCircleButton
@@ -21,6 +22,7 @@ related_code:
   - ComponentCatalog.kt#componentCatalog
   - ComponentEntryBuilders.kt#componentEntryBuilders
 related_adr:
+  - ADR-0018
 related_spec:
   - designsystem-canvas-components
   - designsystem-grouptag-topping-components
@@ -73,6 +75,12 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > **이월 관찰 2건** — `YGTopBarEmpty.rightContent`(안쪽 슬롯)와 새 `trailingContent`(바깥 슬롯)의
 > 측정 의미가 달라 다음 변형 작성자가 헷갈릴 수 있다(다음 Top Bar 라운드에서 통합 검토).
 > `YGListDate`의 업로드 점이 TalkBack에 노출되지 않는다(모듈 전체에 상태 접근성 기준이 없어 별건).
+>
+> **2026-08-01 Figma 재조회로 범위가 늘었다** — 구현 완료 후 Top Bar를 다시 확인하니 `Default`·`Empty`
+> 두 변형과 공유 컴포넌트 `Button-Chip-Left`가 바뀌어 있었다. 칩 프리셋 교체·개명, 날짜 표시, 반투명
+> 배경 + 배경 블러 세 축이 추가됐다(아래 [`Default`·`Empty` 개편](#figma-defaultempty-개편-2026-08-01-figma-재조회)).
+> **직전에 확정한 "프리뷰 칩을 `CherrySubtle`로 정정"은 이 재조회로 무효**가 됐다. `Back`·`Detail`·
+> `Canvas` 3변형은 무변경이라 `YGListDate`·`YGFloatingBar`·`YGTopBarCanvas` 산출물은 그대로 살아 있다.
 
 ## 목표
 
@@ -91,10 +99,14 @@ Grouptag·Topping 스펙이 "다른 브랜치 작업 중"으로 제외한 `Chip-
   - `YGFloatingBar*`(Figma `Floating Bar`) — 변형별 공개 함수 4종 + 공통 private 컨테이너
   - `YGTopBarCanvas`(Figma `Top Bar` `Status=Canvas`) — 신규 변형
   - `YGTopBarContent` 확장 — `contentPadding`·`trailingContent` 파라미터 추가
-  - `YGTopBar` 프리뷰 칩 색 정정 — `CherrySolid` → `CherrySubtle`(Figma 정본, 실제 호출부와도 일치)
+  - **`Button-Chip-Left` 프리셋 교체 + 개명** — `CherrySubtle` → `GrayOutline`(흰 배경 + `Gray500` 테두리)
+  - **`YGTopBarEmpty` 날짜 표시** — 로고 placeholder → `date`·`day` 파라미터
+  - **`Default`·`Empty` 반투명 배경 + 배경 블러** — `White75` + `BlurEffect`([ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md))
   - 3종을 `:app-preview` 컴포넌트 갤러리에 등록·갱신
 - **제외**
   - **`YGTopBarDefault` 재도입** — #173에서 삭제된 변형이다. 칩 색·문구는 호출 화면이 정한다
+  - `Button-Chip-Right`(`CherrySolid`) — Figma 무변경
+  - 배경 블러의 **공용 모디파이어 추출** — 소비처가 Top Bar·C-101 둘뿐이라 이르다(ADR-0018)
   - **List-Member 실물** — Canvas Top Bar가 슬롯만 열고 겹침 배치·`+N` 계산은 호출자 책임(아래 [List-Member](#list-member))
   - C-201 캘린더 패널 실물 — `YGListDate`를 격자로 배치하는 쪽
   - `YGTopBar`의 logo placeholder(`ic_plus`) 치환 — 이월 todo
@@ -222,19 +234,47 @@ Figma의 List-Member(Nametag-Chip 5개를 -12dp씩 겹치고 끝에 `+N` 카운�
 > ⚠️ Plus 타입은 `YGColorChipType` 13종 + Plus ↔ 정책 12종 드리프트에 걸려 있는 이월 미결 항목이다.
 > 이번 라운드에서 정리하지 않는다.
 
-### Figma `Default` 대응 — 컴포넌트가 아니라 조립
+### Figma `Default`·`Empty` 개편 (2026-08-01 Figma 재조회)
 
-#173이 `YGTopBarDefault`를 지우고 `YGTopBarEmpty(rightContent)`로 통합하면서, 원안이 잡았던 두 드리프트
-(칩 색 `CherrySolid`→`CherrySubtle`, 문구 `"새 그룹"`→`"그룹 추가하기"`)는 **호출 화면에서 이미 해소**됐다 —
-첫 호출자 G-001이 `CherrySubtle` + `"그룹 추가하기"`로 조립한다([g001-group-list](archive/2026-08-01-g001-group-list.md)).
+> **경위** — 이 라운드 구현을 끝낸 뒤 Figma를 다시 확인하니 `Top Bar`의 `Default`·`Empty` 두 변형과
+> 공유 컴포넌트 `Button-Chip-Left`가 바뀌어 있었다. `Back`·`Detail`·`Canvas` 3변형은 무변경이라
+> 이 라운드의 `YGTopBarCanvas`·`YGTopBarContent` 확장 산출물은 그대로 유효하다.
+> 직전에 확정했던 "프리뷰 칩을 `CherrySubtle`로 정정" 결론은 **이 재조회로 무효가 됐다** —
+> `CherrySubtle`도 더 이상 정본이 아니다.
 
-남은 것은 **컴포넌트 프리뷰 한 곳**이다.
+세 축이 바뀌었다.
 
-| 항목 | 현재(`YGTopBarPreview`) | Figma(정본) |
-|---|---|---|
-| 칩 색 프리셋 | `CherrySolid` | `CherrySubtle` (`Cherry50` 배경 / `Gray600` 전경) |
+**① `Button-Chip-Left` 컴포넌트 자체가 바뀜** — Cherry 계열을 버리고 흰 배경 + 회색 테두리로 갔다.
 
-프리뷰 예시만 `CherrySubtle`로 바꾼다. API는 손대지 않는다.
+| 상태 | 배경 | 테두리 | 전경 |
+|---|---|---|---|
+| Default | `Gray.White` | `Gray.Gray500` 1px | `Gray.Gray900` |
+| Pressed | `Gray.Gray200` | `Gray.Gray500` 1px | `Gray.Gray950` |
+
+`YGChipButtonColorsDefaults.CherrySubtle` 프리셋의 **값을 교체하고 이름을 `GrayOutline`으로 바꾼다.**
+값만 바꾸면 이름이 내용과 어긋난다(Cherry가 한 톤도 안 들어간다). 선행 라운드에 같은 이유로
+`CherryBorderPressed`→`CherrySubtle` 개명을 한 선례가 있다. 프리셋 하나를 고치면 소비처가 전부 따라오므로
+`GroupListScreen`·`GroupListAddGroupScreen`의 드리프트도 함께 닫힌다.
+
+> `Button-Chip-Right`는 **무변경**이다(`Cherry100`/`Cherry200` + `Gray950`). `CherrySolid`는 그대로 둔다.
+
+**② 로고 placeholder 자리가 날짜로 확정** — `[logo]`가 사라지고 **"December 31" + "(Wed)"** 가 들어간다.
+`b01R`, 사이 `gap.gap3`, 날짜 `Gray.Gray800` / 요일 `Gray.Gray300`.
+
+`YGTopBarEmpty`가 `date`·`day` 문자열을 받아 내부에서 텍스트 2개로 그린다. 기존 `YGDate` 컴포넌트는
+**쓰지 않는다** — 그쪽은 흰 배경 + `Gray800` 테두리 + 패딩을 갖는 별개 표현이고, Figma도 Top Bar 안에는
+`Date` 심볼 인스턴스가 아니라 인라인 텍스트 그룹을 두었다. 이로써 `YGTopBarEmpty`에 남아 있던
+로고 `ic_plus` placeholder todo가 닫힌다.
+
+**③ 컨테이너에 반투명 배경 + 배경 블러** — `Transparency.White75` 배경 위 2px 배경 블러.
+`Back`·`Detail`·`Canvas`에는 없고 `Default`·`Empty`에만 붙는다.
+
+구현 관용은 [ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md)을 따른다 — 호출 화면이 배경을
+`rememberGraphicsLayer()`에 record해 넘기고, Top Bar가 별도 레이어에 복사·`BlurEffect`를 걸어 자기
+영역으로 clip해 그린다. 레이어 파라미터는 nullable이고 `null`이면 틴트만 그린다.
+
+> ⚠️ **API 31 미만에서는 블러가 없다.** `RenderEffect`가 API 31+이고 `minSdk`는 26이다. 26~30에서는
+> `White75` 틴트만 남는다. 틴트를 블러와 **독립적으로 항상** 그려 가독성을 보장한다.
 
 ### 무변경 3변형
 
@@ -334,3 +374,12 @@ private fun YGFloatingBarContent(
    모드 라벨인지)를 알 수 없다. 파라미터로 열어두고 호출 화면 구현 때 확정한다.
 3. **Floating Bar의 배치 책임** — Figma가 상단 패딩 16dp만 주고 화면 어디에 떠 있는지(상단 고정 / 하단 /
    오버레이)는 컴포넌트 밖 정보다. 호출 화면이 정한다.
+4. **API 31 미만의 배경 블러 부재** — `minSdk` 26이라 26~30에서는 `White75` 틴트만 남는다. 플랫폼
+   제약이라 해결책이 아니라 **수용 여부**의 문제다. 디자인 쪽에 "저사양 기기에서는 블러 없음"이
+   허용되는지 확인이 필요하다.
+5. **`Default`·`Empty`의 날짜 출처** — Figma가 `December 31 (Wed)`를 영문 표기로 고정했는데, 이 앱은
+   한국어 UI다. 로케일·포맷 규칙이 미정이라 컴포넌트는 **완성된 문자열 2개를 받기만** 한다.
+   포맷 책임은 호출 화면/도메인이고 그 규칙은 아직 정해지지 않았다.
+6. **블러 대상 화면 배선** — Top Bar가 레이어를 받는 구조는 정했으나, G-001 그룹 목록이 실제로 배경을
+   record하도록 배선하는 것은 이 라운드 범위 밖이다(디자인시스템만 손댄다). 그 전까지 실사용 화면에서는
+   블러가 꺼진 상태(틴트만)로 동작한다.
