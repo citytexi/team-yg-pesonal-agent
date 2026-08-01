@@ -9,6 +9,7 @@ superseded_by:
 related_adr:
 related_spec:
   - designsystem-bar-listdate-components
+  - c101-camera-picture-confirm
 related_architecture:
   - design-system
 platforms: android
@@ -78,6 +79,15 @@ Figma `Top Bar`의 `Status=Default`·`Status=Empty`가 반투명 배경(`Transpa
 > `contentLayer.record{...}` → `blurLayer.record{drawLayer(contentLayer)}` → `drawLayer(blurLayer)`로
 > 여기서 실패한 형태와 같다. 아직 구현 전(게이트 PoC 단계)이므로, 그 라운드를 시작할 때 이 결정을
 > 먼저 보고 Haze 재사용을 검토할 것.
+>
+> 📌 **후속(2026-08-01, PR #182 develop 머지)** — C-101은 위 검토 없이 **자체 `GraphicsLayer`로
+> 머지됐다**(`feature/camera/impl` `CameraFeedLayer`, 위와 정확히 같은 record→record→draw 형태 +
+> `Black25` 스크림 + 뷰파인더 영역 `clipRect` 복원). 여기서 기각한 경로와 **대상이 다르다**는 것이
+> 유일한 차이다 — C-101이 흐리는 것은 *자기 자식*(`AndroidView`로 붙인 카메라 피드)이고, 이 ADR이
+> 막힌 것은 *자기 밖 배경*을 옮겨 담는 경로다. 그래서 이 결정은 **배경 블러에 한정**해 유효하고,
+> 프로젝트에 블러 관용구가 둘 존재하게 됐다. C-101 블러의 실동작은 이 ADR이 요구한 **극단값 대조로
+> 아직 확인되지 않았다** → [open-questions](../synthesis/open-questions.md) [2026-08-01] ·
+> [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md).
 
 ## 영향
 

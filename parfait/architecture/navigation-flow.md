@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-01
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list, c101-camera-picture-confirm
 related_adr: ADR-0002, ADR-0006
 related_architecture:
 related_code: core:navigation, Navigator
@@ -45,10 +45,18 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 > 배경 이미지·오버레이가 붙는 화면에서 위 2번 관용구가 부족했다는 신호다 →
 > [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) · [open-questions](../synthesis/open-questions.md) [2026-08-01].
 
+> **의도적 예외(2026-08-01, PR #182)** — C-101 카메라 entry는 `YGScaffold`를 쓰되 **`innerPadding`을
+> 화면에 먹이지 않는다**. 카메라 피드가 시스템 바 아래까지 덮어야 하고 인셋은 컨트롤 영역이
+> `windowInsetsPadding`으로 직접 처리하기 때문이다(코드 주석에 근거 명시). 전체화면 카메라·미디어
+> 화면의 관용구로 볼지는 위 이탈 사례와 함께 정리 대상 → [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md).
+
 ## 인자 있는 목적지 (`data class NavKey`)
 
 목적지가 값을 받으면 `data object`가 아니라 `@Serializable data class NavKeyXxx(val …)`로 정의한다
-(`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupHome`·`NavKeyGroupCreate`).
+(`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupHome`·`NavKeyGroupCreate`·
+`NavKeyPictureConfirm`).
+**ViewModel이 없는 화면이면 엔트리 빌더가 `navKey.…` 값을 Route 파라미터로 그냥 넘긴다**
+(`NavKeyPictureConfirm(uri)` → `PictureConfirmRoute(uri = …)`, #182).
 그 값을 ViewModel 초기 상태로 넘길 때는 **Assisted 주입**을 쓴다 — `@HiltViewModel(assistedFactory = …)` + `@AssistedInject` +
 `@Assisted` 파라미터, 엔트리 빌더에서 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.…) })`로 생성해 Route에 넘긴다
 (`GroupCreateViewModel`·`SegmentationViewModel`).
