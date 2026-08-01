@@ -109,6 +109,19 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > **미검증**: pressed 상태. API 31 미만 폴백(검증 기기가 API 36). 실제 화면(G-001)에서의 블러 —
 > `hazeSource` 배선이 범위 밖이라 갤러리 데모로만 확인했다.
 
+> **코드리뷰 반영 2건(2026-08-01)** — 브랜치 리뷰가 잡은 것으로, 둘 다 **계획서가 지시한 대로 구현한
+> 결과**라 구현 결함이 아니라 계획 결함이다.
+> - `GroupListScreen` 상단바 날짜 하드코딩 → `uiState` 결선(위 [열린 질문 5](#열린-질문)). 계획서가
+>   "화면이 아직 날짜 데이터를 갖고 있지 않다"고 전제했으나 **사실이 아니었다** — 대상 화면의
+>   ViewModel 현재 상태를 읽지 않고 쓴 지시였다.
+> - `YGListDate`가 C-201 예외 규칙(Disabled면 인디케이터 항상 False)을 강제하지 않아
+>   `isEnabled = false, isUploaded = true` 조합이 렌더됐고, 갤러리 프리뷰가 실제로 그 조합을 노출하고
+>   있었다 → 컴포넌트 내부에서 `isEnabled && isUploaded`로 강제. 계획서 코드블록이 정책 문서의 예외
+>   조항을 옮기지 않은 것이 원인.
+>
+> 교훈: **호출부를 건드리는 Task는 그 호출부의 상태 보유 여부를 계획 단계에서 확인**하고,
+> 합성 컴포넌트를 설계할 때 **대응 정책 문서의 "예외" 조항을 시그니처 표에 함께 옮긴다.**
+
 ## 목표
 
 Figma 컴포넌트 3종(`List-Date`·`Top Bar`·`Floating Bar`)을 현재 구현과 1:1 대조해 신설·수정한다.
@@ -168,13 +181,18 @@ fun YGListDate(
 | 요소 | 규격 |
 |---|---|
 | 날짜 | `YGDateButton(modifier = Modifier.size(SizeTokens.Size44))` |
-| 인디케이터 | `YGChipColorIndicator(isChecked = isUploaded)` |
+| 인디케이터 | `YGChipColorIndicator(isChecked = isEnabled && isUploaded)` |
 
 - 전체 44×50dp(44 + gap 2 + dot 4). Figma 프레임과 일치
 - `Upload=False`는 Figma에서 `opacity-0`이고 `YGChipColorIndicator`가 미체크 시 `Color.Transparent`를
   그리므로 **자리를 유지한 채 비노출**된다 — 선택 상태가 바뀌어도 셀 높이가 흔들리지 않는다
 - 상태 4종(`isSelected`·`isToday`·`isEnabled`·기본)은 `YGDateButton`이 이미 처리하므로 그대로 위임한다.
   여기서 다시 분기하지 않는다
+- **Disabled면 인디케이터는 항상 False** — 정책 [[캘린더-컴포넌트]]
+  ([link](../../wiki/concepts/캘린더-컴포넌트.md))의 List-Date 예외 규칙("Button-Date가 Disabled면 항상
+  False")을 **컴포넌트가 내부에서 강제**한다. `isEnabled`·`isUploaded`를 독립 파라미터로 받으면
+  `isEnabled = false, isUploaded = true` 같은 정책 위반 조합이 호출부마다 재현될 수 있어, 합성체인
+  `YGListDate`가 규칙을 들고 있는 쪽으로 정했다(코드리뷰 반영, 2026-08-01)
 - `onClick`은 `YGDateButton`에 그대로 넘긴다. 인디케이터는 터치 대상이 아니다
 
 부품 2종은 **수정하지 않는다.** 합성 파일 1개만 늘어난다.
@@ -412,6 +430,12 @@ private fun YGFloatingBarContent(
 5. **`Default`·`Empty`의 날짜 출처** — Figma가 `December 31 (Wed)`를 영문 표기로 고정했는데, 이 앱은
    한국어 UI다. 로케일·포맷 규칙이 미정이라 컴포넌트는 **완성된 문자열 2개를 받기만** 한다.
    포맷 책임은 호출 화면/도메인이고 그 규칙은 아직 정해지지 않았다.
+   > **호출부 결선은 닫혔다(2026-08-01, 코드리뷰 반영)** — 계획서가 `GroupListScreen`에
+   > `"December 31"`·`"Wed"` 샘플 + TODO를 남기라고 지시했으나, 그 시점에 이미 `GroupListViewModel`이
+   > `init`에서 `dateString`·`dayOfWeekString`을 계산하고 있었고 같은 화면의 `YGDate`가 그 값을 쓰고
+   > 있었다. 상단바만 하드코딩으로 남아 "항상 December 31 (Wed)" 고정 노출 상태였다 →
+   > `date = uiState.dateString`, `day = uiState.dayOfWeekString`으로 교체. **미결로 남는 것은 포맷·로케일
+   > 규칙뿐**(현재 `DateFormat.FullMonthWithDay`·`AbbreviatedDayOfWeek` 영문 표기).
 6. **블러 대상 화면 배선** — Top Bar가 레이어를 받는 구조는 정했으나, G-001 그룹 목록이 실제로 배경을
    record하도록 배선하는 것은 이 라운드 범위 밖이다(디자인시스템만 손댄다). 그 전까지 실사용 화면에서는
    블러가 꺼진 상태(틴트만)로 동작한다.
