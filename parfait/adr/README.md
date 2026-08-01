@@ -25,7 +25,7 @@
 | [0015](0015-feature-common-shared-layer.md) | feature/common 공유 feature 레이어 도입 | accepted | 2026-07-21 | terms를 S-001+A-003 공유·2소비처 확정 시에만 common |
 | [0016](0016-domain-result-presentation-string-mapping.md) | 유효성 결과 — domain 의미 sealed 반환 + 표시 문자열 프레젠테이션 매핑 | accepted | 2026-07-23 | NicknameResult sealed·core:ui `toStringResource`·ui→domain 의존 |
 | [0017](0017-remote-network-datasource.md) | 원격 네트워크 DataSource·서비스 규약 (AndroidNetworkConventionPlugin + ApiResponse/safeApiCall) | accepted | 2026-07-26 | `source.<도메인>.remote` 관례, 로깅은 `BuildConfig.DEBUG` 게이팅 |
-| [0018](0018-backdrop-blur-graphicslayer.md) | 배경 블러 관용 — GraphicsLayer 캡처 + BlurEffect 재그리기 (라이브러리 미도입) | proposed | 2026-08-01 | 레이어는 호출 화면 소유·nullable 파라미터, 틴트는 블러와 독립 상시, API<31 폴백은 틴트만. haze 기각(API 하한 동일·C-101과 관용 이원화) |
+| [0018](0018-backdrop-blur-graphicslayer.md) | 배경 블러 관용 — GraphicsLayer 캡처 + BlurEffect 재그리기 (라이브러리 미도입) | accepted | 2026-08-01 | 레이어는 호출 화면 소유·nullable 파라미터, 틴트는 블러와 독립 상시, API<31 폴백은 틴트만. haze 기각(API 하한 동일·C-101과 관용 이원화). 실기기(API 36) 좌표 정합·스크롤 유지 확인 |
 
 ## 작성 가이드
 

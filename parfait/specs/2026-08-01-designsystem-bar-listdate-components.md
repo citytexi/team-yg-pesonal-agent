@@ -82,6 +82,26 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > **직전에 확정한 "프리뷰 칩을 `CherrySubtle`로 정정"은 이 재조회로 무효**가 됐다. `Back`·`Detail`·
 > `Canvas` 3변형은 무변경이라 `YGListDate`·`YGFloatingBar`·`YGTopBarCanvas` 산출물은 그대로 살아 있다.
 
+> **2차 라운드 구현 상태(2026-08-01)** — 세 축 전량 완료. repo 전체 `assembleDebug` + `ktlintCheck`
+> 통과, 실기기(Galaxy A35 / SM-A356N, **API 36**) 갤러리에서 육안 대조 완료.
+>
+> **설계대로 확인된 것**
+> - 칩이 흰 배경 + 회색 테두리 + 진한 글씨로 바뀌었고, 프리셋 하나를 고치자 소비처 6곳이 전부 따라왔다.
+>   `GroupListScreen`·`GroupListAddGroupScreen`의 드리프트도 함께 닫혔다.
+> - `Default`·`Empty`에 "December 31 (Wed)"가 표시되고 로고 `ic_plus` placeholder가 사라졌다.
+> - **배경 블러가 실제로 동작한다** — 바 영역만 흐리고 바로 아래 줄은 선명하며, **틴트 경계와 흐림
+>   경계가 정확히 일치**한다. **스크롤 후에도 정합이 유지**돼 ADR-0018이 경고한 좌표 결함이 없다.
+>
+> **블러 방식이 도중에 뒤집혔다** — 처음엔 `dev.chrisbanes.haze` 도입으로 정했다가, 작업자가
+> `androidx.compose.ui.graphics.BlurEffect`로 되지 않느냐고 물어 재검토했다. 확인 결과 (a) 안드로이드
+> 배경 블러는 `RenderEffect` 기반이라 **haze도 API 하한이 31로 동일**하고, (b) C-101 카메라 뷰파인더가
+> 이미 같은 `GraphicsLayer` 2회 그리기로 확정돼 있어 라이브러리를 넣으면 **블러 관용이 이원화**된다.
+> 자체 구현으로 뒤집고 [ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md)에 관용을 못박았다.
+> haze를 먼저 제안할 때 C-101 선례를 확인하지 않은 것이 원인이다.
+>
+> **미검증**: pressed 상태. API 31 미만 기기(검증 기기가 API 36이라 폴백 경로가 실행되지 않았다).
+> 실제 화면(G-001)에서의 블러 — 배경 record 배선이 범위 밖이라 갤러리 데모로만 확인했다.
+
 ## 목표
 
 Figma 컴포넌트 3종(`List-Date`·`Top Bar`·`Floating Bar`)을 현재 구현과 1:1 대조해 신설·수정한다.

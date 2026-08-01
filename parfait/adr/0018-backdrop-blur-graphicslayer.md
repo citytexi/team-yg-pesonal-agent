@@ -1,7 +1,7 @@
 ---
 id: ADR-0018
 title: 배경 블러 관용 — GraphicsLayer 캡처 + BlurEffect 재그리기
-status: proposed
+status: accepted
 date: 2026-08-01
 deciders: Parfait 팀
 supersedes:
@@ -83,5 +83,8 @@ Figma `Top Bar`의 `Status=Default`·`Status=Empty`가 반투명 배경(`Transpa
 - 레이어 좌표 정합 — 소비 표면이 배경 레이어 안에서 자기 위치를 알아야 올바른 영역을 흐린다.
   위치를 잘못 잡으면 엉뚱한 데가 흐려지고, 이건 스크롤 중에만 드러나는 종류의 결함이다.
   → 실기기에서 **스크롤하며** 확인한다. 정지 스크린샷으로는 잡히지 않는다.
+  **2026-08-01 확인됨** — Galaxy A35(API 36) 갤러리에서 틴트 경계와 흐림 경계가 정확히 일치하고,
+  스크롤 후에도 정합이 유지됐다. `onGloballyPositioned`의 루트 기준 좌표로 translate 하는 방식이
+  의도대로 동작한다.
 - 검증은 이 저장소의 디자인시스템 관례대로 **프리뷰 + 실기기 육안**으로 한다. 블러는 스크린샷 대조
   외에 자동 검증 수단이 마땅치 않다.

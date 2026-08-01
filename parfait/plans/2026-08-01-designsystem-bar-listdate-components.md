@@ -1,7 +1,7 @@
 ---
 id: designsystem-bar-listdate-components
 title: List-Date·Floating Bar 신설 + Top Bar Canvas 변형 구현 계획
-status: in-progress
+status: done
 type: work-order
 created: 2026-08-01
 updated: 2026-08-01
@@ -1085,6 +1085,28 @@ TJYG-Android 작업 트리 변경 목록(`git status --short`)과 미커밋 사�
 > Task 5가 그 자리를 덮어쓴다.
 >
 > 배경 블러 관용은 [ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md)이 정한다.
+
+> **2차 라운드 실행 결과(2026-08-01)** — Task 5~7 전량 완료. Task 5·6 모두 **리뷰 1회에 클린 통과**해
+> fix round가 없었다. TJYG-Android는 여전히 미커밋, 브랜치 `feature/sync-component`.
+>
+> **블러 방식이 착수 직전에 뒤집혔다.** 계획 초안은 haze 도입이었는데, 작업자가 `BlurEffect`로 안
+> 되느냐고 물어 재검토한 결과 (a) `RenderEffect` 기반이라 **haze도 API 하한 31로 동일**하고,
+> (b) C-101이 이미 같은 `GraphicsLayer` 관용으로 확정돼 있어 라이브러리를 넣으면 **블러 구현이
+> 이원화**된다는 것이 드러났다. 자체 구현으로 뒤집고 ADR-0018을 다시 썼다.
+> 교훈: 라이브러리를 후보로 올리기 전에 **같은 문제의 선행 결정이 repo에 있는지 먼저 확인**해야 한다.
+> 이번엔 작업자의 질문이 그 확인을 대신했다.
+>
+> **계획서 결함 1건** — Task 6 Step 1의 import 목록에 `androidx.compose.ui.graphics.layer.drawLayer`가
+> 빠져 있었다. `GraphicsLayer`와 별개의 top-level 확장 함수라 명시 import가 필요한데, 코드 본문은
+> 그 함수를 두 번 호출한다. 구현자가 발견해 한 줄 보충했고 리뷰가 확인했다.
+>
+> **검증은 컨트롤러가 직접 수행했다** — 구현자는 IDE를 열 수 없어 육안 검증을 못 했고 리뷰가 그것을
+> 유일한 Important로 지적했는데, 컨트롤러가 실기기(SM-A356N, **API 36**)에서 이미 마친 상태였다.
+> 칩 색·날짜 표시·블러 동작·좌표 정합을 스크린샷으로 대조했고, **스크롤 후에도 정합이 유지**되는 것을
+> 확인해 ADR-0018이 경고한 회귀가 없음을 확정했다.
+>
+> **미검증**: pressed 상태. API 31 미만 폴백 경로(검증 기기가 API 36이라 실행되지 않음).
+> 실제 화면(G-001)에서의 블러 — 배경 record 배선이 범위 밖이라 갤러리 데모로만 확인.
 
 ---
 
