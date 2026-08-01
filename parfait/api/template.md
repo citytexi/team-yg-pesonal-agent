@@ -1,4 +1,3 @@
-```markdown
 ---
 id: <파일명(확장자 제외)>
 title: <도메인 한 줄 이름>
@@ -50,4 +49,3 @@ tags: [api, parfait, server-contract, <도메인>]
 ## 미결
 
 - <항목> → [open-questions](../synthesis/open-questions.md)
-```
