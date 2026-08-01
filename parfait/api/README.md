@@ -15,6 +15,7 @@
 |---|---|---|---|
 | [auth.md](auth.md) | `http/auth` | 4 (카카오 로그인 · 회원가입 완료 · 토큰 재발급 · 로그아웃) | 미구현 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 미구현 |
+| [parfait.md](parfait.md) | `http/parfait` | 1 (그룹 캘린더 연도 리스트) | 미구현 |
 
 ## 규약
 - **파일명에 날짜 접두사를 붙이지 않습니다.** `specs/`·`plans/`와 달리 API 계약은 `architecture/`와 같은
