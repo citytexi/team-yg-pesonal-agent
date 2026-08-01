@@ -128,6 +128,13 @@ tags: [plan, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 `YGChipColorIndicator`가 미체크 시 `Color.Transparent`를 그리므로 **자리를 유지한 채 비노출**된다 —
 선택이 바뀌어도 셀 높이가 흔들리지 않는다.
 
+> ⚠️ **계획서 결함(2026-08-01 코드리뷰) — 아래 코드블록은 역사 스냅샷이다.** Step 1·3의
+> `YGChipColorIndicator(isChecked = isUploaded)`는 C-201 정책의 예외 조항("Button-Date가 Disabled면
+> 항상 False")을 빠뜨렸고, 그 결과 Step 3 갤러리 코드가 `isEnabled = false, isUploaded = true` 위반
+> 조합을 그대로 노출했다. **현행은 `isChecked = isEnabled && isUploaded`** — 규칙을 컴포넌트가 강제한다
+> ([spec](../specs/2026-08-01-designsystem-bar-listdate-components.md#yglistdate)). 원인은 계획서가
+> 부품 시그니처만 옮기고 정책 문서의 "예외" 줄을 옮기지 않은 것.
+
 - [ ] **Step 1: `YGListDate.kt` 작성**
 
 ```kotlin
@@ -1334,6 +1341,12 @@ Expected: `GroupListScreen.kt`, `YGTopBarPreviewScreen.kt`, `YGTopBar.kt` 프리
   `date = ""`, `day = ""`처럼 빈 문자열로도 두지 마라. 대신 이 Task에서는
   `date = "December 31"`, `day = "Wed"` 샘플을 넣고 **`// TODO: 실제 날짜 데이터 결선` 주석을 단다.**
   날짜 포맷·로케일 규칙이 미정이라(스펙 열린 질문 5) 여기서 정할 수 없다.
+  > ⚠️ **계획서 결함(2026-08-01 코드리뷰) — 이 지시의 전제가 틀렸다.** 작성 시점에 이미
+  > `GroupListViewModel`이 `init`에서 `dateString`·`dayOfWeekString`을 계산했고 같은 화면의 `YGDate`가
+  > 그 값을 쓰고 있었다. 지시대로 넣은 결과 상단바만 "December 31 (Wed)" 고정 노출이 됐다.
+  > **현행은 `date = uiState.dateString`, `day = uiState.dayOfWeekString`.** 미정으로 남는 건 포맷·로케일
+  > 규칙뿐이다. 교훈: 호출부를 고치는 Step은 **그 호출부의 상태 보유 여부를 계획 단계에서 실제로 읽고**
+  > 쓴다.
 - `backdropLayer`는 이 Task에서 **아무 호출부도 넘기지 않는다.** G-001 화면의 배경 record 배선은
   범위 밖이다(스펙 열린 질문 6). 기본값 `null`이라 컴파일된다.
 
