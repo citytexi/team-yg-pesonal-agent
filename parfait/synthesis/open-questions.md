@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-01
-related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm
+verified: 2026-08-02
+related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, parfait-api-contract-docs
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018
 related_architecture: design-system, data-layer
 related_code:
@@ -372,6 +372,54 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 이 구분(자기 콘텐츠 블러=자체 구현 / 배경 블러=Haze)을 규약으로 못박을지, 아니면 C-101도 Haze로 통일할지. ② C-101 블러가 실제로 걸리는지 **극단값 대조**로 확인했는지 — ADR-0018이 "틴트만으로도 흐린 것처럼 보여 미동작이 육안 검증을 통과한다"고 경고한 바로 그 구조다(이 라운드에 검증 기록 없음). ③ API 31 미만 폴백(`isBlurSupported`)이 스크림만 남기는 것으로 충분한지.
 - **상태**: 미해결 (①은 규약, ②는 검증 미수행)
 - **해소 메모**: ② 확인이 먼저다(반경 극단값으로 대조). 결과에 따라 ①을 [design-system](../architecture/design-system.md)이나 ADR-0018 개정으로 남기고 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)의 블러 절을 갱신한다.
+
+### [2026-08-02] 서버 응답 envelope와 Android ApiResponse 불일치
+- **출처**: 서버 `parfait.common.response.ApiResponse`([api/conventions.md](../api/conventions.md) "응답 envelope") — `success`·`errorDetail` 필드를 Android `ApiResponse`가 갖고 있지 않다. Android `data/service/model/response/ApiResponse.kt`.
+- **항목**: Android `ApiResponse`에 `success`·`errorDetail` 필드를 추가할지, 추가 시 파싱·기본값 처리를 어떻게 할지.
+- **상태**: 미해결 (코드 수정 미착수)
+- **해소 메모**: 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md) 응답 매핑 절을 갱신하고 [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거한다.
+
+### [2026-08-02] Android 성공 코드 판정이 서버와 어긋남
+- **출처**: Android `ApiResponse.SUCCESS_CODE`(TODO 상수, `isSuccess`가 `code == "SUCCESS"` 단일 비교) vs 서버 `ApiResponse.ok`/`ApiResponse.created`(`code`=`"OK"`/`"CREATED"` 2종, [api/conventions.md](../api/conventions.md) "응답 envelope").
+- **항목**: `isSuccess` 판정을 `"OK"`·`"CREATED"` 2종 비교로 바꿀지 여부와 시점.
+- **상태**: 미해결 — 현 상태로는 서버가 정상 응답해도 Android가 전 호출을 `ApiException.Business` 실패로 판정한다(실제 연동 전 반드시 수정 필요).
+- **해소 메모**: 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md)와 [api/conventions.md](../api/conventions.md) "Android 불일치" 표를 갱신한다.
+
+### [2026-08-02] TokenProvider 실구현 부재
+- **출처**: Android `EmptyTokenProvider`(항상 null 반환) vs 서버 `SecurityConfig` 화이트리스트(`/actuator/health`·`/swagger-ui.html`·`/swagger-ui/**`·`/favicon.ico`·`/v3/api-docs/**`·`/api/v1/auth/kakao`·`/api/v1/auth/signup`·`/api/v1/auth/reissue`, [api/conventions.md](../api/conventions.md) "인증").
+- **항목**: 실 `TokenProvider` 구현 시점·토큰 저장 방식(DataStore 등) 확정.
+- **상태**: 미해결 — 화이트리스트 밖 전 API가 401(로그인 이후 거의 모든 호출).
+- **해소 메모**: 구현 시 [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md)를 갱신하고 [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거한다.
+
+### [2026-08-02] 서버 URL 규약 3형태 혼재
+- **출처**: 서버 `KakaoLoginController`·`SignupController`·`ReissueController`·`LogoutController`(`/api/v1/auth/**`) · `ParfaitController`(`/api/v1/groups/{groupId}/parfaits/**`) · `ParfaitGroupController`(`/api/parfait-groups`, 버전 프리픽스 없음) — [api/conventions.md](../api/conventions.md) "URL 규약".
+- **항목**: 버전 프리픽스(`/api/v1/`) 유무와 그룹 경로(`groups` vs `parfait-groups`) 통일 여부 확정.
+- **상태**: 미해결 (서버팀 확인 필요 — 서버에 URL 규약 문서 없음)
+- **해소 메모**: 서버가 정리하면 [api/conventions.md](../api/conventions.md) "URL 규약" 표와 각 도메인 문서(`auth.md`·`parfait-group.md`·`parfait.md`)의 엔드포인트 표 경로를 함께 갱신한다.
+
+### [2026-08-02] 파르페 연도 조회 경로 `year`(단수) vs 응답 필드 `years`(복수) 불일치
+- **출처**: `GET /api/v1/groups/{groupId}/parfaits/year` — 경로 세그먼트는 단수 `year`인데 응답 `ParfaitYearsResponse.years`는 복수 목록이다. [api/parfait.md](../api/parfait.md) "미결" — 서버 코드만으로는 의도된 설계인지 실수인지 확인할 수 없다(근거 자료인 PR 설명·이슈 조사는 문서화 범위 밖).
+- **항목**: 서버팀에 의도 확인(경로를 `years`로 바꿀지, 필드명을 유지할지).
+- **상태**: 미해결 (서버팀 확인 필요)
+- **해소 메모**: 확인 후 [api/parfait.md](../api/parfait.md) 엔드포인트 표·경로 서술을 갱신한다.
+
+### [2026-08-02] 회원 전역 닉네임과 그룹 닉네임 유효성 규칙 동일성 미대조
+- **출처**: `ParfaitGroupService.validateJoin`의 `requireMemberNickname`이 반환한 **회원 전역 닉네임**에 `GroupNickname.of`를 그대로 적용한다(join-preview·join의 `INVALID_GROUP_NICKNAME`). [api/parfait-group.md](../api/parfait-group.md) "미결" — 전역 닉네임을 검증하는 `core/member` 값 객체는 이번 서버 계약 조사 범위(컨트롤러·DTO·`ParfaitGroupError`·`GroupName`/`GroupNickname`/`GroupMemberLimit`) 밖이라 확인하지 못했다.
+- **항목**: 전역 닉네임 규칙(길이·문자 패턴)이 `GroupNickname`(1~15자, `^[가-힣A-Za-z0-9]+(?: [가-힣A-Za-z0-9]+)*$`)과 같은지 서버 `core/member` 코드를 추가로 읽어 확정한다 — 다르면 회원이 그룹 참여를 시도할 때 본인이 입력한 값과 무관하게 `INVALID_GROUP_NICKNAME`을 받을 수 있다.
+- **상태**: 미해결 (조사 범위 확장 필요)
+- **해소 메모**: 확인 후 [api/parfait-group.md](../api/parfait-group.md) join-preview/join 절과 "정책 대조 메모"에 반영한다.
+
+### [2026-08-02] `errorDetail`이 계약에만 있고 값이 채워지지 않는 상태가 의도인지 미확정
+- **출처**: [api/conventions.md](../api/conventions.md) "응답 envelope" — `GlobalExceptionHandler`의 네 핸들러(`BusinessException`·`ParfaitGroupException`·bad-request 4종·`Exception`)가 모두 `errorDetail` 인자 없이 `ApiResponse.error(errorCode)`를 호출해 필드가 계약에는 있으나 값은 항상 `null`이다. 검증 실패(`MethodArgumentNotValidException`)도 필드별 상세 없이 `CommonErrorCode.INVALID_REQUEST` 하나로 뭉개진다.
+- **항목**: 필드별 검증 메시지(`errorDetail`)를 채울 계획이 있는지 서버팀 확인. 채워지면 Android가 폼 필드 단위 에러 표시를 구현할 근거가 생긴다 — 현재는 채워지지 않는다는 전제로만 설계할 수 있다.
+- **상태**: 미해결 (서버팀 확인 필요)
+- **해소 메모**: 확인 후 [api/conventions.md](../api/conventions.md) "응답 envelope"의 "현재 항상 null" 서술을 갱신한다.
+
+### [2026-08-02] `GET /health`가 인증 대상인 것이 의도인지 미확정
+- **출처**: [api/conventions.md](../api/conventions.md) "인증" — `HealthController`가 매핑한 `GET /health`(`http/global/health`)는 `SecurityConfig` 화이트리스트의 `/actuator/health`와 경로가 달라 **인증 대상**이다. 화이트리스트는 `/actuator/health`만 허용하고 `/health`는 포함하지 않는다.
+- **항목**: `GET /health`가 의도적으로 인증 대상인지(운영용이라 무관), 아니면 화이트리스트 누락인지 서버팀 확인.
+- **상태**: 미해결 (서버팀 확인 필요)
+- **해소 메모**: 확인 후 [api/conventions.md](../api/conventions.md) "인증"의 관측 사실 서술을 정리한다.
 
 <!--
 항목 추가 형식:
