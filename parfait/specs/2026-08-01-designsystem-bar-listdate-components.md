@@ -89,18 +89,25 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > - 칩이 흰 배경 + 회색 테두리 + 진한 글씨로 바뀌었고, 프리셋 하나를 고치자 소비처 6곳이 전부 따라왔다.
 >   `GroupListScreen`·`GroupListAddGroupScreen`의 드리프트도 함께 닫혔다.
 > - `Default`·`Empty`에 "December 31 (Wed)"가 표시되고 로고 `ic_plus` placeholder가 사라졌다.
-> - **배경 블러가 실제로 동작한다** — 바 영역만 흐리고 바로 아래 줄은 선명하며, **틴트 경계와 흐림
->   경계가 정확히 일치**한다. **스크롤 후에도 정합이 유지**돼 ADR-0018이 경고한 좌표 결함이 없다.
+> - 배경 블러가 동작한다 — 바 뒤 텍스트가 읽을 수 없게 뭉개지고 바 경계 밖은 선명하다(반경 4·40 대조).
 >
-> **블러 방식이 도중에 뒤집혔다** — 처음엔 `dev.chrisbanes.haze` 도입으로 정했다가, 작업자가
-> `androidx.compose.ui.graphics.BlurEffect`로 되지 않느냐고 물어 재검토했다. 확인 결과 (a) 안드로이드
-> 배경 블러는 `RenderEffect` 기반이라 **haze도 API 하한이 31로 동일**하고, (b) C-101 카메라 뷰파인더가
-> 이미 같은 `GraphicsLayer` 2회 그리기로 확정돼 있어 라이브러리를 넣으면 **블러 관용이 이원화**된다.
-> 자체 구현으로 뒤집고 [ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md)에 관용을 못박았다.
-> haze를 먼저 제안할 때 C-101 선례를 확인하지 않은 것이 원인이다.
+> **블러 구현이 두 번 뒤집혔고, 그 사이 오검증이 있었다.**
+> 1. 초안은 `dev.chrisbanes.haze` 도입이었다.
+> 2. 작업자가 `androidx.compose.ui.graphics.BlurEffect`로 되지 않느냐고 물어 재검토했고, `RenderEffect`
+>    기반이라 haze도 API 하한이 31로 동일하며 C-101이 이미 `GraphicsLayer` 관용으로 확정돼 있다는
+>    이유로 **자체 구현으로 전환**했다.
+> 3. 그런데 **자체 구현은 실제로 동작하지 않았다.** 40dp 극단값으로 대조하자 블러가 전혀 걸리지 않는
+>    것이 드러났고, 세 가지 형태(중간 레이어 복사 / `record`·`renderEffect` 순서 교체 / 배경이 직접
+>    record)를 모두 시도했으나 전부 실패했다. **Haze로 되돌려 즉시 동작을 확인했다** —
+>    경위와 실측은 [ADR-0018](../adr/0018-backdrop-blur-haze.md).
 >
-> **미검증**: pressed 상태. API 31 미만 기기(검증 기기가 API 36이라 폴백 경로가 실행되지 않았다).
-> 실제 화면(G-001)에서의 블러 — 배경 record 배선이 범위 밖이라 갤러리 데모로만 확인했다.
+> ⚠️ **오검증 기록** — 자체 구현 상태에서 한 번 "블러 동작·좌표 정합 확인"으로 보고했으나 **틀렸다.**
+> `White75` 틴트만으로도 바 뒤 텍스트의 대비가 낮아져 흐린 것처럼 보였고, 대조군 없이 사양값(당시 2dp)
+> 하나만 보고 판단한 것이 원인이다. **블러는 어긋나도 눈에 잘 띄지 않으므로 반드시 극단값 대조로
+> 검증한다.** 같은 이유로 Figma 저작값 4를 CSS 환산값 2로 잘못 받아쓴 것도 육안 검증을 통과했다.
+>
+> **미검증**: pressed 상태. API 31 미만 폴백(검증 기기가 API 36). 실제 화면(G-001)에서의 블러 —
+> `hazeSource` 배선이 범위 밖이라 갤러리 데모로만 확인했다.
 
 ## 목표
 
@@ -121,12 +128,12 @@ Grouptag·Topping 스펙이 "다른 브랜치 작업 중"으로 제외한 `Chip-
   - `YGTopBarContent` 확장 — `contentPadding`·`trailingContent` 파라미터 추가
   - **`Button-Chip-Left` 프리셋 교체 + 개명** — `CherrySubtle` → `GrayOutline`(흰 배경 + `Gray500` 테두리)
   - **`YGTopBarEmpty` 날짜 표시** — 로고 placeholder → `date`·`day` 파라미터
-  - **`Default`·`Empty` 반투명 배경 + 배경 블러** — `White75` + `BlurEffect`([ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md))
+  - **`Default`·`Empty` 반투명 배경 + 배경 블러** — `White75` 틴트 + Haze([ADR-0018](../adr/0018-backdrop-blur-haze.md))
   - 3종을 `:app-preview` 컴포넌트 갤러리에 등록·갱신
 - **제외**
   - **`YGTopBarDefault` 재도입** — #173에서 삭제된 변형이다. 칩 색·문구는 호출 화면이 정한다
   - `Button-Chip-Right`(`CherrySolid`) — Figma 무변경
-  - 배경 블러의 **공용 모디파이어 추출** — 소비처가 Top Bar·C-101 둘뿐이라 이르다(ADR-0018)
+  - C-101 카메라 블러의 Haze 전환 — 같은 함정에 걸릴 설계지만 그 라운드 몫이다(ADR-0018)
   - **List-Member 실물** — Canvas Top Bar가 슬롯만 열고 겹침 배치·`+N` 계산은 호출자 책임(아래 [List-Member](#list-member))
   - C-201 캘린더 패널 실물 — `YGListDate`를 격자로 배치하는 쪽
   - `YGTopBar`의 logo placeholder(`ic_plus`) 치환 — 이월 todo
@@ -286,18 +293,20 @@ Figma의 List-Member(Nametag-Chip 5개를 -12dp씩 겹치고 끝에 `+N` 카운�
 `Date` 심볼 인스턴스가 아니라 인라인 텍스트 그룹을 두었다. 이로써 `YGTopBarEmpty`에 남아 있던
 로고 `ic_plus` placeholder todo가 닫힌다.
 
-**③ 컨테이너에 반투명 배경 + 배경 블러** — `Transparency.White75` 배경 위 **배경 블러 4**.
+**③ 컨테이너에 반투명 배경 + 배경 블러** — `Transparency.White75` 틴트 위 **배경 블러 4**.
 
 > ⚠️ Figma MCP는 CSS/Tailwind로 내보내면서 블러를 절반으로 환산한다(저작값 4 → `backdrop-blur-[2px]`).
-> Compose에는 **저작값 4를 그대로** 쓴다 — 자세한 근거는 [ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md).
-`Back`·`Detail`·`Canvas`에는 없고 `Default`·`Empty`에만 붙는다.
+> Compose에는 **저작값 4를 그대로** 쓴다.
 
-구현 관용은 [ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md)을 따른다 — 호출 화면이 배경을
-`rememberGraphicsLayer()`에 record해 넘기고, Top Bar가 별도 레이어에 복사·`BlurEffect`를 걸어 자기
-영역으로 clip해 그린다. 레이어 파라미터는 nullable이고 `null`이면 틴트만 그린다.
+구현은 **Haze**(`dev.chrisbanes.haze` 1.7.2)로 한다 — 배경이 `Modifier.hazeSource(state)`,
+Top Bar가 `Modifier.hazeEffect(state)`. `HazeState`는 호출 화면이 소유하고 Top Bar는 nullable
+파라미터로 받는다(`null`이면 틴트만). 반경은 `YGTopBarDefaults.BackdropBlurRadius`로 노출한다.
+
+자체 `GraphicsLayer` + `BlurEffect` 구현은 **실기기에서 세 형태 모두 블러가 걸리지 않아 기각**했다.
+경위·실측·기전은 [ADR-0018](../adr/0018-backdrop-blur-haze.md).
 
 > ⚠️ **API 31 미만에서는 블러가 없다.** `RenderEffect`가 API 31+이고 `minSdk`는 26이다. 26~30에서는
-> `White75` 틴트만 남는다. 틴트를 블러와 **독립적으로 항상** 그려 가독성을 보장한다.
+> `White75` 틴트만 남는다. 틴트는 `hazeEffect`의 `tints`로 넣어 블러 유무와 무관하게 항상 그려진다.
 
 ### 무변경 3변형
 

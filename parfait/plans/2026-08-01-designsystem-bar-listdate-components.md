@@ -68,7 +68,15 @@ tags: [plan, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > `:app-preview:installDebug` 후 실기기(SM-A356N)에서 3개 화면 스크린샷 대조. Task 1 구현자 리포트의
 > gradle 출력이 재포맷돼 신뢰할 수 없던 이월 건도 이로써 닫혔다.
 >
+> **블러가 한 번 더 뒤집혔다(Task 6 이후)** — 자체 `GraphicsLayer` 구현을 "동작 확인"으로 보고했으나
+> **오검증이었다.** 40dp 극단값으로 대조하자 블러가 전혀 걸리지 않는 것이 드러났고(틴트만으로도 대비가
+> 낮아져 흐린 것처럼 보였다), 세 형태를 모두 시도한 뒤 **Haze로 되돌려 즉시 동작을 확인**했다.
+> 아래 Task 6 본문의 `GraphicsLayer` 코드는 **폐기된 형태**다 — 실제 구현은 `hazeSource`/`hazeEffect`이고
+> 경위는 [ADR-0018](../adr/0018-backdrop-blur-haze.md).
+> 교훈: **블러는 어긋나도 눈에 잘 띄지 않는다. 반드시 극단값 대조로 검증한다.**
+>
 > **미검증**: pressed 상태, 긴 제목 케이스의 실기기 렌더(갤러리에 긴 제목 섹션 없음 — 후속 과제).
+> API 31 미만 폴백(검증 기기가 API 36).
 
 **Goal:** Figma `List-Date`·`Floating Bar`를 `:core:designsystem`에 신설하고, `Top Bar`에 `Canvas`
 변형을 더한 뒤 `:app-preview` 갤러리에서 실기기로 검증한다.
@@ -1084,7 +1092,7 @@ TJYG-Android 작업 트리 변경 목록(`git status --short`)과 미커밋 사�
 > 있다. **Task 3 Step 3에서 한 "프리뷰 칩을 `CherrySubtle`로 정정"은 이 재조회로 무효**가 됐다 —
 > Task 5가 그 자리를 덮어쓴다.
 >
-> 배경 블러 관용은 [ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md)이 정한다.
+> 배경 블러 관용은 [ADR-0018](../adr/0018-backdrop-blur-haze.md)이 정한다.
 
 > **2차 라운드 실행 결과(2026-08-01)** — Task 5~7 전량 완료. Task 5·6 모두 **리뷰 1회에 클린 통과**해
 > fix round가 없었다. TJYG-Android는 여전히 미커밋, 브랜치 `feature/sync-component`.
@@ -1389,7 +1397,7 @@ Expected: BUILD SUCCESSFUL. 실패하면 `./gradlew ktlintFormat` 후 재실행.
 **Files:**
 - Modify: `parfait/specs/2026-08-01-designsystem-bar-listdate-components.md` (이 repo)
 - Modify: `parfait/plans/2026-08-01-designsystem-bar-listdate-components.md` (이 repo)
-- Modify: `parfait/adr/0018-backdrop-blur-graphicslayer.md` (이 repo)
+- Modify: `parfait/adr/0018-backdrop-blur-haze.md` (이 repo)
 - Modify: `parfait/specs/README.md`·`parfait/plans/README.md`·`parfait/adr/README.md` (이 repo)
 
 - [ ] **Step 1: 갤러리 설치**
