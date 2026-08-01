@@ -6,9 +6,9 @@
 
 ## 현재 기준선
 - **repo**: `TEAMYG-SERVER` (`mash-up-kr/TEAMYG-SERVER`) **`main`**
-- **커밋**: `6b05b8c`
-- **요약**: `[Feat/#61] 그룹별 캘린더 연도 리스트 조회 API 구현 (#62)`
-- **검증일**: 2026-08-01 (1회차 — 체계 신설)
+- **커밋**: `6f5bffc`
+- **요약**: `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`
+- **검증일**: 2026-08-02 (2회차)
 
 ### 왜 `main`인가
 서버 저장소의 기본 브랜치가 `main`이고(`origin/HEAD -> origin/main`) 기능 PR이 main으로 머지된다.
@@ -34,4 +34,5 @@ signup·파르페 연도 조회 두 API를 갖고 있지 않았다. 앱이 바�
 ## 기준선 이력
 | 검증일 | main 커밋 | 요약 | 비고 |
 |--------|-----------|------|------|
-| 2026-08-01 | `6b05b8c` | `[Feat/#61] 그룹별 캘린더 연도 리스트 조회 API (#62)` | 체계 신설. 도메인 3건(auth 2·parfait-group 8·parfait 1) 전량 초기 작성. Android 대응 심볼 0건 → 전 엔드포인트 `미구현`. 불일치 3건·URL 규약 혼재 open-questions 등록 |
+| 2026-08-01 | `6b05b8c` | `[Feat/#61] 그룹별 캘린더 연도 리스트 조회 API (#62)` | 체계 신설. 도메인 3건(auth 2·parfait-group 8·parfait 1) 전량 초기 작성. Android 대응 심볼 0건 → 전 엔드포인트 `미구현`. 불일치 3건·URL 규약 혼재 open-questions 등록. 체계 신설 도중 서버가 전진해 같은 라운드에서 `6f5bffc`로 올림 |
+| 2026-08-02 | `6f5bffc` | `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)` | 패키지 전면 재편(`http/api/auth`→`http/auth`, `http/api/parfait`→`http/parfait`, `http/api/health`→`http/global/health`, `http/parfaitgroup/*.kt`→`{controller,dto,exception}/`) · auth 신규 엔드포인트 2(`reissue`·`logout`) · `AuthErrorCode` 12종(`FORBIDDEN_REFRESH_TOKEN` 신설) · 화이트리스트 `/api/v1/auth/**`→개별 3경로(`kakao`·`signup`·`reissue`) 축소, `logout` 제외 · 그룹(`parfait-group`) 계약 불변 |
