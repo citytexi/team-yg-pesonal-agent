@@ -254,6 +254,15 @@ private fun YGFloatingBarContent(
 
 부품 2종(`YGCircleButton`·`YGEditTabButton`)은 **수정하지 않는다.**
 
+### 반복 버튼 추출
+
+닫기(`ic_close` + `"닫기"`)는 네 변형 중 넷, 확인(`ic_check` + `"확인"`)은 둘에서 같은 인자로 반복된다.
+파일 안 private 컴포저블 `YGFloatingBarCloseButton(onClick)`·`YGFloatingBarConfirmButton(onClick)`으로
+묶어 호출 지점을 하나로 만든다 — 아이콘·contentDescription·버튼 타입이 바뀔 때 고칠 자리가 한 곳이다.
+
+- `YGFloatingBarBackClose`의 뒤로가기 버튼은 **묶지 않는다.** 한 번만 쓰이므로 감싸면 읽기만 나빠진다.
+- 두 private 함수에 `modifier` 파라미터를 두지 않는다. 호출부 여섯 곳이 전부 넘기지 않는다.
+
 ## 검증
 
 선행 디자인시스템 라운드(버튼·캔버스·Grouptag/Topping)와 동일하게 **테스트 없이 프리뷰 + 실기기 갤러리

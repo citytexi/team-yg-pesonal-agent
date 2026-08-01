@@ -431,12 +431,7 @@ fun YGFloatingBarBackClose(
             contentDescription = "뒤로가기",
             onClick = onBackClick,
         )
-        YGCircleButton(
-            iconResource = R.drawable.ic_close,
-            type = YGCircleButtonType.Default,
-            contentDescription = "닫기",
-            onClick = onCloseClick,
-        )
+        YGFloatingBarCloseButton(onClick = onCloseClick)
     }
 }
 
@@ -452,12 +447,7 @@ fun YGFloatingBarClose(
         modifier = modifier,
         horizontalArrangement = Arrangement.End,
     ) {
-        YGCircleButton(
-            iconResource = R.drawable.ic_close,
-            type = YGCircleButtonType.Default,
-            contentDescription = "닫기",
-            onClick = onCloseClick,
-        )
+        YGFloatingBarCloseButton(onClick = onCloseClick)
     }
 }
 
@@ -472,23 +462,17 @@ fun YGFloatingBarEdit(
     modifier: Modifier = Modifier,
 ) {
     YGFloatingBarContent(modifier = modifier) {
-        YGCircleButton(
-            iconResource = R.drawable.ic_close,
-            type = YGCircleButtonType.Default,
-            contentDescription = "닫기",
-            onClick = onCloseClick,
-        )
+        YGFloatingBarCloseButton(onClick = onCloseClick)
         Text(
             text = title,
             style = YGTheme.typography.body.b01R,
             color = YGAtomicColors.Gray.Gray800,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
-        YGCircleButton(
-            iconResource = R.drawable.ic_check,
-            type = YGCircleButtonType.Default,
-            contentDescription = "확인",
-            onClick = onConfirmClick,
-        )
+        YGFloatingBarConfirmButton(onClick = onConfirmClick)
     }
 }
 
@@ -505,12 +489,7 @@ fun YGFloatingBarEditTab(
     modifier: Modifier = Modifier,
 ) {
     YGFloatingBarContent(modifier = modifier) {
-        YGCircleButton(
-            iconResource = R.drawable.ic_close,
-            type = YGCircleButtonType.Default,
-            contentDescription = "닫기",
-            onClick = onCloseClick,
-        )
+        YGFloatingBarCloseButton(onClick = onCloseClick)
         Row(verticalAlignment = Alignment.CenterVertically) {
             tabs.forEachIndexed { index, label ->
                 YGEditTabButton(
@@ -520,13 +499,28 @@ fun YGFloatingBarEditTab(
                 )
             }
         }
-        YGCircleButton(
-            iconResource = R.drawable.ic_check,
-            type = YGCircleButtonType.Default,
-            contentDescription = "확인",
-            onClick = onConfirmClick,
-        )
+        YGFloatingBarConfirmButton(onClick = onConfirmClick)
     }
+}
+
+@Composable
+private fun YGFloatingBarCloseButton(onClick: () -> Unit) {
+    YGCircleButton(
+        iconResource = R.drawable.ic_close,
+        type = YGCircleButtonType.Default,
+        contentDescription = "닫기",
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun YGFloatingBarConfirmButton(onClick: () -> Unit) {
+    YGCircleButton(
+        iconResource = R.drawable.ic_check,
+        type = YGCircleButtonType.Default,
+        contentDescription = "확인",
+        onClick = onClick,
+    )
 }
 
 @Composable
