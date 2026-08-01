@@ -1,10 +1,10 @@
 ---
 id: designsystem-button-component-sync
 title: 디자인시스템 버튼 영역 컴포넌트 Figma 동기화 구현 계획
-status: in-progress
+status: done
 type: work-order
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 platforms: android
 owner: TJYG-Android 디자인시스템
 related_adr:
@@ -20,7 +20,7 @@ related_code:
   - YGChipButton.kt#YGChipButton
   - YGChipButtonColorsDefaults.kt#YGChipButtonColorsDefaults
   - YGInputNumber.kt#YGInputNumber
-archived_reason:
+archived_reason: PR #183 develop 머지 완료(2026-08-01) — 드리프트 9건 전량 반영 확인, 스펙 implemented 전환
 tags: [plan, parfait, designsystem, figma-sync]
 ---
 
@@ -102,7 +102,7 @@ Task 1~6 전량 수행. Task 7은 검증까지 수행하고 문서 처리 일부
 - Produces: `YGButtonColors`에 `enabledBorderColor`/`disabledBorderColor`/`pressedBorderColor: Color`(기본 `Color.Transparent`) + `fun borderColor(isEnabled: Boolean, isPressed: Boolean): Color`. Task 2가 `Medium.Secondary`에서 이 세 인자를 채운다.
 - Consumes: 없음.
 
-- [ ] **Step 1: `YGButtonColors`에 테두리 3필드 + `borderColor()` 추가**
+- [x] **Step 1: `YGButtonColors`에 테두리 3필드 + `borderColor()` 추가**
 
 `YGButtonColors.kt` 전문을 아래로 바꾼다. 기존 6필드 순서·`foregroundColor`/`backgroundColor` 분기는 그대로 두고 뒤에 덧붙인다.
 
@@ -153,7 +153,7 @@ data class YGButtonColors(
 }
 ```
 
-- [ ] **Step 2: `YGButton`에 `border` 체이닝**
+- [x] **Step 2: `YGButton`에 `border` 체이닝**
 
 `YGButton.kt`의 `Row` modifier 체인에서 `.clip(shape = buttonType.radius)` **바로 뒤**, `.clickable(` **앞**에 아래를 끼운다.
 
@@ -170,7 +170,7 @@ data class YGButtonColors(
 
 `import androidx.compose.foundation.border`를 추가한다(`androidx.compose.ui.unit.dp`는 이미 있다).
 
-- [ ] **Step 3: 두 아이콘 슬롯에 `size` 적용**
+- [x] **Step 3: 두 아이콘 슬롯에 `size` 적용**
 
 `YGButton.kt`의 `startIconResource?.let { … }` 안 `Image`에 `modifier`를 추가한다.
 
@@ -190,17 +190,17 @@ data class YGButtonColors(
 
 `endIconResource?.let { … }` 안 `Image`에도 같은 `modifier` 줄을 추가한다. `import androidx.compose.foundation.layout.size`를 추가한다.
 
-- [ ] **Step 4: 컴파일 확인**
+- [x] **Step 4: 컴파일 확인**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin`
 Expected: BUILD SUCCESSFUL. 기존 `YGButtonType` 변형 4개는 `YGButtonColors(...)`를 명명 인자로 호출하고 신규 3필드에 기본값이 있어 수정 없이 통과해야 한다. 실패하면 기본값 누락을 먼저 확인한다.
 
-- [ ] **Step 5: ktlint 확인**
+- [x] **Step 5: ktlint 확인**
 
 Run: `./gradlew :core:designsystem:ktlintMainSourceSetCheck`
 Expected: BUILD SUCCESSFUL. 실패하면 `./gradlew :core:designsystem:ktlintMainSourceSetFormat` 후 재확인한다.
 
-- [ ] **Step 6: 프리뷰로 무변화 확인**
+- [x] **Step 6: 프리뷰로 무변화 확인**
 
 IDE에서 `YGButton.kt`의 `YGButtonPreview`를 렌더한다.
 Expected: 이 Task 전과 **똑같이** 보인다(테두리 안 보임, 아이콘 크기 그대로). 달라 보이면 Step 2의 `border` 위치나 Step 3의 `iconSize` 참조를 확인한다.
@@ -220,7 +220,7 @@ B1 값 + B2 값 + R1 + V4를 한 파일에서 처리한다.
 - Consumes: Task 1이 만든 `YGButtonColors`의 `enabledBorderColor`/`disabledBorderColor`/`pressedBorderColor` + `YGButton`의 `border`·`size` 배선.
 - Produces: 없음(내부 값 변경).
 
-- [ ] **Step 1: `Medium.Primary`·`Medium.Secondary`·`Medium.Transparency`·`Large`의 `radius`를 각짐으로**
+- [x] **Step 1: `Medium.Primary`·`Medium.Secondary`·`Medium.Transparency`·`Large`의 `radius`를 각짐으로**
 
 네 변형의 `radius` getter를 바꾼다. `SmallSquare`는 이미 `none`이므로 건드리지 않는다.
 
@@ -230,7 +230,7 @@ B1 값 + B2 값 + R1 + V4를 한 파일에서 처리한다.
             get() = YGTheme.shapes.radius.none
 ```
 
-- [ ] **Step 2: 같은 네 변형의 `iconSize`를 `Size20`으로**
+- [x] **Step 2: 같은 네 변형의 `iconSize`를 `Size20`으로**
 
 ```kotlin
         override val iconSize: Dp
@@ -239,7 +239,7 @@ B1 값 + B2 값 + R1 + V4를 한 파일에서 처리한다.
 
 `SmallSquare`의 `iconSize`는 `SizeTokens.Size24` 그대로 둔다(Figma `Button-SmallSquare` 아이콘과 일치).
 
-- [ ] **Step 3: `Medium.Secondary`에 테두리 색 3개 지정**
+- [x] **Step 3: `Medium.Secondary`에 테두리 색 3개 지정**
 
 `Medium.Secondary`의 `colors` getter를 아래로 바꾼다.
 
@@ -261,7 +261,7 @@ B1 값 + B2 값 + R1 + V4를 한 파일에서 처리한다.
 
 다른 세 변형의 `colors`에는 테두리 인자를 추가하지 않는다(기본값 투명).
 
-- [ ] **Step 4: `Medium.Transparency` 배경을 `Transparency.White50` 토큰으로**
+- [x] **Step 4: `Medium.Transparency` 배경을 `Transparency.White50` 토큰으로**
 
 `Medium.Transparency`의 `colors` getter에서 배경 3개를 바꾼다. pressed만 현행 리터럴 유지(Figma가 변수 미바인딩 — open-questions 등록됨).
 
@@ -271,12 +271,12 @@ B1 값 + B2 값 + R1 + V4를 한 파일에서 처리한다.
                     pressedBackgroundColor = YGAtomicColors.Gray.White.copy(alpha = 0.9f),
 ```
 
-- [ ] **Step 5: 컴파일 + ktlint**
+- [x] **Step 5: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck`
 Expected: 둘 다 BUILD SUCCESSFUL.
 
-- [ ] **Step 6: 프리뷰 육안 확인**
+- [x] **Step 6: 프리뷰 육안 확인**
 
 IDE에서 `YGButtonPreview`를 4변형 모두 렌더한다.
 Expected:
@@ -284,7 +284,7 @@ Expected:
 - `Medium.Secondary`에 회색 테두리가 보이고, disabled에서 테두리가 더 밝다
 - 아이콘 있는 프리뷰(`Button Start`·`Button End`)의 아이콘이 이전보다 작다
 
-- [ ] **Step 7: 각짐 전파 지점 확인**
+- [x] **Step 7: 각짐 전파 지점 확인**
 
 IDE에서 `YGModalPopup.kt`의 프리뷰를 렌더한다.
 Expected: 하단 두 버튼(`Medium.Secondary` 좌 / `Medium.Primary` 우)이 직각이고 좌측에만 테두리가 있다.
@@ -301,7 +301,7 @@ Expected: 하단 두 버튼(`Medium.Secondary` 좌 / `Medium.Primary` 우)이 �
 **Interfaces:**
 - Consumes: 없음. Produces: 없음.
 
-- [ ] **Step 1: `shape` 3곳을 `radius.none`으로**
+- [x] **Step 1: `shape` 3곳을 `radius.none`으로**
 
 `background`·`clip`·`border`가 각각 `YGTheme.shapes.radius.xSmall`을 참조한다. 세 곳 모두 바꾼다 — 한 곳만 바꾸면 채움과 테두리 모양이 어긋난다.
 
@@ -322,17 +322,17 @@ Expected: 하단 두 버튼(`Medium.Secondary` 좌 / `Medium.Primary` 우)이 �
             ).semantics { role = Role.Button },
 ```
 
-- [ ] **Step 2: `xSmall` 잔존 참조 없는지 확인**
+- [x] **Step 2: `xSmall` 잔존 참조 없는지 확인**
 
 Run: `grep -n "xSmall" core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/yginputnumber/YGInputNumber.kt`
 Expected: 출력 없음.
 
-- [ ] **Step 3: 컴파일 + ktlint**
+- [x] **Step 3: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck`
 Expected: 둘 다 BUILD SUCCESSFUL.
 
-- [ ] **Step 4: 프리뷰 확인**
+- [x] **Step 4: 프리뷰 확인**
 
 IDE에서 `YGInputNumberPreview`를 렌더한다.
 Expected: selected/default 둘 다 모서리가 직각.
@@ -349,7 +349,7 @@ Expected: selected/default 둘 다 모서리가 직각.
 **Interfaces:**
 - Consumes: 없음. Produces: 없음(enum 값만 변경).
 
-- [ ] **Step 1: `SIZE_48`의 `iconSize` 교정**
+- [x] **Step 1: `SIZE_48`의 `iconSize` 교정**
 
 ```kotlin
 @Immutable
@@ -361,12 +361,12 @@ enum class YGIconButtonSize(val containerSize: Dp, val iconSize: Dp) {
 
 `SIZE_44`는 Figma `Button-Icon` `Size=44`와 일치하므로 그대로 둔다.
 
-- [ ] **Step 2: 컴파일 + ktlint**
+- [x] **Step 2: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck`
 Expected: 둘 다 BUILD SUCCESSFUL.
 
-- [ ] **Step 3: 파급 지점 프리뷰 확인**
+- [x] **Step 3: 파급 지점 프리뷰 확인**
 
 `SIZE_48`을 쓰는 곳이 있는지 먼저 확인한다.
 
@@ -395,7 +395,7 @@ V2·V3을 처리하고, 이름 변경에 딸린 호출처 4파일을 같은 Task
 - Produces: `YGChipButtonColorsDefaults.CherrySubtle`(Figma `Button-Chip-Left`)·`CherrySolid`(Figma `Button-Chip-Right`). 구 `CherryBorderPressed`·`CherryBackgroundPressed`는 사라진다.
 - Consumes: 없음.
 
-- [ ] **Step 1: 세로 패딩을 `padding2`로**
+- [x] **Step 1: 세로 패딩을 `padding2`로**
 
 `YGChipButton.kt`의 `padding(` 블록에서 `top`·`bottom`만 바꾼다. 가로 비대칭 로직은 Figma와 일치하므로 그대로 둔다.
 
@@ -414,7 +414,7 @@ V2·V3을 처리하고, 이름 변경에 딸린 호출처 4파일을 같은 Task
             ),
 ```
 
-- [ ] **Step 2: 프리셋 값 교정 + 재명명 + KDoc**
+- [x] **Step 2: 프리셋 값 교정 + 재명명 + KDoc**
 
 `YGChipButtonColorsDefaults.kt` 전문을 아래로 바꾼다.
 
@@ -448,7 +448,7 @@ object YGChipButtonColorsDefaults {
 
 `CherrySubtle`에서 바뀐 것은 `pressedBackgroundColor`(`Cherry50` → `Cherry100`)와 `pressedBorderColor`(`Cherry100` → `Transparent`) 두 개다. `CherrySolid`는 이름만 바뀌고 값은 구 `CherryBackgroundPressed`와 같다.
 
-- [ ] **Step 3: 호출처 이름 일괄 교체**
+- [x] **Step 3: 호출처 이름 일괄 교체**
 
 Run:
 ```bash
@@ -459,7 +459,7 @@ Expected: `YGChipButtonPreviewData.kt`, `YGAlert.kt`, `YGTopBar.kt`, `YGChipButt
 각 파일에서 `CherryBorderPressed` → `CherrySubtle`, `CherryBackgroundPressed` → `CherrySolid`로 바꾼다.
 `YGChipButtonPreviewScreen.kt`는 `PreviewSection("CherryBorderPressed")`·`PreviewSection("CherryBackgroundPressed")` **라벨 문자열도** 새 이름으로 바꾼다.
 
-- [ ] **Step 4: 구 이름 잔존 확인**
+- [x] **Step 4: 구 이름 잔존 확인**
 
 Run:
 ```bash
@@ -467,12 +467,12 @@ grep -rn "CherryBorderPressed\|CherryBackgroundPressed" --include="*.kt" core fe
 ```
 Expected: 출력 없음.
 
-- [ ] **Step 5: 컴파일 + ktlint**
+- [x] **Step 5: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :app-preview:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck :app-preview:ktlintMainSourceSetCheck`
 Expected: 전부 BUILD SUCCESSFUL.
 
-- [ ] **Step 6: 프리뷰 확인**
+- [x] **Step 6: 프리뷰 확인**
 
 IDE에서 `YGChipButton.kt`의 `YGChipButtonPreview`, `YGAlert.kt`의 프리뷰, `YGTopBar.kt`의 프리뷰를 렌더한다.
 Expected: 칩 높이가 낮아졌고, `YGAlert`·`YGTopBar` 안 칩도 함께 낮아졌다. 배너·상단 바 레이아웃이 깨지지 않았다.
@@ -491,7 +491,7 @@ Expected: 칩 높이가 낮아졌고, `YGAlert`·`YGTopBar` 안 칩도 함께 �
 - Produces: `YGActionItem(text, onClick, modifier, iconResource: Int? = null, interactionSource)` — `iconResource`는 `@DrawableRes`, 기본값 `null`.
 - Consumes: 없음.
 
-- [ ] **Step 1: `YGActionItem`을 `Row`로 바꾸고 아이콘 슬롯 추가**
+- [x] **Step 1: `YGActionItem`을 `Row`로 바꾸고 아이콘 슬롯 추가**
 
 컴포저블 본체를 아래로 바꾼다. 패딩·타이포·색은 Figma와 이미 일치하므로 값을 유지한다.
 
@@ -538,7 +538,7 @@ fun YGActionItem(
 import를 추가한다: `androidx.annotation.DrawableRes`, `androidx.compose.foundation.Image`, `androidx.compose.foundation.layout.Arrangement`, `androidx.compose.foundation.layout.Row`, `androidx.compose.foundation.layout.size`, `androidx.compose.ui.Alignment`, `androidx.compose.ui.graphics.ColorFilter`, `androidx.compose.ui.res.painterResource`, `com.teamyg.parfait.core.designsystem.theme.size.SizeTokens`.
 `androidx.compose.foundation.layout.Box`는 프리뷰가 계속 쓰므로 남긴다.
 
-- [ ] **Step 2: 프리뷰에 아이콘 변형 추가**
+- [x] **Step 2: 프리뷰에 아이콘 변형 추가**
 
 같은 파일의 `YGActionItemPreview`를 아이콘 유/무 2개가 보이게 바꾼다.
 
@@ -571,7 +571,7 @@ import를 추가한다: `androidx.compose.foundation.layout.Column`, `com.teamyg
 
 > `ic_plus`는 `core:designsystem`의 `res/drawable`에 있는 것이 확인된 리소스다(`YGTopBar`가 placeholder로 쓴다). 아이콘 글리프가 Figma `Action-Item`의 `Ic_Newgroup`과 다르지만, 이 Task는 슬롯 배선 확인이 목적이고 실제 아이콘은 사용처가 주입한다.
 
-- [ ] **Step 3: 갤러리 화면에 아이콘 섹션 추가**
+- [x] **Step 3: 갤러리 화면에 아이콘 섹션 추가**
 
 `YGActionItemPreviewScreen.kt`의 `LazyColumn` 안, 기존 `item { PreviewSection("another action") { … } }` **뒤**에 아래 블록을 추가한다.
 
@@ -589,17 +589,17 @@ import를 추가한다: `androidx.compose.foundation.layout.Column`, `com.teamyg
 
 `import com.teamyg.parfait.core.designsystem.R`를 추가한다. 기존 두 섹션(`"action item"`·`"another action"`)은 그대로 둔다 — 아이콘 없는 렌더가 회귀하지 않았는지 나란히 보는 용도다.
 
-- [ ] **Step 4: 컴파일 + ktlint**
+- [x] **Step 4: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :app-preview:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck :app-preview:ktlintMainSourceSetCheck`
 Expected: 전부 BUILD SUCCESSFUL.
 
-- [ ] **Step 5: 기존 호출처 무영향 확인**
+- [x] **Step 5: 기존 호출처 무영향 확인**
 
 Run: `grep -rn "YGActionItem(" --include="*.kt" core feature app-preview | grep -v build`
 Expected: `YGDangerZone` 등 기존 호출이 `iconResource` 없이 그대로 있고, Step 4가 통과했으므로 기본값으로 컴파일된다.
 
-- [ ] **Step 6: 프리뷰 확인**
+- [x] **Step 6: 프리뷰 확인**
 
 IDE에서 `YGActionItemPreview`와 `YGDangerZone.kt` 프리뷰를 렌더한다.
 Expected: 아이콘 없는 항목은 이전과 동일(텍스트 위치 변화 없음), 아이콘 있는 항목은 텍스트 앞에 아이콘 + 좁은 간격. `YGDangerZone` 안 항목은 변화 없다.
@@ -620,22 +620,22 @@ Expected: 아이콘 없는 항목은 이전과 동일(텍스트 위치 변화 �
 - Consumes: Task 1~6 전체.
 - Produces: 없음.
 
-- [ ] **Step 1: 전체 빌드**
+- [x] **Step 1: 전체 빌드**
 
 Run: `./gradlew :core:designsystem:assembleDebug :app-preview:assembleDebug`
 Expected: 둘 다 BUILD SUCCESSFUL.
 
-- [ ] **Step 2: 전체 ktlint**
+- [x] **Step 2: 전체 ktlint**
 
 Run: `./gradlew ktlintCheck`
 Expected: BUILD SUCCESSFUL. CI(`.github/workflows/ktlint.yml`)와 같은 게이트다.
 
-- [ ] **Step 3: 각짐 전파 화면 프리뷰 확인**
+- [x] **Step 3: 각짐 전파 화면 프리뷰 확인**
 
 IDE에서 아래 프리뷰를 렌더한다: `TermAgreeScreen`·`GroupCreateScreen`·`GroupInviteCodeScreen`·`GroupNickNameScreen`(모두 `YGButtonType.Large`), `YGModalPopup`(`Medium` 2종).
 Expected: 하단 버튼이 pill → 직각으로 바뀌었고 레이아웃이 깨지지 않았다.
 
-- [ ] **Step 4: 갤러리 실행 육안 대조**
+- [x] **Step 4: 갤러리 실행 육안 대조**
 
 `:app-preview`를 기기/에뮬레이터에 올리고 `YGButton`·`YGIconButton`·`YGChipButton`·`YGActionItem`·`YGInputNumber` 화면을 Figma와 나란히 본다. **pressed 상태는 여기서만 확인 가능**하다 — 각 버튼을 눌러 배경·전경·테두리 변화를 확인한다.
 Expected 체크리스트:
@@ -646,7 +646,7 @@ Expected 체크리스트:
 - `YGActionItem`: 눌렀을 때 텍스트와 아이콘이 함께 진해진다
 - `YGIconButton` `SIZE_48`: 아이콘이 컨테이너에 알맞게 크다
 
-- [ ] **Step 5: `architecture/design-system.md` as-built 갱신**
+- [x] **Step 5: `architecture/design-system.md` as-built 갱신**
 
 parfait 저장소에서 아래를 반영한다.
 - 컴포넌트 작성 규약의 `YGButtonType` 설명에서 "`#140`에서 `borderColor` 제거" 뒤에 테두리 3상태 복원(이번 라운드)을 덧붙인다
@@ -656,21 +656,21 @@ parfait 저장소에서 아래를 반영한다.
 
 수치·hex는 적지 않는다(parfait 규칙).
 
-- [ ] **Step 6: 스펙 status 갱신 + 아카이브 이동**
+- [x] **Step 6: 스펙 status 갱신 + 아카이브 이동**
 
 - `parfait/specs/2026-07-30-designsystem-button-component-sync.md`의 `status`를 `implemented`, `verified`를 검증 수행일로 바꾸고 상단에 구현 완료 노트를 단다(코드=설계 일치 여부, 계획과 달라진 점).
 - 파일을 `parfait/specs/archive/`로 옮긴다.
 - `parfait/specs/README.md`에서 해당 행을 활성 표에서 아카이브 표로 옮기고 링크 경로를 `archive/`로 고친다.
 
-- [ ] **Step 7: open-questions 칩 패딩 항목 해소 처리**
+- [x] **Step 7: open-questions 칩 패딩 항목 해소 처리**
 
 `parfait/synthesis/open-questions.md`의 `[2026-07-27] YGChipButton 세로 패딩 Figma 불일치` 항목 `상태`를 `해소됨`으로 바꾸고, 해소 메모에 이 라운드에서 `padding2`로 내렸고 `YGAlert`·`YGTopBar` 높이 변화를 갤러리에서 확인했다는 사실을 적는다.
 
-- [ ] **Step 8: 계획 문서 아카이브**
+- [x] **Step 8: 계획 문서 아카이브**
 
 이 계획 파일의 `status`를 `done`, `archived_reason`을 채우고 `parfait/plans/archive/`로 옮긴 뒤 `parfait/plans/README.md`의 활성 행을 아카이브 표로 옮긴다.
 
-- [ ] **Step 9: parfait 저장소 커밋 확인 요청**
+- [x] **Step 9: parfait 저장소 커밋 확인 요청**
 
 TJYG-Android는 커밋하지 않는다(Global Constraints). parfait 문서 변경은 커밋 대상이지만 **사용자 확인 후**에만 커밋한다(저장소 규약). 무엇을 커밋할지 목록으로 보고하고 승인을 받는다.
 

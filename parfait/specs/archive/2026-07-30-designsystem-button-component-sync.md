@@ -1,10 +1,10 @@
 ---
 id: designsystem-button-component-sync
 title: 디자인시스템 버튼 영역 컴포넌트 Figma 동기화 (Design System Button Components Figma Sync)
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-30
+verified: 2026-08-01
 related_code:
   - YGButton.kt#YGButton
   - YGButtonType.kt#YGButtonType
@@ -38,10 +38,18 @@ tags: [spec, parfait, designsystem, figma-sync]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 >
-> **구현 상태(2026-07-30)** — 드리프트 B1·B2·R1·R2·V1~V5 **전량 코드 반영 완료**.
-> `feature/sync-button-component` 브랜치에 커밋(`aee2378a`)됐고 **develop 미머지**다.
-> develop에 없으므로 [design-system](../architecture/design-system.md) as-built 갱신과
-> 이 스펙의 `implemented`·아카이브 전환은 **머지 후로 보류**한다.
+> **구현 상태 — ✅ develop 머지 완료(PR #183, 2026-08-01)**. 드리프트 B1·B2·R1·R2·V1~V5
+> **전량 코드 반영**. 2026-08-01 기준선 점검에서 머지 코드와 설계를 대조해 **드리프트 0건**
+> 확인(`YGButtonColors` 테두리 3필드 + `borderColor()`, `YGButton`의 `border` 체이닝·아이콘
+> `size`, `Medium.*`·`Large` `iconSize`·`radius.none`, `SIZE_48` 아이콘 32, `YGChipButton`
+> 세로 `padding2`, 프리셋 `CherrySubtle`/`CherrySolid`, `Transparency.White50`,
+> `YGActionItem`의 `iconResource` + `Row` 전환, `YGInputNumber` `radius.none` 3곳).
+> `Medium.Transparency` pressed만 설계대로 `Gray.White.copy(alpha = …)` 유지.
+>
+> **스펙 범위 밖 동반 변경(같은 PR)** — 아이콘 드로어블 현행화·누락분 반입이 함께 들어왔다
+> (`ic_calender`·`ic_rotate`·`ic_caret_top`/`_bottom`·`ic_add_round`·`ic_minus_round`·
+> `ic_info_round`·`ic_enter`·`ic_newgroup` 신규 + `ic_arrow_left`/`ic_arrow_right` 교체).
+> 이 스펙도 후속 스펙도 다루지 않은 항목이지만 신설 컴포넌트·캔버스 라운드가 이 에셋들을 쓴다.
 >
 > 검증 결과(`:core:designsystem`·`:app-preview` `assembleDebug` + repo 전체 `ktlintCheck` 통과,
 > 실기기 갤러리 육안 대조):
@@ -88,7 +96,7 @@ Figma `[디자인] 파르페 v0.1` 파일의 **Components 섹션 > Detail Type "
 
 대조 기준 Figma 노드: `Button-Medium`·`Button-Large`·`Button-SmallSquare`·`Button-Icon`·`Action-Item`·
 `Button-Chip-Left`·`Button-Chip-Right`·`Button-Input-Number`·`Button-Date`.
-`-수정 전` 접미 노드는 구판이므로 대조 대상에서 제외한다([designsystem-text-component-sync](archive/2026-07-27-designsystem-text-component-sync.md)와 동일 규칙).
+`-수정 전` 접미 노드는 구판이므로 대조 대상에서 제외한다([designsystem-text-component-sync](2026-07-27-designsystem-text-component-sync.md)와 동일 규칙).
 
 ### 일치 확인 (변경 없음)
 
@@ -112,7 +120,7 @@ Figma `[디자인] 파르페 v0.1` 파일의 **Components 섹션 > Detail Type "
 | R1 | `Button-Medium`·`Button-Large` 모양 | 각짐(코너 반경 없음) | `radius.round`(pill) | `radius.none` |
 | R2 | `Button-Input-Number` 모양 | 각짐 | `radius.xSmall` | `radius.none` |
 | V1 | `Button-Icon` `Size=48` 아이콘 | 아이콘 프레임 32 | `iconSize = 28.dp` | `32.dp`로 교정(`Size=44`의 24는 일치) |
-| V2 | `YGChipButton` 세로 패딩 | `padding-2` | `padding3` | `padding2` — [2026-07-27 open-questions](../synthesis/open-questions.md) 이월 항목 해소 |
+| V2 | `YGChipButton` 세로 패딩 | `padding-2` | `padding3` | `padding2` — [2026-07-27 open-questions](../../synthesis/open-questions.md) 이월 항목 해소 |
 | V3 | `Button-Chip-Left` pressed | 배경 `primary/cherry-100`, 테두리 없음 | 배경 `Cherry.Cherry50` 유지(pressed 변화 없음) + pressed 테두리 `Cherry.Cherry100` | pressed 배경 `Cherry.Cherry100`, pressed 테두리 투명 |
 | V4 | `Button-Medium` `Type=Transparency` 배경 | default·disabled `transparency/white-50` | `Gray.White.copy(alpha = …)` — 순백이 아닌 `Gray.White` 기반이라 토큰과 다른 색 | `YGAtomicColors.Transparency.White50`으로 교체 |
 | V5 | `Action-Item` 아이콘 변형 | `Show Icon: True` — 선두 아이콘 + `gap-2` | 변형 없음(텍스트 전용) | `iconResource` 파라미터 신설, `Box` → `Row` |
@@ -341,18 +349,18 @@ pressed는 정적 프리뷰로 재현되지 않으므로 갤러리에서 직접 
 
 - **`Button-Icon` tint 대조 불가** — Figma가 아이콘 색을 에셋 이미지에 구워 내보내 `get_design_context`
   응답에 색 정보가 없다. 현행 3상태 tint를 유지하되 디자이너 확인이 필요하다.
-  → [parfait open-questions](../synthesis/open-questions.md) 등록
+  → [parfait open-questions](../../synthesis/open-questions.md) 등록
 - **`Medium.Transparency` pressed 배경의 토큰 누락** — Figma에서 이 값만 디자인 변수에 바인딩되지 않은
   리터럴이다. 나머지 두 상태는 `transparency/white-50`을 쓴다. 토큰화 요청 필요.
   → open-questions 등록
 - **`Action-Item` 아이콘 tint 규칙 미확인** — 위와 같은 이유로 Figma에서 읽을 수 없다.
   이 스펙은 텍스트 색과 동일하게(눌림에 함께 반응) 정했다. 확인 후 정정 여지가 있다.
   → open-questions 등록
-- **`YGChipButton` 세로 패딩(V2)은 이월 항목 해소** — [2026-07-27 open-questions](../synthesis/open-questions.md)에
+- **`YGChipButton` 세로 패딩(V2)은 이월 항목 해소** — [2026-07-27 open-questions](../../synthesis/open-questions.md)에
   "칩 영역 sync 라운드로 이월"로 등록된 항목이다. 이 스펙 구현 시 해소 처리한다.
 - **`YGButtonColors` 테두리 필드는 #140 복원** — 당시 `borderColor` 제거·`iconColor`→`foregroundColor` 통합이
   있었다. 통합은 유지하고 테두리만 되살린다. 새 축이 아니라 되돌림이므로 ADR을 만들지 않고
-  [design-system](../architecture/design-system.md) 문서를 구현 후 갱신한다.
+  [design-system](../../architecture/design-system.md) 문서를 구현 후 갱신한다.
 - **원자 색 직접 참조** — 대상 컴포넌트 전부 `YGAtomicColors`를 직접 읽는다. 기존 등록 사항이며
   이번에도 유지한다(`Transparency.White50` 교체 역시 원자 팔레트 내 이동이다).
 - **테두리 두께 리터럴** — `1.dp`를 본문에 둔다. `SizeTokens.Size1`이 있으나 `YGChipButton`·`YGInputNumber`가

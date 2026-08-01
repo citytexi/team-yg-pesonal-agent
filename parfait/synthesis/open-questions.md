@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-07-31
-related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components
+verified: 2026-08-01
+related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017
 related_architecture: design-system, data-layer
 related_code:
@@ -73,8 +73,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-16] YGToggleButton 규약 이탈 — Colors 미분리·색 하드결선·하드코딩 치수
 - **출처**: `component/ygtogglebutton/YGToggleButton.kt`(PR #142 develop 머지) — 다른 상호작용 컴포넌트(YGButton·YGChipButton)와 달리 Colors data class를 분리하지 않고 `YGAtomicColors.{Gray.White,Gray.Gray900,Transparency.Black50}`를 컴포저블 본문에서 `isSelected` 인라인 조건 분기(색 커스터마이즈 불가). 아이콘 크기 `24.dp` 리터럴(`SizeTokens` 미사용). 상호작용은 `clickable`+pressed 대신 `selectable`(selected 시맨틱).
 - **항목**: ① 색을 `YGToggleButtonColors`(+Defaults) 패턴으로 분리할지(YGChipButton 선례), ② `24.dp`를 `SizeTokens`로 토큰화할지, ③ `selectable` 관용구를 선택형 컴포넌트 표준으로 채택할지.
-- **상태**: 미해결 → **삭제로 해소 예정(2026-07-30)** — [미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md)이 이 컴포넌트를 지우기로 정했다(대응 Figma 원본 없음·실화면 미사용, 대체물 `Button-Edit` 신설). 대상 코드가 사라지므로 ①~③이 무효가 된다.
-- **해소 메모**: **삭제 구현 완료(2026-07-30)** — `component/ygtogglebutton/` 2파일 + `:app-preview` 잔재 4곳 제거, 잔존 참조 0건 확인. TJYG-Android 미커밋이라 develop 머지 시 `해소됨`으로 바꾼다. 단 "Colors 분리 조건" 자체는 [2026-07-30 신규 버튼군 항목](#2026-07-30-신규-버튼군이-colors-data-class를-분리하지-않음--규약-적용-조건-미정)으로 이어진다.
+- **상태**: 해소됨 (**PR #183 develop 머지, 2026-08-01** — 컴포넌트 삭제로 ①~③ 대상 코드가 사라짐)
+- **해소 메모**: [미구현 컴포넌트 스펙](../specs/archive/2026-07-30-designsystem-button-missing-components.md)이 대응 Figma 원본 없음·실화면 미사용을 근거로 삭제를 정했고(대체물 `YGEditButton` 신설), `component/ygtogglebutton/` 2파일 + `:app-preview` 잔재 4곳이 #183로 develop에서 제거됐다. [design-system](../architecture/design-system.md) 인벤토리·원자색 목록·pressed 관용구 예외에서도 걷어냈다. 단 "Colors 분리 조건" 자체는 [2026-07-30 신규 버튼군 항목](#2026-07-30-신규-버튼군이-colors-data-class를-분리하지-않음--규약-적용-조건-미정)으로 이어진다.
 
 ### [2026-07-18] YGColorChip 패키지↔폴더 불일치
 - **출처**: `component/ygcolorchip/` — `YGColorChip.kt`·`YGColorChipPreviewData.kt`는 `package …component.ygchip` 선언, `YGColorChipType.kt`만 `package …component.ygcolorchip`. 폴더는 `ygcolorchip/`인데 패키지가 둘로 갈림.
@@ -158,8 +158,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-27] YGChipButton 세로 패딩 Figma 불일치
 - **출처**: `component/ygchipbutton/YGChipButton.kt#YGChipButton` — 상/하 패딩이 `padding.padding3`. Figma `Button-Chip-Right`/`Button-Chip-Left` 변형은 세로 `padding-2`로, 칩 높이가 코드 39 vs 디자인 29로 어긋난다. [텍스트 영역 sync 스펙](../specs/archive/2026-07-27-designsystem-text-component-sync.md) 대조 중 `YGAlert` 칩에서 발견.
 - **항목**: ① 세로 패딩을 `padding2`로 내릴지, ② 내릴 경우 `YGAlert`·`YGTopBar` 등 공통 사용처의 높이 변화를 함께 검수할지.
-- **상태**: 보류 (텍스트 영역 sync 범위 밖 — 칩 영역 sync 라운드로 이월). **처리 라운드 지정됨(2026-07-30)** → [버튼 영역 sync 스펙](../specs/2026-07-30-designsystem-button-component-sync.md) 드리프트 V2
-- **해소 메모**: `padding2`로 내리고 `YGAlert`·`YGTopBar` 높이 변화를 실기기 갤러리에서 확인했다(2026-07-30). **다만 `feature/sync-button-component`(`aee2378a`)에만 있고 develop 미머지**라 반영 전까지 `해소됨`으로 넘기지 않는다. 머지 후 상태를 바꾼다.
+- **상태**: 해소됨 (**PR #183 develop 머지, 2026-08-01** — 세로 패딩 `padding2` 반영)
+- **해소 메모**: [버튼 영역 sync 스펙](../specs/archive/2026-07-30-designsystem-button-component-sync.md) 드리프트 V2로 처리. `padding2`로 내리고 `YGAlert`·`YGTopBar` 높이 변화를 실기기 갤러리에서 확인했다. [design-system](../architecture/design-system.md) `YGChipButton` 노트에 반영.
 
 ### [2026-07-27] YGToast.Record 표시 문자열 하드코딩
 - **출처**: `component/ygtoast/YGToast.kt#YGToast` — `Record` 분기가 `"님이 … 전에 쌓았어요"` 한국어 문구를 `core:designsystem` 안에 리터럴로 보유. 같은 sealed의 `InviteCode`·`Edit`·`Fail`은 완성 문장을 호출자가 주입받는 것과 규약이 어긋난다.
@@ -210,54 +210,55 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 업로드 엔드포인트 붙일 때 실측 후 결정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅"·타임아웃 서술과 [data-layer](../architecture/data-layer.md) 네트워킹 섹션에 반영. 파르페 규율상 문서에 수치는 적지 않고 구조(클라이언트 분리 여부·callTimeout 유무)만 기록한다.
 
 ### [2026-07-30] Figma가 아이콘 tint 색을 노출하지 않아 대조 불가 — Button-Icon·Action-Item
-- **출처**: `component/ygiconbutton/YGIconButton.kt#YGIconButton`·`component/ygactionitem/YGActionItem.kt#YGActionItem` — [버튼 영역 sync 스펙](../specs/2026-07-30-designsystem-button-component-sync.md) 대조 중 발견. Figma `Button-Icon`·`Action-Item`의 아이콘이 색을 포함한 래스터 에셋으로 내보내져 `get_design_context` 응답에 tint 값이 없다. 컨테이너·아이콘 프레임 크기는 대조됐으나 색 3상태(`YGIconButton`: 기본/pressed/disabled)는 코드 현행값을 근거 없이 유지한 상태다.
+- **출처**: `component/ygiconbutton/YGIconButton.kt#YGIconButton`·`component/ygactionitem/YGActionItem.kt#YGActionItem` — [버튼 영역 sync 스펙](../specs/archive/2026-07-30-designsystem-button-component-sync.md) 대조 중 발견. Figma `Button-Icon`·`Action-Item`의 아이콘이 색을 포함한 래스터 에셋으로 내보내져 `get_design_context` 응답에 tint 값이 없다. 컨테이너·아이콘 프레임 크기는 대조됐으나 색 3상태(`YGIconButton`: 기본/pressed/disabled)는 코드 현행값을 근거 없이 유지한 상태다.
 - **항목**: ① `YGIconButton` tint 3상태가 디자인 의도와 맞는지 디자이너 확인, ② `YGActionItem` 신설 아이콘의 tint를 텍스트 색과 함께 움직이게 한 이번 결정(pressed 시 함께 진해짐)이 맞는지 확인, ③ 디자인 쪽에서 아이콘을 벡터+변수 바인딩으로 바꿀 수 있는지(이후 sync 라운드의 대조 가능성 문제).
-- **상태**: 미해결 (디자이너 확인 필요 — 코드는 현행 유지)
+- **상태**: 미해결 (디자이너 확인 필요 — **관련 코드는 PR #183로 develop 머지, 2026-08-01**. 값은 현행 유지)
 - **해소 메모**: 확인 후 값이 다르면 해당 컴포넌트 색 매핑을 고치고 위 스펙의 "일치 확인" 표를 갱신한다.
   > 📌 **미확인 잔존(2026-07-30)** — Figma `Button-Edit-Action`은 `Disabled`에서만 다른 아이콘 에셋을 쓴다(= 아이콘 색이 다를 가능성). 색을 읽을 수 없어 `YGEditActionButton`은 3상태 모두 `Gray.White` 고정으로 구현했다. 배경만 상태별로 바뀐다.
-  > ⚠️ **실제 결함으로 드러남(2026-07-30)** — 신설 `YGCircleButton`을 "리소스 색 그대로" 방침으로 만들었더니 `Type=Secondary`(어두운 원)에서 아이콘이 배경에 묻혔다. 저장소 아이콘 드로어블이 **전부 `#000000`**이기 때문이다. Figma 스크린샷으로 Secondary 아이콘이 흰색임을 확인해 `YGCircleButtonType.iconTint`를 신설했다(`Default`·`Small` = `Gray.Gray900`, `Secondary` = `Gray.White`). 즉 **어두운 배경 변형에는 tint 지정이 필수**다. `Default`·`Small`의 정확한 톤은 여전히 미확인(팔레트 값으로 근사).
+  > ⚠️ **실제 결함으로 드러남(2026-07-30)** — 신설 `YGCircleButton`을 "리소스 색 그대로" 방침으로 만들었더니 `Type=Secondary`(어두운 원)에서 아이콘이 배경에 묻혔다. 저장소 아이콘 드로어블이 **전부 `#000000`**이기 때문이다. Figma 스크린샷으로 Secondary 아이콘이 흰색임을 확인해 `YGCircleButtonType.iconTint`를 신설했다(머지 코드 기준 `Default`·`Small` = `Gray.Gray850`, `Secondary` = `Gray.White`). 즉 **어두운 배경 변형에는 tint 지정이 필수**다. `Default`·`Small`의 정확한 톤은 여전히 미확인(팔레트 값으로 근사).
 
 ### [2026-07-30] Button-Medium Transparency pressed 배경이 디자인 변수에 미바인딩
-- **출처**: `component/ygbutton/YGButtonType.kt#YGButtonType.Medium.Transparency` — [버튼 영역 sync 스펙](../specs/2026-07-30-designsystem-button-component-sync.md) 드리프트 V4 처리 중 발견. default·disabled는 Figma가 `transparency/white-50` 변수를 쓰지만 pressed만 변수 없는 리터럴 색이다. 코드 쪽도 `YGAtomicColors.Transparency`에 대응 단계가 없어 `Gray.White.copy(alpha = …)`로 유지한다 — 즉 이 한 상태만 원자 팔레트 밖 값이다.
+- **출처**: `component/ygbutton/YGButtonType.kt#YGButtonType.Medium.Transparency` — [버튼 영역 sync 스펙](../specs/archive/2026-07-30-designsystem-button-component-sync.md) 드리프트 V4 처리 중 발견. default·disabled는 Figma가 `transparency/white-50` 변수를 쓰지만 pressed만 변수 없는 리터럴 색이다. 코드 쪽도 `YGAtomicColors.Transparency`에 대응 단계가 없어 `Gray.White.copy(alpha = …)`로 유지한다 — 즉 이 한 상태만 원자 팔레트 밖 값이다.
 - **항목**: ① 디자인에서 pressed 값을 `transparency/*` 변수로 승격 요청할지, ② 승격 시 `YGAtomicColors.Transparency`에 대응 단계를 추가하고 `copy(alpha = …)` 리터럴을 걷어낼지.
-- **상태**: 미해결 (디자인 토큰 쪽 선행 필요)
+- **상태**: 미해결 (디자인 토큰 쪽 선행 필요 — 대상 코드는 PR #183로 develop 머지, 2026-08-01)
 - **해소 메모**: 토큰 확정 시 `YGAtomicColors.Transparency` 단계 추가 + `Medium.Transparency` 색 매핑 교체, [design-system](../architecture/design-system.md) 토큰 계층 표 갱신.
 
 ### [2026-07-30] 카메라 컨트롤 임시 구현체 잔존 — 셔터 구현이 두 곳에 공존
-- **출처**: `feature/camera/impl` `component/controls/ShutterButton.kt`·`FlipCameraButton.kt`·`component/CameraControlComponent.kt` vs 신설 예정 `core/designsystem` `component/ygcamerashutter/YGCameraShutter.kt`([미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md)) — feature 쪽 셔터는 디자인 정본보다 큰 고정 크기 + `Color.Gray` 리터럴 테두리 + pressed 없음, flip 버튼은 이모지 문자 + `Color` 리터럴 배경, 취소는 맨 Material3 `TextButton`이다. 컴포넌트 스펙은 Figma 정본이 있는 `Camera-Shutter`만 designsystem에 만들고 화면 치환은 하지 않기로 정했다(작업자 결정) — 즉 셔터가 두 구현으로 공존한다.
+- **출처**: `feature/camera/impl` `component/controls/ShutterButton.kt`·`FlipCameraButton.kt`·`component/CameraControlComponent.kt` vs 신설 예정 `core/designsystem` `component/ygcamerashutter/YGCameraShutter.kt`([미구현 컴포넌트 스펙](../specs/archive/2026-07-30-designsystem-button-missing-components.md)) — feature 쪽 셔터는 디자인 정본보다 큰 고정 크기 + `Color.Gray` 리터럴 테두리 + pressed 없음, flip 버튼은 이모지 문자 + `Color` 리터럴 배경, 취소는 맨 Material3 `TextButton`이다. 컴포넌트 스펙은 Figma 정본이 있는 `Camera-Shutter`만 designsystem에 만들고 화면 치환은 하지 않기로 정했다(작업자 결정) — 즉 셔터가 두 구현으로 공존한다.
 - **항목**: ① 카메라 화면(C-101) 라운드에서 `ShutterButton`을 `YGCameraShutter`로 치환하고 feature 쪽을 지울지, ② flip 버튼이 Figma `Button-Circle` `Type=Small`(`ic_rotate`)에 대응하는지 화면 노드로 확인할지 — 컴포넌트 시트만으로는 단정할 수 없다, ③ 취소·줌 컨트롤의 Figma 대응을 찾을지.
-- **상태**: 미해결 (의도된 이월 — 컴포넌트 sync 범위 밖)
+- **상태**: 미해결 (의도된 이월 — **PR #183 머지(2026-08-01)로 `YGCameraShutter`가 develop에 들어와 셔터 2구현 공존이 실제 상태가 됐다**)
 - **해소 메모**: C-101 카메라 화면 sync 시 처리하고 해당 스펙에 기록. 치환 완료 시 [design-system](../architecture/design-system.md) 인벤토리에서 셔터 소유를 designsystem으로 정리.
 
 ### [2026-07-30] Button-Edit-Action이 정수 토큰 재조립으로 2dp 커짐 + Small 테두리 소수 잔존
-- **출처**: [미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md) "치수 도출 원칙" — Figma `Button-Edit-Action`은 아이콘 프레임이 22이고 `SizeTokens`에 대응 스케일이 없다. 스펙은 `Size22`를 만들지 않고 `Size24`로 옮기기로 정했고, 그 결과 내부 원과 바깥 프레임이 각각 2dp 커진다. 또 `Button-Circle` `Type=Small`의 테두리는 재조회 후에도 소수(0.636)로 남아 1dp로 정규화한다.
+- **출처**: [미구현 컴포넌트 스펙](../specs/archive/2026-07-30-designsystem-button-missing-components.md) "치수 도출 원칙" — Figma `Button-Edit-Action`은 아이콘 프레임이 22이고 `SizeTokens`에 대응 스케일이 없다. 스펙은 `Size22`를 만들지 않고 `Size24`로 옮기기로 정했고, 그 결과 내부 원과 바깥 프레임이 각각 2dp 커진다. 또 `Button-Circle` `Type=Small`의 테두리는 재조회 후에도 소수(0.636)로 남아 1dp로 정규화한다.
   > ✅ **부분 해소(2026-07-30 재조회)** — `Button-Circle` `Type=Small`이 Figma에서 **정수 치수로 정리**됐다(내부 원 28 명시·아이콘 18·글리프 12·바깥 폭 44 명시, 구조도 "패딩 도출"에서 "지름 고정 + 중앙 아이콘"으로 바뀜). `SizeTokens.Size18` 추가를 합의해 Circle 3변형의 치수 오차는 없어졌다. 남은 것은 Edit-Action 2dp와 Small 테두리 두께다.
 - **항목**: ① Edit-Action의 2dp 차이를 디자이너가 수용하는지, 아니면 Figma를 정수 치수(아이콘 24 또는 원 40)로 정리해줄 수 있는지, ② 수용도 정리도 안 되면 `Size22`를 스케일에 넣을지 해당 컴포넌트만 리터럴 dp를 허용할지, ③ Small 테두리 0.636을 1로 정리해줄 수 있는지.
-- **상태**: 미해결 (의도된 절충 — 구현 완료, 정수 토큰으로 반영)
+- **상태**: 미해결 (의도된 절충 — 구현 완료, 정수 토큰으로 반영. PR #183 develop 머지, 2026-08-01)
 - **해소 메모**: `YGEditActionButton`이 내부 `padding3` + 아이콘 `SizeTokens.Size24`, 바깥 `padding1` 래핑으로 구현됐다(2026-07-30). 확인 후 값이 바뀌면 해당 컴포넌트 치수와 스펙 "치수 도출 원칙" 표를 함께 고친다.
 
 ### [2026-07-30] Camera-Shutter에 바인딩된 Transparency.Black5의 용도 불명
-- **출처**: Figma `Camera-Shutter` 노드의 디자인 변수 목록에 `Transparency/Black-5`가 잡히지만, 셔터는 흰 외곽 원 + 어두운 내부 원 두 도형으로만 보인다([미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md)). 두 원은 래스터 에셋으로 내보내져 코드 응답에 색·효과가 드러나지 않는다. 외곽 테두리나 그림자일 가능성이 있다.
+- **출처**: Figma `Camera-Shutter` 노드의 디자인 변수 목록에 `Transparency/Black-5`가 잡히지만, 셔터는 흰 외곽 원 + 어두운 내부 원 두 도형으로만 보인다([미구현 컴포넌트 스펙](../specs/archive/2026-07-30-designsystem-button-missing-components.md)). 두 원은 래스터 에셋으로 내보내져 코드 응답에 색·효과가 드러나지 않는다. 외곽 테두리나 그림자일 가능성이 있다.
 - **항목**: ① `Black-5`가 외곽 원 테두리인지 그림자인지 디자이너 확인, ② 그림자라면 Compose에서 `shadow`로 재현할지(현재 designsystem에 그림자 관용구가 없다).
-- **상태**: 미해결 (구현 완료 — 두 원만 그렸다)
+- **상태**: 미해결 (구현 완료 — 두 원만 그렸다. PR #183 develop 머지, 2026-08-01)
 - **해소 메모**: `YGCameraShutter`가 흰 외곽 원 + `padding2` + 내부 `Size48` 원 2도형으로 구현됐다(2026-07-30). 확인 후 필요하면 테두리/그림자를 더하고 스펙 상태 표를 갱신.
 
 ### [2026-07-30] 신규 버튼군이 Colors data class를 분리하지 않음 — 규약 적용 조건 미정
-- **출처**: [미구현 컴포넌트 스펙](../specs/2026-07-30-designsystem-button-missing-components.md) "Colors 분리 판단" — 신설 5종(`YGEditTabButton`·`YGEditButton`·`YGCircleButton`·`YGEditActionButton`·`YGCameraShutter`)은 색 주입 data class를 만들지 않고 변형 타입(`YGCircleButtonType`) 또는 컴포저블 본문에서 상태 분기한다. Figma가 색을 고정하고 주입 사용처가 없다는 판단이다. [design-system](../architecture/design-system.md) 컴포넌트 작성 규약은 `YGButton` 기준으로 "Colors data class 분리"를 적어 두었으므로 이 판단은 규약과 갈린다. 같은 이탈로 등록된 [2026-07-16 YGToggleButton 항목](#2026-07-16-ygtogglebutton-규약-이탈--colors-미분리색-하드결선하드코딩-치수)은 그 컴포넌트 삭제로 없어질 예정이다.
+- **출처**: [미구현 컴포넌트 스펙](../specs/archive/2026-07-30-designsystem-button-missing-components.md) "Colors 분리 판단" — 신설 5종(`YGEditTabButton`·`YGEditButton`·`YGCircleButton`·`YGEditActionButton`·`YGCameraShutter`)은 색 주입 data class를 만들지 않고 변형 타입(`YGCircleButtonType`) 또는 컴포저블 본문에서 상태 분기한다. Figma가 색을 고정하고 주입 사용처가 없다는 판단이다. [design-system](../architecture/design-system.md) 컴포넌트 작성 규약은 `YGButton` 기준으로 "Colors data class 분리"를 적어 두었으므로 이 판단은 규약과 갈린다. 같은 이탈로 등록된 [2026-07-16 YGToggleButton 항목](#2026-07-16-ygtogglebutton-규약-이탈--colors-미분리색-하드결선하드코딩-치수)은 그 컴포넌트 삭제로 없어질 예정이다.
 - **항목**: ① 규약을 "색 주입 요구가 있을 때만 Colors를 분리한다"로 다듬을지, ② 아니면 신규 5종도 일괄 분리해 규약을 그대로 지킬지(사용처가 없는 API가 5개 늘어난다).
-- **상태**: 미해결 (구현 완료 — 5종 모두 미분리로 반영)
-- **해소 메모**: `YGCircleButton`만 변형 타입(`YGCircleButtonType`)이 색·아이콘 크기·tint를 들고 있고 나머지 4종은 컴포저블 본문 상태 분기다(2026-07-30). 방침 확정 시 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 분리 조건을 한 줄로 고정한다.
+- **상태**: 미해결 (구현 완료 — 5종 모두 미분리로 반영. PR #183 develop 머지, 2026-08-01)
+- **해소 메모**: `YGCircleButton`만 변형 타입(`YGCircleButtonType`)이 색·아이콘 크기·tint·`paintsOuterCircle`을 들고 있고 나머지 4종은 컴포저블 본문 상태 분기다. 방침 확정 시 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 분리 조건을 한 줄로 고정한다.
+  > 📌 **함께 정할 것(2026-08-01 머지 코드 확인)** — `YGCircleButtonType`은 `YGButtonType`과 달리 `@get:Composable`이 아니라 `@Immutable` + 평범한 `val`이다(테마 미경유·상수 직접 대입). 변형 타입이 토큰을 노출하는 방식이 두 가지로 갈렸으므로 Colors 분리 조건과 같은 줄에서 "변형 타입은 `@get:Composable`로 테마를 읽는다 / 상수 대입도 허용한다"를 함께 못박아야 한다.
 
 ### [2026-07-31] Grouptag-Chip 그레이 타입 타임스탬프 색 — 정책 문서 `White` vs Figma `Gray-200`
-- **출처**: [grouptag-topping 스펙](../specs/2026-07-31-designsystem-grouptag-topping-components.md) 타입 매핑 표 — `YGGrouptagChipType.TYPE_7_8`(그레이)의 타임스탬프 색을 Figma 컴포넌트가 `Gray-200`으로 주는데, 정책 문서(S-101에서 분리된 그룹칩 Timestamp 컬러 규칙)의 표는 같은 자리를 `White`로 적는다. 나머지 5종(Cherry-100/200/300·Melon·Pudding)은 양쪽이 일치한다.
+- **출처**: [grouptag-topping 스펙](../specs/archive/2026-07-31-designsystem-grouptag-topping-components.md) 타입 매핑 표 — `YGGrouptagChipType.TYPE_7_8`(그레이)의 타임스탬프 색을 Figma 컴포넌트가 `Gray-200`으로 주는데, 정책 문서(S-101에서 분리된 그룹칩 Timestamp 컬러 규칙)의 표는 같은 자리를 `White`로 적는다. 나머지 5종(Cherry-100/200/300·Melon·Pudding)은 양쪽이 일치한다.
 - **항목**: 어느 쪽이 정본인지. Figma가 맞으면 정책 문서를 정정해야 하고, 정책이 맞으면 코드와 Figma를 함께 고쳐야 한다.
-- **상태**: 미해결 (구현은 Figma를 따라 `Gray.Gray200`으로 반영)
-- **해소 메모**: 정책 SoT는 위키이므로 위키 open-questions에도 같은 항목을 등록해야 한다(디자인 파일 ↔ 정책 문서 불일치라 구현 밖에서 결론이 나야 한다). **위키 등록은 develop 머지 후 sync 시점으로 미뤘다**(2026-07-31 작업자 판단) — 등록 대상은 `wiki/synthesis/open-questions.md` 항목 + `wiki/concepts/nametag-chip.md` ② 표의 ⚠️ 마커다.
+- **상태**: 미해결 (구현은 Figma를 따라 `Gray.Gray200`으로 반영. PR #186 develop 머지, 2026-08-01)
+- **해소 메모**: 정책 SoT는 위키이므로 위키 open-questions에도 같은 항목을 등록해야 한다(디자인 파일 ↔ 정책 문서 불일치라 구현 밖에서 결론이 나야 한다). 위키 등록은 develop 머지 후로 미뤘던 것이고, **#186 머지에 따라 2026-08-01 기준선 점검에서 위키에 등록 완료**했다(`wiki/synthesis/open-questions.md` 항목 + `wiki/concepts/nametag-chip.md` ② 표 ⚠️ 마커).
 
 ### [2026-07-31] `YGToppingGroupType`의 `TYPE_3_LEFT`·`TYPE_3_RIGHT`가 완전히 동일
-- **출처**: [grouptag-topping 스펙](../specs/2026-07-31-designsystem-grouptag-topping-components.md) 배치 변형 표 — Figma `Topping-Group`의 `Type=3, Direction=Left`와 `Type=3, Direction=Right`가 회전(+8°)·이미지 오프셋·칩 오프셋이 모두 같다. 다른 Left 변형(`Type=1`·`2`)은 전부 음수 회전인데 3번만 Left도 양수다.
+- **출처**: [grouptag-topping 스펙](../specs/archive/2026-07-31-designsystem-grouptag-topping-components.md) 배치 변형 표 — Figma `Topping-Group`의 `Type=3, Direction=Left`와 `Type=3, Direction=Right`가 회전(+8°)·이미지 오프셋·칩 오프셋이 모두 같다. 다른 Left 변형(`Type=1`·`2`)은 전부 음수 회전인데 3번만 Left도 양수다.
 - **항목**: 디자인 의도인지 Figma 변형 작성 누락인지. 누락이면 Left 회전각의 부호가 바뀌어야 한다.
-- **상태**: 미해결 (Figma 원본대로 구현, 실기기에서 두 변형이 시각적으로 구분되지 않음을 확인)
+- **상태**: 미해결 (Figma 원본대로 구현, 실기기에서 두 변형이 시각적으로 구분되지 않음을 확인. PR #186 develop 머지, 2026-08-01)
 - **해소 메모**: 확정 시 `YGToppingGroupType`의 해당 두 엔트리와 코드 주석을 함께 고친다.
 
 ### [2026-07-31] `YGChipColorIndicator`의 정책 근거·용도 불명
@@ -269,14 +270,38 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-31] `YGUserChip`·`YGChipColorIndicator`가 갤러리 미등록
 - **출처**: `component/ygcolorchip/YGUserChip.kt`·`YGChipColorIndicator.kt`(PR #165 develop 머지) — `:app-preview` 컴포넌트 갤러리(카탈로그 + showcase + `@IntoSet` 배선)에 두 신규 컴포넌트가 등록되지 않았다. `ygcolorchip` 계열은 원래부터 갤러리에 없어(`YGNametagChip`도 미등록) 이번 PR만의 누락은 아니다.
 - **항목**: ① 갤러리 등록을 신규 컴포넌트 완료 조건(DoD)으로 규약화할지, ② `ygcolorchip` 계열 3종을 묶어 showcase를 추가할지.
-- **상태**: 미해결
-- **해소 메모**: 규약화하면 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 한 줄 고정하고, 등록 시 갤러리 카탈로그 카테고리를 함께 정한다.
+- **상태**: 미해결 (**후속 3개 PR은 전부 등록함** — #183 버튼 5종·#185 캔버스 5종·#186 칩/토핑 2종이 카탈로그·showcase·`@IntoSet`까지 배선됐다. 2026-08-01 기준 갤러리 누락은 `ygcolorchip` 계열 3종뿐)
+- **해소 메모**: 규약화하면 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 한 줄 고정하고, 등록 시 갤러리 카탈로그 카테고리를 함께 정한다. 이후 라운드가 이미 관행으로 지키고 있으므로 문서화만 남은 셈이다.
 
 ### [2026-07-31] 토핑 템플릿 6종 부여 주체 미정 — 서버 필드 부재
-- **출처**: [grouptag-topping 스펙](../specs/2026-07-31-designsystem-grouptag-topping-components.md) "계층 분할" — 제품 정책은 "6종 중 1종 랜덤 최초 부여 → 첫 토핑 등록 전까지 고정, 새로고침·재접속·타 그룹 갱신에도 불변"인데, 클라이언트가 랜덤을 뽑아 로컬에 영속하면 기기 변경에서 깨진다. 디자인시스템은 `YGToppingImage.Template(type)`으로 결정된 값을 주입받기만 한다.
+- **출처**: [grouptag-topping 스펙](../specs/archive/2026-07-31-designsystem-grouptag-topping-components.md) "계층 분할" — 제품 정책은 "6종 중 1종 랜덤 최초 부여 → 첫 토핑 등록 전까지 고정, 새로고침·재접속·타 그룹 갱신에도 불변"인데, 클라이언트가 랜덤을 뽑아 로컬에 영속하면 기기 변경에서 깨진다. 디자인시스템은 `YGToppingImage.Template(type)`으로 결정된 값을 주입받기만 한다.
 - **항목**: 서버가 그룹 조회 응답에 템플릿 종류 필드를 내려줄지, 아니면 클라이언트가 뽑아 저장할지. 서버가 내려주면 기기 변경·플랫폼 간(iOS) 일관성이 확보된다.
-- **상태**: 미해결 (G-001 목록 API 미확정)
+- **상태**: 미해결 (G-001 목록 API 미확정 — 컴포넌트는 PR #186로 develop 머지, 2026-08-01)
 - **해소 메모**: 결정 시 [data-layer](../architecture/data-layer.md) DTO와 G-001 화면 스펙에 반영한다.
+
+### [2026-08-01] 캔버스 화면(C-001) 임시 구현체 잔존 — 메뉴 구현이 두 곳에 공존
+- **출처**: `feature/groups/canvas/impl`의 `CanvasImageAddScreen`("카메라로 촬영"·"갤러리에서 선택"을 맨 Material3 `Button`+`Text`로 그림) vs 신설 `core/designsystem` `component/ygcanvas/`·`ygcanvasmenu/`·`ygmenuitem/`(PR #185 develop 머지). [캔버스 컴포넌트 스펙](../specs/archive/2026-07-31-designsystem-canvas-components.md)이 화면 치환을 범위 밖으로 두어 셔터([2026-07-30 카메라 항목](#2026-07-30-카메라-컨트롤-임시-구현체-잔존--셔터-구현이-두-곳에-공존))와 같은 공존 상태가 하나 더 생겼다.
+- **항목**: ① C-001 화면 라운드에서 임시 버튼을 `YGCanvas`+`YGCanvasMenu`로 치환하고 feature 쪽 임시 컴포저블을 지울지, ② 캔버스 화면이 `YGCanvas`의 직교 플래그를 어떤 UI 상태에 매핑할지(플래그 조합 모순 방지 책임이 호출자에 있다).
+- **상태**: 미해결 (의도된 이월 — 컴포넌트 sync 범위 밖)
+- **해소 메모**: C-001 화면 스펙에서 처리하고 치환 완료 시 [design-system](../architecture/design-system.md) 인벤토리 서술을 정리한다.
+
+### [2026-08-01] 컷 도형 다리 길이·Empty 배경색의 근거가 Figma 벡터뿐
+- **출처**: `shape/CanvasCutCornerShape.kt#canvasCutCornerShape`·`component/ygcanvas/YGCanvas.kt`(PR #185 develop 머지) — ① 좌상단 컷의 다리 길이가 기본값 리터럴이고 근거가 Figma 벡터 path뿐이다. 위키 [[캔버스-반응형-레이아웃]]은 "좌상단이 비스듬히 잘린 컷"만 서술하고 수치가 없어, 디자이너가 값을 바꾸면 추적할 문서 근거가 없다. ② Figma `Status=Empty`의 배경이 회색인데 이것이 "배경 미지정 기본값"인지 "비어 있을 때만 회색"인지 원본에서 갈리지 않는다 — 구현은 전자로 보고 `background` 기본값에 뒀다(Empty여도 지정 배경이 있으면 그대로 그린다).
+- **항목**: ① 컷 다리 길이를 정책 문서(위키)나 디자인 토큰에 올릴지, ② Empty 배경의 의미를 디자이너에게 확정받을지.
+- **상태**: 미해결 (구현 완료 — Figma 실측대로 반영)
+- **해소 메모**: ①이 정해지면 위키 [[캔버스-반응형-레이아웃]] 갱신 요청 후 컷 값을 그 문서 근거로 바꾼다. ②는 C-001 화면 라운드에서 실제 빈 캔버스를 그릴 때 확인.
+
+### [2026-08-01] YGCanvasDateSelectButton의 클릭 영역·접근성 이름이 아이콘에만 걸림
+- **출처**: `component/ygcanvasdateselect/YGCanvasDateSelectButton.kt#YGCanvasDateSelectButton`(PR #185 develop 머지) — 바 전체가 컷 배경·테두리를 공유해 하나의 버튼처럼 보이고 이름도 `Button`인데, 실제 클릭 대상은 우측 `YGIconButton`(`SIZE_44`) 하나다. 날짜 텍스트를 눌러도 아무 일도 일어나지 않는다. 같은 아이콘의 `contentDescription`도 `null`이라 유일한 상호작용 요소에 접근성 이름이 없다.
+- **항목**: ① 바 전체를 클릭 영역으로 올릴지(이름대로) 아이콘만 유지할지, ② `contentDescription`을 필수 인자로 노출할지 — `YGIconButton`·`YGCircleButton` 선례는 필수다.
+- **상태**: 미해결 (구현 라운드에서 **현행 유지로 판정**(2026-07-31), 화면 라운드·접근성 라운드로 이월)
+- **해소 메모**: C-201 캘린더/C-001 화면 라운드에서 실제 터치 기대치를 확인한 뒤 정한다. ②는 전원 접근성 라운드와 묶어 처리.
+
+### [2026-08-01] YGCanvas의 Dim 탭 닫기 미규정 + 캘린더 슬롯 미충전
+- **출처**: `component/ygcanvas/YGCanvas.kt#YGCanvas`(PR #185 develop 머지) — ① Dim은 소비 전용 `pointerInput`으로 아래 레이어 터치를 막지만 **탭했을 때의 동작이 없다**(`onDimClick` 미노출). `Expanded`·`Calendar`를 Dim 탭으로 닫을지가 규정되지 않았고 Figma도 다루지 않는다. 부작용으로 드래그도 막히는데 스크림으로선 의도된 동작이다. ② `calendarContent` 슬롯을 채울 컴포넌트가 없어 `Status=Calendar`를 실물로 대조하지 못했다 — 패널·`List-Date`·`Chip-Indicator`는 C-201 라운드 몫이다. 같은 이유로 `YGCanvasBackground.Image` 화면의 실제 렌더도 여전히 미검증이다(막고 있던 Coil 네트워크 페처 부재는 #186로 해소).
+- **항목**: ① Dim 탭 닫기를 컴포넌트 API로 열지(=`onDimClick`) 화면이 바깥에서 처리할지, ② 캘린더 패널이 붙은 뒤 `Status=Calendar`·`Image` 배경을 재대조할지.
+- **상태**: 미해결 (화면 라운드 결정 대기)
+- **해소 메모**: C-201 캘린더 라운드에서 슬롯을 채우며 함께 확정하고 [캔버스 컴포넌트 스펙](../specs/archive/2026-07-31-designsystem-canvas-components.md)의 "주의 / 열린 질문"을 정리한다.
 
 <!--
 항목 추가 형식:

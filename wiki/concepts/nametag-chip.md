@@ -1,7 +1,7 @@
 ---
 tags: [concept, product]
 sources: [S-101-프로필-닉네임-컬러-규칙-v0.1.md, S-101-프로필-닉네임-컬러-규칙-v0.2.md, S-101-프로필-닉네임-컬러-규칙-v0.3.md, S-101-프로필-이미지-및-그룹칩-내-타임스탬프-컬러-규칙-v0.1.md, Toast-공통-정책.md, C-202-토핑-편집자-확인-규칙-v0.1.md, G-001-무한파르페-간격-정책-v0.3.md]
-updated: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Nametag-Chip (프로필·닉네임 컬러 규칙)
@@ -41,6 +41,10 @@ G-001에서 그룹 대표 토핑과 노출되는 Grouptag-Chip의 **Timestamp �
 | 그레이 (Type 7, 8) | White |
 | 멜론 (Type 9, 10) | Melon |
 | 푸딩 (Type 11, 12) | Pudding |
+
+> ⚠️ [2026-08-01] 그레이(Type 7, 8) 행이 디자인 파일과 상충 — Figma `Grouptag-Chip` 컴포넌트는
+> 같은 자리를 Gray-200으로 준다(나머지 5행은 일치). Android 구현
+> `YGGrouptagChipType.TYPE_7_8`은 Figma를 따라 Gray-200으로 머지됐다 → [[open-questions]]
 
 ## 타입 고정 정책 (v0.2 추가, v0.3 유지)
 - 타입은 **계정 생성 시 1회 랜덤 배정**, 이후 변경 없음.

@@ -1,10 +1,10 @@
 ---
 id: designsystem-canvas-components
 title: 디자인시스템 캔버스 영역 컴포넌트 신설 (Design System Canvas Components)
-status: draft
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-31
+verified: 2026-08-01
 related_code:
   - YGCanvas.kt#YGCanvas
   - YGCanvasBackground.kt#YGCanvasBackground
@@ -32,9 +32,14 @@ tags: [spec, parfait, designsystem, figma-sync, canvas]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 >
-> **구현 상태(2026-07-31)** — 5종 + 컷 Shape + 갤러리 등록 전량 완료. `:core:designsystem`·`:app-preview`
-> `assembleDebug` + repo 전체 `ktlintCheck` 통과, 실기기 갤러리에서 5종 및 `YGCanvas` 5상태 전부
-> Figma와 육안 대조 완료. **TJYG-Android 커밋은 하지 않았다**(작업자 지시).
+> **구현 상태 — ✅ develop 머지 완료(PR #185, 2026-08-01)**. 5종 + 컷 Shape + 갤러리 등록 전량 반영.
+> 2026-08-01 기준선 점검에서 머지 코드와 대조해 **드리프트 0건** 확인 — `canvasCutCornerShape()`(기본
+> 다리 17dp, `Outline.Generic`, 짧은 변으로 `coerceAtMost`), `YGStrokeButton`/`YGMenuItem`/
+> `YGCanvasDateSelectButton` 높이 `Size44` 고정, `YGCanvasMenu`의 `weight(1f)` 2버튼 + 확장 스택,
+> `YGCanvas`의 직교 플래그 4종·Dim 최상단 + 소비 전용 `pointerInput`·승격 시 `Spacer(Size44)` 높이 예약,
+> `YGCanvasBackground` sealed(`Solid`/`Image`+`AsyncImage` `ContentScale.Crop`)가 모두 설계대로다.
+> `:app-preview` 카탈로그 등록도 설계대로(`BUTTON` 3 + `CONTAINER` 2).
+> 갤러리 `INTERNET` 권한도 함께 머지됐다.
 >
 > **구현 후 API 변경(2026-07-31, 작업자 요청)** — 상태 조건을 "값의 유무"에서 **불리언 플래그**로
 > 통일했다. 값 파라미터는 내용만 들고, 노출 여부는 플래그가 결정한다.

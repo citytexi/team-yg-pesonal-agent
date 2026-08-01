@@ -1,10 +1,10 @@
 ---
 id: designsystem-grouptag-topping-components
 title: 디자인시스템 Grouptag-Chip·Topping-Group 컴포넌트 신설 (Grouptag & Topping Group Components)
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-31
+verified: 2026-08-01
 related_code:
   - YGGrouptagChip.kt#YGGrouptagChip
   - YGGrouptagChipType.kt#YGGrouptagChipType
@@ -32,11 +32,12 @@ tags: [spec, parfait, designsystem, figma-sync, g-001, topping]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 >
-> **구현 상태(2026-07-31)** — 2종 + 모델 3종 + 에셋 7종 + 갤러리 등록 전량 완료. repo 전체
-> `assembleDebug` + `ktlintCheck` 통과, 실기기(Galaxy A35) 갤러리에서 Grouptag-Chip 6타입·말줄임,
-> Topping-Group 배치 7변형·템플릿 6종·Remote 3상태를 Figma와 육안 대조 완료.
-> **TJYG-Android 커밋은 하지 않았다**(작업자 지시). 브랜치 `feature/grouptag-topping-component`에
-> 작업 트리 변경만 남아 있다.
+> **구현 상태 — ✅ develop 머지 완료(PR #186, 2026-08-01)**. 2종 + 모델 3종 + 에셋 7종(6 density) +
+> `coil-network-okhttp` + `SizeTokens.Size96`·`Size160` + 갤러리 등록 전량 반영.
+> 2026-08-01 기준선 점검에서 머지 코드와 대조해 **드리프트 0건** 확인 — `YGGrouptagChipType` 6종 색 매핑,
+> 이름 `widthIn(Size80)`+`Ellipsis`, 타임스탬프 `maxLines`/`softWrap` 가드, 배치 7변형의 회전·소수 오프셋,
+> 칩 `wrapContentWidth(unbounded = true)`, `imageModifier` 체인 끝의 `clip(RectangleShape)`,
+> `AsyncImage`의 `error` 폴백이 전부 최종 결정대로다.
 >
 > **설계대로 확인된 것** — 회전·오프셋 7변형이 육안으로 구분되고, 칩이 160dp 프레임을 넘어가도
 > 잘리지 않으며, 템플릿 6종 에셋이 위키 [[G-001-그룹-토핑-템플릿-정책-v0.2]] 시트(별×2·음표×2·
@@ -295,7 +296,7 @@ enum class YGToppingGroupType(
 
 ## 열린 질문
 
-아래 1~3은 [parfait open-questions](../synthesis/open-questions.md)에 [2026-07-31] 항목으로 등록했다.
+아래 1~3은 [parfait open-questions](../../synthesis/open-questions.md)에 [2026-07-31] 항목으로 등록했다.
 1번은 정책 문서 자체의 문제이므로 위키 open-questions에도 등록 대상이다(정책 SoT는 위키).
 
 1. **그레이 타입 타임스탬프 색** — 위키 [[nametag-chip]] ② 표는 Type 7/8 = `White`, Figma는

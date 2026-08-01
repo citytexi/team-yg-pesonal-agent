@@ -4,7 +4,7 @@ title: Grouptag-Chip·Topping-Group 컴포넌트 구현 계획
 status: done
 type: work-order
 created: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-01
 platforms: android
 owner: TJYG-Android 디자인시스템
 related_adr:
@@ -21,7 +21,7 @@ related_code:
   - ComposeConfig.kt#setComposeDependencies
   - ComponentCatalog.kt#componentCatalog
   - ComponentEntryBuilders.kt#componentEntryBuilders
-archived_reason:
+archived_reason: PR #186 develop 머지 완료(2026-08-01) — 코드=설계 일치, 스펙 implemented 전환
 tags: [plan, parfait, designsystem, figma-sync, g-001, topping]
 ---
 
@@ -87,7 +87,7 @@ tags: [plan, parfait, designsystem, figma-sync, g-001, topping]
 `YGCanvasBackground.Image`가 미검증으로 남은 원인이 이것이다. Task 4의 `YGToppingImage.Remote`가 같은
 문제를 물려받으므로 여기서 먼저 해소한다.
 
-- [ ] **Step 1: 버전 카탈로그에 네트워크 페처 추가**
+- [x] **Step 1: 버전 카탈로그에 네트워크 페처 추가**
 
 `gradle/libs.versions.toml`의 `#Coil` 섹션에서 `coil-compose` 줄 **바로 아래**에 추가한다.
 `coil` 버전 참조를 재사용하므로 `[versions]` 블록은 건드리지 않는다.
@@ -98,7 +98,7 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 ```
 
-- [ ] **Step 2: 컴포즈 컨벤션 플러그인에 의존 추가**
+- [x] **Step 2: 컴포즈 컨벤션 플러그인에 의존 추가**
 
 `ComposeConfig.kt`의 `setComposeDependencies()` 안, 기존 `implementation(libs.coil.compose)` 바로
 아래에 한 줄 추가한다. `coil-compose`가 이미 여기 있으므로 같은 자리에 둔다.
@@ -108,7 +108,7 @@ coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp"
         implementation(libs.coil.network.okhttp)
 ```
 
-- [ ] **Step 3: 크기 토큰 2종 추가**
+- [x] **Step 3: 크기 토큰 2종 추가**
 
 `SizeTokens.kt`의 `object SizeTokens` 안, 숫자 오름차순 자리에 넣는다. `Size80` 다음이 마지막이므로
 그 뒤에 이어 붙인다.
@@ -122,12 +122,12 @@ coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp"
 둘 다 **Figma가 고정한 치수**다(토핑 이미지 96, 토핑 프레임 160). 버튼 라운드에서 세운 원칙 —
 "패딩으로 도출되는 치수는 하드코딩하지 않고, Figma가 고정한 곳만 토큰으로 못박는다" — 에 해당한다.
 
-- [ ] **Step 4: 빌드 확인**
+- [x] **Step 4: 빌드 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug`
 Expected: BUILD SUCCESSFUL. 컨벤션 플러그인을 고쳤으므로 build-logic이 먼저 재컴파일된다.
 
-- [ ] **Step 5: ktlint 확인**
+- [x] **Step 5: ktlint 확인**
 
 Run: `./gradlew ktlintCheck`
 Expected: BUILD SUCCESSFUL
@@ -152,7 +152,7 @@ Expected: BUILD SUCCESSFUL
   - `@Composable fun YGGrouptagChip(name: String, timestamp: String, type: YGGrouptagChipType, modifier: Modifier = Modifier)`
   - Task 4가 이 둘을 그대로 소비한다.
 
-- [ ] **Step 1: 타입 enum 작성**
+- [x] **Step 1: 타입 enum 작성**
 
 타임스탬프 텍스트 컬러만 결정한다. 기준은 해당 그룹에서 **마지막으로 변화를 가한 유저의 타입**이다.
 Nametag 원형칩(`YGColorChipType`)과 매핑 표가 별개라 타입도 별개로 둔다 — 정책 문서가 이미 두 표로
@@ -194,7 +194,7 @@ enum class YGGrouptagChipType(val timestampColor: Color) {
 }
 ```
 
-- [ ] **Step 2: 컴포넌트 작성**
+- [x] **Step 2: 컴포넌트 작성**
 
 3요소 고정 `Row`(슬롯 없음). 이름은 80dp를 넘으면 말줄임한다 — 그룹 목록 라벨 정책이 "이름 80px 초과 시
 초과분부터 `…`"(픽셀 기준, 문자수 기준은 폐기)이고, Figma도 `팀장은 진짜 연...`으로 잘려 있다.
@@ -297,12 +297,12 @@ private fun YGGrouptagChipPreview() = PreviewBox {
 }
 ```
 
-- [ ] **Step 3: 프리뷰 렌더 확인**
+- [x] **Step 3: 프리뷰 렌더 확인**
 
 Android Studio에서 `YGGrouptagChip.kt`를 열고 `YGGrouptagChipPreview`를 렌더한다.
 Expected: pill 7개. 위 6개는 타임스탬프 색만 다르고, 마지막 1개는 이름이 `팀장은 진짜 연…`으로 잘린다.
 
-- [ ] **Step 4: 갤러리 NavKey 작성**
+- [x] **Step 4: 갤러리 NavKey 작성**
 
 `NavKeyYGGrouptagChip.kt`:
 
@@ -316,7 +316,7 @@ import kotlinx.serialization.Serializable
 data object NavKeyYGGrouptagChip : NavKey
 ```
 
-- [ ] **Step 5: 갤러리 화면 작성**
+- [x] **Step 5: 갤러리 화면 작성**
 
 `YGGrouptagChipPreviewScreen.kt`:
 
@@ -387,7 +387,7 @@ private fun PreviewYGGrouptagChipPreviewScreen() = PreviewBox {
 }
 ```
 
-- [ ] **Step 6: 카탈로그 등록**
+- [x] **Step 6: 카탈로그 등록**
 
 `ComponentCatalog.kt` — import를 알파벳 순 자리에 추가하고, `ComponentCategory.TEXT` 블록의
 마지막(`YGAlert` 뒤)에 엔트리를 넣는다. 카테고리를 `TEXT`로 두는 이유: 이 칩은 라벨 텍스트 표시가
@@ -405,7 +405,7 @@ import com.teamyg.parfait.preview.navigation.key.NavKeyYGGrouptagChip
     ),
 ```
 
-- [ ] **Step 7: 엔트리 배선**
+- [x] **Step 7: 엔트리 배선**
 
 `ComponentEntryBuilders.kt` — import 추가 후, `componentEntryBuilders` 함수 본문 마지막
 `entry<NavKeyYGCanvas>` 블록 **뒤에** 추가한다(`private fun ScreenScaffold` 앞).
@@ -421,7 +421,7 @@ import com.teamyg.parfait.preview.navigation.key.NavKeyYGGrouptagChip
     }
 ```
 
-- [ ] **Step 8: 빌드·ktlint 확인**
+- [x] **Step 8: 빌드·ktlint 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug :app-preview:assembleDebug ktlintCheck`
 Expected: BUILD SUCCESSFUL
@@ -445,7 +445,7 @@ Expected: BUILD SUCCESSFUL
     — `TYPE_1_LEFT`, `TYPE_1_RIGHT`, `TYPE_2_LEFT`, `TYPE_2_RIGHT`, `TYPE_3_LEFT`, `TYPE_3_RIGHT`, `TEMPLATE`
   - `internal val TOPPING_ERROR_DRAWABLE: Int`(= `R.drawable.img_topping_template_error`) — Task 4가 쓴다.
 
-- [ ] **Step 1: 에셋 복사**
+- [x] **Step 1: 에셋 복사**
 
 원본은 작업자가 제공한 `~/Downloads/Topping-Template/Android/`이고, 안에 density 폴더 6개
 (`ldpi`, `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`)가 있으며 각 폴더에 `Template01.png` ~
@@ -466,12 +466,12 @@ for d in ldpi mdpi hdpi xhdpi xxhdpi xxxhdpi; do
 done
 ```
 
-- [ ] **Step 2: 복사 결과 확인**
+- [x] **Step 2: 복사 결과 확인**
 
 Run: `find core/designsystem/src/main/res -name "img_topping_template_*" | wc -l`
 Expected: `42` (7개 × 6 density)
 
-- [ ] **Step 3: 템플릿 enum 작성**
+- [x] **Step 3: 템플릿 enum 작성**
 
 에셋 6종의 그림 내용은 별×2·음표×2·소용돌이×2이며 전부 회색 반투명 아웃라인이다. 어떤 종을 부여할지는
 **이 컴포넌트가 정하지 않는다** — 호출자가 결정해 넘긴다.
@@ -500,7 +500,7 @@ enum class YGToppingTemplate(@DrawableRes val drawableRes: Int) {
 }
 ```
 
-- [ ] **Step 4: 콘텐츠 상태 sealed 작성**
+- [x] **Step 4: 콘텐츠 상태 sealed 작성**
 
 3상태를 **명시적으로 주입받는다.** URL이 null인지로 상태를 추론하면 "조회 실패"와 "이미지 없음"이
 뭉개진다 — 원인이 다른 별개 상태다.
@@ -531,7 +531,7 @@ sealed interface YGToppingImage {
 }
 ```
 
-- [ ] **Step 5: 배치 변형 enum 작성**
+- [x] **Step 5: 배치 변형 enum 작성**
 
 프레임 중심(0, 0) 기준 오프셋이다. 회전은 시계방향 양수(Compose `Modifier.rotate` 규약).
 Figma 소수값을 **반올림하지 않는다** — 반올림하면 나중에 Figma와 대조할 때 "의도적 차이"인지
@@ -602,7 +602,7 @@ enum class YGToppingGroupType(
 }
 ```
 
-- [ ] **Step 6: 빌드·ktlint 확인**
+- [x] **Step 6: 빌드·ktlint 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug ktlintCheck`
 Expected: BUILD SUCCESSFUL. 실패하면 대개 리소스명 오타이므로 Step 2의 `find` 결과와
@@ -626,7 +626,7 @@ Expected: BUILD SUCCESSFUL. 실패하면 대개 리소스명 오타이므로 Ste
 - Produces:
   `@Composable fun YGToppingGroup(image: YGToppingImage, name: String, timestamp: String, chipType: YGGrouptagChipType, type: YGToppingGroupType, modifier: Modifier = Modifier)`
 
-- [ ] **Step 1: 컴포넌트 작성**
+- [x] **Step 1: 컴포넌트 작성**
 
 설계 요점 4가지:
 
@@ -750,13 +750,13 @@ private fun YGToppingGroupPreview() = PreviewBox {
 }
 ```
 
-- [ ] **Step 2: 프리뷰 렌더 확인**
+- [x] **Step 2: 프리뷰 렌더 확인**
 
 Android Studio에서 `YGToppingGroup.kt`의 `YGToppingGroupPreview`를 렌더한다.
 Expected: 160dp 칸 2개. 위는 템플릿 그래픽이 −6° 기울고 칩이 아래쪽에 겹친다. 아래는 물음표
 그래픽이 +16° 기운다. 칩이 프레임 밖으로 나가도 잘리지 않는다.
 
-- [ ] **Step 3: 갤러리 NavKey 작성**
+- [x] **Step 3: 갤러리 NavKey 작성**
 
 `NavKeyYGToppingGroup.kt`:
 
@@ -770,7 +770,7 @@ import kotlinx.serialization.Serializable
 data object NavKeyYGToppingGroup : NavKey
 ```
 
-- [ ] **Step 4: 갤러리 화면 작성**
+- [x] **Step 4: 갤러리 화면 작성**
 
 배치 7변형과 콘텐츠 3상태를 모두 찍는다. `Remote` 성공 상태 확인이 이번 라운드에서 Coil 네트워크
 페처 도입 효과를 검증하는 유일한 지점이므로 실제 접근 가능한 URL을 쓴다.
@@ -876,7 +876,7 @@ private fun PreviewYGToppingGroupPreviewScreen() = PreviewBox {
 }
 ```
 
-- [ ] **Step 5: 카탈로그 등록**
+- [x] **Step 5: 카탈로그 등록**
 
 `ComponentCatalog.kt` — import를 알파벳 순 자리에 추가하고, `ComponentCategory.CONTAINER` 블록의
 마지막(`YGCanvas` 뒤)에 엔트리를 넣는다. `CONTAINER`인 이유: 이미지와 칩을 합성하는 컨테이너로
@@ -894,7 +894,7 @@ import com.teamyg.parfait.preview.navigation.key.NavKeyYGToppingGroup
     ),
 ```
 
-- [ ] **Step 6: 엔트리 배선**
+- [x] **Step 6: 엔트리 배선**
 
 `ComponentEntryBuilders.kt` — import 추가 후, Task 2에서 넣은 `entry<NavKeyYGGrouptagChip>` 블록
 뒤에 추가한다.
@@ -910,7 +910,7 @@ import com.teamyg.parfait.preview.navigation.key.NavKeyYGToppingGroup
     }
 ```
 
-- [ ] **Step 7: 빌드·ktlint 확인**
+- [x] **Step 7: 빌드·ktlint 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug :app-preview:assembleDebug ktlintCheck`
 Expected: BUILD SUCCESSFUL
@@ -928,17 +928,17 @@ Expected: BUILD SUCCESSFUL
 - Consumes: Task 1~4 전량
 - Produces: 검증 결과와 as-built 차이가 반영된 스펙/계획 문서
 
-- [ ] **Step 1: repo 전체 빌드**
+- [x] **Step 1: repo 전체 빌드**
 
 Run: `./gradlew assembleDebug`
 Expected: BUILD SUCCESSFUL. 컨벤션 플러그인을 고쳤으므로 다른 모듈도 함께 확인한다.
 
-- [ ] **Step 2: repo 전체 ktlint**
+- [x] **Step 2: repo 전체 ktlint**
 
 Run: `./gradlew ktlintCheck`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 3: 실기기 갤러리 육안 검증**
+- [x] **Step 3: 실기기 갤러리 육안 검증**
 
 `:app-preview`를 설치·실행하고 아래를 Figma와 대조한다. **네트워크 연결이 있는 상태**로 확인한다
 (`Remote` 성공 검증에 필요).
@@ -956,13 +956,13 @@ Expected: BUILD SUCCESSFUL
 - `Remote 실패`·`조회 실패` 칸에 동일한 물음표 그래픽
 - 칩이 프레임 밖으로 나가도 잘리지 않음
 
-- [ ] **Step 4: 발견한 차이를 스펙에 반영**
+- [x] **Step 4: 발견한 차이를 스펙에 반영**
 
 Step 3에서 Figma와 어긋나는 점이 나오면 코드를 고치고, **설계와 달라진 부분은 스펙 문서 상단에
 "구현 상태"·"설계에서 달라진 점" 절로 기록한다**(선행 캔버스 라운드와 같은 형식). 무엇을 고쳤는지가
 아니라 **왜 설계대로 하면 안 됐는지**를 적는다.
 
-- [ ] **Step 5: 문서 상태 갱신**
+- [x] **Step 5: 문서 상태 갱신**
 
 - 스펙 frontmatter `status: draft` → `in-progress`, `verified`를 검증일로 갱신
 - 계획 frontmatter `status: draft` → `in-progress`(전 Task 완료 시 `done`), `updated` 갱신
@@ -971,7 +971,7 @@ Step 3에서 Figma와 어긋나는 점이 나오면 코드를 고치고, **설�
 `archive/` 이동과 `architecture/design-system` as-built 갱신은 **develop 머지 후**로 미룬다.
 코드가 커밋되지 않은 상태에서 문서만 완료로 넘기면 다음 라운드가 없는 코드를 전제하게 된다.
 
-- [ ] **Step 6: 미커밋 상태 보고**
+- [x] **Step 6: 미커밋 상태 보고**
 
 Run: `git -C <TJYG-Android 경로> status --short`
 Expected: 신규/수정 파일 목록이 나오고 커밋은 없음. 이 목록을 작업자에게 보고한다.
