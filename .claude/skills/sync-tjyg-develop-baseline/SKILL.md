@@ -33,6 +33,13 @@ TJYG-Android `develop`에 새로 머지된 것과 parfait 문서의 드리프트
 5. **기준선 갱신** — `doc-baseline.md` "현재 기준선"을 새 `origin/develop` HEAD로 교체 + 이력 표에 1줄. `index.md`의 doc-baseline 라인(해시·날짜)도 정정. 미머지 추적 항목은 유지.
 6. **보고 → 커밋**(사용자 확인 후) — delta 요약·드리프트 건수·조치 목록 보고. 승인 시 브랜치→commit→push→PR→merge, 로컬 main 동기화.
 
+## 경계 — 서버 API 계약과의 분담
+`parfait/api/`의 **계약 절**(엔드포인트·요청/응답 필드·에러코드)은 서버가 정본이라
+`sync-teamyg-server-api`가 갱신한다. 이 스킬은 그 문서의 **Android 쪽**만 본다 —
+develop delta에 원격 연동 코드(Service·Response·RemoteDataSource·`ApiResponse`·`TokenProvider`)가
+있으면 해당 도메인 문서의 `android_status`와 `## Android 매핑` 절, 엔드포인트 표의 Android 열
+(`미구현`/`구현됨`/`⚠️불일치`)을 갱신한다.
+
 ## 주의
 - `<기준선>..origin/develop` 범위 밖(기준선 이전)은 건드리지 않는다.
 - 파르페 규율: SoT는 코드 > wiki > CLAUDE.md. 라인번호·변동수치·색 hex는 문서에 안 적는다.
