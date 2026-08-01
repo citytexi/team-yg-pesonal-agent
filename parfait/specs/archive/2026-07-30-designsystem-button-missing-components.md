@@ -1,10 +1,10 @@
 ---
 id: designsystem-button-missing-components
 title: 디자인시스템 버튼 영역 미구현 컴포넌트 신설 (Design System Missing Button Components)
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-30
+verified: 2026-08-01
 related_code:
   - YGEditTabButton.kt#YGEditTabButton
   - YGEditButton.kt#YGEditButton
@@ -33,17 +33,33 @@ tags: [spec, parfait, designsystem, figma-sync]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 >
-> **구현 상태(2026-07-30)** — 5종 신설 + `YGToggleButton` 삭제 + `SizeTokens` `Size18`·`Size28` 추가
-> 전량 완료. `:core:designsystem`·`:app-preview` `assembleDebug` + repo 전체 `ktlintCheck` 통과,
-> 실기기 갤러리에서 5종 육안 대조 완료. **TJYG-Android 커밋은 하지 않았다**(작업자 지시) —
-> develop 반영 전이므로 [design-system](../architecture/design-system.md) as-built 갱신과
-> `implemented`·아카이브 전환은 머지 후로 보류한다.
+> **구현 상태 — ✅ develop 머지 완료(PR #183, 2026-08-01)**. 5종 신설 + `YGToggleButton` 삭제 +
+> `SizeTokens` `Size18`·`Size28` 추가 전량 반영. 신규 5종 갤러리 등록(`BUTTON` 카테고리)도 확인.
+>
+> **as-built 정정 3건(2026-08-01 기준선 점검, 코드가 정본)** — 아래 API 표의 서술을 머지 코드 기준으로 고친다.
+> - **`YGCircleButtonType`이 `@get:Composable`이 아니다.** 인터페이스에 `@Immutable`을 달고 전 속성이
+>   평범한 `val`(테마 미경유, `YGAtomicColors`·`SizeTokens` 상수 직접 대입)이다. 세 변형이 모두
+>   `data object`라 컴포지션 시점 값이 필요 없다는 판단으로 보인다 — `YGButtonType`의 "변형이 자기 토큰을
+>   `@get:Composable`로 노출" 패턴과는 갈린다.
+> - **`paintsOuterCircle: Boolean` 속성이 추가됐다.** 스펙은 "`Small`만 바깥 터치 영역이 별도로 필요하므로
+>   컴포저블이 타입으로 분기"라고만 했는데, 그 분기 조건이 타입 속성으로 올라갔다. `Default`·`Secondary`는
+>   `true`(바깥 원에 배경·테두리), `Small`은 `false`(내부 `Size28` 원에만 배경·테두리 + 투명 44 래핑).
+> - **`Default`·`Small`의 `iconTint`가 `Gray.Gray850`이다**(스펙 표는 `Gray.Gray900`). `Secondary`는
+>   설계대로 `Gray.White`. Figma가 tint를 노출하지 않아 팔레트 근사로 정한 값이라 실물 기준으로 한 단계
+>   내려간 것이며, 확인 대상은 [open-questions](../../synthesis/open-questions.md) [2026-07-30] 아이콘 tint 항목에 남아 있다.
+>
+> **상호작용 관용구 as-built** — `YGEditButton`은 `selectable(role = Role.Button)`, `YGEditTabButton`은
+> `selectable(role = Role.Tab)`을 쓴다(`isSelected`가 prop이라 선택형 시맨틱). `YGCircleButton`·
+> `YGEditActionButton`·`YGCameraShutter`는 `clickable(indication = null)` + `semantics { role = Role.Button }`.
+>
+> **함께 온 아이콘 반입** — 신설 컴포넌트 프리뷰가 쓰는 `ic_rotate`·`ic_minus_round` 등은 같은 PR의
+> 아이콘 현행화분이다(선행 스펙 [designsystem-button-component-sync](2026-07-30-designsystem-button-component-sync.md) 노트 참고).
 >
 > **설계에서 달라진 점 2건** — 둘 다 갤러리 실기기 검증에서 드러난 결함을 고친 것이다.
 > - **`YGCircleButtonType`에 `iconTint` 추가** — 스펙은 "Figma가 아이콘 색을 에셋에 담아 대조값이
 >   없으니 리소스 색을 그대로 쓴다"고 했으나, 저장소 아이콘 드로어블이 전부 검정이어서
 >   `Type=Secondary`(어두운 원)에서 아이콘이 배경에 묻혔다. Figma 스크린샷으로 Secondary 아이콘이
->   흰색임을 확인하고 tint를 타입 속성으로 올렸다: `Default`·`Small` = `Gray.Gray900`,
+>   흰색임을 확인하고 tint를 타입 속성으로 올렸다: `Default`·`Small` = `Gray.Gray850`(머지 코드 기준),
 >   `Secondary` = `Gray.White`.
 > - **`YGEditTabButton` 밑줄 폭 제약** — 밑줄에 `fillMaxWidth`만 걸면 "부모가 준 최대 폭"을 채워
 >   화면 전체로 늘어나고 나머지 탭이 밀려난다. 컴포넌트 `Column`에 `width(IntrinsicSize.Max)`를
@@ -112,7 +128,7 @@ Figma "버튼" 영역 14종 대조에서 **대응 구현체가 아예 없던 5�
 | Edit-Action 바깥 | `padding1` 래핑 | 44 | 42 — 2dp 큼 |
 | Camera-Shutter | `padding2` + 내부 원 `Size48` | 56 | 56 / 내부 48 — 일치 |
 
-`SizeTokens`에 `Size28`·`Size18`을 추가한다([design-system](../architecture/design-system.md)
+`SizeTokens`에 `Size28`·`Size18`을 추가한다([design-system](../../architecture/design-system.md)
 "신규 토큰 값 추가 체크리스트" 3항). 이 둘로 `Button-Circle` 3변형이 Figma와 정확히 일치한다.
 
 만들지 않는 것:
@@ -125,19 +141,20 @@ Figma "버튼" 영역 14종 대조에서 **대응 구현체가 아예 없던 5�
 ### `YGCircleButtonType`
 
 ```kotlin
+@Immutable
 sealed interface YGCircleButtonType {
-    @get:Composable
     val backgroundColor: Color
 
-    @get:Composable
     val pressedBackgroundColor: Color
 
-    @get:Composable
     val borderColor: Color
 
     val iconTint: Color
 
     val iconSize: Dp
+
+    /** true = 바깥 원에 배경·테두리, false = 내부 원에만 */
+    val paintsOuterCircle: Boolean
 
     data object Default : YGCircleButtonType
 
@@ -244,9 +261,9 @@ fun YGCameraShutter(
 
 | 타입 | 배경 | pressed 배경 | 테두리 | 아이콘 | 아이콘 tint | 기본 사용 글리프 |
 |---|---|---|---|---|---|---|
-| `Default` | `Gray.White` | `Gray.Gray100` | 1dp `Transparency.Black5` | `Size28` | `Gray.Gray900` | `ic_caret_left` |
+| `Default` | `Gray.White` | `Gray.Gray100` | 1dp `Transparency.Black5` | `Size28` | `Gray.Gray850` | `ic_caret_left` |
 | `Secondary` | `Gray.Gray900` | `Gray.Gray950` | 1dp `Transparency.White25` | `Size28` | `Gray.White` | `ic_plus` |
-| `Small` | `Gray.White` | `Gray.Gray100` | 1dp `Transparency.Black5` | `Size18` | `Gray.Gray900` | `ic_rotate` |
+| `Small` | `Gray.White` | `Gray.Gray100` | 1dp `Transparency.Black5` | `Size18` | `Gray.Gray850` | `ic_rotate` |
 
 공통: `shapes.radius.round`.
 `Default`·`Secondary`는 원 지름이 `padding3` + 아이콘에서 도출되고, 배경·테두리가 그 원에 걸린다.
@@ -299,7 +316,7 @@ Figma가 아이콘 색을 에셋에 구워 tint를 노출하지 않으므로 `Gr
 `YGCircleButton`만 변형이 3개라 `YGCircleButtonType`이 색을 들고 있고, 나머지는 컴포저블 본문에서
 상태 분기한다.
 
-[design-system](../architecture/design-system.md)의 컴포넌트 작성 규약은 `YGButton` 기준으로
+[design-system](../../architecture/design-system.md)의 컴포넌트 작성 규약은 `YGButton` 기준으로
 "Colors data class 분리"를 적어 두었으므로 이 판단은 규약과 갈린다. 어떤 조건에서 분리가 필요한지
 (주입 요구 유무 기준) 규약을 다듬어야 한다 → [주의 / 열린 질문](#주의--열린-질문).
 
@@ -314,7 +331,7 @@ Figma가 아이콘 색을 에셋에 구워 tint를 노출하지 않으므로 `Gr
 | `:app-preview` `model/ComponentCatalog.kt` | 항목 제거 |
 | `:app-preview` `navigation/entry/ComponentEntryBuilders.kt` | `entry` 블록 + import 제거 |
 
-실화면 사용처가 없어 삭제로 깨지는 호출부가 없다. 삭제하면 [2026-07-16 open-questions](../synthesis/open-questions.md)
+실화면 사용처가 없어 삭제로 깨지는 호출부가 없다. 삭제하면 [2026-07-16 open-questions](../../synthesis/open-questions.md)
 "YGToggleButton 규약 이탈" 항목이 해소된다(대상 코드가 사라지므로).
 
 ## 파일 구성
@@ -345,7 +362,7 @@ Figma가 아이콘 색을 에셋에 구워 tint를 노출하지 않으므로 `Gr
 | `navigation/entry/ComponentEntryBuilders.kt` (수정) | `entry` 5블록 추가, 토글 블록 제거 |
 
 `navigation/di/ComponentEntryModule.kt`는 수정하지 않는다 — `@IntoSet` 바인딩이 함수 단위다
-([app-preview-component-gallery](archive/2026-07-21-app-preview-component-gallery.md) 구조).
+([app-preview-component-gallery](2026-07-21-app-preview-component-gallery.md) 구조).
 
 ### 갤러리 showcase 구성 요구
 
@@ -375,7 +392,7 @@ Figma가 아이콘 색을 에셋에 구워 tint를 노출하지 않으므로 `Gr
 - **`feature/camera` 임시 구현체 잔존** — `YGCameraShutter`를 만들지만 `ShutterButton`(72dp 리터럴)·
   `FlipCameraButton`(이모지 텍스트 + 리터럴 색)·취소 `TextButton`을 이번에 치환하지 않는다.
   즉 셔터 구현이 두 곳에 공존한다. 카메라 화면 sync 라운드에서 정리해야 한다.
-  → [parfait open-questions](../synthesis/open-questions.md) 등록
+  → [parfait open-questions](../../synthesis/open-questions.md) 등록
 - **`Button-Circle` 변형과 카메라 컨트롤의 대응 미확정** — `Small`의 `ic_rotate` 글리프가 카메라 전환
   버튼처럼 보이지만 Figma 컴포넌트 시트만으로는 단정할 수 없다. 화면 노드 대조가 필요하다. → 위 항목과 함께 추적
 - **`Button-Edit-Action` 2dp 오차** — 아이콘 22를 `Size24`로 옮겨 내부 원(38→40)과 바깥 프레임(42→44)이
@@ -386,7 +403,7 @@ Figma가 아이콘 색을 에셋에 구워 tint를 노출하지 않으므로 `Gr
   채움 색으로는 설명되지 않는다(외곽 테두리나 그림자일 가능성). 이번 구현은 두 원만 그린다.
   → open-questions 등록
 - **`Button-Edit-Action` 아이콘 tint 미대조** — Figma가 색을 에셋에 구워 노출하지 않는다.
-  선행 스펙의 같은 항목([2026-07-30 open-questions](../synthesis/open-questions.md))과 동일 사유이며 그 항목에서 함께 추적한다.
+  선행 스펙의 같은 항목([2026-07-30 open-questions](../../synthesis/open-questions.md))과 동일 사유이며 그 항목에서 함께 추적한다.
 - **신규 버튼군 Colors 미분리** — 위 [Colors 분리 판단](#colors-분리-판단). 규약을 "색 주입 요구가
   있을 때만 분리"로 다듬을지 결정이 필요하다. → open-questions 등록
 - **원자 색 직접 참조** — 5종 모두 `YGAtomicColors`를 직접 읽는다. 기존 등록 사항이며 이번에도 유지한다.

@@ -1,6 +1,6 @@
 ---
 tags: [synthesis, open-questions, meta]
-updated: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Open Questions — 미해결 모순 및 열린 질문
@@ -158,6 +158,12 @@ ingest·lint에서 감지된 모순과 미결 질문을 추적한다.
 - **출처 B**: [[C-001-캔버스-정책-v0.2]] — 배경 처리로 **Background Dot Grid**(2px·Gray-100·20px 타일링)를 신설, **원문에 Background Blur 언급 없음**.
 - **상태**: 미해결
 - **해소 메모**: v0.2 개정 요지가 "Dot grid 추가 및 캔버스 정책 변경"이라 Blur → Dot Grid **대체**로 보이나, v0.2가 Blur를 명시적으로 제거한 문구가 없어 병존 여부 불확실. 디자인 확인 후 [[캔버스-반응형-레이아웃]]의 Blur 섹션 유지/삭제 결정 + `⚠️` 마커 처리.
+
+### [2026-08-01] Grouptag-Chip 그레이 타입 Timestamp 컬러 — 정책 문서 White vs 디자인 파일 Gray-200
+- **출처 A**: [[S-101-프로필-이미지-및-그룹칩-내-타임스탬프-컬러-규칙-v0.1]](현행 정본) — 그레이(Type 7, 8) Timestamp 텍스트 컬러 = **White**. [[nametag-chip]] ② 표가 그대로 투영.
+- **출처 B**: 디자인 파일(Figma) `Grouptag-Chip` 컴포넌트 — 같은 자리가 **Gray-200**. 나머지 5행(Cherry-100/200/300·Melon·Pudding)은 두 출처가 일치.
+- **상태**: 미해결
+- **해소 메모**: Android 구현이 디자인 파일을 따라 `YGGrouptagChipType.TYPE_7_8` = Gray-200으로 머지된 상태(2026-08-01)라, 정책이 정본이면 코드와 디자인 파일을 함께 고쳐야 하고 디자인이 정본이면 위 규칙 문서(raw 후속본)와 [[nametag-chip]] ② 표를 정정해야 한다. **위키가 플랫폼 비종속 SoT이므로 iOS가 붙기 전에 결론이 나야 한다** — 지금은 두 플랫폼이 각자 다른 출처를 보고 구현할 여지가 열려 있다. 확정 시 ② 표의 `⚠️` 마커 제거.
 
 > **구현(코드·ADR·architecture) 미결은 여기 없다.** `parfait/synthesis/open-questions.md`로 분리(2026-07-13). 이 파일은 정책·기획 미결만 추적한다.
 

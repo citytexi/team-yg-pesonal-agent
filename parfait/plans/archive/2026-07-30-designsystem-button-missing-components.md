@@ -1,10 +1,10 @@
 ---
 id: designsystem-button-missing-components
 title: 디자인시스템 버튼 영역 미구현 컴포넌트 5종 신설 구현 계획
-status: in-progress
+status: done
 type: work-order
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 platforms: android
 owner: TJYG-Android 디자인시스템
 related_adr:
@@ -21,7 +21,7 @@ related_code:
   - SizeTokens.kt#SizeTokens
   - ComponentCatalog.kt#componentCatalog
   - ComponentEntryBuilders.kt#componentEntryBuilders
-archived_reason:
+archived_reason: PR #183 develop 머지 완료(2026-08-01) — 5종 신설·YGToggleButton 삭제 반영, 스펙 implemented 전환
 tags: [plan, parfait, designsystem, figma-sync]
 ---
 
@@ -181,7 +181,7 @@ private fun PreviewYG{Name}PreviewScreen() = PreviewBox {
 - Produces: `SizeTokens.Size18`·`SizeTokens.Size28`(둘 다 `SizeToken`). Task 2~6이 쓴다.
 - Consumes: 없음.
 
-- [ ] **Step 1: 두 스케일 추가**
+- [x] **Step 1: 두 스케일 추가**
 
 기존 상수 사이에 오름차순으로 끼운다.
 
@@ -194,7 +194,7 @@ private fun PreviewYG{Name}PreviewScreen() = PreviewBox {
     val Size32: SizeToken = SizeToken(32)
 ```
 
-- [ ] **Step 2: 컴파일 + ktlint**
+- [x] **Step 2: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck`
 Expected: 둘 다 BUILD SUCCESSFUL. `SizeTokens`는 `object`의 `val` 추가라 기존 사용처에 영향이 없다.
@@ -217,7 +217,7 @@ Expected: 둘 다 BUILD SUCCESSFUL. `SizeTokens`는 `object`의 `val` 추가라 
 - Consumes: `SizeTokens.Size18`·`Size28`(Task 1).
 - Produces: `YGCircleButton(iconResource: Int, type: YGCircleButtonType, contentDescription: String?, onClick: () -> Unit, modifier: Modifier, interactionSource: MutableInteractionSource)` + `YGCircleButtonType.{Default, Secondary, Small}`.
 
-- [ ] **Step 1: `YGCircleButtonType` 작성**
+- [x] **Step 1: `YGCircleButtonType` 작성**
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.ygcirclebutton
@@ -276,7 +276,7 @@ sealed interface YGCircleButtonType {
 
 `YGButtonType`과 달리 `@get:Composable`을 쓰지 않는다 — 값이 전부 `YGAtomicColors`·`SizeTokens`(둘 다 평범한 `object`)에서 오고 `YGTheme`를 읽지 않는다. 모양(`radius.round`)만 컴포저블 본문에서 읽는다.
 
-- [ ] **Step 2: `YGCircleButton` 작성**
+- [x] **Step 2: `YGCircleButton` 작성**
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.ygcirclebutton
@@ -377,7 +377,7 @@ private fun YGCircleButtonIcon(
 - `ColorFilter.tint`를 걸지 않는다 — Figma가 아이콘 색을 에셋에 담고 있어 대조된 tint 값이 없다(스펙 열린 질문). 리소스 색을 그대로 쓴다.
 - `clip`을 `clickable` 앞에 둬서 터치·리플 영역이 원을 넘지 않게 한다.
 
-- [ ] **Step 3: 프리뷰 추가**
+- [x] **Step 3: 프리뷰 추가**
 
 같은 파일 끝에 붙인다.
 
@@ -408,12 +408,12 @@ private fun YGCircleButtonPreview() = PreviewBox {
 }
 ```
 
-- [ ] **Step 4: 컴파일 + ktlint**
+- [x] **Step 4: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck`
 Expected: 둘 다 BUILD SUCCESSFUL.
 
-- [ ] **Step 5: `NavKey` 추가**
+- [x] **Step 5: `NavKey` 추가**
 
 Create `app-preview/.../navigation/key/NavKeyYGCircleButton.kt`:
 
@@ -427,7 +427,7 @@ import kotlinx.serialization.Serializable
 data object NavKeyYGCircleButton : NavKey
 ```
 
-- [ ] **Step 6: 갤러리 화면 추가**
+- [x] **Step 6: 갤러리 화면 추가**
 
 Create `app-preview/.../screen/component/YGCircleButtonPreviewScreen.kt`:
 
@@ -501,7 +501,7 @@ private fun PreviewYGCircleButtonPreviewScreen() = PreviewBox {
 
 > `Secondary`는 어두운 배경 위에 놓이는 변형이라 흰 갤러리 배경에서는 테두리(`Transparency.White25`)가 보이지 않는다. 눈으로 확인할 대상은 배경색·지름·아이콘 크기다.
 
-- [ ] **Step 7: 카탈로그 등록**
+- [x] **Step 7: 카탈로그 등록**
 
 `ComponentCatalog.kt`의 `BUTTON` 항목 뒤에 추가하고 import도 넣는다.
 
@@ -513,7 +513,7 @@ private fun PreviewYGCircleButtonPreviewScreen() = PreviewBox {
     ),
 ```
 
-- [ ] **Step 8: entry 등록**
+- [x] **Step 8: entry 등록**
 
 `ComponentEntryBuilders.kt`의 `componentEntryBuilders` 안에 추가하고 import 2개(`NavKeyYGCircleButton`, `YGCircleButtonPreviewScreen`)를 넣는다.
 
@@ -528,7 +528,7 @@ private fun PreviewYGCircleButtonPreviewScreen() = PreviewBox {
     }
 ```
 
-- [ ] **Step 9: 컴파일 + ktlint (app-preview 포함)**
+- [x] **Step 9: 컴파일 + ktlint (app-preview 포함)**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :app-preview:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck :app-preview:ktlintMainSourceSetCheck`
 Expected: 전부 BUILD SUCCESSFUL.
@@ -550,7 +550,7 @@ Expected: 전부 BUILD SUCCESSFUL.
 - Consumes: 없음(`SizeTokens.Size24`는 기존 값).
 - Produces: `YGEditActionButton(iconResource: Int, contentDescription: String?, onClick: () -> Unit, modifier: Modifier, isEnabled: Boolean, interactionSource: MutableInteractionSource)`.
 
-- [ ] **Step 1: 컴포넌트 작성**
+- [x] **Step 1: 컴포넌트 작성**
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.ygeditactionbutton
@@ -633,7 +633,7 @@ fun YGEditActionButton(
 내부 원 = `padding3`(8) + 아이콘 `Size24` → 40, 바깥 = `padding1`(2) 래핑 → 44.
 Figma는 38/42이며 2dp 차이는 의도된 절충이다(스펙 열린 질문).
 
-- [ ] **Step 2: 프리뷰 추가**
+- [x] **Step 2: 프리뷰 추가**
 
 배경이 반투명이라 어두운 판 위에 올려야 보인다.
 
@@ -664,7 +664,7 @@ private fun YGEditActionButtonPreview() = PreviewBox {
 
 import 추가: `androidx.compose.foundation.layout.Arrangement`, `androidx.compose.foundation.layout.Row`.
 
-- [ ] **Step 3: `NavKey` 추가**
+- [x] **Step 3: `NavKey` 추가**
 
 ```kotlin
 package com.teamyg.parfait.preview.navigation.key
@@ -676,7 +676,7 @@ import kotlinx.serialization.Serializable
 data object NavKeyYGEditActionButton : NavKey
 ```
 
-- [ ] **Step 4: 갤러리 화면 추가**
+- [x] **Step 4: 갤러리 화면 추가**
 
 위 **공용 템플릿 G**를 그대로 쓰고 `{BODY}`에 아래를 넣는다(`{Name}` = `EditActionButton`). 반투명 배경이라 섹션 안을 어둡게 깐다.
 
@@ -705,12 +705,12 @@ data object NavKeyYGEditActionButton : NavKey
             }
 ```
 
-- [ ] **Step 5: 카탈로그 + entry 등록**
+- [x] **Step 5: 카탈로그 + entry 등록**
 
 `ComponentCatalog.kt`에 `label = "YGEditActionButton"`, `navKey = NavKeyYGEditActionButton` 항목을 추가하고,
 `ComponentEntryBuilders.kt`에 `entry<NavKeyYGEditActionButton>` 블록을 추가한다(import 2개 포함).
 
-- [ ] **Step 6: 컴파일 + ktlint**
+- [x] **Step 6: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :app-preview:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck :app-preview:ktlintMainSourceSetCheck`
 Expected: 전부 BUILD SUCCESSFUL.
@@ -732,7 +732,7 @@ Expected: 전부 BUILD SUCCESSFUL.
 - Consumes: 없음.
 - Produces: `YGCameraShutter(onClick: () -> Unit, modifier: Modifier, interactionSource: MutableInteractionSource)`.
 
-- [ ] **Step 1: 컴포넌트 작성**
+- [x] **Step 1: 컴포넌트 작성**
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.ygcamerashutter
@@ -804,7 +804,7 @@ private fun YGCameraShutterPreview() = PreviewBox {
 
 `padding2`(4) + 내부 `Size48` → 외곽 56이 도출된다. Figma가 두 원을 래스터로 내보내므로 에셋을 쓰지 않고 도형 2개로 그린다.
 
-- [ ] **Step 2: `NavKey` 추가**
+- [x] **Step 2: `NavKey` 추가**
 
 ```kotlin
 package com.teamyg.parfait.preview.navigation.key
@@ -816,7 +816,7 @@ import kotlinx.serialization.Serializable
 data object NavKeyYGCameraShutter : NavKey
 ```
 
-- [ ] **Step 3: 갤러리 화면 추가**
+- [x] **Step 3: 갤러리 화면 추가**
 
 위 **공용 템플릿 G**(`{Name}` = `CameraShutter`)의 `{BODY}`에 아래를 넣는다.
 
@@ -834,11 +834,11 @@ data object NavKeyYGCameraShutter : NavKey
             }
 ```
 
-- [ ] **Step 4: 카탈로그 + entry 등록**
+- [x] **Step 4: 카탈로그 + entry 등록**
 
 위 **공용 템플릿 W**(`{Name}` = `CameraShutter`)대로 등록한다.
 
-- [ ] **Step 5: 컴파일 + ktlint**
+- [x] **Step 5: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :app-preview:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck :app-preview:ktlintMainSourceSetCheck`
 Expected: 전부 BUILD SUCCESSFUL.
@@ -860,7 +860,7 @@ Expected: 전부 BUILD SUCCESSFUL.
 - Consumes: 없음.
 - Produces: `YGEditButton(text: String, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier, iconResource: Int?, interactionSource: MutableInteractionSource)`.
 
-- [ ] **Step 1: 컴포넌트 작성**
+- [x] **Step 1: 컴포넌트 작성**
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.ygeditbutton
@@ -970,7 +970,7 @@ private fun YGEditButtonPreview() = PreviewBox {
 - 폭은 호출자가 정한다. Figma 162는 캔버스 기준폭이다.
 - 선택 상태를 접근성에 알리려고 `selectable`을 쓴다(`YGToggleButton` 선례). 이 관용구의 표준화 여부는 open-questions에 남아 있다.
 
-- [ ] **Step 2: `NavKey` 추가**
+- [x] **Step 2: `NavKey` 추가**
 
 ```kotlin
 package com.teamyg.parfait.preview.navigation.key
@@ -982,7 +982,7 @@ import kotlinx.serialization.Serializable
 data object NavKeyYGEditButton : NavKey
 ```
 
-- [ ] **Step 3: 갤러리 화면 추가**
+- [x] **Step 3: 갤러리 화면 추가**
 
 위 **공용 템플릿 G**(`{Name}` = `EditButton`)의 `{BODY}`에 아래 2섹션을 넣는다. 선택 상태가 있으므로 `remember` 인터랙션을 포함한다.
 
@@ -1023,11 +1023,11 @@ data object NavKeyYGEditButton : NavKey
 
 import 추가: `androidx.compose.runtime.getValue`·`mutableStateOf`·`remember`·`setValue`(`YGToggleButtonPreviewScreen`과 동일 세트).
 
-- [ ] **Step 4: 카탈로그 + entry 등록**
+- [x] **Step 4: 카탈로그 + entry 등록**
 
 위 **공용 템플릿 W**(`{Name}` = `EditButton`)대로 등록한다.
 
-- [ ] **Step 5: 컴파일 + ktlint**
+- [x] **Step 5: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :app-preview:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck :app-preview:ktlintMainSourceSetCheck`
 Expected: 전부 BUILD SUCCESSFUL.
@@ -1049,7 +1049,7 @@ Expected: 전부 BUILD SUCCESSFUL.
 - Consumes: 없음.
 - Produces: `YGEditTabButton(text: String, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier, interactionSource: MutableInteractionSource)`.
 
-- [ ] **Step 1: 컴포넌트 작성**
+- [x] **Step 1: 컴포넌트 작성**
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.ygedittabbutton
@@ -1140,7 +1140,7 @@ private fun YGEditTabButtonPreview() = PreviewBox {
 - 두께 `1.4.dp`는 리터럴이다(두께 토큰 없음).
 - 탭이므로 `Role.Tab`을 쓴다.
 
-- [ ] **Step 2: `NavKey` 추가**
+- [x] **Step 2: `NavKey` 추가**
 
 ```kotlin
 package com.teamyg.parfait.preview.navigation.key
@@ -1152,7 +1152,7 @@ import kotlinx.serialization.Serializable
 data object NavKeyYGEditTabButton : NavKey
 ```
 
-- [ ] **Step 3: 갤러리 화면 추가**
+- [x] **Step 3: 갤러리 화면 추가**
 
 위 **공용 템플릿 G**(`{Name}` = `EditTabButton`)의 `{BODY}`에 아래를 넣는다. 탭은 여러 개가 나란히 놓이는 컴포넌트라 실제 선택 이동을 재현한다.
 
@@ -1176,11 +1176,11 @@ data object NavKeyYGEditTabButton : NavKey
 
 import 추가: `androidx.compose.runtime.getValue`·`mutableIntStateOf`·`remember`·`setValue`.
 
-- [ ] **Step 4: 카탈로그 + entry 등록**
+- [x] **Step 4: 카탈로그 + entry 등록**
 
 위 **공용 템플릿 W**(`{Name}` = `EditTabButton`)대로 등록한다.
 
-- [ ] **Step 5: 컴파일 + ktlint**
+- [x] **Step 5: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :app-preview:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck :app-preview:ktlintMainSourceSetCheck`
 Expected: 전부 BUILD SUCCESSFUL.
@@ -1205,7 +1205,7 @@ Expected: 전부 BUILD SUCCESSFUL.
 - Consumes: Task 2~6(대체물 `YGEditButton`이 이미 있어야 한다).
 - Produces: 없음.
 
-- [ ] **Step 1: 사용처 확인**
+- [x] **Step 1: 사용처 확인**
 
 Run:
 ```bash
@@ -1213,7 +1213,7 @@ grep -rn "YGToggleButton" --include="*.kt" core feature app-preview data domain 
 ```
 Expected: `component/ygtogglebutton/` 2파일 + `:app-preview` 4곳(NavKey·PreviewScreen·Catalog·EntryBuilders)만. **다른 결과가 나오면 멈추고 보고한다** — 실화면 사용처가 생겼다는 뜻이다.
 
-- [ ] **Step 2: 파일 4개 삭제**
+- [x] **Step 2: 파일 4개 삭제**
 
 Run:
 ```bash
@@ -1225,7 +1225,7 @@ rm app-preview/src/main/kotlin/com/teamyg/parfait/preview/screen/component/YGTog
 
 빈 디렉토리 `component/ygtogglebutton/`도 지운다.
 
-- [ ] **Step 3: 카탈로그 항목 제거**
+- [x] **Step 3: 카탈로그 항목 제거**
 
 `ComponentCatalog.kt`에서 아래 블록과 `NavKeyYGToggleButton` import를 지운다.
 
@@ -1237,7 +1237,7 @@ rm app-preview/src/main/kotlin/com/teamyg/parfait/preview/screen/component/YGTog
     ),
 ```
 
-- [ ] **Step 4: entry 제거**
+- [x] **Step 4: entry 제거**
 
 `ComponentEntryBuilders.kt`에서 아래 블록과 import 2개(`NavKeyYGToggleButton`·`YGToggleButtonPreviewScreen`)를 지운다.
 
@@ -1252,7 +1252,7 @@ rm app-preview/src/main/kotlin/com/teamyg/parfait/preview/screen/component/YGTog
     }
 ```
 
-- [ ] **Step 5: 잔존 참조 0건 확인**
+- [x] **Step 5: 잔존 참조 0건 확인**
 
 Run:
 ```bash
@@ -1260,7 +1260,7 @@ grep -rn "YGToggleButton\|ygtogglebutton" --include="*.kt" core feature app-prev
 ```
 Expected: 출력 없음.
 
-- [ ] **Step 6: 컴파일 + ktlint**
+- [x] **Step 6: 컴파일 + ktlint**
 
 Run: `./gradlew :core:designsystem:compileDebugKotlin :app-preview:compileDebugKotlin :core:designsystem:ktlintMainSourceSetCheck :app-preview:ktlintMainSourceSetCheck`
 Expected: 전부 BUILD SUCCESSFUL.
@@ -1282,17 +1282,17 @@ Expected: 전부 BUILD SUCCESSFUL.
 - Consumes: Task 1~7 전체.
 - Produces: 없음.
 
-- [ ] **Step 1: 전체 빌드**
+- [x] **Step 1: 전체 빌드**
 
 Run: `./gradlew :core:designsystem:assembleDebug :app-preview:assembleDebug`
 Expected: 둘 다 BUILD SUCCESSFUL.
 
-- [ ] **Step 2: 전체 ktlint**
+- [x] **Step 2: 전체 ktlint**
 
 Run: `./gradlew ktlintCheck`
 Expected: BUILD SUCCESSFUL(CI `ktlint.yml`과 같은 게이트).
 
-- [ ] **Step 3: 갤러리 설치·실행**
+- [x] **Step 3: 갤러리 설치·실행**
 
 Run:
 ```bash
@@ -1301,7 +1301,7 @@ adb shell monkey -p com.teamyg.parfait.preview -c android.intent.category.LAUNCH
 ```
 `BUTTON` 카테고리에 신규 5종이 보이고 `YGToggleButton`이 사라졌는지 확인한다.
 
-- [ ] **Step 4: 5종 육안 대조**
+- [x] **Step 4: 5종 육안 대조**
 
 각 화면을 Figma와 나란히 본다. 확인 항목:
 - `YGCircleButton` — 3변형 지름이 같고(44) `Small`만 안쪽 원이 작다(28). 아이콘 크기 28/28/18
@@ -1312,21 +1312,21 @@ adb shell monkey -p com.teamyg.parfait.preview -c android.intent.category.LAUNCH
 
 pressed·selected는 실제로 눌러 확인한다.
 
-- [ ] **Step 5: 스펙·계획 상태 갱신**
+- [x] **Step 5: 스펙·계획 상태 갱신**
 
 - 스펙 `status`를 `in-progress`(develop 미머지) 또는 `implemented`(머지 완료)로 맞추고 상단에 구현 결과 노트를 단다: 통과 항목, 미검증 항목, 계획과 달라진 점.
 - 이 계획 `status`를 갱신하고 실행 기록 섹션을 추가한다.
 - `parfait/specs/README.md`·`parfait/plans/README.md`의 해당 행을 상태에 맞게 고친다.
 - **develop 미머지 상태면 `archive/` 이동과 `architecture/design-system.md` as-built 갱신을 하지 않는다** — parfait 문서는 develop 상태를 기술하므로 먼저 반영하면 드리프트한다(선행 라운드에서 같은 판단을 했다).
 
-- [ ] **Step 6: open-questions 갱신**
+- [x] **Step 6: open-questions 갱신**
 
 - `[2026-07-16] YGToggleButton 규약 이탈` — 삭제가 develop에 머지되면 `해소됨`으로 바꾼다. 미머지면 "삭제 구현 완료·미머지"로 메모만 갱신한다.
 - `[2026-07-30] Button-Edit-Action … 2dp` — 구현값(내부 원·바깥 프레임)을 확정 기록한다.
 - `[2026-07-30] Camera-Shutter … Black5` — 두 원만 그렸다는 사실을 기록한다.
 - `[2026-07-30] 신규 버튼군 Colors 미분리` — 구현이 그대로 갔음을 기록한다.
 
-- [ ] **Step 7: parfait 커밋 확인 요청**
+- [x] **Step 7: parfait 커밋 확인 요청**
 
 TJYG-Android는 커밋하지 않는다(Global Constraints). parfait 문서 변경은 목록으로 보고하고 **사용자 승인 후** 커밋한다.
 

@@ -1,3 +1,31 @@
+---
+id: designsystem-canvas-components
+title: 디자인시스템 캔버스 영역 컴포넌트 신설 구현 계획
+status: done
+type: work-order
+created: 2026-07-31
+updated: 2026-08-01
+platforms: android
+owner: TJYG-Android 디자인시스템
+related_adr:
+  - ADR-0010
+related_spec:
+  - designsystem-canvas-components
+related_code:
+  - CanvasCutCornerShape.kt#canvasCutCornerShape
+  - YGStrokeButton.kt#YGStrokeButton
+  - YGMenuItem.kt#YGMenuItem
+  - YGCanvasMenu.kt#YGCanvasMenu
+  - YGCanvasMenuAction.kt#YGCanvasMenuAction
+  - YGCanvasDateSelectButton.kt#YGCanvasDateSelectButton
+  - YGCanvas.kt#YGCanvas
+  - YGCanvasBackground.kt#YGCanvasBackground
+  - ComponentCatalog.kt#componentCatalog
+  - ComponentEntryBuilders.kt#componentEntryBuilders
+archived_reason: PR #185 develop 머지 완료(2026-08-01) — 코드=설계 일치, 스펙 implemented 전환
+tags: [plan, parfait, designsystem, figma-sync, canvas]
+---
+
 # 디자인시스템 캔버스 영역 컴포넌트 신설 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -8,7 +36,7 @@
 
 **Tech Stack:** Kotlin, Jetpack Compose, `core:designsystem` 자체 테마(`YGTheme`·`YGAtomicColors`·`SizeTokens`), Coil 3(`AsyncImage`), Navigation3 + Hilt(`:app-preview`).
 
-**설계 스펙:** [2026-07-31-designsystem-canvas-components](../specs/2026-07-31-designsystem-canvas-components.md) — 값·상태 표의 단일 출처. 이 계획과 어긋나면 스펙이 정답.
+**설계 스펙:** [2026-07-31-designsystem-canvas-components](../../specs/archive/2026-07-31-designsystem-canvas-components.md) — 값·상태 표의 단일 출처. 이 계획과 어긋나면 스펙이 정답.
 
 > **실행 결과(2026-07-31, subagent-driven)** — Task 1~8 전량 수행. 태스크마다 구현 → 스펙·품질 리뷰를
 > 돌렸고, 마지막에 14파일 통합 리뷰를 한 번 더 돌렸다. 빌드·repo 전체 ktlint 통과, 실기기
@@ -37,7 +65,7 @@
 > 안내문 `emptyMessage != null` → `isEmpty`, 캘린더 승격 `calendarContent != null` → `isCalendarVisible`.
 > `emptyMessage`·`calendarContent`는 논널이 됐다. 갤러리 두 화면의 호출부도 따라 고쳤다.
 > **아래 Task 4·6·7의 코드 블록은 계획 당시 시그니처 그대로다** — 현행 API는
-> [스펙](../specs/2026-07-31-designsystem-canvas-components.md)이 정본이다.
+> [스펙](../../specs/archive/2026-07-31-designsystem-canvas-components.md)이 정본이다.
 >
 > **미검증 2건** — pressed 상태(자동 입력이 `interactionSource`에 안 잡힘, 선행 라운드와 같은 한계),
 > `YGCanvasBackground.Image`의 원격 이미지 실렌더(위 Coil 네트워크 페처 부재로 로드 자체가 안 됨).
@@ -75,7 +103,7 @@
 - Consumes: 없음
 - Produces: `fun canvasCutCornerShape(cutSize: Dp = 17.dp): Shape` (패키지 `com.teamyg.parfait.core.designsystem.shape`)
 
-- [ ] **Step 1: 파일 생성**
+- [x] **Step 1: 파일 생성**
 
 `DS/shape/CanvasCutCornerShape.kt`:
 
@@ -124,12 +152,12 @@ private data class CanvasCutCornerShape(private val cutSize: Dp) : Shape {
 }
 ```
 
-- [ ] **Step 2: 컴파일 확인**
+- [x] **Step 2: 컴파일 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 3: 린트 확인**
+- [x] **Step 3: 린트 확인**
 
 Run: `./gradlew :core:designsystem:ktlintCheck`
 Expected: BUILD SUCCESSFUL
@@ -158,7 +186,7 @@ Figma `Button-Stroke`. 테두리 버튼, 텍스트 + 선택 아이콘. 폭은 �
   )
   ```
 
-- [ ] **Step 1: 컴포저블 + 프리뷰 작성**
+- [x] **Step 1: 컴포저블 + 프리뷰 작성**
 
 `DS/component/ygstrokebutton/YGStrokeButton.kt`:
 
@@ -301,17 +329,17 @@ private fun YGStrokeButtonPreview() = PreviewBox {
 }
 ```
 
-- [ ] **Step 2: 빌드 확인**
+- [x] **Step 2: 빌드 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 3: 타이포 심볼 실재 확인**
+- [x] **Step 3: 타이포 심볼 실재 확인**
 
 Run: `grep -n "b02R" core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/theme/typography/YGTypography.kt`
 Expected: `b02R` 필드가 나온다. 안 나오면 같은 파일에서 14sp Regular에 해당하는 실제 필드명을 찾아 교체하고, 이후 태스크에도 같은 이름을 쓴다.
 
-- [ ] **Step 4: 린트 확인**
+- [x] **Step 4: 린트 확인**
 
 Run: `./gradlew :core:designsystem:ktlintCheck`
 Expected: BUILD SUCCESSFUL
@@ -337,7 +365,7 @@ Figma `Menu-Item`. 전폭 반투명 메뉴 항목. `YGStrokeButton`과 색 방�
   )
   ```
 
-- [ ] **Step 1: 컴포저블 + 프리뷰 작성**
+- [x] **Step 1: 컴포저블 + 프리뷰 작성**
 
 `DS/component/ygmenuitem/YGMenuItem.kt`:
 
@@ -436,12 +464,12 @@ private fun YGMenuItemPreview() = PreviewBox {
 }
 ```
 
-- [ ] **Step 2: `Transparency.White75` 심볼 실재 확인**
+- [x] **Step 2: `Transparency.White75` 심볼 실재 확인**
 
 Run: `grep -n "White75\|White50" core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/theme/colors/YGAtomicColors.kt`
 Expected: `White75`가 나온다. 없으면 파일에서 흰색 75% 항목의 실제 이름을 찾아 교체하고, Task 5·6에도 같은 이름을 쓴다.
 
-- [ ] **Step 3: 빌드 + 린트 확인**
+- [x] **Step 3: 빌드 + 린트 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug :core:designsystem:ktlintCheck`
 Expected: BUILD SUCCESSFUL
@@ -471,7 +499,7 @@ Figma `Canvas-Menu`. 하단 2버튼 행 고정 + 확장 시 그 위로 `YGMenuIt
   )
   ```
 
-- [ ] **Step 1: 모델 파일 작성**
+- [x] **Step 1: 모델 파일 작성**
 
 `DS/component/ygcanvasmenu/YGCanvasMenuAction.kt`:
 
@@ -497,7 +525,7 @@ data class YGCanvasMenuItem(
 )
 ```
 
-- [ ] **Step 2: 컴포저블 + 프리뷰 작성**
+- [x] **Step 2: 컴포저블 + 프리뷰 작성**
 
 `DS/component/ygcanvasmenu/YGCanvasMenu.kt`:
 
@@ -588,12 +616,12 @@ private fun YGCanvasMenuPreview() = PreviewBox {
 }
 ```
 
-- [ ] **Step 3: 빌드 + 린트 확인**
+- [x] **Step 3: 빌드 + 린트 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug :core:designsystem:ktlintCheck`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 4: 프리뷰 육안 확인**
+- [x] **Step 4: 프리뷰 육안 확인**
 
 Android Studio에서 `YGCanvasMenuPreview` 렌더. 확인 사항: 두 버튼이 정확히 반반으로 나뉜다 / 확장 항목이 버튼 행 **위**에 쌓인다 / 항목 사이 간격이 없다.
 
@@ -618,12 +646,12 @@ Figma `Canvas/Button-Date-Select`. 컷 도형 + 날짜·요일 + 우측 캘린�
   )
   ```
 
-- [ ] **Step 1: `YGIconButtonSize` 심볼명 확인**
+- [x] **Step 1: `YGIconButtonSize` 심볼명 확인**
 
 Run: `grep -n "SIZE_" core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygiconbutton/YGIconButtonSize.kt`
 Expected: `SIZE_44` 상수가 나온다. 이름이 다르면 44 컨테이너에 해당하는 실제 상수를 쓴다.
 
-- [ ] **Step 2: 컴포저블 + 프리뷰 작성**
+- [x] **Step 2: 컴포저블 + 프리뷰 작성**
 
 `DS/component/ygcanvasdateselect/YGCanvasDateSelectButton.kt`:
 
@@ -718,12 +746,12 @@ private fun YGCanvasDateSelectButtonPreview() = PreviewBox {
 }
 ```
 
-- [ ] **Step 3: 빌드 + 린트 확인**
+- [x] **Step 3: 빌드 + 린트 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug :core:designsystem:ktlintCheck`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 4: 프리뷰 육안 확인**
+- [x] **Step 4: 프리뷰 육안 확인**
 
 `YGCanvasDateSelectButtonPreview` 렌더. 확인 사항: 좌상단만 사선으로 잘려 있다 / 테두리가 사선을 따라간다 / 우측 아이콘이 44 영역 안 중앙이다.
 
@@ -762,7 +790,7 @@ Figma `Canvas`. 배경 + 토핑 슬롯 + 날짜바 + 메뉴 + Dim 합성.
   )
   ```
 
-- [ ] **Step 1: 배경 타입 작성**
+- [x] **Step 1: 배경 타입 작성**
 
 `DS/component/ygcanvas/YGCanvasBackground.kt`:
 
@@ -785,12 +813,12 @@ sealed interface YGCanvasBackground {
 }
 ```
 
-- [ ] **Step 2: Coil 의존 확인**
+- [x] **Step 2: Coil 의존 확인**
 
 Run: `grep -rn "coil" core/designsystem/build.gradle.kts build-logic --include="*.kts" | head`
 Expected: `:core:designsystem`이 coil-compose를 (직접 또는 컨벤션 플러그인으로) 받고 있다. `YGTheme.kt`가 이미 `AsyncImagePreviewHandler`를 import하므로 받고 있어야 한다. 못 찾으면 `core/designsystem/build.gradle.kts`의 `dependencies`에 `implementation(libs.coil.compose)`를 추가한다.
 
-- [ ] **Step 3: 컴포저블 + 프리뷰 작성**
+- [x] **Step 3: 컴포저블 + 프리뷰 작성**
 
 `DS/component/ygcanvas/YGCanvas.kt`:
 
@@ -987,22 +1015,22 @@ private fun YGCanvasPreview() = PreviewBox {
 }
 ```
 
-- [ ] **Step 4: 타이포 심볼 확인**
+- [x] **Step 4: 타이포 심볼 확인**
 
 Run: `grep -n "c01M" core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/theme/typography/YGTypography.kt`
 Expected: `c01M`이 나온다. 없으면 12sp Medium에 해당하는 실제 필드명으로 교체한다.
 
-- [ ] **Step 5: `Transparency.Black25` 심볼 확인**
+- [x] **Step 5: `Transparency.Black25` 심볼 확인**
 
 Run: `grep -n "Black25" core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/theme/colors/YGAtomicColors.kt`
 Expected: `Black25`가 나온다. 없으면 검정 25%에 해당하는 실제 이름으로 교체한다.
 
-- [ ] **Step 6: 빌드 + 린트 확인**
+- [x] **Step 6: 빌드 + 린트 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug :core:designsystem:ktlintCheck`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 7: 프리뷰 육안 확인**
+- [x] **Step 7: 프리뷰 육안 확인**
 
 `YGCanvasPreview` 렌더. 확인 사항: 캔버스 영역이 9:16이고 그 아래 메뉴가 간격 없이 붙는다 / 좌상단 컷이 배경·날짜바 둘 다에 적용된다 / 안내문이 캔버스 영역 중앙이다.
 
@@ -1030,7 +1058,7 @@ Expected: BUILD SUCCESSFUL
 - Consumes: Task 2~6의 모든 public 심볼
 - Produces: 없음(최종 소비자)
 
-- [ ] **Step 1: NavKey 5개 작성**
+- [x] **Step 1: NavKey 5개 작성**
 
 각 파일은 이름만 다르고 내용이 같다. `PV/navigation/key/NavKeyYGStrokeButton.kt`:
 
@@ -1046,7 +1074,7 @@ data object NavKeyYGStrokeButton : NavKey
 
 같은 방식으로 `NavKeyYGMenuItem`·`NavKeyYGCanvasMenu`·`NavKeyYGCanvasDateSelectButton`·`NavKeyYGCanvas`를 만든다(각각 `data object` 이름만 파일명과 맞춘다).
 
-- [ ] **Step 2: `YGStrokeButtonPreviewScreen` 작성**
+- [x] **Step 2: `YGStrokeButtonPreviewScreen` 작성**
 
 `PV/screen/component/YGStrokeButtonPreviewScreen.kt`:
 
@@ -1157,7 +1185,7 @@ private fun PreviewYGStrokeButtonPreviewScreen() = PreviewBox {
 }
 ```
 
-- [ ] **Step 3: `YGMenuItemPreviewScreen` 작성**
+- [x] **Step 3: `YGMenuItemPreviewScreen` 작성**
 
 `PV/screen/component/YGMenuItemPreviewScreen.kt` — 위 화면과 같은 골격(`Column` + `YGTopBarBack` + `LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp))`)에 본문만 아래로 채운다:
 
@@ -1178,7 +1206,7 @@ private fun PreviewYGStrokeButtonPreviewScreen() = PreviewBox {
 
 import는 `com.teamyg.parfait.core.designsystem.component.ygmenuitem.YGMenuItem`을 쓰고, 함수명은 `YGMenuItemPreviewScreen`, 프리뷰 함수는 `PreviewYGMenuItemPreviewScreen`으로 한다.
 
-- [ ] **Step 4: `YGCanvasMenuPreviewScreen` 작성**
+- [x] **Step 4: `YGCanvasMenuPreviewScreen` 작성**
 
 같은 골격에 본문:
 
@@ -1242,7 +1270,7 @@ import는 `com.teamyg.parfait.core.designsystem.component.ygmenuitem.YGMenuItem`
             }
 ```
 
-- [ ] **Step 5: `YGCanvasDateSelectButtonPreviewScreen` 작성**
+- [x] **Step 5: `YGCanvasDateSelectButtonPreviewScreen` 작성**
 
 같은 골격에 본문:
 
@@ -1258,7 +1286,7 @@ import는 `com.teamyg.parfait.core.designsystem.component.ygmenuitem.YGMenuItem`
             }
 ```
 
-- [ ] **Step 6: `YGCanvasPreviewScreen` 작성**
+- [x] **Step 6: `YGCanvasPreviewScreen` 작성**
 
 Figma 5상태 대응 조합 + 배경 2종. 같은 골격에 본문(공통 인자는 화면 파일 최상단 `private val`로 뽑는다):
 
@@ -1366,7 +1394,7 @@ private val PreviewEditAction = YGCanvasMenuAction(
 
 `Status=Calendar` placeholder는 캘린더 실물이 없기 때문이며(스펙의 명시적 제외 범위), 423dp는 Figma 패널 높이다.
 
-- [ ] **Step 7: 카탈로그 등록**
+- [x] **Step 7: 카탈로그 등록**
 
 `PV/model/ComponentCatalog.kt` — import 5줄 추가(`NavKeyYGStrokeButton`·`NavKeyYGMenuItem`·`NavKeyYGCanvasDateSelectButton`·`NavKeyYGCanvasMenu`·`NavKeyYGCanvas`)하고, `BUTTON` 그룹 끝에:
 
@@ -1403,7 +1431,7 @@ private val PreviewEditAction = YGCanvasMenuAction(
     ),
 ```
 
-- [ ] **Step 8: 엔트리 등록**
+- [x] **Step 8: 엔트리 등록**
 
 `PV/navigation/entry/ComponentEntryBuilders.kt` — NavKey·PreviewScreen import 각 5줄 추가 후, `componentEntryBuilders` 안에 블록 5개 추가:
 
@@ -1452,7 +1480,7 @@ private val PreviewEditAction = YGCanvasMenuAction(
 
 `PV/navigation/di/ComponentEntryModule.kt`는 수정하지 않는다(`@IntoSet` 바인딩이 함수 단위).
 
-- [ ] **Step 9: 빌드 + 전체 린트 확인**
+- [x] **Step 9: 빌드 + 전체 린트 확인**
 
 Run: `./gradlew :core:designsystem:assembleDebug :app-preview:assembleDebug ktlintCheck`
 Expected: BUILD SUCCESSFUL
@@ -1467,12 +1495,12 @@ Expected: BUILD SUCCESSFUL
 - Consumes: Task 1~7 전부
 - Produces: 대조 결과 보고
 
-- [ ] **Step 1: 설치·실행**
+- [x] **Step 1: 설치·실행**
 
 Run: `./gradlew :app-preview:installDebug`
 Expected: 갤러리 앱 설치. 실행 후 `Button` 카테고리에서 `YGStrokeButton`·`YGMenuItem`·`YGCanvasDateSelectButton`, `Container` 카테고리에서 `YGCanvasMenu`·`YGCanvas` 항목이 보인다.
 
-- [ ] **Step 2: Figma와 나란히 대조**
+- [x] **Step 2: Figma와 나란히 대조**
 
 각 화면을 Figma 노드와 대조한다. 확인 항목:
 
@@ -1484,15 +1512,15 @@ Expected: 갤러리 앱 설치. 실행 후 `Button` 카테고리에서 `YGStroke
 | `YGCanvasDateSelectButton` | 좌상단 45° 컷 / 테두리가 사선을 따라감 / 날짜·요일 색 대비 / 우측 아이콘 44 중앙 |
 | `YGCanvas` | 캔버스 영역 9:16 / 메뉴가 간격 0으로 붙음 / Dim이 컷 실루엣을 따름 / Expanded는 메뉴가 Dim 위 / Spotlighted는 메뉴까지 덮임 / Calendar는 날짜바+패널이 Dim 위 / Image 배경이 Crop으로 채워짐 |
 
-- [ ] **Step 3: 상호작용 확인**
+- [x] **Step 3: 상호작용 확인**
 
 `YGStrokeButton` selected 토글, `YGCanvasMenu` 확장 토글, 각 컴포넌트 pressed를 손으로 눌러 확인한다(pressed는 정적 렌더로 재현되지 않는다).
 
-- [ ] **Step 4: 결과 반영**
+- [x] **Step 4: 결과 반영**
 
-발견된 차이를 스펙 [2026-07-31-designsystem-canvas-components](../specs/2026-07-31-designsystem-canvas-components.md)의 "설계에서 달라진 점"으로 기록하고, 미해결 항목은 [parfait open-questions](../synthesis/open-questions.md)에 등록한다.
+발견된 차이를 스펙 [2026-07-31-designsystem-canvas-components](../../specs/archive/2026-07-31-designsystem-canvas-components.md)의 "설계에서 달라진 점"으로 기록하고, 미해결 항목은 [parfait open-questions](../../synthesis/open-questions.md)에 등록한다.
 
-- [ ] **Step 5: 커밋하지 않는다**
+- [x] **Step 5: 커밋하지 않는다**
 
 Run: `git -C <TJYG-Android> status --short`
 Expected: 변경 파일이 스테이지되지 않은 채 남아 있다. **`git commit`을 실행하지 않는다**(작업자 지시). 사용자에게 변경 파일 목록과 검증 결과를 보고하고 종료한다.

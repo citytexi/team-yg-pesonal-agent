@@ -1,7 +1,7 @@
 ---
 id: designsystem-bar-listdate-components
 title: List-Date·Floating Bar 신설 + Top Bar Canvas 변형 구현 계획
-status: todo
+status: draft
 type: work-order
 created: 2026-08-01
 updated: 2026-08-01
