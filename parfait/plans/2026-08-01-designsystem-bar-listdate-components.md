@@ -1,13 +1,14 @@
 ---
 id: designsystem-bar-listdate-components
 title: List-Date·Floating Bar 신설 + Top Bar Canvas 변형 구현 계획
-status: draft
+status: done
 type: work-order
 created: 2026-08-01
 updated: 2026-08-01
 platforms: android
 owner: TJYG-Android 디자인시스템
 related_adr:
+  - ADR-0018
 related_spec:
   - designsystem-bar-listdate-components
 related_code:
@@ -32,8 +33,50 @@ tags: [plan, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 
 > ⚠️ **개정(2026-08-01, PR #173 develop 머지 반영)** — `YGTopBarDefault`가 develop에서 삭제되고
 > `YGTopBarEmpty(rightContent)`로 통합됐다. Task 3의 "Default 드리프트 제거"는 대상이 사라져
-> **프리뷰 칩 색 정정**으로 축소했고, 기준 시그니처를 #173 이후 코드로 갱신했다. 착수 전이라 체크박스는
-> 전부 미완이다.
+> **프리뷰 칩 색 정정**으로 축소했고, 기준 시그니처를 #173 이후 코드로 갱신했다. 이 개정 시점에는
+> 착수 전이었고, 실행은 그 뒤에 이뤄졌다(아래 실행 결과).
+
+> **실행 결과(2026-08-01)** — Task 1~4 전량 완료. subagent-driven-development로 Task마다 새
+> 서브에이전트 + 리뷰를 돌렸다. Task 1·3은 리뷰 1회에 클린 통과, Task 2만 fix round 1회.
+> **TJYG-Android는 커밋하지 않았다**(작업자 지시). 브랜치 **`feature/sync-component`**에 작업 트리
+> 변경만 남아 있다. 본문 체크박스는 실행 기록을 이 블록에 모으는 관례를 따라 그대로 둔다.
+>
+> **실행 도중 베이스가 바뀌었다.** 작업을 중단했다 재개하는 사이 `develop`이 나아갔고(#173 머지),
+> 브랜치도 `feature/bar-listdate-component` → `feature/sync-component`로 옮겨졌다. Task 1·2 산출물은
+> 새 베이스 위에 그대로 살아남았다. 위 ⚠️ 개정이 그 대응이다.
+> 교훈: 며칠에 걸치는 계획은 Task 착수 시점마다 대상 파일의 현재 상태를 다시 읽어야 한다.
+>
+> **계획 자체의 결함 2건 — 둘 다 최종 전체 리뷰가 잡았다.** Task 단위 리뷰 3회는 전부 통과했다.
+> Task 3 Step 2가 지정한 `Text` → `Spacer(weight(1f))` → `memberContent()` 배치와, Task 2 Step 1의
+> `YGFloatingBarEdit` 중앙 `Text`가 **같은 종류의 측정 버그**를 갖고 있었다 — 가중치 없는 `Text`가
+> 먼저 측정돼 긴 문자열이 잔여 폭을 다 먹으면 옆 요소(멤버 칩 / 확인 버튼)가 0dp로 밀린다.
+> 계획서가 코드를 그대로 명시했으므로 plan-mandated 충돌로 작업자에게 질의 후 수정했다.
+> **프리뷰·실기기 육안이 이걸 놓친 이유는 모든 샘플 제목이 4자였기 때문**이고, 재발 방지로 두
+> 컴포넌트 프리뷰에 긴 제목 변형을 상설했다. 계획서에 UI 코드를 박을 때는 **사용자 입력값을 받는
+> 텍스트마다 긴 문자열 케이스를 함께 지정**해야 한다.
+>
+> **Task 2 리뷰가 잡은 것** — 닫기 블록 4회·확인 블록 2회의 문자 그대로 중복. 계획서가 그 코드를
+> 명시했으므로 질의 후 `YGFloatingBarCloseButton`·`YGFloatingBarConfirmButton` 추출로 개정했다.
+> 1회 사용인 뒤로가기 버튼은 추출하지 않았다.
+>
+> **재리뷰 오판 1건** — Task 2 fix의 import 정렬을 재리뷰가 NOT ADDRESSED로 판정했으나, 컨트롤러가
+> 세 파일을 직접 확인해 **정렬 수열 기준으로 올바른 자리**임을 확인하고 ADDRESSED로 뒤집었다.
+> 재리뷰가 defect로 본 것은 손대지 말라고 지시한 **기존 파일의 정렬 결함**이었다. 최종 리뷰도 이
+> 판정을 확인했다(`.editorconfig`가 `ktlint_standard_import-ordering`을 끈 상태라 위반 자체가 불가).
+>
+> **검증은 컨트롤러가 직접 수행했다** — repo 전체 `assembleDebug`·`ktlintCheck` 통과,
+> `:app-preview:installDebug` 후 실기기(SM-A356N)에서 3개 화면 스크린샷 대조. Task 1 구현자 리포트의
+> gradle 출력이 재포맷돼 신뢰할 수 없던 이월 건도 이로써 닫혔다.
+>
+> **블러가 한 번 더 뒤집혔다(Task 6 이후)** — 자체 `GraphicsLayer` 구현을 "동작 확인"으로 보고했으나
+> **오검증이었다.** 40dp 극단값으로 대조하자 블러가 전혀 걸리지 않는 것이 드러났고(틴트만으로도 대비가
+> 낮아져 흐린 것처럼 보였다), 세 형태를 모두 시도한 뒤 **Haze로 되돌려 즉시 동작을 확인**했다.
+> 아래 Task 6 본문의 `GraphicsLayer` 코드는 **폐기된 형태**다 — 실제 구현은 `hazeSource`/`hazeEffect`이고
+> 경위는 [ADR-0018](../adr/0018-backdrop-blur-haze.md).
+> 교훈: **블러는 어긋나도 눈에 잘 띄지 않는다. 반드시 극단값 대조로 검증한다.**
+>
+> **미검증**: pressed 상태, 긴 제목 케이스의 실기기 렌더(갤러리에 긴 제목 섹션 없음 — 후속 과제).
+> API 31 미만 폴백(검증 기기가 API 36).
 
 **Goal:** Figma `List-Date`·`Floating Bar`를 `:core:designsystem`에 신설하고, `Top Bar`에 `Canvas`
 변형을 더한 뒤 `:app-preview` 갤러리에서 실기기로 검증한다.
@@ -431,12 +474,7 @@ fun YGFloatingBarBackClose(
             contentDescription = "뒤로가기",
             onClick = onBackClick,
         )
-        YGCircleButton(
-            iconResource = R.drawable.ic_close,
-            type = YGCircleButtonType.Default,
-            contentDescription = "닫기",
-            onClick = onCloseClick,
-        )
+        YGFloatingBarCloseButton(onClick = onCloseClick)
     }
 }
 
@@ -452,12 +490,7 @@ fun YGFloatingBarClose(
         modifier = modifier,
         horizontalArrangement = Arrangement.End,
     ) {
-        YGCircleButton(
-            iconResource = R.drawable.ic_close,
-            type = YGCircleButtonType.Default,
-            contentDescription = "닫기",
-            onClick = onCloseClick,
-        )
+        YGFloatingBarCloseButton(onClick = onCloseClick)
     }
 }
 
@@ -472,23 +505,17 @@ fun YGFloatingBarEdit(
     modifier: Modifier = Modifier,
 ) {
     YGFloatingBarContent(modifier = modifier) {
-        YGCircleButton(
-            iconResource = R.drawable.ic_close,
-            type = YGCircleButtonType.Default,
-            contentDescription = "닫기",
-            onClick = onCloseClick,
-        )
+        YGFloatingBarCloseButton(onClick = onCloseClick)
         Text(
             text = title,
             style = YGTheme.typography.body.b01R,
             color = YGAtomicColors.Gray.Gray800,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
-        YGCircleButton(
-            iconResource = R.drawable.ic_check,
-            type = YGCircleButtonType.Default,
-            contentDescription = "확인",
-            onClick = onConfirmClick,
-        )
+        YGFloatingBarConfirmButton(onClick = onConfirmClick)
     }
 }
 
@@ -505,12 +532,7 @@ fun YGFloatingBarEditTab(
     modifier: Modifier = Modifier,
 ) {
     YGFloatingBarContent(modifier = modifier) {
-        YGCircleButton(
-            iconResource = R.drawable.ic_close,
-            type = YGCircleButtonType.Default,
-            contentDescription = "닫기",
-            onClick = onCloseClick,
-        )
+        YGFloatingBarCloseButton(onClick = onCloseClick)
         Row(verticalAlignment = Alignment.CenterVertically) {
             tabs.forEachIndexed { index, label ->
                 YGEditTabButton(
@@ -520,13 +542,28 @@ fun YGFloatingBarEditTab(
                 )
             }
         }
-        YGCircleButton(
-            iconResource = R.drawable.ic_check,
-            type = YGCircleButtonType.Default,
-            contentDescription = "확인",
-            onClick = onConfirmClick,
-        )
+        YGFloatingBarConfirmButton(onClick = onConfirmClick)
     }
+}
+
+@Composable
+private fun YGFloatingBarCloseButton(onClick: () -> Unit) {
+    YGCircleButton(
+        iconResource = R.drawable.ic_close,
+        type = YGCircleButtonType.Default,
+        contentDescription = "닫기",
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun YGFloatingBarConfirmButton(onClick: () -> Unit) {
+    YGCircleButton(
+        iconResource = R.drawable.ic_check,
+        type = YGCircleButtonType.Default,
+        contentDescription = "확인",
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -1048,6 +1085,367 @@ TJYG-Android 작업 트리 변경 목록(`git status --short`)과 미커밋 사�
 
 ---
 
+# 2차 라운드 (2026-08-01 Figma 재조회)
+
+> Task 1~4를 끝낸 뒤 Figma를 다시 확인하니 `Top Bar`의 `Default`·`Empty` 두 변형과 공유 컴포넌트
+> `Button-Chip-Left`가 바뀌어 있었다. `Back`·`Detail`·`Canvas`는 무변경이라 1차 산출물은 그대로 살아
+> 있다. **Task 3 Step 3에서 한 "프리뷰 칩을 `CherrySubtle`로 정정"은 이 재조회로 무효**가 됐다 —
+> Task 5가 그 자리를 덮어쓴다.
+>
+> 배경 블러 관용은 [ADR-0018](../adr/0018-backdrop-blur-haze.md)이 정한다.
+
+> **2차 라운드 실행 결과(2026-08-01)** — Task 5~7 전량 완료. Task 5·6 모두 **리뷰 1회에 클린 통과**해
+> fix round가 없었다. TJYG-Android는 여전히 미커밋, 브랜치 `feature/sync-component`.
+>
+> **블러 방식이 착수 직전에 뒤집혔다.** 계획 초안은 haze 도입이었는데, 작업자가 `BlurEffect`로 안
+> 되느냐고 물어 재검토한 결과 (a) `RenderEffect` 기반이라 **haze도 API 하한 31로 동일**하고,
+> (b) C-101이 이미 같은 `GraphicsLayer` 관용으로 확정돼 있어 라이브러리를 넣으면 **블러 구현이
+> 이원화**된다는 것이 드러났다. 자체 구현으로 뒤집고 ADR-0018을 다시 썼다.
+> 교훈: 라이브러리를 후보로 올리기 전에 **같은 문제의 선행 결정이 repo에 있는지 먼저 확인**해야 한다.
+> 이번엔 작업자의 질문이 그 확인을 대신했다.
+>
+> **계획서 결함 1건** — Task 6 Step 1의 import 목록에 `androidx.compose.ui.graphics.layer.drawLayer`가
+> 빠져 있었다. `GraphicsLayer`와 별개의 top-level 확장 함수라 명시 import가 필요한데, 코드 본문은
+> 그 함수를 두 번 호출한다. 구현자가 발견해 한 줄 보충했고 리뷰가 확인했다.
+>
+> **검증은 컨트롤러가 직접 수행했다** — 구현자는 IDE를 열 수 없어 육안 검증을 못 했고 리뷰가 그것을
+> 유일한 Important로 지적했는데, 컨트롤러가 실기기(SM-A356N, **API 36**)에서 이미 마친 상태였다.
+> 칩 색·날짜 표시·블러 동작·좌표 정합을 스크린샷으로 대조했고, **스크롤 후에도 정합이 유지**되는 것을
+> 확인해 ADR-0018이 경고한 회귀가 없음을 확정했다.
+>
+> **미검증**: pressed 상태. API 31 미만 폴백 경로(검증 기기가 API 36이라 실행되지 않음).
+> 실제 화면(G-001)에서의 블러 — 배경 record 배선이 범위 밖이라 갤러리 데모로만 확인.
+
+---
+
+## Task 5: `Button-Chip-Left` 프리셋 교체 + 개명
+
+**Files:**
+- Modify: `core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygchipbutton/YGChipButtonColorsDefaults.kt`
+- Modify: `core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygchipbutton/YGChipButtonPreviewData.kt`
+- Modify: `core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygtopbar/YGTopBar.kt`
+- Modify: `feature/groups/list/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/list/impl/route/GroupListScreen.kt`
+- Modify: `feature/groups/list/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/list/impl/route/GroupListAddGroupScreen.kt`
+- Modify: `app-preview/src/main/kotlin/com/teamyg/parfait/preview/screen/component/YGTopBarPreviewScreen.kt`
+- Modify: `app-preview/src/main/kotlin/com/teamyg/parfait/preview/screen/component/YGChipButtonPreviewScreen.kt`
+
+**Interfaces:**
+- Consumes: 기존 `YGChipButtonColors(defaultForegroundColor, pressedForegroundColor, defaultBackgroundColor, pressedBackgroundColor, defaultBorderColor, pressedBorderColor)`
+- Produces: `YGChipButtonColorsDefaults.GrayOutline` — `CherrySubtle`을 **대체**한다. `CherrySubtle`이라는
+  이름은 이 Task 이후 존재하지 않는다. `CherrySolid`는 무변경.
+
+**배경:** Figma `Button-Chip-Left`가 Cherry 계열을 버리고 흰 배경 + 회색 테두리로 바뀌었다. 프리셋 하나를
+고치면 소비처 6곳이 전부 따라온다. 이름에 Cherry가 남으면 내용과 어긋나므로 함께 개명한다
+(선행 라운드의 `CherryBorderPressed`→`CherrySubtle` 개명과 같은 이유).
+
+- [ ] **Step 1: 프리셋 교체**
+
+`YGChipButtonColorsDefaults.kt`의 `CherrySubtle` 블록을 아래로 **교체**한다(`CherrySolid`는 건드리지 않는다).
+
+```kotlin
+    /**
+     * Figma Button-Chip-Left
+     */
+    val GrayOutline: YGChipButtonColors = YGChipButtonColors(
+        defaultForegroundColor = YGAtomicColors.Gray.Gray900,
+        pressedForegroundColor = YGAtomicColors.Gray.Gray950,
+        defaultBackgroundColor = YGAtomicColors.Gray.White,
+        pressedBackgroundColor = YGAtomicColors.Gray.Gray200,
+        defaultBorderColor = YGAtomicColors.Gray.Gray500,
+        pressedBorderColor = YGAtomicColors.Gray.Gray500,
+    )
+```
+
+- [ ] **Step 2: 소비처 6곳 참조 갱신**
+
+`CherrySubtle` → `GrayOutline`으로 바꾼다. **참조 심볼만** 바꾸고 다른 인자는 손대지 않는다.
+
+Run: `rg -n "CherrySubtle" --glob '!**/build/**'`
+Expected: 위 Files 목록의 6곳(정의 1 + 참조 5)이 나온다. 전부 교체한 뒤 다시 돌려 0건을 확인한다.
+
+`YGChipButtonPreviewScreen.kt`는 `PreviewSection("CherrySubtle")` **라벨 문자열**도 `"GrayOutline"`으로
+바꾼다. 프리셋 이름을 보여주는 라벨이므로 함께 가야 한다.
+
+- [ ] **Step 3: 빌드 확인**
+
+Run: `./gradlew assembleDebug`
+Expected: BUILD SUCCESSFUL. feature 모듈까지 참조가 걸려 있으므로 repo 전체로 돌린다.
+
+- [ ] **Step 4: ktlint 확인**
+
+Run: `./gradlew ktlintCheck`
+Expected: BUILD SUCCESSFUL. 실패하면 `./gradlew ktlintFormat` 후 재실행.
+
+- [ ] **Step 5: 잔여 참조 확인**
+
+Run: `rg -n "CherrySubtle" --glob '!**/build/**'`
+Expected: **0건.**
+
+---
+
+## Task 6: `YGTopBarEmpty` — 날짜 + 반투명 배경 + 배경 블러
+
+**Files:**
+- Modify: `core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygtopbar/YGTopBar.kt`
+- Modify: `app-preview/src/main/kotlin/com/teamyg/parfait/preview/screen/component/YGTopBarPreviewScreen.kt`
+
+**Interfaces:**
+- Consumes: Task 5의 `YGChipButtonColorsDefaults.GrayOutline`, 기존 `YGTopBarContent(iconResource, contentDescription, onIconClick, modifier, contentPadding, titleContent, trailingContent)`
+- Produces:
+  - `YGTopBarEmpty(date: String, day: String, onIconClick: () -> Unit, modifier: Modifier = Modifier, backdropLayer: GraphicsLayer? = null, rightContent: @Composable () -> Unit = {})`
+    — `date`·`day`가 **앞에 필수로 붙으므로 기존 호출부가 깨진다.** 아래 Step 4에서 함께 고친다.
+
+**배경:** Figma `Default`·`Empty`가 로고 자리에 날짜를 넣고 컨테이너에 `White75` 배경 + **배경 블러 4**를
+붙였다. (MCP가 내주는 `backdrop-blur-[2px]`는 CSS 환산값이다 — Compose에는 Figma 저작값 4를 쓴다.) 블러 관용은 ADR-0018 — 레이어는 호출 화면이 소유하고 컴포넌트는 받아서 자기 영역만
+흐린다. `backdropLayer`가 `null`이면 틴트만 그린다.
+
+**API 31 미만에서는 블러가 없다.** `RenderEffect`가 31+라 26~30에서는 틴트만 남는다.
+틴트는 블러와 **독립적으로 항상** 그린다.
+
+- [ ] **Step 1: 배경 그리기 모디파이어 추가**
+
+`YGTopBar.kt` 안에 private 확장으로 둔다. 소비처가 이 파일뿐이라 공용으로 빼지 않는다(ADR-0018).
+
+```kotlin
+@Composable
+private fun Modifier.ygTopBarBackdrop(backdropLayer: GraphicsLayer?): Modifier {
+    val blurLayer = rememberGraphicsLayer()
+    val isBlurSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    return this
+        .onGloballyPositioned { blurOriginInRoot = it.positionInRoot() }
+        .drawBehind {
+            if (backdropLayer != null && isBlurSupported) {
+                blurLayer.renderEffect = BlurEffect(
+                    radiusX = BlurRadius.toPx(),
+                    radiusY = BlurRadius.toPx(),
+                    edgeTreatment = TileMode.Clamp,
+                )
+                blurLayer.record(size = size.toIntSize()) {
+                    translate(left = -blurOriginInRoot.x, top = -blurOriginInRoot.y) {
+                        drawLayer(backdropLayer)
+                    }
+                }
+                drawLayer(blurLayer)
+            }
+            drawRect(color = YGAtomicColors.Transparency.White75)
+        }
+}
+
+private val BlurRadius = 4.dp
+```
+
+`blurOriginInRoot`는 `remember { mutableStateOf(Offset.Zero) }`로 이 모디파이어 안에서 들고, draw
+단계에서만 읽는다. 위치를 모르면 배경 레이어의 엉뚱한 부분을 흐리게 된다.
+
+> 원본 `backdropLayer`에 `renderEffect`를 **직접 걸지 마라.** 같은 레이어가 화면 배경으로도 그려지므로
+> 블러가 화면 전체로 번진다. 반드시 별도 레이어에 복사한 뒤 건다(ADR-0018).
+
+import 추가: `android.os.Build`, `androidx.compose.ui.draw.drawBehind`,
+`androidx.compose.ui.graphics.BlurEffect`, `androidx.compose.ui.graphics.TileMode`,
+`androidx.compose.ui.graphics.layer.GraphicsLayer`, `androidx.compose.ui.graphics.rememberGraphicsLayer`,
+`androidx.compose.ui.graphics.drawscope.translate`, `androidx.compose.ui.layout.onGloballyPositioned`,
+`androidx.compose.ui.layout.positionInRoot`, `androidx.compose.ui.unit.toIntSize`,
+`androidx.compose.ui.geometry.Offset`, `androidx.compose.runtime.mutableStateOf`,
+`androidx.compose.runtime.remember`, `androidx.compose.runtime.getValue`,
+`androidx.compose.runtime.setValue`, `androidx.compose.ui.unit.dp`.
+
+- [ ] **Step 2: `YGTopBarEmpty` 재작성**
+
+```kotlin
+@Composable
+fun YGTopBarEmpty(
+    date: String,
+    day: String,
+    onIconClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    backdropLayer: GraphicsLayer? = null,
+    rightContent: @Composable () -> Unit = {},
+) {
+    YGTopBarContent(
+        iconResource = R.drawable.ic_hamburger,
+        contentDescription = "메뉴",
+        onIconClick = onIconClick,
+        modifier = modifier.ygTopBarBackdrop(backdropLayer = backdropLayer),
+        titleContent = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(YGTheme.layout.gap.gap3),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = date,
+                    style = YGTheme.typography.body.b01R,
+                    color = YGAtomicColors.Gray.Gray800,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "($day)",
+                    style = YGTheme.typography.body.b01R,
+                    color = YGAtomicColors.Gray.Gray300,
+                    maxLines = 1,
+                )
+            }
+            rightContent()
+        },
+    )
+}
+```
+
+- 기존 로고 `Image(painterResource(R.drawable.ic_plus))`와 그 `// todo : parfait logo 로 변경 예정`
+  주석을 **삭제**한다. Figma가 그 자리를 날짜로 확정했으므로 todo가 닫힌다.
+- `Row`에 `weight(1f)`를 줘 날짜가 길어져도 `rightContent`를 밀어내지 않게 한다
+  (1차 라운드에서 같은 종류의 결함을 두 번 겪었다).
+- import 추가: `androidx.compose.ui.text.style.TextOverflow`,
+  `androidx.compose.foundation.layout.Arrangement`.
+  `Image`·`painterResource`가 이 파일에서 더 쓰이지 않으면 import를 지운다 — 먼저 확인할 것.
+
+- [ ] **Step 3: 컴포넌트 프리뷰 갱신**
+
+`YGTopBarPreview`의 `YGTopBarEmpty` 호출 2곳에 `date = "December 31"`, `day = "Wed"`를 넣는다.
+칩을 쓰는 쪽은 Task 5에서 이미 `GrayOutline`으로 바뀌어 있다.
+
+긴 날짜 회귀 케이스를 하나 더 둔다:
+
+```kotlin
+        YGTopBarEmpty(
+            date = "December 31, 2026 (아주 긴 날짜 문자열)",
+            day = "Wed",
+            onIconClick = {},
+            modifier = Modifier.fillMaxWidth(),
+            rightContent = {
+                YGChipButton(
+                    text = "그룹 추가하기",
+                    colors = YGChipButtonColorsDefaults.GrayOutline,
+                    onClick = {},
+                    startIconResource = R.drawable.ic_plus,
+                )
+            },
+        )
+```
+
+- [ ] **Step 4: 기존 호출부 수리**
+
+Run: `rg -n "YGTopBarEmpty\(" --glob '!**/build/**'`
+Expected: `GroupListScreen.kt`, `YGTopBarPreviewScreen.kt`, `YGTopBar.kt` 프리뷰가 나온다.
+`date`·`day`가 필수 파라미터로 늘었으므로 **전부 인자를 추가**해야 컴파일된다.
+
+- `GroupListScreen.kt` — 화면이 아직 날짜 데이터를 갖고 있지 않다. **하드코딩 placeholder를 넣지 말고**
+  `date = ""`, `day = ""`처럼 빈 문자열로도 두지 마라. 대신 이 Task에서는
+  `date = "December 31"`, `day = "Wed"` 샘플을 넣고 **`// TODO: 실제 날짜 데이터 결선` 주석을 단다.**
+  날짜 포맷·로케일 규칙이 미정이라(스펙 열린 질문 5) 여기서 정할 수 없다.
+- `backdropLayer`는 이 Task에서 **아무 호출부도 넘기지 않는다.** G-001 화면의 배경 record 배선은
+  범위 밖이다(스펙 열린 질문 6). 기본값 `null`이라 컴파일된다.
+
+- [ ] **Step 5: 갤러리 화면 갱신**
+
+`YGTopBarPreviewScreen.kt`의 `YGTopBarEmpty` 호출 2곳에 `date`·`day`를 넣는다.
+`PreviewSection("YGTopBarEmpty")`와 `PreviewSection("YGTopBarDefault")` 라벨은 Figma 변형명이므로 유지.
+
+블러를 갤러리에서 실제로 보려면 배경이 필요하다. `PreviewSection("YGTopBarDefault")` 아래에
+**블러 확인용 섹션**을 하나 추가한다:
+
+```kotlin
+            item {
+                PreviewSection("YGTopBarEmpty + backdrop blur") {
+                    val backdrop = rememberGraphicsLayer()
+                    Box {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .drawWithContent {
+                                    backdrop.record { this@drawWithContent.drawContent() }
+                                    drawLayer(backdrop)
+                                },
+                        ) {
+                            repeat(6) { index ->
+                                Text(
+                                    text = "배경 콘텐츠 줄 $index — 블러가 걸리면 흐려진다",
+                                    style = YGTheme.typography.body.b02R,
+                                    color = YGAtomicColors.Gray.Gray800,
+                                )
+                            }
+                        }
+                        YGTopBarEmpty(
+                            date = "December 31",
+                            day = "Wed",
+                            onIconClick = {},
+                            backdropLayer = backdrop,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+```
+
+- [ ] **Step 6: 빌드 확인**
+
+Run: `./gradlew assembleDebug`
+Expected: BUILD SUCCESSFUL. `YGTopBarEmpty` 시그니처가 바뀌어 feature 모듈이 영향을 받으므로 repo
+전체로 돌린다.
+
+- [ ] **Step 7: ktlint 확인**
+
+Run: `./gradlew ktlintCheck`
+Expected: BUILD SUCCESSFUL. 실패하면 `./gradlew ktlintFormat` 후 재실행.
+
+---
+
+## Task 7: 2차 라운드 검증 + 문서 갱신
+
+**Files:**
+- Modify: `parfait/specs/2026-08-01-designsystem-bar-listdate-components.md` (이 repo)
+- Modify: `parfait/plans/2026-08-01-designsystem-bar-listdate-components.md` (이 repo)
+- Modify: `parfait/adr/0018-backdrop-blur-haze.md` (이 repo)
+- Modify: `parfait/specs/README.md`·`parfait/plans/README.md`·`parfait/adr/README.md` (이 repo)
+
+- [ ] **Step 1: 갤러리 설치**
+
+Run: `./gradlew :app-preview:installDebug`
+Expected: 실기기 설치 성공.
+
+- [ ] **Step 2: 실기기 육안 — 칩 프리셋**
+
+갤러리 → `Button` → `YGChipButton`.
+Expected: `GrayOutline` 섹션의 칩이 **흰 배경 + 회색 테두리 + 진한 글씨**. `CherrySolid` 섹션은 이전과
+동일한 연분홍.
+
+- [ ] **Step 3: 실기기 육안 — Top Bar 날짜**
+
+갤러리 → `Bar` → `YGTopBar`.
+Expected: `YGTopBarEmpty`·`YGTopBarDefault` 섹션에 **"December 31 (Wed)"** — 날짜는 진한 회색,
+요일은 옅은 회색. 로고 자리의 `+` 아이콘이 사라졌다. `Default` 섹션 칩은 흰 배경 + 회색 테두리.
+긴 날짜 케이스에서 칩이 밀려나지 않고 날짜가 말줄임된다.
+
+- [ ] **Step 4: 실기기 육안 — 배경 블러**
+
+같은 화면의 `YGTopBarEmpty + backdrop blur` 섹션.
+Expected(API 31+ 기기): 바 뒤의 텍스트가 **흐리게** 비친다. API 30 이하 기기라면 흐림 없이 흰 반투명만.
+**기기 API 레벨을 먼저 확인하고 기대치를 정한다** — `adb shell getprop ro.build.version.sdk`.
+
+블러가 엉뚱한 위치를 흐리는지도 본다. 좌표 정합이 틀리면 바가 아니라 화면 위쪽이 흐려진다.
+
+- [ ] **Step 5: 결함 발견 시 처리**
+
+원인이 컴포넌트인지 갤러리 화면인지 먼저 가른다. 좌표 정합 결함은 **정지 화면에서 안 보일 수 있으니**
+스크롤 가능한 배경으로도 확인한다.
+
+- [ ] **Step 6: 문서 갱신 (이 repo)**
+
+- ADR-0018 `status`를 `proposed` → `accepted`로 (실기기에서 관용이 동작함을 확인한 뒤)
+- 스펙 구현 상태 블록에 2차 라운드 결과 추가
+- 이 계획서 2차 라운드 실행 결과 기록
+- specs/plans/adr README 3곳 반영
+- **이 repo는 브랜치 → 커밋까지만.** push·PR은 작업자 확인 후
+
+- [ ] **Step 7: 최종 보고**
+
+TJYG-Android 작업 트리 변경 목록과 미커밋 사실, 실기기 검증 결과(특히 블러가 동작한 API 레벨),
+남은 열린 질문을 작업자에게 보고한다.
+
+---
+
 ## 열린 질문 (스펙에서 이월)
 
 1. **`+N` 카운트 칩 타입** — `YGColorChipType`이 13종 + `NametagChipPlus`라 정책 12종과 어긋난
@@ -1056,3 +1454,10 @@ TJYG-Android 작업 트리 변경 목록(`git status --short`)과 미커밋 사�
    없다. 프리뷰·갤러리에서는 `"토핑 편집"`을 샘플로 쓰고, 실제 값은 호출 화면 구현 때 확정한다.
 3. **Floating Bar의 배치 책임** — Figma가 상단 패딩 16dp만 주고 화면 어디에 떠 있는지는 컴포넌트
    밖 정보다. 호출 화면이 정한다.
+4. **API 31 미만의 배경 블러 부재** — `minSdk` 26이라 26~30에서는 틴트만 남는다. 플랫폼 제약이므로
+   해결이 아니라 **수용 여부**의 문제다. 디자인 확인 필요.
+5. **날짜 포맷·로케일** — Figma가 `December 31 (Wed)` 영문 표기인데 앱은 한국어 UI다. 컴포넌트는
+   완성된 문자열 2개를 받기만 하고, 포맷 책임은 호출 화면/도메인이다. 규칙 미정이라 Task 6은
+   `GroupListScreen`에 샘플 + TODO만 남긴다.
+6. **블러 대상 화면 배선** — G-001이 배경을 record하도록 배선하는 것은 범위 밖이다. 그 전까지
+   실사용 화면에서는 블러가 꺼진 상태(틴트만)로 동작한다.

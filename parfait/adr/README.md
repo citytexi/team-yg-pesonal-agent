@@ -25,6 +25,7 @@
 | [0015](0015-feature-common-shared-layer.md) | feature/common 공유 feature 레이어 도입 | accepted | 2026-07-21 | terms를 S-001+A-003 공유·2소비처 확정 시에만 common |
 | [0016](0016-domain-result-presentation-string-mapping.md) | 유효성 결과 — domain 의미 sealed 반환 + 표시 문자열 프레젠테이션 매핑 | accepted | 2026-07-23 | NicknameResult sealed·core:ui `toStringResource`·ui→domain 의존 |
 | [0017](0017-remote-network-datasource.md) | 원격 네트워크 DataSource·서비스 규약 (AndroidNetworkConventionPlugin + ApiResponse/safeApiCall) | accepted | 2026-07-26 | `source.<도메인>.remote` 관례, 로깅은 `BuildConfig.DEBUG` 게이팅 |
+| [0018](0018-backdrop-blur-haze.md) | 배경 블러에 Haze 도입 (자체 GraphicsLayer 구현 기각) | accepted | 2026-08-01 | `HazeState`는 호출 화면 소유·nullable 파라미터, 틴트는 블러와 독립 상시, API<31 폴백은 틴트만. **자체 `GraphicsLayer`+`BlurEffect`는 실기기에서 세 형태 모두 블러 미적용으로 기각** — `record` 안에 직접 그린 도형엔 effect가 걸리므로 레이어로 옮겨 담는 경로만 실패. C-101 설계도 같은 구조라 그 라운드에서 재검토 필요. 블러 검증은 극단값(40dp) 대조 필수 |
 
 ## 작성 가이드
 
