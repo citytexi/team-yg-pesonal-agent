@@ -50,8 +50,7 @@ TEAMYG-SERVER `main`에 새로 들어온 것과 `parfait/api/` 계약 문서의 
   - **서버 delta → 계약 절**(엔드포인트·필드·에러코드) = 이 스킬
   - **Android delta → `android_status`·Android 매핑 절** = `sync-tjyg-develop-baseline`
 - TJYG-Android 코드 수정은 이 스킬의 일이 아니다.
-- **frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — 이 스킬만 갱신하고,
-  `sync-tjyg-develop-baseline`의 Android 델타 갱신은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
+- **frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — `sync-teamyg-server-api`만 갱신하고, `sync-tjyg-develop-baseline`의 Android 델타 갱신은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
 
 ## 주의
 - 파르페 규율: 라인번호·변동수치·색 hex는 문서에 안 적는다. 근거는 파일명 + 심볼명.

@@ -45,8 +45,7 @@ develop delta에 원격 연동 코드(Service·Response·RemoteDataSource·`ApiR
   (`open-questions.md` 해소 메모가 "여기서 제거한다"고 지시하는 대상이 이 표다)
 - `parfait/api/README.md` 도메인 표의 Android 열
 
-**frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — `sync-teamyg-server-api`만 갱신하고,
-이 스킬(Android 델타 갱신)은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
+**frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — `sync-teamyg-server-api`만 갱신하고, `sync-tjyg-develop-baseline`의 Android 델타 갱신은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
 
 ## 주의
 - `<기준선>..origin/develop` 범위 밖(기준선 이전)은 건드리지 않는다.
