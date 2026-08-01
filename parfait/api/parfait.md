@@ -82,4 +82,4 @@ tags: [api, parfait, server-contract, canvas]
 ## 미결
 
 - **경로 세그먼트 `year`(단수) vs 응답 필드 `years`(복수) 불일치.** 서버 코드로는 의도된 설계인지 실수인지
-  확인할 수 없다 — 근거 자료(PR 설명·이슈) 조사는 이번 범위 밖.
+  확인할 수 없다 — 근거 자료(PR 설명·이슈) 조사는 이번 범위 밖. → [open-questions](../synthesis/open-questions.md)

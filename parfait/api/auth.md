@@ -210,6 +210,11 @@ tags: [api, parfait, server-contract, auth]
 | `REQUIRED_TERMS_NOT_AGREED` | 400 | 필수 약관에 모두 동의해야 합니다 | `signup` |
 | `FORBIDDEN_REFRESH_TOKEN` | 403 | 다른 회원의 Refresh Token입니다 | `logout`(`LogoutService`) |
 
+⚠️ **`MEMBER_NOT_FOUND`는 코드 문자열이 유일하지 않다.** `ParfaitGroupApiErrorCode`에도 같은 문자열이
+존재하지만 값은 **404**로 다르다([parfait-group.md](parfait-group.md) "도메인 에러 코드 전수",
+[conventions.md](conventions.md) "코드 문자열은 enum 간 유일하지 않다" 참고) — 소비 측은 이 문서의 **401**과
+혼동하지 않도록 HTTP status를 함께 봐야 한다.
+
 ## Android 매핑
 
 없음 — `:data`에 인증 관련 Service·Response·DataSource가 없다.

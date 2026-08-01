@@ -37,8 +37,16 @@ TJYG-Android `develop`에 새로 머지된 것과 parfait 문서의 드리프트
 `parfait/api/`의 **계약 절**(엔드포인트·요청/응답 필드·에러코드)은 서버가 정본이라
 `sync-teamyg-server-api`가 갱신한다. 이 스킬은 그 문서의 **Android 쪽**만 본다 —
 develop delta에 원격 연동 코드(Service·Response·RemoteDataSource·`ApiResponse`·`TokenProvider`)가
-있으면 해당 도메인 문서의 `android_status`와 `## Android 매핑` 절, 엔드포인트 표의 Android 열
-(`미구현`/`구현됨`/`⚠️불일치`)을 갱신한다.
+있으면 아래 **다섯 표면**을 갱신한다.
+- 해당 도메인 문서의 `android_status`
+- 해당 도메인 문서의 `## Android 매핑` 절
+- 해당 도메인 문서 엔드포인트 표의 Android 열(`미구현`/`구현됨`/`⚠️불일치`)
+- `parfait/api/conventions.md`의 "Android 불일치" 표 — 델타가 해당 불일치를 해소했으면 이 표에서 제거한다
+  (`open-questions.md` 해소 메모가 "여기서 제거한다"고 지시하는 대상이 이 표다)
+- `parfait/api/README.md` 도메인 표의 Android 열
+
+**frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — `sync-teamyg-server-api`만 갱신하고,
+이 스킬(Android 델타 갱신)은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
 
 ## 주의
 - `<기준선>..origin/develop` 범위 밖(기준선 이전)은 건드리지 않는다.

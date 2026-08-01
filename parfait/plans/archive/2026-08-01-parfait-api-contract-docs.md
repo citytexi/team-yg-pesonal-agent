@@ -10,7 +10,7 @@ owner:
 related_adr: ADR-0017
 related_spec: parfait-api-contract-docs
 related_code: parfait/api/README.md, parfait/api/conventions.md, parfait/api/server-baseline.md, parfait/api/template.md, parfait/api/auth.md, parfait/api/parfait-group.md, parfait/api/parfait.md, .claude/skills/sync-teamyg-server-api/SKILL.md
-archived_reason: Task 1~6 전량 완료 — parfait/api/ 7파일 서버 main 6f5bffc와 1:1 대조 완료, index.md 라우팅·open-questions 6건 등록·private submodule 경로 편집(커밋 대기)·링크/민감정보 검사 통과. TJYG-Android·TEAMYG-SERVER 코드 변경 0건.
+archived_reason: Task 1~6 전량 완료 — parfait/api/ 7파일 서버 main 6f5bffc와 1:1 대조 완료, index.md 라우팅·open-questions 8건 등록(2026-08-02 최종 리뷰에서 스펙 "열린 질문" 이월 2건 보완)·private submodule 경로 편집(커밋 대기)·링크/민감정보 검사 통과. TJYG-Android·TEAMYG-SERVER 코드 변경 0건.
 tags: [plan, parfait, api, doc-infra, server-contract]
 ---
 
@@ -323,7 +323,7 @@ signup·파르페 연도 조회 두 API를 갖고 있지 않았다. 앱이 바�
 
 Run:
 ```bash
-cd /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent
+cd "$(git rev-parse --show-toplevel)"
 for f in parfait/api/*.md; do
   grep -oE '\]\(([^)]+\.md)[^)]*\)' "$f" | sed -E 's/^\]\(//; s/[)#].*$//' | while read -r l; do
     [ -e "parfait/api/$l" ] || echo "BROKEN: $f -> $l"
@@ -860,7 +860,7 @@ commit + push + PR + 머지는 **사용자 확인 후**. 머지 뒤 로컬을 `m
 
 Run:
 ```bash
-cd /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent
+cd "$(git rev-parse --show-toplevel)"
 for f in parfait/api/*.md parfait/index.md; do
   d=$(dirname "$f")
   grep -oE '\]\(([^)]+\.md)[^)]*\)' "$f" | sed -E 's/^\]\(//; s/[)#].*$//' | while read -r l; do
@@ -875,7 +875,7 @@ Expected: 출력 없음.
 
 Run:
 ```bash
-cd /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent
+cd "$(git rev-parse --show-toplevel)"
 grep -rn "/Users/" parfait/ .claude/skills/sync-teamyg-server-api/ || echo "OK: 절대경로 없음"
 grep -rniE "(secret|password|api[_-]?key|bearer [A-Za-z0-9])" parfait/api/ || echo "OK: 시크릿 패턴 없음"
 ```

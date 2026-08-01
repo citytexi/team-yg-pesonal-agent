@@ -56,6 +56,15 @@ tags: [api, parfait, server-contract, conventions]
 
 `ParfaitGroupApiErrorCode`는 core 계층 `ParfaitGroupError`와 **이름이 1:1**이다(`from(error) = valueOf(error.name)`).
 
+### 코드 문자열은 enum 간 유일하지 않다
+
+`code` 문자열은 **각 enum 내부에서만** 유일하다 — enum을 넘어서는 전역 유일성 보장이 없다. 실례:
+`MEMBER_NOT_FOUND`는 `AuthErrorCode`에서 **401**(존재하지 않는 회원, [auth.md](auth.md) "도메인 에러 코드
+전수" 참고)이고 `ParfaitGroupApiErrorCode`에서는 **404**(같은 의미지만 다른 status, [parfait-group.md](parfait-group.md)
+"도메인 에러 코드 전수" 참고)다. **소비 측은 envelope `code` 문자열 단독이 아니라 HTTP status와 함께
+판정해야 한다** — `code`만으로 분기하면 서로 다른 두 상황(만료된 access/refresh 토큰의 회원 부재 vs
+그룹 관련 회원 부재)을 한 브랜치로 뭉갠다.
+
 ## 인증
 
 JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authentication.name`)이 **memberId(Long 문자열)**다.

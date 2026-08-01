@@ -37,7 +37,11 @@ TEAMYG-SERVER `main`에 새로 들어온 것과 `parfait/api/` 계약 문서의 
 4. **드리프트 수정** — 해당 도메인 문서의 표·상세 절을 고치고 frontmatter `server_commit`·`verified` 갱신.
    Android 대응 심볼이 있는데 계약과 어긋나면 Android 열을 `⚠️불일치`로 바꾸고
    `parfait/synthesis/open-questions.md`에 `### [YYYY-MM-DD] 주제`로 등록한다.
+   **기존 도메인의 엔드포인트가 증감했으면**(신규 도메인이 아니어도) `parfait/api/README.md` 도메인 표의
+   해당 행 개수·엔드포인트 나열도 함께 갱신한다 — 신규 도메인일 때만 인덱스를 건드리는 게 아니다.
 5. **기준선 갱신** — `server-baseline.md` "현재 기준선"을 새 `origin/main` HEAD로 교체 + 이력 표에 1줄.
+   `parfait/index.md` "지금 상태" 줄의 도메인 건수·엔드포인트 수도 함께 정정한다(이 문서의 도메인 개수를
+   갱신하는 스킬은 이것뿐이다).
 6. **보고 → 커밋**(사용자 확인 후) — delta 요약·드리프트 건수·조치 목록 보고.
 
 ## 경계 — 이 스킬이 하지 않는 것
@@ -46,6 +50,8 @@ TEAMYG-SERVER `main`에 새로 들어온 것과 `parfait/api/` 계약 문서의 
   - **서버 delta → 계약 절**(엔드포인트·필드·에러코드) = 이 스킬
   - **Android delta → `android_status`·Android 매핑 절** = `sync-tjyg-develop-baseline`
 - TJYG-Android 코드 수정은 이 스킬의 일이 아니다.
+- **frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — 이 스킬만 갱신하고,
+  `sync-tjyg-develop-baseline`의 Android 델타 갱신은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
 
 ## 주의
 - 파르페 규율: 라인번호·변동수치·색 hex는 문서에 안 적는다. 근거는 파일명 + 심볼명.

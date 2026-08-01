@@ -516,7 +516,7 @@ git commit -m "feat(skills): update-injected-skills 스킬"
 
 - [ ] **Step 1: full 실행**
 
-Run: `cd /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent && python3 parfait/script/vendor.py --full`
+Run: `cd "$(git rev-parse --show-toplevel)" && python3 parfait/script/vendor.py --full`
 Expected: `[full] 4 repos, 73 skills` (± upstream).
 
 - [ ] **Step 2: 결과 검증**

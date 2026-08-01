@@ -318,6 +318,11 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | `GROUP_NOT_JOINED` | 403 | 참여하지 않은 그룹입니다 | 상세 · 닉네임 변경 · 탈퇴 · 신고 |
 | `INVALID_GROUP_REPORT_REASON` | 400 | 신고 사유를 입력해 주세요 | 신고 |
 
+⚠️ **`MEMBER_NOT_FOUND`는 코드 문자열이 유일하지 않다.** `AuthErrorCode`에도 같은 문자열이 존재하지만
+값은 **401**로 다르다([auth.md](auth.md) "도메인 에러 코드 전수", [conventions.md](conventions.md)
+"코드 문자열은 enum 간 유일하지 않다" 참고) — 소비 측은 이 문서의 **404**와 혼동하지 않도록 HTTP status를
+함께 봐야 한다.
+
 ## 정책 대조 메모
 
 - **`memberLimit` 1~12**(`GroupMemberLimit.MIN`·`MAX`, `core/parfaitgroup/domain/GroupMemberLimit.kt`)는
@@ -343,3 +348,4 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   `GroupNickname.of`를 적용한 결과다(`ParfaitGroupService.validateJoin`). 전역 닉네임을 검증하는
   `core/member` 쪽 값 객체를 이번 조사 범위(브리프 Step 1 파일 목록)에서 확인하지 못했다 — 두 규칙이 다르면
   회원이 그룹 참여를 시도할 때 본인이 입력한 값과 무관하게 `INVALID_GROUP_NICKNAME`을 받을 수 있다.
+  → [open-questions](../synthesis/open-questions.md)

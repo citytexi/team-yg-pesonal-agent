@@ -101,6 +101,12 @@ parfait/api/
 
 ## conventions.md 내용 (2026-08-01 서버 코드 대조 확정)
 
+⚠️ **2026-08-02 기준선 전진(`6f5bffc`) 반영** — 아래 절은 초안 시점(`6b05b8c`) 스냅샷이라 **당시 전제**를
+그대로 남긴다(조용히 덮어쓰지 않는다). 실제 `conventions.md`는 `AuthErrorCode` **12종**(`FORBIDDEN_REFRESH_TOKEN`
+403 신설), 화이트리스트는 `/api/v1/auth/**` 와일드카드 대신 `/api/v1/auth/kakao`·`signup`·`reissue` 개별
+3경로(+`/favicon.ico`, `logout`은 제외돼 인증 대상)로 갱신됐다 — 최신 값은 [conventions.md](../../api/conventions.md),
+이력은 [server-baseline.md](../../api/server-baseline.md) "기준선 이력" 표.
+
 - **응답 envelope** `parfait.common.response.ApiResponse<T>`:
   `success: Boolean` · `code: String` · `message: String` · `data: T?` · `errorDetail: Map<String, String>?`
 - **성공 코드 2종**: `ok()` → `"OK"`, `created()` → `"CREATED"`. 즉 성공 판정은 단일 상수 비교로 불가능하다.
@@ -167,6 +173,11 @@ Android 쪽 변경(구현이 진행돼 `android_status`가 바뀌는 경우)은 
 Android delta → `android_status`·Android 매핑 절 갱신**. 이 경계를 두 스킬 문서에 각각 명시한다.
 
 ## 초기 작성 대상
+
+⚠️ **2026-08-02 기준선 전진(`6f5bffc`) 반영** — 아래 표도 초안 시점(`6b05b8c`) 스냅샷이라 **당시 전제**를
+그대로 남긴다(조용히 덮어쓰지 않는다). 실제 문서는 auth **4** 엔드포인트(`kakao`·`signup`·`reissue`·`logout`,
+`server_module: http/auth`) · parfait-group **8**(계약 불변, `server_module: http/parfaitgroup`) · parfait **1**
+(`server_module: http/parfait`)이다 — 최신 값·경로는 [api/README.md](../../api/README.md).
 
 | 도메인 | 서버 위치 | 엔드포인트 |
 |---|---|---|
