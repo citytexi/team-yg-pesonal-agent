@@ -286,7 +286,10 @@ Figma의 List-Member(Nametag-Chip 5개를 -12dp씩 겹치고 끝에 `+N` 카운�
 `Date` 심볼 인스턴스가 아니라 인라인 텍스트 그룹을 두었다. 이로써 `YGTopBarEmpty`에 남아 있던
 로고 `ic_plus` placeholder todo가 닫힌다.
 
-**③ 컨테이너에 반투명 배경 + 배경 블러** — `Transparency.White75` 배경 위 2px 배경 블러.
+**③ 컨테이너에 반투명 배경 + 배경 블러** — `Transparency.White75` 배경 위 **배경 블러 4**.
+
+> ⚠️ Figma MCP는 CSS/Tailwind로 내보내면서 블러를 절반으로 환산한다(저작값 4 → `backdrop-blur-[2px]`).
+> Compose에는 **저작값 4를 그대로** 쓴다 — 자세한 근거는 [ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md).
 `Back`·`Detail`·`Canvas`에는 없고 `Default`·`Empty`에만 붙는다.
 
 구현 관용은 [ADR-0018](../adr/0018-backdrop-blur-graphicslayer.md)을 따른다 — 호출 화면이 배경을

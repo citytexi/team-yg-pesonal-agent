@@ -1187,8 +1187,8 @@ Expected: **0건.**
   - `YGTopBarEmpty(date: String, day: String, onIconClick: () -> Unit, modifier: Modifier = Modifier, backdropLayer: GraphicsLayer? = null, rightContent: @Composable () -> Unit = {})`
     — `date`·`day`가 **앞에 필수로 붙으므로 기존 호출부가 깨진다.** 아래 Step 4에서 함께 고친다.
 
-**배경:** Figma `Default`·`Empty`가 로고 자리에 날짜를 넣고 컨테이너에 `White75` 배경 + 2px 배경
-블러를 붙였다. 블러 관용은 ADR-0018 — 레이어는 호출 화면이 소유하고 컴포넌트는 받아서 자기 영역만
+**배경:** Figma `Default`·`Empty`가 로고 자리에 날짜를 넣고 컨테이너에 `White75` 배경 + **배경 블러 4**를
+붙였다. (MCP가 내주는 `backdrop-blur-[2px]`는 CSS 환산값이다 — Compose에는 Figma 저작값 4를 쓴다.) 블러 관용은 ADR-0018 — 레이어는 호출 화면이 소유하고 컴포넌트는 받아서 자기 영역만
 흐린다. `backdropLayer`가 `null`이면 틴트만 그린다.
 
 **API 31 미만에서는 블러가 없다.** `RenderEffect`가 31+라 26~30에서는 틴트만 남는다.
@@ -1223,7 +1223,7 @@ private fun Modifier.ygTopBarBackdrop(backdropLayer: GraphicsLayer?): Modifier {
         }
 }
 
-private val BlurRadius = 2.dp
+private val BlurRadius = 4.dp
 ```
 
 `blurOriginInRoot`는 `remember { mutableStateOf(Offset.Zero) }`로 이 모디파이어 안에서 들고, draw
