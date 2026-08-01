@@ -57,14 +57,23 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   (`jackson.default-property-inclusion: always`, `bootstrap/application.yaml`) — `ParfaitGroupControllerTest`의
   "최근 이미지가 없는 그룹도 nullable 필드를 생략하지 않고 null로 응답한다" 테스트로 확인.
 
-  **`recentImageUploadedAt` 직렬화 포맷(확인됨)**: `ParfaitGroupControllerTest`가
+  **`recentImageUploadedAt`의 출처**: 애플리케이션 코드가 만든 값이 아니라, `persistence`
+  모듈의 `ParfaitGroupMemberRepository.findMyGroupSummaries`(네이티브 쿼리, `MyParfaitGroupSummaryProjection`)가
+  `parfait_image` 테이블의 `created_at` 컬럼을 그대로 프로젝션한 값이다.
+
+  **직렬화 포맷(확인됨, 단 아래 한계 참고)**: `ParfaitGroupControllerTest`가
   `LocalDateTime.of(2026, 8, 1, 12, 0)` → 응답 문자열 `"2026-08-01T12:00:00"`을 `jsonPath`로 직접 검증한다.
   ISO-8601 로컬 날짜시간(`yyyy-MM-ddTHH:mm:ss`, 타임존 오프셋 없음) — 별도 `@JsonFormat`이나 커스텀
   `ObjectMapper` 빈이 없어 Jackson 3(`tools.jackson.module:jackson-module-kotlin`, Spring Boot 4.0.6) 기본
-  직렬화다. 타임존 자체는 JSON에 실리지 않지만, 서버 프로세스는 `Dockerfile`의 `ENV TZ=Asia/Seoul`과
-  `hibernate.jdbc.time_zone: Asia/Seoul`(`bootstrap/application.yaml`)로 Asia/Seoul 벽시계 기준으로
-  동작한다 — `LocalDateTime.now()`(값 생성 지점, 예: `ParfaitGroupMember.join`의 `joinedAt`)가 이 타임존의
-  로컬 시각이라는 뜻이다. Android가 이 문자열을 UTC로 오인하면 시각이 어긋난다.
+  직렬화로 보인다. **한계**: 이 포맷은 Jackson 설정을 직접 읽어 확정한 게 아니라 컨트롤러 테스트의 기대값에서
+  역추론한 것이다 — 실제 직렬화기 동작 자체를 확인한 근거는 아니다.
+
+  **타임존**: JSON에 오프셋은 실리지 않지만, `created_at` 컬럼 값은 MySQL 서버가 세션 타임존으로 저장·반환한
+  값이고, 커넥션 문자열(`bootstrap/application-{dev,local,prod}.yaml`의 `spring.datasource.url`)이
+  `serverTimezone=Asia/Seoul`을 세 환경 전부에서 지정한다. `hibernate.jdbc.time_zone: Asia/Seoul`
+  (`bootstrap/application.yaml`)도 JDBC 드라이버가 `LocalDateTime`을 이 타임존으로 주고받도록 맞춘다.
+  즉 `created_at`은 Asia/Seoul 벽시계 기준 값이라는 뜻이다. Android가 이 문자열을 UTC로 오인하면 시각이
+  어긋난다.
 
 - **에러 코드**: 없음(도메인 고유 에러 없음)
 
@@ -311,8 +320,8 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 ## 정책 대조 메모
 
-- **`memberLimit` 1~12**(`GroupMemberLimit.MIN`·`MAX`, `core/parfaitgroup/domain/GroupMemberLimit.kt`)는 위키
-  [[그룹]]의 "최대 12명"과 일치하고, Android `GroupCreateConfig` 상한과도 같다.
+- **`memberLimit` 1~12**(`GroupMemberLimit.MIN`·`MAX`, `core/parfaitgroup/domain/GroupMemberLimit.kt`)는
+  위키 정책 "최대 12명"과 일치하고, Android `GroupCreateConfig` 상한과도 같다.
 - **`groupName` 1~10자**(`GroupName.MAX_LENGTH`, `GroupName.kt`)는 위키 정책 "그룹명 1~10자"와 일치한다.
 - **`groupNickname` 1~15자**(`GroupNickname.MAX_LENGTH`, `GroupNickname.kt`)는 위키 정책 "닉네임 1~15자"와
   일치한다.
