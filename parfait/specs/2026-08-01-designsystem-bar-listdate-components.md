@@ -12,7 +12,7 @@ related_code:
   - YGFloatingBar.kt#YGFloatingBarEdit
   - YGFloatingBar.kt#YGFloatingBarEditTab
   - YGTopBar.kt#YGTopBarCanvas
-  - YGTopBar.kt#YGTopBarDefault
+  - YGTopBar.kt#YGTopBarEmpty
   - YGTopBar.kt#YGTopBarContent
   - YGDateButton.kt#YGDateButton
   - YGChipColorIndicator.kt#YGChipColorIndicator
@@ -37,11 +37,17 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 
+> ⚠️ **개정(2026-08-01, PR #173 develop 머지 반영)** — 이 스펙이 대상으로 삼던 `YGTopBarDefault`가
+> **develop에서 삭제**되고 `YGTopBarEmpty(rightContent)` 슬롯으로 통합됐다. 그 결과 원안의
+> "`Default` 드리프트 제거"는 **대상이 사라졌고**(칩 색·문구는 이제 호출 화면 몫), 남은 드리프트는
+> 컴포넌트 프리뷰의 칩 색 하나다. `YGTopBarContent` 확장·`YGTopBarCanvas` 신설은 그대로 유효하되
+> 기준 시그니처를 #173 이후 코드로 갱신했다. 코드 미착수(스펙 `draft`)라 개정 비용은 문서뿐이다.
+
 ## 목표
 
 Figma 컴포넌트 3종(`List-Date`·`Top Bar`·`Floating Bar`)을 현재 구현과 1:1 대조해 신설·수정한다.
-`List-Date`와 `Floating Bar`는 대응 구현체가 없고, `Top Bar`는 5변형 중 `Canvas` 1종이 빠져 있으며
-`Default` 변형이 Figma와 어긋나 있다.
+`List-Date`와 `Floating Bar`는 대응 구현체가 없고, `Top Bar`는 Figma 5변형 중 `Canvas` 1종이 빠져 있다.
+Figma의 `Default`에 해당하는 구성은 **#173 이후 `Empty` + `rightContent` 조립**으로 표현된다.
 
 선행 라운드가 남긴 두 이월 항목을 함께 닫는다 — 캔버스 스펙이 C-201 라운드로 미룬 `List-Date`, 그리고
 Grouptag·Topping 스펙이 "다른 브랜치 작업 중"으로 제외한 `Chip-Indicator`·`List-Date`. `Chip-Indicator`는
@@ -54,9 +60,10 @@ Grouptag·Topping 스펙이 "다른 브랜치 작업 중"으로 제외한 `Chip-
   - `YGFloatingBar*`(Figma `Floating Bar`) — 변형별 공개 함수 4종 + 공통 private 컨테이너
   - `YGTopBarCanvas`(Figma `Top Bar` `Status=Canvas`) — 신규 변형
   - `YGTopBarContent` 확장 — `contentPadding`·`trailingContent` 파라미터 추가
-  - `YGTopBarDefault` 드리프트 제거 — 칩 색 프리셋·문구
+  - `YGTopBar` 프리뷰 칩 색 정정 — `CherrySolid` → `CherrySubtle`(Figma 정본, 실제 호출부와도 일치)
   - 3종을 `:app-preview` 컴포넌트 갤러리에 등록·갱신
 - **제외**
+  - **`YGTopBarDefault` 재도입** — #173에서 삭제된 변형이다. 칩 색·문구는 호출 화면이 정한다
   - **List-Member 실물** — Canvas Top Bar가 슬롯만 열고 겹침 배치·`+N` 계산은 호출자 책임(아래 [List-Member](#list-member))
   - C-201 캘린더 패널 실물 — `YGListDate`를 격자로 배치하는 쪽
   - `YGTopBar`의 logo placeholder(`ic_plus`) 치환 — 이월 todo
@@ -106,8 +113,12 @@ fun YGListDate(
 
 ### `YGTopBarContent` 확장
 
-기존 private 컨테이너에 파라미터 2개를 더한다. 기존 4변형의 호출부는 바뀌지 않는다(기본값이 현재 동작과
-동일).
+기존 private 컨테이너에 파라미터 2개를 더한다. 기존 3변형(`Back`·`Detail`·`Empty`)의 호출부는 바뀌지
+않는다(기본값이 현재 동작과 동일).
+
+> `Empty`가 #173에서 받은 `rightContent`는 **안쪽 `weight(1f)` Row 안**의 형제이고, 여기서 더하는
+> `trailingContent`는 **그 Row 바깥**의 형제다. 위치가 달라 이름을 합치지 않는다 — 합치려면 `Empty`의
+> 로고 `Box(weight(1f))` 구성까지 다시 짜야 해서 이번 범위 밖 회귀를 산다.
 
 ```kotlin
 @Composable
@@ -171,29 +182,24 @@ Figma의 List-Member(Nametag-Chip 5개를 -12dp씩 겹치고 끝에 `+N` 카운�
 > ⚠️ Plus 타입은 `YGColorChipType` 13종 + Plus ↔ 정책 12종 드리프트에 걸려 있는 이월 미결 항목이다.
 > 이번 라운드에서 정리하지 않는다.
 
-### `YGTopBarDefault` 드리프트 제거
+### Figma `Default` 대응 — 컴포넌트가 아니라 조립
 
-```kotlin
-@Composable
-fun YGTopBarDefault(
-    onIconClick: () -> Unit,
-    onChipClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    chipText: String = "그룹 추가하기",
-)
-```
+#173이 `YGTopBarDefault`를 지우고 `YGTopBarEmpty(rightContent)`로 통합하면서, 원안이 잡았던 두 드리프트
+(칩 색 `CherrySolid`→`CherrySubtle`, 문구 `"새 그룹"`→`"그룹 추가하기"`)는 **호출 화면에서 이미 해소**됐다 —
+첫 호출자 G-001이 `CherrySubtle` + `"그룹 추가하기"`로 조립한다([g001-group-list](archive/2026-08-01-g001-group-list.md)).
 
-| 항목 | 현재 | Figma(정본) |
+남은 것은 **컴포넌트 프리뷰 한 곳**이다.
+
+| 항목 | 현재(`YGTopBarPreview`) | Figma(정본) |
 |---|---|---|
 | 칩 색 프리셋 | `CherrySolid` | `CherrySubtle` (`Cherry50` 배경 / `Gray600` 전경) |
-| 칩 문구 | `"새 그룹"` 하드코딩 | `"그룹 추가하기"`, `chipText` 파라미터로 노출 |
 
-기본값 파라미터를 **뒤에** 추가하므로 기존 호출부는 깨지지 않는다.
+프리뷰 예시만 `CherrySubtle`로 바꾼다. API는 손대지 않는다.
 
 ### 무변경 3변형
 
-`Back`·`Detail`·`Empty`는 Figma와 일치한다. Figma의 `Detail`·`Back`에 있는 List-Member는 `opacity-0`이고
-제목이 좌측 정렬이라 렌더 결과가 같으므로 비노출이 정답이다.
+`Back`·`Detail`·`Empty`는 Figma와 일치한다(`Empty`는 슬롯이 비었을 때 기준). Figma의 `Detail`·`Back`에
+있는 List-Member는 `opacity-0`이고 제목이 좌측 정렬이라 렌더 결과가 같으므로 비노출이 정답이다.
 
 ## `YGFloatingBar`
 
@@ -256,7 +262,7 @@ private fun YGFloatingBarContent(
 
 - `@YGPreview` + `PreviewBox` 프리뷰
   - `YGListDate` — 상태 4종 × `isUploaded` 2
-  - `YGTopBar` — 5변형(Canvas는 List-Member 조립 예시 포함)
+  - `YGTopBar` — `Back`·`Detail`·`Empty`(슬롯 없음/칩 슬롯 2례)·`Canvas`(List-Member 조립 예시 포함)
   - `YGFloatingBar` — 4변형
 - `:app-preview` 갤러리
   - `YGListDate` → `ComponentCategory.BUTTON` (`YGDateButton` 옆)

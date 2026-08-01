@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-01
-related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components
+related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017
 related_architecture: design-system, data-layer
 related_code:
@@ -141,6 +141,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: PR #166(`feature/intro/impl`·`feature/groups/enter/impl` `strings.xml` 신설)로 TermAgree·GroupNickName·GroupInviteCode 화면 정적 라벨은 리소스화됐으나, ① `feature/intro/impl`의 `TermContent.kt#TERM_CONTENT_LIST` 약관 항목 title이 코틀린 리터럴로 잔존, ② `domain`의 `InviteCodeResult`가 `errorMessage: String?`로 **표시 문자열을 도메인이 보유** — [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)이 `NicknameResult`에서 걷어낸 패턴과 동일, ③ `feature/groups/canvas/impl`의 `CanvasImageAddScreen` 등 미착수 화면은 리터럴 그대로.
 - **항목**: ① 정적 라벨 = `strings.xml` 관용구를 전 feature 모듈 규약으로 문서화할지(현재는 각 plan에만 기술, architecture 미기재), ② `InviteCodeResult`를 sealed + `core:ui` 매핑(ADR-0016 패턴)으로 정렬할지, ③ 약관 항목 title 리소스화 여부(랜딩 URL TODO와 함께 처리 후보).
 - **상태**: 부분 해소 (① 규약 문서화 — **2026-07-29 [module-structure](../architecture/module-structure.md) "규칙"에 한 줄 추가로 해소**. ②`InviteCodeResult`·③ 약관 title 리터럴·미착수 화면 리터럴은 잔존.)
+  > 📌 **신규 화면이 규약을 안 따름(2026-08-01, PR #173)** — G-001 `GroupListScreen`·`GroupListAddGroupScreen`의 라벨 3종("그룹 추가하기"·"그룹 만들기"·"그룹 들어가기")이 코틀린 리터럴이고, 코드 주석은 `Todo : core:ui 에 string resource 로 분리`라고 적는다. 화면 전용 정적 라벨은 **feature `strings.xml`**이 규약(공유 문구만 `core:ui`)이라 주석의 목적지부터 규약과 어긋난다. 규약이 문서에만 있고 코드 리뷰에서 안 걸린다는 신호다.
 - **해소 메모**: ① 화면 전용 라벨=feature `strings.xml` / 공유 문구=`core:ui` `strings.xml` / domain 문자열 미보유 규약을 module-structure에 명시(#179가 `NickNameResult`의 domain 문자열을 걷어내 선례 확정). ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, G-002 후속) 시점에 함께 정리 — `InviteCodeResult`는 아직 `errorMessage: String?` 그대로다. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
 
 ### [2026-07-27] Toast·Alert 호스트 노출 애니메이션이 동작하지 않음
@@ -178,6 +179,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 그룹 참여(S-102)와 그룹 생성(A-005)의 진입 관계를 확정할지(기획상 참여 플로우 다음이 맞는지), ② 확정 시 `GroupNickNameRoute`에서 `navigator.goTo(NavKeyGroupCreate(nickName))` 결선.
 - **상태**: 미해결 (코드 수정 대상 — 현재 도달 불가 화면)
 - **해소 메모**: 결선 후 [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md)의 "다음 네비게이션 미구현" 항목을 함께 정리. 위키 [[기능정의서-v6]] 화면 흐름과 대조 필요.
+  > 📌 **진입점 UI는 생겼고 결선만 남음(2026-08-01, PR #173)** — G-001 그룹 추가 오버레이의 "그룹 만들기"가 `GroupListSideEffect.NavigateToCreateGroup`을 발신하지만 Route 소비부가 `// Todo : navigator.goTo(NavKeyGroupCreate)` 주석이다. 같은 오버레이의 "그룹 들어가기"는 `NavKeyGroupInviteCode`로 실제 결선됐다. 남은 것은 `goTo` 한 줄과 `nickName` 인자 출처(A-005가 인자 있는 NavKey)다.
 
 ### [2026-07-29] `GroupCreateConfig`가 표시 관심사를 domain에 보유
 - **출처**: `domain/model/GroupCreateConfig.kt`(PR #179 develop 머지) — 이름 길이 상한(정책값)과 함께 `GROUP_COLUMN_COUNT`(인원 선택 그리드 열 수)를 같은 객체에 둔다. 열 수는 화면 레이아웃 값이라 `domain`이 UI 결정을 들고 있는 형태다. `GROUP_COUNT_LIST`(1~12)는 정책값이라 domain이 맞다.
@@ -302,6 +304,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① Dim 탭 닫기를 컴포넌트 API로 열지(=`onDimClick`) 화면이 바깥에서 처리할지, ② 캘린더 패널이 붙은 뒤 `Status=Calendar`·`Image` 배경을 재대조할지.
 - **상태**: 미해결 (화면 라운드 결정 대기)
 - **해소 메모**: C-201 캘린더 라운드에서 슬롯을 채우며 함께 확정하고 [캔버스 컴포넌트 스펙](../specs/archive/2026-07-31-designsystem-canvas-components.md)의 "주의 / 열린 질문"을 정리한다.
+
+### [2026-08-01] G-001 목록 화면이 화면 컨테이너 규약을 벗어남
+- **출처**: `feature/groups/list/impl/navigation/EntryBuilder.kt#featureGroupListEntryBuilder`·`route/GroupListRoute.kt`(PR #173 develop 머지) — 엔트리 컨테이너가 `YGScaffold`가 아니라 `Box`(전면 배경 이미지 `group_list_background`)이고 `YGScaffold(containerColor = Gray.Transparent)`는 Route 안으로 내려갔다. 그룹 추가 오버레이는 **두 번째 `YGScaffold`**(`Transparency.Black25`)를 겹쳐 그린다. 화면 최외곽 `YGScreen`도 쓰지 않아 `YGScreenScope.OnBack` 경로가 없다. [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번·[design-system](../architecture/design-system.md) "화면 컨테이너" 역할 분리와 어긋난다.
+- **항목**: ① 전면 배경 이미지가 있는 화면의 관용구를 정할지(`YGScaffold`에 배경 슬롯을 열지 / nav 레벨 `Box` 래핑을 허용할지), ② 오버레이·Dim을 `YGScaffold` 중첩으로 그리는 것이 맞는지(`Dialog`·`Popup`·단일 `Box` 대안), ③ 화면 최외곽 `YGScreen` 사용을 규약으로 강제할지 — 강제하면 이 화면이 위반이고, 안 하면 [2026-07-20 화면 컨테이너 ADR](#2026-07-20-화면-컨테이너ygscreenygscaffold-컨벤션--adr-미작성) 내용이 달라진다.
+- **상태**: 미해결 (코드 머지됨 — 규약 쪽 결정 필요)
+- **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트와 [design-system](../architecture/design-system.md) "화면 컨테이너"를 함께 고치고, [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)의 이탈 표기를 정리한다. [2026-07-20 항목](#2026-07-20-화면-컨테이너ygscreenygscaffold-컨벤션--adr-미작성)의 ADR 내용에 직접 걸린다.
+
+### [2026-08-01] G-001 파르페·툴팁이 위키 정책과 미결선 — 화면 골격만 머지됨
+- **출처**: `feature/groups/list/impl/route/GroupListParfaitLayout.kt`·`GroupListScreen.kt`·`GroupListViewModel.kt`·`route/component/GroupListTooltip.kt`(PR #173·#176·#180 develop 머지) — ① `GroupListUiState.groupList`가 `List<String>` placeholder고 렌더에 쓰이지 않아 [[무한-파르페-그리드]]의 지그재그 배치·인셋·y좌표·6타입 변형·활동순 정렬·상대시간이 전부 미구현이다. ② 크림 반복이 정책의 "토핑 0~3 → 3개, 4개부터 1:1" 규칙이 아니라 `content` 높이를 덮을 때까지의 올림 나눗셈이다. ③ 툴팁이 `LaunchedEffect(Unit) { show() }`로 **진입 시 무조건** 뜬다 — [[g-001-empty-툴팁]]의 노출 조건은 "그룹 0건". ④ `GroupListUiState.isTooltipVisible`은 死필드이고 실제 노출은 화면 로컬 `rememberTooltipState`가 쥔다. ⑤ 툴팁 문구·앵커가 코드에 리터럴로 확정됐는데 위키 정책은 문구·앵커를 미정으로 둔다(정책 소스 미수집).
+- **항목**: ① 목록 조회 API가 붙는 라운드에서 파르페 좌표 정책을 어디까지 컴포넌트(`YGToppingGroup`)로 흡수할지, ② 크림 개수 규칙을 정책대로 되돌릴지 레이아웃 파생값으로 유지할지, ③ 툴팁 노출 조건을 `groupList.isEmpty()`로 결선하고 상태 소유를 VM/화면 중 어디로 정할지(`isTooltipVisible` 존폐), ④ 툴팁 문구·앵커를 위키 정책으로 역수집할지.
+- **상태**: 미해결 (의도된 골격 선행 — 그룹 조회 미구현)
+- **해소 메모**: 데이터 결선 라운드에서 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)의 "정책 대조" 표를 갱신한다. ④는 위키 소관이라 정책 소스 수집 요청이 먼저다([[open-questions]]의 툴팁 문구·앵커 미정 항목).
+
+### [2026-08-01] 테마 비의존 그리기 확장의 소유 모듈이 갈림
+- **출처**: `core/util/android/extension/Modifier.kt#drawTooltipCornerTop`(PR #176 develop 머지) vs `core:designsystem`의 `border/DashedBorder.kt#dashedBorder`·`shape/CanvasCutCornerShape.kt#canvasCutCornerShape` — 셋 다 테마를 읽지 않고 색·치수를 인자로 받는 순수 그리기 확장인데, 툴팁 꼬리만 `core:util:android`에 있다. 같은 갈림이 clickable 유틸에서 이미 [2026-07-14 항목](#2026-07-14-clickable-유틸이-coreutilandroid로-이동--ripple-색-테마-비의존)으로 등록돼 있다.
+- **항목**: ① 그리기 프리미티브의 기본 소유를 `core:designsystem`(`border/`·`shape/`)으로 못박을지, ② `core:util:android`를 "Compose 확장 잡동사니" 자리로 인정하고 기준을 문서화할지 — 후자면 두 모듈의 경계 서술이 필요하다.
+- **상태**: 미해결
+- **해소 메모**: 결정 시 [module-structure](../architecture/module-structure.md) `core:util:android` 행과 [design-system](../architecture/design-system.md) 과도기 마커를 함께 정리한다. [2026-07-14 항목](#2026-07-14-clickable-유틸이-coreutilandroid로-이동--ripple-색-테마-비의존) ②와 같은 결정에 묶인다.
 
 <!--
 항목 추가 형식:

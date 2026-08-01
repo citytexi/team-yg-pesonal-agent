@@ -4,8 +4,8 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-07-29
-related_spec: designsystem-ygscreen-scaffold, a005-group-create
+verified: 2026-08-01
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list
 related_adr: ADR-0002, ADR-0006
 related_architecture:
 related_code: core:navigation, Navigator
@@ -38,6 +38,12 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 4. 이동 원하는 feature는 대상의 `:api`에 의존 추가(`settings.gradle.kts`/build 파일).
 5. 결과가 필요하면 `ResultEventBus` 데코레이터 경로 사용.
 6. **`goTo` 호출자를 같은 PR에 넣는다** — entry만 등록하고 진입 경로가 없으면 도달 불가 화면이 된다(선례: `NavKeyGroupCreate`, [open-questions](../synthesis/open-questions.md) [2026-07-29]).
+
+> ⚠️ **이탈 사례(2026-08-01, PR #173)** — G-001 `featureGroupListEntryBuilder`는 엔트리 컨테이너를
+> `YGScaffold`가 아니라 `Box`(전면 배경 이미지)로 두고 `YGScaffold`를 Route 안으로 내렸으며, 그룹 추가
+> 오버레이를 **두 번째 `YGScaffold`**(Dim 배경)로 겹친다. 화면 최외곽 `YGScreen`도 쓰지 않는다.
+> 배경 이미지·오버레이가 붙는 화면에서 위 2번 관용구가 부족했다는 신호다 →
+> [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) · [open-questions](../synthesis/open-questions.md) [2026-08-01].
 
 ## 인자 있는 목적지 (`data class NavKey`)
 

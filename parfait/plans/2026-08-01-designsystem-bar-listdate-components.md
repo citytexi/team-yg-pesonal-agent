@@ -17,7 +17,7 @@ related_code:
   - YGFloatingBar.kt#YGFloatingBarEdit
   - YGFloatingBar.kt#YGFloatingBarEditTab
   - YGTopBar.kt#YGTopBarCanvas
-  - YGTopBar.kt#YGTopBarDefault
+  - YGTopBar.kt#YGTopBarEmpty
   - YGTopBar.kt#YGTopBarContent
   - ComponentCatalog.kt#componentCatalog
   - ComponentEntryBuilders.kt#componentEntryBuilders
@@ -30,8 +30,13 @@ tags: [plan, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development(권장) 또는
 > superpowers:executing-plans로 task 단위 구현. 단계는 체크박스(`- [ ]`)로 추적.
 
+> ⚠️ **개정(2026-08-01, PR #173 develop 머지 반영)** — `YGTopBarDefault`가 develop에서 삭제되고
+> `YGTopBarEmpty(rightContent)`로 통합됐다. Task 3의 "Default 드리프트 제거"는 대상이 사라져
+> **프리뷰 칩 색 정정**으로 축소했고, 기준 시그니처를 #173 이후 코드로 갱신했다. 착수 전이라 체크박스는
+> 전부 미완이다.
+
 **Goal:** Figma `List-Date`·`Floating Bar`를 `:core:designsystem`에 신설하고, `Top Bar`에 `Canvas`
-변형을 더하면서 `Default` 변형의 드리프트를 없앤 뒤 `:app-preview` 갤러리에서 실기기로 검증한다.
+변형을 더한 뒤 `:app-preview` 갤러리에서 실기기로 검증한다.
 
 **Architecture:** 세 컴포넌트가 서로를 소비하지 않으므로 독립 Task 3개 + 통합 검증 Task 1개다.
 전부 기존 부품(`YGDateButton`·`YGChipColorIndicator`·`YGCircleButton`·`YGEditTabButton`·`YGIconButton`)
@@ -733,7 +738,7 @@ Expected: 4행. 1행 좌 `<`·우 `×`, 2행 **우측에만** `×`, 3행 좌 `×
 
 ---
 
-## Task 3: `YGTopBar` — Canvas 변형 신설 + Default 드리프트 제거
+## Task 3: `YGTopBar` — Canvas 변형 신설 + 프리뷰 칩 색 정정
 
 **Files:**
 - Modify: `core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygtopbar/YGTopBar.kt`
@@ -745,13 +750,12 @@ Expected: 4행. 1행 좌 `<`·우 `×`, 2행 **우측에만** `×`, 3행 좌 `×
   기존 `YGColorChipType.NametagChipPlus`
 - Produces:
   - `YGTopBarCanvas(title: String, onBackClick: () -> Unit, onMenuClick: () -> Unit, modifier: Modifier = Modifier, memberContent: @Composable RowScope.() -> Unit = { })`
-  - `YGTopBarDefault(onIconClick: () -> Unit, onChipClick: () -> Unit, modifier: Modifier = Modifier, chipText: String = "그룹 추가하기")`
-    — 기존 3개 파라미터는 위치·타입 그대로. `chipText`가 뒤에 기본값으로 붙는다.
 
 **배경:** private `YGTopBarContent`에 파라미터 2개(`contentPadding`·`trailingContent`)만 더해
-Canvas를 수용한다. 기본값이 현재 동작과 같아 기존 4변형 호출부는 바뀌지 않는다.
+Canvas를 수용한다. 기본값이 현재 동작과 같아 기존 3변형(`Back`·`Detail`·`Empty`) 호출부는 바뀌지 않는다.
 `trailingContent`를 `weight(1f)` Row **바깥**의 형제로 두는 것이 Figma가 Info-Group을 flex-1로 두고
-우측 아이콘을 형제로 두는 구조와 같다.
+우측 아이콘을 형제로 두는 구조와 같다. `Empty`의 `rightContent`(#173 신설)는 그 Row **안쪽** 형제라
+역할이 겹치지 않는다.
 
 Canvas의 제목/멤버 우측 정렬은 안쪽 Row의 `Arrangement`를 바꾸지 않고 `titleContent` 안에서
 `Spacer(Modifier.weight(1f))`로 만든다 — 안쪽 Row의 arrangement를 건드리면 나머지 4변형에 영향이 간다.
@@ -801,7 +805,7 @@ import 추가: `androidx.compose.foundation.layout.PaddingValues`.
 
 - [ ] **Step 2: `YGTopBarCanvas` 추가**
 
-`YGTopBarDefault` **뒤**, `YGTopBarContent` **앞**에 넣는다(공개 함수들이 모여 있는 구역).
+`YGTopBarEmpty` **뒤**, `YGTopBarContent` **앞**에 넣는다(공개 함수들이 모여 있는 구역).
 
 ```kotlin
 @Composable
@@ -841,50 +845,30 @@ fun YGTopBarCanvas(
 
 import 추가: `androidx.compose.foundation.layout.Spacer`.
 
-- [ ] **Step 3: `YGTopBarDefault` 드리프트 제거**
+- [ ] **Step 3: 프리뷰 칩 색 정정**
 
-기존 `YGTopBarDefault`를 아래로 교체한다. 바뀌는 것은 **`chipText` 파라미터 추가**와
-**`colors`가 `CherrySolid` → `CherrySubtle`**, **문구 `"새 그룹"` → `chipText`** 셋뿐이다.
+`YGTopBar.kt` 맨 아래 `YGTopBarPreview`의 칩 슬롯 예시에서 `colors`만 바꾼다. 컴포넌트 API는 손대지 않는다.
 
 ```kotlin
-@Composable
-fun YGTopBarDefault(
-    onIconClick: () -> Unit,
-    onChipClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    chipText: String = "그룹 추가하기",
-) {
-    YGTopBarContent(
-        iconResource = R.drawable.ic_hamburger,
-        contentDescription = "메뉴",
-        onIconClick = onIconClick,
-        modifier = modifier,
-        titleContent = {
-            Box(
-                contentAlignment = Alignment.CenterStart,
-                modifier = Modifier.weight(1f),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_plus), // todo : parfait logo 로 변경 예정
-                    contentDescription = null,
+        YGTopBarEmpty(
+            onIconClick = {},
+            rightContent = {
+                YGChipButton(
+                    text = "그룹 추가하기",
+                    colors = YGChipButtonColorsDefaults.CherrySubtle, // was: CherrySolid
+                    onClick = {},
+                    startIconResource = R.drawable.ic_plus,
                 )
-            }
-            YGChipButton(
-                text = chipText,
-                colors = YGChipButtonColorsDefaults.CherrySubtle,
-                onClick = onChipClick,
-                startIconResource = R.drawable.ic_plus,
-            )
-        },
-    )
-}
+            },
+        )
 ```
 
-import 정리: `YGChipButtonColorsDefaults`는 이미 import돼 있다(참조 심볼만 바뀜).
+Figma 정본이 `CherrySubtle`(`Cherry50` 배경 / `Gray600` 전경)이고 실제 호출부(G-001 `GroupListScreen`)도
+이미 `CherrySubtle`이라, 프리뷰만 어긋나 있다.
 
 - [ ] **Step 4: 컴포넌트 프리뷰에 Canvas 추가**
 
-`YGTopBar.kt` 맨 아래 `YGTopBarPreview`의 `Column` 안, `YGTopBarDefault(...)` 뒤에 추가한다.
+`YGTopBar.kt` 맨 아래 `YGTopBarPreview`의 `Column` 안, 칩 슬롯 예시(Step 3) 뒤에 추가한다.
 
 ```kotlin
         YGTopBarCanvas(
@@ -909,7 +893,8 @@ import 추가:
 
 - [ ] **Step 5: 갤러리 화면에 Canvas 섹션 + List-Member 조립 예시 추가**
 
-`YGTopBarPreviewScreen.kt`의 `LazyColumn` 안, `YGTopBarDefault` item 뒤에 아래 item을 추가하고,
+`YGTopBarPreviewScreen.kt`의 `LazyColumn` 안, `"YGTopBarDefault"` 라벨 item(내용은 #173 이후
+`YGTopBarEmpty` + 칩 슬롯) 뒤에 아래 item을 추가하고,
 파일 하단(`PreviewYGTopBarPreviewScreen` 앞)에 `MemberListSample`을 정의한다.
 
 겹침은 `Arrangement.spacedBy((-12).dp)`로 만든다 — Figma의 `mr-[-12px]`와 같고, 나중에 오는 칩이
@@ -968,9 +953,10 @@ import 추가:
 
 - [ ] **Step 6: 기존 호출부 회귀 확인**
 
-Run: `rg -n "YGTopBarDefault\(" --glob '!**/build/**'`
-Expected: 호출부가 `onIconClick`·`onChipClick`만 넘기고 있어 컴파일에 영향이 없음을 눈으로 확인.
-`chipText`를 넘기는 호출부가 있으면 그건 이번에 추가한 곳뿐이어야 한다.
+Run: `rg -n "YGTopBar(Empty|Back|Detail)\(" --glob '!**/build/**'`
+Expected: 세 변형 호출부(`app-preview` 프리뷰 화면들, G-001 `GroupListScreen`)가 기존 파라미터만
+넘기고 있어 `YGTopBarContent` 확장이 컴파일에 영향을 주지 않음을 눈으로 확인.
+`YGTopBarDefault` 호출부는 **0건이어야 한다**(#173에서 삭제됨).
 
 - [ ] **Step 7: 빌드 확인**
 
@@ -986,8 +972,9 @@ Expected: BUILD SUCCESSFUL. 실패하면 `./gradlew ktlintFormat` 후 재실행.
 - [ ] **Step 9: 프리뷰 육안 확인**
 
 Android Studio에서 `YGTopBar.kt`의 `YGTopBarPreview`를 연다.
-Expected: 5행. `Default` 행의 칩이 **연분홍 배경 + 회색 글씨 "그룹 추가하기"**로 바뀌어 있고,
-마지막 `Canvas` 행은 좌 `<`·"그룹이름"·우측에 네임태그 1개와 햄버거 아이콘이 보인다.
+Expected: 5행(`Back`·`Detail`·`Empty`·`Empty`+칩·`Canvas`). 칩 행이 **연분홍 배경 + 회색 글씨
+"그룹 추가하기"**로 바뀌어 있고, 마지막 `Canvas` 행은 좌 `<`·"그룹이름"·우측에 네임태그 1개와
+햄버거 아이콘이 보인다.
 
 ---
 
@@ -1034,9 +1021,9 @@ Expected: `Close` 행의 버튼이 **우측 끝**에 붙어 있고(좌측 아님
 - [ ] **Step 6: 실기기 육안 대조 — YGTopBar**
 
 갤러리 → `Bar` → `YGTopBar`.
-Expected: `YGTopBarDefault` 칩이 연분홍 배경 + 회색 "그룹 추가하기". `YGTopBarCanvas` 행에서
+Expected: 칩 슬롯 섹션의 칩이 연분홍 배경 + 회색 "그룹 추가하기". `YGTopBarCanvas` 섹션에서
 네임태그 6개가 12dp씩 겹쳐 있고 마지막이 `+7` 흰 칩이며, 우측 끝에 햄버거 아이콘이 있다.
-Back/Detail/Empty 3행은 이전과 동일.
+Back/Detail/Empty 3섹션은 이전과 동일.
 
 - [ ] **Step 7: 결함 발견 시 처리**
 
