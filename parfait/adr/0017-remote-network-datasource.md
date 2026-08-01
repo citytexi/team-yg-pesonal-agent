@@ -79,8 +79,8 @@ DataSource 배치 관례를 확립한다.
   쌍으로 둔다. 예시 1세트로 `TempService`+`TempRequest`/`TempResponse`+`TempRemoteDataSource`(+`Impl`)를
   두고, `RemoteDataSourceModule`(`@Binds`)로 바인딩한다.
 - **응답 → 도메인 매핑 위치**: 원격 DataSource의 **반환 타입은 도메인 모델**이다
-  (`TempRemoteDataSource.getTemp(id): Result<TempVO>`). 서버 응답 타입(`service.model`의
-  `TempResponse`)은 data 안에서만 살고, `source.<도메인>.mapper`의 확장 함수
+  (`TempRemoteDataSource.getTemp(id): Result<TempVO>`). 서버 응답 타입(머지 코드 기준
+  `service.model.response`의 `TempResponse` — 요청 타입은 `service.model.request`)은 data 안에서만 살고, `source.<도메인>.mapper`의 확장 함수
   (`TempResponse.toTempVO()`, 파일 `VOMapper.kt`, `internal`)가 경계에서 변환한다. data 전용
   중간 모델(구 `data.model.dto.TempDto`)은 두지 않는다 — Response와 필드가 같아 값 없는 3단
   변환(Response→DTO→도메인)이 되기 때문이다. 도메인 모델은 `domain.model`에 둔다.

@@ -5,8 +5,8 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-01
-related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017
+related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018
 related_architecture: design-system, data-layer
 related_code:
 tags: [meta, parfait]
@@ -141,6 +141,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: PR #166(`feature/intro/impl`·`feature/groups/enter/impl` `strings.xml` 신설)로 TermAgree·GroupNickName·GroupInviteCode 화면 정적 라벨은 리소스화됐으나, ① `feature/intro/impl`의 `TermContent.kt#TERM_CONTENT_LIST` 약관 항목 title이 코틀린 리터럴로 잔존, ② `domain`의 `InviteCodeResult`가 `errorMessage: String?`로 **표시 문자열을 도메인이 보유** — [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)이 `NicknameResult`에서 걷어낸 패턴과 동일, ③ `feature/groups/canvas/impl`의 `CanvasImageAddScreen` 등 미착수 화면은 리터럴 그대로.
 - **항목**: ① 정적 라벨 = `strings.xml` 관용구를 전 feature 모듈 규약으로 문서화할지(현재는 각 plan에만 기술, architecture 미기재), ② `InviteCodeResult`를 sealed + `core:ui` 매핑(ADR-0016 패턴)으로 정렬할지, ③ 약관 항목 title 리소스화 여부(랜딩 URL TODO와 함께 처리 후보).
 - **상태**: 부분 해소 (① 규약 문서화 — **2026-07-29 [module-structure](../architecture/module-structure.md) "규칙"에 한 줄 추가로 해소**. ②`InviteCodeResult`·③ 약관 title 리터럴·미착수 화면 리터럴은 잔존.)
+  > ✅ **카메라·갤러리는 규약을 따름(2026-08-01, PR #182)** — `feature/camera/impl`·`feature/gallery/impl`에 `strings.xml`이 신설되고 권한·확인 화면 라벨이 전부 `stringResource`로 갔다. **예외 1건**: `CustomGalleryPickerScreen`의 빈 상태 문구가 코틀린 리터럴로 남았다(같은 화면의 다른 문구는 리소스) → 아래 [갤러리 빈 상태 항목](#2026-08-01-갤러리-빈-상태-그래픽이-상시-노출되고-문구가-리터럴)에서 함께 추적.
   > 📌 **신규 화면이 규약을 안 따름(2026-08-01, PR #173)** — G-001 `GroupListScreen`·`GroupListAddGroupScreen`의 라벨 3종("그룹 추가하기"·"그룹 만들기"·"그룹 들어가기")이 코틀린 리터럴이고, 코드 주석은 `Todo : core:ui 에 string resource 로 분리`라고 적는다. 화면 전용 정적 라벨은 **feature `strings.xml`**이 규약(공유 문구만 `core:ui`)이라 주석의 목적지부터 규약과 어긋난다. 규약이 문서에만 있고 코드 리뷰에서 안 걸린다는 신호다.
 - **해소 메모**: ① 화면 전용 라벨=feature `strings.xml` / 공유 문구=`core:ui` `strings.xml` / domain 문자열 미보유 규약을 module-structure에 명시(#179가 `NickNameResult`의 domain 문자열을 걷어내 선례 확정). ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, G-002 후속) 시점에 함께 정리 — `InviteCodeResult`는 아직 `errorMessage: String?` 그대로다. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
 
@@ -148,6 +149,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `component/ygtoast/YGToastPolicy.kt#YGToastHost`·`component/ygalert/YGAlertPolicy.kt#YGAlertHost` — `AnimatedVisibility`가 `visible = true`인 상태로 최초 컴포즈돼 입장 transition이 돌지 않고(`updateTransition`의 `currentState == targetState`), 퇴장은 `setVisible(false)` 직후 같은 프레임에 목록에서 제거된다(Alert은 `clearAlert()`로 즉시 해체). 결과적으로 `YGToastItem.visible`·`YGAlertItem.visible`·`setVisible()`·양쪽 `exit =` 인자가 모두 死코드. [텍스트 영역 sync 스펙](../specs/archive/2026-07-27-designsystem-text-component-sync.md)의 갤러리 화면이 두 호스트를 처음 실행시키면서 최종 리뷰에서 드러남.
 - **항목**: ① 입장은 `MutableTransitionState(false).apply { targetState = true }`로, 퇴장은 제거 전 `delay(ANIMATION_DURATION)`로 살릴지, ② 아니면 애니메이션 의도를 접고 `visible`·`setVisible`·`exit` 死코드를 걷어낼지.
 - **상태**: 미해결
+  > 📌 **실사용처 생김(2026-08-01, PR #182)** — C-101 카메라 진입 시 촬영 가이드 토스트가 `rememberYGToastPolicy()`+`YGToastHost`로 뜬다(갤러리 showcase 밖 첫 실사용). 즉 이 결함이 이제 사용자 화면에서 재현된다.
 - **해소 메모**: 위키 [[Toast-공통-정책]]은 노출 방식만 규정하고 애니메이션은 규정하지 않는다 — 디자인 의도 확인 후 ①/② 택일. 처리 시 sync 스펙의 "일치 확인" 정정 노트도 갱신.
 
 ### [2026-07-27] YGToastHost 다중 스택이 겹쳐 그려짐
@@ -194,19 +196,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 방침 확정 시 [module-structure](../architecture/module-structure.md) `core:ui` 행과 [design-system](../architecture/design-system.md) 프리뷰 규약 범위를 함께 갱신. [2026-07-23 프리뷰 관용구 부분 회귀](#2026-07-23-프리뷰-관용구-부분-회귀--신규-컴포넌트가-ygpreview-표준-이탈)와 함께 관리.
 
 ### [2026-07-30] 도메인 모델 `VO` 접미사 규약이 기존 명명과 갈림
-- **출처**: `domain/model/TempVO.kt`·`data/source/temp/mapper/VOMapper.kt`·`data/source/temp/remote/TempRemoteDataSource.kt`(`feature/network-set-up`, develop 미머지) — 원격 예시 세트가 도메인 모델을 `TempVO`로, 매퍼 파일을 `VOMapper.kt`로 명명한다. 기존 `domain.model`은 전부 무접미사(`SegmentationResult`·`GalleryImageGroup`·`InviteCodeResult`·`NameValidResult`·`DayWindow`)라 같은 패키지 안에서 규약이 둘이 된다.
+- **출처**: `domain/model/TempVO.kt`·`data/source/temp/mapper/VOMapper.kt`·`data/source/temp/remote/TempRemoteDataSource.kt`(PR #174 develop 머지, 2026-08-01) — 원격 예시 세트가 도메인 모델을 `TempVO`로, 매퍼 파일을 `VOMapper.kt`로 명명한다. 기존 `domain.model`은 전부 무접미사(`SegmentationResult`·`GalleryImageGroup`·`InviteCodeResult`·`NameValidResult`·`DayWindow`)라 같은 패키지 안에서 규약이 둘이 된다.
 - **항목**: ① 원격 유래 모델만 `…VO`를 쓸지(=출처를 이름에 남길지), ② 전부 무접미사로 통일할지, ③ 통일한다면 매퍼 파일명(`VOMapper.kt`)도 `<도메인>Mapper.kt` 등으로 맞출지.
 - **상태**: 미해결 (예시 세트 `temp`가 placeholder라 실제 첫 도메인 API 확정 전에 정하면 개명 비용 없음)
-- **해소 메모**: 결정 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "응답 → 도메인 매핑 위치" 조항과 [data-layer](../architecture/data-layer.md) "레이어 배치"·"응답 매핑", [data-network-setup 스펙](../specs/2026-07-26-data-network-setup.md)의 심볼명을 함께 맞춘다.
+- **해소 메모**: 결정 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "응답 → 도메인 매핑 위치" 조항과 [data-layer](../architecture/data-layer.md) "레이어 배치"·"응답 매핑", [data-network-setup 스펙](../specs/archive/2026-07-26-data-network-setup.md)의 심볼명을 함께 맞춘다.
 
 ### [2026-07-30] 원격 DataSource가 도메인 모델을 직접 반환 — Repository 매핑 여지 없음
-- **출처**: `data/source/temp/remote/TempRemoteDataSource.kt`(`Result<TempVO>` 반환)·`data/source/temp/mapper/VOMapper.kt`(`feature/network-set-up`, develop 미머지) — [ADR-0017](../adr/0017-remote-network-datasource.md)이 data 전용 중간 모델을 기각하면서 변환이 DataSource 경계 1회로 고정됐다. `:data`→`:domain` 의존이라 레이어 역전은 아니나([ADR-0001](../adr/0001-layered-multi-module.md)), 로컬(DataStore·파일) DataSource들은 아직 이 규약의 적용 대상인지 명시되지 않았다.
+- **출처**: `data/source/temp/remote/TempRemoteDataSource.kt`(`Result<TempVO>` 반환)·`data/source/temp/mapper/VOMapper.kt`(PR #174 develop 머지, 2026-08-01) — [ADR-0017](../adr/0017-remote-network-datasource.md)이 data 전용 중간 모델을 기각하면서 변환이 DataSource 경계 1회로 고정됐다. `:data`→`:domain` 의존이라 레이어 역전은 아니나([ADR-0001](../adr/0001-layered-multi-module.md)), 로컬(DataStore·파일) DataSource들은 아직 이 규약의 적용 대상인지 명시되지 않았다.
 - **항목**: ① 로컬 DataSource(`RecentImageLocalDataSource`·`FileRecentImageLocalDataSource` 등)도 "DataSource는 도메인 모델 반환" 규약에 편입할지, 아니면 원격에만 적용할지. ② 원격+로컬을 합성하는 Repository가 생길 때 변환 책임이 어디로 가는지(현재는 변환할 것이 남지 않음).
 - **상태**: 미해결 (실제 도메인 API 연동 전까지 영향 없음 — 예시 세트만 존재)
 - **해소 메모**: 확정 시 [data-layer](../architecture/data-layer.md) "신규 데이터 추가 체크리스트"에 DataSource 반환 타입 규칙으로 한 줄 고정.
 
 ### [2026-07-30] 사진 업로드 경로의 타임아웃 정책 미정
-- **출처**: `data/di/NetworkModule.kt#provideOkHttpClient`(`feature/network-set-up`, develop 미머지) — 단일 `OkHttpClient`가 connect/read/write 타임아웃을 모든 호출에 공통 적용하고 `callTimeout`은 설정하지 않는다(=전체 소요 무제한). 코드리뷰에서 30초가 과하다는 지적을 받아 값을 낮췄으나, 토핑 사진 업로드(누끼 PNG) API는 아직 없어 실제 전송·서버 처리 시간을 모른 채 정한 값이다. OkHttp의 read/write는 전체 전송 시간이 아니라 바이트 간 유휴 상한이라, 업로드가 느린 것 자체는 이 값으로 잡히지 않는다.
+- **출처**: `data/di/NetworkModule.kt#provideOkHttpClient`(PR #174 develop 머지, 2026-08-01) — 단일 `OkHttpClient`가 connect/read/write 타임아웃을 모든 호출에 공통 적용하고 `callTimeout`은 설정하지 않는다(=전체 소요 무제한). 코드리뷰에서 30초가 과하다는 지적을 받아 값을 낮췄으나, 토핑 사진 업로드(누끼 PNG) API는 아직 없어 실제 전송·서버 처리 시간을 모른 채 정한 값이다. OkHttp의 read/write는 전체 전송 시간이 아니라 바이트 간 유휴 상한이라, 업로드가 느린 것 자체는 이 값으로 잡히지 않는다.
 - **항목**: ① 업로드 API 확정 후 전체 소요 상한(`callTimeout`)을 둘지 — 두면 스피너·취소 UX와 값이 묶인다. ② 업로드 전용 `OkHttpClient`(`@Qualifier`)를 분리해 read/write만 늘릴지, 아니면 단일 클라이언트 값을 상향할지. ③ 실패 시 재시도(멱등성 확인 필요)를 어디에 둘지 — 인터셉터 vs 호출부.
 - **상태**: 미해결 (업로드 API 미구현 — 값 확정에 필요한 실측 데이터 없음)
 - **해소 메모**: 업로드 엔드포인트 붙일 때 실측 후 결정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅"·타임아웃 서술과 [data-layer](../architecture/data-layer.md) 네트워킹 섹션에 반영. 파르페 규율상 문서에 수치는 적지 않고 구조(클라이언트 분리 여부·callTimeout 유무)만 기록한다.
@@ -228,8 +230,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-30] 카메라 컨트롤 임시 구현체 잔존 — 셔터 구현이 두 곳에 공존
 - **출처**: `feature/camera/impl` `component/controls/ShutterButton.kt`·`FlipCameraButton.kt`·`component/CameraControlComponent.kt` vs 신설 예정 `core/designsystem` `component/ygcamerashutter/YGCameraShutter.kt`([미구현 컴포넌트 스펙](../specs/archive/2026-07-30-designsystem-button-missing-components.md)) — feature 쪽 셔터는 디자인 정본보다 큰 고정 크기 + `Color.Gray` 리터럴 테두리 + pressed 없음, flip 버튼은 이모지 문자 + `Color` 리터럴 배경, 취소는 맨 Material3 `TextButton`이다. 컴포넌트 스펙은 Figma 정본이 있는 `Camera-Shutter`만 designsystem에 만들고 화면 치환은 하지 않기로 정했다(작업자 결정) — 즉 셔터가 두 구현으로 공존한다.
 - **항목**: ① 카메라 화면(C-101) 라운드에서 `ShutterButton`을 `YGCameraShutter`로 치환하고 feature 쪽을 지울지, ② flip 버튼이 Figma `Button-Circle` `Type=Small`(`ic_rotate`)에 대응하는지 화면 노드로 확인할지 — 컴포넌트 시트만으로는 단정할 수 없다, ③ 취소·줌 컨트롤의 Figma 대응을 찾을지.
-- **상태**: 미해결 (의도된 이월 — **PR #183 머지(2026-08-01)로 `YGCameraShutter`가 develop에 들어와 셔터 2구현 공존이 실제 상태가 됐다**)
-- **해소 메모**: C-101 카메라 화면 sync 시 처리하고 해당 스펙에 기록. 치환 완료 시 [design-system](../architecture/design-system.md) 인벤토리에서 셔터 소유를 designsystem으로 정리.
+- **상태**: 해소됨 (**PR #182 develop 머지, 2026-08-01** — ①②는 치환으로 닫힘, ③ 줌은 컨트롤 자체가 화면에서 빠져 [2026-08-01 줌 死코드 항목](#2026-08-01-카메라-줌-ui가-死코드로-남음)으로 넘어갔다)
+- **해소 메모**: `component/controls/ShutterButton.kt`·`FlipCameraButton.kt`가 삭제되고 `CameraControlComponent`가 `YGCameraShutter` + `YGCircleButton`(플래시·전환) 조합으로 바뀌었다. 취소는 맨 `TextButton` 대신 상단 `YGCircleButton`(`ic_close`)이다. flip 아이콘은 `ic_reverse`·`YGCircleButtonType.Default`로 구현했다(Figma `Type=Small` 여부는 대조하지 않았고, 화면이 정본이 된 상태). [design-system](../architecture/design-system.md) 인벤토리에 화면 적용 줄 추가, 상세는 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md).
 
 ### [2026-07-30] Button-Edit-Action이 정수 토큰 재조립으로 2dp 커짐 + Small 테두리 소수 잔존
 - **출처**: [미구현 컴포넌트 스펙](../specs/archive/2026-07-30-designsystem-button-missing-components.md) "치수 도출 원칙" — Figma `Button-Edit-Action`은 아이콘 프레임이 22이고 `SizeTokens`에 대응 스케일이 없다. 스펙은 `Size22`를 만들지 않고 `Size24`로 옮기기로 정했고, 그 결과 내부 원과 바깥 프레임이 각각 2dp 커진다. 또 `Button-Circle` `Type=Small`의 테두리는 재조회 후에도 소수(0.636)로 남아 1dp로 정규화한다.
@@ -322,6 +324,54 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 그리기 프리미티브의 기본 소유를 `core:designsystem`(`border/`·`shape/`)으로 못박을지, ② `core:util:android`를 "Compose 확장 잡동사니" 자리로 인정하고 기준을 문서화할지 — 후자면 두 모듈의 경계 서술이 필요하다.
 - **상태**: 미해결
 - **해소 메모**: 결정 시 [module-structure](../architecture/module-structure.md) `core:util:android` 행과 [design-system](../architecture/design-system.md) 과도기 마커를 함께 정리한다. [2026-07-14 항목](#2026-07-14-clickable-유틸이-coreutilandroid로-이동--ripple-색-테마-비의존) ②와 같은 결정에 묶인다.
+
+### [2026-08-01] 화면 PR이 `YGButtonType.radius`를 삭제 — 각짐 토큰 경유 회귀
+- **출처**: `component/ygbutton/YGButtonType.kt`·`YGButton.kt`(PR #182 develop 머지, 카메라 화면 PR) — 변형 공통 속성 `radius`가 제거되고 `YGButton`의 `background`·`border` `shape` 인자와 `clip`도 빠졌다. 현재 전 변형이 `radius.none`이라 렌더는 동일하지만, [버튼 sync 스펙](../specs/archive/2026-07-30-designsystem-button-component-sync.md)·[radius-none-sync 스펙](../specs/archive/2026-07-19-designsystem-radius-none-sync.md)이 세운 "각짐도 테마 토큰 경유"가 코드에서 사라졌다. 카메라 화면 작업 PR이 디자인시스템 규약을 되돌린 형태다.
+- **항목**: ① `radius` 속성을 되살릴지(변형별 곡률이 다시 생기면 필요), 아니면 "전 변형 각짐"을 확정으로 보고 스펙·[design-system](../architecture/design-system.md) 규약에서 radius 조항을 걷어낼지. ② 화면 PR이 `core:designsystem`을 고칠 때의 게이트(디자인시스템 소유자 리뷰·sync 스펙 대조)가 필요한지 — 같은 PR에서 `YGDate`도 함께 회귀했다.
+- **상태**: 미해결 (코드/규약 정합)
+- **해소 메모**: ①이 정해지면 두 sync 스펙의 각짐 조항과 design-system "컴포넌트 작성 규약"을 함께 맞춘다. ②는 [2026-08-01 YGDate 항목](#2026-08-01-ygdate의-background가-테두리를-덮음)과 한 결정으로 묶인다.
+
+### [2026-08-01] `YGDate`의 background가 테두리를 덮음
+- **출처**: `component/ygtext/YGDate.kt#YGDate`(PR #182 develop 머지) — modifier 체인이 `background(White)` → `border(Gray800)` → **`background(White)`** 순이라, 나중 배경이 앞서 그린 테두리 위에 칠해진다. #149 sync가 확정한 테두리가 화면에서 안 보일 수 있다. 첫 실사용처가 이 PR의 C-101 상단 날짜 라벨이다.
+- **항목**: 중복 `background`를 지울지, 아니면 의도가 "테두리 안쪽만 채우기"였다면 `border`를 뒤로 보내거나 `padding`을 사이에 넣을지.
+- **상태**: 미해결 (코드 수정 대상 — 실기기 육안 확인 필요)
+- **해소 메모**: 고친 뒤 [ygtext-date-label 스펙](../specs/archive/2026-07-18-ygtext-date-label.md) as-built와 [design-system](../architecture/design-system.md) `YGDate` 줄의 ⚠️를 함께 정리한다.
+
+### [2026-08-01] C-101 뷰파인더 상·하 간격이 정책과 어긋남
+- **출처**: `feature/camera/impl/.../screen/CustomCameraScreen.kt#CameraContent`(PR #182 develop 머지) — 상단 날짜 행과 뷰파인더 사이가 `Spacer(10.dp)` **리터럴**(코드 주석 "10.dp가 없어서 넣었습니다")이고, 뷰파인더와 컨트롤 사이가 `Spacer(gap3)`다. 위키 [[카메라-뷰파인더]] 정책은 상단 8·하단 10을 고정으로 규정하므로 두 값이 뒤바뀐 셈이다. 좌우 여백(`padding7`)·블러 스펙은 정책과 일치한다.
+- **항목**: ① 상·하 간격을 정책값에 맞춰 토큰(`gap3`/`padding4`)으로 교체할지, ② 주석이 말하는 "10.dp가 없다"는 인식(실제로는 `padding4`가 10)을 어디서 바로잡을지 — 토큰 탐색이 안 되는 게 반복 원인이면 규약 쪽 문제다.
+- **상태**: 미해결 (코드 수정 대상)
+- **해소 메모**: 교체 후 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) "정책 대조" 표를 갱신한다.
+
+### [2026-08-01] 카메라 줌 UI가 死코드로 남음
+- **출처**: `feature/camera/impl`의 `component/CameraZoomIndicatorComponent.kt`·`component/controls/ZoomLevelRow.kt`(참조 0건) + `CameraControlComponent`(`zoomRatio`·`zoomRange`·`onClickZoomLevel`을 받기만 하고 렌더에 안 씀) + `CustomCameraViewModel`(`OnZoomRangeReady`·`OnClickZoomLevel` 인텐트의 발신처 없음, `zoomRatio`는 `LaunchedEffect`로 카메라에 계속 반영). PR #182가 컨트롤 행을 셔터·플래시·전환 3종으로 재구성하면서 줌 UI만 빠졌다.
+- **항목**: ① 줌을 다시 노출할지(Figma 대응 확인 필요 — [2026-07-30 카메라 항목](#2026-07-30-카메라-컨트롤-임시-구현체-잔존--셔터-구현이-두-곳에-공존) ③에서 넘어온 질문), ② 안 쓸 거면 컴포넌트 2개와 상태·인텐트를 걷어낼지.
+- **상태**: 미해결 (코드 수정 대상)
+- **해소 메모**: 정하면 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) 범위 표를 갱신한다.
+
+### [2026-08-01] 카메라·갤러리 권한 요청 경로가 UI에 없음
+- **출처**: `feature/camera/impl/.../component/CameraPermissionRequestComponent.kt`·`feature/gallery/impl/.../component/GalleryPermissionRequestComponent.kt`(PR #182 develop 머지) — 두 컴포넌트 모두 `onClickGrantPermission`·`permanentlyDenied`를 파라미터로 받지만 본문에서 쓰지 않고 "설정으로 이동" 버튼 하나만 그린다. Route의 `permissionLauncher`와 VM의 `OnRequestPermission`은 살아 있으나 **발신처가 없어** 시스템 권한 다이얼로그가 뜨는 경로가 없다(갤러리는 부분 접근 배너의 `onClickManageMedia`만 launcher를 탄다).
+- **항목**: ① 최초 진입 시 자동 요청 또는 "권한 허용" 버튼을 둘지, ② 최초 거부와 영구 거부 화면을 나눌지(`permanentlyDenied` 분기 부활), ③ 안 쓸 파라미터면 시그니처에서 뺄지.
+- **상태**: 미해결 (코드 수정 대상 — 최초 설치 후 카메라 진입 시 권한을 얻을 수 없다)
+- **해소 메모**: 결정 후 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) "주의/열린 질문"을 정리한다.
+
+### [2026-08-01] 갤러리 빈 상태 그래픽이 상시 노출되고 문구가 리터럴
+- **출처**: `feature/gallery/impl/.../screen/CustomGalleryPickerScreen.kt#GalleryContent`(PR #182 develop 머지) — 빈 상태 이미지(`image_gallery_empty`)가 `when(isLoading/isEmpty/else)` 분기 **밖**에 있어 사진 목록이 있어도 함께 그려진다. 로딩 인디케이터는 흰 배경 위 `Color.White`이고, 빈 상태 문구는 `strings.xml`이 아니라 코틀린 리터럴이다(같은 화면의 권한 문구는 리소스화됨 → [2026-07-26 항목](#2026-07-26-문자열-리소스화-부분-적용--잔존-하드코딩domain-표시문자열)).
+- **항목**: ① 그래픽을 `isEmpty` 분기 안으로 넣을지(디자인상 상시 노출 의도인지 확인), ② 인디케이터 색을 대비 있는 값으로 바꿀지, ③ 문구를 갤러리 `strings.xml`로 옮길지.
+- **상태**: 미해결 (코드 수정 대상)
+- **해소 메모**: ①은 Figma 갤러리 화면 대조가 선행. 처리 시 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)의 갤러리 항목을 정리한다.
+
+### [2026-08-01] C-101-confirm 이후 경로 미결선 — 확인 화면에서 앞으로 못 감
+- **출처**: `feature/camera/impl/.../route/PictureConfirmRoute.kt`(PR #182 develop 머지) — "다음"이 `onClickConfirm = { }`(TODO "c103-로딩페이지로 넘어가야함"), 닫기가 `onClickClose = {}`(TODO "c001-캔버스메인으로 넘어가야함")다. 뒤로(다시 찍기)만 동작한다. [navigation-flow](../architecture/navigation-flow.md) 체크리스트 6번(진입 경로를 같은 PR에)의 반대편 사례 — 나가는 경로가 없다.
+- **항목**: ① C-103(누끼 로딩) 진입 NavKey·인자 계약 확정, ② 닫기가 캔버스(C-001)로 가는지 촬영 호출자에게 결과를 돌려주는지(`LocalResultEventBus` 경로가 이미 있다) 확정.
+- **상태**: 미해결 (후속 화면 미구현 종속)
+- **해소 메모**: 결선 시 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)과 세그멘테이션 쪽 문서를 함께 갱신한다.
+
+### [2026-08-01] 블러 구현 관용구가 둘로 갈림 — Haze vs 자체 GraphicsLayer
+- **출처**: `feature/camera/impl/.../component/CameraFeedLayer.kt`(PR #182 develop 머지, `rememberGraphicsLayer` 2장 + `BlurEffect`) vs [ADR-0018](../adr/0018-backdrop-blur-haze.md)(Top Bar 배경 블러는 Haze, 자체 `GraphicsLayer` 기각). ADR-0018은 "C-101도 같은 구조이니 그 라운드 시작 시 Haze 재사용을 검토하라"고 남겼는데, 검토 기록 없이 자체 구현으로 머지됐다. 두 경우는 대상이 다르다 — C-101은 **자기 자식(카메라 피드)**을 흐리고, ADR-0018이 실패한 것은 **자기 밖 배경**을 레이어로 옮겨 담는 경로다.
+- **항목**: ① 이 구분(자기 콘텐츠 블러=자체 구현 / 배경 블러=Haze)을 규약으로 못박을지, 아니면 C-101도 Haze로 통일할지. ② C-101 블러가 실제로 걸리는지 **극단값 대조**로 확인했는지 — ADR-0018이 "틴트만으로도 흐린 것처럼 보여 미동작이 육안 검증을 통과한다"고 경고한 바로 그 구조다(이 라운드에 검증 기록 없음). ③ API 31 미만 폴백(`isBlurSupported`)이 스크림만 남기는 것으로 충분한지.
+- **상태**: 미해결 (①은 규약, ②는 검증 미수행)
+- **해소 메모**: ② 확인이 먼저다(반경 극단값으로 대조). 결과에 따라 ①을 [design-system](../architecture/design-system.md)이나 ADR-0018 개정으로 남기고 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)의 블러 절을 갱신한다.
 
 <!--
 항목 추가 형식:

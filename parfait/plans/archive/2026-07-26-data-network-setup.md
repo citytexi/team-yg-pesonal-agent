@@ -10,7 +10,7 @@ owner: Parfait 팀
 related_adr: ADR-0017
 related_spec: data-network-setup
 related_code: ModuleDataConventionPlugin, PropertySettingManager, NetworkModule, JsonModule, ServiceModule, RemoteDataSourceModule
-archived_reason: 코드 구현·리뷰 완료(develop 미머지 — `feature/network-set-up`)
+archived_reason: 구현·리뷰 완료 — PR #174(`feature/network-set-up`) develop 머지(2026-08-01)
 tags: [plan, parfait]
 ---
 
@@ -25,16 +25,19 @@ tags: [plan, parfait]
 **Tech Stack:** Kotlin, Gradle 컨벤션 플러그인(kotlin-dsl), Retrofit 3.0.0, OkHttp 5.4.0, kotlinx-serialization 1.11.0, Hilt(KSP), ktlint 14.2.0.
 
 > ⚠️ **as-built 정정(2026-07-30)** — 실행 후 두 가지가 아래 Task 서술과 다르다. 정본은
-> [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md)이고,
+> [ADR-0017](../../adr/0017-remote-network-datasource.md)·[data-layer](../../architecture/data-layer.md)이고,
 > Task 4·5의 코드 블록은 실행 당시 안이다.
 > - **DI 파일 배치**: `di/` 평면 유지, 역할당 1파일 — `ServiceModule.kt`(`provideTempService`가 `NetworkModule`에서
 >   이관)·`RemoteDataSourceModule.kt`·`JsonModule.kt`(`Json` 2종, `DataStoreModule`에서 분리) 신설.
 >   중간에 도메인별 하위 패키지(`di/repository/<도메인>` 등)로 분할했다가 코드리뷰에서 기각돼 되돌림
->   ([ADR-0017](../adr/0017-remote-network-datasource.md) 대안 E).
+>   ([ADR-0017](../../adr/0017-remote-network-datasource.md) 대안 E).
 > - **반환 타입**: `TempRemoteDataSource.getTemp`가 `Result<TempDto>` → `Result<TempVO>`(`:domain`).
 >   data 전용 `TempDto` 폐지, `source/temp/mapper/VOMapper.kt`의 `toTempVO()`가 변환.
 > - **`SafeApiCall.kt`**(코드리뷰 반영): 단일 `safeApiCall` → payload 유무별 진입점 2개
 >   (`safeApiCall`·`safeApiCallWithoutData`) + `ApiException.EmptyBody` 신설.
+> - **패키지 배치**(머지 코드 기준): 서버 타입은 `service/model/request/`·`service/model/response/`로 분리,
+>   `ApiException`·`Json` 한정자는 `data` 모듈 신설 `model/exception`·`model/qualifier`,
+>   `EmptyTokenProvider`는 `TokenProvider.kt`에서 분리된 별도 파일. 타임아웃은 connect/read/write 3종.
 
 ## Global Constraints
 

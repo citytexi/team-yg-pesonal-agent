@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-01
-related_spec: a005-group-create, g001-group-list
+related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
 related_code: settings.gradle.kts
@@ -37,7 +37,7 @@ app / app-preview
 | core | `core:designsystem` | 테마(`YGMaterialTheme`)·토큰(`YGSemanticColors`, `SizeTokens` 등) | android-library + compose |
 | core | `core:navigation` | `Navigator`, NavKey 레지스트리, 엔트리 등록 | android-library |
 | core | `core:util:android` | Android 전용 유틸(`decodeUriToBitmap`, `AndroidBitmap`) + Compose clickable 유틸(`clickable/`: `clickableYG`·`ygDimRipple`·`ygScaleRipple`, 테마 비의존) + Compose 확장(`extension/`: `Modifier.navigationBarsAndImePadding`·`Modifier.drawTooltipCornerTop`·`AnnotatedString.Builder.withStyle`). `core:util:jvm` 의존 | android-library + compose |
-| core | `core:util:jvm` | 순수 Kotlin 유틸·로깅·플랫폼 무관 추상(`BitmapWrapper`) + 공용 날짜 포맷(`model/DateFormat`, `kotlinx-datetime`) | kotlin-jvm |
+| core | `core:util:jvm` | 순수 Kotlin 유틸·로깅·플랫폼 무관 추상(`BitmapWrapper`) + 공용 날짜 포맷(`model/DateFormat`·`model/DateTextFormat`, `kotlinx-datetime`) | kotlin-jvm |
 | domain | `domain` | UseCase, Repository 인터페이스, 도메인 모델 | `ModuleDomain`(kotlin-jvm) |
 | data | `data` | Repository 구현, DataSource, DI 모듈 | `ModuleData` |
 | feature | `feature/{login,segmentation,camera,gallery,intro}/{api,impl}` | 화면·VM(impl) / NavKey 계약(api) | `ModuleFeatureApi` / `ModuleFeatureImpl` |
