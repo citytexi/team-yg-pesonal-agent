@@ -1,7 +1,7 @@
 ---
 id: designsystem-bar-listdate-components
 title: 디자인시스템 List-Date·Floating Bar 신설 + Top Bar Canvas 변형 (Bar & List-Date Components)
-status: draft
+status: in-progress
 category: ui-spec
 platforms: android
 verified: 2026-08-01
@@ -41,7 +41,38 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > **develop에서 삭제**되고 `YGTopBarEmpty(rightContent)` 슬롯으로 통합됐다. 그 결과 원안의
 > "`Default` 드리프트 제거"는 **대상이 사라졌고**(칩 색·문구는 이제 호출 화면 몫), 남은 드리프트는
 > 컴포넌트 프리뷰의 칩 색 하나다. `YGTopBarContent` 확장·`YGTopBarCanvas` 신설은 그대로 유효하되
-> 기준 시그니처를 #173 이후 코드로 갱신했다. 코드 미착수(스펙 `draft`)라 개정 비용은 문서뿐이다.
+> 기준 시그니처를 #173 이후 코드로 갱신했다. 이 개정 시점에는 코드 미착수였고, 구현은 그 뒤에 이뤄졌다
+> (아래 구현 상태).
+
+> **구현 상태(2026-08-01)** — 3종 + 갤러리 등록 전량 완료. repo 전체 `assembleDebug` + `ktlintCheck`
+> 통과, 실기기(Galaxy A35, SM-A356N) 갤러리에서 `YGListDate` 4상태×upload 2, `YGFloatingBar` 4변형 +
+> 탭 전환, `YGTopBar` 5섹션을 Figma와 육안 대조 완료.
+> **TJYG-Android 커밋은 하지 않았다**(작업자 지시). 브랜치 `feature/sync-component`에 작업 트리
+> 변경만 남아 있다(신규 6파일 + 수정 2파일 + `YGTopBar.kt`·`YGTopBarPreviewScreen.kt`).
+>
+> **설계대로 확인된 것** — `YGListDate`의 미업로드 셀이 자리를 유지해 두 섹션의 셀 높이가 같고,
+> `YGFloatingBarClose`가 우측 끝에 붙으며(`Arrangement.End`), `Edit-Tab`에서 탭을 누르면 밑줄이
+> 옮겨간다. `YGTopBarContent`에 파라미터 2개를 더한 것이 기존 세 변형과 `GroupListScreen`의
+> `YGTopBarEmpty(onIconClick, rightContent)` 호출에 영향을 주지 않았다.
+>
+> **최종 전체 리뷰가 잡은 결함 2건(수정 완료)** — Task 단위 리뷰 3회가 전부 통과한 뒤 나왔고,
+> 둘 다 **같은 종류**다: 가중치 없는 `Text`가 가중치 있는 형제보다 먼저 측정돼, 긴 문자열이 잔여
+> 폭을 다 먹으면 옆 요소가 0dp로 밀린다.
+> - `YGTopBarCanvas` — 긴 그룹명이 **멤버 칩을 소리 없이 지운다.** 제목도 2줄로 감겨 바 높이가 변한다.
+> - `YGFloatingBarEdit` — 긴 문구가 **확인 버튼을 0dp로 민다.**
+>
+> 둘 다 `Modifier.weight(1f)` + `maxLines = 1` + `TextOverflow.Ellipsis`로 해소했다(`Edit`은
+> `TextAlign.Center` 추가, Canvas는 `Spacer` 제거). **이 결함이 프리뷰·갤러리 육안 검증을 통과한
+> 이유는 모든 샘플 제목이 4자였기 때문이다** — 이 라운드의 가장 큰 교훈이고, 재발 방지로 두 컴포넌트
+> 프리뷰에 긴 제목 변형을 상설했다. 사용자 입력값을 받는 텍스트에는 프리뷰에 긴 문자열 케이스를
+> 반드시 둔다.
+>
+> **미검증**: pressed 상태(자동 캡처 불가), 긴 제목 케이스의 **실기기** 렌더 — 갤러리 화면에는 긴
+> 제목 섹션을 두지 않아 컴포넌트 프리뷰 정의로만 확인했다. 갤러리에도 추가하는 것은 후속 과제.
+>
+> **이월 관찰 2건** — `YGTopBarEmpty.rightContent`(안쪽 슬롯)와 새 `trailingContent`(바깥 슬롯)의
+> 측정 의미가 달라 다음 변형 작성자가 헷갈릴 수 있다(다음 Top Bar 라운드에서 통합 검토).
+> `YGListDate`의 업로드 점이 TalkBack에 노출되지 않는다(모듈 전체에 상태 접근성 기준이 없어 별건).
 
 ## 목표
 
@@ -167,7 +198,14 @@ fun YGTopBarCanvas(
 | 멤버 | `memberContent` 슬롯 |
 | trailing | `YGIconButton(ic_hamburger, SIZE_44)` |
 
-Info-Group은 `Arrangement.SpaceBetween` — 제목이 좌측, 멤버가 우측에 붙는다.
+제목이 좌측, 멤버가 우측에 붙는다. **안쪽 Row의 `Arrangement`는 건드리지 않는다** — 그 Row를
+나머지 세 변형이 공유하기 때문이다. 대신 **제목 `Text`가 `Modifier.weight(1f)`를 갖는다.**
+
+> 초안은 `Text` → `Spacer(weight(1f))` → `memberContent()` 순서였다. Compose가 가중치 없는 자식을
+> 먼저 전체 잔여 폭에 대해 측정하므로, 긴 그룹명이 행을 다 먹으면 Spacer가 0으로 접히고 **멤버 칩이
+> 0dp가 돼 소리 없이 사라진다.** 제목도 2줄로 감겨 바 높이가 변한다. `title`은 사용자 입력값인데
+> 프리뷰가 전부 짧은 문자열이라 육안 검증으로 드러나지 않는 종류의 결함이다.
+> 가중치를 `Text`에 주고 Spacer를 없애면 해소된다 — `maxLines = 1` + `TextOverflow.Ellipsis` 동반.
 
 ### List-Member
 
@@ -175,7 +213,9 @@ Figma의 List-Member(Nametag-Chip 5개를 -12dp씩 겹치고 끝에 `+N` 카운�
 슬롯으로 연다.** Figma가 이것을 별도 컴포넌트로 등록해두지 않았고, 겹침 개수·`+N` 임계값·어떤 유저를
 앞에 세울지는 그룹 데이터에 걸린 판단이라 디자인시스템이 정할 근거가 없다.
 
-호출자가 `YGNametagChip(Style28)`을 `Modifier.offset(x = (-12).dp)`로 겹쳐 나열하고, 초과분은
+호출자가 `YGNametagChip(Style28)`을 `Row(horizontalArrangement = Arrangement.spacedBy((-12).dp))`로
+겹쳐 나열하고(음수 간격 — `Modifier.offset`과 달리 **측정 폭 자체가 줄어들어** 상위 Row가 실제
+차지 폭을 알 수 있다), 초과분은
 `YGColorChipType`의 Plus 타입 칩에 `+N` 문자열을 넣어 그린다. 갤러리 프리뷰에 **조립 예시**를 두어
 사용법을 남긴다.
 
@@ -239,13 +279,18 @@ private fun YGFloatingBarContent(
 |---|---|---|---|---|
 | `BackClose` | `SpaceBetween` | Circle `ic_caret_left` | — | Circle `ic_close` |
 | `Close` | `End` | — | — | Circle `ic_close` |
-| `Edit` | `SpaceBetween` | Circle `ic_close` | `Text(body.b01R, Gray800)` | Circle `ic_check` |
+| `Edit` | `SpaceBetween` | Circle `ic_close` | `Text(body.b01R, Gray800, weight(1f))` | Circle `ic_check` |
 | `EditTab` | `SpaceBetween` | Circle `ic_close` | `YGEditTabButton × n` | Circle `ic_check` |
 
 - 원형 버튼은 전부 `YGCircleButton(type = YGCircleButtonType.Default)` — `White` 배경 / `Black5` 테두리 /
   `Gray900` 아이콘 28dp / `padding3`로 총 44dp. Figma `Button-Circle` `Type=Default`와 일치
 - `Close`만 `Arrangement.End`다. `SpaceBetween`에 자식이 하나면 좌측으로 붙어 Figma(`justify-end`)와 어긋난다
-- `Edit`의 중앙 텍스트는 좌우 버튼 폭이 44dp로 같아 `SpaceBetween`에서 실질 중앙에 온다. Figma도 같은 구조라
+- `Edit`의 중앙 텍스트는 **`Modifier.weight(1f)` + `TextAlign.Center` + `maxLines = 1` +
+  `TextOverflow.Ellipsis`**를 갖는다. 가중치가 없으면 긴 문구가 잔여 폭을 다 먹어 **확인 버튼이
+  0dp로 밀린다**(`YGTopBarCanvas`와 같은 종류의 결함). 가중치를 주면 텍스트가 제 박스 안에서
+  중앙 정렬되므로 `SpaceBetween`이 두 버튼을 양 끝에 그대로 고정한다.
+  `EditTab`의 중앙은 텍스트가 아니라 탭 `Row`라 이 처리를 적용하지 않는다.
+- 좌우 버튼 폭이 44dp로 같아 `SpaceBetween`에서 실질 중앙에 온다. Figma도 같은 구조라
   중앙 정렬을 별도로 강제하지 않는다
 - `EditTab`의 탭은 `tabs`·`selectedIndex`·`onTabSelect`로 받아 내부에서 `YGEditTabButton`을 나열한다.
   Figma는 "영역"/"테두리" 2탭이지만 문자열을 주입받으면 개수와 무관하게 동작하므로 2탭으로 박지 않는다

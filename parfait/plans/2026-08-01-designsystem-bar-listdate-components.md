@@ -1,7 +1,7 @@
 ---
 id: designsystem-bar-listdate-components
 title: List-Date·Floating Bar 신설 + Top Bar Canvas 변형 구현 계획
-status: draft
+status: done
 type: work-order
 created: 2026-08-01
 updated: 2026-08-01
@@ -32,8 +32,42 @@ tags: [plan, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 
 > ⚠️ **개정(2026-08-01, PR #173 develop 머지 반영)** — `YGTopBarDefault`가 develop에서 삭제되고
 > `YGTopBarEmpty(rightContent)`로 통합됐다. Task 3의 "Default 드리프트 제거"는 대상이 사라져
-> **프리뷰 칩 색 정정**으로 축소했고, 기준 시그니처를 #173 이후 코드로 갱신했다. 착수 전이라 체크박스는
-> 전부 미완이다.
+> **프리뷰 칩 색 정정**으로 축소했고, 기준 시그니처를 #173 이후 코드로 갱신했다. 이 개정 시점에는
+> 착수 전이었고, 실행은 그 뒤에 이뤄졌다(아래 실행 결과).
+
+> **실행 결과(2026-08-01)** — Task 1~4 전량 완료. subagent-driven-development로 Task마다 새
+> 서브에이전트 + 리뷰를 돌렸다. Task 1·3은 리뷰 1회에 클린 통과, Task 2만 fix round 1회.
+> **TJYG-Android는 커밋하지 않았다**(작업자 지시). 브랜치 **`feature/sync-component`**에 작업 트리
+> 변경만 남아 있다. 본문 체크박스는 실행 기록을 이 블록에 모으는 관례를 따라 그대로 둔다.
+>
+> **실행 도중 베이스가 바뀌었다.** 작업을 중단했다 재개하는 사이 `develop`이 나아갔고(#173 머지),
+> 브랜치도 `feature/bar-listdate-component` → `feature/sync-component`로 옮겨졌다. Task 1·2 산출물은
+> 새 베이스 위에 그대로 살아남았다. 위 ⚠️ 개정이 그 대응이다.
+> 교훈: 며칠에 걸치는 계획은 Task 착수 시점마다 대상 파일의 현재 상태를 다시 읽어야 한다.
+>
+> **계획 자체의 결함 2건 — 둘 다 최종 전체 리뷰가 잡았다.** Task 단위 리뷰 3회는 전부 통과했다.
+> Task 3 Step 2가 지정한 `Text` → `Spacer(weight(1f))` → `memberContent()` 배치와, Task 2 Step 1의
+> `YGFloatingBarEdit` 중앙 `Text`가 **같은 종류의 측정 버그**를 갖고 있었다 — 가중치 없는 `Text`가
+> 먼저 측정돼 긴 문자열이 잔여 폭을 다 먹으면 옆 요소(멤버 칩 / 확인 버튼)가 0dp로 밀린다.
+> 계획서가 코드를 그대로 명시했으므로 plan-mandated 충돌로 작업자에게 질의 후 수정했다.
+> **프리뷰·실기기 육안이 이걸 놓친 이유는 모든 샘플 제목이 4자였기 때문**이고, 재발 방지로 두
+> 컴포넌트 프리뷰에 긴 제목 변형을 상설했다. 계획서에 UI 코드를 박을 때는 **사용자 입력값을 받는
+> 텍스트마다 긴 문자열 케이스를 함께 지정**해야 한다.
+>
+> **Task 2 리뷰가 잡은 것** — 닫기 블록 4회·확인 블록 2회의 문자 그대로 중복. 계획서가 그 코드를
+> 명시했으므로 질의 후 `YGFloatingBarCloseButton`·`YGFloatingBarConfirmButton` 추출로 개정했다.
+> 1회 사용인 뒤로가기 버튼은 추출하지 않았다.
+>
+> **재리뷰 오판 1건** — Task 2 fix의 import 정렬을 재리뷰가 NOT ADDRESSED로 판정했으나, 컨트롤러가
+> 세 파일을 직접 확인해 **정렬 수열 기준으로 올바른 자리**임을 확인하고 ADDRESSED로 뒤집었다.
+> 재리뷰가 defect로 본 것은 손대지 말라고 지시한 **기존 파일의 정렬 결함**이었다. 최종 리뷰도 이
+> 판정을 확인했다(`.editorconfig`가 `ktlint_standard_import-ordering`을 끈 상태라 위반 자체가 불가).
+>
+> **검증은 컨트롤러가 직접 수행했다** — repo 전체 `assembleDebug`·`ktlintCheck` 통과,
+> `:app-preview:installDebug` 후 실기기(SM-A356N)에서 3개 화면 스크린샷 대조. Task 1 구현자 리포트의
+> gradle 출력이 재포맷돼 신뢰할 수 없던 이월 건도 이로써 닫혔다.
+>
+> **미검증**: pressed 상태, 긴 제목 케이스의 실기기 렌더(갤러리에 긴 제목 섹션 없음 — 후속 과제).
 
 **Goal:** Figma `List-Date`·`Floating Bar`를 `:core:designsystem`에 신설하고, `Top Bar`에 `Canvas`
 변형을 더한 뒤 `:app-preview` 갤러리에서 실기기로 검증한다.
