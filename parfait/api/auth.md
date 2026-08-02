@@ -160,8 +160,10 @@ tags: [api, parfait, server-contract, auth]
   열거하나 서버에 없다. `AuthErrorCode`에 정지·탈퇴 코드가 없고 `ReissueService`에 회원 상태 검사도 없다 —
   회원 부재는 **401 `MEMBER_NOT_FOUND`**로 나간다(HTTP 코드·code 문자열 둘 다 다르다)
   → [open-questions](../synthesis/open-questions.md). 또한 명세의 "인증: Refresh Token" 표기는 HTTP 인증
-  헤더를 뜻하지 않는다 — 이 경로는 화이트리스트라 인증 필터를 타지 않고 **바디**의 `refreshToken`으로만
-  검증한다.
+  헤더를 뜻하지 않는다 — 이 경로는 화이트리스트라 **헤더 없이 호출할 수 있다.** 단 `JwtAuthFilter`는
+  `shouldNotFilter` 오버라이드가 없어 화이트리스트 경로에서도 실행되므로, `Authorization` 헤더를
+  붙이면 필터가 검증을 시도한다 — **만료 토큰을 붙이면 401 `EXPIRED_TOKEN`이 난다.** 검증 자체는
+  요청 **바디**의 `refreshToken`으로만 `ReissueService`가 수행한다.
 
 ### POST /api/v1/auth/logout
 

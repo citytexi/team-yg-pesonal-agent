@@ -40,7 +40,8 @@ DataSource 배치 관례를 확립한다.
   `NetworkModule`·`JsonModule`·`DataStoreModule`·`SingletonInjectModule`. 도메인이 늘면 해당 역할
   파일에 바인딩을 **추가**한다.
   - `NetworkModule`(object, `@InstallIn(SingletonComponent::class)`): `provideTokenProvider`
-    (=`EmptyTokenProvider`)·`provideAuthInterceptor`·`provideOkHttpClient`·`provideRetrofit`.
+    (=`EmptyTokenProvider`, **as-built: `TokenStoreTokenProvider` — 아래 "인증" 절 참고**)·
+    `provideAuthInterceptor`·`provideOkHttpClient`·`provideRetrofit`.
   - `ServiceModule`(object): Retrofit 서비스 생성(`provideTempService` 등). 설정 코드인
     `NetworkModule`과 서비스 목록을 분리해 둔다.
   - `RemoteDataSourceModule`(interface, `@Binds`): `TempRemoteDataSourceImpl` → 인터페이스.
@@ -61,6 +62,19 @@ DataSource 배치 관례를 확립한다.
   요구)과 `safeApiCallWithoutData`(payload 없음: `ApiResponse<Unit>`를 받아 성공 코드만 검사하고
   `data`를 보지 않음, `Result<Unit>` 반환). 삭제·설정 변경처럼 본문 없는 응답을 단일 진입점에서
   `data != null`로 판정하면 성공 호출이 실패로 분류되기 때문이다.
+
+  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — 위 원안은
+  > 서버 계약 대조 전 설계였다. 실제로는 세 지점이 바뀌었다.
+  > - **성공 판정**: `code == SUCCESS_CODE`(단일 상수) 대신 **`success` 필드**를 그대로 쓴다.
+  >   서버가 성공 코드를 `"OK"`·`"CREATED"` 2종으로 쓰기 때문에 단일 상수 비교가 애초에 불가능했다.
+  >   `isSuccess` 프로퍼티는 제거됐다 — `ApiResponse.success`가 그 역할을 대신한다.
+  > - **진입점**: 2개에서 **3개**로 늘었다. `safeApiCallNoContent`(`network/ApiCaller.kt`)가 신설돼
+  >   `logout`처럼 204라 응답 본문 자체가 없는 API를 처리한다 — 기존 `safeApiCallWithoutData`는
+  >   `ApiResponse<Unit>` envelope를 전제하므로 본문 자체가 없는 응답은 파싱할 수 없다.
+  > - **소속**: `SafeApiCall.kt`의 top-level 함수들이 **`ApiCaller` 클래스**(`network/ApiCaller.kt`)로
+  >   승격됐다. 에러 envelope 역직렬화에 `@RemoteJson` `Json`이 필요한데, top-level 함수는 호출부마다
+  >   `Json`을 인자로 넘겨야 하고 파일 내 `private val`로 두면 `@LocalJson`/`@RemoteJson` 분리(아래
+  >   "`Json` 한정자")가 무의미해지기 때문이다. `SafeApiCall.kt`는 삭제됐다.
 - **에러 타입 계층**: 실패는 sealed `ApiException`(`ApiException.kt`)으로 분류한다 — `Business`(HTTP
   성공이나 envelope 실패 코드), `EmptyBody`(envelope 성공 코드인데 `data` 없음 — payload가 필요한
   호출에서만 실패), `Http`(4xx/5xx, `HttpException` + `statusCode`), `Network`
@@ -69,9 +83,37 @@ DataSource 배치 관례를 확립한다.
   `safeApiCall`이 `try/catch`로 예외를 이 타입들에 매핑하고,
   `CancellationException`은 다시 던져 코루틴 취소 전파를 보존한다(`runCatching`의 취소 삼킴 회피).
   소비자는 `Result.exceptionOrNull()`을 `ApiException`으로 분기해 재시도·재인증 등을 판단할 수 있다.
+
+  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — `Business`에
+  > **`statusCode: Int?`·`errorDetail: Map<String, String>?`이 추가**됐다. 코드 문자열이 enum 간
+  > 유일하지 않아서다(`MEMBER_NOT_FOUND`가 401/404 둘 다로 쓰인다). 또한 **에러가 HTTP 4xx/5xx로
+  > 오므로 `HttpException` 바디를 파싱해야 envelope에 도달한다** — 이걸 안 하면 이 절이 설계한
+  > `Business` 분기가 죽은 코드가 된다. `ApiCaller`의 `toApiException(e: HttpException)`이
+  > `e.response()?.errorBody()?.string()`을 `ApiResponse<Unit>`로 역직렬화 시도해 성공하면
+  > `Business(statusCode = e.code(), ...)`를, 실패하면 기존 `Http(statusCode, e)`로 폴백한다.
+  > `statusCode`가 nullable인 이유는 2xx인데 `success=false`인 경로(현재 서버엔 없음, `HttpException`을
+  > 거치지 않고 envelope에서 직접 실패 판정되는 경우)에서는 HTTP 상태 코드를 알 수 없기 때문이다.
 - **인증**: `AuthInterceptor`가 `TokenProvider`(인터페이스, stub 구현 `EmptyTokenProvider`)로부터
   토큰을 받아 `Authorization: Bearer` 헤더를 주입할 자리를 만든다. 현재 `EmptyTokenProvider`는
   항상 null을 반환 — 실제 토큰 소스 연동은 후속.
+
+  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — `EmptyTokenProvider`가
+  > **`TokenStoreTokenProvider`로 교체**됐다(`EmptyTokenProvider`는 삭제). `AuthInterceptor`·
+  > `TokenProvider` 인터페이스는 시그니처 변경 없음 — 구현체만 바뀌었다. 토큰을 어디에 어떻게
+  > 저장하는지, 동기 인터페이스를 유지한 채 suspend 저장소를 어떻게 연결하는지는
+  > [ADR-0019](0019-encrypted-token-storage.md) 소관.
+
+  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — 서버
+  > 화이트리스트 경로(`kakao`·`signup`·`reissue`)에 `Authorization` 헤더를 붙이지 않는 판정 방식이
+  > **경로 문자열 상수 목록**(`AuthInterceptor` 내 하드코딩, 서버 `SecurityConfig.WHITELIST_PATHS`와
+  > 별도 관리)에서 **`@NoAuth` 어노테이션 + Retrofit `Invocation` 태그** 조회로 교체됐다.
+  > `AuthInterceptor.intercept`가
+  > `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로
+  > 스킵 여부를 판정하고(`network/NoAuth.kt`), 스킵이면 `tokenProvider.getToken()` 호출 자체를
+  > 생략한다. 경로 문자열을 서버 화이트리스트와 이중 관리하지 않아도 되고(오타는 서비스 인터페이스
+  > 컴파일 타임에 걸린다), 선언이 서비스 메서드의 URL 옆에 붙는다 — **앱이 아는 것은 "이 호출에
+  > 토큰을 붙일지"이지 서버 보안 설정이 아니기 때문**이다. R8 release 빌드에서 어노테이션이 유지되는지는
+  > 미검증 → [open-questions](../synthesis/open-questions.md).
 - **로깅**: `HttpLoggingInterceptor` 레벨을 `BuildConfig.DEBUG`로 게이팅한다(debug=`BODY`,
   release=`NONE`). release 빌드에서 `Authorization` 토큰과 요청/응답 바디가 로그로 노출되는 것을
   막기 위한 결정이다. `OkHttpClient`는 connect/read/write 타임아웃 3종을 설정한다.
@@ -147,6 +189,10 @@ DataSource 배치 관례를 확립한다.
   `TempRemoteDataSource` 체인, `@LocalJson`/`@RemoteJson` 한정자 해소 정상)를 검증했다.
 - `ApiResponse.isSuccess` 판정에 쓰는 성공 코드 규약과 `TokenProvider`의 실제 토큰 소스는
   미확정이다 → [open-questions](../synthesis/open-questions.md)로 추적.
+  **as-built(2026-08-02): 둘 다 작업 트리에는 반영됐으나 develop 미머지다** — 성공 판정은 `success`
+  필드로, `TokenProvider`는 `TokenStoreTokenProvider`(암호화 저장소 연동,
+  [ADR-0019](0019-encrypted-token-storage.md))로 바뀌었지만 TJYG-Android에 커밋조차 없다. develop
+  기준으로는 여전히 미해소이므로 [open-questions](../synthesis/open-questions.md) 추적을 닫지 않는다.
 - 도메인 모델 이름이 `TempVO`로 `VO` 접미사를 쓰는데, 기존 `domain.model`은 무접미사
   (`SegmentationResult`·`GalleryImageGroup`·`NameValidResult` 등)다. 접미사 규약이 갈라진 상태 →
   [open-questions](../synthesis/open-questions.md) [2026-07-30]로 추적.

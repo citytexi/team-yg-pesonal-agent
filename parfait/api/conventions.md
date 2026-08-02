@@ -111,7 +111,9 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 ## Android 불일치
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
-**세 건 모두 코드 미수정 상태**다.
+**세 건 모두 develop 기준으로는 코드 미수정 상태**다 — `network-envelope-token-storage` 라운드에서
+TJYG-Android 작업 트리에는 반영됐으나 **커밋조차 없어 develop에는 미머지**다. 아래 표는 develop
+기준 간극이므로 develop 머지 전까지는 행을 유지한다.
 
 | # | 불일치 | 영향 |
 |---|---|---|
@@ -119,4 +121,5 @@ TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote
 | 2 | Android `ApiResponse.isSuccess`가 `code == "SUCCESS"` 단일 비교(`SUCCESS_CODE` 상수가 `TODO`) — 서버는 `"OK"`/`"CREATED"` | **현 상태로 모든 호출이 `ApiException.Business` 실패 판정** |
 | 3 | Android `TokenProvider` 구현이 `EmptyTokenProvider`(항상 null 반환) | 화이트리스트 밖 전 API가 401 |
 
-세 건은 [open-questions](../synthesis/open-questions.md)에 등록돼 있다.
+세 건은 [open-questions](../synthesis/open-questions.md)에 등록돼 있다. develop 머지 후 이 표에서
+제거한다.

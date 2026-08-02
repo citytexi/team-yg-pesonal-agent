@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-01
-related_spec: data-network-setup
-related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017
+verified: 2026-08-02
+related_spec: data-network-setup, network-envelope-token-storage
+related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, TempRemoteDataSource
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, TempRemoteDataSource, ApiCaller, EncryptedTokenStore
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -33,10 +33,10 @@ tags: [architecture, parfait]
 | 모듈 | 제공/바인딩 |
 |------|-------------|
 | `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image) |
-| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore) |
+| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`) |
-| `NetworkModule` | `TokenProvider`·`AuthInterceptor`·`OkHttpClient`·`Retrofit` |
+| `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`OkHttpClient`·`Retrofit` |
 | `DataStoreModule` | `DataStore<Preferences>` 싱글톤 |
 | `JsonModule` | `@LocalJson`·`@RemoteJson` `Json` 2종(현재 설정 동일: `ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`) |
 | `SingletonInjectModule` | 기타 앱 전역 싱글톤 |
@@ -52,40 +52,74 @@ tags: [architecture, parfait]
 2. **data**: 구현 클래스 + DataSource(파일/DataStore/원격) 작성. 원격은 `source.<도메인>.remote`
    패키지에 인터페이스+`Impl` 쌍(예: `TempRemoteDataSource`/`TempRemoteDataSourceImpl`,
    [[0017-remote-network-datasource]]) — 반환 타입은 **도메인 모델**, 서버 응답은
-   `source.<도메인>.mapper`의 확장 함수로 변환.
+   `source.<도메인>.mapper`의 확장 함수로 변환. `Impl`은 **`ApiCaller`를 생성자로 주입**받아 서비스
+   호출을 감싼다(`@Inject constructor(service: XxxService, private val apiCaller: ApiCaller)`) —
+   top-level `safeApiCall` import는 더 이상 없다. 아래 "네트워킹 → 응답 계약"의 진입점 3개 중 응답
+   형태에 맞는 것을 고른다. 인증이 불필요한 엔드포인트라면 서비스 인터페이스 메서드에 `@NoAuth`를
+   붙인다(아래 "네트워킹 → 인증").
 3. **DI**: 역할에 맞는 기존 모듈(`RepositoryModule`·`LocalDataSourceModule`·`RemoteDataSourceModule`)에
    `@Binds` 추가. 새 파일을 만들지 않는다.
 4. 소비: **UseCase**를 통해 노출, ViewModel은 UseCase만 호출([[state-management]]).
 5. 반응형이면 `Flow`로 반환.
 
 ## 네트워킹
-> **develop 머지 완료**(PR #174, 2026-08-01). 아래 구조와 위 DI 모듈 구성은 develop 코드 기준이다.
+> 기초 구조는 develop 머지 완료(PR #174, 2026-08-01, [[0017-remote-network-datasource]]).
+> 서버 계약 정합·토큰 저장(아래 서술)은 `network-envelope-token-storage` 라운드 산출물 —
+> 문서 작성 시점 기준 **작업 트리 반영, develop 미머지**([[0017-remote-network-datasource]]·
+> [[0019-encrypted-token-storage]] 참고).
 
-원격 연동 기초 구조가 확정됐다([[0017-remote-network-datasource]]). 응답→도메인 매핑 지점도 확정
-(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.
+원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
+매핑 지점도 확정(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.
 
 - **컨벤션 플러그인**: `AndroidNetworkConventionPlugin`(적용 모듈에 `buildConfig` 활성 +
   `BuildConfig.BASE_URL` 부여, `NetworkConfig`의 `setConfigNetwork` + `PropertySettingManager`의
   `loadBaseUrl`이 properties/`local.properties`(`YG_BASE_URL`)에서 값을 로드). `libs.bundles.network`·
   kotlinx-serialization 의존을 이 플러그인이 부여(`ModuleDataConventionPlugin`에서 이관됨).
 - **DI(`NetworkModule`, `@InstallIn(SingletonComponent::class)`)**: `provideTokenProvider`
-  (=`EmptyTokenProvider`)·`provideAuthInterceptor`·`provideOkHttpClient`·`provideRetrofit`를 제공.
+  (=`TokenStoreTokenProvider`)·`provideAuthInterceptor`·`provideOkHttpClient`·`provideRetrofit`를 제공.
   Retrofit 서비스 생성은 `ServiceModule`(예: `provideTempService`) 소관.
   `Json`은 용도별 `@Qualifier`로 분리 — 로컬(DataStore) `@LocalJson`, 원격(Retrofit) `@RemoteJson`,
   둘 다 `JsonModule` 제공. 한정자는 `model/qualifier` 패키지. 같은 타입이어도 한정자로 구분돼 중복
   바인딩이 아니며, 설정을 용도별로 독립 조정 가능(현재 두 설정은 동일).
-- **응답 계약**: 공통 `ApiResponse<T>`(`code`/`message`/`data`, `@Serializable`, `isSuccess`) +
-  `SafeApiCall.kt`가 서비스 응답을 `Result<T>`로 변환. 진입점 2개 — payload 있는 API는 `safeApiCall`
-  (성공 코드 + `data` 존재), 본문 없는 API(`ApiResponse<Unit>`)는 `safeApiCallWithoutData`(성공 코드만
-  검사). 두 진입점은 private `runCatchingApi`로 예외 분기를 공유한다. 실패는 sealed
-  `ApiException`(`Business`/`EmptyBody`/`Http`/`Network`/`Unknown`, `model/exception` 패키지)으로
+- **응답 계약**: 공통 `ApiResponse<T>`(`success`/`code`/`message`/`data`/`errorDetail`,
+  `@Serializable`)를 서버 envelope와 필드 단위로 맞췄다. 성공 판정은 **`success` 필드**를 그대로 쓴다
+  (서버가 성공 코드를 `"OK"`·`"CREATED"` 2종으로 써서 단일 코드 상수 비교가 불가능했다 — 구 `isSuccess`
+  프로퍼티는 제거). `network/ApiCaller.kt`(`@Singleton class ApiCaller @Inject constructor(@RemoteJson json: Json)`)가
+  서비스 응답을 `Result<T>`로 변환하고, 진입점은 **셋**이다.
+
+  | 메서드 | 서버 응답 | 언제 |
+  |---|---|---|
+  | `safeApiCall` | envelope + `data` 필요 | payload가 있는 일반 조회·생성 API |
+  | `safeApiCallWithoutData` | envelope, `data` 안 봄 | 본문은 `ApiResponse<Unit>`이지만 payload가 의미 없는 API |
+  | `safeApiCallNoContent` | 본문 자체가 없음(204) | 서비스 메서드가 `Unit` 반환(예: `logout`) |
+
+  세 메서드 모두 `HttpException`을 잡아 에러 envelope 파싱을 시도한다(`toApiException`) — 실패는
+  sealed `ApiException`(`Business`/`EmptyBody`/`Http`/`Network`/`Unknown`, `model/exception` 패키지)으로
   분류하고 `CancellationException`은 재던진다(취소 전파 보존).
 - **패키지 배치(data)**: 서버 타입은 `service/model/request/`·`service/model/response/`로 나눈다
   (`ApiResponse`·`TempResponse`=response, `TempRequest`=request). 인프라는 `network/`
-  (`SafeApiCall`·`AuthInterceptor`·`TokenProvider`·`EmptyTokenProvider` — 인터페이스와 stub은 파일 분리),
-  모듈 전역 타입은 `model/`(`exception/`·`qualifier/`).
-- **인증**: `AuthInterceptor` + `TokenProvider`(인터페이스, stub `EmptyTokenProvider`)가
-  `Authorization: Bearer` 헤더 주입 자리를 제공. 실제 토큰 소스 연동은 후속.
+  (`ApiCaller`·`AuthInterceptor`·`TokenProvider`·`TokenStoreTokenProvider` — 인터페이스와 구현은 파일 분리),
+  모듈 전역 타입은 `model/`(`exception/`·`qualifier/`). 토큰 저장소는 `source/token/local/`
+  (`TokenStore`·`EncryptedTokenStore`), 암복호화는 `security/`(`CryptoManager`).
+- **에러 타입 계층**: sealed `ApiException`의 `Business(code, serverMessage, statusCode: Int?, errorDetail)`가
+  HTTP 4xx/5xx로 오는 서버 에러를 담는다. `code` 문자열이 에러 코드 enum 간 유일하지 않아서(예:
+  `MEMBER_NOT_FOUND`가 401·404 둘 다로 쓰임) `statusCode`를 함께 본다. `statusCode`는 nullable —
+  `HttpException` 경유(대부분의 실패)는 채워지고, 2xx인데 `success=false`인 경로(서버에 아직 없음)는
+  `null`이다.
+- **인증**: `AuthInterceptor` + `TokenProvider`(인터페이스, 구현 `TokenStoreTokenProvider`)가
+  `Authorization: Bearer` 헤더를 주입한다. `AuthInterceptor`는 시그니처 변경 없이 동기 `TokenProvider`를
+  그대로 소비 — `TokenStoreTokenProvider.getToken()`이 `runBlocking { tokenStore.getAccessToken() }`으로
+  suspend 경계를 넘는다(OkHttp dispatcher 스레드에서 실행돼 메인 스레드는 막지 않음). 상세는
+  [[0019-encrypted-token-storage]]. 인증이 불필요한 엔드포인트(서버 화이트리스트 경로)는 서비스
+  메서드에 `@NoAuth`(`network/NoAuth.kt`)를 붙인다 — `AuthInterceptor`가 Retrofit `Invocation` 태그로
+  어노테이션 존재를 확인해, 스킵 대상이면 토큰 조회 자체를 생략한다(불필요한 DataStore 읽기·Keystore
+  복호화를 피한다). 근거는 [[0017-remote-network-datasource]] "인증".
+- **토큰 저장 경로**: `CryptoManager`(Android Keystore AES/GCM, `security/`) → `EncryptedTokenStore`
+  (`TokenStore` 구현, `source/token/local/`, `DataStore<Preferences>`에 `IV+암호문` Base64 문자열 저장) →
+  `TokenStore`(`LocalDataSourceModule.bindTokenStore`) → `TokenStoreTokenProvider`
+  (`NetworkModule.provideTokenProvider`) → `AuthInterceptor`. 복호화 실패(키 유실) 시
+  `EncryptedTokenStore`가 예외를 삼키고 `clear()` 후 `null`을 반환 — 재로그인 유도. 근거·대안은
+  [[0019-encrypted-token-storage]].
 - **로깅**: `HttpLoggingInterceptor` 레벨은 `BuildConfig.DEBUG`로 게이팅(debug=`BODY`,
   release=`NONE`) — release에서 토큰·바디 노출 방지.
 - **응답 매핑**: 원격 DataSource는 **도메인 모델을 반환**한다(`TempRemoteDataSource.getTemp(id):
@@ -94,6 +128,6 @@ tags: [architecture, parfait]
   경계에서 변환한다. data 전용 중간 모델(구 `model.dto`)은 두지 않는다 — Response 복제본이라
   변환 단계만 늘기 때문. 접미사 규약(`…VO` vs 기존 무접미사)은 미결 → [open-questions](../synthesis/open-questions.md).
 - **예시 1세트**: `TempService` + `TempRequest`/`TempResponse` + `domain.model.TempVO` +
-  `source.temp.mapper`(`VOMapper.kt`) + `source.temp.remote`의 `TempRemoteDataSource`(+`Impl`) +
-  `RemoteDataSourceModule`(`@Binds`) + `ServiceModule`. 실제 도메인 확정 전 placeholder —
-  신규 원격 DataSource는 이 세트를 복제해 `source.<도메인>.*`에 배치.
+  `source.temp.mapper`(`VOMapper.kt`) + `source.temp.remote`의 `TempRemoteDataSource`(+`Impl`,
+  `ApiCaller` 생성자 주입) + `RemoteDataSourceModule`(`@Binds`) + `ServiceModule`. 실제 도메인 확정 전
+  placeholder — 신규 원격 DataSource는 이 세트를 복제해 `source.<도메인>.*`에 배치.

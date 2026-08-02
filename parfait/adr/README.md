@@ -26,6 +26,7 @@
 | [0016](0016-domain-result-presentation-string-mapping.md) | 유효성 결과 — domain 의미 sealed 반환 + 표시 문자열 프레젠테이션 매핑 | accepted | 2026-07-23 | NicknameResult sealed·core:ui `toStringResource`·ui→domain 의존 |
 | [0017](0017-remote-network-datasource.md) | 원격 네트워크 DataSource·서비스 규약 (AndroidNetworkConventionPlugin + ApiResponse/safeApiCall) | accepted | 2026-07-26 | `source.<도메인>.remote` 관례, 로깅은 `BuildConfig.DEBUG` 게이팅 |
 | [0018](0018-backdrop-blur-haze.md) | 배경 블러에 Haze 도입 (자체 GraphicsLayer 구현 기각) | accepted | 2026-08-01 | `HazeState`는 호출 화면 소유·nullable 파라미터, 틴트는 블러와 독립 상시, API<31 폴백은 틴트만. **자체 `GraphicsLayer`+`BlurEffect`는 실기기에서 세 형태 모두 블러 미적용으로 기각** — `record` 안에 직접 그린 도형엔 effect가 걸리므로 레이어로 옮겨 담는 경로만 실패. C-101 설계도 같은 구조라 그 라운드에서 재검토 필요. 블러 검증은 극단값(40dp) 대조 필수 |
+| [0019](0019-encrypted-token-storage.md) | 인증 토큰 암호화 저장 — Android Keystore AES/GCM + Preferences DataStore | accepted | 2026-08-02 | 키 별칭 1개·GCM IV 매회 신규, 복호화 실패 시 예외 전파 대신 `clear()`+`null`(재로그인 유도), Tink·EncryptedSharedPreferences 기각 |
 
 ## 작성 가이드
 
