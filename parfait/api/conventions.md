@@ -102,11 +102,49 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 버전 프리픽스 유무가 갈리고, **그룹을 가리키는 경로가 `groups`와 `parfait-groups` 둘**이다.
 서버에 URL 규약 문서가 없어 관측 사실로만 적는다 → [open-questions](../synthesis/open-questions.md).
 
+## 직렬화 규약
+
+### Boolean 필드의 `is` 접두사는 JSON 키에서 사라진다
+
+서버는 Jackson으로 직렬화한다. Kotlin `val isXxx: Boolean`은 getter가 `isXxx()`가 되고, Jackson의
+bean 이름 규칙이 `is` 접두사를 떼어 **JSON 키는 `xxx`**로 나간다.
+
+현재 계약에서 해당하는 필드는 하나다 — `KakaoLoginResponse`의 `isNewUser` → **`newUser`**
+(→ [auth.md](auth.md) `POST /api/v1/auth/kakao`). 서버가 발행한 OpenAPI 스키마로 확인했다.
+
+**소비 측 규칙**: 서버 DTO에 `is` 접두사 Boolean이 보이면 **JSON 키는 접두사 없는 이름**으로 가정하고,
+Android는 `@SerialName`으로 명시한다. 이름이 어긋나면 kotlinx-serialization이 기본값으로 조용히
+떨어져 **분기가 반대로 뒤집힌다** — 예외가 나지 않아 발견이 늦다.
+
+### 서버는 평문 HTTP로 서비스된다
+
+개발 서버 base URL이 `https`가 아니라 **평문 `http`**다(포트 지정, 주소는 private submodule
+`project-paths.md`·앱 `local.properties` 참고).
+
+TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTraffic`도
+`networkSecurityConfig`도 **없다.** Android 9(API 28)부터 평문 HTTP는 기본 차단이므로 실제 연동을
+시작하면 **모든 요청이 `CLEARTEXT communication not permitted`로 실패한다.**
+
+해결은 서버 HTTPS 적용(권장) 또는 debug 빌드 한정 `network_security_config.xml`로 해당 호스트만
+허용하는 것이다 → [open-questions](../synthesis/open-questions.md).
+
 ## OpenAPI
 
 서버는 springdoc을 켜 두었다(`OpenApiConfig`, title `Parfait API`, version `v1`) — `/v3/api-docs`·`/swagger-ui`.
 이 문서 체계는 **서버 코드 직독**을 근거로 삼고 OpenAPI JSON을 파싱하지 않는다(서버 실행이 필요하고
-에러코드 열거·검증 로직이 스키마에 안 잡힌다). 대조 보조 수단으로만 존재를 기록한다.
+에러코드 열거·검증 로직이 스키마에 안 잡힌다).
+
+**2026-08-02, OpenAPI 실물을 받아 코드와 대조했다.** 그 결과 두 축이 서로를 보완한다는 것이 확인됐다.
+
+- **스키마만 아는 것**: 직렬화 결과. `isNewUser` → `newUser` 키 변환은 Kotlin 소스만 봐서는 알 수 없고
+  스키마가 유일한 근거였다(→ 위 [직렬화 규약](#직렬화-규약)).
+- **코드만 아는 것**: 에러 코드 열거(스키마는 성공 응답만 문서화한다), 검증 규칙, 그리고 **실제 HTTP
+  상태 코드**. `POST /api/v1/auth/signup`이 대표적이다 — 스키마는 **200**으로 적었으나 컨트롤러가
+  `ResponseEntity.status(HttpStatus.CREATED)`를 쓰므로 실제는 **201**이다. springdoc이 `ResponseEntity`의
+  런타임 status를 읽지 못한 것이다. 같은 이유로 `@ResponseStatus`를 쓴 엔드포인트는 정확히 나온다.
+
+**규칙**: 두 근거가 갈리면 **코드가 정본**이다. 단 직렬화 키처럼 코드가 답하지 못하는 항목은 스키마를
+근거로 삼고, 그 사실을 문서에 남긴다.
 
 ## Android 불일치
 

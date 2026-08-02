@@ -107,6 +107,16 @@ tags: [api, parfait, spec, auth]
 
 - 없음.
 
+### 표기 차이
+
+- 명세 개요가 로그인 응답 판별자를 `isNewUser: true`로 적었으나 **실제 JSON 키는 `newUser`**다
+  (서버 DTO 프로퍼티명은 `isNewUser`, Jackson이 `is` 접두사를 떼고 직렬화)
+  → [auth-kakao-login.md](auth-kakao-login.md) "코드 대조". 이 API 자체의 요청·응답 필드에는
+  영향이 없다 — 앞 단계에서 분기를 잘못 읽으면 이 API를 아예 호출하지 않게 되는 것이 영향이다.
+- 스웨거(OpenAPI)는 이 엔드포인트를 **200**으로 문서화하나 실제는 **201**이다. `SignupController`가
+  `ResponseEntity.status(HttpStatus.CREATED)`로 내보내는데 springdoc이 `ResponseEntity`의 런타임
+  status를 읽지 못해 기본값을 적은 것이다 — 위 "일치" 절의 201이 맞다.
+
 ## Android 구현 시 주의
 
 1. **로그인만으로 끝나지 않는다.** `isNewUser=true`면 약관 동의 화면을 거쳐 이 API까지 성공해야

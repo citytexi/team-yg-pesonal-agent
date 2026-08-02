@@ -45,17 +45,27 @@ tags: [api, parfait, server-contract, auth]
 
 - **응답 필드**
 
-| 필드 | 타입 | 널 허용 | 비고 |
+| JSON 키 | 타입 | 널 허용 | 비고 |
 |---|---|---|---|
-| `isNewUser` | Boolean | 아니오 | 아래 필드 묶음 중 어느 쪽이 채워졌는지를 결정하는 판별자 |
-| `accessToken` | String? | 예 | `isNewUser=false`일 때만 값 있음 |
-| `refreshToken` | String? | 예 | `isNewUser=false`일 때만 값 있음 |
-| `expiresIn` | Long? | 예 | 단위 초(`jwt.access-token-expiration-seconds`, 기본값 3600). `isNewUser=false`일 때만 값 있음 |
-| `registrationToken` | String? | 예 | `isNewUser=true`일 때만 값 있음 |
+| **`newUser`** | Boolean | 아니오 | 아래 필드 묶음 중 어느 쪽이 채워졌는지를 결정하는 판별자. **서버 DTO 프로퍼티명은 `isNewUser`인데 JSON 키는 `newUser`다** — 아래 참고 |
+| `accessToken` | String? | 예 | `newUser=false`일 때만 값 있음 |
+| `refreshToken` | String? | 예 | `newUser=false`일 때만 값 있음 |
+| `expiresIn` | Long? | 예 | 단위 초(`jwt.access-token-expiration-seconds`, 기본값 3600). `newUser=false`일 때만 값 있음 |
+| `registrationToken` | String? | 예 | `newUser=true`일 때만 값 있음 |
 
-  **응답이 분기한다.** `KakaoLoginResult.ExistingMember`(기존 회원) → `isNewUser=false` +
+  ⚠️ **판별자의 JSON 키는 `newUser`다(`isNewUser` 아님).** 서버 `KakaoLoginResponse`는 Kotlin
+  `val isNewUser: Boolean`으로 선언돼 있으나, Jackson이 getter 이름에서 `is` 접두사를 떼고 직렬화해
+  **실제 응답 키는 `newUser`**로 나간다(서버가 발행한 OpenAPI 스키마의 `KakaoLoginResponse`가 그렇게
+  적혀 있다 — 2026-08-02 확인). 이 도메인에서 `is` 접두사 Boolean을 쓰는 필드는 이것뿐이다.
+
+  **Android 영향**: 응답 타입을 `isNewUser`로 선언하면 값이 항상 채워지지 않아(kotlinx-serialization은
+  기본값이 없으면 파싱 실패, 있으면 조용히 기본값) **신규 유저가 기존 회원으로 잘못 분기**되고 존재하지
+  않는 `accessToken`을 꺼내게 된다. `@SerialName("newUser")`가 필요하다
+  → [open-questions](../synthesis/open-questions.md).
+
+  **응답이 분기한다.** `KakaoLoginResult.ExistingMember`(기존 회원) → `newUser=false` +
   `accessToken`·`refreshToken`·`expiresIn`, `registrationToken`은 `null`. `KakaoLoginResult.NewUser`(신규) →
-  `isNewUser=true` + `registrationToken`, 나머지 셋은 `null`.
+  `newUser=true` + `registrationToken`, 나머지 셋은 `null`.
 
 - **에러 코드**
 
