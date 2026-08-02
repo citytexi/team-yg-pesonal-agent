@@ -469,6 +469,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (release 빌드 미검증)
 - **해소 메모**: 확인 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 절과 이 항목 상태를 갱신한다.
 
+### [2026-08-02] 카카오 로그인 판별자 JSON 키가 `newUser` — Android 응답 타입에 `@SerialName` 필요
+- **출처**: 서버 `KakaoLoginResponse`는 Kotlin `val isNewUser: Boolean`이지만, 서버가 발행한 OpenAPI 스키마의 `KakaoLoginResponse`는 필드를 **`newUser`**로 적는다. Jackson이 getter(`isNewUser()`) 이름에서 `is` 접두사를 떼고 직렬화하기 때문이다 → [api/conventions.md](../api/conventions.md) "직렬화 규약", [api/auth.md](../api/auth.md), [api/spec/auth-kakao-login.md](../api/spec/auth-kakao-login.md).
+- **항목**: Android가 이 응답 타입을 만들 때 `@SerialName("newUser")`를 반드시 붙인다. 붙이지 않으면 kotlinx-serialization이 기본값으로 조용히 떨어져 **신규 유저가 기존 회원으로 분기**되고 존재하지 않는 `accessToken`을 꺼낸다 — 예외가 나지 않아 발견이 늦다. 서버팀에 `@get:JsonProperty("isNewUser")`로 키를 고정할 의향이 있는지도 함께 확인한다(고정되면 클라이언트 쪽 어노테이션이 불필요해진다).
+- **상태**: 미해결 (auth 서비스 구현 라운드에서 반영 예정)
+- **해소 메모**: 반영 후 [api/auth.md](../api/auth.md)의 Android 매핑 절과 이 항목을 갱신한다.
+
+### [2026-08-02] 개발 서버가 평문 HTTP — 앱에서 전 요청이 cleartext 차단된다
+- **출처**: 개발 서버 base URL이 `https`가 아니라 평문 `http`다(주소는 private submodule `project-paths.md` 참고). TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTraffic`·`networkSecurityConfig`가 **둘 다 없다** → [api/conventions.md](../api/conventions.md) "직렬화 규약".
+- **항목**: Android 9(API 28)부터 평문 HTTP는 기본 차단이라, 실제 연동을 시작하면 **모든 요청이 `CLEARTEXT communication not permitted`로 실패**한다. 서버에 HTTPS를 적용할지(권장), 아니면 debug 빌드 한정으로 `network_security_config.xml`에 해당 호스트만 허용할지 결정한다. 후자는 release 빌드가 HTTPS 전환 전까지 동작하지 않는다는 뜻이므로 서버 일정과 묶인다.
+- **상태**: 미해결 (서버팀 확인 필요)
+- **해소 메모**: 결정 후 [api/conventions.md](../api/conventions.md)와 앱 매니페스트·`local.properties` 안내를 갱신한다.
+
 <!--
 항목 추가 형식:
 

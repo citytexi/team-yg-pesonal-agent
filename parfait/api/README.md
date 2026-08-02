@@ -45,3 +45,15 @@
 ## 갱신
 - **서버가 바뀌었을 때** → 스킬 `sync-teamyg-server-api`(계약 절 갱신 + 기준선 갱신)
 - **Android가 바뀌었을 때** → 스킬 `sync-tjyg-develop-baseline`(`android_status`·Android 매핑 절 갱신)
+
+## 계약을 실제로 확인하는 법
+
+TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다(`auth.http`·
+`parfait-group.http`·`parfait.http`·`health.http`). 여기 문서에 적힌 계약을 서버에 직접 쏴서 확인할 수 있다.
+
+- 로그인 응답에서 토큰을 자동 추출해 다음 요청이 그대로 쓴다 — 스웨거에서 복붙할 필요가 없다
+- 각 요청 주석에 이 문서들의 함정을 옮겨 뒀다(`reissue`에 `Authorization`을 붙이면 재발급이 막히는 건은
+  주석 처리된 헤더 줄을 풀어 **직접 재현**할 수 있다)
+- 서버 주소·토큰은 gitignore된 `http-client.private.env.json`에만 둔다
+
+문서와 서버가 어긋나는 것 같으면 여기서 먼저 쏴 보는 게 빠르다.

@@ -116,10 +116,23 @@ tags: [api, parfait, spec, auth]
 - envelope 5필드(`success`·`code`·`message`·`data`·`errorDetail`) — 명세의 JSON 예시는 `data` 안쪽만
   보여준다. **실제 응답은 envelope로 한 겹 감싸여 온다** → [conventions.md](../conventions.md)
 
+### ⚠️ 실질 불일치 — 판별자 JSON 키가 다르다
+
+명세(위 응답 표·예시)는 판별자를 **`isNewUser`**로 적었으나 **실제 응답 키는 `newUser`**다.
+
+서버 `KakaoLoginResponse`는 Kotlin `val isNewUser: Boolean`이지만 Jackson이 getter 이름에서 `is`
+접두사를 떼고 직렬화한다. 서버가 발행한 OpenAPI 스키마의 `KakaoLoginResponse`가 `newUser`로 적혀
+있는 것이 근거다(2026-08-02 확인).
+
+**명세 예시 JSON을 그대로 응답 타입으로 옮기면 판별이 깨진다** — 신규 유저가 기존 회원으로 분기되고
+없는 `accessToken`을 꺼내게 된다. Android는 `@SerialName("newUser")`가 필요하다
+→ [open-questions](../../synthesis/open-questions.md).
+
 ### 표기 차이 (실질 불일치 아님)
 
 - 명세 본문이 회원가입 완료 API를 `POST /auth/signup`으로 축약한다. 실제 경로는
   `POST /api/v1/auth/signup`이다.
+- 명세가 서술한 흐름·필드 의미는 코드와 일치한다. 위 판별자 키 외에 이름이 갈리는 필드는 없다.
 
 ## Android 구현 시 주의
 
