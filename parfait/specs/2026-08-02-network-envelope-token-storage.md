@@ -5,7 +5,7 @@ status: draft
 category: behavior-spec
 platforms: android
 verified: 2026-08-02
-related_code: ApiResponse.kt, SafeApiCall.kt#safeApiCall, ApiException.kt#Business, AuthInterceptor.kt, TokenProvider.kt, EmptyTokenProvider.kt, NetworkModule.kt#provideTokenProvider
+related_code: ApiResponse.kt, ApiCaller.kt, ApiException.kt#Business, AuthInterceptor.kt, TokenProvider.kt, TokenStoreTokenProvider.kt, CryptoManager.kt, TokenStore.kt, EncryptedTokenStore.kt, NetworkModule.kt#provideTokenProvider
 related_adr: ADR-0017, ADR-0008, ADR-0004
 related_spec: data-network-setup
 related_architecture: data-layer
@@ -79,8 +79,10 @@ develop에 머지됐다(#174). 그러나 서버 계약과 대조한 적이 없�
 | `data` | T? | |
 | `errorDetail` | Map<String, String>? | **신규**, 기본값 `null` |
 
-- `isSuccess`는 **`success`를 그대로 쓴다.** `SUCCESS_CODE` 상수와 `TODO` 주석을 제거한다.
-  성공 코드 문자열이 늘어도(`"OK"`·`"CREATED"` 외 신규) 깨지지 않기 때문이다. `code`는 분기용으로만 쓴다.
+- 성공 판정은 **`success` 필드를 그대로 쓴다.** 별도의 `isSuccess` computed property는 두지 않는다 —
+  기존 `isSuccess`(`code == SUCCESS_CODE` 단일 비교)와 `SUCCESS_CODE`·`TODO` 주석을 제거하고,
+  `ApiCaller`가 `response.success`를 직접 검사한다. 성공 코드 문자열이 늘어도(`"OK"`·`"CREATED"` 외
+  신규) 깨지지 않기 때문이다. `code`는 분기용으로만 쓴다.
 - `errorDetail`은 **서버가 현재 항상 `null`로 보낸다**(`GlobalExceptionHandler`의 네 핸들러가 인자 없이
   `ApiResponse.error(errorCode)`를 호출). 계약에 있으므로 필드는 두되, 값이 온다고 가정한 UI를 만들지 않는다
   → [api/conventions.md](../api/conventions.md).
@@ -122,7 +124,7 @@ develop에 머지됐다(#174). 그러나 서버 계약과 대조한 적이 없�
 ### 3. `ApiException.Business` 확장
 
 ```
-Business(code: String, serverMessage: String, statusCode: Int, errorDetail: Map<String, String>?)
+Business(code: String, serverMessage: String, statusCode: Int?, errorDetail: Map<String, String>?)
 ```
 
 `statusCode`를 더하는 이유는 **코드 문자열이 enum 간 유일하지 않기 때문이다.** `MEMBER_NOT_FOUND`가
@@ -196,12 +198,16 @@ fake를 끼울 자리가 필요하기 때문이다. `EmptyTokenProvider`는 삭�
 2. `:app:assembleDebug`로 **Hilt 그래프 전체 해소** 확인
    (`CryptoManager`→`TokenStore`→`TokenProvider`→`AuthInterceptor`→`OkHttpClient`→`Retrofit` 체인,
    `@RemoteJson` 한정자로 `ApiCaller` 해소)
-3. **실기기 암복호화 왕복 육안 확인** — 저장 → 앱 완전 종료 → 재시작 → 읽기. 사람이 수행한다.
+3. **실기기 암복호화 왕복 검증은 수행 불가 → 로그인 연동 라운드로 이월.** 사람이 수행하면 된다고 봤으나,
+   `TokenStore.save()` 호출부가 코드베이스에 **0건**이라 저장을 트리거할 방법 자체가 없다(이 라운드
+   범위에서 auth 도메인 Service·RemoteDataSource·Repository 구현이 빠져 있어서다). 로그인이 실제로
+   붙어 `save()`가 호출되는 다음 라운드로 미룬다.
 4. 에러 파싱은 실제 서버 호출 없이 확인하기 어렵다. auth 서비스가 들어오는 다음 라운드에서
    `INVALID_ID_TOKEN` 등 실제 에러 코드가 `Business`로 잡히는지 확인한다.
 
-**미검증으로 남는 것**: 키 유실 경로(재현이 어렵다), 에러 envelope 파싱의 실서버 동작.
-스펙에 명시하고 다음 라운드로 넘긴다.
+**미검증으로 남는 것**: 키 유실 경로(재현이 어렵다), 실기기 암복호화 왕복(위 3번, 트리거 수단 부재),
+에러 envelope 파싱의 실서버 동작. [open-questions](../synthesis/open-questions.md)에 등록하고
+다음 라운드로 넘긴다.
 
 ## 문서 산출물
 

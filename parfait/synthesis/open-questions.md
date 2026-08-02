@@ -5,8 +5,8 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-02
-related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, parfait-api-contract-docs
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018
+related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, parfait-api-contract-docs
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer
 related_code:
 tags: [meta, parfait]
@@ -376,20 +376,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-02] 서버 응답 envelope와 Android ApiResponse 불일치
 - **출처**: 서버 `parfait.common.response.ApiResponse`([api/conventions.md](../api/conventions.md) "응답 envelope") — `success`·`errorDetail` 필드를 Android `ApiResponse`가 갖고 있지 않다. Android `data/service/model/response/ApiResponse.kt`.
 - **항목**: Android `ApiResponse`에 `success`·`errorDetail` 필드를 추가할지, 추가 시 파싱·기본값 처리를 어떻게 할지.
-- **상태**: 미해결 (코드 수정 미착수)
-- **해소 메모**: 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md) 응답 매핑 절을 갱신하고 [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거한다.
+- **상태**: 작업 트리 반영, develop 미머지 — `network-envelope-token-storage` 라운드에서 필드를 추가했으나 TJYG-Android에 커밋이 없어 develop 기준으로는 여전히 미해소다.
+- **해소 메모**: develop 머지 시 [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md) 응답 매핑 절을 갱신하고 [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거한다.
 
 ### [2026-08-02] Android 성공 코드 판정이 서버와 어긋남
 - **출처**: Android `ApiResponse.SUCCESS_CODE`(TODO 상수, `isSuccess`가 `code == "SUCCESS"` 단일 비교) vs 서버 `ApiResponse.ok`/`ApiResponse.created`(`code`=`"OK"`/`"CREATED"` 2종, [api/conventions.md](../api/conventions.md) "응답 envelope").
 - **항목**: `isSuccess` 판정을 `"OK"`·`"CREATED"` 2종 비교로 바꿀지 여부와 시점.
-- **상태**: 미해결 — 현 상태로는 서버가 정상 응답해도 Android가 전 호출을 `ApiException.Business` 실패로 판정한다(실제 연동 전 반드시 수정 필요).
-- **해소 메모**: 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md)와 [api/conventions.md](../api/conventions.md) "Android 불일치" 표를 갱신한다.
+- **상태**: 작업 트리 반영, develop 미머지 — `network-envelope-token-storage` 라운드에서 `success` 필드를 그대로 쓰도록 교체했으나(`isSuccess` 프로퍼티 제거) TJYG-Android에 커밋이 없어 develop 기준으로는 여전히 미해소다.
+- **해소 메모**: develop 머지 시 [ADR-0017](../adr/0017-remote-network-datasource.md)와 [api/conventions.md](../api/conventions.md) "Android 불일치" 표를 갱신한다.
 
 ### [2026-08-02] TokenProvider 실구현 부재
 - **출처**: Android `EmptyTokenProvider`(항상 null 반환) vs 서버 `SecurityConfig` 화이트리스트(`/actuator/health`·`/swagger-ui.html`·`/swagger-ui/**`·`/favicon.ico`·`/v3/api-docs/**`·`/api/v1/auth/kakao`·`/api/v1/auth/signup`·`/api/v1/auth/reissue`, [api/conventions.md](../api/conventions.md) "인증").
 - **항목**: 실 `TokenProvider` 구현 시점·토큰 저장 방식(DataStore 등) 확정.
-- **상태**: 미해결 — 화이트리스트 밖 전 API가 401(로그인 이후 거의 모든 호출).
-- **해소 메모**: 구현 시 [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md)를 갱신하고 [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거한다.
+- **상태**: 작업 트리 반영, develop 미머지 — `network-envelope-token-storage` 라운드에서 `TokenStoreTokenProvider`(암호화 저장소 연동, [ADR-0019](../adr/0019-encrypted-token-storage.md))로 교체했으나 TJYG-Android에 커밋이 없어 develop 기준으로는 여전히 미해소다(화이트리스트 밖 전 API가 401인 상태 유지).
+- **해소 메모**: develop 머지 시 [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md)를 갱신하고 [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거한다.
 
 ### [2026-08-02] 서버 URL 규약 3형태 혼재
 - **출처**: 서버 `KakaoLoginController`·`SignupController`·`ReissueController`·`LogoutController`(`/api/v1/auth/**`) · `ParfaitController`(`/api/v1/groups/{groupId}/parfaits/**`) · `ParfaitGroupController`(`/api/parfait-groups`, 버전 프리픽스 없음) — [api/conventions.md](../api/conventions.md) "URL 규약".
@@ -438,6 +438,30 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: 약관 목록 조회 API를 서버가 제공할 것인지 확인. 없으면 앱이 `termsId`를 하드코딩해야 하는데, 약관이 개정돼 최신 버전 id가 바뀌면 전 신규 가입이 `TERMS_NOT_FOUND` 400으로 막힌다. 온보딩 약관 동의 화면(TermAgree)이 이미 구현돼 있어(랜딩 URL·저장 TODO 잔존) 연동 시점에 걸린다.
 - **상태**: 미해결 (서버팀 확인 필요)
 - **해소 메모**: 확인 후 [api/spec/auth-signup.md](../api/spec/auth-signup.md) "미결"과 해당 도메인 계약 문서를 갱신한다.
+
+### [2026-08-02] 키 유실(Keystore 무효화) 경로 미검증
+- **출처**: [ADR-0019](../adr/0019-encrypted-token-storage.md) "키 유실 시 정책" — 기기 복원·잠금 화면 자격증명 변경 등으로 Keystore 키가 무효화되면 `CryptoManager.decrypt`가 예외를 던지고 `EncryptedTokenStore.read()`가 이를 잡아 `clear()` 후 `null`을 반환하도록 설계됐다. 코드베이스에 `test`/`androidTest`가 없고 Android Keystore는 JVM 유닛 테스트에서 동작하지 않아 이 경로를 재현·검증하지 못했다.
+- **항목**: 키 유실을 실기기에서 재현(기기 복원 또는 잠금 자격증명 변경)해 `clear()` 분기가 실제로 타는지, 앱이 정상적으로 "토큰 없음" 상태로 전환되는지 확인.
+- **상태**: 미해결 (재현 수단 없음)
+- **해소 메모**: 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md) "키 유실 시 정책"과 [specs/2026-08-02-network-envelope-token-storage.md](../specs/2026-08-02-network-envelope-token-storage.md) "검증" 절에 결과를 반영한다.
+
+### [2026-08-02] 인터셉터 `runBlocking`이 코드리뷰를 통과할지 미확정
+- **출처**: `AuthInterceptor` → `TokenStoreTokenProvider.getToken()`이 `runBlocking { tokenStore.getAccessToken() }`으로 suspend 경계를 넘는다([ADR-0019](../adr/0019-encrypted-token-storage.md) "결정", [specs/2026-08-02-network-envelope-token-storage.md](../specs/2026-08-02-network-envelope-token-storage.md) "`runBlocking` 사용 근거"). OkHttp dispatcher 스레드에서 실행돼 메인 스레드는 막지 않는다는 근거로 채택했으나, 코루틴 규율(구조화된 동시성) 이탈이라는 지적이 나올 수 있다.
+- **항목**: 코드리뷰에서 `runBlocking` 사용이 반려될지 확정. 반려되면 메모리 캐시(StateFlow) + 동기 읽기 방식으로 전환하고, 앱 시작 직후 캐시가 비어 있는 창(window)에서 첫 요청이 토큰 없이 나가는 타이밍 문제를 별도로 설계해야 한다.
+- **상태**: 미해결 (코드리뷰 대기)
+- **해소 메모**: 반려 시 [ADR-0019](../adr/0019-encrypted-token-storage.md) "결정"과 `AuthInterceptor`/`TokenStoreTokenProvider` 구현을 메모리 캐시 방식으로 갱신한다.
+
+### [2026-08-02] 실기기 암복호화 왕복 검증이 수행 불가
+- **출처**: [specs/2026-08-02-network-envelope-token-storage.md](../specs/2026-08-02-network-envelope-token-storage.md) "검증" — 저장 → 앱 완전 종료 → 재시작 → 읽기를 사람이 육안 확인하면 된다고 봤으나, `TokenStore.save()` 호출부가 코드베이스에 **0건**이라 저장을 트리거할 방법 자체가 없다(auth 도메인 Service·RemoteDataSource·Repository 구현이 이 라운드 범위 밖).
+- **항목**: 로그인이 실제로 붙어 `TokenStoreTokenProvider`/`EncryptedTokenStore.save()`가 호출되는 다음 라운드에서 저장 → 종료 → 재시작 → 읽기 왕복을 실기기로 확인한다(DataStore 파일에 평문이 없는지 포함).
+- **상태**: 미해결 (로그인 연동 라운드로 이월)
+- **해소 메모**: 로그인 연동 라운드에서 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md)와 [specs/2026-08-02-network-envelope-token-storage.md](../specs/2026-08-02-network-envelope-token-storage.md) "검증" 절을 갱신한다.
+
+### [2026-08-02] debug 빌드 `Level.BODY` 로깅이 `reissue`/`logout` 요청 바디의 refresh token을 평문 노출
+- **출처**: `NetworkModule.provideOkHttpClient`의 `HttpLoggingInterceptor`가 `redactHeader("Authorization")`로 헤더는 가렸으나 `Level.BODY`는 유지했다. `/api/v1/auth/reissue`·`/api/v1/auth/logout` 요청 바디에 실린 `refreshToken`은 헤더가 아니라 바디 필드라 redact 대상이 아니고, debug logcat에 평문으로 남는다.
+- **항목**: 바디 필드 단위 redact(예: 커스텀 인터셉터로 JSON 필드 마스킹) 또는 auth 관련 경로만 `Level.NONE`/`Level.HEADERS`로 낮추는 방안 중 선택.
+- **상태**: 미해결 (다음 라운드로 이월)
+- **해소 메모**: 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절과 `NetworkModule.provideOkHttpClient`를 갱신한다.
 
 <!--
 항목 추가 형식:

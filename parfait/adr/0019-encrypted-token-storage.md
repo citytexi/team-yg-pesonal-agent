@@ -92,7 +92,9 @@ tags: [adr, parfait, security, network, data, auth]
 - 코드베이스에 `test`/`androidTest` 디렉토리가 없고(무테스트 관례) Android Keystore는 JVM 유닛
   테스트에서 동작하지 않아, 이 라운드의 검증은 `:data:compileDebugKotlin`·`ktlintCheck`·
   `:app:assembleDebug`(Hilt 그래프 전체 해소: `CryptoManager`→`EncryptedTokenStore`→`TokenStore`→
-  `TokenStoreTokenProvider`→`TokenProvider`→`AuthInterceptor` 체인)와 실기기 암복호화 왕복 육안
-  확인(저장 → 앱 완전 종료 → 재시작 → 읽기, DataStore 파일에 평문이 없는지 확인)으로 한정했다.
-- 키 유실 재현(기기 복원·잠금 자격증명 변경)은 이번 라운드에서 검증하지 않았다 →
-  [open-questions](../synthesis/open-questions.md)로 추적.
+  `TokenStoreTokenProvider`→`TokenProvider`→`AuthInterceptor` 체인)로 한정했다. **실기기 암복호화
+  왕복 검증(저장 → 앱 완전 종료 → 재시작 → 읽기)은 사람이 수행하면 된다고 봤으나 수행 불가였다** —
+  `TokenStore.save()` 호출부가 코드베이스에 0건이라 저장을 트리거할 방법이 없다(auth 도메인
+  Service·RemoteDataSource·Repository가 이 라운드 범위 밖). 로그인 연동 라운드로 이월한다.
+- 키 유실 재현(기기 복원·잠금 자격증명 변경)과 위 실기기 왕복 검증은 이번 라운드에서 검증하지
+  않았다 → [open-questions](../synthesis/open-questions.md)로 추적.

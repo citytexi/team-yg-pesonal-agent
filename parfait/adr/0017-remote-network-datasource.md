@@ -63,7 +63,7 @@ DataSource 배치 관례를 확립한다.
   `data`를 보지 않음, `Result<Unit>` 반환). 삭제·설정 변경처럼 본문 없는 응답을 단일 진입점에서
   `data != null`로 판정하면 성공 호출이 실패로 분류되기 때문이다.
 
-  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드)** — 위 원안은
+  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — 위 원안은
   > 서버 계약 대조 전 설계였다. 실제로는 세 지점이 바뀌었다.
   > - **성공 판정**: `code == SUCCESS_CODE`(단일 상수) 대신 **`success` 필드**를 그대로 쓴다.
   >   서버가 성공 코드를 `"OK"`·`"CREATED"` 2종으로 쓰기 때문에 단일 상수 비교가 애초에 불가능했다.
@@ -84,7 +84,7 @@ DataSource 배치 관례를 확립한다.
   `CancellationException`은 다시 던져 코루틴 취소 전파를 보존한다(`runCatching`의 취소 삼킴 회피).
   소비자는 `Result.exceptionOrNull()`을 `ApiException`으로 분기해 재시도·재인증 등을 판단할 수 있다.
 
-  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드)** — `Business`에
+  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — `Business`에
   > **`statusCode: Int?`·`errorDetail: Map<String, String>?`이 추가**됐다. 코드 문자열이 enum 간
   > 유일하지 않아서다(`MEMBER_NOT_FOUND`가 401/404 둘 다로 쓰인다). 또한 **에러가 HTTP 4xx/5xx로
   > 오므로 `HttpException` 바디를 파싱해야 envelope에 도달한다** — 이걸 안 하면 이 절이 설계한
@@ -97,7 +97,7 @@ DataSource 배치 관례를 확립한다.
   토큰을 받아 `Authorization: Bearer` 헤더를 주입할 자리를 만든다. 현재 `EmptyTokenProvider`는
   항상 null을 반환 — 실제 토큰 소스 연동은 후속.
 
-  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드)** — `EmptyTokenProvider`가
+  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — `EmptyTokenProvider`가
   > **`TokenStoreTokenProvider`로 교체**됐다(`EmptyTokenProvider`는 삭제). `AuthInterceptor`·
   > `TokenProvider` 인터페이스는 시그니처 변경 없음 — 구현체만 바뀌었다. 토큰을 어디에 어떻게
   > 저장하는지, 동기 인터페이스를 유지한 채 suspend 저장소를 어떻게 연결하는지는
@@ -177,8 +177,10 @@ DataSource 배치 관례를 확립한다.
   `TempRemoteDataSource` 체인, `@LocalJson`/`@RemoteJson` 한정자 해소 정상)를 검증했다.
 - `ApiResponse.isSuccess` 판정에 쓰는 성공 코드 규약과 `TokenProvider`의 실제 토큰 소스는
   미확정이다 → [open-questions](../synthesis/open-questions.md)로 추적.
-  **as-built(2026-08-02): 둘 다 해결됐다** — 성공 판정은 `success` 필드로, `TokenProvider`는
-  `TokenStoreTokenProvider`(암호화 저장소 연동, [ADR-0019](0019-encrypted-token-storage.md))로.
+  **as-built(2026-08-02): 둘 다 작업 트리에는 반영됐으나 develop 미머지다** — 성공 판정은 `success`
+  필드로, `TokenProvider`는 `TokenStoreTokenProvider`(암호화 저장소 연동,
+  [ADR-0019](0019-encrypted-token-storage.md))로 바뀌었지만 TJYG-Android에 커밋조차 없다. develop
+  기준으로는 여전히 미해소이므로 [open-questions](../synthesis/open-questions.md) 추적을 닫지 않는다.
 - 도메인 모델 이름이 `TempVO`로 `VO` 접미사를 쓰는데, 기존 `domain.model`은 무접미사
   (`SegmentationResult`·`GalleryImageGroup`·`NameValidResult` 등)다. 접미사 규약이 갈라진 상태 →
   [open-questions](../synthesis/open-questions.md) [2026-07-30]로 추적.

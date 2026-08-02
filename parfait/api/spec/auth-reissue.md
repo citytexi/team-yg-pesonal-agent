@@ -87,13 +87,19 @@ Access Token이 만료되면 Refresh Token으로 새 토큰을 받는다. **재�
 ### 표기 차이 (실질 불일치 아님)
 
 - 명세의 **"인증: Refresh Token"**은 HTTP 인증 헤더를 뜻하지 않는다. `/api/v1/auth/reissue`는
-  `SecurityConfig` 화이트리스트에 있어 **인증 필터를 타지 않고**, 검증은 요청 **바디**의 `refreshToken`을
-  `ReissueService`가 직접 수행한다. `Authorization` 헤더를 보내지 않는다.
+  `SecurityConfig` 화이트리스트라 **헤더 없이 호출할 수 있다.** 단 `JwtAuthFilter`는
+  `OncePerRequestFilter`를 `addFilterBefore`로 등록한 것이고 `shouldNotFilter` 오버라이드가 없어
+  **화이트리스트 경로에서도 실행된다** — `permitAll`은 인가만 통과시킬 뿐 필터를 건너뛰지 않는다.
+  `Authorization` 헤더를 붙이면 필터가 `validateAccessToken`으로 검증을 시도하므로, **만료된
+  access token을 붙이면 401 `EXPIRED_TOKEN`이 나 재발급 자체가 막힌다.** 검증 자체는 요청
+  **바디**의 `refreshToken`을 `ReissueService`가 직접 수행한다.
 
 ## Android 구현 시 주의
 
-1. **`Authorization` 헤더를 붙이지 않는다.** refresh token은 **바디**로 보낸다. 이 엔드포인트는
-   화이트리스트라 access token이 없어도(만료됐어도) 호출된다 — 그게 이 API의 존재 이유다.
+1. **`Authorization` 헤더를 붙이지 않는다.** refresh token은 **바디**로 보낸다. 화이트리스트라
+   헤더 없이 호출할 수 있다 — 그게 이 API의 존재 이유다. 헤더를 붙이면 `JwtAuthFilter`가 여전히
+   검증하므로, 만료된 access token을 붙이면 401이 나 재발급이 불가능해진다 — 헤더를 반드시 빼야
+   한다(단순 생략 권장이 아니라 필수).
 2. **회전이므로 응답의 새 refresh token을 반드시 저장해야 한다.** 기존 것은 서버에서 폐기돼 재사용하면
    `INVALID_TOKEN` 401이 난다. 저장 실패 시 사용자는 재로그인 외에 복구 수단이 없다.
 3. 401을 받으면 **재로그인**으로 보낸다. `EXPIRED_TOKEN`·`INVALID_TOKEN`·`MEMBER_NOT_FOUND` 셋 다
