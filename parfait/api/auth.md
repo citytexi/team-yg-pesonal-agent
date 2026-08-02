@@ -41,7 +41,7 @@ tags: [api, parfait, server-contract, auth]
 | 필드 | 타입 | 필수 | 비고 |
 |---|---|---|---|
 | `idToken` | String | 필수(`@NotBlank`) | 카카오 ID 토큰 |
-| `nonce` | String | 필수(`@NotBlank`) | |
+| `nonce` | String | 필수(`@NotBlank`) | **앱이 생성한다** — 로그인 직전 만들어 카카오 SDK 요청과 이 API에 같은 값을 보낸다. 서버가 ID 토큰 `nonce` 클레임과 대조해 재생 공격을 검증한다(근거: 팀 명세, [spec/auth-kakao-login.md](spec/auth-kakao-login.md)) |
 
 - **응답 필드**
 
@@ -67,6 +67,10 @@ tags: [api, parfait, server-contract, auth]
 
   근거: `KakaoLoginControllerTest`가 세 코드를 이 엔드포인트에서 직접 검증한다. 던지는 지점은
   `KakaoIdTokenVerifyAdapter`(idToken 검증 어댑터, `external` 모듈).
+
+- **명세 델타** — 팀 명세([spec/auth-kakao-login.md](spec/auth-kakao-login.md))가 이 엔드포인트에
+  **429 요청 한도 초과**를 열거하나 서버에 대응 코드가 없다(`AuthErrorCode` 12종에 없고 rate limit 구현
+  흔적도 없음). 명세가 코드에서 읽을 수 없는 것을 하나 더 담고 있다 — 위 `nonce` 생성 책임이다.
 
 ### POST /api/v1/auth/signup
 
@@ -107,6 +111,12 @@ tags: [api, parfait, server-contract, auth]
   `SignupService`가 `TokenValidatePort.validateRegistrationToken`을 통해 던지고, 나머지 넷은 `SignupService`
   본문(약관 검증·중복 가입 검사)에서 직접 던진다.
 
+- **명세 델타** — 팀 명세([spec/auth-signup.md](spec/auth-signup.md))와 코드가 에러 7종·검증 순서까지
+  일치한다. **명세에 없는 코드 동작 2건**: ① 가입 시 서버가 `RandomNicknameGenerator.generate()`로
+  **닉네임을 자동 생성**한다(앱은 보내지도 받지도 않는다 — 응답에 닉네임 필드가 없다), ② 애플 로그인은
+  `handleProviderSpecificRegistration`에 빈 분기 + TODO(#50)로 자리만 있다. 명세가 흐름에 `/auth/apple`을
+  적었으나 서버는 미완이다.
+
 ### POST /api/v1/auth/reissue
 
 - **인증**: 불필요(화이트리스트 — `/api/v1/auth/kakao`·`/api/v1/auth/signup`·`/api/v1/auth/reissue` 개별
@@ -145,6 +155,13 @@ tags: [api, parfait, server-contract, auth]
   존재하지 않을 때(`ReissueService`가 `MemberQueryPort.existsById`로 직접 검사).
   근거: `ReissueControllerTest`(`INVALID_TOKEN`·`EXPIRED_TOKEN`)·`ReissueServiceTest`(4케이스 전부,
   `MEMBER_NOT_FOUND` 포함).
+
+- **명세 델타** — 팀 명세([spec/auth-reissue.md](spec/auth-reissue.md))가 **403 정지·탈퇴 회원**을
+  열거하나 서버에 없다. `AuthErrorCode`에 정지·탈퇴 코드가 없고 `ReissueService`에 회원 상태 검사도 없다 —
+  회원 부재는 **401 `MEMBER_NOT_FOUND`**로 나간다(HTTP 코드·code 문자열 둘 다 다르다)
+  → [open-questions](../synthesis/open-questions.md). 또한 명세의 "인증: Refresh Token" 표기는 HTTP 인증
+  헤더를 뜻하지 않는다 — 이 경로는 화이트리스트라 인증 필터를 타지 않고 **바디**의 `refreshToken`으로만
+  검증한다.
 
 ### POST /api/v1/auth/logout
 
@@ -187,6 +204,12 @@ tags: [api, parfait, server-contract, auth]
   근거: `LogoutControllerTest`(204·`FORBIDDEN_REFRESH_TOKEN`, 미인증 401은 슬라이스 테스트 한계로
   별도 `SecurityConfigIntegrationTest`가 검증한다고 테스트 코드 주석에 명시)·`LogoutServiceTest`(3케이스
   전부)·`JwtAuthFilter` 직독.
+
+- **명세 델타** — 팀 명세([spec/auth-logout.md](spec/auth-logout.md))가 204 응답의 `code`를
+  **`NO_CONTENT`**로 적었으나 **서버에 그런 코드가 없다**(envelope `code`는 `"OK"`·`"CREATED"` 두 값뿐이고
+  애초에 이 응답은 envelope 자체가 오지 않는다) — 명세 표기 오류다. 또 명세는 401을 `INVALID_TOKEN` 하나로
+  적었으나 실제로는 위 표의 4종으로 갈리고, **바디 `refreshToken` 검증 실패**(만료·위조 → 401)는 명세에
+  아예 없다. 멱등성("이미 삭제된 세션이어도 204")은 코드와 일치한다.
 
 ## 도메인 에러 코드 전수 — `AuthErrorCode`(12종)
 

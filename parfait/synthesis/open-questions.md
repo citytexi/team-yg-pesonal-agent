@@ -421,6 +421,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (서버팀 확인 필요)
 - **해소 메모**: 확인 후 [api/conventions.md](../api/conventions.md) "인증"의 관측 사실 서술을 정리한다.
 
+### [2026-08-02] 카카오 로그인 429 요청 한도 초과가 명세에만 있고 서버에 없음
+- **출처**: 팀 명세([api/spec/auth-kakao-login.md](../api/spec/auth-kakao-login.md))가 `POST /api/v1/auth/kakao`의 상태 코드로 **429 요청 한도 초과**를 열거하나(code 미지정), 서버 `AuthErrorCode` 12종에 대응 코드가 없고 rate limit 구현 흔적(`429`·`TOO_MANY`·`RateLimit`·`Bucket`)도 코드에서 발견되지 않는다.
+- **항목**: 429가 **미구현**인지, 인프라 계층(게이트웨이·WAF)에서 처리돼 애플리케이션 코드에 없는 것인지 서버팀 확인. 후자라면 envelope 없이 원시 429가 올 수 있어 Android가 `ApiException.Http`로 받게 되므로 소비 코드에 영향이 있다.
+- **상태**: 미해결 (서버팀 확인 필요)
+- **해소 메모**: 확인 후 [api/spec/auth-kakao-login.md](../api/spec/auth-kakao-login.md) "코드 대조"와 [api/auth.md](../api/auth.md) "명세 델타"를 갱신한다.
+
+### [2026-08-02] 토큰 재발급 403 정지·탈퇴 회원이 명세에만 있고 서버에 없음
+- **출처**: 팀 명세([api/spec/auth-reissue.md](../api/spec/auth-reissue.md))가 `POST /api/v1/auth/reissue`의 상태 코드로 **403 정지·탈퇴 회원**을 열거하나, `AuthErrorCode`에 정지·탈퇴에 해당하는 코드가 없고 `ReissueService`에 회원 상태 검사 자체가 없다. 회원 부재는 `MemberQueryPort.existsById` 실패로 **401 `MEMBER_NOT_FOUND`**가 나간다 — HTTP 코드(403 vs 401)와 code 문자열이 모두 다르다.
+- **항목**: 회원 정지·탈퇴 상태 개념이 서버에 있는지, 403이 미구현인지 서버팀 확인. 탈퇴 기능은 앱 화면(S-002 계정 정보)에 예정돼 있어 계약이 필요해진다.
+- **상태**: 미해결 (서버팀 확인 필요)
+- **해소 메모**: 확인 후 [api/spec/auth-reissue.md](../api/spec/auth-reissue.md) "코드 대조"와 [api/auth.md](../api/auth.md) reissue 절을 갱신한다.
+
+### [2026-08-02] 약관 목록 조회 API 부재 — 앱이 termsId를 얻을 경로가 없음
+- **출처**: 팀 명세([api/spec/auth-signup.md](../api/spec/auth-signup.md))의 `POST /api/v1/auth/signup`이 `agreements[].termsId`를 필수로 요구하고, 서버 `SignupService.validateAgreements`가 `TosQueryPort.findCurrentTerms`(타입별 최신 버전)와 대조해 어긋나면 `TERMS_NOT_FOUND` 400을 던진다. 그런데 **현재 유효한 약관 목록(id·필수 여부·본문·랜딩 URL)을 조회하는 엔드포인트가 서버 계약에 없다**([api/README.md](../api/README.md) 도메인 3건 어디에도 없음).
+- **항목**: 약관 목록 조회 API를 서버가 제공할 것인지 확인. 없으면 앱이 `termsId`를 하드코딩해야 하는데, 약관이 개정돼 최신 버전 id가 바뀌면 전 신규 가입이 `TERMS_NOT_FOUND` 400으로 막힌다. 온보딩 약관 동의 화면(TermAgree)이 이미 구현돼 있어(랜딩 URL·저장 TODO 잔존) 연동 시점에 걸린다.
+- **상태**: 미해결 (서버팀 확인 필요)
+- **해소 메모**: 확인 후 [api/spec/auth-signup.md](../api/spec/auth-signup.md) "미결"과 해당 도메인 계약 문서를 갱신한다.
+
 <!--
 항목 추가 형식:
 

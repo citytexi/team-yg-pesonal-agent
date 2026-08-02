@@ -1,0 +1,124 @@
+---
+id: auth-signup
+title: 회원가입 완료 (약관동의)
+spec_source: 팀 노션 API 명세
+spec_status: 완료
+spec_issue: "#49"
+server_commit: 6f5bffc
+verified: 2026-08-02
+related_api: auth.md
+tags: [api, parfait, spec, auth]
+---
+
+# 회원가입 완료 (약관동의) (팀 명세)
+
+> 팀이 합의한 **의도**입니다. 서버 코드의 현실은 [../auth.md](../auth.md) — 갈리는 지점은
+> [코드 대조](#코드-대조)에 모았습니다.
+
+- **Method / Path**: `POST /api/v1/auth/signup`
+- **구분**: 로그인/가입 · **인증**: 불필요
+- **설명**: 신규 유저가 약관동의 후 최종 회원가입 처리, 이때 정식 토큰 발급
+
+## 개요
+
+로그인 응답이 `isNewUser: true`였을 때, 앱은 약관동의 화면을 보여주고 **동의 내역 + 로그인 단계에서 받은
+`registrationToken`**을 함께 보낸다. **이 호출이 성공해야 비로소 정식 회원이 되고 access/refresh가 발급된다.**
+
+로그인 단계(`/auth/kakao`, `/auth/apple`)에서 신규면 access/refresh 대신 `registrationToken`(임시,
+검증된 소셜 신원을 담음)만 내려주고, 이 API에서 그것을 검증해 회원을 생성한다.
+
+## 요청
+
+`Content-Type: application/json`
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `registrationToken` | string | ✅ | 신규 로그인 응답에서 받은 임시 토큰 |
+| `agreements` | array | ✅ | 동의 내역 목록. 약관 하나당 항목 하나 |
+| `agreements[].termsId` | number | ✅ | 약관 식별자 (몇 번째 약관인지) |
+| `agreements[].agreed` | boolean | ✅ | 해당 약관의 동의 여부 |
+
+```json
+{
+  "registrationToken": "eyJhbGciOi...",
+  "agreements": [
+    { "termsId": 1, "agreed": true },
+    { "termsId": 2, "agreed": true }
+  ]
+}
+```
+
+**`termsId`는 동의한 약관(버전) 참조다.** 각 약관별 yes/no 목록이 아니라 "어떤 약관에 동의했는가"를
+기록한다. 서버는 해당 약관이 필수인지 확인해 `agreed`가 true가 아니면 400.
+
+## 응답 201
+
+정식 가입 완료 → 공통 토큰 응답(access/refresh) 발급.
+
+```json
+{
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "eyJhbGciOi...",
+  "expiresIn": 3600
+}
+```
+
+## 상태 코드
+
+| 코드 | 의미 | code |
+|---|---|---|
+| 201 | 회원가입 완료 | `CREATED` |
+| 400 | `registrationToken` 누락 / `agreements` 구조 오류 (bean validation) | `INVALID_REQUEST` |
+| 400 | `agreements`에 동일 `termsId` 중복 | `DUPLICATE_TERMS_ID` |
+| 400 | 현재 유효(타입별 최신 버전)하지 않은 `termsId` | `TERMS_NOT_FOUND` |
+| 400 | 현재 필수 약관 중 `agreed:true`로 없는 항목 존재 | `REQUIRED_TERMS_NOT_AGREED` |
+| 401 | `registrationToken` 만료 | `EXPIRED_TOKEN` |
+| 401 | `registrationToken` 위조 / purpose 불일치 | `INVALID_TOKEN` |
+| 409 | 이미 가입된 회원 | `ALREADY_REGISTERED` |
+
+## 코드 대조
+
+서버 `main` `6f5bffc` 기준.
+
+### 일치
+
+- 경로·메서드·인증 불필요(화이트리스트 `/api/v1/auth/signup`), 성공 **201** `CREATED`
+- 요청 4필드(`registrationToken` `@NotBlank`, `agreements` `@Valid`, 원소 `termsId`·`agreed`)
+- 응답 3필드 — 로그인 응답과 달리 셋 다 널 아님
+- 에러 코드 7종 전부와 **검증 순서까지 일치**한다. `SignupService.validateAgreements`가
+  중복(`DUPLICATE_TERMS_ID`) → 현재 유효 여부(`TERMS_NOT_FOUND`) → 필수 미동의(`REQUIRED_TERMS_NOT_AGREED`)
+  순으로 검사하고, 그 뒤에 중복 가입(`ALREADY_REGISTERED`)을 본다.
+- "현재 유효(타입별 최신 버전)" 서술 — `TosQueryPort.findCurrentTerms`가 근거
+- `agreed`가 false인 항목을 보내도 요청 자체는 유효하다. 서버는 `agreements.filter { it.agreed }`로
+  동의한 것만 저장한다 — 명세의 "어떤 약관에 동의했는가를 기록한다"와 정확히 같은 동작이다.
+
+### 코드에만 있음
+
+- **가입 시 서버가 닉네임을 자동 생성한다.** `SignupService`가 `RandomNicknameGenerator.generate()`로
+  만들어 `MemberRegistrar.register`에 넘긴다. **앱은 닉네임을 보내지 않고, 받지도 않는다** — 이 응답에
+  닉네임 필드가 없다. 명세에 언급이 없다.
+- **전체가 하나의 트랜잭션**이다(`@Transactional`). 가입 실패 시 회원 데이터가 남지 않는다.
+- 애플 로그인은 `handleProviderSpecificRegistration`에 **빈 분기 + TODO(#50)**로 자리만 있다.
+  `RegistrationTokenClaims`가 `provider`/`providerUserId`만 담고 있어 애플 revoke용 refreshToken을
+  저장할 수 없는 상태다. 명세는 `/auth/apple`을 이미 흐름에 적었으나 서버는 미완이다.
+- envelope 5필드 — 명세의 JSON 예시는 `data` 안쪽만 보여준다 → [conventions.md](../conventions.md)
+
+### 명세에만 있음
+
+- 없음.
+
+## Android 구현 시 주의
+
+1. **로그인만으로 끝나지 않는다.** `isNewUser=true`면 약관 동의 화면을 거쳐 이 API까지 성공해야
+   access/refresh를 받는다. `registrationToken`은 10분 만료라 UI 흐름에서 고려한다.
+2. **닉네임을 보내지 마라.** 서버가 자동 생성한다. 초기 닉네임을 화면에 보여줘야 한다면 이 응답이 아니라
+   별도 회원 조회 API가 필요하다(현재 계약에 없음).
+3. `agreed=false` 항목을 목록에 포함해도 된다. 다만 **필수 약관이 `agreed:true`로 없으면**
+   `REQUIRED_TERMS_NOT_AGREED` 400이다.
+4. `termsId` 목록은 서버가 정하는 "현재 유효한 약관"이다. 하드코딩하면 약관이 개정될 때
+   `TERMS_NOT_FOUND` 400을 받는다 — 약관 목록 조회 API가 현재 계약에 없다는 점에 유의한다.
+
+## 미결
+
+- 약관 목록(`termsId`·필수 여부·본문) 조회 API가 계약에 없다. 앱이 `termsId`를 어디서 얻는지 미확정
+  → [open-questions](../../synthesis/open-questions.md)
