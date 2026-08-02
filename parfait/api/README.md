@@ -16,6 +16,9 @@
   값의 생성 주체), 명세에만 있는 미구현 항목, 값의 의미가 여기 있습니다. 각 명세 문서는 `## 코드 대조`
   절에서 **일치 / 코드에만 / 명세에만**을 갈라 적습니다.
   - [spec/auth-kakao-login.md](spec/auth-kakao-login.md) — 카카오 로그인/회원가입
+  - [spec/auth-signup.md](spec/auth-signup.md) — 회원가입 완료(약관동의)
+  - [spec/auth-reissue.md](spec/auth-reissue.md) — 토큰 재발급
+  - [spec/auth-logout.md](spec/auth-logout.md) — 로그아웃
 
 ## 도메인 계약
 | 문서 | 서버 위치 | 엔드포인트 | Android |
