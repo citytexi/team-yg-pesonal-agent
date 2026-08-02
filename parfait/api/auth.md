@@ -41,7 +41,7 @@ tags: [api, parfait, server-contract, auth]
 | 필드 | 타입 | 필수 | 비고 |
 |---|---|---|---|
 | `idToken` | String | 필수(`@NotBlank`) | 카카오 ID 토큰 |
-| `nonce` | String | 필수(`@NotBlank`) | |
+| `nonce` | String | 필수(`@NotBlank`) | **앱이 생성한다** — 로그인 직전 만들어 카카오 SDK 요청과 이 API에 같은 값을 보낸다. 서버가 ID 토큰 `nonce` 클레임과 대조해 재생 공격을 검증한다(근거: 팀 명세, [spec/auth-kakao-login.md](spec/auth-kakao-login.md)) |
 
 - **응답 필드**
 
@@ -67,6 +67,10 @@ tags: [api, parfait, server-contract, auth]
 
   근거: `KakaoLoginControllerTest`가 세 코드를 이 엔드포인트에서 직접 검증한다. 던지는 지점은
   `KakaoIdTokenVerifyAdapter`(idToken 검증 어댑터, `external` 모듈).
+
+- **명세 델타** — 팀 명세([spec/auth-kakao-login.md](spec/auth-kakao-login.md))가 이 엔드포인트에
+  **429 요청 한도 초과**를 열거하나 서버에 대응 코드가 없다(`AuthErrorCode` 12종에 없고 rate limit 구현
+  흔적도 없음). 명세가 코드에서 읽을 수 없는 것을 하나 더 담고 있다 — 위 `nonce` 생성 책임이다.
 
 ### POST /api/v1/auth/signup
 

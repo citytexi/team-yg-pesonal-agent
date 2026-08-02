@@ -421,6 +421,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (서버팀 확인 필요)
 - **해소 메모**: 확인 후 [api/conventions.md](../api/conventions.md) "인증"의 관측 사실 서술을 정리한다.
 
+### [2026-08-02] 카카오 로그인 429 요청 한도 초과가 명세에만 있고 서버에 없음
+- **출처**: 팀 명세([api/spec/auth-kakao-login.md](../api/spec/auth-kakao-login.md))가 `POST /api/v1/auth/kakao`의 상태 코드로 **429 요청 한도 초과**를 열거하나(code 미지정), 서버 `AuthErrorCode` 12종에 대응 코드가 없고 rate limit 구현 흔적(`429`·`TOO_MANY`·`RateLimit`·`Bucket`)도 코드에서 발견되지 않는다.
+- **항목**: 429가 **미구현**인지, 인프라 계층(게이트웨이·WAF)에서 처리돼 애플리케이션 코드에 없는 것인지 서버팀 확인. 후자라면 envelope 없이 원시 429가 올 수 있어 Android가 `ApiException.Http`로 받게 되므로 소비 코드에 영향이 있다.
+- **상태**: 미해결 (서버팀 확인 필요)
+- **해소 메모**: 확인 후 [api/spec/auth-kakao-login.md](../api/spec/auth-kakao-login.md) "코드 대조"와 [api/auth.md](../api/auth.md) "명세 델타"를 갱신한다.
+
 <!--
 항목 추가 형식:
 
