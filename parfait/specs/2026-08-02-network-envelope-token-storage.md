@@ -5,7 +5,7 @@ status: draft
 category: behavior-spec
 platforms: android
 verified: 2026-08-02
-related_code: ApiResponse.kt, ApiCaller.kt, ApiException.kt#Business, AuthInterceptor.kt, TokenProvider.kt, TokenStoreTokenProvider.kt, CryptoManager.kt, TokenStore.kt, EncryptedTokenStore.kt, NetworkModule.kt#provideTokenProvider
+related_code: ApiResponse.kt, ApiCaller.kt, ApiException.kt#Business, AuthInterceptor.kt, TokenProvider.kt, TokenStoreTokenProvider.kt, NoAuth.kt, CryptoManager.kt, TokenStore.kt, EncryptedTokenStore.kt, NetworkModule.kt#provideTokenProvider
 related_adr: ADR-0017, ADR-0008, ADR-0004
 related_spec: data-network-setup
 related_architecture: data-layer
@@ -161,6 +161,15 @@ fake를 끼울 자리가 필요하기 때문이다. `EmptyTokenProvider`는 삭�
 > 대안이던 "메모리 캐시(StateFlow) + 동기 읽기"는 앱 시작 직후 캐시가 비어 있는 창(window)에서 첫 요청이
 > 토큰 없이 나가는 타이밍 문제를 새로 만든다. 코루틴 규율 이탈이라는 지적은 타당하나, 이 경계에서는
 > 의도된 선택이다.
+
+**인증 헤더 스킵**: 인증이 불필요한 엔드포인트(`kakao`·`signup`·`reissue` 등 서버 화이트리스트 경로)는
+서비스 메서드에 `@NoAuth`(`network/NoAuth.kt`)를 붙여 표시한다. `AuthInterceptor`는
+`chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로
+판정해, `true`면 `tokenProvider.getToken()` 호출 자체를 생략한다(불필요한 `runBlocking`·DataStore
+읽기·Keystore 복호화를 아낀다). 이전에는 경로 문자열 상수(`NO_AUTH_HEADER_PATHS`)를
+`AuthInterceptor`에 하드코딩해 서버 `SecurityConfig.WHITELIST_PATHS`와 이중 관리했으나, 선언을
+서비스 인터페이스의 URL 옆으로 옮겨 오타가 컴파일 타임에 걸리게 했다 —
+[ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 참고.
 
 ### 5. 키 유실 처리 (핵심)
 

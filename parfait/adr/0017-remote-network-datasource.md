@@ -102,6 +102,18 @@ DataSource 배치 관례를 확립한다.
   > `TokenProvider` 인터페이스는 시그니처 변경 없음 — 구현체만 바뀌었다. 토큰을 어디에 어떻게
   > 저장하는지, 동기 인터페이스를 유지한 채 suspend 저장소를 어떻게 연결하는지는
   > [ADR-0019](0019-encrypted-token-storage.md) 소관.
+
+  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — 서버
+  > 화이트리스트 경로(`kakao`·`signup`·`reissue`)에 `Authorization` 헤더를 붙이지 않는 판정 방식이
+  > **경로 문자열 상수 목록**(`AuthInterceptor` 내 하드코딩, 서버 `SecurityConfig.WHITELIST_PATHS`와
+  > 별도 관리)에서 **`@NoAuth` 어노테이션 + Retrofit `Invocation` 태그** 조회로 교체됐다.
+  > `AuthInterceptor.intercept`가
+  > `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로
+  > 스킵 여부를 판정하고(`network/NoAuth.kt`), 스킵이면 `tokenProvider.getToken()` 호출 자체를
+  > 생략한다. 경로 문자열을 서버 화이트리스트와 이중 관리하지 않아도 되고(오타는 서비스 인터페이스
+  > 컴파일 타임에 걸린다), 선언이 서비스 메서드의 URL 옆에 붙는다 — **앱이 아는 것은 "이 호출에
+  > 토큰을 붙일지"이지 서버 보안 설정이 아니기 때문**이다. R8 release 빌드에서 어노테이션이 유지되는지는
+  > 미검증 → [open-questions](../synthesis/open-questions.md).
 - **로깅**: `HttpLoggingInterceptor` 레벨을 `BuildConfig.DEBUG`로 게이팅한다(debug=`BODY`,
   release=`NONE`). release 빌드에서 `Authorization` 토큰과 요청/응답 바디가 로그로 노출되는 것을
   막기 위한 결정이다. `OkHttpClient`는 connect/read/write 타임아웃 3종을 설정한다.

@@ -55,7 +55,8 @@ tags: [architecture, parfait]
    `source.<도메인>.mapper`의 확장 함수로 변환. `Impl`은 **`ApiCaller`를 생성자로 주입**받아 서비스
    호출을 감싼다(`@Inject constructor(service: XxxService, private val apiCaller: ApiCaller)`) —
    top-level `safeApiCall` import는 더 이상 없다. 아래 "네트워킹 → 응답 계약"의 진입점 3개 중 응답
-   형태에 맞는 것을 고른다.
+   형태에 맞는 것을 고른다. 인증이 불필요한 엔드포인트라면 서비스 인터페이스 메서드에 `@NoAuth`를
+   붙인다(아래 "네트워킹 → 인증").
 3. **DI**: 역할에 맞는 기존 모듈(`RepositoryModule`·`LocalDataSourceModule`·`RemoteDataSourceModule`)에
    `@Binds` 추가. 새 파일을 만들지 않는다.
 4. 소비: **UseCase**를 통해 노출, ViewModel은 UseCase만 호출([[state-management]]).
@@ -109,7 +110,10 @@ tags: [architecture, parfait]
   `Authorization: Bearer` 헤더를 주입한다. `AuthInterceptor`는 시그니처 변경 없이 동기 `TokenProvider`를
   그대로 소비 — `TokenStoreTokenProvider.getToken()`이 `runBlocking { tokenStore.getAccessToken() }`으로
   suspend 경계를 넘는다(OkHttp dispatcher 스레드에서 실행돼 메인 스레드는 막지 않음). 상세는
-  [[0019-encrypted-token-storage]].
+  [[0019-encrypted-token-storage]]. 인증이 불필요한 엔드포인트(서버 화이트리스트 경로)는 서비스
+  메서드에 `@NoAuth`(`network/NoAuth.kt`)를 붙인다 — `AuthInterceptor`가 Retrofit `Invocation` 태그로
+  어노테이션 존재를 확인해, 스킵 대상이면 토큰 조회 자체를 생략한다(불필요한 DataStore 읽기·Keystore
+  복호화를 피한다). 근거는 [[0017-remote-network-datasource]] "인증".
 - **토큰 저장 경로**: `CryptoManager`(Android Keystore AES/GCM, `security/`) → `EncryptedTokenStore`
   (`TokenStore` 구현, `source/token/local/`, `DataStore<Preferences>`에 `IV+암호문` Base64 문자열 저장) →
   `TokenStore`(`LocalDataSourceModule.bindTokenStore`) → `TokenStoreTokenProvider`

@@ -463,6 +463,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (다음 라운드로 이월)
 - **해소 메모**: 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절과 `NetworkModule.provideOkHttpClient`를 갱신한다.
 
+### [2026-08-02] `@NoAuth` 판정이 Retrofit `Invocation` 태그에 의존 — OkHttp 직접 요청·R8 release 미검증
+- **출처**: `AuthInterceptor`가 `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로 스킵 여부를 판정한다(`network/NoAuth.kt`, [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"). `Invocation` 태그는 **Retrofit이 만든 요청에만 자동으로 붙는다** — OkHttp를 직접 쓰는 요청(예: Coil 이미지 로딩이 같은 `OkHttpClient`를 공유하게 되는 경우)에는 태그가 없어 `skipAuth`가 `false`로 떨어져 헤더가 붙는다. 현재 그런 경로는 없다. 또한 `@NoAuth`가 R8 release 빌드(`isMinifyEnabled = true`)에서 실제로 유지되는지는 `-keep @interface` 규칙(`data/proguard-rules.pro`)을 추가했을 뿐 `:app:assembleRelease`로 검증하지 않았다 — debug 빌드에서는 드러나지 않는 종류의 결함이다.
+- **항목**: ① Coil 등 OkHttp를 직접 공유하는 신규 경로가 생기면 `Invocation` 태그 부재로 인증 헤더가 붙는지 확인하고 필요 시 별도 처리. ② `:app:assembleRelease`로 실제 release 빌드를 만들어 화이트리스트 엔드포인트가 여전히 헤더 없이 나가는지(즉 `@NoAuth`가 R8에서 제거되지 않았는지) 확인.
+- **상태**: 미해결 (release 빌드 미검증)
+- **해소 메모**: 확인 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 절과 이 항목 상태를 갱신한다.
+
 <!--
 항목 추가 형식:
 
