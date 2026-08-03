@@ -23,6 +23,25 @@
 > Task 2·4는 `nickNameErrorResId: Int?` 기준으로 읽는다. 재작성 시 `GroupNickNameViewModel`을 미러하고,
 > 매핑 위치 수렴 여부는 [open-questions](../synthesis/open-questions.md) [2026-07-29] 결정 후 반영한다.
 
+> **⚠️ 3차 애드덤 (2026-08-03, 구현 완료 후 develop rebase + Figma 대조)** — **이 계획은 사실상 완료됐다.**
+> 아래 체크박스는 미체크로 남아 있으나 Task 1~5는 브랜치 `feature/#86-app-setting-account-info-screen`에
+> 구현·rebase 완료 상태다(Task 6 실기기 확인만 미수행). 다만 **as-built가 계획과 4곳 다르다** —
+> 확정 계약은 스펙 [2026-07-22-s002-account-info.md](../specs/2026-07-22-s002-account-info.md)가 정본이고, 이 계획을 그대로 재실행하지 말 것:
+>
+> 1. **Danger Zone 삭제** — Figma `S-002`(node `220:2192`)에 Danger Zone이 없다. 로그아웃/탈퇴는
+>    `S-001`(node `220:2176`) 소속 → Intent(`ClickLogout`/`ClickWithdraw`)·VM stub 핸들러·문자열 2종을
+>    **전부 `AppSettingViewModel`/`AppSettingScreen`으로 이관**했다([app-setting-s001 스펙](../specs/archive/2026-07-19-app-setting-s001.md)).
+>    문자열 키도 `account_info_*` → `setting_logout`/`setting_withdraw`로 개명.
+> 2. **State 필드명** — `nickName`/`nickNameErrorResId` → **`nickname`/`errorMessageResId`**(`GroupNickNameViewModel` as-built 미러).
+> 3. **상단바** — `YGTopBarBack` → **`YGTopBarDetail(title = "계정 정보")`**(Figma Top Bar에 타이틀 존재).
+>    섹션 라벨도 인라인 `Text` → **`YGLabel`**.
+> 4. **포커스 해제** — `YGScreen`에 상시 결선돼 있던 배경 탭 포커스 해제가 접근성 사유로 철회되고,
+>    opt-in **`Modifier.clearFocusOnTap()`**(신규, [스펙](../specs/2026-08-03-clearfocusontap-modifier.md))으로 대체됐다.
+>    `AccountInfoScreen`은 `YGScreen(modifier = modifier.clearFocusOnTap())`으로 명시 적용한다.
+>
+> 1차 애드덤의 `NicknameResult`·`toStringResource` 경로는 **rebase에서 폐기**됐다(develop `NameValidResult`와 충돌).
+> 최종은 2차 애드덤 형태 + 위 4건이다.
+
 ## Global Constraints
 
 - 코드 대상 repo: `TJYG-Android`(remote `mash-up-kr/TJYG-Android`). 브랜치 `feature/#86-app-setting-account-info-screen`(이미 체크아웃됨).
