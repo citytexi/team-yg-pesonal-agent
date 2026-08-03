@@ -63,6 +63,11 @@
 - **실행 표면**: 스펙·계획 산출, plan phase 전환, 테스트 실행, 아티팩트 생성처럼 사용자가
   볼 만한 결과가 나오면 `surfacing-work-in-cmux`를 따른다. cmux가 아닌 터미널에서는
   게이트에서 no-op 되므로 동작이 달라지지 않는다.
+- **plan 실행 진행 표시**: 3단계(`subagent-driven-development`·`executing-plans`)를 시작할 때
+  `orca-plan-ledger`를 함께 로드한다. 태스크 경계마다 Orca 워크스페이스 카드에 진행이 찍힌다.
+  Orca 밖(`ORCA_WORKTREE_ID` 없음)에서는 게이트에서 no-op이라 동작이 동일하다.
+  **가산적 장식층이다** — 원장이 실행 순서·게이트·산출물 경로를 바꾸지 않는다.
+  진행의 정본은 SDD의 `.superpowers/sdd/<plan>/progress.md`와 `git log`이고 카드는 그 투영이다.
 
 ### B. 제품 문서 작업 (PRD·positioning·roadmap·user story·discovery 등)
 → **PM-Skills 사용** (`writing-plans` 대신 이쪽이 문서판 대응물):

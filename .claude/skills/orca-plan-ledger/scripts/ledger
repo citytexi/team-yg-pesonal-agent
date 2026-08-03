@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# orca-plan-ledger — mirror superpowers plan progress into the Orca sidebar card.
+#
+# Contract: this script NEVER fails a plan run. Every path exits 0.
+# Outside Orca it is a silent no-op.
+#
+# Verbs:
+#   ledger start <plan.md> [sdd-ledger-path]
+#   ledger task <k> "<title>"
+#   ledger ok <k>
+#   ledger fail "<reason>"
+#   ledger end
+#   ledger clear                   # blank the card comment
+#   ledger pane [tail-path]        # opt-in only; creates a split (steals focus)
+#   ledger status                  # debug: print resolved state
+
+set -u
+
+# --- gate ---------------------------------------------------------------
+ORCA_WT="${ORCA_WORKTREE_ID:-${ORCA_WORKSPACE_ID:-}}"
+[ -n "$ORCA_WT" ] || exit 0
+command -v orca >/dev/null 2>&1 || exit 0
+
+# --- state --------------------------------------------------------------
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/orca-plan-ledger"
+KEY="$(printf '%s' "$ORCA_WT" | tr -c 'A-Za-z0-9' '_')"
+STATE="$STATE_DIR/$KEY.env"
+mkdir -p "$STATE_DIR" 2>/dev/null || exit 0
+
+PLAN=""; TOTAL="?"; SDD_LEDGER=""; PANE=""
+# shellcheck disable=SC1090
+[ -f "$STATE" ] && . "$STATE" 2>/dev/null
+
+save_state() {
+  {
+    printf 'PLAN=%q\n' "$PLAN"
+    printf 'TOTAL=%q\n' "$TOTAL"
+    printf 'SDD_LEDGER=%q\n' "$SDD_LEDGER"
+    printf 'PANE=%q\n' "$PANE"
+  } >"$STATE" 2>/dev/null || true
+}
+
+# best-effort orca call: never blocks, never reports
+o() { orca "$@" --json >/dev/null 2>&1 || true; }
+
+# `orca worktree set --comment ""` is a no-op (empty means "leave unchanged"),
+# so a single space is the only way to blank the card.
+card() { # card <comment> [status]
+  if [ $# -ge 2 ] && [ -n "$2" ]; then
+    o worktree set --worktree "id:$ORCA_WT" --comment "$1" --workspace-status "$2"
+  else
+    o worktree set --worktree "id:$ORCA_WT" --comment "$1"
+  fi
+}
+
+VERB="${1:-}"; shift 2>/dev/null || true
+
+case "$VERB" in
+  start)
+    PLAN="${1:-}"
+    [ -n "$PLAN" ] || exit 0
+    if [ -f "$PLAN" ]; then
+      n=$(grep -cE '^#{1,3} +Task +[0-9]+' "$PLAN" 2>/dev/null || echo 0)
+      [ "$n" -gt 0 ] 2>/dev/null && TOTAL="$n"
+    fi
+    SDD_LEDGER="${2:-}"
+    PANE=""
+    save_state
+    card "0/$TOTAL $(basename "$PLAN")" "in-progress"
+    ;;
+
+  task)
+    k="${1:-}"; title="${2:-}"
+    [ -n "$k" ] && [ -n "$title" ] || exit 0
+    card "$k/$TOTAL $title"
+    ;;
+
+  ok)
+    k="${1:-}"
+    [ -n "$k" ] || exit 0
+    card "$k/$TOTAL done"
+    ;;
+
+  fail)
+    reason="${1:-}"
+    [ -n "$reason" ] || exit 0
+    card "BLOCKED: $reason" "in-review"
+    ;;
+
+  end)
+    if [ -n "$PLAN" ]; then
+      card "plan complete — $(basename "$PLAN")" "in-review"
+    else
+      card "plan complete" "in-review"
+    fi
+    [ -n "$PANE" ] && o terminal close --terminal "$PANE"
+    PANE=""
+    save_state
+    ;;
+
+  clear)
+    card " "
+    ;;
+
+  pane)
+    target="${1:-$SDD_LEDGER}"
+    [ -n "$target" ] || exit 0
+    [ -n "${ORCA_TERMINAL_HANDLE:-}" ] || exit 0
+    out=$(orca terminal split --terminal "$ORCA_TERMINAL_HANDLE" \
+            --direction horizontal --command "tail -F '$target'" --json 2>/dev/null) || exit 0
+    PANE=$(printf '%s' "$out" | sed -n 's/.*"handle" *: *"\([^"]*\)".*/\1/p' | head -1)
+    save_state
+    ;;
+
+  status)
+    printf 'worktree=%s\nplan=%s\ntotal=%s\nsdd_ledger=%s\npane=%s\n' \
+      "$ORCA_WT" "$PLAN" "$TOTAL" "$SDD_LEDGER" "$PANE"
+    ;;
+
+  *) : ;;
+esac
+
+exit 0
