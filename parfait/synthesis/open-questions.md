@@ -173,8 +173,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-29] 유효성 결과 매핑 as-built가 ADR-0016 원안과 다름
 - **출처**: `domain/model/NameValidResult.kt`·`domain/usecase/CheckNameValidUseCase.kt`·`feature/groups/enter/impl` `GroupNickNameViewModel`·`GroupCreateViewModel`·`core/ui/res/values/strings.xml`(PR #179 develop 머지). [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)은 `NicknameResult` sealed + `core:ui` `NicknameResult.Error.toStringResource()` 확장 + `core:ui`→`:domain` 의존을 결정했으나, 머지된 코드는 타입명이 `NameValidResult`(그룹명 공용)이고 **표시 매핑이 각 feature ViewModel의 `when`**(리소스 ID 산출)이며 `toStringResource` 확장·`core:ui`→`:domain` 의존은 없다. 에러 문자열 자체는 `core:ui` `strings.xml` 공용.
 - **항목**: ① 매핑을 ADR 원안대로 `core:ui` 확장으로 끌어올려 VM 중복을 없앨지, ② as-built(VM이 `@StringRes` 산출)를 정본으로 ADR-0016을 개정할지. ②를 택하면 "UI State가 리소스 ID를 보유"가 규약이 되므로 [state-management](../architecture/state-management.md)에도 한 줄 필요.
-- **상태**: 미해결 (문서/코드 정합 — 미구현 화면 S-002가 이 결정에 종속)
+- **상태**: 미해결 (문서/코드 정합)
 - **해소 메모**: 결정 후 ADR-0016 as-built 표를 정리하고 [s002-account-info 스펙](../specs/2026-07-22-s002-account-info.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md)·[a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)의 매핑 서술을 맞춘다.
+  > 📌 **as-built 쪽으로 한 표 더 쌓임(2026-08-03)** — S-002 브랜치(`feature/#86-app-setting-account-info-screen`)가 원안대로 `NicknameResult` + `core:ui` `text/NickNameResultUiText.kt#toStringResource` 확장을 실제로 구현해 갖고 있었으나, develop rebase에서 **폐기하고 VM `when` 매핑으로 수렴**시켰다(develop이 이미 `NameValidResult`로 머지돼 타입·패키지가 충돌). 이로써 `toStringResource` 확장은 코드베이스 어디에도 남지 않고, VM 매핑 사례가 `GroupNickNameViewModel`·`GroupCreateViewModel`·`AccountInfoViewModel` **3건**이 됐다. 원안(①)으로 되돌리려면 이제 3곳을 동시에 고쳐야 한다 — 결정을 미룰수록 ① 비용이 오른다.
 
 ### [2026-07-29] A-005 그룹 생성 화면 진입 경로 부재
 - **출처**: `feature/groups/enter/api/NavKeyGroupCreate.kt`·`feature/groups/enter/impl/navigation/EntryBuilder.kt#featureGroupCreateEntryBuilder`(PR #179 develop 머지) — entry·DI는 등록됐으나 `NavKeyGroupCreate`로 `goTo` 하는 호출자가 코드 전체에 없다. 직전 단계 후보인 `GroupNickNameRoute`의 `NavigateToNext`는 여전히 stub이고, A-005는 `nickName` 인자를 요구한다.
@@ -480,6 +481,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: Android 9(API 28)부터 평문 HTTP는 기본 차단이라, 실제 연동을 시작하면 **모든 요청이 `CLEARTEXT communication not permitted`로 실패**한다. 서버에 HTTPS를 적용할지(권장), 아니면 debug 빌드 한정으로 `network_security_config.xml`에 해당 호스트만 허용할지 결정한다. 후자는 release 빌드가 HTTPS 전환 전까지 동작하지 않는다는 뜻이므로 서버 일정과 묶인다.
 - **상태**: 미해결 (서버팀 확인 필요)
 - **해소 메모**: 결정 후 [api/conventions.md](../api/conventions.md)와 앱 매니페스트·`local.properties` 안내를 갱신한다.
+
+### [2026-08-03] `clickableYGNoRipple` 사용처 0 — 존치 여부
+- **출처**: `core/util/android/clickable/YGClickable.kt#clickableYGNoRipple` — `YGScreen` 배경 탭 포커스 해제를 위해 신설됐으나, 그 결선이 접근성 사유로 철회되고 [clearfocusontap-modifier](../specs/2026-08-03-clearfocusontap-modifier.md)(`pointerInput` 기반)로 대체되면서 **호출자가 코드 전체에 없다**(정의만 잔존). 함께 들어온 `clickableYGThrottle`의 `indications: List<Indication>?` nullable 일반화도 이 API 전용이다.
+- **항목**: ① 존치 — `clickableYG`/`DimRipple`/`ScaleRipple`/`MergeRipple` 4종과 세트를 이루는 공용 API라 "리플 없는 클릭"이 앞으로 쓰일 수 있다, ② 제거(YAGNI) — 제거 시 `clickableYGThrottle`의 nullable 일반화도 함께 되돌려 시그니처를 원복해야 한다.
+- **상태**: 미해결 (코드 수정 대상 — 현재 죽은 API)
+- **해소 메모**: 제거를 택하면 [clickableyg-throttle 스펙](../specs/archive/2026-07-12-clickableyg-throttle.md)·[clickableyg-ripple-variants 스펙](../specs/archive/2026-07-13-clickableyg-ripple-variants.md)의 변형 목록을 함께 정리한다.
+
+### [2026-08-03] 배경 탭 포커스 해제가 입력 화면 3종에 미적용
+- **출처**: `feature/groups/enter/impl` `GroupNickNameScreen`·`GroupCreateScreen`·`invitecode/component/InviteCodeInputFieldElement` — 텍스트 입력이 있으나 `YGScreen`을 쓰지 않아(각각 `Column`·`YGScaffold` 기반) 빈 영역 탭 포커스 해제가 없다. S-002만 [clearFocusOnTap](../specs/2026-08-03-clearfocusontap-modifier.md)을 적용했다.
+- **항목**: ① 입력이 있는 화면 전부에 `Modifier.clearFocusOnTap()`을 붙여 UX를 통일할지, ② 통일한다면 "텍스트 입력이 있는 화면은 화면 최외곽에 `clearFocusOnTap()`을 붙인다"를 [design-system](../architecture/design-system.md) 또는 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 규약으로 명문화할지.
+- **상태**: 미해결 (회귀는 아님 — 이 화면들은 이전에도 없었다)
+- **해소 메모**: 적용 시 [clearfocusontap-modifier 스펙](../specs/2026-08-03-clearfocusontap-modifier.md)의 "미적용 입력 화면 3종" 항목을 정리한다.
 
 <!--
 항목 추가 형식:

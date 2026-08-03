@@ -10,7 +10,7 @@ related_code:
   - YGScreenScope.kt#YGScreenScope
   - YGScaffold.kt#YGScaffold
 related_adr: ADR-0010
-related_spec:
+related_spec: clearfocusontap-modifier
 related_architecture: design-system, navigation-flow
 supersedes:
 superseded_by:
@@ -69,7 +69,18 @@ class YGScreenScope {
 
 ## 동작 / 상태
 - **뒤로가기(YGScreenScope.OnBack)**: content 안에서 `OnBack { ... }`을 **호출한 화면만** 뒤로가기를 가로챈다. 호출하지 않으면 `BackHandler` 자체가 emit되지 않아 시스템 기본 동작. → 처리 안 하는 화면에 강제 리턴/no-op 불필요.
-- **배경 탭 → 포커스 해제**(🔁 2026-07-23 추가): `YGScreen`의 `Surface`에 `clickableYGNoRipple { focusManager.clearFocus() }`(`LocalFocusManager`) 결선. 빈 영역 탭 시 포커스·키보드 해제. YGScreen 쓰는 전 화면 공통(닉네임 입력 화면 등 IME 닫기 UX).
+- **배경 탭 → 포커스 해제**: ~~2026-07-23 `YGScreen`의 `Surface`에 `clickableYGNoRipple { focusManager.clearFocus() }` 결선~~ →
+  🔁 **2026-08-03 철회. `YGScreen`은 포커스 관심사를 갖지 않는다.** 대신 opt-in Modifier
+  [`Modifier.clearFocusOnTap()`](../2026-08-03-clearfocusontap-modifier.md)(`core:util:android` `focus/`)를 입력이 있는 화면이 직접 붙인다.
+  - **철회 사유 ①(접근성)**: `clickableYGNoRipple`은 내부적으로 `Modifier.clickable`이라, `role = null`이어도
+    semantics에 `onClick` action과 focus target을 추가한다. → `YGScreen`을 쓰는 **모든 화면의 배경 전체**가
+    TalkBack에는 단일 인터랙티브 요소로, 키보드/D-pad 탐색에는 포커스 스톱으로 노출된다.
+    `onClickLabel`도 `null`이라 라벨 없이 "두 번 탭하여 활성화"만 읽힌다.
+  - **철회 사유 ②(적용 범위 역전)**: 당시 `YGScreen` 사용처는 `AppSettingScreen`(입력 없음)·`AccountInfoScreen`뿐이었고,
+    정작 텍스트 입력이 있는 `GroupNickNameScreen`·`GroupCreateScreen`·`InviteCodeInputFieldElement`는
+    `YGScreen`을 쓰지 않아 혜택을 못 받았다. 공용 컨테이너에 두면 **필요 없는 화면이 접근성 비용만 지고
+    필요한 화면은 못 받는** 배치가 된다.
+  - 이 철회로 `clickableYGNoRipple`은 사용처 0이 됐다(정의만 잔존) → [open-questions](../../synthesis/open-questions.md) [2026-08-03].
 - **scope 인스턴스**: `YGScreen` 내부에서 `remember { YGScreenScope() }`로 1회 생성(recomposition마다 재할당 안 함). stateless지만 `@Stable`.
 - **컨테이너 색·모양**: 런타임 상태 없음. 전부 prop 기본값(토큰).
 

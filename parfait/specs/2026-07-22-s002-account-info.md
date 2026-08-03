@@ -13,10 +13,12 @@ related_code:
   - CheckNameValidUseCase.kt#CheckNameValidUseCase
   - NameValidResult.kt#NameValidResult
   - GroupCreateConfig.kt#GroupCreateConfig
+  - YGLabel.kt#YGLabel
+  - ClearFocusOnTap.kt#clearFocusOnTap
   - core/ui/res/values/strings.xml
   - EntryBuilder.kt#featureAppSettingEntryBuilder
 related_adr: ADR-0005, ADR-0006, ADR-0009, ADR-0016
-related_spec: s102-group-nickname, app-setting-s001
+related_spec: s102-group-nickname, app-setting-s001, clearfocusontap-modifier, ygtext-date-label
 related_architecture: state-management, navigation-flow
 supersedes:
 superseded_by:
@@ -35,30 +37,43 @@ tags: [spec, parfait, setting, account, nickname, s002]
 > 에러 문자열 리소스는 `core:ui` `strings.xml`에 이미 존재(닉네임용 4종). 아래 본문은 **as-built 계약 기준으로 갱신**했고,
 > 매핑 위치를 원안(core:ui 확장)으로 되돌릴지는 미결 → [open-questions](../synthesis/open-questions.md) [2026-07-29].
 > **남은 구현 범위는 `feature/app/setting/impl`의 AccountInfo 3종(Route/Screen/ViewModel)뿐이다.**
+>
+> 🔁 **2026-08-03 정정 — Danger Zone은 이 화면이 아니라 S-001 소속** (Figma 실물 대조).
+> 초안은 로그아웃·서비스 탈퇴 진입점을 S-002에 뒀으나, Figma `S-002`(node `220:2192`)에는
+> **닉네임 Input-Field 하나뿐이고 Danger Zone이 없다.** `Danger-Zone`(node `2019:6010`)은
+> Figma `S-001`(node `220:2176`) Contents 최하단에 있다. → 로그아웃/탈퇴 Intent·핸들러·문자열을
+> **전부 S-001([S-001 앱 설정](archive/2026-07-19-app-setting-s001.md))로 이관**하고 이 스펙의 해당 범위를 삭제했다.
+> 같은 정정으로 상단바가 `YGTopBarBack` → **`YGTopBarDetail(title)`**(Figma Top Bar에 타이틀
+> "계정 정보" 존재), 섹션 라벨이 인라인 `Text` → **`YGLabel`**, 화면 최외곽에
+> **`Modifier.clearFocusOnTap()`** 적용으로 확정됐다.
 
 - **화면 ID**: S-002 (앱 설정 → 계정 정보)
+- **Figma**: `S-002`(node `220:2192`) — 파르페 v0.1
 - **대상 모듈**: `feature/app/setting/impl`(`route/`·`screen/`·`viewmodel/`) + `domain`(공유 UseCase 확장)
-- **진입**: S-001 앱 설정([[app-setting-s001]])의 "계정 정보" 항목 → `NavKeyAccountInfo`. Route stub·entry·NavKey는 S-001에서 이미 생성됨 → 이 스펙은 stub 본문을 채운다.
+- **진입**: S-001 앱 설정([S-001 앱 설정](archive/2026-07-19-app-setting-s001.md))의 "계정 정보" 항목 → `NavKeyAccountInfo`. Route stub·entry·NavKey는 S-001에서 이미 생성됨 → 이 스펙은 stub 본문을 채운다.
 - **입력 유효성**: 위키 [[S-002-앱닉네임-정책-v0.1]]·[[이름-입력-규칙]]. S-102와 규칙 동일(앱/그룹 공통 15자).
 
 ## 목표
 
-계정 레벨(앱) 닉네임을 조회·수정하고, 로그아웃·서비스 탈퇴 진입점을 제공하는 화면.
+계정 레벨(앱) 닉네임을 조회·수정하는 화면.
 닉네임은 입력 즉시 유효성 검사를 돌려 위반 시 인라인 에러를 노출한다.
 
 ## 범위
 
-- 포함: 닉네임 입력 폼(최대 15자)·**입력 시 실시간** 유효성 검사·에러 메시지 인라인 노출·클리어(X)·로그아웃/탈퇴 진입점 UI·뒤로가기.
+- 포함: 닉네임 입력 폼(최대 15자)·**입력 시 실시간** 유효성 검사·에러 메시지 인라인 노출·클리어(X)·빈 영역 탭 시 포커스 해제·뒤로가기.
 - 제외(구현 TODO):
   - **닉네임 저장 영속화** — 프로필 API 미연동. `nickname` 초기값은 placeholder, 저장 usecase 없음(로컬 상태+검증까지만).
-  - **로그아웃 / 서비스 탈퇴** — Intent는 정의하되 ViewModel 핸들러는 stub(logger + TODO, side effect·API 없음).
+- 제외(타 화면 소속):
+  - **로그아웃 / 서비스 탈퇴** — Figma상 Danger Zone은 S-001 소속 → [S-001 앱 설정](archive/2026-07-19-app-setting-s001.md)로 이관(위 2026-08-03 정정).
 
 ## 화면 구성 (전부 기존 DS 컴포넌트 재사용)
 
-- 상단 `YGTopBarBack`(title="계정 정보"), `onIconClick` → 뒤로.
-- 섹션 라벨 "닉네임"(`YGTheme.typography` body, Gray).
-- `YGTextFormField(value, onValueChange, maxLength = 15, isError, errorDescription)` — 카운터(N/15)·클리어(X)·포커스/에러 테두리 내장.
-- `YGDangerZone(topZone = YGActionItem("로그아웃"), bottomZone = YGActionItem("서비스 탈퇴하기"))`.
+- 최외곽 `YGScreen(modifier = modifier.clearFocusOnTap())` + `OnBack { onClickBack() }`.
+  포커스 해제는 `YGScreen` 기본 동작이 아니라 **입력이 있는 화면이 명시적으로 붙이는 opt-in**이다 → [clearFocusOnTap 스펙](2026-08-03-clearfocusontap-modifier.md).
+- 상단 `YGTopBarDetail(title = "계정 정보", onIconClick)` → 뒤로. (Figma Top Bar에 caret-left + 타이틀 both)
+- 섹션 라벨 `YGLabel("닉네임")` — `component/ygtext/`의 타이포+색 프리셋(`body.b02R` + `Gray400`). Figma Label(14px gray-400)과 일치.
+- `YGTextFormField(value, onValueChange, maxLength = GroupCreateConfig.NICKNAME_MAX_LENGTH, isError, errorDescription)` — 카운터(N/15)·클리어(X)·포커스/에러 테두리 내장.
+- 라벨↔필드 간격 `gap.gap2`, Contents 좌우 패딩 `padding.padding7`(Figma Input 폭 335 = 375−40).
 
 ## API / 인터페이스
 
@@ -85,31 +100,33 @@ class CheckNameValidUseCase @Inject constructor() {   // ADR-0009, 패키지 dom
 
 // impl — MVI (기존 AppSetting 패턴 미러 + GroupNickNameViewModel as-built 미러)
 data class AccountInfoUiState(
-    val nickName: String = /* placeholder */ "",
-    val nickNameErrorResId: Int? = null,   // VM이 NameValidResult.Error → core:ui @StringRes 매핑
+    val nickname: String = /* placeholder */ "대충지은랜덤닉네임",
+    val errorMessageResId: Int? = null,   // VM이 NameValidResult.Error → core:ui @StringRes 매핑
 ) : UiState
 
 sealed interface AccountInfoIntent : UiIntent {
     data class InputWord(val nickName: String) : AccountInfoIntent
     data object ClickBack : AccountInfoIntent
-    data object ClickLogout : AccountInfoIntent
-    data object ClickWithdraw : AccountInfoIntent
 }
 sealed interface AccountInfoSideEffect : UiSideEffect {
     data object NavigateBack : AccountInfoSideEffect
 }
 ```
 
+> **필드명은 `GroupNickNameViewModel` as-built를 그대로 미러한다** — `errorMessageResId`(초안 `nickNameErrorResId` 아님).
+> 화면 상태가 닉네임 하나뿐이라 필드명에 `nickName` 접두를 두지 않는다.
+
 ## 동작 / 상태
 
-- **입력**(`InputWord`): `nickName` 갱신 + **즉시** `CheckNameValidUseCase(nickName)` 실행 →
-  결과를 `when`으로 분기해 `nickNameErrorResId`에 `core:ui` 문자열 리소스 ID를 담는다(`Success`면 `null`).
+- **입력**(`InputWord`): `nickname` 갱신 + **즉시** `CheckNameValidUseCase(nickName)` 실행 →
+  결과를 `when`으로 분기해 `errorMessageResId`에 `core:ui` 문자열 리소스 ID를 담는다(`Success`면 `null`).
   확인 버튼이 없으므로 검증은 실시간. Screen은 `stringResource(id)`로 렌더한다(as-built 관용구, `GroupNickNameViewModel` 미러).
 - **길이 상한**: `domain` `GroupCreateConfig.NICKNAME_MAX_LENGTH` → `YGTextFormField(maxLength = …)`가
   16번째 글자 입력을 하드 차단. UseCase는 길이 미검사(입력 단계에서 강제). 위키 "1~15자"와 일치.
   (#179에서 상수 소유처가 Screen 지역 상수 → domain 설정 객체로 이동됨 — 화면별 상수 재정의 금지.)
-- **뒤로가기**(`ClickBack`) → `NavigateBack` → `navigator.onBack()`.
-- **로그아웃/탈퇴**(`ClickLogout`/`ClickWithdraw`): VM 핸들러 stub(logger + TODO). side effect·네비게이션 없음.
+- **뒤로가기**(`ClickBack`) → `NavigateBack` → `navigator.onBack()`. 시스템 back은 `YGScreenScope.OnBack`이 같은 콜백으로 가로챈다.
+- **포커스 해제**: 화면 빈 영역 탭 → `clearFocusOnTap()`이 `LocalFocusManager.clearFocus()` 호출(IME 닫힘).
+  `YGTextFormField` 자체 탭은 필드가 먼저 소비하므로 영향 없다.
 
 ### 유효성 규칙 (`CheckNameValidUseCase`, 순차 검사 — 첫 실패 반환)
 
@@ -135,9 +152,10 @@ sealed interface AccountInfoSideEffect : UiSideEffect {
 - `feature/app/setting/api/NavKeyAccountInfo.kt` — 목적지 키(**기존, 무변경**).
 - `feature/app/setting/impl/navigation/EntryBuilder.kt` — `entry<NavKeyAccountInfo>` 이미 `AccountInfoRoute` 연결(**무변경**).
 - `feature/app/setting/impl/route/AccountInfoRoute.kt` — VM 배선(`hiltViewModel`·`collectAsStateWithLifecycle`·`LaunchedEffect` effect 수집), back→onBack. **stub 본문 채움**.
-- `feature/app/setting/impl/screen/AccountInfoScreen.kt` — stateless UI(길이 상한은 `GroupCreateConfig` 참조). `@YGPreview`(기본/포커스/에러 상태 PreviewParameter).
+- `feature/app/setting/impl/screen/AccountInfoScreen.kt` — stateless UI(길이 상한은 `GroupCreateConfig` 참조, 라벨은 `YGLabel`, 최외곽 `clearFocusOnTap()`). `@YGPreview`(기본/에러 상태 PreviewParameter).
 - `feature/app/setting/impl/viewmodel/AccountInfoViewModel.kt` — MVI, `CheckNameValidUseCase` 주입 + `NameValidResult.Error` → `core:ui` `@StringRes` 매핑.
-- `feature/app/setting/impl/res/values/strings.xml` — `account_info_title`·`account_info_nickname_label`·`account_info_logout`·`account_info_withdraw`(닉네임 에러 문자열은 core:ui 소유라 제외).
+- `feature/app/setting/impl/res/values/strings.xml` — `account_info_title`·`account_info_nickname_label`
+  (닉네임 에러 문자열은 core:ui 소유라 제외. `setting_logout`·`setting_withdraw`는 S-001 소속으로 이관 — 초안의 `account_info_logout`/`account_info_withdraw` 키는 폐기).
 - ~~`domain` 모델·UseCase 변경~~ — **#179로 머지 완료(무변경)**: `NameValidResult` sealed, `CheckNameValidUseCase`(`domain.usecase`) 4규칙, `GroupCreateConfig` 길이 상한.
 - ~~`core/ui` 매핑 확장·strings 신설~~ — 에러 문자열 4종은 **#179로 `core:ui` `strings.xml`에 이미 존재**. 매핑 확장(`toStringResource`)은 미머지이며 as-built는 VM 매핑(→ open-questions).
 
@@ -153,5 +171,6 @@ sealed interface AccountInfoSideEffect : UiSideEffect {
 ## 주의 / 열린 질문
 
 - **닉네임 저장 미구현** — 프로필 조회/수정 API 연동 시 초기값 로드 + 저장 트리거(포커스 해제/IME 완료 등) 확정 필요.
-- **로그아웃/탈퇴 미구현** — auth·회원 API 연동 시 확인 모달(YGModalPopup) + 실제 처리 결선 필요.
-- 유효성: 문자·공백 규칙은 UseCase, 길이(15)는 Screen 상수로 검사 위치 이원화(S-102와 동일 구조) — 단일 소유처 아님(향후 통합 여지).
+  `clearFocusOnTap()`이 이미 포커스 해제 지점을 만들어 뒀으므로, "포커스 해제 시 저장"을 택하면 여기가 훅 지점이 된다.
+- **로그아웃/탈퇴는 S-001 소속** — auth·회원 API 연동 시 확인 모달(YGModalPopup) + 실제 처리 결선 필요. 추적은 [S-001 앱 설정](archive/2026-07-19-app-setting-s001.md).
+- 유효성: 문자·공백 규칙은 UseCase, 길이(15)는 `domain` `GroupCreateConfig`로 검사 위치 이원화(S-102와 동일 구조) — 단일 소유처 아님(향후 통합 여지).
