@@ -6,9 +6,9 @@
 
 ## 현재 기준선
 - **repo**: `TEAMYG-SERVER` (`mash-up-kr/TEAMYG-SERVER`) **`main`**
-- **커밋**: `6f5bffc`
-- **요약**: `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`
-- **검증일**: 2026-08-02 (2회차)
+- **커밋**: `69654bc`
+- **요약**: `[Feat/#64] 약관 목록 조회 API 구현 (#65)`
+- **검증일**: 2026-08-03 (3회차)
 
 ### 왜 `main`인가
 서버 저장소의 기본 브랜치가 `main`이고(`origin/HEAD -> origin/main`) 기능 PR이 main으로 머지된다.
@@ -36,3 +36,4 @@ signup·파르페 연도 조회 두 API를 갖고 있지 않았다. 앱이 바�
 |--------|-----------|------|------|
 | 2026-08-01 | `6b05b8c` | `[Feat/#61] 그룹별 캘린더 연도 리스트 조회 API (#62)` | 체계 신설. 도메인 3건(auth 2·parfait-group 8·parfait 1) 전량 초기 작성. Android 대응 심볼 0건 → 전 엔드포인트 `미구현`. 불일치 3건·URL 규약 혼재 open-questions 등록. 체계 신설 도중 서버가 전진해 같은 라운드에서 `6f5bffc`로 올림 |
 | 2026-08-02 | `6f5bffc` | `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)` | 패키지 전면 재편(`http/api/auth`→`http/auth`, `http/api/parfait`→`http/parfait`, `http/api/health`→`http/global/health`, `http/parfaitgroup/*.kt`→`{controller,dto,exception}/`) · auth 신규 엔드포인트 2(`reissue`·`logout`) · `AuthErrorCode` 12종(`FORBIDDEN_REFRESH_TOKEN` 신설) · 화이트리스트 `/api/v1/auth/**`→개별 3경로(`kakao`·`signup`·`reissue`) 축소, `logout` 제외 · 그룹(`parfait-group`) 계약 불변 |
+| 2026-08-03 | `69654bc` | `[Feat/#64] 약관 목록 조회 API 구현 (#65)` | delta 1커밋. 신규 도메인 `policy`(`GET /api/v1/policies`, 문서 [policy.md](policy.md) 신설·인덱스 등록) — 서버 위치는 `http/auth`인데 URL 세그먼트가 최상위라 auth와 분리. 화이트리스트에 `/api/v1/policies` 추가 · 도메인 전용 에러코드 0종(빈 배열도 200) · `url`은 `Tos.content` 컬럼 재사용 · 정렬은 `PolicyQueryService`가 `TERMS_OF_SERVICE`→`PRIVACY_POLICY`로 고정. auth·parfait-group·parfait 계약 불변. **미결 1건 해소**(약관 목록 API 부재) + 신규 2건 등록(`url` 의미·앱 연동 미착수) |

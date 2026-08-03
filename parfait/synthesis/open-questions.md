@@ -437,8 +437,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-02] 약관 목록 조회 API 부재 — 앱이 termsId를 얻을 경로가 없음
 - **출처**: 팀 명세([api/spec/auth-signup.md](../api/spec/auth-signup.md))의 `POST /api/v1/auth/signup`이 `agreements[].termsId`를 필수로 요구하고, 서버 `SignupService.validateAgreements`가 `TosQueryPort.findCurrentTerms`(타입별 최신 버전)와 대조해 어긋나면 `TERMS_NOT_FOUND` 400을 던진다. 그런데 **현재 유효한 약관 목록(id·필수 여부·본문·랜딩 URL)을 조회하는 엔드포인트가 서버 계약에 없다**([api/README.md](../api/README.md) 도메인 3건 어디에도 없음).
 - **항목**: 약관 목록 조회 API를 서버가 제공할 것인지 확인. 없으면 앱이 `termsId`를 하드코딩해야 하는데, 약관이 개정돼 최신 버전 id가 바뀌면 전 신규 가입이 `TERMS_NOT_FOUND` 400으로 막힌다. 온보딩 약관 동의 화면(TermAgree)이 이미 구현돼 있어(랜딩 URL·저장 TODO 잔존) 연동 시점에 걸린다.
+- **상태**: 해소됨 (2026-08-03)
+- **해소 메모**: 서버가 `[Feat/#64] 약관 목록 조회 API 구현 (#65)`(`69654bc`)로 **`GET /api/v1/policies`**를 신설했다 — `termsId`·`type`·`title`·`url`·`required`를 내려주고 signup과 **같은 포트**(`TosQueryPort.findCurrentTerms`)를 쓰므로 목록이 준 id는 같은 시점의 signup에서 유효하다. 계약은 [api/policy.md](../api/policy.md), 명세 대조는 [api/spec/auth-signup.md](../api/spec/auth-signup.md) "코드에만 있음"에 반영. 앱 측 연동(`TermContent.kt#TERM_CONTENT_LIST` 리터럴·랜딩 URL TODO 제거)은 미착수라 아래 신규 항목으로 승계한다.
+
+### [2026-08-03] 약관 목록 응답 `url`이 링크인지 전문인지 스키마로 보장되지 않음
+- **출처**: `GET /api/v1/policies`([api/policy.md](../api/policy.md))의 `policies[].url`을 `TosAdapter`가 `url = it.content`로 채운다. `Tos.content`는 `@Lob` `LONGTEXT` 컬럼이라 약관 **전문**이 들어갈 수 있는 자리이며, URL 전용 컬럼은 추가되지 않았다(서버 커밋 메시지도 "별도 컬럼을 추가하지 않고 기존 `tos.content` 값을 그대로 재사용"이라고 명시).
+- **항목**: 운영 DB의 `tos.content`에 무엇을 넣기로 했는지(랜딩 URL / 약관 전문) 서버팀 확인. 전문이 들어가면 앱이 `url`을 브라우저·WebView로 열 수 없고, 컬럼 의미가 signup 흐름과 목록 조회 흐름에서 갈린다.
 - **상태**: 미해결 (서버팀 확인 필요)
-- **해소 메모**: 확인 후 [api/spec/auth-signup.md](../api/spec/auth-signup.md) "미결"과 해당 도메인 계약 문서를 갱신한다.
+- **해소 메모**: 확인 후 [api/policy.md](../api/policy.md) 응답 필드 표와 "미결"을 갱신한다.
+
+### [2026-08-03] 온보딩 약관 화면이 서버 약관 목록을 쓰지 않음(리터럴 잔존)
+- **출처**: `feature/intro/impl`의 `TermContent.kt#TERM_CONTENT_LIST`가 약관 항목 title을 코틀린 리터럴로 갖고 랜딩 URL은 TODO다. 서버는 `GET /api/v1/policies`로 `termsId`·`title`·`url`·`required`를 내려준다([api/policy.md](../api/policy.md)) — 앱 `:data`에 대응 Service·Response·DataSource가 아직 없다.
+- **항목**: 약관 동의 화면을 서버 목록 기반으로 전환. 응답이 **빈 배열일 수 있다**는 점(200 정상)과 배열 순서(`TERMS_OF_SERVICE` → `PRIVACY_POLICY` 서버 고정)를 화면 계약에 반영해야 한다. 리터럴 title 리소스화 건([2026-07-29] 다국어 항목 ③)도 이 전환에 흡수된다.
+- **상태**: 미해결 (앱 미착수)
+- **해소 메모**: 연동 후 [api/policy.md](../api/policy.md) "Android 매핑"과 엔드포인트 표 Android 열을 갱신한다.
 
 ### [2026-08-02] 키 유실(Keystore 무효화) 경로 미검증
 - **출처**: [ADR-0019](../adr/0019-encrypted-token-storage.md) "키 유실 시 정책" — 기기 복원·잠금 화면 자격증명 변경 등으로 Keystore 키가 무효화되면 `CryptoManager.decrypt`가 예외를 던지고 `EncryptedTokenStore.read()`가 이를 잡아 `clear()` 후 `null`을 반환하도록 설계됐다. 코드베이스에 `test`/`androidTest`가 없고 Android Keystore는 JVM 유닛 테스트에서 동작하지 않아 이 경로를 재현·검증하지 못했다.

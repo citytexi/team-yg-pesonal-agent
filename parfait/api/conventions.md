@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: 6f5bffc
-verified: 2026-08-02
+server_commit: 69654bc
+verified: 2026-08-03
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -79,12 +79,15 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 - `/api/v1/auth/kakao`
 - `/api/v1/auth/signup`
 - `/api/v1/auth/reissue`
+- `/api/v1/policies`
 
 인증 실패는 `AuthErrorCode.UNAUTHORIZED`(401)로 나간다.
 
 `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`(`6f5bffc`)이 기존 `/api/v1/auth/**` 와일드카드를
-위 3경로 개별 등록으로 좁혔다. **`/api/v1/auth/logout`은 화이트리스트에 없어 인증 대상**이다 — 인증 도메인
+위 auth 3경로 개별 등록으로 좁혔다. **`/api/v1/auth/logout`은 화이트리스트에 없어 인증 대상**이다 — 인증 도메인
 4개 엔드포인트 중 access token이 필요한 유일한 엔드포인트다(상세는 [auth.md](auth.md)).
+`/api/v1/policies`는 `[Feat/#64] 약관 목록 조회 API 구현 (#65)`(`69654bc`)이 같은 개별 등록 방식으로
+추가했다(상세는 [policy.md](policy.md)).
 
 **관측 사실**: `HealthController`가 매핑한 `GET /health`(`http/global/health`, #63이 `http/api/health`에서
 옮겼다)는 화이트리스트의 `/actuator/health`와 경로가 달라 **인증 대상**이다.
@@ -95,7 +98,7 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 
 | 형태 | 예 |
 |---|---|
-| `/api/v1/<도메인>` | `/api/v1/auth/kakao` · `/api/v1/auth/signup` · `/api/v1/auth/reissue` · `/api/v1/auth/logout` |
+| `/api/v1/<도메인>` | `/api/v1/auth/kakao` · `/api/v1/auth/signup` · `/api/v1/auth/reissue` · `/api/v1/auth/logout` · `/api/v1/policies` |
 | `/api/v1/groups/{groupId}/<하위>` | `/api/v1/groups/{groupId}/parfaits/year` |
 | `/api/<도메인>` (버전 없음) | `/api/parfait-groups` |
 

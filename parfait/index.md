@@ -4,7 +4,7 @@
 
 ## 지금 상태 (1줄)
 Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록 골격·C-101 카메라 플로우까지 들어왔고 둘 다 **데이터·후속 화면 미결선** 상태다.
-서버 계약은 `api/`에 스냅샷돼 있고(도메인 3건), Android 대응 심볼은 아직 0건이다.
+서버 계약은 `api/`에 스냅샷돼 있고(도메인 4건·엔드포인트 14개), Android 대응 심볼은 아직 0건이다.
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |

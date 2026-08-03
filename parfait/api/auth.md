@@ -2,8 +2,8 @@
 id: auth
 title: 인증(카카오 로그인·회원가입·토큰 재발급·로그아웃)
 server_module: http/auth
-server_commit: 6f5bffc
-verified: 2026-08-02
+server_commit: 69654bc
+verified: 2026-08-03
 android_status: none
 related_spec:
 related_adr: ADR-0017
@@ -92,7 +92,7 @@ tags: [api, parfait, server-contract, auth]
 | 필드 | 타입 | 필수 | 비고 |
 |---|---|---|---|
 | `registrationToken` | String | 필수(`@NotBlank`) | 카카오 로그인이 신규 판정 시 내려준 토큰 |
-| `agreements` | List<`TermsAgreementRequest`> | 필수(`@Valid`) | 원소: `termsId` Long · `agreed` Boolean |
+| `agreements` | List<`TermsAgreementRequest`> | 필수(`@Valid`) | 원소: `termsId` Long · `agreed` Boolean. **`termsId`는 `GET /api/v1/policies`가 내려주는 값**([policy.md](policy.md)) — 하드코딩하면 약관 개정 시 `TERMS_NOT_FOUND` 400 |
 
 - **응답 필드**
 

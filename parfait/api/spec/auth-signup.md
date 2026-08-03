@@ -4,8 +4,8 @@ title: 회원가입 완료 (약관동의)
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#49"
-server_commit: 6f5bffc
-verified: 2026-08-02
+server_commit: 69654bc
+verified: 2026-08-03
 related_api: auth.md
 tags: [api, parfait, spec, auth]
 ---
@@ -78,7 +78,7 @@ tags: [api, parfait, spec, auth]
 
 ## 코드 대조
 
-서버 `main` `6f5bffc` 기준.
+서버 `main` `69654bc` 기준.
 
 ### 일치
 
@@ -88,7 +88,8 @@ tags: [api, parfait, spec, auth]
 - 에러 코드 7종 전부와 **검증 순서까지 일치**한다. `SignupService.validateAgreements`가
   중복(`DUPLICATE_TERMS_ID`) → 현재 유효 여부(`TERMS_NOT_FOUND`) → 필수 미동의(`REQUIRED_TERMS_NOT_AGREED`)
   순으로 검사하고, 그 뒤에 중복 가입(`ALREADY_REGISTERED`)을 본다.
-- "현재 유효(타입별 최신 버전)" 서술 — `TosQueryPort.findCurrentTerms`가 근거
+- "현재 유효(타입별 최신 버전)" 서술 — `TosQueryPort.findCurrentTerms`가 근거. `TosRepository.findCurrentTerms`가
+  `type`별 `published_at` 내림차순 1건씩 뽑는다
 - `agreed`가 false인 항목을 보내도 요청 자체는 유효하다. 서버는 `agreements.filter { it.agreed }`로
   동의한 것만 저장한다 — 명세의 "어떤 약관에 동의했는가를 기록한다"와 정확히 같은 동작이다.
 
@@ -102,6 +103,10 @@ tags: [api, parfait, spec, auth]
   `RegistrationTokenClaims`가 `provider`/`providerUserId`만 담고 있어 애플 revoke용 refreshToken을
   저장할 수 없는 상태다. 명세는 `/auth/apple`을 이미 흐름에 적었으나 서버는 미완이다.
 - envelope 5필드 — 명세의 JSON 예시는 `data` 안쪽만 보여준다 → [conventions.md](../conventions.md)
+- **`termsId`의 출처가 되는 약관 목록 조회 API가 생겼다.** `GET /api/v1/policies`
+  (`69654bc`, [../policy.md](../policy.md))가 `termsId`·`type`·`title`·`url`·`required`를 내려준다.
+  이 signup 명세는 그 API를 언급하지 않는다 — 명세 작성 시점에 없었다. 같은
+  `TosQueryPort.findCurrentTerms`를 쓰므로 목록이 준 `termsId`는 같은 시점의 signup에서 유효하다.
 
 ### 명세에만 있음
 
@@ -126,9 +131,10 @@ tags: [api, parfait, spec, auth]
 3. `agreed=false` 항목을 목록에 포함해도 된다. 다만 **필수 약관이 `agreed:true`로 없으면**
    `REQUIRED_TERMS_NOT_AGREED` 400이다.
 4. `termsId` 목록은 서버가 정하는 "현재 유효한 약관"이다. 하드코딩하면 약관이 개정될 때
-   `TERMS_NOT_FOUND` 400을 받는다 — 약관 목록 조회 API가 현재 계약에 없다는 점에 유의한다.
+   `TERMS_NOT_FOUND` 400을 받는다 — **약관 동의 화면 진입 시 `GET /api/v1/policies`를 먼저 호출해
+   `termsId`를 받아 쓴다**([../policy.md](../policy.md)). 그 응답은 빈 배열일 수 있다.
 
 ## 미결
 
-- 약관 목록(`termsId`·필수 여부·본문) 조회 API가 계약에 없다. 앱이 `termsId`를 어디서 얻는지 미확정
-  → [open-questions](../../synthesis/open-questions.md)
+- 없음 — 약관 목록 조회 API 부재 건은 `69654bc`(`GET /api/v1/policies`)로 해소됐다
+  ([../policy.md](../policy.md)). 남은 확인 항목(`url` 필드가 링크인지 전문인지)은 그 문서의 `## 미결`에 있다.
