@@ -1,6 +1,20 @@
 # Obsidian workspace (로컬 상태, 공유 불필요)
-.obsidian/workspace.json
-.obsidian/workspace-mobile.json
+# 깊이 무관 — 하위 디렉토리를 vault로 열어도 잡히도록
+**/.obsidian/workspace.json
+**/.obsidian/workspace-mobile.json
+
+# 그래프 뷰 상태. `scale`(줌 레벨)이 그래프를 열고 확대/축소할 때마다 바뀌어
+# 매번 변경점으로 잡힌다. colorGroups·search는 비어 있어 공유 가치도 없다.
+# 필드 단위 ignore가 불가능하므로 파일째 제외한다(Obsidian이 기본값으로 재생성).
+**/.obsidian/graph.json
+
+# 하위 디렉토리 vault는 만들지 않는다.
+# 이 저장소의 vault는 루트 하나뿐이고, wiki↔parfait 크로스 링크가 그 전제로 resolve된다.
+# (wiki/index.md: "링크는 repo-root Obsidian vault 기준 resolve")
+# 실수로 wiki/·parfait/를 vault로 열어도 커밋되지 않게 막는다.
+/wiki/.obsidian/
+/parfait/.obsidian/
+/raw/.obsidian/
 
 # OS
 .DS_Store
