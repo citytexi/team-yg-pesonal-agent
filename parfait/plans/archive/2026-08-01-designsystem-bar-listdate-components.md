@@ -4,7 +4,7 @@ title: List-Date·Floating Bar 신설 + Top Bar Canvas 변형 구현 계획
 status: done
 type: work-order
 created: 2026-08-01
-updated: 2026-08-01
+updated: 2026-08-04
 platforms: android
 owner: TJYG-Android 디자인시스템
 related_adr:
@@ -22,7 +22,7 @@ related_code:
   - YGTopBar.kt#YGTopBarContent
   - ComponentCatalog.kt#componentCatalog
   - ComponentEntryBuilders.kt#componentEntryBuilders
-archived_reason:
+archived_reason: PR #188로 develop 머지 완료(2026-08-04) — Task 1~7 산출물 전량 반영, 드리프트 0
 tags: [plan, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 ---
 
@@ -38,8 +38,10 @@ tags: [plan, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 
 > **실행 결과(2026-08-01)** — Task 1~4 전량 완료. subagent-driven-development로 Task마다 새
 > 서브에이전트 + 리뷰를 돌렸다. Task 1·3은 리뷰 1회에 클린 통과, Task 2만 fix round 1회.
-> **TJYG-Android는 커밋하지 않았다**(작업자 지시). 브랜치 **`feature/sync-component`**에 작업 트리
-> 변경만 남아 있다. 본문 체크박스는 실행 기록을 이 블록에 모으는 관례를 따라 그대로 둔다.
+> 실행 시점에는 **TJYG-Android를 커밋하지 않았다**(작업자 지시). 브랜치 **`feature/sync-component`**에
+> 작업 트리 변경만 남아 있었고, 이후 작업자가 커밋해 **PR #188로 develop 머지**됐다(2026-08-04).
+> 머지 코드와 설계의 갈림은 없다 — as-built 3건은 [스펙](../../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) 머지 블록 참고.
+> 본문 체크박스는 실행 기록을 이 블록에 모으는 관례를 따라 그대로 둔다.
 >
 > **실행 도중 베이스가 바뀌었다.** 작업을 중단했다 재개하는 사이 `develop`이 나아갔고(#173 머지),
 > 브랜치도 `feature/bar-listdate-component` → `feature/sync-component`로 옮겨졌다. Task 1·2 산출물은
@@ -72,7 +74,7 @@ tags: [plan, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > **오검증이었다.** 40dp 극단값으로 대조하자 블러가 전혀 걸리지 않는 것이 드러났고(틴트만으로도 대비가
 > 낮아져 흐린 것처럼 보였다), 세 형태를 모두 시도한 뒤 **Haze로 되돌려 즉시 동작을 확인**했다.
 > 아래 Task 6 본문의 `GraphicsLayer` 코드는 **폐기된 형태**다 — 실제 구현은 `hazeSource`/`hazeEffect`이고
-> 경위는 [ADR-0018](../adr/0018-backdrop-blur-haze.md).
+> 경위는 [ADR-0018](../../adr/0018-backdrop-blur-haze.md).
 > 교훈: **블러는 어긋나도 눈에 잘 띄지 않는다. 반드시 극단값 대조로 검증한다.**
 >
 > **미검증**: pressed 상태, 긴 제목 케이스의 실기기 렌더(갤러리에 긴 제목 섹션 없음 — 후속 과제).
@@ -132,7 +134,7 @@ tags: [plan, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > `YGChipColorIndicator(isChecked = isUploaded)`는 C-201 정책의 예외 조항("Button-Date가 Disabled면
 > 항상 False")을 빠뜨렸고, 그 결과 Step 3 갤러리 코드가 `isEnabled = false, isUploaded = true` 위반
 > 조합을 그대로 노출했다. **현행은 `isChecked = isEnabled && isUploaded`** — 규칙을 컴포넌트가 강제한다
-> ([spec](../specs/2026-08-01-designsystem-bar-listdate-components.md#yglistdate)). 원인은 계획서가
+> ([spec](../../specs/archive/2026-08-01-designsystem-bar-listdate-components.md#yglistdate)). 원인은 계획서가
 > 부품 시그니처만 옮기고 정책 문서의 "예외" 줄을 옮기지 않은 것.
 
 - [ ] **Step 1: `YGListDate.kt` 작성**
@@ -1099,7 +1101,7 @@ TJYG-Android 작업 트리 변경 목록(`git status --short`)과 미커밋 사�
 > 있다. **Task 3 Step 3에서 한 "프리뷰 칩을 `CherrySubtle`로 정정"은 이 재조회로 무효**가 됐다 —
 > Task 5가 그 자리를 덮어쓴다.
 >
-> 배경 블러 관용은 [ADR-0018](../adr/0018-backdrop-blur-haze.md)이 정한다.
+> 배경 블러 관용은 [ADR-0018](../../adr/0018-backdrop-blur-haze.md)이 정한다.
 
 > **2차 라운드 실행 결과(2026-08-01)** — Task 5~7 전량 완료. Task 5·6 모두 **리뷰 1회에 클린 통과**해
 > fix round가 없었다. TJYG-Android는 여전히 미커밋, 브랜치 `feature/sync-component`.

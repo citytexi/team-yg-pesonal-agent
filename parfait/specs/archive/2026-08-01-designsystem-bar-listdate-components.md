@@ -1,10 +1,10 @@
 ---
 id: designsystem-bar-listdate-components
 title: 디자인시스템 List-Date·Floating Bar 신설 + Top Bar Canvas 변형 (Bar & List-Date Components)
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-01
+verified: 2026-08-04
 related_code:
   - YGListDate.kt#YGListDate
   - YGFloatingBar.kt#YGFloatingBarBackClose
@@ -14,6 +14,8 @@ related_code:
   - YGTopBar.kt#YGTopBarCanvas
   - YGTopBar.kt#YGTopBarEmpty
   - YGTopBar.kt#YGTopBarContent
+  - YGTopBar.kt#ygTopBarBackdrop
+  - YGTopBarDefaults.kt#BackdropBlurRadius
   - YGChipButtonColorsDefaults.kt#GrayOutline
   - YGDateButton.kt#YGDateButton
   - YGChipColorIndicator.kt#YGChipColorIndicator
@@ -39,6 +41,18 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 
+> ✅ **develop 머지(2026-08-04, PR #188 `feature/sync-component`)** — 아래 "구현 상태" 블록들이
+> "미커밋"으로 적어둔 작업 트리가 그대로 커밋·머지됐다. 머지 시점 재대조에서 **설계와 갈리는 것은
+> 없고**, 스펙이 시그니처를 적지 않았던 자리에 as-built 3건이 확정됐다.
+> - 배경 블러 분기가 `YGTopBar.kt`의 private `Modifier.ygTopBarBackdrop(hazeState)`로 묶였다 —
+>   `null`이면 `drawBehind { drawRect(White75) }`, 아니면 `hazeEffect { blurRadius·backgroundColor·tints }`.
+> - `YGTopBarEmpty(date, day, onIconClick, modifier, hazeState = null, rightContent = {})` 순서로 확정.
+>   날짜·요일은 `titleContent` 안쪽 `weight(1f)` `Row`(`gap3`)에 들어가고 `rightContent`가 그 형제다.
+> - `YGListDate`의 날짜 버튼 크기는 `Modifier.size(SizeTokens.Size44.getDp())`(아래 표기는 토큰명만).
+>
+> 스펙 범위 밖 동반 변경 없음. 같은 라운드에 **PR #189**(chore)가 G-001 라벨 3종을 `strings.xml`로
+> 옮겨, 이 스펙이 건드린 `GroupListScreen`·`GroupListAddGroupScreen`의 리터럴이 함께 사라졌다.
+
 > ⚠️ **개정(2026-08-01, PR #173 develop 머지 반영)** — 이 스펙이 대상으로 삼던 `YGTopBarDefault`가
 > **develop에서 삭제**되고 `YGTopBarEmpty(rightContent)` 슬롯으로 통합됐다. 그 결과 원안의
 > "`Default` 드리프트 제거"는 **대상이 사라졌고**(칩 색·문구는 이제 호출 화면 몫), 남은 드리프트는
@@ -49,8 +63,9 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > **구현 상태(2026-08-01)** — 3종 + 갤러리 등록 전량 완료. repo 전체 `assembleDebug` + `ktlintCheck`
 > 통과, 실기기(Galaxy A35, SM-A356N) 갤러리에서 `YGListDate` 4상태×upload 2, `YGFloatingBar` 4변형 +
 > 탭 전환, `YGTopBar` 5섹션을 Figma와 육안 대조 완료.
-> **TJYG-Android 커밋은 하지 않았다**(작업자 지시). 브랜치 `feature/sync-component`에 작업 트리
-> 변경만 남아 있다(신규 6파일 + 수정 2파일 + `YGTopBar.kt`·`YGTopBarPreviewScreen.kt`).
+> 이 시점에는 **TJYG-Android 커밋을 하지 않았다**(작업자 지시). 브랜치 `feature/sync-component`에
+> 작업 트리 변경만 남아 있었고(신규 6파일 + 수정 2파일 + `YGTopBar.kt`·`YGTopBarPreviewScreen.kt`),
+> 이후 그대로 커밋돼 **PR #188로 develop 머지**됐다(위 머지 블록).
 >
 > **설계대로 확인된 것** — `YGListDate`의 미업로드 셀이 자리를 유지해 두 섹션의 셀 높이가 같고,
 > `YGFloatingBarClose`가 우측 끝에 붙으며(`Arrangement.End`), `Edit-Tab`에서 탭을 누르면 밑줄이
@@ -99,7 +114,7 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > 3. 그런데 **자체 구현은 실제로 동작하지 않았다.** 40dp 극단값으로 대조하자 블러가 전혀 걸리지 않는
 >    것이 드러났고, 세 가지 형태(중간 레이어 복사 / `record`·`renderEffect` 순서 교체 / 배경이 직접
 >    record)를 모두 시도했으나 전부 실패했다. **Haze로 되돌려 즉시 동작을 확인했다** —
->    경위와 실측은 [ADR-0018](../adr/0018-backdrop-blur-haze.md).
+>    경위와 실측은 [ADR-0018](../../adr/0018-backdrop-blur-haze.md).
 >
 > ⚠️ **오검증 기록** — 자체 구현 상태에서 한 번 "블러 동작·좌표 정합 확인"으로 보고했으나 **틀렸다.**
 > `White75` 틴트만으로도 바 뒤 텍스트의 대비가 낮아져 흐린 것처럼 보였고, 대조군 없이 사양값(당시 2dp)
@@ -141,7 +156,7 @@ Grouptag·Topping 스펙이 "다른 브랜치 작업 중"으로 제외한 `Chip-
   - `YGTopBarContent` 확장 — `contentPadding`·`trailingContent` 파라미터 추가
   - **`Button-Chip-Left` 프리셋 교체 + 개명** — `CherrySubtle` → `GrayOutline`(흰 배경 + `Gray500` 테두리)
   - **`YGTopBarEmpty` 날짜 표시** — 로고 placeholder → `date`·`day` 파라미터
-  - **`Default`·`Empty` 반투명 배경 + 배경 블러** — `White75` 틴트 + Haze([ADR-0018](../adr/0018-backdrop-blur-haze.md))
+  - **`Default`·`Empty` 반투명 배경 + 배경 블러** — `White75` 틴트 + Haze([ADR-0018](../../adr/0018-backdrop-blur-haze.md))
   - 3종을 `:app-preview` 컴포넌트 갤러리에 등록·갱신
 - **제외**
   - **`YGTopBarDefault` 재도입** — #173에서 삭제된 변형이다. 칩 색·문구는 호출 화면이 정한다
@@ -189,7 +204,7 @@ fun YGListDate(
 - 상태 4종(`isSelected`·`isToday`·`isEnabled`·기본)은 `YGDateButton`이 이미 처리하므로 그대로 위임한다.
   여기서 다시 분기하지 않는다
 - **Disabled면 인디케이터는 항상 False** — 정책 [[캘린더-컴포넌트]]
-  ([link](../../wiki/concepts/캘린더-컴포넌트.md))의 List-Date 예외 규칙("Button-Date가 Disabled면 항상
+  ([link](../../../wiki/concepts/캘린더-컴포넌트.md))의 List-Date 예외 규칙("Button-Date가 Disabled면 항상
   False")을 **컴포넌트가 내부에서 강제**한다. `isEnabled`·`isUploaded`를 독립 파라미터로 받으면
   `isEnabled = false, isUploaded = true` 같은 정책 위반 조합이 호출부마다 재현될 수 있어, 합성체인
   `YGListDate`가 규칙을 들고 있는 쪽으로 정했다(코드리뷰 반영, 2026-08-01)
@@ -321,7 +336,7 @@ Top Bar가 `Modifier.hazeEffect(state)`. `HazeState`는 호출 화면이 소유�
 파라미터로 받는다(`null`이면 틴트만). 반경은 `YGTopBarDefaults.BackdropBlurRadius`로 노출한다.
 
 자체 `GraphicsLayer` + `BlurEffect` 구현은 **실기기에서 세 형태 모두 블러가 걸리지 않아 기각**했다.
-경위·실측·기전은 [ADR-0018](../adr/0018-backdrop-blur-haze.md).
+경위·실측·기전은 [ADR-0018](../../adr/0018-backdrop-blur-haze.md).
 
 > ⚠️ **API 31 미만에서는 블러가 없다.** `RenderEffect`가 API 31+이고 `minSdk`는 26이다. 26~30에서는
 > `White75` 틴트만 남는다. 틴트는 `hazeEffect`의 `tints`로 넣어 블러 유무와 무관하게 항상 그려진다.
@@ -415,6 +430,7 @@ private fun YGFloatingBarContent(
 - `:core:designsystem` + `:app-preview` `assembleDebug`, repo 전체 `ktlintCheck`
 - 실기기(Galaxy A35) 갤러리에서 Figma와 육안 대조
 - **TJYG-Android 커밋은 하지 않는다**(작업자 지시). 작업 트리 변경만 남기고 보고한다
+  → 이후 작업자가 직접 커밋해 **PR #188로 develop 머지**(2026-08-04)
 
 ## 열린 질문
 

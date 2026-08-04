@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-02
-related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, parfait-api-contract-docs, data-api-service-layer
+verified: 2026-08-04
+related_spec: designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, parfait-api-contract-docs, data-api-service-layer
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer
 related_code:
@@ -143,6 +143,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 부분 해소 (① 규약 문서화 — **2026-07-29 [module-structure](../architecture/module-structure.md) "규칙"에 한 줄 추가로 해소**. ②`InviteCodeResult`·③ 약관 title 리터럴·미착수 화면 리터럴은 잔존.)
   > ✅ **카메라·갤러리는 규약을 따름(2026-08-01, PR #182)** — `feature/camera/impl`·`feature/gallery/impl`에 `strings.xml`이 신설되고 권한·확인 화면 라벨이 전부 `stringResource`로 갔다. **예외 1건**: `CustomGalleryPickerScreen`의 빈 상태 문구가 코틀린 리터럴로 남았다(같은 화면의 다른 문구는 리소스) → 아래 [갤러리 빈 상태 항목](#2026-08-01-갤러리-빈-상태-그래픽이-상시-노출되고-문구가-리터럴)에서 함께 추적.
   > 📌 **신규 화면이 규약을 안 따름(2026-08-01, PR #173)** — G-001 `GroupListScreen`·`GroupListAddGroupScreen`의 라벨 3종("그룹 추가하기"·"그룹 만들기"·"그룹 들어가기")이 코틀린 리터럴이고, 코드 주석은 `Todo : core:ui 에 string resource 로 분리`라고 적는다. 화면 전용 정적 라벨은 **feature `strings.xml`**이 규약(공유 문구만 `core:ui`)이라 주석의 목적지부터 규약과 어긋난다. 규약이 문서에만 있고 코드 리뷰에서 안 걸린다는 신호다.
+  > ✅ **그 3종은 해소됨(2026-08-04, PR #189 chore)** — `feature/groups/list/impl` `strings.xml`이 신설되고 `group_add`·`group_create`·`group_enter`로 옮겨졌다. 주석이 가리키던 `core:ui`가 아니라 **규약대로 feature 모듈**에 들어갔다. 잔존은 여전히 ②`InviteCodeResult`·③ 약관 title·미착수 화면(캔버스 등) 리터럴이다.
 - **해소 메모**: ① 화면 전용 라벨=feature `strings.xml` / 공유 문구=`core:ui` `strings.xml` / domain 문자열 미보유 규약을 module-structure에 명시(#179가 `NickNameResult`의 domain 문자열을 걷어내 선례 확정). ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, G-002 후속) 시점에 함께 정리 — `InviteCodeResult`는 아직 `errorMessage: String?` 그대로다. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
 
 ### [2026-07-27] Toast·Alert 호스트 노출 애니메이션이 동작하지 않음
@@ -269,13 +270,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-31] `YGChipColorIndicator`의 정책 근거·용도 불명
 - **출처**: `component/ygcolorchip/YGChipColorIndicator.kt#YGChipColorIndicator`(PR #165 develop 머지) — `isChecked`로 Cherry ↔ 투명을 분기하는 작은 원. 대응 위키 정책 문서가 없다(위키 Chip-Indicator는 [[캘린더-컴포넌트]] C-201 소관으로 이 컴포넌트와 별개). 사용처도 0건이고 `:app-preview` 갤러리에도 미등록이라, 어느 화면의 어떤 선택 상태를 표시하는지 문서만으로는 확정할 수 없다.
 - **항목**: ① 이 인디케이터가 붙는 화면·요소가 무엇인지(프로필 색 선택? 멤버 선택?), ② 그 정책이 위키에 있어야 하는지(있어야 하면 소스 수집 대상), ③ 이름이 `Chip`을 달고 있는데 실제로는 칩 외부에서 쓰이는지.
-- **상태**: 미해결 (사용처 붙기 전까지 확인 불가)
-- **해소 메모**: 사용 화면 확정 시 [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md)에 유스케이스를 적고, 정책이 필요하면 위키 쪽 소스 수집을 요청한다.
+- **상태**: 부분 해소 (①②는 2026-08-04 확정, ③ 이름 잔존)
+  > ✅ **첫 사용처 확정(2026-08-04, PR #188)** — `component/yglistdate/YGListDate.kt`가 이 인디케이터를 **C-201 캘린더 날짜 셀의 업로드 여부 점**으로 소비한다. 즉 "프로필 색 선택/멤버 선택"이 아니라 위키 [[캘린더-컴포넌트]] Chip-Indicator였고, **별개라고 본 위 판단이 틀렸다.** 정책 근거도 그 문서이며 "Button-Date가 Disabled면 항상 False" 예외까지 `YGListDate`가 강제한다.
+  > 잔존 ③ — 이름은 `Chip`을 달고 있으나 실제 소비처는 칩이 아니라 날짜 셀이고, 패키지도 `ygcolorchip/`이라 소유 폴더가 용도와 어긋난다.
+- **해소 메모**: [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md)에 유스케이스(= `YGListDate`)를 적고, 개명·이동 여부는 다음 `ygcolorchip` 라운드에서 판단한다. 설계 상세는 [bar-listdate 스펙](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md).
 
 ### [2026-07-31] `YGUserChip`·`YGChipColorIndicator`가 갤러리 미등록
 - **출처**: `component/ygcolorchip/YGUserChip.kt`·`YGChipColorIndicator.kt`(PR #165 develop 머지) — `:app-preview` 컴포넌트 갤러리(카탈로그 + showcase + `@IntoSet` 배선)에 두 신규 컴포넌트가 등록되지 않았다. `ygcolorchip` 계열은 원래부터 갤러리에 없어(`YGNametagChip`도 미등록) 이번 PR만의 누락은 아니다.
 - **항목**: ① 갤러리 등록을 신규 컴포넌트 완료 조건(DoD)으로 규약화할지, ② `ygcolorchip` 계열 3종을 묶어 showcase를 추가할지.
-- **상태**: 미해결 (**후속 3개 PR은 전부 등록함** — #183 버튼 5종·#185 캔버스 5종·#186 칩/토핑 2종이 카탈로그·showcase·`@IntoSet`까지 배선됐다. 2026-08-01 기준 갤러리 누락은 `ygcolorchip` 계열 3종뿐)
+- **상태**: 미해결 (**후속 4개 PR은 전부 등록함** — #183 버튼 5종·#185 캔버스 5종·#186 칩/토핑 2종·#188 `YGListDate`/`YGFloatingBar`가 카탈로그·showcase·`@IntoSet`까지 배선됐다. 2026-08-04 기준 갤러리 누락은 `ygcolorchip` 계열 3종뿐이고, 그중 `YGChipColorIndicator`는 `YGListDate` 갤러리 안에서 간접 노출된다)
 - **해소 메모**: 규약화하면 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 한 줄 고정하고, 등록 시 갤러리 카탈로그 카테고리를 함께 정한다. 이후 라운드가 이미 관행으로 지키고 있으므로 문서화만 남은 셈이다.
 
 ### [2026-07-31] 토핑 템플릿 6종 부여 주체 미정 — 서버 필드 부재
@@ -370,6 +373,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 ### [2026-08-01] 블러 구현 관용구가 둘로 갈림 — Haze vs 자체 GraphicsLayer
 - **출처**: `feature/camera/impl/.../component/CameraFeedLayer.kt`(PR #182 develop 머지, `rememberGraphicsLayer` 2장 + `BlurEffect`) vs [ADR-0018](../adr/0018-backdrop-blur-haze.md)(Top Bar 배경 블러는 Haze, 자체 `GraphicsLayer` 기각). ADR-0018은 "C-101도 같은 구조이니 그 라운드 시작 시 Haze 재사용을 검토하라"고 남겼는데, 검토 기록 없이 자체 구현으로 머지됐다. 두 경우는 대상이 다르다 — C-101은 **자기 자식(카메라 피드)**을 흐리고, ADR-0018이 실패한 것은 **자기 밖 배경**을 레이어로 옮겨 담는 경로다.
+  > 📌 **Haze 쪽도 머지됨(2026-08-04, PR #188)** — `libs.versions.toml`·`ComposeConfig`·`YGTopBarEmpty(hazeState)`·`YGTopBarDefaults.BackdropBlurRadius`가 develop에 들어와, 두 관용구가 이제 **둘 다 코드에 있다**(그전까지 Haze 쪽은 브랜치 미머지 상태였다).
 - **항목**: ① 이 구분(자기 콘텐츠 블러=자체 구현 / 배경 블러=Haze)을 규약으로 못박을지, 아니면 C-101도 Haze로 통일할지. ② C-101 블러가 실제로 걸리는지 **극단값 대조**로 확인했는지 — ADR-0018이 "틴트만으로도 흐린 것처럼 보여 미동작이 육안 검증을 통과한다"고 경고한 바로 그 구조다(이 라운드에 검증 기록 없음). ③ API 31 미만 폴백(`isBlurSupported`)이 스크림만 남기는 것으로 충분한지.
 - **상태**: 미해결 (①은 규약, ②는 검증 미수행)
 - **해소 메모**: ② 확인이 먼저다(반경 극단값으로 대조). 결과에 따라 ①을 [design-system](../architecture/design-system.md)이나 ADR-0018 개정으로 남기고 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)의 블러 절을 갱신한다.
@@ -512,6 +516,36 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: 이 레이어가 짊어진 위험은 **컴파일·lint·Hilt 그래프 어디에도 걸리지 않는 종류의 결함**이 그대로 묻혀 들어갔다는 것이다. 대표 사례가 `KakaoLoginResponse`의 `@SerialName("newUser")`(auth.md 참고) — 이 애노테이션이 실수로 빠지거나 잘못된 키 문자열로 붙어도 컴파일은 통과하고 ktlint도 통과하고 Hilt 그래프도 정상 resolve되며, **실제 로그인 응답을 역직렬화하는 순간까지 아무 신호도 나지 않는다.** 실연동(로그인 붙이기) 라운드에서 반드시 실기기 또는 서버 목(mock)으로 14개 엔드포인트를 최소 1회씩 왕복시켜 확인해야 한다.
 - **상태**: 미해결 (실연동 라운드로 이월)
 - **해소 메모**: 서버 HTTPS 전환 또는 `network_security_config.xml` 화이트리스트 결정(위 "개발 서버가 평문 HTTP" 항목)이 먼저 풀려야 이 항목도 풀린다. 확인 후 [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "검증" 절과 `parfait/api/` 4개 계약 문서의 "Android 매핑" 절(`android_status`를 `partial`→`done`으로)을 갱신한다.
+
+### [2026-08-04] Top Bar의 두 우측 슬롯이 측정 의미가 다름 — `rightContent` vs `trailingContent`
+- **출처**: `component/ygtopbar/YGTopBar.kt#YGTopBarContent`(PR #188 develop 머지) — `YGTopBarEmpty`가 받는 `rightContent`는 **안쪽 `weight(1f)` `Row` 안**의 형제이고, 같은 PR이 추가한 `trailingContent`(`YGTopBarCanvas`가 씀)는 **그 `Row` 바깥**의 형제다. 즉 앞의 것은 잔여 폭을 제목·날짜와 나눠 갖고, 뒤의 것은 나눔 밖에서 자기 폭을 먼저 확보한다. 이름만 보고는 구분되지 않는다.
+- **항목**: ① 다음 Top Bar 라운드에서 두 슬롯을 하나로 통합할지(통합하려면 `Empty`의 로고→날짜 `Row` 구성을 다시 짜야 해서 #188은 범위 밖으로 뒀다), ② 통합 안 하면 이름·KDoc으로 측정 위치를 드러낼지.
+- **상태**: 미해결 (이월 관찰 — 현재 렌더 결과는 정상)
+- **해소 메모**: 정리 시 [design-system](../architecture/design-system.md) `YGTopBar` 항목과 [bar-listdate 스펙](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) `YGTopBarContent` 절을 함께 고친다.
+
+### [2026-08-04] `YGFloatingBar` 4변형 사용처 0건 — 화면 배치 책임·중앙 문구 출처 미정
+- **출처**: `component/ygfloatingbar/YGFloatingBar.kt`(PR #188 develop 머지) — 4변형이 전부 갤러리에서만 렌더되고 feature 참조가 0건이다. 컴포넌트는 폭을 정하지 않고(`modifier` 몫) 상단 패딩만 갖는데, Figma도 화면 어디에 떠 있는지(상단 고정/하단/오버레이)를 주지 않았다. `YGFloatingBarEdit`의 중앙 문구도 Figma가 `Text` placeholder만 둬서 편집 대상 이름인지 모드 라벨인지 미확정이다.
+- **항목**: ① 캔버스·편집 화면 라운드에서 배치(위치·폭·safe area)를 어떻게 정할지, ② `Edit`의 중앙 문구가 무엇인지, ③ `EditTab`의 탭 문자열("영역"/"테두리")이 화면 소유인지 컴포넌트 기본값이어야 하는지.
+- **상태**: 미해결 (의도된 선행 구현 — 소비 화면 미착수)
+- **해소 메모**: 첫 소비 화면 스펙에서 확정하고 [bar-listdate 스펙](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) 열린 질문 2·3을 닫는다.
+
+### [2026-08-04] Top Bar 날짜 표기가 영문 고정 — 로케일·포맷 규칙 미정
+- **출처**: `component/ygtopbar/YGTopBar.kt#YGTopBarEmpty`(PR #188) + `feature/groups/list/impl` `GroupListViewModel`·`core:util:jvm` `model/DateFormat` — 상단 바가 완성된 문자열 2개(`date`·`day`)를 받기만 하고, 실제 값은 VM이 `DateFormat.FullMonthWithDay`·`AbbreviatedDayOfWeek`로 만든다. 두 포맷 모두 **영문 표기**(Figma `December 31 (Wed)`)인데 앱 UI는 한국어다. 같은 화면의 `YGDate`도 같은 값을 쓴다.
+- **항목**: ① 날짜·요일 표기를 한국어로 갈지 Figma대로 영문을 유지할지(제품 결정), ② 포맷 소유를 `core:util:jvm` 상수로 둘지 로케일 기반 포맷터로 바꿀지, ③ 정책 소스가 위키에 없다 — 수집 대상인지.
+- **상태**: 미해결 (컴포넌트는 무관 — 호출 화면·정책 소관)
+- **해소 메모**: ①이 정해지면 `DateFormat`과 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)을 함께 고친다. 위키 정책이 필요하면 소스 수집을 요청한다.
+
+### [2026-08-04] 배경 블러가 실화면에 미배선 + API 31 미만 폴백 수용 여부
+- **출처**: `component/ygtopbar/YGTopBar.kt#ygTopBarBackdrop`([ADR-0018](../adr/0018-backdrop-blur-haze.md), PR #188 develop 머지) vs `feature/groups/list/impl` `GroupListScreen` — Top Bar는 `hazeState`를 받을 수 있지만 유일한 소비 화면 G-001이 넘기지 않고 배경에 `Modifier.hazeSource`도 걸지 않는다. 앱에서는 `White75` 틴트만 보이고 블러는 `:app-preview` 갤러리 데모에서만 산다. 또 `RenderEffect`가 API 31+이라 `minSdk` 26~30 기기에서는 배선해도 틴트만 남는데, 검증 기기가 API 36이라 그 경로는 한 번도 실행되지 않았다.
+- **항목**: ① G-001(및 이후 소비 화면)에 `hazeSource`/`hazeState`를 배선할지 — 배선하면 스크롤 콘텐츠가 바 뒤로 지나갈 때만 의미가 있다, ② 26~30에서 "블러 없음"을 디자인이 수용하는지(플랫폼 제약이라 대안이 없다), ③ API 31 스크롤 중 블러 미갱신 upstream 이슈가 이 앱에 영향을 주는지.
+- **상태**: 미해결 (컴포넌트는 준비 완료 — 화면 배선·수용 판단 대기)
+- **해소 메모**: ①은 G-001 데이터 결선 라운드에서 함께 처리하고 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)에 반영한다. ②는 디자인 확인 후 [ADR-0018](../adr/0018-backdrop-blur-haze.md) "위험·방어"에 결론을 적는다.
+
+### [2026-08-04] `YGListDate` 업로드 인디케이터가 접근성 트리에 없음
+- **출처**: `component/yglistdate/YGListDate.kt`(PR #188 develop 머지) — 업로드 여부를 색 있는 점 하나로만 표시하고 `contentDescription`·`semantics`가 없어 TalkBack에는 날짜 버튼만 읽힌다. 색맹 사용자에게도 단서가 색뿐이다. 다만 이 모듈에는 **상태 표시 요소의 접근성 기준 자체가 문서화된 적 없어** 이 컴포넌트만의 문제가 아니다(`YGChipColorIndicator`·`YGGrouptagChip` 타임스탬프 색 등 같은 부류).
+- **항목**: ① 상태를 색·도형으로만 표시하는 요소의 접근성 규약(합성 `semantics`·`stateDescription`)을 정할지, ② 정한다면 `YGListDate`처럼 합성 컴포넌트가 부품의 semantics를 병합(`mergeDescendants`)하는 관용구를 함께 못박을지.
+- **상태**: 미해결 (이월 관찰 — 모듈 전체 기준 부재)
+- **해소 메모**: 규약을 세우면 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 한 줄 고정하고 대상 컴포넌트를 일괄 점검한다.
 
 <!--
 항목 추가 형식:
