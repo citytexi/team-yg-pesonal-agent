@@ -4,7 +4,7 @@ title: 파르페 그룹
 server_module: http/parfaitgroup
 server_commit: 69654bc
 verified: 2026-08-03
-android_status: none
+android_status: partial
 related_spec:
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, group]
@@ -22,14 +22,14 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | 미구현 |
-| GET | `/api/parfait-groups/{groupId}` | 필요 | path `groupId` Long | `MyParfaitGroupDetailResponse` | 미구현 |
-| GET | `/api/parfait-groups/join-preview` | 필요 | query `inviteCode` String | `PreviewParfaitGroupJoinResponse` | 미구현 |
-| POST | `/api/parfait-groups/join` | 필요 | `JoinParfaitGroupRequest` | `JoinParfaitGroupResponse` | 미구현 |
-| POST | `/api/parfait-groups` | 필요 | `CreateParfaitGroupRequest` | `CreateParfaitGroupResponse` | 미구현 |
-| PATCH | `/api/parfait-groups/{groupId}/nickname` | 필요 | `ChangeMyParfaitGroupNicknameRequest` | `ChangeMyParfaitGroupNicknameResponse` | 미구현 |
-| DELETE | `/api/parfait-groups/{groupId}/members/me` | 필요 | path `groupId` Long | `LeaveParfaitGroupResponse` | 미구현 |
-| POST | `/api/parfait-groups/{groupId}/reports` | 필요 | `ReportParfaitGroupRequest` | `ReportParfaitGroupResponse` | 미구현 |
+| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | 구현됨 |
+| GET | `/api/parfait-groups/{groupId}` | 필요 | path `groupId` Long | `MyParfaitGroupDetailResponse` | 구현됨 |
+| GET | `/api/parfait-groups/join-preview` | 필요 | query `inviteCode` String | `PreviewParfaitGroupJoinResponse` | 구현됨 |
+| POST | `/api/parfait-groups/join` | 필요 | `JoinParfaitGroupRequest` | `JoinParfaitGroupResponse` | 구현됨 |
+| POST | `/api/parfait-groups` | 필요 | `CreateParfaitGroupRequest` | `CreateParfaitGroupResponse` | 구현됨 |
+| PATCH | `/api/parfait-groups/{groupId}/nickname` | 필요 | `ChangeMyParfaitGroupNicknameRequest` | `ChangeMyParfaitGroupNicknameResponse` | 구현됨 |
+| DELETE | `/api/parfait-groups/{groupId}/members/me` | 필요 | path `groupId` Long | `LeaveParfaitGroupResponse` | 구현됨 |
+| POST | `/api/parfait-groups/{groupId}/reports` | 필요 | `ReportParfaitGroupRequest` | `ReportParfaitGroupResponse` | 구현됨 |
 
 요청 DTO(`ParfaitGroupRequest.kt`)에는 Bean Validation 애노테이션이 없다 — auth 도메인과 달리 `@NotBlank`/`@Valid`가
 없다. 필드는 Kotlin non-null 타입이라 요청 바디에 없거나 `null`이면 Jackson이 파싱 단계에서 거부한다(결과적으로
@@ -339,7 +339,38 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 ## Android 매핑
 
-없음 — `:data`에 그룹 관련 Service·Response·DataSource가 없다.
+`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)).
+**⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — 그룹 목록·생성·참여·닉네임
+변경·탈퇴·신고 화면 결선은 이후 라운드다.
+
+| 엔드포인트 | Service 함수 | DataSource 함수 |
+|---|---|---|
+| GET `/api/parfait-groups` | `ParfaitGroupService#getParfaitGroups` | `ParfaitGroupRemoteDataSource#getMyGroups` |
+| GET `/api/parfait-groups/{groupId}` | `ParfaitGroupService#getParfaitGroupsByGroupId` | `ParfaitGroupRemoteDataSource#getGroupDetail` |
+| GET `/api/parfait-groups/join-preview` | `ParfaitGroupService#getParfaitGroupsJoinPreview` | `ParfaitGroupRemoteDataSource#previewJoin` |
+| POST `/api/parfait-groups/join` | `ParfaitGroupService#postParfaitGroupsJoin` | `ParfaitGroupRemoteDataSource#joinGroup` |
+| POST `/api/parfait-groups` | `ParfaitGroupService#postParfaitGroups` | `ParfaitGroupRemoteDataSource#createGroup` |
+| PATCH `/api/parfait-groups/{groupId}/nickname` | `ParfaitGroupService#patchParfaitGroupsByGroupIdNickname` | `ParfaitGroupRemoteDataSource#changeMyNickname` |
+| DELETE `/api/parfait-groups/{groupId}/members/me` | `ParfaitGroupService#deleteParfaitGroupsByGroupIdMembersMe` | `ParfaitGroupRemoteDataSource#leaveGroup` |
+| POST `/api/parfait-groups/{groupId}/reports` | `ParfaitGroupService#postParfaitGroupsByGroupIdReports` | `ParfaitGroupRemoteDataSource#reportGroup` |
+
+- **요청 DTO**: `JoinParfaitGroupRequest`·`CreateParfaitGroupRequest`·`ChangeMyParfaitGroupNicknameRequest`·
+  `ReportParfaitGroupRequest` — `data/service/model/request/group/` 패키지, 선언당 파일 하나(파일명은
+  선언명과 동일). 이 도메인은 타입이 많아 이하 DTO/VO 절도 개별 파일명 대신 패키지+규약으로 적는다.
+- **응답 DTO**: `MyParfaitGroupResponse`·`MyParfaitGroupDetailResponse`·`ParfaitGroupMemberResponse`·
+  `PreviewParfaitGroupJoinResponse`·`JoinParfaitGroupResponse`·`CreateParfaitGroupResponse`·
+  `ChangeMyParfaitGroupNicknameResponse`·`LeaveParfaitGroupResponse`·`ReportParfaitGroupResponse` —
+  `data/service/model/response/group/` 패키지, 선언당 파일 하나(9개).
+- **VO/value class**: `MyParfaitGroupVO`·`ParfaitGroupDetailVO`·`ParfaitGroupMemberVO`·`JoinedGroupVO`·
+  `CreatedGroupVO`·`GroupNicknameVO`·`ReportedGroupVO`·`InviteCode`·`GroupName`·`GroupNickname` —
+  `domain/model/group/` 패키지, 선언당 파일 하나(10개. 예전엔 `ParfaitGroupVO.kt`·`GroupValues.kt` 두
+  파일에 묶여 있었으나 지금은 각 선언이 동명 파일로 분리돼 있다). join-preview·탈퇴는 응답이 필드
+  하나뿐이라 래퍼 VO 없이 `GroupName`·`GroupId`를 그대로 반환한다.
+- **Mapper**: `data/source/group/mapper/VOMapper.kt`(응답별 `toMyParfaitGroupVO`·
+  `toParfaitGroupDetailVO`·`toParfaitGroupMemberVO`·`toJoinedGroupVO`·`toCreatedGroupVO`·
+  `toGroupNicknameVO`·`toReportedGroupVO`·`toGroupName`·`toGroupId`). `recentImageUploadedAt`은
+  이 mapper가 `kotlinx.datetime.LocalDateTime.parse()`로 변환한다(Asia/Seoul 벽시계 전제, 위 직렬화
+  포맷 절 참고).
 
 ## 미결
 

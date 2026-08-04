@@ -4,7 +4,7 @@ title: 약관(현재 유효 약관 목록 조회)
 server_module: http/auth
 server_commit: 69654bc
 verified: 2026-08-03
-android_status: none
+android_status: partial
 related_spec:
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, policy]
@@ -27,7 +27,7 @@ tags: [api, parfait, server-contract, policy]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/v1/policies` | 불필요(화이트리스트) | 없음 | `PolicyResponse` | 미구현 |
+| GET | `/api/v1/policies` | 불필요(화이트리스트) | 없음 | `PolicyResponse` | 구현됨 |
 
 ## 엔드포인트 상세
 
@@ -85,10 +85,24 @@ tags: [api, parfait, server-contract, policy]
 
 ## Android 매핑
 
-없음 — `:data`에 약관 관련 Service·Response·DataSource가 없다. 온보딩 약관 동의 화면
-(`feature/intro/impl`)은 `TermContent.kt#TERM_CONTENT_LIST`에 약관 항목을 코틀린 리터럴로 갖고 있고
-랜딩 URL은 TODO로 남아 있다 — 이 API가 그 자리를 채운다
+`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)).
+**⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다.** 온보딩 약관 동의 화면
+(`feature/intro/impl`)은 여전히 `TermContent.kt#TERM_CONTENT_LIST`에 약관 항목을 코틀린 리터럴로 갖고
+있고 랜딩 URL도 TODO로 남아 있다 — 이 API가 그 자리를 채우는 결선은 이후 라운드다
 → [open-questions](../synthesis/open-questions.md).
+
+| 엔드포인트 | Service 함수 | DataSource 함수 |
+|---|---|---|
+| GET `/api/v1/policies` | `PolicyService#getPolicies` | `PolicyRemoteDataSource#getPolicies` |
+
+- **응답 DTO**: `PolicyResponse`(`policies: List<PolicyItemResponse>`)·`PolicyItemResponse` — 선언당
+  파일 하나(파일명은 선언명과 동일)로 `data/service/model/response/policy/PolicyResponse.kt`·
+  `PolicyItemResponse.kt`. 요청 DTO 없음(파라미터 없는 GET).
+- **VO**: `PolicyVO`·`PolicyType`(enum, 알 수 없는 값은 `UNKNOWN`으로 떨어진다) — 각각
+  `domain/model/policy/PolicyVO.kt`·`PolicyType.kt`. `termsId`는 `domain/model/id/TermsId.kt`의
+  `TermsId` value class로 감싼다.
+- **Mapper**: `data/source/policy/mapper/VOMapper.kt`(`PolicyResponse#toPolicyVOList`·
+  `PolicyItemResponse#toPolicyVO`).
 
 ## 미결
 
