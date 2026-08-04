@@ -175,8 +175,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `domain/model/NameValidResult.kt`·`domain/usecase/CheckNameValidUseCase.kt`·`feature/groups/enter/impl` `GroupNickNameViewModel`·`GroupCreateViewModel`·`core/ui/res/values/strings.xml`(PR #179 develop 머지). [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)은 `NicknameResult` sealed + `core:ui` `NicknameResult.Error.toStringResource()` 확장 + `core:ui`→`:domain` 의존을 결정했으나, 머지된 코드는 타입명이 `NameValidResult`(그룹명 공용)이고 **표시 매핑이 각 feature ViewModel의 `when`**(리소스 ID 산출)이며 `toStringResource` 확장·`core:ui`→`:domain` 의존은 없다. 에러 문자열 자체는 `core:ui` `strings.xml` 공용.
 - **항목**: ① 매핑을 ADR 원안대로 `core:ui` 확장으로 끌어올려 VM 중복을 없앨지, ② as-built(VM이 `@StringRes` 산출)를 정본으로 ADR-0016을 개정할지. ②를 택하면 "UI State가 리소스 ID를 보유"가 규약이 되므로 [state-management](../architecture/state-management.md)에도 한 줄 필요.
 - **상태**: 미해결 (문서/코드 정합)
-- **해소 메모**: 결정 후 ADR-0016 as-built 표를 정리하고 [s002-account-info 스펙](../specs/2026-07-22-s002-account-info.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md)·[a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)의 매핑 서술을 맞춘다.
+- **해소 메모**: 결정 후 ADR-0016 as-built 표를 정리하고 [s002-account-info 스펙](../specs/archive/2026-07-22-s002-account-info.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md)·[a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)의 매핑 서술을 맞춘다.
   > 📌 **as-built 쪽으로 한 표 더 쌓임(2026-08-03)** — S-002 브랜치(`feature/#86-app-setting-account-info-screen`)가 원안대로 `NicknameResult` + `core:ui` `text/NickNameResultUiText.kt#toStringResource` 확장을 실제로 구현해 갖고 있었으나, develop rebase에서 **폐기하고 VM `when` 매핑으로 수렴**시켰다(develop이 이미 `NameValidResult`로 머지돼 타입·패키지가 충돌). 이로써 `toStringResource` 확장은 코드베이스 어디에도 남지 않고, VM 매핑 사례가 `GroupNickNameViewModel`·`GroupCreateViewModel`·`AccountInfoViewModel` **3건**이 됐다. 원안(①)으로 되돌리려면 이제 3곳을 동시에 고쳐야 한다 — 결정을 미룰수록 ① 비용이 오른다.
+  > 📌 **2026-08-04 (PR #192) 머지 확정** — 위 3번째 사례(`AccountInfoViewModel`의 `NameValidResult` → `core:ui` `@StringRes` `when` 매핑)가 develop에 들어왔다. as-built 3건이 이제 전부 develop 코드다.
 
 ### [2026-07-29] A-005 그룹 생성 화면 진입 경로 부재
 - **출처**: `feature/groups/enter/api/NavKeyGroupCreate.kt`·`feature/groups/enter/impl/navigation/EntryBuilder.kt#featureGroupCreateEntryBuilder`(PR #179 develop 머지) — entry·DI는 등록됐으나 `NavKeyGroupCreate`로 `goTo` 하는 호출자가 코드 전체에 없다. 직전 단계 후보인 `GroupNickNameRoute`의 `NavigateToNext`는 여전히 stub이고, A-005는 `nickName` 인자를 요구한다.
@@ -500,16 +501,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 결정 후 [api/conventions.md](../api/conventions.md)와 앱 매니페스트·`local.properties` 안내를 갱신한다.
 
 ### [2026-08-03] `clickableYGNoRipple` 사용처 0 — 존치 여부
-- **출처**: `core/util/android/clickable/YGClickable.kt#clickableYGNoRipple` — `YGScreen` 배경 탭 포커스 해제를 위해 신설됐으나, 그 결선이 접근성 사유로 철회되고 [clearfocusontap-modifier](../specs/2026-08-03-clearfocusontap-modifier.md)(`pointerInput` 기반)로 대체되면서 **호출자가 코드 전체에 없다**(정의만 잔존). 함께 들어온 `clickableYGThrottle`의 `indications: List<Indication>?` nullable 일반화도 이 API 전용이다.
+- **출처**: `core/util/android/clickable/YGClickable.kt#clickableYGNoRipple` — `YGScreen` 배경 탭 포커스 해제를 위해 신설됐으나, 그 결선이 접근성 사유로 철회되고 [clearfocusontap-modifier](../specs/archive/2026-08-03-clearfocusontap-modifier.md)(`pointerInput` 기반)로 대체되면서 **호출자가 코드 전체에 없다**(정의만 잔존). 함께 들어온 `clickableYGThrottle`의 `indications: List<Indication>?` nullable 일반화도 이 API 전용이다.
+  > 📌 **2026-08-04 (PR #192 머지) 갱신** — 이 API는 **이번 머지로 develop에 처음 들어왔다.** 즉 "결선을 위해 만들었다가 결선이 없어진 API"가 아니라, **결선이 develop에 한 번도 도달하지 않은 채 잔여물만 머지된** 상태다. 되돌리기 비용이 가장 싼 시점이 지금이라는 뜻이기도 하다(호출부 0, 되돌릴 시그니처 1개).
 - **항목**: ① 존치 — `clickableYG`/`DimRipple`/`ScaleRipple`/`MergeRipple` 4종과 세트를 이루는 공용 API라 "리플 없는 클릭"이 앞으로 쓰일 수 있다, ② 제거(YAGNI) — 제거 시 `clickableYGThrottle`의 nullable 일반화도 함께 되돌려 시그니처를 원복해야 한다.
 - **상태**: 미해결 (코드 수정 대상 — 현재 죽은 API)
 - **해소 메모**: 제거를 택하면 [clickableyg-throttle 스펙](../specs/archive/2026-07-12-clickableyg-throttle.md)·[clickableyg-ripple-variants 스펙](../specs/archive/2026-07-13-clickableyg-ripple-variants.md)의 변형 목록을 함께 정리한다.
 
 ### [2026-08-03] 배경 탭 포커스 해제가 입력 화면 3종에 미적용
-- **출처**: `feature/groups/enter/impl` `GroupNickNameScreen`·`GroupCreateScreen`·`invitecode/component/InviteCodeInputFieldElement` — 텍스트 입력이 있으나 `YGScreen`을 쓰지 않아(각각 `Column`·`YGScaffold` 기반) 빈 영역 탭 포커스 해제가 없다. S-002만 [clearFocusOnTap](../specs/2026-08-03-clearfocusontap-modifier.md)을 적용했다.
+- **출처**: `feature/groups/enter/impl` `GroupNickNameScreen`·`GroupCreateScreen`·`invitecode/component/InviteCodeInputFieldElement` — 텍스트 입력이 있으나 `YGScreen`을 쓰지 않아(각각 `Column`·`YGScaffold` 기반) 빈 영역 탭 포커스 해제가 없다. S-002만 [clearFocusOnTap](../specs/archive/2026-08-03-clearfocusontap-modifier.md)을 적용했다. (📌 2026-08-04 PR #192로 Modifier·S-002 적용분 develop 머지 — 나머지 3종은 그대로 미적용.)
 - **항목**: ① 입력이 있는 화면 전부에 `Modifier.clearFocusOnTap()`을 붙여 UX를 통일할지, ② 통일한다면 "텍스트 입력이 있는 화면은 화면 최외곽에 `clearFocusOnTap()`을 붙인다"를 [design-system](../architecture/design-system.md) 또는 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 규약으로 명문화할지.
 - **상태**: 미해결 (회귀는 아님 — 이 화면들은 이전에도 없었다)
-- **해소 메모**: 적용 시 [clearfocusontap-modifier 스펙](../specs/2026-08-03-clearfocusontap-modifier.md)의 "미적용 입력 화면 3종" 항목을 정리한다.
+- **해소 메모**: 적용 시 [clearfocusontap-modifier 스펙](../specs/archive/2026-08-03-clearfocusontap-modifier.md)의 "미적용 입력 화면 3종" 항목을 정리한다.
 
 ### [2026-08-03] `data-api-service-layer` 전체가 런타임 미검증 — 요청을 한 번도 보내지 못했다
 - **출처**: [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "검증" — 14 엔드포인트 Service·remote DataSource·domain VO가 전부 들어갔고 컴파일·ktlint·`:app:assembleDebug`(Hilt 그래프 resolve)는 통과했지만, **실제 서버로 나간 요청이 0건이다.** 개발 서버 base URL이 평문 `http`인데 `AndroidManifest.xml`에 `usesCleartextTraffic`·`networkSecurityConfig`가 둘 다 없고(위 "개발 서버가 평문 HTTP" 항목과 같은 근거), `local.properties`에 `YG_BASE_URL` 값 자체가 비어 있다. 검증 수단은 컴파일 + `http/` 요청 파일 육안 대조뿐이었다.
@@ -546,6 +548,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 상태를 색·도형으로만 표시하는 요소의 접근성 규약(합성 `semantics`·`stateDescription`)을 정할지, ② 정한다면 `YGListDate`처럼 합성 컴포넌트가 부품의 semantics를 병합(`mergeDescendants`)하는 관용구를 함께 못박을지.
 - **상태**: 미해결 (이월 관찰 — 모듈 전체 기준 부재)
 - **해소 메모**: 규약을 세우면 [design-system](../architecture/design-system.md) "컴포넌트 작성 규약"에 한 줄 고정하고 대상 컴포넌트를 일괄 점검한다.
+
+### [2026-08-04] clear 버튼 노출 게이팅 변경이 기존 입력 화면 2곳에서 미검증
+- **출처**: `component/textfield/YGTextFieldImpl.kt#showClear`(PR #192 develop 머지) — 조건에 `(isFocused || isError)`가 추가돼 **비포커스·정상 상태에서는 clear(X)가 사라진다.** `YGTextFieldImpl`은 `YGTextField`·`YGTextFormField` 공용이라 변경이 `AccountInfoScreen`뿐 아니라 `GroupCreateScreen`·`GroupNickNameScreen`에도 동시에 적용된다. 이 두 화면은 이번 PR의 범위가 아니었고 회귀 확인 기록이 없다.
+- **항목**: ① 두 화면에서 "값이 있는데 clear가 안 보이는" 상태가 UX상 의도인지 디자인 확인(그룹 생성·닉네임 입력은 진입 직후 포커스가 없을 수 있다), ② 의도라면 [YGTextField 스펙](../specs/archive/2026-07-10-ygtextfield.md) 표시 규칙이 이미 정본이므로 화면별 예외 없이 확정, 아니면 게이팅에 화면별 opt-out을 둘지.
+- **상태**: 미해결 (회귀 확인 필요 — 컴포넌트 변경이 비참여 화면에 전파된 케이스)
+- **해소 메모**: 확인 후 [YGTextField 스펙](../specs/archive/2026-07-10-ygtextfield.md) "표시·제어 규칙"에 결과를 적고, 예외가 필요하면 시그니처 변경 여부를 함께 결정한다.
+
+### [2026-08-04] S-002가 저장 경로 없이 머지됨 — 닉네임이 화면 로컬 상태에서만 산다
+- **출처**: `feature/app/setting/impl` `AccountInfoViewModel#AccountInfoUiState`(PR #192 develop 머지) — `nickname` 초기값이 하드코딩 placeholder고, 입력은 유효성 검사만 거쳐 `updateState`로 끝난다. 저장 UseCase·Repository 호출이 없어 **뒤로가기만 해도 입력이 사라진다.** `AppSettingState.nickname`(S-001 프로필 카드)도 같은 성격의 별도 placeholder라 두 화면의 닉네임이 서로 무관하다.
+- **항목**: ① 프로필 조회/수정 API 연동 시 저장 트리거를 무엇으로 할지(포커스 해제 — `clearFocusOnTap()`이 이미 그 지점을 만들어 뒀다 / IME 완료 / 상단바 확인 버튼 신설), ② 두 화면이 같은 닉네임을 보도록 소유처를 어디에 둘지(공유 상태 vs 각자 조회), ③ 위키 [[닉네임-자동-생성]]의 "계정 생성 시 1회 부여·DB 저장 후 불변" 규칙과 이 화면의 수정 허용이 어떻게 맞물리는지(초기값 출처가 서버여야 한다).
+- **상태**: 미해결 (API 연동 라운드로 이월 — 현재 develop 화면은 동작하지 않는 폼)
+- **해소 메모**: 연동 시 [s002 스펙](../specs/archive/2026-07-22-s002-account-info.md) "주의 / 열린 질문"과 [app-setting-s001 스펙](../specs/archive/2026-07-19-app-setting-s001.md) placeholder 항목을 함께 닫는다. 로그아웃·탈퇴 stub(같은 PR로 UI만 노출됨)도 같은 라운드 대상이다.
 
 <!--
 항목 추가 형식:

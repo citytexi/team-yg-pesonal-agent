@@ -75,6 +75,7 @@ internal fun Modifier.clickableYGThrottle(
 ```
 - `interactionSource`: `clickable`에 그대로 전달. null이면 `clickable`이 내부 `MutableInteractionSource`를 lazy 생성. (throttle 파라미터 default `= remember { MutableInteractionSource() }`는 공개 변형이 항상 `interactionSource`를 명시 전달하므로 실제로는 안 터지는 형식상 값 — 실질 fallback은 `clickable`이 담당.)
 - `indications`(코어): 코어가 받는 리플 목록. 각 `IndicationNodeFactory`를 노드가 자기 source에 delegate(다중). 기본 리플 주입은 변형 함수가 담당(`clickableYGDimRipple` → `listOf(ygDimRipple())` 등).
+- 🔁 **2026-08-04 as-built(PR #192)**: 코어 시그니처가 `indications: List<Indication>?`로 **nullable화**됐고(`null` → `indication = null`), 파라미터 순서도 `indications`가 선두·`interactionSource`가 `onClick` 직전이다(위 코드블록은 초안 순서). 리플 없는 변형 `clickableYGNoRipple`(사용처 0)이 이 nullable 경로의 유일한 소비자 → [리플 변형 스펙](2026-07-13-clickableyg-ripple-variants.md) · [open-questions](../../synthesis/open-questions.md) [2026-08-03].
 - `windowMillis`: throttle 창(기본 300ms). 화면별 조정 가능.
 - `onClick`: 게이트를 통과한 탭에서만 호출.
 

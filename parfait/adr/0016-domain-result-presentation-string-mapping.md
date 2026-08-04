@@ -31,7 +31,10 @@ tags: [adr, parfait, i18n, domain, presentation]
 >
 > 즉 **문자열 리소스는 공용화됐지만 매핑 로직은 feature마다 중복**된다 — 이 ADR이 "기각"한 대안(feature마다 매핑 보유)에 가깝다.
 > 원안으로 수렴할지 as-built를 정본으로 개정할지 미결 → [open-questions](../synthesis/open-questions.md) [2026-07-29].
-> 미구현 화면(S-002)의 스펙은 as-built 계약을 기준으로 재정렬해야 한다.
+>
+> 📌 **2026-08-04 (PR #192) 갱신** — S-002(`AccountInfoViewModel`)가 as-built 형태로 머지되면서 VM `when` 매핑 사례가
+> `GroupNickNameViewModel`·`GroupCreateViewModel`·`AccountInfoViewModel` **3건**이 됐다. S-002 브랜치는 원안대로
+> `toStringResource()` 확장을 구현해 갖고 있었으나 develop rebase에서 폐기했다 — 원안으로 되돌리려면 이제 3곳을 동시에 고쳐야 한다.
 
 ## 맥락
 

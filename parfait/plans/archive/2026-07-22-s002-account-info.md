@@ -1,3 +1,28 @@
+---
+id: s002-account-info
+title: S-002 계정 정보 화면 (AccountInfo) 구현 계획
+status: done
+type: work-order
+created: 2026-07-22
+updated: 2026-08-04
+platforms: android
+owner: TJYG-Android
+related_adr:
+  - ADR-0016
+related_spec:
+  - s002-account-info
+  - clearfocusontap-modifier
+  - app-setting-s001
+related_code:
+  - AccountInfoRoute.kt#AccountInfoRoute
+  - AccountInfoScreen.kt#AccountInfoScreen
+  - AccountInfoViewModel.kt#AccountInfoViewModel
+  - ClearFocusOnTap.kt#clearFocusOnTap
+  - feature/app/setting/impl/res/values/strings.xml
+archived_reason: PR #192로 develop 머지 완료(2026-08-04) — Task 1은 #179 선행 머지로 skip, Task 2~5 산출물 반영. 체크박스는 미체크로 남았고 as-built 4건은 스펙이 정본
+tags: [plan, parfait, setting, account, nickname, s002]
+---
+
 # S-002 계정 정보 화면 (AccountInfo) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -8,11 +33,11 @@
 
 **Tech Stack:** Kotlin, Jetpack Compose, Hilt, Navigation3, core:designsystem(YG* 컴포넌트), core:ui(BaseViewModel).
 
-> **⚠️ As-built 애드덤 (2026-07-23, [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md))** — 아래 Task 1·2·4는 "에러 문자열을 UseCase가 소유"를 전제로 작성됐으나, 구현 중 i18n 리팩터로 변경됨:
+> **⚠️ As-built 애드덤 (2026-07-23, [ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md))** — 아래 Task 1·2·4는 "에러 문자열을 UseCase가 소유"를 전제로 작성됐으나, 구현 중 i18n 리팩터로 변경됨:
 > - `NicknameResult`를 **sealed interface**로 전환(`Success`/`Error.{Empty,SpaceAtEdge,DuplicatedSpace,InvalidCharacter}`), 문자열 제거. UseCase는 `Error` 변형 반환.
 > - 에러 표시 문자열은 **`core:ui`** `text/NickNameResultUiText.kt#toStringResource`(@Composable) + `core:ui` `strings.xml`로 이동(`core:ui`에 `:domain` 의존 추가). setting·groups 공용.
 > - UI State는 `nickNameError: NicknameResult.Error?` 보유(문자열 아님), Screen이 `toStringResource()`로 매핑.
-> - S-102(GroupNickName VM/Screen) 동반 리팩터. 확정 API는 스펙 [2026-07-22-s002-account-info.md](../specs/2026-07-22-s002-account-info.md) 참조.
+> - S-102(GroupNickName VM/Screen) 동반 리팩터. 확정 API는 스펙 [2026-07-22-s002-account-info.md](../../specs/archive/2026-07-22-s002-account-info.md) 참조.
 
 > **⚠️ 2차 애드덤 (2026-07-29, PR #179 develop 머지)** — **Task 1은 이미 완료된 것으로 간주하고 건너뛴다.**
 > A-005 그룹 생성 작업이 같은 domain 리팩터를 먼저 머지했다. 단 형태가 위 1차 애드덤과 다르다:
@@ -21,26 +46,29 @@
 > (Global Constraints의 `NICKNAME_MAX_LENGTH = 15` 지역 상수 항목은 무효 — 새로 정의하지 말 것),
 > 에러 문자열은 `core:ui` `strings.xml`에 존재하나 **`toStringResource()` 확장은 없다** → 매핑은 ViewModel `when`이 `@StringRes` ID 산출.
 > Task 2·4는 `nickNameErrorResId: Int?` 기준으로 읽는다. 재작성 시 `GroupNickNameViewModel`을 미러하고,
-> 매핑 위치 수렴 여부는 [open-questions](../synthesis/open-questions.md) [2026-07-29] 결정 후 반영한다.
+> 매핑 위치 수렴 여부는 [open-questions](../../synthesis/open-questions.md) [2026-07-29] 결정 후 반영한다.
 
 > **⚠️ 3차 애드덤 (2026-08-03, 구현 완료 후 develop rebase + Figma 대조)** — **이 계획은 사실상 완료됐다.**
 > 아래 체크박스는 미체크로 남아 있으나 Task 1~5는 브랜치 `feature/#86-app-setting-account-info-screen`에
 > 구현·rebase 완료 상태다(Task 6 실기기 확인만 미수행). 다만 **as-built가 계획과 4곳 다르다** —
-> 확정 계약은 스펙 [2026-07-22-s002-account-info.md](../specs/2026-07-22-s002-account-info.md)가 정본이고, 이 계획을 그대로 재실행하지 말 것:
+> 확정 계약은 스펙 [2026-07-22-s002-account-info.md](../../specs/archive/2026-07-22-s002-account-info.md)가 정본이고, 이 계획을 그대로 재실행하지 말 것:
 >
 > 1. **Danger Zone 삭제** — Figma `S-002`(node `220:2192`)에 Danger Zone이 없다. 로그아웃/탈퇴는
 >    `S-001`(node `220:2176`) 소속 → Intent(`ClickLogout`/`ClickWithdraw`)·VM stub 핸들러·문자열 2종을
->    **전부 `AppSettingViewModel`/`AppSettingScreen`으로 이관**했다([app-setting-s001 스펙](../specs/archive/2026-07-19-app-setting-s001.md)).
+>    **전부 `AppSettingViewModel`/`AppSettingScreen`으로 이관**했다([app-setting-s001 스펙](../../specs/archive/2026-07-19-app-setting-s001.md)).
 >    문자열 키도 `account_info_*` → `setting_logout`/`setting_withdraw`로 개명.
 > 2. **State 필드명** — `nickName`/`nickNameErrorResId` → **`nickname`/`errorMessageResId`**(`GroupNickNameViewModel` as-built 미러).
 > 3. **상단바** — `YGTopBarBack` → **`YGTopBarDetail(title = "계정 정보")`**(Figma Top Bar에 타이틀 존재).
 >    섹션 라벨도 인라인 `Text` → **`YGLabel`**.
 > 4. **포커스 해제** — `YGScreen`에 상시 결선돼 있던 배경 탭 포커스 해제가 접근성 사유로 철회되고,
->    opt-in **`Modifier.clearFocusOnTap()`**(신규, [스펙](../specs/2026-08-03-clearfocusontap-modifier.md))으로 대체됐다.
+>    opt-in **`Modifier.clearFocusOnTap()`**(신규, [스펙](../../specs/archive/2026-08-03-clearfocusontap-modifier.md))으로 대체됐다.
 >    `AccountInfoScreen`은 `YGScreen(modifier = modifier.clearFocusOnTap())`으로 명시 적용한다.
 >
 > 1차 애드덤의 `NicknameResult`·`toStringResource` 경로는 **rebase에서 폐기**됐다(develop `NameValidResult`와 충돌).
 > 최종은 2차 애드덤 형태 + 위 4건이다.
+>
+> ✅ **2026-08-04 develop 머지(PR #192)** — 체크박스는 미체크로 남기고 계획을 종료(`status: done`)한다.
+> Task 6 Step 2(실기기 동작 확인) 기록은 없다. 산출물 계약은 [스펙](../../specs/archive/2026-07-22-s002-account-info.md)이 정본.
 
 ## Global Constraints
 
