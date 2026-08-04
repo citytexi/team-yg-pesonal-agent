@@ -5,9 +5,9 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-04
-related_spec: designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, parfait-api-contract-docs, data-api-service-layer
+related_spec: designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
-related_architecture: design-system, data-layer
+related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
 tags: [meta, parfait]
 ---
@@ -144,6 +144,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ✅ **카메라·갤러리는 규약을 따름(2026-08-01, PR #182)** — `feature/camera/impl`·`feature/gallery/impl`에 `strings.xml`이 신설되고 권한·확인 화면 라벨이 전부 `stringResource`로 갔다. **예외 1건**: `CustomGalleryPickerScreen`의 빈 상태 문구가 코틀린 리터럴로 남았다(같은 화면의 다른 문구는 리소스) → 아래 [갤러리 빈 상태 항목](#2026-08-01-갤러리-빈-상태-그래픽이-상시-노출되고-문구가-리터럴)에서 함께 추적.
   > 📌 **신규 화면이 규약을 안 따름(2026-08-01, PR #173)** — G-001 `GroupListScreen`·`GroupListAddGroupScreen`의 라벨 3종("그룹 추가하기"·"그룹 만들기"·"그룹 들어가기")이 코틀린 리터럴이고, 코드 주석은 `Todo : core:ui 에 string resource 로 분리`라고 적는다. 화면 전용 정적 라벨은 **feature `strings.xml`**이 규약(공유 문구만 `core:ui`)이라 주석의 목적지부터 규약과 어긋난다. 규약이 문서에만 있고 코드 리뷰에서 안 걸린다는 신호다.
   > ✅ **그 3종은 해소됨(2026-08-04, PR #189 chore)** — `feature/groups/list/impl` `strings.xml`이 신설되고 `group_add`·`group_create`·`group_enter`로 옮겨졌다. 주석이 가리키던 `core:ui`가 아니라 **규약대로 feature 모듈**에 들어갔다. 잔존은 여전히 ②`InviteCodeResult`·③ 약관 title·미착수 화면(캔버스 등) 리터럴이다.
+  > ✅ **갤러리 예외 1건도 해소됨(2026-08-04, PR #191)** — 빈 상태 문구가 `feature/gallery/impl` `strings.xml`로 갔고, 같은 PR이 추가한 헤더·재선택 버튼·가이드 토스트 문구도 전부 리소스다. 다만 **가이드 토스트 문구가 카메라 것과 문자 그대로 같은데 두 모듈에 각각 정의**돼 아래 [중복 정의 항목](#2026-08-04-가이드-토스트-문구가-카메라갤러리-두-모듈에-중복-정의)으로 갈라졌다.
 - **해소 메모**: ① 화면 전용 라벨=feature `strings.xml` / 공유 문구=`core:ui` `strings.xml` / domain 문자열 미보유 규약을 module-structure에 명시(#179가 `NickNameResult`의 domain 문자열을 걷어내 선례 확정). ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, G-002 후속) 시점에 함께 정리 — `InviteCodeResult`는 아직 `errorMessage: String?` 그대로다. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
 
 ### [2026-07-27] Toast·Alert 호스트 노출 애니메이션이 동작하지 않음
@@ -358,18 +359,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `feature/camera/impl/.../component/CameraPermissionRequestComponent.kt`·`feature/gallery/impl/.../component/GalleryPermissionRequestComponent.kt`(PR #182 develop 머지) — 두 컴포넌트 모두 `onClickGrantPermission`·`permanentlyDenied`를 파라미터로 받지만 본문에서 쓰지 않고 "설정으로 이동" 버튼 하나만 그린다. Route의 `permissionLauncher`와 VM의 `OnRequestPermission`은 살아 있으나 **발신처가 없어** 시스템 권한 다이얼로그가 뜨는 경로가 없다(갤러리는 부분 접근 배너의 `onClickManageMedia`만 launcher를 탄다).
 - **항목**: ① 최초 진입 시 자동 요청 또는 "권한 허용" 버튼을 둘지, ② 최초 거부와 영구 거부 화면을 나눌지(`permanentlyDenied` 분기 부활), ③ 안 쓸 파라미터면 시그니처에서 뺄지.
 - **상태**: 미해결 (코드 수정 대상 — 최초 설치 후 카메라 진입 시 권한을 얻을 수 없다)
-- **해소 메모**: 결정 후 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) "주의/열린 질문"을 정리한다.
+  > 📌 **갤러리 쪽 launcher 경로만 실물이 됐다(2026-08-04, PR #191)** — 死코드였던 부분 접근 배너 대신 화면 하단 "사진 재선택" `YGButton`이 PARTIAL일 때 노출돼 `OnRequestManageMedia` → `RequestPermission` → launcher를 탄다. 즉 **부분 접근 상태에서만** 시스템 다이얼로그가 뜨고, 미허용(DENIED/PERMANENTLY_DENIED) 상태의 `onClickGrantPermission`은 여전히 권한 화면에서 호출되지 않는다.
+- **해소 메모**: 결정 후 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) "주의/열린 질문"과 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 권한 흐름 절을 정리한다.
 
 ### [2026-08-01] 갤러리 빈 상태 그래픽이 상시 노출되고 문구가 리터럴
 - **출처**: `feature/gallery/impl/.../screen/CustomGalleryPickerScreen.kt#GalleryContent`(PR #182 develop 머지) — 빈 상태 이미지(`image_gallery_empty`)가 `when(isLoading/isEmpty/else)` 분기 **밖**에 있어 사진 목록이 있어도 함께 그려진다. 로딩 인디케이터는 흰 배경 위 `Color.White`이고, 빈 상태 문구는 `strings.xml`이 아니라 코틀린 리터럴이다(같은 화면의 권한 문구는 리소스화됨 → [2026-07-26 항목](#2026-07-26-문자열-리소스화-부분-적용--잔존-하드코딩domain-표시문자열)).
 - **항목**: ① 그래픽을 `isEmpty` 분기 안으로 넣을지(디자인상 상시 노출 의도인지 확인), ② 인디케이터 색을 대비 있는 값으로 바꿀지, ③ 문구를 갤러리 `strings.xml`로 옮길지.
-- **상태**: 미해결 (코드 수정 대상)
-- **해소 메모**: ①은 Figma 갤러리 화면 대조가 선행. 처리 시 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)의 갤러리 항목을 정리한다.
+- **상태**: 부분 해소 (①③ **PR #191 develop 머지, 2026-08-04** — 그래픽이 `isEmpty` 분기 안으로 들어가 그래픽+문구가 한 `Column`으로 묶였고, 문구는 갤러리 `strings.xml`로 이동. 그래픽 자체도 벡터 → 밀도별 PNG로 교체. / ② **잔존** — 인디케이터는 여전히 흰 배경 위 `Color.White`다. 같은 PR이 그리드 배경까지 흰색으로 확정해 로딩 중에는 빈 화면으로 보인다.)
+- **해소 메모**: ②만 고치면 닫힌다(색 하나). 처리 시 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) "주의 / 열린 질문"과 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)의 갤러리 항목을 함께 정리한다.
 
 ### [2026-08-01] C-101-confirm 이후 경로 미결선 — 확인 화면에서 앞으로 못 감
 - **출처**: `feature/camera/impl/.../route/PictureConfirmRoute.kt`(PR #182 develop 머지) — "다음"이 `onClickConfirm = { }`(TODO "c103-로딩페이지로 넘어가야함"), 닫기가 `onClickClose = {}`(TODO "c001-캔버스메인으로 넘어가야함")다. 뒤로(다시 찍기)만 동작한다. [navigation-flow](../architecture/navigation-flow.md) 체크리스트 6번(진입 경로를 같은 PR에)의 반대편 사례 — 나가는 경로가 없다.
 - **항목**: ① C-103(누끼 로딩) 진입 NavKey·인자 계약 확정, ② 닫기가 캔버스(C-001)로 가는지 촬영 호출자에게 결과를 돌려주는지(`LocalResultEventBus` 경로가 이미 있다) 확정.
 - **상태**: 미해결 (후속 화면 미구현 종속)
+  > 📌 **영향 확대(2026-08-04, PR #191)** — 갤러리 선택도 이 화면으로 합류한다(`PictureConfirmSource.GALLERY`). 갤러리는 결과 반환까지 없애서 **두 진입점 모두 이 화면이 유일한 출구**인데 그 출구가 TODO다. ②의 "결과 반환" 선택지는 갤러리 쪽에서 이미 폐기된 셈이라 결정이 한쪽으로 기울었다.
 - **해소 메모**: 결선 시 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)과 세그멘테이션 쪽 문서를 함께 갱신한다.
 
 ### [2026-08-01] 블러 구현 관용구가 둘로 갈림 — Haze vs 자체 GraphicsLayer
@@ -535,7 +538,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `component/ygtopbar/YGTopBar.kt#YGTopBarEmpty`(PR #188) + `feature/groups/list/impl` `GroupListViewModel`·`core:util:jvm` `model/DateFormat` — 상단 바가 완성된 문자열 2개(`date`·`day`)를 받기만 하고, 실제 값은 VM이 `DateFormat.FullMonthWithDay`·`AbbreviatedDayOfWeek`로 만든다. 두 포맷 모두 **영문 표기**(Figma `December 31 (Wed)`)인데 앱 UI는 한국어다. 같은 화면의 `YGDate`도 같은 값을 쓴다.
 - **항목**: ① 날짜·요일 표기를 한국어로 갈지 Figma대로 영문을 유지할지(제품 결정), ② 포맷 소유를 `core:util:jvm` 상수로 둘지 로케일 기반 포맷터로 바꿀지, ③ 정책 소스가 위키에 없다 — 수집 대상인지.
 - **상태**: 미해결 (컴포넌트는 무관 — 호출 화면·정책 소관)
-- **해소 메모**: ①이 정해지면 `DateFormat`과 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)을 함께 고친다. 위키 정책이 필요하면 소스 수집을 요청한다.
+  > 📌 **두 번째 소비처(2026-08-04, PR #191)** — C-102 갤러리 목록의 날짜 헤더가 `core:util:jvm` `DateTextFormat`(`monthDayFormat`·`weekdayFormat`, 둘 다 영문 약어)을 쓴다. 즉 영문 표기가 상단 바 한 곳이 아니라 **화면 2곳·포맷 객체 2개**(`DateFormat`·`DateTextFormat`)로 퍼졌고, ②의 "포맷 소유" 질문에는 **같은 성격의 객체가 둘로 나뉜 것**도 포함된다.
+- **해소 메모**: ①이 정해지면 `DateFormat`·`DateTextFormat`과 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)·[c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md)을 함께 고친다. 위키 정책이 필요하면 소스 수집을 요청한다.
 
 ### [2026-08-04] 배경 블러가 실화면에 미배선 + API 31 미만 폴백 수용 여부
 - **출처**: `component/ygtopbar/YGTopBar.kt#ygTopBarBackdrop`([ADR-0018](../adr/0018-backdrop-blur-haze.md), PR #188 develop 머지) vs `feature/groups/list/impl` `GroupListScreen` — Top Bar는 `hazeState`를 받을 수 있지만 유일한 소비 화면 G-001이 넘기지 않고 배경에 `Modifier.hazeSource`도 걸지 않는다. 앱에서는 `White75` 틴트만 보이고 블러는 `:app-preview` 갤러리 데모에서만 산다. 또 `RenderEffect`가 API 31+이라 `minSdk` 26~30 기기에서는 배선해도 틴트만 남는데, 검증 기기가 API 36이라 그 경로는 한 번도 실행되지 않았다.
@@ -560,6 +564,30 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 프로필 조회/수정 API 연동 시 저장 트리거를 무엇으로 할지(포커스 해제 — `clearFocusOnTap()`이 이미 그 지점을 만들어 뒀다 / IME 완료 / 상단바 확인 버튼 신설), ② 두 화면이 같은 닉네임을 보도록 소유처를 어디에 둘지(공유 상태 vs 각자 조회), ③ 위키 [[닉네임-자동-생성]]의 "계정 생성 시 1회 부여·DB 저장 후 불변" 규칙과 이 화면의 수정 허용이 어떻게 맞물리는지(초기값 출처가 서버여야 한다).
 - **상태**: 미해결 (API 연동 라운드로 이월 — 현재 develop 화면은 동작하지 않는 폼)
 - **해소 메모**: 연동 시 [s002 스펙](../specs/archive/2026-07-22-s002-account-info.md) "주의 / 열린 질문"과 [app-setting-s001 스펙](../specs/archive/2026-07-19-app-setting-s001.md) placeholder 항목을 함께 닫는다. 로그아웃·탈퇴 stub(같은 PR로 UI만 노출됨)도 같은 라운드 대상이다.
+
+### [2026-08-04] 커스텀 갤러리가 결과 반환을 끊었는데 호출 화면의 `ResultEffect`가 남음
+- **출처**: `feature/gallery/impl` `CustomGalleryPickerViewModel`(`ReturnResult` → `NavigateToConfirm`으로 교체)·`route/CustomGalleryPickerRoute.kt`(`LocalResultEventBus` 사용 제거) vs `feature/groups/canvas/impl/route/CanvasImageAddRoute.kt`(PR #191 develop 머지) — 호출 화면은 여전히 `ResultEffect<String> { CacheImage(imageUri) }`로 URI 반환을 기다리지만, 커스텀 갤러리는 이제 아무것도 보내지 않고 확인 화면으로 `goTo` 한다. 같은 화면에서 가는 다른 목적지(`NavKeyCameraCustom`)도 성공 시엔 확인 화면으로 전진하고 `ReturnResult`는 실패·취소(null)에만 쓴다. 즉 **이 `ResultEffect`가 캐시 저장을 트리거하는 경로가 사실상 없다.**
+- **항목**: ① 사진 선택 후 캐시 저장(`CanvasImageAddIntent.CacheImage`)을 어디서 할지 — 확인 화면 "다음"이 결선되면 그쪽 책임인지, ② 결선 후에도 `ResultEffect`를 남길지 걷어낼지, ③ 커스텀/시스템 피커가 반환 방식이 갈린 것(시스템 쪽은 `LocalResultEventBus` 유지)이 의도인지.
+- **상태**: 미해결 (코드 수정 대상 — 죽은 결과 수신부)
+- **해소 메모**: [2026-08-01 확인 화면 이후 경로 항목](#2026-08-01-c-101-confirm-이후-경로-미결선--확인-화면에서-앞으로-못-감)과 같은 라운드에서 처리하고 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md)·[navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번 마커를 정리한다.
+
+### [2026-08-04] 갤러리 그리드 셀이 `clickableYG` 대신 표준 `clickable` 사용
+- **출처**: `feature/gallery/impl/.../component/GalleryImageGridComponent.kt#GalleryImageCell`(PR #191 develop 머지) — 셀 클릭이 `Modifier.clickable`이라 `core:util:android`의 leading-throttle(`clickableYG`)을 타지 않는다. 이 클릭은 `navigator.goTo`로 이어지므로 연타 시 확인 화면이 백스택에 중복으로 쌓일 수 있다. 같은 규약 이탈이 [2026-07-18 `YGDateButton` 항목](#2026-07-18-ygdatebutton-clickableyg-미사용--스로틀-규약-이탈)으로 이미 등록돼 있다.
+- **항목**: ① 화면(feature) 쪽 클릭에도 `clickableYG`를 규약으로 적용할지 — 지금까지 이 규약은 디자인시스템 컴포넌트 기준으로만 서술됐다, ② 적용한다면 리플 변형(그리드 셀은 이미지 위라 dim/scale 중 무엇인지) 선택.
+- **상태**: 미해결 (코드 수정 대상)
+- **해소 메모**: ①이 정해지면 [design-system](../architecture/design-system.md) clickable 규약의 적용 범위를 "디자인시스템 컴포넌트"에서 "네비게이션을 유발하는 모든 클릭"으로 넓히는 서술이 필요하다. [2026-07-18 항목](#2026-07-18-ygdatebutton-clickableyg-미사용--스로틀-규약-이탈)과 함께 처리.
+
+### [2026-08-04] 갤러리 死코드 2건 — 부분 접근 배너·전체 조회 UseCase
+- **출처**: `feature/gallery/impl/.../component/GalleryPartialAccessBanner.kt`(참조 0건 — 하단 "사진 재선택" `YGButton`으로 대체됐으나 파일이 남았고, 배경·문구가 `Color` 리터럴 + 코틀린 리터럴이라 문자열 리소스 규약에도 어긋난다) · `domain/.../usecase/gallery/LoadAllGalleryImageGroupsUseCase.kt`(참조 0건 — 화면이 03시 창 필터본 `LoadFilterYGGalleryImageGroupsUseCase`만 쓴다). 둘 다 PR #191 이후 상태.
+- **항목**: ① 배너를 지울지(대체 완료) 다른 접근 수준 안내로 되살릴지, ② 전체 조회 UseCase가 앞으로 쓰일 화면이 있는지(있으면 유지, 없으면 Repository의 `loadAllGalleryImages`까지 함께 정리).
+- **상태**: 미해결 (코드 수정 대상)
+- **해소 메모**: 정리 시 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 파일 구성·주의 절과 [data-layer](../architecture/data-layer.md) 레이어 배치의 `GalleryRepository` 서술을 맞춘다.
+
+### [2026-08-04] 가이드 토스트 문구가 카메라·갤러리 두 모듈에 중복 정의
+- **출처**: `feature/camera/impl` `strings.xml`의 `camera_custom_guide_toast` · `feature/gallery/impl` `strings.xml`의 `gallery_custom_guide_toast`(PR #191 develop 머지) — 문자열 값이 문자 그대로 같다(누끼 대상 선택 가이드). [module-structure](../architecture/module-structure.md) 규약은 "여러 feature가 공유하는 문구는 `core:ui`"라고 정하는데, 지금은 같은 문구가 두 feature에 복제됐다.
+- **항목**: ① `core:ui` `strings.xml`로 올릴지(규약대로), ② 아니면 두 화면의 문구가 앞으로 갈릴 예정이라 복제를 의도로 볼지 — 갈릴 예정이면 각 문구가 화면별로 달라져야 한다.
+- **상태**: 미해결 (문구가 개정되면 한쪽만 고쳐질 위험)
+- **해소 메모**: 결정 후 [module-structure](../architecture/module-structure.md) "규칙"의 공유 문구 조항에 사례를 붙이고 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 규약 대조 절을 정리한다.
 
 <!--
 항목 추가 형식:

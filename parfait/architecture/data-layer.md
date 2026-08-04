@@ -26,6 +26,10 @@ tags: [architecture, parfait]
 - **DataStore 기반** — `RecentImageLocalDataSource`(메타데이터), `RecentImageEditor`(`data/datastore/`, DataStore 접근 추상화 — 단일 키 `get()`/`set()` 동기 인터페이스로, suspend/flow가 아님).
 - **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근).
 
+> **표시 포맷은 data가 만들지 않는다**(2026-08-04, PR #191) — `GalleryImageGroup.date`가 문자열에서
+> `LocalDate`로 바뀌고 `GalleryMediaProvider`의 날짜 포맷이 삭제됐다. 포맷은 화면이
+> `core:util:jvm` `DateTextFormat`으로 만든다. 날짜 그룹 키의 하루 경계는 `DayWindow`(도메인 모델) 소관.
+
 ## DI 모듈 (data, `@InstallIn(SingletonComponent::class)`)
 `di/` **평면 배치, 역할당 파일 1개**(하위 패키지 없음). 도메인이 늘면 해당 역할 파일에 바인딩을
 추가한다 — 도메인별 분할은 기각([[0017-remote-network-datasource]] 대안 E).
