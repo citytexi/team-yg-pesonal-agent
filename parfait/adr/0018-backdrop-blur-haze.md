@@ -20,6 +20,13 @@ tags: [adr, parfait, designsystem, blur, top-bar]
 
 > 상태·날짜·결정자·대체 관계는 위 frontmatter가 단일 출처. 본문은 결정 내용에 집중.
 
+> ✅ **develop 머지(2026-08-04, PR #188)** — 이 결정이 코드로 들어갔다. `libs.versions.toml` `haze`
+> 항목 + `ComposeConfig` 배선, `YGTopBarEmpty(hazeState: HazeState? = null)`, 분기는 private
+> `Modifier.ygTopBarBackdrop`(`null`이면 `drawBehind` 틴트, 아니면 `hazeEffect`),
+> 반경 `YGTopBarDefaults.BackdropBlurRadius`. 결정과 구현의 갈림 없음.
+> **다만 실화면 배선은 아직 없다** — G-001 `GroupListScreen`이 `hazeState`를 넘기지 않아 앱에서는
+> 틴트만 보인다(갤러리 데모에서만 블러가 산다) → [open-questions](../synthesis/open-questions.md) [2026-08-04].
+
 ## 맥락
 
 Figma `Top Bar`의 `Status=Default`·`Status=Empty`가 반투명 배경(`Transparency.White75`) 위에
