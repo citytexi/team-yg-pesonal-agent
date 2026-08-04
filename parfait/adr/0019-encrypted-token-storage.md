@@ -60,6 +60,12 @@ tags: [adr, parfait, security, network, data, auth]
 예외를 전파하면 `TokenProvider.getToken()` → `AuthInterceptor.intercept`에서 터져 **모든 네트워크
 요청이 죽는다** — 사용자가 앱을 지우기 전까지 복구할 수 없는 상태가 된다.
 
+> ⚠️ **as-built** — `read()`의 `runCatching` 범위가 복호화 호출보다 넓다. **DataStore 읽기까지 함께**
+> 감싸므로 키 무효화뿐 아니라 저장소 I/O 실패도 같은 복구 경로(`clear()` + `null`)로 떨어진다.
+> 복구 경로의 `clear()`도 다시 `runCatching`으로 감싸 **삭제가 실패해도 `null` 반환은 보장**된다
+> (삭제 실패 시 다음 읽기에서 같은 경로를 한 번 더 시도한다). 결과적으로 "복호화 실패만 잡는다"보다
+> 넓은 계약이다 — 토큰 유실을 감수하고 앱이 죽지 않는 쪽을 택한 것으로, 위 결정의 의도와 같은 방향이다.
+
 ## 대안
 
 - **대안 A — Tink** — 구글이 유지보수하는 암호 라이브러리라 키 관리·논스 처리 등 직접 구현 실수를

@@ -181,6 +181,11 @@ fake를 끼울 자리가 필요하기 때문이다. `EmptyTokenProvider`는 삭�
 예외를 전파하면 `TokenProvider.getToken()` → `AuthInterceptor.intercept`에서 터져 **모든 네트워크 요청이
 죽는다.** 사용자가 앱을 지우기 전까지 복구할 수 없는 상태가 된다.
 
+> ⚠️ **as-built** — 구현된 `read()`는 설계보다 넓게 잡는다. `runCatching`이 복호화만이 아니라
+> **DataStore 읽기까지** 감싸고, 복구 경로의 `clear()`도 `runCatching`으로 감싼다. 키 무효화 외에
+> 저장소 I/O 실패도 같은 경로로 떨어지며, 삭제가 실패해도 `null` 반환은 보장된다
+> → [ADR-0019](../adr/0019-encrypted-token-storage.md).
+
 ### 6. DI 배선
 
 [ADR-0017](../adr/0017-remote-network-datasource.md)의 "DI 모듈은 역할당 1파일 평면 배치" 관용을 따른다.
