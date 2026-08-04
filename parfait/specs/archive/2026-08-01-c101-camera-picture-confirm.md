@@ -4,10 +4,10 @@ title: C-101 커스텀 카메라 · C-101-confirm 사진 확인 화면 (Custom C
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-01
-related_code: CameraFeedLayer, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, GalleryPermissionRequestComponent, DateTextFormat
+verified: 2026-08-04
+related_code: CameraFeedLayer, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, PictureConfirmSource, GalleryPermissionRequestComponent, DateTextFormat
 related_adr: ADR-0018, ADR-0006
-related_spec: designsystem-button-missing-components, g001-group-list
+related_spec: designsystem-button-missing-components, g001-group-list, c102-custom-gallery-picker
 related_architecture: navigation-flow, design-system, module-structure
 supersedes:
 superseded_by:
@@ -80,6 +80,21 @@ tags: [spec, parfait, camera, c101]
 - 저장 성공 → `OnCaptureSaved` → `CreateCameraCacheUriUseCase` → `NavigateToConfirm(uri)`.
   실패·취소는 `ReturnResult(null)` + `LocalResultEventBus`로 호출 화면에 반환.
 
+### 확인 화면 as-built 갱신 (2026-08-04, PR #191)
+갤러리 라운드가 이 화면을 **두 진입점 공용**으로 바꿨다 → [c102 스펙](2026-08-04-c102-custom-gallery-picker.md).
+- `NavKeyPictureConfirm(uri, source)` — 신설 `PictureConfirmSource`(CAMERA/GALLERY)가 인자로 추가됐고,
+  엔트리 빌더가 `navKey.source`를 Route에 그대로 넘긴다. 화면은 이 값으로 좌측 버튼 문구만 가른다
+  ("다시 찍기" / "다시 선택"). 뒤로 동작은 양쪽 다 `navigator.onBack()`이다.
+- **이미지 노출이 위키 [[이미지-렌더링-정책]]에 맞춰졌다.** 이전 구현은 이미지 영역에 늘 테두리를
+  둘렀으나, 지금은 `BoxWithConstraints`에서 원본 비율과 영역 비율을 비교해 분기한다 — 가로가 먼저
+  차면 **컨테이너·테두리 없이 단독 노출**(Case A, 가로 100%·중앙 정렬), 세로가 먼저 차면 **흰 배경 +
+  `Gray500` 테두리 컨테이너** 안에 `ContentScale.Fit`으로 담는다(Case B). 컨테이너는 잔여 영역을
+  가득 채우지만 세로 한계 이미지라 실질 높이는 이미지 높이와 같다.
+  원본 크기를 모르는 첫 프레임(비동기 로드 전)은 Case A로 떨어진다.
+- 갤러리 쪽 잔존 지적 2건이 이 PR로 정리됐다 — 빈 상태 그래픽이 `isEmpty` 분기 **안으로** 들어갔고
+  빈 상태 문구가 `strings.xml`로 갔다(그래픽 자체는 벡터 → 밀도별 PNG로 교체). **로딩 인디케이터가
+  흰 배경 위 흰색인 것은 그대로다.**
+
 ### 상태(MVI)
 `CustomCameraState`: `isInit` · `hasPermission` · `permanentlyDenied` · `lensFacing` · `zoomRatio` ·
 `zoomRange` · `flashMode`. 권한은 `LifecycleResumeEffect`로 재개 시마다 재확인하고, 요청 결과의
@@ -105,14 +120,15 @@ tags: [spec, parfait, camera, c101]
   `windowInsetsPadding`으로 직접 처리). 의도적 예외이고 코드 주석에 근거가 있다.
   화면 최외곽 `YGScreen`은 카메라·확인 화면 모두 쓰지 않는다(G-001과 같은 이탈 → [navigation-flow](../../architecture/navigation-flow.md)).
 - **문자열**: 카메라·갤러리 모두 feature `strings.xml` 신설로 [module-structure](../../architecture/module-structure.md) 규약을 따랐다.
-  단 갤러리 **빈 상태 문구만 코틀린 리터럴**로 남았다.
+  단 갤러리 **빈 상태 문구만 코틀린 리터럴**로 남았다(#191로 해소).
 - **디자인시스템 재사용**: 셔터·원형 버튼·토스트·`YGDate`·`YGButton`을 그대로 쓴다. feature 로컬 임시
   버튼 구현은 이 PR로 사라졌다([2026-07-30 셔터 2구현 항목](../../synthesis/open-questions.md) 해소).
 
 ## 파일 구성
 | 파일 | 역할 |
 |---|---|
-| `feature/camera/api/.../NavKeyPictureConfirm.kt` | 확인 화면 목적지(`uri` 인자) |
+| `feature/camera/api/.../NavKeyPictureConfirm.kt` | 확인 화면 목적지(`uri` 인자 — #191에서 `source` 추가) |
+| `feature/camera/api/.../PictureConfirmSource.kt` | 확인 화면 진입 출처 enum(#191 신설) |
 | `feature/camera/impl/.../component/CameraFeedLayer.kt` | 피드 2회 그리기 블러 + 뷰파인더 데코 + 탭 포커스 |
 | `feature/camera/impl/.../component/CameraPreviewComponent.kt`·`CameraPreviewHandle.kt` | CameraX 바인딩·핸들 |
 | `feature/camera/impl/.../component/CameraControlComponent.kt` | 플래시·셔터·전환 컨트롤 행 |
@@ -124,7 +140,7 @@ tags: [spec, parfait, camera, c101]
 | `feature/camera/impl/.../viewmodel/CustomCameraViewModel.kt` | MVI 상태·인텐트·효과 + `FlashMode` |
 | `feature/camera/impl/src/main/res/values/strings.xml`·`feature/gallery/.../strings.xml` | 화면 문구 |
 | `core/util/jvm/.../model/DateTextFormat.kt` | 요일·월일 축약 포맷(`kotlinx-datetime`) |
-| `core/designsystem/res/drawable/ic_lightning_fill.xml`·`image_gallery_empty.xml` | 플래시 on 아이콘·갤러리 빈 그래픽 |
+| `core/designsystem/res/drawable/ic_lightning_fill.xml`·`image_gallery_empty` | 플래시 on 아이콘·갤러리 빈 그래픽(#191에서 벡터 → 밀도별 PNG 교체) |
 
 ## 동반된 디자인시스템 변경 (범위 밖 회귀)
 이 PR은 카메라 화면 작업이면서 `core:designsystem`을 함께 건드렸고, 둘 다 **직전 sync 라운드 결과를
@@ -137,12 +153,13 @@ tags: [spec, parfait, camera, c101]
 
 ## 주의 / 열린 질문
 - **다음 경로 미결선**: `PictureConfirmRoute`의 "다음"·닫기가 빈 람다 + TODO(C-103 로딩, C-001 캔버스).
-  현재 확인 화면에서 앞으로 나갈 수 없다.
+  현재 확인 화면에서 앞으로 나갈 수 없다. **#191로 갤러리 경로가 같은 화면에 합류해 영향 범위가
+  두 진입점으로 늘었다**(갤러리는 결과 반환도 끊겨 이 화면이 유일한 출구다).
 - **줌 死코드**: `CameraZoomIndicatorComponent`·`controls/ZoomLevelRow`가 참조 0건이고,
   `CameraControlComponent`는 `zoomRatio`·`zoomRange`·`onClickZoomLevel`을 받기만 하고 쓰지 않는다.
   VM의 `OnZoomRangeReady`·`OnClickZoomLevel`도 발신처가 없다.
-- **갤러리 빈 상태**: 빈 그래픽 `Image`가 `when` 분기 **밖**에 있어 사진이 있어도 항상 그려지고,
-  로딩 인디케이터는 흰 배경에 흰색이다. 문구는 리터럴.
+- **갤러리 빈 상태**: ~~빈 그래픽 `Image`가 `when` 분기 **밖**에 있어 사진이 있어도 항상 그려지고~~
+  ~~문구는 리터럴~~(둘 다 #191로 해소, 2026-08-04). 로딩 인디케이터가 흰 배경에 흰색인 것은 잔존.
 - **권한 요청 경로 부재**: 권한 컴포넌트가 `permanentlyDenied`를 받지만 본문에서 분기하지 않고(거부
   화면 1종), `onClickGrantPermission`을 부르는 UI도 없다. `CustomCameraIntent.OnRequestPermission`과
   `permissionLauncher`는 살아 있으나 **발신처가 없어** 시스템 권한 다이얼로그가 뜨지 않는다 —
