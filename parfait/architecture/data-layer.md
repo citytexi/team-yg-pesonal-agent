@@ -144,9 +144,13 @@ tags: [architecture, parfait]
   `TokenStore`(`LocalDataSourceModule.bindTokenStore`) → `TokenStoreTokenProvider`
   (`NetworkModule.provideTokenProvider`) → `AuthInterceptor`. 복호화 실패(키 유실) 시
   `EncryptedTokenStore`가 예외를 삼키고 `clear()` 후 `null`을 반환 — 재로그인 유도. 근거·대안은
-  [[0019-encrypted-token-storage]].
+  [[0019-encrypted-token-storage]]. as-built 기준 `read()`의 `runCatching` 범위는 복호화만이 아니라
+  **DataStore 읽기까지 포함**하고, 복구 경로의 `clear()`도 다시 `runCatching`으로 감싼다 — 즉 키 유실뿐
+  아니라 저장소 I/O 실패도 토큰 삭제로 이어지고, 삭제 자체가 실패해도 `null` 반환은 보장된다.
 - **로깅**: `HttpLoggingInterceptor` 레벨은 `BuildConfig.DEBUG`로 게이팅(debug=`BODY`,
-  release=`NONE`) — release에서 토큰·바디 노출 방지.
+  release=`NONE`) — release에서 토큰·바디 노출 방지. 추가로 `redactHeader("Authorization")`를 걸어
+  debug 빌드에서도 헤더 값을 가린다. **바디는 redact 대상이 아니다** — `reissue`·`logout` 요청 바디의
+  refresh token은 debug logcat에 평문으로 남는다 → [open-questions](../synthesis/open-questions.md).
 - **응답 매핑**: 원격 DataSource는 **도메인 모델을 반환**한다(`PolicyRemoteDataSource.getPolicies():
   Result<List<PolicyVO>>`). 서버 응답 타입(`service.model.response`의 `PolicyResponse`/
   `PolicyItemResponse`)은 data 안에서만 살고, `source.<도메인>.mapper`의 `internal` 확장 함수

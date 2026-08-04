@@ -112,11 +112,24 @@ DataSource 배치 관례를 확립한다.
   > 스킵 여부를 판정하고(`network/NoAuth.kt`), 스킵이면 `tokenProvider.getToken()` 호출 자체를
   > 생략한다. 경로 문자열을 서버 화이트리스트와 이중 관리하지 않아도 되고(오타는 서비스 인터페이스
   > 컴파일 타임에 걸린다), 선언이 서비스 메서드의 URL 옆에 붙는다 — **앱이 아는 것은 "이 호출에
-  > 토큰을 붙일지"이지 서버 보안 설정이 아니기 때문**이다. R8 release 빌드에서 어노테이션이 유지되는지는
-  > 미검증 → [open-questions](../synthesis/open-questions.md).
+  > 토큰을 붙일지"이지 서버 보안 설정이 아니기 때문**이다.
+  >
+  > **R8 유지 규칙(2026-08-03 `data-api-service-layer` 라운드에서 확정)** — 어노테이션을 런타임에
+  > 읽으므로 `-keep @interface`가 필요한데, 이 규칙은 `data/proguard-rules.pro`가 아니라
+  > **`data/consumer-rules.pro`**에 둔다. `:data`는 Android **라이브러리** 모듈이라
+  > `proguardFiles`는 그 모듈 자체의 R8 실행에만 적용되고, 앱(`:app`)의 R8 실행에는
+  > `consumerProguardFiles`로 명시한 규칙만 전달되기 때문이다. 컨벤션 플러그인
+  > `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`를 등록한다. 규칙이
+  > 앱에 전달되지 않으면 release 빌드에서 어노테이션이 제거돼 화이트리스트 엔드포인트 전부에
+  > `Authorization` 헤더가 붙는다 — 토큰 재발급이 가장 필요한 순간에 막힌다.
+  > 잔여 미검증 항목(Retrofit 밖 OkHttp 직접 요청)은 [open-questions](../synthesis/open-questions.md).
 - **로깅**: `HttpLoggingInterceptor` 레벨을 `BuildConfig.DEBUG`로 게이팅한다(debug=`BODY`,
   release=`NONE`). release 빌드에서 `Authorization` 토큰과 요청/응답 바디가 로그로 노출되는 것을
-  막기 위한 결정이다. `OkHttpClient`는 connect/read/write 타임아웃 3종을 설정한다.
+  막기 위한 결정이다. 여기에 더해 `redactHeader("Authorization")`로 **debug 빌드에서도 헤더 값을
+  가린다** — release 게이팅만으로는 개발 중 logcat에 access token이 그대로 남기 때문이다.
+  다만 redact 대상은 헤더뿐이라 **요청 바디에 실리는 refresh token은 여전히 평문**이다
+  → [open-questions](../synthesis/open-questions.md). `OkHttpClient`는 connect/read/write 타임아웃
+  3종을 설정한다.
 - **remote DataSource 배치**: 원격 DataSource는 `source.<도메인>.remote` 패키지에 인터페이스+`Impl`
   쌍으로 둔다. 예시 1세트로 `TempService`+`TempRequest`/`TempResponse`+`TempRemoteDataSource`(+`Impl`)를
   두고, `RemoteDataSourceModule`(`@Binds`)로 바인딩한다.
