@@ -24,8 +24,13 @@
 | 문서 | 서버 위치 | 엔드포인트 | Android |
 |---|---|---|---|
 | [auth.md](auth.md) | `http/auth` | 4 (카카오 로그인 · 회원가입 완료 · 토큰 재발급 · 로그아웃) | 미구현 |
+| [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 미구현 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 미구현 |
 | [parfait.md](parfait.md) | `http/parfait` | 1 (그룹 캘린더 연도 리스트) | 미구현 |
+
+`auth.md`와 `policy.md`는 서버 모듈이 같고(`http/auth`, OpenAPI 태그도 둘 다 `Auth`) URL 세그먼트가
+다르다(`/api/v1/auth/*` vs `/api/v1/policies`). 파일명 규약이 서버 패키지가 아니라 경로 기준이라
+문서를 나눴다 — 아래 [규약](#규약) 참고.
 
 ## 규약
 - **파일명에 날짜 접두사를 붙이지 않습니다.** `specs/`·`plans/`와 달리 API 계약은 `architecture/`와 같은
@@ -49,7 +54,8 @@
 ## 계약을 실제로 확인하는 법
 
 TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다(`auth.http`·
-`parfait-group.http`·`parfait.http`·`health.http`). 여기 문서에 적힌 계약을 서버에 직접 쏴서 확인할 수 있다.
+`policy.http`·`parfait-group.http`·`parfait.http`·`health.http`). 여기 문서에 적힌 계약을 서버에 직접
+쏴서 확인할 수 있다.
 
 - 로그인 응답에서 토큰을 자동 추출해 다음 요청이 그대로 쓴다 — 스웨거에서 복붙할 필요가 없다
 - 각 요청 주석에 이 문서들의 함정을 옮겨 뒀다(`reissue`에 `Authorization`을 붙이면 재발급이 막히는 건은

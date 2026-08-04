@@ -8,7 +8,7 @@ verified: 2026-08-02
 related_spec: data-network-setup, network-envelope-token-storage
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, TempRemoteDataSource, ApiCaller, EncryptedTokenStore
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -18,7 +18,7 @@ tags: [architecture, parfait]
 > 근거는 파일명+심볼명으로만.
 
 ## 레이어 배치
-- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`InviteCodeResult`, `GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `TempVO`) + 도메인 예외(sealed `SegmentationException`).
+- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`InviteCodeResult`, `GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`) + 도메인 예외(sealed `SegmentationException`).
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
 ## DataSource 종류
@@ -50,13 +50,14 @@ tags: [architecture, parfait]
 ## 신규 데이터 추가 체크리스트
 1. **domain**: Repository 인터페이스 + 필요한 도메인 모델 정의.
 2. **data**: 구현 클래스 + DataSource(파일/DataStore/원격) 작성. 원격은 `source.<도메인>.remote`
-   패키지에 인터페이스+`Impl` 쌍(예: `TempRemoteDataSource`/`TempRemoteDataSourceImpl`,
+   패키지에 인터페이스+`Impl` 쌍(예: `PolicyRemoteDataSource`/`PolicyRemoteDataSourceImpl`,
    [[0017-remote-network-datasource]]) — 반환 타입은 **도메인 모델**, 서버 응답은
    `source.<도메인>.mapper`의 확장 함수로 변환. `Impl`은 **`ApiCaller`를 생성자로 주입**받아 서비스
    호출을 감싼다(`@Inject constructor(service: XxxService, private val apiCaller: ApiCaller)`) —
-   top-level `safeApiCall` import는 더 이상 없다. 아래 "네트워킹 → 응답 계약"의 진입점 3개 중 응답
-   형태에 맞는 것을 고른다. 인증이 불필요한 엔드포인트라면 서비스 인터페이스 메서드에 `@NoAuth`를
-   붙인다(아래 "네트워킹 → 인증").
+   top-level `safeApiCall` import는 더 이상 없다. 아래 "네트워킹 → 응답 계약"의 진입점 4개 중 응답
+   형태에 맞는 것을 고른다 — 응답을 도메인 모델로 매핑해야 한다면 `safeApiCall(block, transform)`을
+   써서 매핑을 같은 가드 안에 둔다(아래 참고). 인증이 불필요한 엔드포인트라면 서비스 인터페이스
+   메서드에 `@NoAuth`를 붙인다(아래 "네트워킹 → 인증").
 3. **DI**: 역할에 맞는 기존 모듈(`RepositoryModule`·`LocalDataSourceModule`·`RemoteDataSourceModule`)에
    `@Binds` 추가. 새 파일을 만들지 않는다.
 4. 소비: **UseCase**를 통해 노출, ViewModel은 UseCase만 호출([[state-management]]).
@@ -77,7 +78,7 @@ tags: [architecture, parfait]
   kotlinx-serialization 의존을 이 플러그인이 부여(`ModuleDataConventionPlugin`에서 이관됨).
 - **DI(`NetworkModule`, `@InstallIn(SingletonComponent::class)`)**: `provideTokenProvider`
   (=`TokenStoreTokenProvider`)·`provideAuthInterceptor`·`provideOkHttpClient`·`provideRetrofit`를 제공.
-  Retrofit 서비스 생성은 `ServiceModule`(예: `provideTempService`) 소관.
+  Retrofit 서비스 생성은 `ServiceModule`(예: `providePolicyService`) 소관.
   `Json`은 용도별 `@Qualifier`로 분리 — 로컬(DataStore) `@LocalJson`, 원격(Retrofit) `@RemoteJson`,
   둘 다 `JsonModule` 제공. 한정자는 `model/qualifier` 패키지. 같은 타입이어도 한정자로 구분돼 중복
   바인딩이 아니며, 설정을 용도별로 독립 조정 가능(현재 두 설정은 동일).
@@ -85,22 +86,42 @@ tags: [architecture, parfait]
   `@Serializable`)를 서버 envelope와 필드 단위로 맞췄다. 성공 판정은 **`success` 필드**를 그대로 쓴다
   (서버가 성공 코드를 `"OK"`·`"CREATED"` 2종으로 써서 단일 코드 상수 비교가 불가능했다 — 구 `isSuccess`
   프로퍼티는 제거). `network/ApiCaller.kt`(`@Singleton class ApiCaller @Inject constructor(@RemoteJson json: Json)`)가
-  서비스 응답을 `Result<T>`로 변환하고, 진입점은 **셋**이다.
+  서비스 응답을 `Result<T>`로 변환하고, 진입점은 **넷**이다.
 
   | 메서드 | 서버 응답 | 언제 |
   |---|---|---|
-  | `safeApiCall` | envelope + `data` 필요 | payload가 있는 일반 조회·생성 API |
+  | `safeApiCall(block)` | envelope + `data` 필요 | payload를 그대로(도메인 모델 변환 없이) 쓰는 조회·생성 API |
+  | `safeApiCall(block, transform)` | envelope + `data` 필요 + 도메인 모델로 매핑 | payload가 있고 VO로 변환해야 하는 API — 지금 있는 매핑 호출부 전부가 이 오버로드를 쓴다 |
   | `safeApiCallWithoutData` | envelope, `data` 안 봄 | 본문은 `ApiResponse<Unit>`이지만 payload가 의미 없는 API |
   | `safeApiCallNoContent` | 본문 자체가 없음(204) | 서비스 메서드가 `Unit` 반환(예: `logout`) |
 
-  세 메서드 모두 `HttpException`을 잡아 에러 envelope 파싱을 시도한다(`toApiException`) — 실패는
+  네 메서드 모두 `HttpException`을 잡아 에러 envelope 파싱을 시도한다(`toApiException`) — 실패는
   sealed `ApiException`(`Business`/`EmptyBody`/`Http`/`Network`/`Unknown`, `model/exception` 패키지)으로
   분류하고 `CancellationException`은 재던진다(취소 전파 보존).
+
+  **`safeApiCall(block, transform)`이 따로 있는 이유**: 응답을 VO로 매핑해야 할 때 `safeApiCall(block)`이
+  반환한 `Result<T>`에 `kotlin.Result.map { }`으로 매핑을 잇는 방식은 함정이 있다 — `Result.map`은
+  매핑 람다가 던진 예외를 **삼키지 않고 그대로 rethrow**한다. 즉 매핑이 `ApiCaller`의 `try`/`catch`
+  가드 **밖**에서 실행되는 셈이라, 매퍼가 실패하면 `Result` 계약을 벗어나 호출부가 그대로 크래시한다.
+  `safeApiCall(block, transform)`은 호출과 매핑을 같은 `try`/`catch` 안에서 실행해 이 경로를 막는다 —
+  매퍼가 던지면 다른 실패와 동일하게 `ApiException.Unknown`으로 `Result.failure`가 된다. 새 원격
+  DataSource가 응답을 VO로 바꿔야 한다면 `safeApiCall(block)` + `.map { }` 조합을 다시 들여오지 말고
+  이 오버로드를 쓴다.
 - **패키지 배치(data)**: 서버 타입은 `service/model/request/`·`service/model/response/`로 나눈다
-  (`ApiResponse`·`TempResponse`=response, `TempRequest`=request). 인프라는 `network/`
+  (`ApiResponse`·`PolicyResponse`=response, `KakaoLoginRequest`=request 예시). 인프라는 `network/`
   (`ApiCaller`·`AuthInterceptor`·`TokenProvider`·`TokenStoreTokenProvider` — 인터페이스와 구현은 파일 분리),
   모듈 전역 타입은 `model/`(`exception/`·`qualifier/`). 토큰 저장소는 `source/token/local/`
   (`TokenStore`·`EncryptedTokenStore`), 암복호화는 `security/`(`CryptoManager`).
+  **선언당 파일 하나**가 DTO·도메인 값 객체(VO/value class) 전반의 표준 규약이다 — 파일명은 선언명과
+  동일(`KakaoLoginRequest`→`KakaoLoginRequest.kt`). 도메인별로 여러 선언을 한 파일에 묶어두면(예:
+  구 `AuthResponses.kt`) ktlint `standard:filename`이 걸리지 않는다 — 이 규칙은 **단일 top-level 선언
+  파일에만** 강제되므로, 묶어두는 순간 파일명 검사를 조용히 피해간다. 새 DTO·VO를 추가할 때 기존
+  그룹 파일에 얹지 말고 새 파일을 만든다.
+  **요청/응답 DTO 프로퍼티는 전부 `@SerialName`을 명시**한다 — 키가 Kotlin 프로퍼티명과 같아도 예외
+  없이 붙인다. 목적은 Kotlin 쪽 리네임이 와이어 계약을 조용히 옮기지 못하게 고정하는 것이다(리네임
+  시 직렬화 키가 프로퍼티를 따라가 버리면 서버와 어긋나도 컴파일·lint 어디서도 안 잡힌다). 키와
+  프로퍼티명이 실제로 다른 유일한 예외는 `KakaoLoginResponse.isNewUser` → `@SerialName("newUser")`
+  (서버 Jackson이 getter의 `is` 접두사를 떼고 직렬화한다, [auth.md](../api/auth.md) 참고).
 - **에러 타입 계층**: sealed `ApiException`의 `Business(code, serverMessage, statusCode: Int?, errorDetail)`가
   HTTP 4xx/5xx로 오는 서버 에러를 담는다. `code` 문자열이 에러 코드 enum 간 유일하지 않아서(예:
   `MEMBER_NOT_FOUND`가 401·404 둘 다로 쓰임) `statusCode`를 함께 본다. `statusCode`는 nullable —
@@ -122,12 +143,19 @@ tags: [architecture, parfait]
   [[0019-encrypted-token-storage]].
 - **로깅**: `HttpLoggingInterceptor` 레벨은 `BuildConfig.DEBUG`로 게이팅(debug=`BODY`,
   release=`NONE`) — release에서 토큰·바디 노출 방지.
-- **응답 매핑**: 원격 DataSource는 **도메인 모델을 반환**한다(`TempRemoteDataSource.getTemp(id):
-  Result<TempVO>`). 서버 응답 타입(`service.model.response`의 `TempResponse`)은 data 안에서만 살고,
-  `source.<도메인>.mapper`의 `internal` 확장 함수(`TempResponse.toTempVO()`, 파일 `VOMapper.kt`)가
-  경계에서 변환한다. data 전용 중간 모델(구 `model.dto`)은 두지 않는다 — Response 복제본이라
-  변환 단계만 늘기 때문. 접미사 규약(`…VO` vs 기존 무접미사)은 미결 → [open-questions](../synthesis/open-questions.md).
-- **예시 1세트**: `TempService` + `TempRequest`/`TempResponse` + `domain.model.TempVO` +
-  `source.temp.mapper`(`VOMapper.kt`) + `source.temp.remote`의 `TempRemoteDataSource`(+`Impl`,
-  `ApiCaller` 생성자 주입) + `RemoteDataSourceModule`(`@Binds`) + `ServiceModule`. 실제 도메인 확정 전
-  placeholder — 신규 원격 DataSource는 이 세트를 복제해 `source.<도메인>.*`에 배치.
+- **응답 매핑**: 원격 DataSource는 **도메인 모델을 반환**한다(`PolicyRemoteDataSource.getPolicies():
+  Result<List<PolicyVO>>`). 서버 응답 타입(`service.model.response`의 `PolicyResponse`/
+  `PolicyItemResponse`)은 data 안에서만 살고, `source.<도메인>.mapper`의 `internal` 확장 함수
+  (`PolicyItemResponse.toPolicyVO()`, 파일 `VOMapper.kt`)가 경계에서 변환한다. 변환은
+  `ApiCaller#safeApiCall(block, transform)`의 `transform` 인자로 걸어 호출과 같은 가드 안에서
+  실행한다(위 "네트워킹 → 응답 계약" 참고) — `.map { }`으로 밖에서 잇지 않는다. data 전용 중간 모델
+  (구 `model.dto`)은 두지 않는다 — Response 복제본이라 변환 단계만 늘기 때문. 접미사 규약(`…VO` vs
+  기존 무접미사)은 미결 → [open-questions](../synthesis/open-questions.md).
+- **예시 1세트**: 참조 예시는 이제 **실제 도메인**이다(placeholder 아님) — `PolicyService` +
+  `PolicyResponse`/`PolicyItemResponse`(요청 DTO 없음, 파라미터 없는 GET) + `domain.model.policy.PolicyVO`
+  + `source.policy.mapper`(`VOMapper.kt`) + `source.policy.remote`의 `PolicyRemoteDataSource`(+`Impl`,
+  `ApiCaller` 생성자 주입) + `RemoteDataSourceModule`(`@Binds`) + `ServiceModule`. service → DTO →
+  mapper → DataSource로 이어지는 가장 작은 end-to-end 세트라 새 원격 DataSource를 붙일 때 이 흐름을
+  그대로 따라 하면 된다. sealed VO로 응답을 분기해야 하는 경우(예: 판별자 필드로 두 가지 결과 중
+  하나를 고르는 응답)의 참고 예시는 `source.auth.mapper`의 `KakaoLoginResponse.toKakaoLoginVO()`다 —
+  `KakaoLoginVO`(sealed `ExistingMember`/`NewUser`)로 매핑한다([auth.md](../api/auth.md) 참고).

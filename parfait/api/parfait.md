@@ -2,9 +2,9 @@
 id: parfait
 title: 파르페(캔버스) 조회
 server_module: http/parfait
-server_commit: 6f5bffc
-verified: 2026-08-02
-android_status: none
+server_commit: 69654bc
+verified: 2026-08-03
+android_status: partial
 related_spec:
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, canvas]
@@ -19,7 +19,7 @@ tags: [api, parfait, server-contract, canvas]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/v1/groups/{groupId}/parfaits/year` | 필요 | path `groupId` Long | `ParfaitYearsResponse` | 미구현 |
+| GET | `/api/v1/groups/{groupId}/parfaits/year` | 필요 | path `groupId` Long | `ParfaitYearsResponse` | 구현됨 |
 
 경로 주의: 그룹을 `groups`로 부르는 유일한 경로다(다른 그룹 API는 `parfait-groups`) —
 [conventions.md](conventions.md)의 URL 규약 절 참고.
@@ -77,7 +77,22 @@ tags: [api, parfait, server-contract, canvas]
 
 ## Android 매핑
 
-없음 — `:data`에 파르페(캔버스) 조회 관련 Service·Response·DataSource가 없다.
+`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)).
+**⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — C-201 캘린더 결선은
+이후 라운드다.
+
+| 엔드포인트 | Service 함수 | DataSource 함수 |
+|---|---|---|
+| GET `/api/v1/groups/{groupId}/parfaits/year` | `ParfaitService#getGroupsByGroupIdParfaitsYear` | `ParfaitRemoteDataSource#getYears` |
+
+- **응답 DTO**: `ParfaitYearsResponse`(`years: List<Int>`) —
+  `data/service/model/response/parfait/ParfaitYearsResponse.kt`. 요청 DTO 없음(path 변수만 받는 GET).
+  이 저장소는 DTO·도메인 모델을 선언당 파일 하나로 두는 규약이라 파일명이 선언명과 그대로 같다 —
+  다른 이름이 붙을 이유가 없는 평범한 경우다.
+- **VO 없음** — 응답이 `years` 한 필드뿐이라 mapper가 `List<Int>`를 그대로 반환한다
+  (`ParfaitRemoteDataSourceImpl#getYears`의 `transform = { it.years }`). `GroupId` value class는
+  `domain/model/id/GroupId.kt`에 있다.
+- **Mapper 파일 없음** — 변환이 필드 하나짜리라 별도 mapper 함수를 두지 않는다.
 
 ## 미결
 

@@ -2,9 +2,9 @@
 id: auth
 title: 인증(카카오 로그인·회원가입·토큰 재발급·로그아웃)
 server_module: http/auth
-server_commit: 6f5bffc
-verified: 2026-08-02
-android_status: none
+server_commit: 69654bc
+verified: 2026-08-03
+android_status: partial
 related_spec:
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, auth]
@@ -19,10 +19,10 @@ tags: [api, parfait, server-contract, auth]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| POST | `/api/v1/auth/kakao` | 불필요(화이트리스트) | `KakaoLoginRequest` | `KakaoLoginResponse` | 미구현 |
-| POST | `/api/v1/auth/signup` | 불필요(화이트리스트) | `SignupRequest` | `SignupResponse` | 미구현 |
-| POST | `/api/v1/auth/reissue` | 불필요(화이트리스트) | `ReissueRequest` | `ReissueResponse` | 미구현 |
-| POST | `/api/v1/auth/logout` | **필요**(화이트리스트 밖) | `LogoutRequest` | 없음(204, envelope 없음) | 미구현 |
+| POST | `/api/v1/auth/kakao` | 불필요(화이트리스트) | `KakaoLoginRequest` | `KakaoLoginResponse` | 구현됨 |
+| POST | `/api/v1/auth/signup` | 불필요(화이트리스트) | `SignupRequest` | `SignupResponse` | 구현됨 |
+| POST | `/api/v1/auth/reissue` | 불필요(화이트리스트) | `ReissueRequest` | `ReissueResponse` | 구현됨 |
+| POST | `/api/v1/auth/logout` | **필요**(화이트리스트 밖) | `LogoutRequest` | 없음(204, envelope 없음) | 구현됨 |
 
 ⚠️ **`logout`만 화이트리스트 밖이라는 비대칭.** `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`
 (`6f5bffc`)이 기존 `/api/v1/auth/**` 와일드카드를 `/api/v1/auth/kakao`·`/api/v1/auth/signup`·
@@ -92,7 +92,7 @@ tags: [api, parfait, server-contract, auth]
 | 필드 | 타입 | 필수 | 비고 |
 |---|---|---|---|
 | `registrationToken` | String | 필수(`@NotBlank`) | 카카오 로그인이 신규 판정 시 내려준 토큰 |
-| `agreements` | List<`TermsAgreementRequest`> | 필수(`@Valid`) | 원소: `termsId` Long · `agreed` Boolean |
+| `agreements` | List<`TermsAgreementRequest`> | 필수(`@Valid`) | 원소: `termsId` Long · `agreed` Boolean. **`termsId`는 `GET /api/v1/policies`가 내려주는 값**([policy.md](policy.md)) — 하드코딩하면 약관 개정 시 `TERMS_NOT_FOUND` 400 |
 
 - **응답 필드**
 
@@ -252,7 +252,34 @@ tags: [api, parfait, server-contract, auth]
 
 ## Android 매핑
 
-없음 — `:data`에 인증 관련 Service·Response·DataSource가 없다.
+`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)).
+**⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — 카카오 로그인·회원가입·재발급·
+로그아웃 화면 결선은 이후 라운드다. 지금 확인할 수 있는 것은 `:data`가 계약대로 요청을 만들고 응답을
+파싱할 수 있다는 것뿐이고, 실제 서버 호출로 검증되지도 않았다(개발 서버 평문 HTTP 차단 —
+[open-questions](../synthesis/open-questions.md)).
+
+| 엔드포인트 | Service 함수 | DataSource 함수 |
+|---|---|---|
+| POST `/api/v1/auth/kakao` | `AuthService#postAuthKakao` | `AuthRemoteDataSource#loginWithKakao` |
+| POST `/api/v1/auth/signup` | `AuthService#postAuthSignup` | `AuthRemoteDataSource#signup` |
+| POST `/api/v1/auth/reissue` | `AuthService#postAuthReissue` | `AuthRemoteDataSource#reissue` |
+| POST `/api/v1/auth/logout` | `AuthService#postAuthLogout` | `AuthRemoteDataSource#logout` |
+
+- **요청 DTO**: `KakaoLoginRequest`·`SignupRequest`(+`TermsAgreementRequest`)·`ReissueRequest`·
+  `LogoutRequest` — `data/service/model/request/auth/` 패키지, 선언당 파일 하나(파일명은 선언명과
+  동일: `KakaoLoginRequest.kt`·`SignupRequest.kt`·`TermsAgreementRequest.kt`·`ReissueRequest.kt`·
+  `LogoutRequest.kt`).
+- **응답 DTO**: `KakaoLoginResponse`·`SignupResponse`·`ReissueResponse` — 같은 규약으로
+  `data/service/model/response/auth/KakaoLoginResponse.kt`·`SignupResponse.kt`·`ReissueResponse.kt`.
+  `logout`은 204라 응답 DTO가 없다(`AuthService#postAuthLogout` 반환 타입이 `Unit`,
+  `ApiCaller#safeApiCallNoContent`로 감싼다). `KakaoLoginResponse`는 판별자 프로퍼티를 `isNewUser`로
+  선언하고 `@SerialName("newUser")`를 붙여 위 판별자 키 불일치를 흡수한다.
+- **VO**: `KakaoLoginVO`(sealed — `ExistingMember`/`NewUser`)·`AuthSessionVO`(signup·reissue가 공유)·
+  `TermsAgreement` — `domain/model/auth/KakaoLoginVO.kt`·`AuthSessionVO.kt`·`TermsAgreement.kt`. 토큰은
+  `AccessToken`·`RefreshToken`·`RegistrationToken` value class 각각 동명 파일(`domain/model/auth/
+  AccessToken.kt`·`RefreshToken.kt`·`RegistrationToken.kt`)로 감싸 서로 대체할 수 없게 한다.
+- **Mapper**: `data/source/auth/mapper/VOMapper.kt`(`toKakaoLoginVO`·`toAuthSessionVO`(signup·reissue
+  각 1개)·`TermsAgreement#toRequest`).
 
 ## 미결
 
