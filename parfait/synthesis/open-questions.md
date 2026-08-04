@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-02
-related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, parfait-api-contract-docs
+related_spec: designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, parfait-api-contract-docs, data-api-service-layer
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer
 related_code:
@@ -477,10 +477,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절과 `NetworkModule.provideOkHttpClient`를 갱신한다.
 
 ### [2026-08-02] `@NoAuth` 판정이 Retrofit `Invocation` 태그에 의존 — OkHttp 직접 요청·R8 release 미검증
-- **출처**: `AuthInterceptor`가 `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로 스킵 여부를 판정한다(`network/NoAuth.kt`, [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"). `Invocation` 태그는 **Retrofit이 만든 요청에만 자동으로 붙는다** — OkHttp를 직접 쓰는 요청(예: Coil 이미지 로딩이 같은 `OkHttpClient`를 공유하게 되는 경우)에는 태그가 없어 `skipAuth`가 `false`로 떨어져 헤더가 붙는다. 현재 그런 경로는 없다. 또한 `@NoAuth`가 R8 release 빌드(`isMinifyEnabled = true`)에서 실제로 유지되는지는 `-keep @interface` 규칙(`data/proguard-rules.pro`)을 추가했을 뿐 `:app:assembleRelease`로 검증하지 않았다 — debug 빌드에서는 드러나지 않는 종류의 결함이다.
-- **항목**: ① Coil 등 OkHttp를 직접 공유하는 신규 경로가 생기면 `Invocation` 태그 부재로 인증 헤더가 붙는지 확인하고 필요 시 별도 처리. ② `:app:assembleRelease`로 실제 release 빌드를 만들어 화이트리스트 엔드포인트가 여전히 헤더 없이 나가는지(즉 `@NoAuth`가 R8에서 제거되지 않았는지) 확인.
-- **상태**: 미해결 (release 빌드 미검증)
-- **해소 메모**: 확인 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 절과 이 항목 상태를 갱신한다.
+- **출처**: `AuthInterceptor`가 `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로 스킵 여부를 판정한다(`network/NoAuth.kt`, [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"). `Invocation` 태그는 **Retrofit이 만든 요청에만 자동으로 붙는다** — OkHttp를 직접 쓰는 요청(예: Coil 이미지 로딩이 같은 `OkHttpClient`를 공유하게 되는 경우)에는 태그가 없어 `skipAuth`가 `false`로 떨어져 헤더가 붙는다. 현재 그런 경로는 없다.
+  **② R8 release 미검증 항목은 2026-08-03 `data-api-service-layer` 라운드 최종 리뷰에서 해소됐다 — 답은 부정이었다.** keep 규칙(`-keep @interface com.teamyg.parfait.data.network.NoAuth`)이 `data/proguard-rules.pro`에 있었는데, `:data`는 **Android 라이브러리 모듈**이라 `proguardFiles`는 그 모듈 자체의 R8 실행에만 쓰이고 앱(`:app`)의 R8 실행에는 `consumerProguardFiles`로 명시한 규칙만 전달된다. 컨벤션 플러그인(`setConfigAndroidLibrary`)이 `consumerProguardFiles`를 등록하지 않아 이 keep 규칙이 앱에 전혀 전달되지 않고 있었다 — release 빌드였다면 `@NoAuth` 어노테이션이 R8에 제거되고, 화이트리스트 4곳(`postAuthKakao`·`postAuthSignup`·`postAuthReissue`·`getPolicies`) 전부에 `Authorization` 헤더가 붙어 **토큰 재발급이 가장 필요한 순간(만료·미보유 상태)에 막혔을 것**이다. 조치: keep 규칙을 `data/consumer-rules.pro`로 옮기고 `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`를 등록하도록 수정.
+- **항목**: ① Coil 등 OkHttp를 직접 공유하는 신규 경로가 생기면 `Invocation` 태그 부재로 인증 헤더가 붙는지 확인하고 필요 시 별도 처리(잔존). ~~② `:app:assembleRelease`로 실제 release 빌드를 만들어 화이트리스트 엔드포인트가 여전히 헤더 없이 나가는지 확인~~(해소 — 위 참고, `consumerProguardFiles` 등록 후 `:app:assembleDebug`로 Hilt 그래프까지 재확인).
+- **상태**: 부분 해소 (② 해소 — 부정적 결과, 발견 즉시 수정 / ① 잔존 — Coil 등 OkHttp 직접 공유 경로 여전히 없음이 전제)
+- **해소 메모**: ② 반영 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 절과 [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 절에 결과를 반영했다. ① 잔존 — 신규 OkHttp 직접 경로가 생기면 이 항목을 다시 연다.
 
 ### [2026-08-02] 카카오 로그인 판별자 JSON 키가 `newUser` — Android 응답 타입에 `@SerialName` 필요
 - **출처**: 서버 `KakaoLoginResponse`는 Kotlin `val isNewUser: Boolean`이지만, 서버가 발행한 OpenAPI 스키마의 `KakaoLoginResponse`는 필드를 **`newUser`**로 적는다. Jackson이 getter(`isNewUser()`) 이름에서 `is` 접두사를 떼고 직렬화하기 때문이다 → [api/conventions.md](../api/conventions.md) "직렬화 규약", [api/auth.md](../api/auth.md), [api/spec/auth-kakao-login.md](../api/spec/auth-kakao-login.md).
@@ -505,6 +506,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 입력이 있는 화면 전부에 `Modifier.clearFocusOnTap()`을 붙여 UX를 통일할지, ② 통일한다면 "텍스트 입력이 있는 화면은 화면 최외곽에 `clearFocusOnTap()`을 붙인다"를 [design-system](../architecture/design-system.md) 또는 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 규약으로 명문화할지.
 - **상태**: 미해결 (회귀는 아님 — 이 화면들은 이전에도 없었다)
 - **해소 메모**: 적용 시 [clearfocusontap-modifier 스펙](../specs/2026-08-03-clearfocusontap-modifier.md)의 "미적용 입력 화면 3종" 항목을 정리한다.
+
+### [2026-08-03] `data-api-service-layer` 전체가 런타임 미검증 — 요청을 한 번도 보내지 못했다
+- **출처**: [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "검증" — 14 엔드포인트 Service·remote DataSource·domain VO가 전부 들어갔고 컴파일·ktlint·`:app:assembleDebug`(Hilt 그래프 resolve)는 통과했지만, **실제 서버로 나간 요청이 0건이다.** 개발 서버 base URL이 평문 `http`인데 `AndroidManifest.xml`에 `usesCleartextTraffic`·`networkSecurityConfig`가 둘 다 없고(위 "개발 서버가 평문 HTTP" 항목과 같은 근거), `local.properties`에 `YG_BASE_URL` 값 자체가 비어 있다. 검증 수단은 컴파일 + `http/` 요청 파일 육안 대조뿐이었다.
+- **항목**: 이 레이어가 짊어진 위험은 **컴파일·lint·Hilt 그래프 어디에도 걸리지 않는 종류의 결함**이 그대로 묻혀 들어갔다는 것이다. 대표 사례가 `KakaoLoginResponse`의 `@SerialName("newUser")`(auth.md 참고) — 이 애노테이션이 실수로 빠지거나 잘못된 키 문자열로 붙어도 컴파일은 통과하고 ktlint도 통과하고 Hilt 그래프도 정상 resolve되며, **실제 로그인 응답을 역직렬화하는 순간까지 아무 신호도 나지 않는다.** 실연동(로그인 붙이기) 라운드에서 반드시 실기기 또는 서버 목(mock)으로 14개 엔드포인트를 최소 1회씩 왕복시켜 확인해야 한다.
+- **상태**: 미해결 (실연동 라운드로 이월)
+- **해소 메모**: 서버 HTTPS 전환 또는 `network_security_config.xml` 화이트리스트 결정(위 "개발 서버가 평문 HTTP" 항목)이 먼저 풀려야 이 항목도 풀린다. 확인 후 [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "검증" 절과 `parfait/api/` 4개 계약 문서의 "Android 매핑" 절(`android_status`를 `partial`→`done`으로)을 갱신한다.
 
 <!--
 항목 추가 형식:
