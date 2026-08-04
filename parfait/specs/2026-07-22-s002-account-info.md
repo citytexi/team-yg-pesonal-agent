@@ -73,7 +73,11 @@ tags: [spec, parfait, setting, account, nickname, s002]
 - 상단 `YGTopBarDetail(title = "계정 정보", onIconClick)` → 뒤로. (Figma Top Bar에 caret-left + 타이틀 both)
 - 섹션 라벨 `YGLabel("닉네임")` — `component/ygtext/`의 타이포+색 프리셋(`body.b02R` + `Gray400`). Figma Label(14px gray-400)과 일치.
 - `YGTextFormField(value, onValueChange, maxLength = GroupCreateConfig.NICKNAME_MAX_LENGTH, isError, errorDescription)` — 카운터(N/15)·클리어(X)·포커스/에러 테두리 내장.
-- 라벨↔필드 간격 `gap.gap2`, Contents 좌우 패딩 `padding.padding7`(Figma Input 폭 335 = 375−40).
+- 라벨↔필드 간격 `gap.gap4`(12dp), Contents 좌우 패딩 `padding.padding7`(Figma Input 폭 335 = 375−40),
+  **Contents 상단 패딩 없음**(0).
+  > 🔁 **2026-08-04 정정 (Figma `220:2192` 실측 + 코드리뷰 P2 2건)** — 초안은 라벨↔필드 `gap.gap2`(4dp)·
+  > 상단 `padding.padding8`(24dp)이었으나 Figma는 Input-Field 자식 간격 12dp이고, Top Bar 하단
+  > (y=48+8+44+8=108)과 Contents(`top-[108px]`)가 맞닿아 상단 여백이 0이다.
 
 ## API / 인터페이스
 
