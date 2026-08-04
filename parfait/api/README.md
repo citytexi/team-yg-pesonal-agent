@@ -54,7 +54,8 @@
 ## 계약을 실제로 확인하는 법
 
 TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다(`auth.http`·
-`parfait-group.http`·`parfait.http`·`health.http`). 여기 문서에 적힌 계약을 서버에 직접 쏴서 확인할 수 있다.
+`policy.http`·`parfait-group.http`·`parfait.http`·`health.http`). 여기 문서에 적힌 계약을 서버에 직접
+쏴서 확인할 수 있다.
 
 - 로그인 응답에서 토큰을 자동 추출해 다음 요청이 그대로 쓴다 — 스웨거에서 복붙할 필요가 없다
 - 각 요청 주석에 이 문서들의 함정을 옮겨 뒀다(`reissue`에 `Authorization`을 붙이면 재발급이 막히는 건은
