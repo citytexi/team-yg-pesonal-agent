@@ -16,6 +16,13 @@ tags: [adr, parfait, security, network, data, auth]
 # ADR-0019: 인증 토큰 암호화 저장
 
 > 상태·날짜·결정자·대체 관계는 위 frontmatter가 단일 출처. 본문은 결정 내용에 집중.
+>
+> **코드 머지 확인(2026-08-04, PR #190)** — 아래 결정이 그대로 develop에 들어왔다
+> (`CryptoManager`·`TokenStore`·`EncryptedTokenStore`·`TokenStoreTokenProvider`, `EmptyTokenProvider` 삭제).
+> `EncryptedTokenStore.read()`의 `runCatching` 범위는 설계보다 넓다 — 복호화뿐 아니라 **DataStore
+> 읽기까지** 감싸고 복구 경로의 `clear()`도 `runCatching`으로 감싼다(아래 "키 유실 시 정책" 참고).
+> **검증 상태는 변하지 않았다**: `TokenStore.save()` 호출부가 develop 기준 0건이라 실기기 왕복도
+> 키 유실 경로도 확인하지 못했다.
 
 ## 맥락
 
@@ -56,6 +63,11 @@ tags: [adr, parfait, security, network, data, auth]
 던진다. **`EncryptedTokenStore`는 이 예외를 밖으로 전파하지 않는다** — 내부 `read()`가 복호화
 실패를 잡아 `clear()`를 호출하고 `null`을 반환한다. 앱은 "토큰 없음" 상태가 되어 자연스럽게
 재로그인 경로로 간다.
+
+> **as-built(PR #190)** — 머지된 `read()`의 가드는 복호화만이 아니라 **DataStore 읽기까지** 포함하고,
+> 복구 경로의 `clear()`도 다시 `runCatching`으로 감싼다. 즉 키 무효화뿐 아니라 저장소 I/O 실패도
+> 같은 "토큰 삭제 후 null" 경로로 떨어지고, 삭제 자체가 실패해도 `null` 반환은 보장된다. 넓힌 만큼
+> **일시적 I/O 실패를 영구 토큰 삭제로 처리**하게 되는데, 재로그인으로 복구 가능하므로 수용한다.
 
 예외를 전파하면 `TokenProvider.getToken()` → `AuthInterceptor.intercept`에서 터져 **모든 네트워크
 요청이 죽는다** — 사용자가 앱을 지우기 전까지 복구할 수 없는 상태가 된다.

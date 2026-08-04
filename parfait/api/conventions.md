@@ -152,15 +152,16 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 ## Android 불일치
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
-**세 건 모두 develop 기준으로는 코드 미수정 상태**다 — `network-envelope-token-storage` 라운드에서
-TJYG-Android 작업 트리에는 반영됐으나 **커밋조차 없어 develop에는 미머지**다. 아래 표는 develop
-기준 간극이므로 develop 머지 전까지는 행을 유지한다.
 
-| # | 불일치 | 영향 |
-|---|---|---|
-| 1 | Android `ApiResponse`에 `success`·`errorDetail` 필드 없음(`code`/`message`/`data`만) | 서버가 보내는 두 필드를 소비하지 못한다 |
-| 2 | Android `ApiResponse.isSuccess`가 `code == "SUCCESS"` 단일 비교(`SUCCESS_CODE` 상수가 `TODO`) — 서버는 `"OK"`/`"CREATED"` | **현 상태로 모든 호출이 `ApiException.Business` 실패 판정** |
-| 3 | Android `TokenProvider` 구현이 `EmptyTokenProvider`(항상 null 반환) | 화이트리스트 밖 전 API가 401 |
+**2026-08-04 기준 남은 항목 없음.** 오래 걸려 있던 3건(Android `ApiResponse`에 `success`·`errorDetail`
+부재 / `isSuccess`가 `code == "SUCCESS"` 단일 비교 / `TokenProvider`가 항상 null)은
+`network-envelope-token-storage` 라운드가 **PR #190으로 develop에 머지되며 전부 해소**됐다 —
+envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `TokenStoreTokenProvider`
+([ADR-0019](../adr/0019-encrypted-token-storage.md)). 대응 [open-questions](../synthesis/open-questions.md)
+항목도 해소 처리했다.
 
-세 건은 [open-questions](../synthesis/open-questions.md)에 등록돼 있다. develop 머지 후 이 표에서
-제거한다.
+> **다만 "일치"가 "검증됨"은 아니다.** develop에서 서버로 나간 요청은 아직 0건이다(auth·policy
+> Service가 미머지). 계약 해석의 실동작은 실연동 라운드에서 확인한다 →
+> [open-questions](../synthesis/open-questions.md).
+
+새 간극이 발견되면 이 절에 표를 다시 세운다.

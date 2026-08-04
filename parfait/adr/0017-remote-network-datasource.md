@@ -63,7 +63,7 @@ DataSource 배치 관례를 확립한다.
   `data`를 보지 않음, `Result<Unit>` 반환). 삭제·설정 변경처럼 본문 없는 응답을 단일 진입점에서
   `data != null`로 판정하면 성공 호출이 실패로 분류되기 때문이다.
 
-  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — 위 원안은
+  > ⚠️ **as-built 갱신(`network-envelope-token-storage` 라운드 — 2026-08-04 PR #190으로 develop 머지)** — 위 원안은
   > 서버 계약 대조 전 설계였다. 실제로는 세 지점이 바뀌었다.
   > - **성공 판정**: `code == SUCCESS_CODE`(단일 상수) 대신 **`success` 필드**를 그대로 쓴다.
   >   서버가 성공 코드를 `"OK"`·`"CREATED"` 2종으로 쓰기 때문에 단일 상수 비교가 애초에 불가능했다.
@@ -84,7 +84,7 @@ DataSource 배치 관례를 확립한다.
   `CancellationException`은 다시 던져 코루틴 취소 전파를 보존한다(`runCatching`의 취소 삼킴 회피).
   소비자는 `Result.exceptionOrNull()`을 `ApiException`으로 분기해 재시도·재인증 등을 판단할 수 있다.
 
-  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — `Business`에
+  > ⚠️ **as-built 갱신(`network-envelope-token-storage` 라운드 — 2026-08-04 PR #190으로 develop 머지)** — `Business`에
   > **`statusCode: Int?`·`errorDetail: Map<String, String>?`이 추가**됐다. 코드 문자열이 enum 간
   > 유일하지 않아서다(`MEMBER_NOT_FOUND`가 401/404 둘 다로 쓰인다). 또한 **에러가 HTTP 4xx/5xx로
   > 오므로 `HttpException` 바디를 파싱해야 envelope에 도달한다** — 이걸 안 하면 이 절이 설계한
@@ -97,32 +97,41 @@ DataSource 배치 관례를 확립한다.
   토큰을 받아 `Authorization: Bearer` 헤더를 주입할 자리를 만든다. 현재 `EmptyTokenProvider`는
   항상 null을 반환 — 실제 토큰 소스 연동은 후속.
 
-  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — `EmptyTokenProvider`가
+  > ⚠️ **as-built 갱신(`network-envelope-token-storage` 라운드 — 2026-08-04 PR #190으로 develop 머지)** — `EmptyTokenProvider`가
   > **`TokenStoreTokenProvider`로 교체**됐다(`EmptyTokenProvider`는 삭제). `AuthInterceptor`·
   > `TokenProvider` 인터페이스는 시그니처 변경 없음 — 구현체만 바뀌었다. 토큰을 어디에 어떻게
   > 저장하는지, 동기 인터페이스를 유지한 채 suspend 저장소를 어떻게 연결하는지는
   > [ADR-0019](0019-encrypted-token-storage.md) 소관.
 
-  > ⚠️ **as-built 갱신(2026-08-02, `network-envelope-token-storage` 라운드, 작업 트리 반영·develop 미머지)** — 서버
+  > ⚠️ **as-built 갱신(`network-envelope-token-storage` 라운드 — 2026-08-04 PR #190으로 develop 머지)** — 서버
   > 화이트리스트 경로(`kakao`·`signup`·`reissue`)에 `Authorization` 헤더를 붙이지 않는 판정 방식이
   > **경로 문자열 상수 목록**(`AuthInterceptor` 내 하드코딩, 서버 `SecurityConfig.WHITELIST_PATHS`와
   > 별도 관리)에서 **`@NoAuth` 어노테이션 + Retrofit `Invocation` 태그** 조회로 교체됐다.
   > `AuthInterceptor.intercept`가
   > `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로
-  > 스킵 여부를 판정하고(`network/NoAuth.kt`), 스킵이면 `tokenProvider.getToken()` 호출 자체를
-  > 생략한다. 경로 문자열을 서버 화이트리스트와 이중 관리하지 않아도 되고(오타는 서비스 인터페이스
-  > 컴파일 타임에 걸린다), 선언이 서비스 메서드의 URL 옆에 붙는다 — **앱이 아는 것은 "이 호출에
-  > 토큰을 붙일지"이지 서버 보안 설정이 아니기 때문**이다.
+  > 스킵 여부를 판정한다(`network/NoAuth.kt`). 경로 문자열을 서버 화이트리스트와 이중 관리하지
+  > 않아도 되고(오타는 서비스 인터페이스 컴파일 타임에 걸린다), 선언이 서비스 메서드의 URL 옆에
+  > 붙는다 — **앱이 아는 것은 "이 호출에 토큰을 붙일지"이지 서버 보안 설정이 아니기 때문**이다.
   >
-  > **R8 유지 규칙(2026-08-03 `data-api-service-layer` 라운드에서 확정)** — 어노테이션을 런타임에
-  > 읽으므로 `-keep @interface`가 필요한데, 이 규칙은 `data/proguard-rules.pro`가 아니라
-  > **`data/consumer-rules.pro`**에 둔다. `:data`는 Android **라이브러리** 모듈이라
-  > `proguardFiles`는 그 모듈 자체의 R8 실행에만 적용되고, 앱(`:app`)의 R8 실행에는
-  > `consumerProguardFiles`로 명시한 규칙만 전달되기 때문이다. 컨벤션 플러그인
-  > `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`를 등록한다. 규칙이
-  > 앱에 전달되지 않으면 release 빌드에서 어노테이션이 제거돼 화이트리스트 엔드포인트 전부에
-  > `Authorization` 헤더가 붙는다 — 토큰 재발급이 가장 필요한 순간에 막힌다.
-  > 잔여 미검증 항목(Retrofit 밖 OkHttp 직접 요청)은 [open-questions](../synthesis/open-questions.md).
+  > **판정 후 동작(develop 확정형)** — 초안은 스킵 대상이면 `tokenProvider.getToken()` 호출 자체를
+  > 생략(early return)해 `runBlocking`·DataStore 읽기·Keystore 복호화를 아끼는 형태였으나, PR #190
+  > 코드 리뷰 반영으로 **early return을 걷어내고 헤더 부착 조건만 `token != null && skipAuth.not()`으로
+  > 게이팅**하는 형태가 머지됐다. 헤더 부착 결과는 동일하고, 화이트리스트 경로에서 토큰 조회 비용만
+  > 추가로 든다.
+  >
+  > **R8 유지 규칙 — develop에는 무효한 배치가 들어와 있다.** 어노테이션을 런타임에 읽으므로
+  > `-keep @interface`가 필요한데, 규칙이 있어야 할 곳은 `data/proguard-rules.pro`가 아니라
+  > **`data/consumer-rules.pro`**다. `:data`는 Android **라이브러리** 모듈이라 `proguardFiles`는 그
+  > 모듈 자체의 R8 실행에만 적용되고, 앱(`:app`)의 R8 실행에는 `consumerProguardFiles`로 명시한
+  > 규칙만 전달되기 때문이다. 2026-08-03 `data-api-service-layer` 라운드가 이 사실을 발견해
+  > `consumer-rules.pro` 이관 + `setConfigAndroidLibrary`의 `consumerProguardFiles("consumer-rules.pro")`
+  > 등록으로 고쳤으나 **그 브랜치는 아직 develop 미머지**다. 반면 PR #190은 keep 규칙을
+  > `data/proguard-rules.pro`에 넣어 머지했고, develop의 `AndroidConfig.kt#setConfigAndroidLibrary`는
+  > `consumerProguardFiles`·`proguardFiles` 어느 쪽도 등록하지 않으며 `data/consumer-rules.pro`는
+  > 비어 있다(`consumerProguardFiles` 문자열이 develop 전체에 0건). 즉 **develop 기준으로 이 keep
+  > 규칙은 어디에도 전달되지 않는다** — release 빌드에서 어노테이션이 제거되면 화이트리스트
+  > 엔드포인트 전부에 `Authorization` 헤더가 붙어 토큰 재발급이 가장 필요한 순간에 막힌다.
+  > 잔여 미검증 항목(Retrofit 밖 OkHttp 직접 요청)과 함께 [open-questions](../synthesis/open-questions.md).
 - **로깅**: `HttpLoggingInterceptor` 레벨을 `BuildConfig.DEBUG`로 게이팅한다(debug=`BODY`,
   release=`NONE`). release 빌드에서 `Authorization` 토큰과 요청/응답 바디가 로그로 노출되는 것을
   막기 위한 결정이다. 여기에 더해 `redactHeader("Authorization")`로 **debug 빌드에서도 헤더 값을
@@ -202,10 +211,11 @@ DataSource 배치 관례를 확립한다.
   `TempRemoteDataSource` 체인, `@LocalJson`/`@RemoteJson` 한정자 해소 정상)를 검증했다.
 - `ApiResponse.isSuccess` 판정에 쓰는 성공 코드 규약과 `TokenProvider`의 실제 토큰 소스는
   미확정이다 → [open-questions](../synthesis/open-questions.md)로 추적.
-  **as-built(2026-08-02): 둘 다 작업 트리에는 반영됐으나 develop 미머지다** — 성공 판정은 `success`
-  필드로, `TokenProvider`는 `TokenStoreTokenProvider`(암호화 저장소 연동,
-  [ADR-0019](0019-encrypted-token-storage.md))로 바뀌었지만 TJYG-Android에 커밋조차 없다. develop
-  기준으로는 여전히 미해소이므로 [open-questions](../synthesis/open-questions.md) 추적을 닫지 않는다.
+  **as-built: 둘 다 2026-08-04 PR #190으로 develop 머지됐다** — 성공 판정은 `success` 필드로
+  (`isSuccess`·`SUCCESS_CODE` 제거), `TokenProvider`는 `TokenStoreTokenProvider`(암호화 저장소 연동,
+  [ADR-0019](0019-encrypted-token-storage.md))로 교체됐다. 해당 [open-questions](../synthesis/open-questions.md)
+  항목 3건은 해소 처리했다. 다만 **실서버 요청은 여전히 0건**이라(auth 도메인 Service가 미머지)
+  응답 파싱의 실동작은 확인되지 않았다.
 - 도메인 모델 이름이 `TempVO`로 `VO` 접미사를 쓰는데, 기존 `domain.model`은 무접미사
   (`SegmentationResult`·`GalleryImageGroup`·`NameValidResult` 등)다. 접미사 규약이 갈라진 상태 →
   [open-questions](../synthesis/open-questions.md) [2026-07-30]로 추적.

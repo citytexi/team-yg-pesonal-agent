@@ -1,11 +1,11 @@
 ---
 id: network-envelope-token-storage
 title: 서버 계약 정합 — envelope·에러 파싱·암호화 토큰 저장
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-02
-related_code: ApiResponse.kt, ApiCaller.kt, ApiException.kt#Business, AuthInterceptor.kt, TokenProvider.kt, TokenStoreTokenProvider.kt, NoAuth.kt, CryptoManager.kt, TokenStore.kt, EncryptedTokenStore.kt, NetworkModule.kt#provideTokenProvider
+verified: 2026-08-04
+related_code: ApiResponse.kt, ApiCaller.kt, ApiException.kt#Business, AuthInterceptor.kt, TokenProvider.kt, TokenStoreTokenProvider.kt, NoAuth.kt, CryptoManager.kt, TokenStore.kt, EncryptedTokenStore.kt, NetworkModule.kt#provideTokenProvider, LocalDataSourceModule.kt#bindTokenStore, data/proguard-rules.pro, http/
 related_adr: ADR-0017, ADR-0008, ADR-0004
 related_spec: data-network-setup
 related_architecture: data-layer
@@ -18,11 +18,11 @@ tags: [spec, parfait, network, data, auth, security]
 
 ## 배경
 
-`:data`의 원격 네트워크 기초 구조는 [ADR-0017](../adr/0017-remote-network-datasource.md)로 확정돼
+`:data`의 원격 네트워크 기초 구조는 [ADR-0017](../../adr/0017-remote-network-datasource.md)로 확정돼
 develop에 머지됐다(#174). 그러나 서버 계약과 대조한 적이 없어 실제 API를 호출하면 동작하지 않는다.
 
 `parfait/api/` 계약 문서 체계를 세우며 서버(`mash-up-kr/TEAMYG-SERVER` `main` `6f5bffc`)와 1:1 대조한
-결과가 근거다([api/conventions.md](../api/conventions.md) "Android 불일치", [api/spec/](../api/spec/README.md)).
+결과가 근거다([api/conventions.md](../../api/conventions.md) "Android 불일치", [api/spec/](../../api/spec/README.md)).
 
 ### 확인된 결함
 
@@ -85,7 +85,7 @@ develop에 머지됐다(#174). 그러나 서버 계약과 대조한 적이 없�
   신규) 깨지지 않기 때문이다. `code`는 분기용으로만 쓴다.
 - `errorDetail`은 **서버가 현재 항상 `null`로 보낸다**(`GlobalExceptionHandler`의 네 핸들러가 인자 없이
   `ApiResponse.error(errorCode)`를 호출). 계약에 있으므로 필드는 두되, 값이 온다고 가정한 UI를 만들지 않는다
-  → [api/conventions.md](../api/conventions.md).
+  → [api/conventions.md](../../api/conventions.md).
 
 ### 2. 에러 envelope 파싱 — `ApiCaller`
 
@@ -93,7 +93,7 @@ develop에 머지됐다(#174). 그러나 서버 계약과 대조한 적이 없�
 
 에러 바디를 역직렬화하려면 `@RemoteJson` `Json` 인스턴스가 필요하다. top-level 함수로 두면 호출부마다
 `Json`을 인자로 넘겨야 하고, 파일 내 `private val`로 두면 DI를 우회해 `@RemoteJson`/`@LocalJson` 분리
-([ADR-0017](../adr/0017-remote-network-datasource.md))가 무의미해진다. `@Inject constructor(@RemoteJson json)`을
+([ADR-0017](../../adr/0017-remote-network-datasource.md))가 무의미해진다. `@Inject constructor(@RemoteJson json)`을
 받는 클래스가 두 문제를 동시에 해소하고, remote DataSource가 생성자 주입으로 받는다.
 
 진입점은 **셋**이다.
@@ -105,7 +105,7 @@ develop에 머지됐다(#174). 그러나 서버 계약과 대조한 적이 없�
 | `safeApiCallNoContent` | **본문 자체가 없음**(204) | `Result<Unit>` |
 
 `safeApiCallNoContent`는 서비스 메서드가 `Unit`을 반환하는 경우다 — `logout`이 여기 해당한다
-([api/spec/auth-logout.md](../api/spec/auth-logout.md): 컨트롤러가 Unit 반환 + `@ResponseStatus(NO_CONTENT)`라
+([api/spec/auth-logout.md](../../api/spec/auth-logout.md): 컨트롤러가 Unit 반환 + `@ResponseStatus(NO_CONTENT)`라
 응답 본문이 비어 있다). `safeApiCallWithoutData`로는 파싱할 JSON이 없어 처리할 수 없다.
 
 **에러 경로**: `catch (e: HttpException)`에서 `e.response()?.errorBody()?.string()`을 `ApiResponse<Unit>`로
@@ -116,7 +116,7 @@ develop에 머지됐다(#174). 그러나 서버 계약과 대조한 적이 없�
 
 **폴백을 반드시 둔다.** 서버가 항상 envelope를 준다고 가정하면 안 된다 — 인프라 계층(게이트웨이·WAF)에서
 나오는 429·502는 envelope 없이 올 수 있고, 실제로 팀 명세의 429는 서버 코드에 구현이 없다
-→ [open-questions](../synthesis/open-questions.md).
+→ [open-questions](../../synthesis/open-questions.md).
 
 `errorBody()`는 **한 번만 읽을 수 있다**(`ResponseBody`는 일회성 스트림). `string()` 호출을 한 곳으로
 모으고 결과를 지역 변수에 담는다.
@@ -128,7 +128,7 @@ Business(code: String, serverMessage: String, statusCode: Int?, errorDetail: Map
 ```
 
 `statusCode`를 더하는 이유는 **코드 문자열이 enum 간 유일하지 않기 때문이다.** `MEMBER_NOT_FOUND`가
-`AuthErrorCode`에서는 401, `ParfaitGroupApiErrorCode`에서는 404다 → [api/conventions.md](../api/conventions.md).
+`AuthErrorCode`에서는 401, `ParfaitGroupApiErrorCode`에서는 404다 → [api/conventions.md](../../api/conventions.md).
 `code` 단독으로 분기하면 "인증 실패"와 "그룹의 대상 회원 없음"이 한 갈래로 뭉개진다. 소비자는
 **`code`와 `statusCode`를 함께 보고 판정**한다.
 
@@ -147,7 +147,7 @@ Business(code: String, serverMessage: String, statusCode: Int?, errorDetail: Map
 Preferences DataStore에 넣고 뺀다. 전부 suspend.
 - `getAccessToken(): String?` · `getRefreshToken(): String?` · `save(accessToken, refreshToken)` · `clear()`
 - DataStore 인스턴스는 기존 `DataStoreModule`이 제공하는 `DataStore<Preferences>`를 재사용한다
-  ([ADR-0008](../adr/0008-datastore-local-persistence.md)).
+  ([ADR-0008](../../adr/0008-datastore-local-persistence.md)).
 
 **`TokenProvider`** — ADR-0017이 만든 **동기 추상화를 유지**하고 구현만 교체한다
 (`EmptyTokenProvider` → `TokenStoreTokenProvider`). 인터페이스를 남기는 이유는 인터셉터를 테스트할 때
@@ -165,17 +165,21 @@ fake를 끼울 자리가 필요하기 때문이다. `EmptyTokenProvider`는 삭�
 **인증 헤더 스킵**: 인증이 불필요한 엔드포인트(`kakao`·`signup`·`reissue` 등 서버 화이트리스트 경로)는
 서비스 메서드에 `@NoAuth`(`network/NoAuth.kt`)를 붙여 표시한다. `AuthInterceptor`는
 `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로
-판정해, `true`면 `tokenProvider.getToken()` 호출 자체를 생략한다(불필요한 `runBlocking`·DataStore
-읽기·Keystore 복호화를 아낀다).
+판정한다.
 
-> ⚠️ [2026-08-04] 로컬 작업 트리에 이 생략을 없앤 변형(헤더 부착 조건만 `token != null && skipAuth.not()`)이
-> 미커밋으로 존재한다. **헤더 부착 결과는 동일**하고 화이트리스트 경로의 조회 비용만 갈린다 —
-> 확정 전이라 이 절은 커밋본(생략함) 서술을 유지한다 → [open-questions](../synthesis/open-questions.md).
+> ⚠️ **as-built(PR #190 develop 머지)** — 설계는 스킵 대상이면 `tokenProvider.getToken()` **호출 자체를
+> 생략**해 `runBlocking`·DataStore 읽기·Keystore 복호화를 아낀다고 적었으나, 머지된 코드는
+> **`getToken()`을 항상 호출하고 헤더 부착 조건만 `token != null && skipAuth.not()`으로 게이팅**한다
+> (early return 없음). 갈림은 **코드 리뷰 반영으로 확정**됐다 — PR #190의 마지막 커밋(`refactor: 코드
+> 리뷰 반영`)이 early return을 걷어낸 단일 변경이다. **헤더 부착 결과는 네 경우 모두 동일**하다 — 갈리는 것은 비용뿐으로,
+> 화이트리스트 경로 요청마다 토큰 조회가 한 번씩 더 일어난다. 이 라운드 시점엔 `@NoAuth`를 붙인
+> 서비스 메서드가 develop에 0건이라(auth·policy Service가 `data-api-service-layer` 미머지) 실제
+> 비용은 아직 발생하지 않는다.
 
 이전에는 경로 문자열 상수(`NO_AUTH_HEADER_PATHS`)를
 `AuthInterceptor`에 하드코딩해 서버 `SecurityConfig.WHITELIST_PATHS`와 이중 관리했으나, 선언을
 서비스 인터페이스의 URL 옆으로 옮겨 오타가 컴파일 타임에 걸리게 했다 —
-[ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 참고.
+[ADR-0017](../../adr/0017-remote-network-datasource.md) "인증" 참고.
 
 ### 5. 키 유실 처리 (핵심)
 
@@ -190,11 +194,11 @@ fake를 끼울 자리가 필요하기 때문이다. `EmptyTokenProvider`는 삭�
 > ⚠️ **as-built** — 구현된 `read()`는 설계보다 넓게 잡는다. `runCatching`이 복호화만이 아니라
 > **DataStore 읽기까지** 감싸고, 복구 경로의 `clear()`도 `runCatching`으로 감싼다. 키 무효화 외에
 > 저장소 I/O 실패도 같은 경로로 떨어지며, 삭제가 실패해도 `null` 반환은 보장된다
-> → [ADR-0019](../adr/0019-encrypted-token-storage.md).
+> → [ADR-0019](../../adr/0019-encrypted-token-storage.md).
 
 ### 6. DI 배선
 
-[ADR-0017](../adr/0017-remote-network-datasource.md)의 "DI 모듈은 역할당 1파일 평면 배치" 관용을 따른다.
+[ADR-0017](../../adr/0017-remote-network-datasource.md)의 "DI 모듈은 역할당 1파일 평면 배치" 관용을 따른다.
 **하위 패키지를 새로 만들지 않는다.**
 
 | 대상 | 어디에 | 방식 |
@@ -206,10 +210,29 @@ fake를 끼울 자리가 필요하기 때문이다. `EmptyTokenProvider`는 삭�
 
 `EmptyTokenProvider.kt`는 삭제한다. 새 DI 파일을 만들지 않는다.
 
+## 스펙 범위 밖 동반 변경 (as-built, PR #190)
+
+머지된 PR은 위 설계 외에 두 가지를 함께 들여왔다. 설계 단계에 없던 것이라 여기 사후 기록한다.
+
+- **R8 유지 규칙** — `data/proguard-rules.pro`에 `-keep @interface …network.NoAuth`가 추가됐다.
+  런타임에 어노테이션을 읽으므로 규칙 자체는 필요하지만, **develop 기준으로 이 규칙은 아무 곳에도
+  전달되지 않는다.** `:data`는 Android 라이브러리 모듈이라 앱의 R8 실행에는 `consumerProguardFiles`로
+  명시한 규칙만 전달되는데, develop의 컨벤션 플러그인(`AndroidConfig.kt#setConfigAndroidLibrary`)은
+  `consumerProguardFiles`도 `proguardFiles`도 등록하지 않고 `data/consumer-rules.pro`는 비어 있다
+  (`consumerProguardFiles` 문자열이 develop 전체에 0건). 같은 문제를 `data-api-service-layer` 라운드가
+  이미 발견해 `consumer-rules.pro` 이관 + 컨벤션 플러그인 등록으로 고쳤으나 **그 브랜치가 미머지**라,
+  develop에는 무효한 배치만 남았다 → [ADR-0017](../../adr/0017-remote-network-datasource.md) "인증",
+  [open-questions](../../synthesis/open-questions.md).
+- **`http/` 요청 모음** — IntelliJ HTTP Client로 서버 API를 직접 호출하는 요청 파일 묶음
+  (`auth.http`·`parfait-group.http`·`parfait.http`·`health.http`·`_reset.http` + `http-client.env.json`
+  + `README.md`)이 저장소 루트에 신설되고, 실제 주소·토큰이 들어가는 `http-client.private.env.json`은
+  `.gitignore`에 등록됐다. 계약 근거는 [api/](../../api/README.md) 문서와 같은 서버 코드이므로 **두
+  표면이 같은 계약을 이중 관리**하게 된다 → [open-questions](../../synthesis/open-questions.md).
+
 ## 검증
 
 **이 라운드의 약점이다.** 코드베이스에 `test`·`androidTest` 디렉토리가 **하나도 없고**(무테스트 관례,
-[ADR-0017](../adr/0017-remote-network-datasource.md)에도 명시), Android Keystore는 JVM 유닛 테스트에서
+[ADR-0017](../../adr/0017-remote-network-datasource.md)에도 명시), Android Keystore는 JVM 유닛 테스트에서
 동작하지 않는다. 계측 테스트 인프라를 이 스펙에서 새로 세우지 않는다.
 
 대신:
@@ -226,22 +249,26 @@ fake를 끼울 자리가 필요하기 때문이다. `EmptyTokenProvider`는 삭�
    `INVALID_ID_TOKEN` 등 실제 에러 코드가 `Business`로 잡히는지 확인한다.
 
 **미검증으로 남는 것**: 키 유실 경로(재현이 어렵다), 실기기 암복호화 왕복(위 3번, 트리거 수단 부재),
-에러 envelope 파싱의 실서버 동작. [open-questions](../synthesis/open-questions.md)에 등록하고
+에러 envelope 파싱의 실서버 동작. [open-questions](../../synthesis/open-questions.md)에 등록하고
 다음 라운드로 넘긴다.
+
+> **머지 시점 재확인(2026-08-04, PR #190)** — 위 미검증 3건은 그대로 남는다. `TokenStore.save()`
+> 호출부는 develop 기준 여전히 **0건**이고(auth 도메인이 미머지), 서버로 나간 요청도 0건이다.
+> 즉 이 라운드 산출물은 **컴파일·Hilt 그래프 해소까지만 확인된 채 develop에 들어왔다.**
 
 ## 문서 산출물
 
 - **ADR-0019 신설** — 토큰 암호화 저장(Android Keystore AES/GCM + Preferences DataStore).
   대안으로 검토한 Tink·EncryptedSharedPreferences와 기각 사유, 키 유실 시 `clear()` 정책을 담는다.
-- **[ADR-0017](../adr/0017-remote-network-datasource.md) 갱신** — 성공 판정 근거를 `success` 필드로 교체,
+- **[ADR-0017](../../adr/0017-remote-network-datasource.md) 갱신** — 성공 판정 근거를 `success` 필드로 교체,
   진입점 2개 → 3개, `safeApiCall` top-level 함수 → `ApiCaller` 클래스 승격과 그 근거, 에러 envelope 파싱,
   `TokenProvider` 실구현.
-- **[architecture/data-layer.md](../architecture/data-layer.md)** — 토큰 저장 경로와 `ApiCaller` 사용법 반영.
+- **[architecture/data-layer.md](../../architecture/data-layer.md)** — 토큰 저장 경로와 `ApiCaller` 사용법 반영.
 
 ## 열린 질문
 
-- `runBlocking`을 인터셉터에서 쓰는 것이 코드리뷰를 통과할지 미확정. 반려되면 메모리 캐시 방식으로
-  전환하고 초기 로드 타이밍을 별도 설계해야 한다.
+- ~~`runBlocking`을 인터셉터에서 쓰는 것이 코드리뷰를 통과할지 미확정.~~ **통과했다**(PR #190 머지 —
+  리뷰 반영 커밋은 `AuthInterceptor`의 early return만 걷어냈고 `TokenStoreTokenProvider`는 무수정).
 - 401 자동 재발급(`Authenticator`)을 다음 라운드에 붙일 때, `reissue`가 **화이트리스트라 인증 헤더를
-  받지 않는다**는 점이 설계에 영향을 준다 → [api/spec/auth-reissue.md](../api/spec/auth-reissue.md).
+  받지 않는다**는 점이 설계에 영향을 준다 → [api/spec/auth-reissue.md](../../api/spec/auth-reissue.md).
 - 키 유실 시 `clear()` 후 재로그인 유도가 UX상 충분한지(예: 사용자에게 알릴지) 미결.

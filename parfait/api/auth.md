@@ -252,7 +252,10 @@ tags: [api, parfait, server-contract, auth]
 
 ## Android 매핑
 
-`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)).
+`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)) —
+**단 `feature/sync-api-service` 브랜치까지이고 develop 미머지다**(2026-08-04 기준). 이 표면이 딛고 선
+공용 인프라(`ApiCaller` 3진입점·`ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로
+develop에 들어왔지만, 아래 Service·DataSource·DTO·VO는 아직 develop에 없다.
 **⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — 카카오 로그인·회원가입·재발급·
 로그아웃 화면 결선은 이후 라운드다. 지금 확인할 수 있는 것은 `:data`가 계약대로 요청을 만들고 응답을
 파싱할 수 있다는 것뿐이고, 실제 서버 호출로 검증되지도 않았다(개발 서버 평문 HTTP 차단 —

@@ -385,20 +385,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-02] 서버 응답 envelope와 Android ApiResponse 불일치
 - **출처**: 서버 `parfait.common.response.ApiResponse`([api/conventions.md](../api/conventions.md) "응답 envelope") — `success`·`errorDetail` 필드를 Android `ApiResponse`가 갖고 있지 않다. Android `data/service/model/response/ApiResponse.kt`.
 - **항목**: Android `ApiResponse`에 `success`·`errorDetail` 필드를 추가할지, 추가 시 파싱·기본값 처리를 어떻게 할지.
-- **상태**: 작업 트리 반영, develop 미머지 — `network-envelope-token-storage` 라운드에서 필드를 추가했으나 TJYG-Android에 커밋이 없어 develop 기준으로는 여전히 미해소다.
-- **해소 메모**: develop 머지 시 [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md) 응답 매핑 절을 갱신하고 [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거한다.
+- **상태**: 해소됨 (2026-08-04, PR #190 develop 머지)
+- **해소 메모**: Android `ApiResponse`가 `success`·`code`·`message`·`data`·`errorDetail` 5필드로 서버 envelope와 일치한다(`errorDetail` 기본값 `null`). [ADR-0017](../adr/0017-remote-network-datasource.md) as-built 절·[data-layer](../architecture/data-layer.md)에 반영했고 [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거했다. **다만 실서버 요청은 여전히 0건**이라 파싱 실동작은 아래 "`data-api-service-layer` 전체가 런타임 미검증" 항목이 계속 안고 간다.
 
 ### [2026-08-02] Android 성공 코드 판정이 서버와 어긋남
 - **출처**: Android `ApiResponse.SUCCESS_CODE`(TODO 상수, `isSuccess`가 `code == "SUCCESS"` 단일 비교) vs 서버 `ApiResponse.ok`/`ApiResponse.created`(`code`=`"OK"`/`"CREATED"` 2종, [api/conventions.md](../api/conventions.md) "응답 envelope").
 - **항목**: `isSuccess` 판정을 `"OK"`·`"CREATED"` 2종 비교로 바꿀지 여부와 시점.
-- **상태**: 작업 트리 반영, develop 미머지 — `network-envelope-token-storage` 라운드에서 `success` 필드를 그대로 쓰도록 교체했으나(`isSuccess` 프로퍼티 제거) TJYG-Android에 커밋이 없어 develop 기준으로는 여전히 미해소다.
-- **해소 메모**: develop 머지 시 [ADR-0017](../adr/0017-remote-network-datasource.md)와 [api/conventions.md](../api/conventions.md) "Android 불일치" 표를 갱신한다.
+- **상태**: 해소됨 (2026-08-04, PR #190 develop 머지)
+- **해소 메모**: 성공 판정이 `success` 필드 직독으로 바뀌고 `isSuccess` 프로퍼티·`SUCCESS_CODE` 상수가 삭제됐다 — 서버가 성공 코드를 늘려도 깨지지 않는다. `code`는 분기용으로만 남는다. [ADR-0017](../adr/0017-remote-network-datasource.md) as-built 절 갱신 + [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거.
 
 ### [2026-08-02] TokenProvider 실구현 부재
 - **출처**: Android `EmptyTokenProvider`(항상 null 반환) vs 서버 `SecurityConfig` 화이트리스트(`/actuator/health`·`/swagger-ui.html`·`/swagger-ui/**`·`/favicon.ico`·`/v3/api-docs/**`·`/api/v1/auth/kakao`·`/api/v1/auth/signup`·`/api/v1/auth/reissue`, [api/conventions.md](../api/conventions.md) "인증").
 - **항목**: 실 `TokenProvider` 구현 시점·토큰 저장 방식(DataStore 등) 확정.
-- **상태**: 작업 트리 반영, develop 미머지 — `network-envelope-token-storage` 라운드에서 `TokenStoreTokenProvider`(암호화 저장소 연동, [ADR-0019](../adr/0019-encrypted-token-storage.md))로 교체했으나 TJYG-Android에 커밋이 없어 develop 기준으로는 여전히 미해소다(화이트리스트 밖 전 API가 401인 상태 유지).
-- **해소 메모**: develop 머지 시 [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md)를 갱신하고 [api/conventions.md](../api/conventions.md) "Android 불일치" 표에서 제거한다.
+- **상태**: 해소됨 (2026-08-04, PR #190 develop 머지) — 단 **동작 확인은 아님**
+- **해소 메모**: `EmptyTokenProvider`가 삭제되고 `TokenStoreTokenProvider`(→`TokenStore`→`EncryptedTokenStore`, [ADR-0019](../adr/0019-encrypted-token-storage.md))가 들어왔다. [ADR-0017](../adr/0017-remote-network-datasource.md)·[data-layer](../architecture/data-layer.md) 갱신 + [api/conventions.md](../api/conventions.md) 표에서 제거. **저장소가 실제로 토큰을 돌려주는지는 미확인**이다 — `TokenStore.save()` 호출부가 develop에 0건이라 저장된 토큰 자체가 없다(아래 "실기기 암복호화 왕복 검증이 수행 불가" 항목).
 
 ### [2026-08-02] 서버 URL 규약 3형태 혼재
 - **출처**: 서버 `KakaoLoginController`·`SignupController`·`ReissueController`·`LogoutController`(`/api/v1/auth/**`) · `ParfaitController`(`/api/v1/groups/{groupId}/parfaits/**`) · `ParfaitGroupController`(`/api/parfait-groups`, 버전 프리픽스 없음) — [api/conventions.md](../api/conventions.md) "URL 규약".
@@ -464,19 +464,21 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: [ADR-0019](../adr/0019-encrypted-token-storage.md) "키 유실 시 정책" — 기기 복원·잠금 화면 자격증명 변경 등으로 Keystore 키가 무효화되면 `CryptoManager.decrypt`가 예외를 던지고 `EncryptedTokenStore.read()`가 이를 잡아 `clear()` 후 `null`을 반환하도록 설계됐다. 코드베이스에 `test`/`androidTest`가 없고 Android Keystore는 JVM 유닛 테스트에서 동작하지 않아 이 경로를 재현·검증하지 못했다.
 - **항목**: 키 유실을 실기기에서 재현(기기 복원 또는 잠금 자격증명 변경)해 `clear()` 분기가 실제로 타는지, 앱이 정상적으로 "토큰 없음" 상태로 전환되는지 확인.
 - **상태**: 미해결 (재현 수단 없음)
-- **해소 메모**: 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md) "키 유실 시 정책"과 [specs/2026-08-02-network-envelope-token-storage.md](../specs/2026-08-02-network-envelope-token-storage.md) "검증" 절에 결과를 반영한다.
+  > 📌 **as-built 범위 확대(2026-08-04, PR #190 머지본)** — `read()`의 `runCatching`이 복호화뿐 아니라 **DataStore 읽기까지** 감싼다. 즉 일시적 저장소 I/O 실패도 같은 경로로 떨어져 토큰이 삭제된다 — 재현해야 할 경우의 수가 하나 늘었다.
+- **해소 메모**: 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md) "키 유실 시 정책"과 [specs/archive/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "검증" 절에 결과를 반영한다.
 
 ### [2026-08-02] 인터셉터 `runBlocking`이 코드리뷰를 통과할지 미확정
-- **출처**: `AuthInterceptor` → `TokenStoreTokenProvider.getToken()`이 `runBlocking { tokenStore.getAccessToken() }`으로 suspend 경계를 넘는다([ADR-0019](../adr/0019-encrypted-token-storage.md) "결정", [specs/2026-08-02-network-envelope-token-storage.md](../specs/2026-08-02-network-envelope-token-storage.md) "`runBlocking` 사용 근거"). OkHttp dispatcher 스레드에서 실행돼 메인 스레드는 막지 않는다는 근거로 채택했으나, 코루틴 규율(구조화된 동시성) 이탈이라는 지적이 나올 수 있다.
+- **출처**: `AuthInterceptor` → `TokenStoreTokenProvider.getToken()`이 `runBlocking { tokenStore.getAccessToken() }`으로 suspend 경계를 넘는다([ADR-0019](../adr/0019-encrypted-token-storage.md) "결정", [specs/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "`runBlocking` 사용 근거"). OkHttp dispatcher 스레드에서 실행돼 메인 스레드는 막지 않는다는 근거로 채택했으나, 코루틴 규율(구조화된 동시성) 이탈이라는 지적이 나올 수 있다.
 - **항목**: 코드리뷰에서 `runBlocking` 사용이 반려될지 확정. 반려되면 메모리 캐시(StateFlow) + 동기 읽기 방식으로 전환하고, 앱 시작 직후 캐시가 비어 있는 창(window)에서 첫 요청이 토큰 없이 나가는 타이밍 문제를 별도로 설계해야 한다.
-- **상태**: 미해결 (코드리뷰 대기)
-- **해소 메모**: 반려 시 [ADR-0019](../adr/0019-encrypted-token-storage.md) "결정"과 `AuthInterceptor`/`TokenStoreTokenProvider` 구현을 메모리 캐시 방식으로 갱신한다.
+- **상태**: 해소됨 (2026-08-04, PR #190 develop 머지 — 반려되지 않음)
+- **해소 메모**: 리뷰 반영 커밋은 `AuthInterceptor`의 early return만 걷어냈고 `TokenStoreTokenProvider`의 `runBlocking`은 무수정으로 머지됐다. 메모리 캐시 전환은 불필요해졌다. 단 **런타임에 이 경로가 돌아간 적은 없다**(토큰 저장분 0건) — 실제 지연·ANR 관측은 로그인 연동 라운드 몫이다.
 
 ### [2026-08-02] 실기기 암복호화 왕복 검증이 수행 불가
-- **출처**: [specs/2026-08-02-network-envelope-token-storage.md](../specs/2026-08-02-network-envelope-token-storage.md) "검증" — 저장 → 앱 완전 종료 → 재시작 → 읽기를 사람이 육안 확인하면 된다고 봤으나, `TokenStore.save()` 호출부가 코드베이스에 **0건**이라 저장을 트리거할 방법 자체가 없다(auth 도메인 Service·RemoteDataSource·Repository 구현이 이 라운드 범위 밖).
+- **출처**: [specs/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "검증" — 저장 → 앱 완전 종료 → 재시작 → 읽기를 사람이 육안 확인하면 된다고 봤으나, `TokenStore.save()` 호출부가 코드베이스에 **0건**이라 저장을 트리거할 방법 자체가 없다(auth 도메인 Service·RemoteDataSource·Repository 구현이 이 라운드 범위 밖).
 - **항목**: 로그인이 실제로 붙어 `TokenStoreTokenProvider`/`EncryptedTokenStore.save()`가 호출되는 다음 라운드에서 저장 → 종료 → 재시작 → 읽기 왕복을 실기기로 확인한다(DataStore 파일에 평문이 없는지 포함).
 - **상태**: 미해결 (로그인 연동 라운드로 이월)
-- **해소 메모**: 로그인 연동 라운드에서 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md)와 [specs/2026-08-02-network-envelope-token-storage.md](../specs/2026-08-02-network-envelope-token-storage.md) "검증" 절을 갱신한다.
+  > 📌 **코드가 develop에 머지됐어도 상태 불변(2026-08-04, PR #190)** — 저장 경로 전체가 develop에 들어왔지만 `TokenStore.save()` 호출부는 여전히 0건이다. 머지가 검증을 대신하지 않는다.
+- **해소 메모**: 로그인 연동 라운드에서 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md)와 [specs/archive/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "검증" 절을 갱신한다.
 
 ### [2026-08-02] debug 빌드 `Level.BODY` 로깅이 `reissue`/`logout` 요청 바디의 refresh token을 평문 노출
 - **출처**: `NetworkModule.provideOkHttpClient`의 `HttpLoggingInterceptor`가 `redactHeader("Authorization")`로 헤더는 가렸으나 `Level.BODY`는 유지했다. `/api/v1/auth/reissue`·`/api/v1/auth/logout` 요청 바디에 실린 `refreshToken`은 헤더가 아니라 바디 필드라 redact 대상이 아니고, debug logcat에 평문으로 남는다.
@@ -488,8 +490,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `AuthInterceptor`가 `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로 스킵 여부를 판정한다(`network/NoAuth.kt`, [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"). `Invocation` 태그는 **Retrofit이 만든 요청에만 자동으로 붙는다** — OkHttp를 직접 쓰는 요청(예: Coil 이미지 로딩이 같은 `OkHttpClient`를 공유하게 되는 경우)에는 태그가 없어 `skipAuth`가 `false`로 떨어져 헤더가 붙는다. 현재 그런 경로는 없다.
   **② R8 release 미검증 항목은 2026-08-03 `data-api-service-layer` 라운드 최종 리뷰에서 해소됐다 — 답은 부정이었다.** keep 규칙(`-keep @interface com.teamyg.parfait.data.network.NoAuth`)이 `data/proguard-rules.pro`에 있었는데, `:data`는 **Android 라이브러리 모듈**이라 `proguardFiles`는 그 모듈 자체의 R8 실행에만 쓰이고 앱(`:app`)의 R8 실행에는 `consumerProguardFiles`로 명시한 규칙만 전달된다. 컨벤션 플러그인(`setConfigAndroidLibrary`)이 `consumerProguardFiles`를 등록하지 않아 이 keep 규칙이 앱에 전혀 전달되지 않고 있었다 — release 빌드였다면 `@NoAuth` 어노테이션이 R8에 제거되고, 화이트리스트 4곳(`postAuthKakao`·`postAuthSignup`·`postAuthReissue`·`getPolicies`) 전부에 `Authorization` 헤더가 붙어 **토큰 재발급이 가장 필요한 순간(만료·미보유 상태)에 막혔을 것**이다. 조치: keep 규칙을 `data/consumer-rules.pro`로 옮기고 `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`를 등록하도록 수정.
 - **항목**: ① Coil 등 OkHttp를 직접 공유하는 신규 경로가 생기면 `Invocation` 태그 부재로 인증 헤더가 붙는지 확인하고 필요 시 별도 처리(잔존). ~~② `:app:assembleRelease`로 실제 release 빌드를 만들어 화이트리스트 엔드포인트가 여전히 헤더 없이 나가는지 확인~~(해소 — 위 참고, `consumerProguardFiles` 등록 후 `:app:assembleDebug`로 Hilt 그래프까지 재확인).
-- **상태**: 부분 해소 (② 해소 — 부정적 결과, 발견 즉시 수정 / ① 잔존 — Coil 등 OkHttp 직접 공유 경로 여전히 없음이 전제)
-- **해소 메모**: ② 반영 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 절과 [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 절에 결과를 반영했다. ① 잔존 — 신규 OkHttp 직접 경로가 생기면 이 항목을 다시 연다.
+  > ⚠️ **②가 develop에서 되살아났다(2026-08-04, PR #190)** — 위 수정(`consumer-rules.pro` 이관 + 컨벤션 플러그인 `consumerProguardFiles` 등록)은 `feature/sync-api-service` 브랜치 산출물이라 **develop 미머지**다. 반면 먼저 머지된 PR #190은 keep 규칙을 **`data/proguard-rules.pro`**에 넣었고, develop의 `AndroidConfig.kt#setConfigAndroidLibrary`는 `consumerProguardFiles`도 `proguardFiles`도 등록하지 않으며 `data/consumer-rules.pro`는 빈 파일이다(`consumerProguardFiles` 문자열이 develop 전체에 0건). **develop 기준으로 이 keep 규칙은 어디에도 전달되지 않는다.** 지금 당장 사고가 나지 않는 이유는 `@NoAuth`를 붙인 서비스 메서드가 develop에 0건이기 때문일 뿐이다 — auth·policy Service가 머지되는 순간 release 빌드에서 화이트리스트 전 경로에 `Authorization`이 붙는다.
+- **상태**: 부분 해소 → **② 재개**(브랜치에서 고쳤으나 develop 미반영 / ① 잔존 — Coil 등 OkHttp 직접 공유 경로 여전히 없음이 전제)
+- **해소 메모**: ②는 `data-api-service-layer` 브랜치가 develop에 머지되면 함께 닫힌다. 그 전에 auth Service만 따로 들어오는 순서가 되면 keep 규칙 이관을 선행해야 한다. 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 절과 [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 절을 갱신한다. ① 잔존 — 신규 OkHttp 직접 경로가 생기면 이 항목을 다시 연다.
 
 ### [2026-08-02] 카카오 로그인 판별자 JSON 키가 `newUser` — Android 응답 타입에 `@SerialName` 필요
 - **출처**: 서버 `KakaoLoginResponse`는 Kotlin `val isNewUser: Boolean`이지만, 서버가 발행한 OpenAPI 스키마의 `KakaoLoginResponse`는 필드를 **`newUser`**로 적는다. Jackson이 getter(`isNewUser()`) 이름에서 `is` 접두사를 떼고 직렬화하기 때문이다 → [api/conventions.md](../api/conventions.md) "직렬화 규약", [api/auth.md](../api/auth.md), [api/spec/auth-kakao-login.md](../api/spec/auth-kakao-login.md).
@@ -591,9 +594,23 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 ### [2026-08-04] `AuthInterceptor`의 `@NoAuth` 스킵 방식이 브랜치별로 갈렸다 — 토큰 조회 생략 여부
 - **출처**: `data/.../network/AuthInterceptor.kt`. 두 형태가 공존한다. ① **`origin/feature/sync-api-service`·`origin/feature/set-up-backend-api` 커밋본** — `skipAuth`면 `chain.proceed(originalRequest)`로 **early return**해 `tokenProvider.getToken()` 호출 자체를 하지 않는다. ② **`feature/set-up-backend-api` 로컬 작업 트리(미커밋)** — early return을 없애고 헤더 부착 조건만 `token != null && skipAuth.not()`으로 바꿔, `skipAuth`여도 `getToken()`을 **항상 호출**한다. **헤더 부착 결과는 네 경우 모두 동일**하다(토큰 있음+`skipAuth`에도 헤더가 붙지 않는다) — 갈리는 것은 비용뿐이다. ②는 화이트리스트 경로(`postAuthKakao`·`postAuthSignup`·`postAuthReissue`·`getPolicies`) 요청마다 `TokenStoreTokenProvider`의 `runBlocking` + DataStore 읽기 + Keystore 복호화를 유발한다.
-- **항목**: ①②를 확정한다. ②를 택하면 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"·[data-layer](../architecture/data-layer.md) "인증"·[network-envelope-token-storage 스펙](../specs/2026-08-02-network-envelope-token-storage.md) 세 곳의 "스킵 대상이면 토큰 조회 자체를 생략한다"를 as-built로 정정해야 한다. `skipAuth` 판정 후 `val token = if (skipAuth) null else tokenProvider.getToken()`로 두면 early return 없이도 ① 의미를 지킬 수 있다.
-- **상태**: 미해결 (② 미커밋 — 확정 전이라 위 세 문서는 ① 서술을 유지한다)
-- **해소 메모**: ②로 확정돼 커밋·머지되면 위 세 곳을 정정하고 "불필요한 DataStore 읽기·Keystore 복호화를 피한다"는 근거 문장을 비용 감수 서술로 바꾼다. ①로 확정되면 이 항목만 닫는다.
+- **항목**: ①②를 확정한다. ②를 택하면 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"·[data-layer](../architecture/data-layer.md) "인증"·[network-envelope-token-storage 스펙](../specs/archive/2026-08-02-network-envelope-token-storage.md) 세 곳의 "스킵 대상이면 토큰 조회 자체를 생략한다"를 as-built로 정정해야 한다. `skipAuth` 판정 후 `val token = if (skipAuth) null else tokenProvider.getToken()`로 두면 early return 없이도 ① 의미를 지킬 수 있다.
+- **상태**: 해소됨 (2026-08-04, PR #190 develop 머지 — **②로 확정**)
+- **해소 메모**: PR #190의 마지막 커밋(`refactor: 코드 리뷰 반영`)이 early return을 걷어낸 단일 변경이다 — 즉 ②는 미커밋 실험이 아니라 **리뷰 결론**이었다. [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"·[data-layer](../architecture/data-layer.md) "인증"·[network-envelope-token-storage 스펙](../specs/archive/2026-08-02-network-envelope-token-storage.md) 세 곳의 "토큰 조회 자체를 생략한다"를 as-built로 정정하고, 절약 근거 문장을 비용 감수 서술로 바꿨다. 비용이 실제로 드는 시점은 `@NoAuth`를 붙인 서비스 메서드가 develop에 들어올 때다(현재 0건).
+
+### [2026-08-04] `http/` 요청 모음과 `parfait/api/` 계약 문서가 같은 계약을 이중 관리
+
+- **출처**: TJYG-Android 루트 `http/`(PR #190 develop 머지) — `auth.http`·`parfait-group.http`·`parfait.http`·`health.http`·`_reset.http` + `README.md`가 엔드포인트 경로·요청 바디·응답 형태·함정(예: `reissue`에 `Authorization`을 붙이면 막힘, `logout` 204라 본문 없음)을 서술한다. 같은 내용이 [api/](../api/README.md)의 도메인 문서 4건 + [api/conventions.md](../api/conventions.md)에도 있다. 두 표면 다 근거는 서버 코드지만 **갱신 절차가 다르다** — `api/`는 스킬 `sync-teamyg-server-api`가 서버 기준선 delta로 갱신하고, `http/`는 사람이 손으로 고친다.
+- **항목**: ① 서버 계약이 바뀔 때 `http/`도 함께 갱신하는 것을 `sync-teamyg-server-api` 절차에 넣을지(넣으면 이 위키 저장소의 스킬이 코드 저장소 파일을 고치게 된다), ② 아니면 `http/README.md`를 계약 서술 없이 "실행 방법"으로만 깎고 계약 근거는 `api/`로 단일화할지. 현재는 `http/README.md`가 envelope 5필드·204 예외·`errorDetail` 항상 null까지 자체 서술하고 있어 서버가 바뀌면 조용히 갈린다.
+- **상태**: 미해결 (아직 갈리지 않았으나 갱신 경로가 둘)
+- **해소 메모**: 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절과 `sync-teamyg-server-api` 스킬 절차에 반영한다.
+
+### [2026-08-04] `@NoAuth`를 붙일 서비스 메서드가 develop에 0건 — 인증 스킵 경로가 통째로 死코드
+
+- **출처**: `data/.../network/NoAuth.kt`·`AuthInterceptor.kt`(PR #190 develop 머지) — 어노테이션과 판정 로직(Retrofit `Invocation` 태그 조회), R8 keep 규칙까지 들어왔지만 **`@NoAuth`를 실제로 붙인 곳은 develop에 없다.** develop의 원격 서비스는 `TempService` 하나뿐이고, 화이트리스트 대상(`postAuthKakao`·`postAuthSignup`·`postAuthReissue`·`getPolicies`)은 전부 `data-api-service-layer` 브랜치에 있다.
+- **항목**: 이 구조가 처음 실행되는 시점이 **auth Service 머지 시점**이라는 뜻이다. 그때 함께 확인할 것 ① `Invocation` 태그가 실제로 붙어 `skipAuth`가 `true`로 판정되는지(현재 판정 코드가 한 번도 `true`를 돌려준 적이 없다), ② keep 규칙이 유효한 자리로 옮겨졌는지(위 R8 항목), ③ 스킵 경로에서도 `getToken()`이 호출되는 비용이 실제로 문제인지.
+- **상태**: 미해결 (auth Service 머지 라운드로 이월)
+- **해소 메모**: 확인 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 절과 [network-envelope-token-storage 스펙](../specs/archive/2026-08-02-network-envelope-token-storage.md) 인증 절에 결과를 반영한다.
 
 <!--
 항목 추가 형식:

@@ -339,7 +339,10 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 ## Android 매핑
 
-`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)).
+`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)) —
+**단 `feature/sync-api-service` 브랜치까지이고 develop 미머지다**(2026-08-04 기준). 이 표면이 딛고 선
+공용 인프라(`ApiCaller` 3진입점·`ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로
+develop에 들어왔지만, 아래 Service·DataSource·DTO·VO는 아직 develop에 없다.
 **⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — 그룹 목록·생성·참여·닉네임
 변경·탈퇴·신고 화면 결선은 이후 라운드다.
 
