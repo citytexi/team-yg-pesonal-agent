@@ -68,10 +68,14 @@ tags: [architecture, parfait]
 5. 반응형이면 `Flow`로 반환.
 
 ## 네트워킹
-> 기초 구조는 develop 머지 완료(PR #174, 2026-08-01, [[0017-remote-network-datasource]]).
-> 서버 계약 정합·토큰 저장(아래 서술)은 `network-envelope-token-storage` 라운드 산출물 —
-> 문서 작성 시점 기준 **작업 트리 반영, develop 미머지**([[0017-remote-network-datasource]]·
-> [[0019-encrypted-token-storage]] 참고).
+> **develop 반영 범위(2026-08-04 기준)** — 기초 구조(PR #174) + 서버 계약 정합·토큰 저장
+> (`network-envelope-token-storage`, **PR #190 머지 완료**)까지 들어와 있다
+> ([[0017-remote-network-datasource]]·[[0019-encrypted-token-storage]]).
+> 아래 서술 중 **`data-api-service-layer` 라운드 산출물은 아직 develop 미머지**다 —
+> 구체적으로 `safeApiCall(block, transform)` 오버로드(진입점 넷째), `PolicyService`/`PolicyVO`
+> 예시 세트, `source.<도메인>.mapper` 규약, DTO 전 프로퍼티 `@SerialName` 규약,
+> `AuthService`/`KakaoLoginResponse` 계열이 그렇다. **develop의 `ApiCaller` 진입점은 셋**이고
+> 원격 서비스는 `TempService` 하나뿐이다.
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
 매핑 지점도 확정(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.
@@ -95,7 +99,7 @@ tags: [architecture, parfait]
   | 메서드 | 서버 응답 | 언제 |
   |---|---|---|
   | `safeApiCall(block)` | envelope + `data` 필요 | payload를 그대로(도메인 모델 변환 없이) 쓰는 조회·생성 API |
-  | `safeApiCall(block, transform)` | envelope + `data` 필요 + 도메인 모델로 매핑 | payload가 있고 VO로 변환해야 하는 API — 지금 있는 매핑 호출부 전부가 이 오버로드를 쓴다 |
+  | `safeApiCall(block, transform)` ⚠️미머지 | envelope + `data` 필요 + 도메인 모델로 매핑 | payload가 있고 VO로 변환해야 하는 API — 지금 있는 매핑 호출부 전부가 이 오버로드를 쓴다 |
   | `safeApiCallWithoutData` | envelope, `data` 안 봄 | 본문은 `ApiResponse<Unit>`이지만 payload가 의미 없는 API |
   | `safeApiCallNoContent` | 본문 자체가 없음(204) | 서비스 메서드가 `Unit` 반환(예: `logout`) |
 
@@ -137,8 +141,11 @@ tags: [architecture, parfait]
   suspend 경계를 넘는다(OkHttp dispatcher 스레드에서 실행돼 메인 스레드는 막지 않음). 상세는
   [[0019-encrypted-token-storage]]. 인증이 불필요한 엔드포인트(서버 화이트리스트 경로)는 서비스
   메서드에 `@NoAuth`(`network/NoAuth.kt`)를 붙인다 — `AuthInterceptor`가 Retrofit `Invocation` 태그로
-  어노테이션 존재를 확인해, 스킵 대상이면 토큰 조회 자체를 생략한다(불필요한 DataStore 읽기·Keystore
-  복호화를 피한다). 근거는 [[0017-remote-network-datasource]] "인증".
+  어노테이션 존재를 확인한다. **판정 후에도 토큰 조회는 그대로 수행하고, 헤더 부착만 건너뛴다**
+  (PR #190 코드 리뷰 반영으로 early return이 제거됐다) — 화이트리스트 경로에서도 `runBlocking` +
+  DataStore 읽기 + Keystore 복호화 비용이 든다. 근거는 [[0017-remote-network-datasource]] "인증".
+  `@NoAuth`의 R8 keep 규칙은 develop 기준 **앱에 전달되지 않는 자리**(`data/proguard-rules.pro`)에
+  있다 — 같은 ADR "인증"의 R8 절과 [open-questions](../synthesis/open-questions.md) 참고.
 - **토큰 저장 경로**: `CryptoManager`(Android Keystore AES/GCM, `security/`) → `EncryptedTokenStore`
   (`TokenStore` 구현, `source/token/local/`, `DataStore<Preferences>`에 `IV+암호문` Base64 문자열 저장) →
   `TokenStore`(`LocalDataSourceModule.bindTokenStore`) → `TokenStoreTokenProvider`

@@ -8,7 +8,7 @@
 > 추적 브랜치는 서버 **`main`** — 기준 커밋과 갱신 절차는 [server-baseline.md](server-baseline.md).
 
 ## 전역 계약
-- [conventions.md](conventions.md) — 응답 envelope·성공/에러 코드 체계·인증·URL 규약·**Android 불일치 3건**
+- [conventions.md](conventions.md) — 응답 envelope·성공/에러 코드 체계·인증·URL 규약·**Android 불일치**(2026-08-04 기준 잔여 0건 — PR #190으로 3건 해소)
 
 ## 팀 명세 원문
 - [spec/](spec/README.md) — 서버팀이 작성한 **API 명세**를 텍스트로 옮긴 것. 이 디렉토리의 도메인 문서가
@@ -53,13 +53,18 @@
 
 ## 계약을 실제로 확인하는 법
 
-TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다(`auth.http`·
-`policy.http`·`parfait-group.http`·`parfait.http`·`health.http`). 여기 문서에 적힌 계약을 서버에 직접
-쏴서 확인할 수 있다.
+TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다 — develop 머지본
+(PR #190) 기준 `auth.http`·`parfait-group.http`·`parfait.http`·`health.http`·`_reset.http` +
+`http-client.env.json` + 사용법 `README.md`다(**`policy.http`는 없다** — 약관 목록 요청은 아직
+어느 파일에도 없다). 여기 문서에 적힌 계약을 서버에 직접 쏴서 확인할 수 있다.
 
 - 로그인 응답에서 토큰을 자동 추출해 다음 요청이 그대로 쓴다 — 스웨거에서 복붙할 필요가 없다
 - 각 요청 주석에 이 문서들의 함정을 옮겨 뒀다(`reissue`에 `Authorization`을 붙이면 재발급이 막히는 건은
   주석 처리된 헤더 줄을 풀어 **직접 재현**할 수 있다)
-- 서버 주소·토큰은 gitignore된 `http-client.private.env.json`에만 둔다
+- 서버 주소·토큰은 gitignore된 `http-client.private.env.json`에만 둔다(커밋되는 `http-client.env.json`은 빈 값 골격)
+- 런타임 global 변수가 env 파일보다 **우선**한다 — 토큰을 손으로 넣을 때는 `_reset.http`로 먼저 비운다
+
+> 이 모음과 `api/`의 도메인 문서는 **같은 서버 코드를 근거로 하는 두 표면**이다. 서버가 바뀌면 양쪽이
+> 같이 갱신돼야 하고, 한쪽만 고치면 조용히 갈린다 → [open-questions](../synthesis/open-questions.md).
 
 문서와 서버가 어긋나는 것 같으면 여기서 먼저 쏴 보는 게 빠르다.
