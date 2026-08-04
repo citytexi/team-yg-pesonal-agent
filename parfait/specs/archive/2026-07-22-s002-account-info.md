@@ -1,20 +1,24 @@
 ---
 id: s002-account-info
 title: S-002 계정 정보 화면 (AccountInfo)
-status: draft
+status: implemented
 category: ui-spec
 platforms: android
-verified:
+verified: 2026-08-04
 related_code:
   - NavKeyAccountInfo
   - AccountInfoRoute.kt#AccountInfoRoute
   - AccountInfoScreen.kt#AccountInfoScreen
   - AccountInfoViewModel.kt#AccountInfoViewModel
+  - AccountInfoViewModel.kt#AccountInfoUiState
   - CheckNameValidUseCase.kt#CheckNameValidUseCase
   - NameValidResult.kt#NameValidResult
   - GroupCreateConfig.kt#GroupCreateConfig
+  - YGTopBarDetail.kt#YGTopBarDetail
   - YGLabel.kt#YGLabel
+  - YGTextFormField.kt#YGTextFormField
   - ClearFocusOnTap.kt#clearFocusOnTap
+  - feature/app/setting/impl/res/values/strings.xml
   - core/ui/res/values/strings.xml
   - EntryBuilder.kt#featureAppSettingEntryBuilder
 related_adr: ADR-0005, ADR-0006, ADR-0009, ADR-0016
@@ -30,27 +34,36 @@ tags: [spec, parfait, setting, account, nickname, s002]
 > 상태·날짜·대상·관련은 frontmatter가 단일 출처. 본문은 설계에 집중.
 >
 > ⚠️ **선행 리팩터가 먼저 머지됨(2026-07-29, PR #179)** — 이 스펙이 Task 1로 예정했던 domain 리팩터(빈 값 규칙 추가 +
-> 의미 sealed 반환)를 **다른 작업(A-005 그룹 생성)이 먼저 구현해 develop에 넣었다.** 형태가 이 스펙·[ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md) 원안과 다르다:
+> 의미 sealed 반환)를 **다른 작업(A-005 그룹 생성)이 먼저 구현해 develop에 넣었다.** 형태가 이 스펙·[ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md) 원안과 다르다:
 > `NicknameResult` → **`NameValidResult`**(그룹명 공용), `Error.Empty` → **`Error.EmptyString`**(enum 순서상 마지막이나 결과 동일),
 > UseCase 패키지에서 `group` 제거·인자명 `name`, 길이 상한은 `domain` **`GroupCreateConfig`**,
 > **`core:ui` `toStringResource()` 확장은 머지되지 않았고** 표시 매핑은 각 feature ViewModel이 `@StringRes` ID로 수행한다.
 > 에러 문자열 리소스는 `core:ui` `strings.xml`에 이미 존재(닉네임용 4종). 아래 본문은 **as-built 계약 기준으로 갱신**했고,
-> 매핑 위치를 원안(core:ui 확장)으로 되돌릴지는 미결 → [open-questions](../synthesis/open-questions.md) [2026-07-29].
+> 매핑 위치를 원안(core:ui 확장)으로 되돌릴지는 미결 → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
 > **남은 구현 범위는 `feature/app/setting/impl`의 AccountInfo 3종(Route/Screen/ViewModel)뿐이다.**
 >
 > 🔁 **2026-08-03 정정 — Danger Zone은 이 화면이 아니라 S-001 소속** (Figma 실물 대조).
 > 초안은 로그아웃·서비스 탈퇴 진입점을 S-002에 뒀으나, Figma `S-002`(node `220:2192`)에는
 > **닉네임 Input-Field 하나뿐이고 Danger Zone이 없다.** `Danger-Zone`(node `2019:6010`)은
 > Figma `S-001`(node `220:2176`) Contents 최하단에 있다. → 로그아웃/탈퇴 Intent·핸들러·문자열을
-> **전부 S-001([S-001 앱 설정](archive/2026-07-19-app-setting-s001.md))로 이관**하고 이 스펙의 해당 범위를 삭제했다.
+> **전부 S-001([S-001 앱 설정](2026-07-19-app-setting-s001.md))로 이관**하고 이 스펙의 해당 범위를 삭제했다.
 > 같은 정정으로 상단바가 `YGTopBarBack` → **`YGTopBarDetail(title)`**(Figma Top Bar에 타이틀
 > "계정 정보" 존재), 섹션 라벨이 인라인 `Text` → **`YGLabel`**, 화면 최외곽에
 > **`Modifier.clearFocusOnTap()`** 적용으로 확정됐다.
+>
+> ✅ **2026-08-04 develop 머지(PR #192, 브랜치 `feature/#86-app-setting-account-info-screen`)** — 위 정정을 포함해
+> **코드=설계 일치**. 대조에서 확정한 as-built 3건(설계가 안 적었던 자리):
+> ① Screen 상태 파라미터명이 `state`(플랜 초안 `uiState` 아님, `AppSettingScreen` 미러),
+> ② Contents `Column`이 `Arrangement.spacedBy(gap.gap8)`을 유지한 채 자식이 라벨+필드 묶음 하나뿐이라 실효 간격 없음
+> (Danger Zone 이관으로 두 번째 자식이 사라진 흔적),
+> ③ 프리뷰 에러 케이스가 `core:ui`의 `error_empty_space_nickname`·`error_space_at_edge_nickname` 리소스 ID를 직접 주입.
+> 같은 PR이 `clickableYGNoRipple`(사용처 0)·`YGTextFieldImpl`의 clear 노출 게이팅도 함께 develop에 넣었다 —
+> [clearfocusontap 스펙](2026-08-03-clearfocusontap-modifier.md)·[YGTextField 스펙](2026-07-10-ygtextfield.md) 참고.
 
 - **화면 ID**: S-002 (앱 설정 → 계정 정보)
 - **Figma**: `S-002`(node `220:2192`) — 파르페 v0.1
 - **대상 모듈**: `feature/app/setting/impl`(`route/`·`screen/`·`viewmodel/`) + `domain`(공유 UseCase 확장)
-- **진입**: S-001 앱 설정([S-001 앱 설정](archive/2026-07-19-app-setting-s001.md))의 "계정 정보" 항목 → `NavKeyAccountInfo`. Route stub·entry·NavKey는 S-001에서 이미 생성됨 → 이 스펙은 stub 본문을 채운다.
+- **진입**: S-001 앱 설정([S-001 앱 설정](2026-07-19-app-setting-s001.md))의 "계정 정보" 항목 → `NavKeyAccountInfo`. Route stub·entry·NavKey는 S-001에서 이미 생성됨 → 이 스펙은 stub 본문을 채운다.
 - **입력 유효성**: 위키 [[S-002-앱닉네임-정책-v0.1]]·[[이름-입력-규칙]]. S-102와 규칙 동일(앱/그룹 공통 15자).
 
 ## 목표
@@ -64,7 +77,7 @@ tags: [spec, parfait, setting, account, nickname, s002]
 - 제외(구현 TODO):
   - **닉네임 저장 영속화** — 프로필 API 미연동. `nickname` 초기값은 placeholder, 저장 usecase 없음(로컬 상태+검증까지만).
 - 제외(타 화면 소속):
-  - **로그아웃 / 서비스 탈퇴** — Figma상 Danger Zone은 S-001 소속 → [S-001 앱 설정](archive/2026-07-19-app-setting-s001.md)로 이관(위 2026-08-03 정정).
+  - **로그아웃 / 서비스 탈퇴** — Figma상 Danger Zone은 S-001 소속 → [S-001 앱 설정](2026-07-19-app-setting-s001.md)로 이관(위 2026-08-03 정정).
 
 ## 화면 구성 (전부 기존 DS 컴포넌트 재사용)
 
@@ -169,12 +182,14 @@ sealed interface AccountInfoSideEffect : UiSideEffect {
 
 - **컴파일**: `:feature:app:setting:impl`·`:domain` 컴파일 통과.
 - **ktlint**: `ktlintCheck` 통과.
-- **`@YGPreview`**: 기본(placeholder 닉네임)·에러(각 케이스) 상태 프리뷰 렌더 확인.
-- **유효성 수동 확인**: `CheckEmpty` 추가로 빈 값→에러, 나머지 3케이스 정책 이미지와 메시지 일치.
+- **`@YGPreview`**: 기본(placeholder 닉네임)·에러(각 케이스) 상태 프리뷰 렌더 확인. as-built 프리뷰는 4변형
+  (정상 2 + 빈 값 에러 + 앞 공백 에러)을 `PreviewParameterProvider`로 낸다.
+- **유효성 수동 확인**: 빈 값→에러, 나머지 3케이스 정책 이미지와 메시지 일치.
+- **미검증(머지 시점)**: 실기기/에뮬 동작 확인 기록 없음 — 저장 경로가 없어 화면이 로컬 상태만 다루는 상태로 머지됐다.
 
 ## 주의 / 열린 질문
 
 - **닉네임 저장 미구현** — 프로필 조회/수정 API 연동 시 초기값 로드 + 저장 트리거(포커스 해제/IME 완료 등) 확정 필요.
   `clearFocusOnTap()`이 이미 포커스 해제 지점을 만들어 뒀으므로, "포커스 해제 시 저장"을 택하면 여기가 훅 지점이 된다.
-- **로그아웃/탈퇴는 S-001 소속** — auth·회원 API 연동 시 확인 모달(YGModalPopup) + 실제 처리 결선 필요. 추적은 [S-001 앱 설정](archive/2026-07-19-app-setting-s001.md).
+- **로그아웃/탈퇴는 S-001 소속** — auth·회원 API 연동 시 확인 모달(YGModalPopup) + 실제 처리 결선 필요. 추적은 [S-001 앱 설정](2026-07-19-app-setting-s001.md).
 - 유효성: 문자·공백 규칙은 UseCase, 길이(15)는 `domain` `GroupCreateConfig`로 검사 위치 이원화(S-102와 동일 구조) — 단일 소유처 아님(향후 통합 여지).

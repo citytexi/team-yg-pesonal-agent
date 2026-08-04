@@ -71,6 +71,7 @@ fun YGTextField(
 ## 표시·제어 규칙
 - **카운터**: `maxLength != null` **AND** `value.isNotEmpty()`.
 - **clear(X)**: `enabled` **AND** `value.isNotEmpty()` **AND** (`isFocused` **OR** `isError`). 탭 시 `onValueChange("")`. `contentDescription = "clear"`. 🔁 **2026-07-23 정정**: 초안은 `enabled && value.isNotEmpty()`(값만 있으면 항상)였으나, 디자인 컴포넌트 상태(node 144-7104)상 **default(비포커스·유효) 상태엔 clear 없음** → 포커스∨에러일 때만 노출로 게이팅. 위 tint 표 idle 컬럼 `(숨김)`과 정합. (IconButton 교체는 [[2026-07-12-ygtextfield-clear-iconbutton]]에서 완료.)
+  - ✅ **2026-08-04 develop 머지(PR #192)**: 이 게이팅은 정정 시점엔 문서 선반영이었고, `YGTextFieldImpl`의 `showClear` 조건 변경이 S-002 브랜치를 타고 이제야 develop에 들어왔다. `YGTextFieldImpl` 공용이라 `YGTextField`·`YGTextFormField` **양쪽 전 사용처에 동시 적용**된다(`AccountInfoScreen`·`GroupCreateScreen`·`GroupNickNameScreen`). 기존 두 화면의 회귀 확인 기록은 없다.
 - **입력 제어**: `onValueChange` 진입 시 `maxLength` 초과분은 반영하지 않음(콜백에서 게이트).
 
 ## 컨테이너 패딩

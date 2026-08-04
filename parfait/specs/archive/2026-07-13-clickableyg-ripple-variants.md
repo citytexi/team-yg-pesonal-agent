@@ -66,6 +66,7 @@ fun Modifier.clickableYG(/* 동일 파라미터 */): Modifier
 - `clickableYGMergeRipple` → `listOf(ygDimRipple(), ygScaleRipple())`.
 - `clickableYG` → `clickableYGDimRipple(...)` 위임(기본 진입점).
 - 공통 파라미터: `interactionSource`(기본 null → Node 자체 생성), `enabled`/`onClickLabel`/`role`/`windowMillis`(300)/`onClick`. `indication`은 변형이 고정하므로 공개 시그니처에서 노출 안 함.
+- 🔁 **2026-08-04 as-built(PR #192)** — 변형이 **5종**이 됐다. `clickableYGNoRipple`(리플 없음, `interactionSource` 파라미터 없음)이 추가되고 코어가 `indications: List<Indication>?` **nullable**을 받는다(`null` → `indication = null`로 `clickable`에 전달). 이 변형은 `YGScreen` 배경 탭 포커스 해제용으로 만들어졌다가 그 결선이 철회돼 **사용처 0으로 머지**됐다 → [open-questions](../../synthesis/open-questions.md) [2026-08-03] · [clearfocusontap 스펙](2026-08-03-clearfocusontap-modifier.md).
 
 ## 동작 / 구조
 - **다중 indication 합성**: (Approach 2, 2026-07-14) 코어는 커스텀 노드가 아니라 표준 `Modifier.clickable` 위에 얹는다. `indications`를 `toYGIndication()`으로 단일 `Indication?`으로 접어(다중이면 자식을 `onAttach`서 `delegate`하는 `YGCompositeIndicationNodeFactory`) `clickable(indication = …)`에 전달. focus/키/hover는 `clickable`이 제공. 상세 [[2026-07-12-clickableyg-throttle|throttle 스펙]] "구조(Approach 2)".
@@ -80,7 +81,7 @@ fun Modifier.clickableYG(/* 동일 파라미터 */): Modifier
 ## 파일 구성 (`core:util:android` `clickable/`)
 - `YGDimRipple.kt` — 기존 `YGRipple.kt`를 리네임. `ygDimRipple` + `YGDimRippleAlpha` + `YGDimRippleNodeFactory` + `DelegatingYGDimRippleNode`.
 - `YGScaleRipple.kt` — 신설. `ygScaleRipple` + `YGScaleNodeFactory` + `DelegatingYGScaleRippleNode`.
-- `YGClickable.kt` — 코어 `internal clickableYGThrottle`(indications: List) + 공개 `clickableYG`·`clickableYGDimRipple`·`clickableYGScaleRipple`·`clickableYGMergeRipple`.
+- `YGClickable.kt` — 코어 `internal clickableYGThrottle`(indications: List, 🔁 2026-08-04 nullable) + 공개 `clickableYG`·`clickableYGDimRipple`·`clickableYGScaleRipple`·`clickableYGMergeRipple`(+ 🔁 2026-08-04 `clickableYGNoRipple`).
 
 ## 주의 / 열린 질문
 - **merge delegate 순서**: draw 레이어링 정답은 기기 확인 후 확정(dim↔scale 순서).

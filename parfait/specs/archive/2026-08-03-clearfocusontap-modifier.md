@@ -1,10 +1,10 @@
 ---
 id: clearfocusontap-modifier
 title: 배경 탭 포커스 해제 Modifier (clearFocusOnTap)
-status: draft
+status: implemented
 category: ui-spec
 platforms: android
-verified:
+verified: 2026-08-04
 related_code:
   - ClearFocusOnTap.kt#clearFocusOnTap
   - YGScreen.kt#YGScreen
@@ -21,11 +21,21 @@ tags: [spec, parfait, util, focus, accessibility]
 # Spec: 배경 탭 포커스 해제 Modifier (`clearFocusOnTap`)
 
 > 상태·날짜·대상·관련은 frontmatter가 단일 출처. 본문은 설계에 집중.
+>
+> ✅ **2026-08-04 develop 머지(PR #192, 브랜치 `feature/#86-app-setting-account-info-screen`)** — `ClearFocusOnTap.kt`는
+> 아래 API와 **문자 그대로 일치**(KDoc 한 줄만 추가). 다만 머지 시점 대조에서 **전제 하나가 틀렸다**:
+> `YGScreen`의 포커스 결선은 **develop에 도달한 적이 없다.** 도입(`feat: YGScreen focus clear 도입`)과
+> 철회(`refactor: focus clear 코드 리뷰 반영`)가 둘 다 이 브랜치 안에서 일어나 같은 PR로 함께 들어왔다.
+> 그래서 이 PR의 변경 파일에 `YGScreen.kt`는 **없고**(순수 `Surface` 래퍼 상태가 baseline부터 유지), 아래
+> [파일 구성](#파일-구성)의 "결선 제거" 항목은 브랜치 내부 작업이지 develop 델타가 아니다.
+> 반대로 결선을 위해 만든 `clickableYGNoRipple` + `clickableYGThrottle`의 `indications: List<Indication>?`
+> nullable 일반화는 **철회 후에도 되돌리지 않아 이 PR로 develop에 신설됐다** — 즉 develop 기준으로
+> 사용처 0인 공개 API가 새로 생겼다(→ [open-questions](../../synthesis/open-questions.md) [2026-08-03]).
 
 - **대상 모듈**: `core:util:android` — `focus/`(신규 패키지)
 - **첫 실사용처**: `feature/app/setting/impl` `AccountInfoScreen`
-- **대체 대상**: `YGScreen`에 상시 결선돼 있던 `clickableYGNoRipple { focusManager.clearFocus() }`
-  (2026-07-23 도입 → 2026-08-03 철회, [YGScreen 스펙](archive/2026-07-20-designsystem-ygscreen-scaffold.md))
+- **대체 대상**: `YGScreen`에 결선돼 있던 `clickableYGNoRipple { focusManager.clearFocus() }`
+  (2026-07-23 도입 → 2026-08-03 철회, **둘 다 브랜치 내부** — [YGScreen 스펙](2026-07-20-designsystem-ygscreen-scaffold.md))
 
 ## 목표
 
@@ -106,7 +116,9 @@ fun Modifier.clearFocusOnTap(): Modifier {
 ## 파일 구성
 
 - `core/util/android/.../focus/ClearFocusOnTap.kt` — 확장 1개(신규 패키지).
-- `core/designsystem/.../screen/YGScreen.kt` — `LocalFocusManager`·`clickableYGNoRipple` 결선 **제거**(순수 `Surface` 래퍼로 복귀).
+- ~~`core/designsystem/.../screen/YGScreen.kt` — 결선 제거~~ — **브랜치 내부 되돌리기라 develop 델타 없음**(위 2026-08-04 주석).
+- `core/util/android/.../clickable/YGClickable.kt` — `clickableYGNoRipple` + `clickableYGThrottle(indications: List<Indication>?)`.
+  결선 철회 후에도 남아 **develop에 사용처 0으로 신설**됐다(의도한 산출물이 아니라 잔여물).
 - `feature/app/setting/impl/.../screen/AccountInfoScreen.kt` — `YGScreen(modifier = modifier.clearFocusOnTap())`.
 
 ## 검증
@@ -124,9 +136,9 @@ fun Modifier.clearFocusOnTap(): Modifier {
 - **`clickableYGNoRipple` 사용처 0** — `YGScreen` 결선을 위해 신설된 API인데 이 스펙으로 유일 사용처가 사라졌다.
   `clickableYG`/`DimRipple`/`ScaleRipple`/`MergeRipple` 4종과 세트를 이루는 공용 API라 존치했으나,
   YAGNI 관점에서 제거 대상일 수 있다(제거 시 `clickableYGThrottle`의 `indications: List<Indication>?`
-  nullable 일반화도 함께 되돌려야 함) → [open-questions](../synthesis/open-questions.md) [2026-08-03].
+  nullable 일반화도 함께 되돌려야 함) → [open-questions](../../synthesis/open-questions.md) [2026-08-03].
 - **미적용 입력 화면 3종** — `GroupNickNameScreen`·`GroupCreateScreen`·`InviteCodeInputFieldElement`는
   여전히 배경 탭 포커스 해제가 없다. `YGScreen`을 쓰지 않아 이전에도 없었으므로 회귀는 아니지만,
   UX 일관성을 맞추려면 각 화면에 이 Modifier를 붙이는 후속이 필요하다(이번 범위 밖).
 - **`YGScaffold` 화면** — 같은 방식으로 붙일 수 있으나 선례 없음. `YGScreen`↔`YGScaffold` 통합 논의와
-  함께 정리 → [open-questions](../synthesis/open-questions.md) [2026-07-20].
+  함께 정리 → [open-questions](../../synthesis/open-questions.md) [2026-07-20].

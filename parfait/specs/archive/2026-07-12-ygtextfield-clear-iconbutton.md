@@ -78,7 +78,7 @@ if (showClear) {
 - **disabled 무관**: `showClear`가 `enabled`를 포함하므로 disabled(`enabled=false`)면 clear 자체가 미표시. YGIconButton `isEnabled`는 기본 `true`로 두면 됨(disabled tint 경로 미도달).
 
 ## 표시·제어 규칙
-- clear 노출 조건(당시): `showClear = enabled && value.isNotEmpty()`. 🔁 **2026-07-23 정정**: 이후 `&& (isFocused || isError)` 추가로 default(비포커스·유효)엔 미노출(근거 [[2026-07-10-ygtextfield]]). 이 교체(IconButton) 자체는 노출 조건 무관.
+- clear 노출 조건(당시): `showClear = enabled && value.isNotEmpty()`. 🔁 **2026-07-23 정정**: 이후 `&& (isFocused || isError)` 추가로 default(비포커스·유효)엔 미노출(근거 [[2026-07-10-ygtextfield]], **develop 머지는 2026-08-04 PR #192**). 이 교체(IconButton) 자체는 노출 조건 무관.
 - counter/clear 배치·패딩(`showClear` 분기) 불변.
 
 ## 파일 구성 (`component/textfield/`)
