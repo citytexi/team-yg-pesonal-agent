@@ -589,6 +589,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (문구가 개정되면 한쪽만 고쳐질 위험)
 - **해소 메모**: 결정 후 [module-structure](../architecture/module-structure.md) "규칙"의 공유 문구 조항에 사례를 붙이고 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 규약 대조 절을 정리한다.
 
+### [2026-08-04] `AuthInterceptor`의 `@NoAuth` 스킵 방식이 브랜치별로 갈렸다 — 토큰 조회 생략 여부
+- **출처**: `data/.../network/AuthInterceptor.kt`. 두 형태가 공존한다. ① **`origin/feature/sync-api-service`·`origin/feature/set-up-backend-api` 커밋본** — `skipAuth`면 `chain.proceed(originalRequest)`로 **early return**해 `tokenProvider.getToken()` 호출 자체를 하지 않는다. ② **`feature/set-up-backend-api` 로컬 작업 트리(미커밋)** — early return을 없애고 헤더 부착 조건만 `token != null && skipAuth.not()`으로 바꿔, `skipAuth`여도 `getToken()`을 **항상 호출**한다. **헤더 부착 결과는 네 경우 모두 동일**하다(토큰 있음+`skipAuth`에도 헤더가 붙지 않는다) — 갈리는 것은 비용뿐이다. ②는 화이트리스트 경로(`postAuthKakao`·`postAuthSignup`·`postAuthReissue`·`getPolicies`) 요청마다 `TokenStoreTokenProvider`의 `runBlocking` + DataStore 읽기 + Keystore 복호화를 유발한다.
+- **항목**: ①②를 확정한다. ②를 택하면 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"·[data-layer](../architecture/data-layer.md) "인증"·[network-envelope-token-storage 스펙](../specs/2026-08-02-network-envelope-token-storage.md) 세 곳의 "스킵 대상이면 토큰 조회 자체를 생략한다"를 as-built로 정정해야 한다. `skipAuth` 판정 후 `val token = if (skipAuth) null else tokenProvider.getToken()`로 두면 early return 없이도 ① 의미를 지킬 수 있다.
+- **상태**: 미해결 (② 미커밋 — 확정 전이라 위 세 문서는 ① 서술을 유지한다)
+- **해소 메모**: ②로 확정돼 커밋·머지되면 위 세 곳을 정정하고 "불필요한 DataStore 읽기·Keystore 복호화를 피한다"는 근거 문장을 비용 감수 서술로 바꾼다. ①로 확정되면 이 항목만 닫는다.
+
 <!--
 항목 추가 형식:
 

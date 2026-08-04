@@ -166,7 +166,13 @@ fake를 끼울 자리가 필요하기 때문이다. `EmptyTokenProvider`는 삭�
 서비스 메서드에 `@NoAuth`(`network/NoAuth.kt`)를 붙여 표시한다. `AuthInterceptor`는
 `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로
 판정해, `true`면 `tokenProvider.getToken()` 호출 자체를 생략한다(불필요한 `runBlocking`·DataStore
-읽기·Keystore 복호화를 아낀다). 이전에는 경로 문자열 상수(`NO_AUTH_HEADER_PATHS`)를
+읽기·Keystore 복호화를 아낀다).
+
+> ⚠️ [2026-08-04] 로컬 작업 트리에 이 생략을 없앤 변형(헤더 부착 조건만 `token != null && skipAuth.not()`)이
+> 미커밋으로 존재한다. **헤더 부착 결과는 동일**하고 화이트리스트 경로의 조회 비용만 갈린다 —
+> 확정 전이라 이 절은 커밋본(생략함) 서술을 유지한다 → [open-questions](../synthesis/open-questions.md).
+
+이전에는 경로 문자열 상수(`NO_AUTH_HEADER_PATHS`)를
 `AuthInterceptor`에 하드코딩해 서버 `SecurityConfig.WHITELIST_PATHS`와 이중 관리했으나, 선언을
 서비스 인터페이스의 URL 옆으로 옮겨 오타가 컴파일 타임에 걸리게 했다 —
 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 참고.
