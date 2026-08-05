@@ -434,3 +434,145 @@ Delivery 안의 메시지를 **전부 처리한 뒤** ack한다.
 타임아웃이나 `{count:0}`은 실패가 아니라 체크포인트다. 구현 task는 보통 오래 걸린다.
 워커를 죽이거나 재시작하지 않는다. 하트비트와 터미널 활동은 살아 있다는 뜻이지 끝났다는
 뜻이 아니다.
+
+## 5. 통합과 코드 리뷰
+
+모듈 워커가 전부 `worker_done`을 보내고 증거 검사를 통과하면 통합 worktree를 만든다.
+
+```bash
+orca worktree create --name wt-integrate --repo name:TJYG-Android \
+  --base-branch <feature/xxxxx-master> --json
+orca terminal create --worktree name:wt-integrate --command "claude --model sonnet" --json
+orca orchestration worker-start --task <integrate_task_id> --terminal <handle> --json
+```
+
+### integrator task spec
+
+```bash
+orca orchestration task-create --spec "$(cat <<'SPEC'
+[역할] 모듈 브랜치 병합 + 전체 테스트.
+
+[해라]
+1. 아래 브랜치를 순서대로 merge 한다: <wt-domain 브랜치>, <wt-data 브랜치>, <wt-feature 브랜치>
+2. 충돌이 나면 **직접 해결하지 말고 escalation을 보낸다.**
+   모듈 경계로 나눴는데 충돌했다는 것은 분할이 잘못됐다는 신호이고,
+   여기서 임의로 봉합하면 그 신호가 사라진다.
+3. ./gradlew test 로 전체 테스트를 돌린다. GREEN이어야 한다.
+4. 커밋한다.
+
+[보고]
+worker_done --outcome succeeded --files-modified "<병합 결과 변경 파일>"
+body에 전체 테스트 출력의 결과 부분과 병합한 브랜치 목록.
+SPEC
+)" --json
+```
+
+### code-reviewer
+
+같은 worktree에 **별도 터미널**로 띄운다. 리뷰어는 파일을 고치지 않는다.
+
+```bash
+orca terminal create --worktree name:wt-integrate --command "claude --model opus" --json
+orca orchestration worker-start --task <review_task_id> --terminal <handle> --json
+```
+
+```bash
+orca orchestration task-create --spec "$(cat <<'SPEC'
+[역할] 통합 diff 코드 리뷰. 너는 이 코드를 쓰지 않았다.
+
+[입력]
+- 스펙: <스펙 절대경로>
+- 계획: <계획 절대경로>
+- 대상: git diff <feature/xxxxx-master>...HEAD
+
+[보는 것]
+- 스펙 요구 중 구현되지 않은 것
+- 모듈 간 인터페이스 불일치 (모듈별 리뷰로는 안 보이는 것 — 여기가 핵심)
+- 테스트가 실제로 명세한 동작을 검증하는가 (통과만 하는 빈 테스트가 아닌가)
+- 계획의 담당 파일 화이트리스트를 벗어난 변경
+- repo 관례 이탈 (parfait/architecture/ 참조)
+
+[금지]
+- 파일 수정. findings만 반환한다.
+- 스타일 지적. ktlint가 잡는 것은 적지 않는다.
+
+[보고]
+worker_done --outcome succeeded
+body 첫 줄에 "PASS" 또는 "FINDINGS", FINDINGS면 건별로
+"심각도(Critical|Important|Minor) / 파일#심볼 / 무엇이 문제인지 / 어떻게 고칠지".
+SPEC
+)" --json
+```
+
+`FINDINGS`를 받으면 integrator에게 회신해 수정시킨다.
+
+```bash
+orca orchestration send --to dispatch:<integrator_dispatch_id> --subject "코드 리뷰 findings" --body "<findings 원문>" --json
+```
+
+수정 후 다시 리뷰. **상한 2회.** 3회째면 escalation.
+
+## 6. 최종 산출
+
+통합 worktree에서 diff를 뽑아 master 작업 트리에 적용한다. **커밋하지 않는다.**
+
+```bash
+# wt-integrate에서
+git diff <feature/xxxxx-master>...HEAD > <scratchpad>/final.patch
+
+# master worktree에서
+git apply <scratchpad>/final.patch
+git status --short
+```
+
+`git apply`가 실패하면 master 브랜치가 그 사이 앞으로 나갔다는 뜻이다.
+덮어쓰지 말고 사용자에게 보고한다.
+
+### G3 — 최종 보고
+
+`자동진행` 모드에서도 **이 게이트는 건너뛰지 않는다.** 보고 항목:
+
+- 변경 파일 목록 (`git status --short` 출력)
+- 전체 테스트 결과
+- 코드 리뷰 findings와 처리 내역 (해소 / 이월 / 반박)
+- 스펙·계획 문서 경로
+- 자식 브랜치 이름들
+
+`push`와 PR 생성은 사용자 승인 후에만 한다.
+
+이 방식으로 만들어지는 PR 히스토리는 사람이 만든 커밋 하나다.
+자식 worktree의 커밋들은 PR에 올라가지 않고 로컬 브랜치에만 남는다.
+
+### 정리
+
+**자식 worktree는 보고 후에도 유지한다.** 사용자가 중간 산출물과 커밋 히스토리를 볼 수
+있어야 하고, 재수정 요청이 오면 거기서 이어간다.
+사용자가 명시적으로 정리를 요청할 때만 archive한다.
+
+### 커밋 정책
+
+기본 규칙은 "TJYG-Android는 구현이 끝나도 커밋하지 않는다"이다.
+이 파이프라인에 한해 **자식 worktree 브랜치의 커밋은 병합 수단으로 허용**한다.
+master 브랜치는 커밋하지 않고, push와 PR은 사용자 승인을 받는다.
+
+## 7. 에스컬레이션
+
+| 상황 | 동작 |
+|---|---|
+| `worker-start` 실패 | receipt의 `stage`·`effects`·`residualResources`를 읽고 판단. `--retry-of <dispatch_id>`로 1회만 재시도. 자동 무한 재시도 금지 |
+| RED 또는 GREEN 로그 누락 | 반려하고 같은 dispatch에 재실행 요구 |
+| GREEN 미달성 | 한 티어 올린 모델로 1회 재시도 → 실패 시 사람 호출 |
+| 문서 리뷰 반려 3회째 | 사람 호출 |
+| 코드 리뷰 findings 3회째 | 사람 호출 |
+| merge 충돌 | 즉시 사람 호출. 분할이 잘못됐다는 신호이므로 계획 단계로 되돌아간다 |
+| 같은 task 3연속 실패 | Orca가 circuit-break하여 task failed. 사람에게 보고하고 중단 |
+| `wiki/` 정책과 스펙 상충 | 사람 호출. 기획 미결일 수 있어 에이전트가 판정하지 않는다 |
+| `git apply` 실패 | 사람 호출. 덮어쓰지 않는다 |
+
+## 진행 상황 확인
+
+```bash
+orca orchestration task-list --brief --json
+orca orchestration dispatch-show --task <task_id> --json
+orca orchestration worker-read --dispatch <dispatch_id> --limit 50 --json
+```
