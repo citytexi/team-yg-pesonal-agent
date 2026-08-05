@@ -303,3 +303,123 @@ W2와 같은 구조다. 리뷰어에게는 **스펙 파일과 계획 파일만**
 ### G2 — 계획 승인
 
 G1과 같은 방식. `자동진행`이면 건너뛴다.
+
+## 4. 구현 단계
+
+계획서가 나눈 모듈마다 자식 worktree를 하나씩 만들고 워커를 붙인다.
+
+의존 관계는 `task-create --deps`로 표현한다. 기본형은 domain → (data, feature)다.
+인터페이스가 domain에 있으므로 domain이 끝나야 나머지 둘이 병렬로 시작한다.
+계획서가 domain 변경 없음이라고 판단했으면 세 모듈이 모두 동시에 출발한다.
+
+```bash
+DOMAIN_TASK=$(orca orchestration task-create --spec "<domain task spec>" --json | jq -r '.result.task.id')
+orca orchestration task-create --spec "<data task spec>"    --deps "[\"$DOMAIN_TASK\"]" --json
+orca orchestration task-create --spec "<feature task spec>" --deps "[\"$DOMAIN_TASK\"]" --json
+```
+
+### 워커 기동
+
+`worker-start --agent claude`는 **모델을 지정하지 못한다.** 계획서가 정한 모델을 쓰려면
+worktree와 터미널을 먼저 만들고 그 터미널에 task를 붙인다.
+
+```bash
+# 1) 자식 worktree 생성
+orca worktree create --name wt-<module> --repo name:TJYG-Android \
+  --base-branch <feature/xxxxx-master> --json
+
+# 2) 모델을 지정해 에이전트 터미널 생성
+orca terminal create --worktree name:wt-<module> \
+  --command "claude --model <opus|sonnet>" --json
+
+# 3) 그 터미널에 task를 붙인다 (orchestration 계보 유지)
+orca orchestration worker-start --task <task_id> --terminal <handle> --json
+```
+
+`--terminal`로 붙여도 task·dispatch 계보, `worker_done` 권한, 주입 프리앰블은 그대로다.
+
+이 경로는 repo의 `wait-for-setup` 정책을 강제하지 못한다. §0에서 기록해 둔 값이
+`start-immediately`면 잃는 것이 없다. `wait-for-setup`이면 모델 지정을 포기하고
+아래 한 줄로 간다.
+
+```bash
+orca orchestration worker-start --task <task_id> --worktree new-child --name wt-<module> --agent claude --setup run --json
+```
+
+세 모듈이 동시에 돌면 Gradle 데몬이 최대 3개, `build/`가 3벌이 된다. `~/.gradle`은 공유라
+동시 쓰기 잠금 경합이 생길 수 있다. 락 대기나 비정상적인 지연이 보이면 그때 모듈 워커를
+줄인다. 미리 튜닝하지 않는다.
+
+### 구현 워커 task spec
+
+```bash
+orca orchestration task-create --spec "$(cat <<'SPEC'
+[역할] <module> 모듈 TDD 구현.
+
+[입력]
+- 계획 문서: <계획 절대경로>
+- 담당 모듈: <module>
+- 담당 파일 화이트리스트:
+    <파일 절대경로 목록>
+- 테스트 명세:
+    <검증 대상과 기대값>
+- 테스트 태스크: ./gradlew :<module>:test
+
+[순서 — 이 순서를 지켜야 한다]
+1. 테스트를 먼저 쓴다.
+2. ./gradlew :<module>:test 를 실행한다. RED여야 한다. 실패 출력을 그대로 보관한다.
+   여기서 GREEN이면 테스트가 잘못된 것이다. 다시 쓴다.
+3. 구현한다.
+4. ./gradlew :<module>:test 를 다시 실행한다. GREEN이어야 한다. 출력을 그대로 보관한다.
+5. 커밋한다. repo 관례를 따라 test: 와 feat: 를 나눈다.
+
+[금지]
+- 담당 파일 화이트리스트 밖 수정. 필요하면 escalation을 보낸다.
+- 구현을 먼저 하고 테스트를 나중에 붙이는 것.
+- RED 확인 없이 3단계로 건너뛰는 것.
+
+[보고]
+worker_done --outcome succeeded --files-modified "<수정 파일 목록>"
+body에 다음 둘을 **모두** 넣는다:
+  - RED 로그: 2단계 실행 출력 중 실패를 보여주는 부분
+  - GREEN 로그: 4단계 실행 출력 중 통과를 보여주는 부분
+실패했으면 --outcome failed 를 쓴다. 산문으로만 실패를 적지 않는다.
+SPEC
+)" --json
+```
+
+### 증거 검사
+
+`worker_done`을 받으면 코디네이터가 body를 확인한다.
+
+| 확인 | 통과 조건 |
+|---|---|
+| RED 로그 | 2단계 실행 결과에 실패가 보인다 |
+| GREEN 로그 | 4단계 실행 결과에 통과가 보인다 |
+| 파일 범위 | `--files-modified`가 화이트리스트를 벗어나지 않는다 |
+
+하나라도 없으면 **반려**한다.
+
+```bash
+orca orchestration send --to dispatch:<dispatch_id> --subject "증거 누락" \
+  --body "RED 로그와 GREEN 로그를 모두 첨부해 다시 보고하라. 없으면 이 task는 완료로 인정하지 않는다." --json
+```
+
+이 검사를 강제하는 이유는, 로그 두 개가 TDD를 지켰다는 **유일하게 검증 가능한 흔적**이기
+때문이다. 없으면 구현을 먼저 하고 통과하는 테스트를 나중에 붙인 것과 구분할 수 없다.
+
+GREEN에 도달하지 못했으면 같은 dispatch에 회신해 1회 재시도시킨다.
+재시도는 **한 티어 올린 모델**로 한다 — 같은 모델에 같은 프롬프트를 다시 넣으면 같은
+결과가 나온다. 그래도 실패하면 escalation.
+
+### 대기
+
+```bash
+orca orchestration check --wait --types worker_done,escalation,question --timeout-ms 900000 --json
+orca orchestration check --ack <delivery_id> --wait --types worker_done,escalation,question --timeout-ms 900000 --json
+```
+
+Delivery 안의 메시지를 **전부 처리한 뒤** ack한다.
+타임아웃이나 `{count:0}`은 실패가 아니라 체크포인트다. 구현 task는 보통 오래 걸린다.
+워커를 죽이거나 재시작하지 않는다. 하트비트와 터미널 활동은 살아 있다는 뜻이지 끝났다는
+뜻이 아니다.
