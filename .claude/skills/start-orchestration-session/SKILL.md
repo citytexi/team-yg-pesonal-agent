@@ -78,7 +78,7 @@ orca worktree create --name <xxxxx>-master --repo name:TJYG-Android --base-branc
 | W1 analyst | Opus | Opus | Opus |
 | W2 spec-reviewer | Opus | Opus | Opus |
 | W3 planner | Opus | Opus | Sonnet |
-| W4 plan-reviewer | Sonnet | Opus | Sonnet |
+| W4 plan-reviewer | Opus | Opus | Sonnet |
 | 모듈 구현 워커 | 계획서의 `model:` | Opus | Sonnet |
 | integrator | Sonnet | Opus | Sonnet |
 | code-reviewer | Opus | Opus | Opus |
@@ -91,6 +91,8 @@ orca worktree create --name <xxxxx>-master --repo name:TJYG-Android --base-branc
 1. 실패 비용은 상류일수록 크다 — 스펙이 틀리면 하류 전부가 폐기된다.
 2. 판단 자유도가 낮으면 티어를 낮춘다 — RED/GREEN 게이트가 기계적으로 검증하는 자리는 안전하다.
 3. 리뷰어는 작성자와 같은 티어 이상 — 아래 티어가 위 티어 산출물을 반려하기 어렵다.
+   **기준 2와 충돌하면 기준 3이 이긴다.** 검증 장치가 다른 에이전트일 때 그 티어를 낮추면
+   검증 자체가 약해진다. `비용` 프로필에서 W3·W4가 함께 Sonnet인 것은 규칙 위반이 아니다.
 
 요구사항 원문은 **그대로 보존**한다. 요약해서 워커에 넘기지 않는다.
 W1과 W2가 같은 원문을 보고 각자 판단해야 리뷰가 의미를 갖는다.
