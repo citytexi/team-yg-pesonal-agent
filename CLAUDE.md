@@ -23,7 +23,9 @@
 
 기준은 **리모트로 나가는가**다. 리모트에 올라간 것은 되돌리기 어렵고 남에게 보인다.
 `git commit`·`git merge`는 로컬이라 확인 없이 해도 된다(코드 편집·브랜치 생성도 마찬가지).
-이 규칙은 `.claude/settings.local.json`의 `PreToolUse` 훅으로도 강제된다.
+로컬에 `PreToolUse` 훅을 두어 이 규칙을 추가로 방어할 수 있다. 다만 훅 설정 파일
+(`.claude/settings.local.json`)은 추적되지 않으므로 클론마다 각자 설정해야 하고,
+규칙의 정본은 이 문서다.
 
 이 public repo는 **`main`에 직접 커밋·푸시하지 않는다.** 모든 변경은:
 
