@@ -286,10 +286,14 @@ git commit -m "feat(skills): start-orchestration-session 골격 — 전제 확�
 cwd 밖 절대경로 쓰기가 막히는지 먼저 확인한다.
 
 ```bash
-cd /Users/jeonheehoon/Documents/work_station/mashup/github/TJYG-Android
-printf 'probe\n' > /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent/.orch-write-probe
-test -f /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent/.orch-write-probe && echo "OK: cross-repo write allowed"
-rm /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent/.orch-write-probe
+# 경로는 wiki/personal-private/project-paths.md에서 읽어 채운다(public repo라 직접 적지 않는다)
+TJYG=<TJYG-Android 절대경로>
+TEAMYG=<team-yg-pesonal-agent 절대경로>
+
+cd "$TJYG"
+printf 'probe\n' > "$TEAMYG/.orch-write-probe"
+test -f "$TEAMYG/.orch-write-probe" && echo "OK: cross-repo write allowed"
+rm "$TEAMYG/.orch-write-probe"
 ```
 
 `OK`가 나오면 Step 2의 표를 그대로 쓴다.
@@ -324,7 +328,8 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 [역할] 요구사항 분석 + 설계. 산출물은 설계 스펙 문서 하나다.
 
 [읽어라]
-- 코드 대상: /Users/jeonheehoon/Documents/work_station/mashup/github/TJYG-Android
+- 코드 대상: <TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
+  §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>
 - 규약: <team-yg>/CLAUDE.md, <team-yg>/parfait/index.md, <team-yg>/parfait/specs/README.md
 - 형식: <team-yg>/parfait/specs/template.md
 - 기존 결정: <team-yg>/parfait/adr/, <team-yg>/parfait/architecture/
@@ -446,7 +451,8 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 
 [읽어라]
 - 확정 스펙: <스펙 절대경로>
-- 코드 대상: /Users/jeonheehoon/Documents/work_station/mashup/github/TJYG-Android
+- 코드 대상: <TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
+  §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>
 - 형식: <team-yg>/parfait/plans/template.md, 규약: parfait/plans/README.md
 
 [해라]
