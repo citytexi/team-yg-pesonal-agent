@@ -357,8 +357,8 @@ orca orchestration dispatch --task <rework_task_id> --to <W1_terminal_handle> --
 
 여기서도 `dispatch --inject` 전에 idle을 확인한다 — 프롬프트 유실 방지.
 
-W1이 수정해 `worker_done`을 다시 보내면 W2도 같은 방식으로(새 task + `dispatch --inject`)
-W2 터미널을 다시 깨워 재검수시킨다.
+W1이 수정해 `worker_done`을 다시 보내면 W2도 같은 방식으로(새 task → `terminal wait --for tui-idle` →
+`dispatch --inject`) W2 터미널을 다시 깨워 재검수시킨다.
 **상한 2회.** 3회째 반려면 escalation으로 사람을 부른다 —
 리뷰어와 작성자가 합의하지 못하는 상태이고 자동으로 풀리지 않는다.
 
@@ -476,7 +476,7 @@ W4의 handle을 기록해 둔다. W3이 재작업을 마치면 재검수를 위�
 
 균형 프로필에서 모델은 Opus 5다. 검사 항목이 명시적 체크리스트라 낮출 만해 보이지만,
 작성자 W3가 Opus 5라 "리뷰어는 작성자와 같은 티어 이상" 규칙이 이긴다.
-반려 루프(새 task + `dispatch --inject`로 W3 터미널 재-디스패치)와 상한 2회는 W2와 동일하다.
+반려 루프(새 task → `terminal wait --for tui-idle` → `dispatch --inject`로 W3 터미널 재-디스패치)와 상한 2회는 W2와 동일하다.
 
 ### G2 — 계획 승인
 
@@ -496,25 +496,34 @@ G1과 같은 방식 — **코디네이터가 사용자에게 직접 묻는다.**
 가정한 채 `jq`로 자동화하면, 경로가 틀렸을 때 변수가 빈 문자열이 되고 `--deps '[""]'`가
 들어가 **의존이 조용히 깨진다**(에러 없이 순서만 무너진다).
 
-**먼저 눈으로 확인한다.** domain task는 **한 번만** 만든다 — 응답 전체를 변수에 캡처해 두고
-그 값을 눈으로 본 뒤, 같은 캡처에서 id를 뽑는다. `task-create`를 두 번 실행하면 domain
+**먼저 눈으로 확인한다.** domain task는 **한 번만** 만든다 — 응답 전체를 파일에 캡처해 두고
+그 값을 눈으로 본 뒤, 같은 파일에서 id를 뽑는다. `task-create`를 두 번 실행하면 domain
 task가 두 개 생겨 하나가 `pending`으로 남고, 그 orphan이 §8이 복구 근거로 쓰는
 `task-list --json`을 오염시킨다.
 
 ```bash
-DOMAIN_TASK_JSON=$(orca orchestration task-create --spec "<domain task spec>" --json)
-echo "$DOMAIN_TASK_JSON"                                             # 출력 전체를 눈으로 본다
+orca orchestration task-create --spec "<domain task spec>" --json | tee <scratchpad>/domain-task.json
 orca orchestration task-list --brief --json                          # id 필드 위치 확인
 ```
 
+응답을 변수가 아니라 **파일**(`<scratchpad>/domain-task.json`, §6의 `final.patch`와 같은
+placeholder 관례)에 남기는 이유는 두 블록 사이에 그 파일을 직접 열어 눈으로 확인할 수 있고,
+아래 블록을 몇 번이든 다시 돌려도 domain task가 다시 생기지 않기 때문이다.
+
 **그다음에야 자동화한다.** 아래 `jq` 경로는 위 확인으로 실제 경로를 특정한 뒤 그 값으로
-바꿔 쓴다. `DOMAIN_TASK_JSON`은 이미 캡처했으므로 `task-create`를 다시 실행하지 않는다.
+바꿔 쓴다. `domain-task.json`은 이미 캡처했으므로 `task-create`를 다시 실행하지 않는다.
+id 추출이 실패해도 **셸을 닫는 `exit`는 쓰지 않는다** — 대화형으로 붙여넣었을 때 사용자의
+셸까지 끊기고, 실패 분기는 그냥 아래 두 `task-create`를 실행하지 않는 것으로 충분하다.
 
 ```bash
-DOMAIN_TASK=$(echo "$DOMAIN_TASK_JSON" | jq -r '<확인한 id 경로>')
-[ -n "$DOMAIN_TASK" ] || { echo "task id 추출 실패 — 중단"; exit 1; }
-orca orchestration task-create --spec "<data task spec>"    --deps "[\"$DOMAIN_TASK\"]" --json
-orca orchestration task-create --spec "<feature task spec>" --deps "[\"$DOMAIN_TASK\"]" --json
+DOMAIN_TASK=$(jq -r '<확인한 id 경로>' <scratchpad>/domain-task.json)
+if [ -z "$DOMAIN_TASK" ]; then
+  echo "id 추출 실패 — jq 경로를 고쳐 이 블록만 다시 실행한다."
+  echo "domain task는 이미 만들어져 있으므로 task-create를 다시 실행하지 않는다."
+else
+  orca orchestration task-create --spec "<data task spec>"    --deps "[\"$DOMAIN_TASK\"]" --json
+  orca orchestration task-create --spec "<feature task spec>" --deps "[\"$DOMAIN_TASK\"]" --json
+fi
 ```
 
 ### 워커 기동
@@ -668,9 +677,11 @@ Delivery 안의 메시지를 **전부 처리한 뒤** ack한다.
 ```bash
 orca worktree create --name wt-integrate --repo name:TJYG-Android \
   --base-branch <feature/xxxxx-master> --json
-orca terminal create --worktree name:wt-integrate --command "claude --model sonnet" --json
+orca terminal create --worktree name:wt-integrate --command "claude --model <opus|sonnet>" --json
 orca orchestration worker-start --task <integrate_task_id> --terminal <handle> --json
 ```
+
+모델은 선택한 프로필의 integrator 값을 넣는다(`품질` 프로필은 Opus 5).
 
 integrator task spec의 `<wt-domain 브랜치>` 자리는 §0·§4에서 기록해 둔 **모듈 worktree의
 브랜치 이름**으로 채운다. 기억에 의존하지 말고 `orca worktree list --json`으로 다시 확인한다.
@@ -749,7 +760,7 @@ orca orchestration dispatch --task <rework_task_id> --to <integrator_terminal_ha
 
 여기서도 `dispatch --inject` 전에 idle을 확인한다 — 프롬프트 유실 방지.
 
-수정 후 code-reviewer도 같은 방식으로(`terminal wait --for tui-idle` → 새 task +
+수정 후 code-reviewer도 같은 방식으로(새 task → `terminal wait --for tui-idle` →
 `dispatch --inject`) 그 터미널을 다시 깨워 재리뷰시킨다. **상한 2회.** 3회째면 escalation.
 
 ## 6. 최종 산출
@@ -801,7 +812,7 @@ master 브랜치는 커밋하지 않고, push와 PR은 사용자 승인을 받�
 | 상황 | 동작 |
 |---|---|
 | `worker-start` 실패 | receipt의 `stage`·`effects`·`residualResources`를 읽고 판단. `--retry-of <dispatch_id>`로 1회만 재시도. 자동 무한 재시도 금지 |
-| RED 또는 GREEN 로그 누락 | 반려 — 새 task + `dispatch --inject`로 그 워커의 터미널 재-디스패치 |
+| RED 또는 GREEN 로그 누락 | 반려 — 새 task → `terminal wait --for tui-idle` → `dispatch --inject`로 그 워커의 터미널 재-디스패치 |
 | 담당 파일 화이트리스트 초과 변경 | **사람 호출.** 반려하지 않는다 — 계획의 모듈 분할이 틀렸다는 신호이므로 워커에게 되돌리게 하면 신호가 사라진다 |
 | GREEN 미달성 | 한 티어 올린 모델로 1회 재시도(이미 최상위면 프롬프트를 좁혀 재시도) → 실패 시 사람 호출 |
 | 문서 리뷰 반려 3회째 | 사람 호출 |
