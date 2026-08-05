@@ -28,7 +28,8 @@ tags: [plan, parfait, tooling, orchestration]
 
 - 대상 저장소는 team-yg-pesonal-agent(이 repo)다. TJYG-Android 코드는 이 계획에서 **한 줄도 건드리지 않는다**.
 - 브랜치는 `feat/orchestration-session-skill`. `main` 직접 커밋 금지.
-- **`git commit`·`git push`·`gh pr create`는 실행 전 사용자 확인 필수.** 각 Task의 커밋 단계는 승인 없이 자동 실행하지 않는다.
+- **`git push`와 PR 생성(`gh pr create`)은 실행 전 사용자 확인 필수.** `git commit`은 로컬이라
+  확인 없이 한다(실행 중 사용자가 완화, `CLAUDE.md`의 "Git 워크플로 (필수)" 절 참조).
 - 스킬 디렉토리명과 `SKILL.md` frontmatter의 `name` 값은 **반드시 일치**해야 한다. 불일치 시 스킬이 로드되지 않는다.
 - 스킬 문서 본문은 한국어. 스킬 안에 인용하는 CLI 명령·플래그·frontmatter 키는 원문 그대로.
 - 검증에 쓰는 `orca` 명령은 **읽기 전용만**(`--help`, `status`, `repo list`, `worktree list`). `run-create`·`task-create`·`worker-start`처럼 상태를 만드는 명령은 이 계획에서 실행하지 않는다.
@@ -287,8 +288,8 @@ cwd 밖 절대경로 쓰기가 막히는지 먼저 확인한다.
 
 ```bash
 # 경로는 wiki/personal-private/project-paths.md에서 읽어 채운다(public repo라 직접 적지 않는다)
-TJYG=<TJYG-Android 절대경로>
-TEAMYG=<team-yg-pesonal-agent 절대경로>
+TJYG="<TJYG-Android 절대경로>"
+TEAMYG="<team-yg-pesonal-agent 절대경로>"
 
 cd "$TJYG"
 printf 'probe\n' > "$TEAMYG/.orch-write-probe"
