@@ -318,6 +318,17 @@ orca orchestration task-create --spec "<data task spec>"    --deps "[\"$DOMAIN_T
 orca orchestration task-create --spec "<feature task spec>" --deps "[\"$DOMAIN_TASK\"]" --json
 ```
 
+⚠️ **`task-create --json`의 응답 스키마는 Orca 가이드에 문서화돼 있지 않다.** 위 `jq` 경로는
+가정이므로 첫 실행에서 실제 출력으로 확인한다. 경로가 틀리면 `DOMAIN_TASK`가 빈 문자열이 되고
+`--deps '[""]'`가 들어가 **의존이 조용히 깨진다**(에러 없이 순서만 무너진다).
+
+```bash
+orca orchestration task-create --spec "<domain task spec>" --json    # 출력 전체를 눈으로 본다
+orca orchestration task-list --brief --json                          # id 필드 위치 확인
+```
+
+id를 뽑은 뒤 `[ -n "$DOMAIN_TASK" ]`로 비어 있지 않은지 확인하고 나머지 task를 만든다.
+
 ### 워커 기동
 
 `worker-start --agent claude`는 **모델을 지정하지 못한다.** 계획서가 정한 모델을 쓰려면
