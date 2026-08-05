@@ -237,8 +237,12 @@ body에 findings 건별 처리 결과(수정 / 반박 + 근거).
 SPEC
 )" --json
 
+orca terminal wait --terminal <원 워커의 terminal handle> --for tui-idle --timeout-ms 60000 --json
 orca orchestration dispatch --task <new_task_id> --to <원 워커의 terminal handle> --inject --json
 ```
+
+`dispatch --inject` 앞에 `terminal wait --for tui-idle`을 먼저 둔다 — 터미널이 idle 상태가
+되기 전에 주입하면 프롬프트가 유실될 수 있다.
 
 `--inject`는 새 프리앰블 + TASK 블록을 터미널 입력으로 넣는다. 가이드가 말하는
 "코디네이터가 idle 워커를 다시 깨우는" 바로 그 경로다.
@@ -336,7 +340,9 @@ SPEC
 )" --json
 ```
 
-기동은 W1과 같다 — `terminal create --command "claude --model opus"` → `worker-start --terminal <handle>`.
+기동은 W1과 같다 — `terminal create --worktree current --command "claude --model opus"` →
+`worker-start --terminal <handle>`.
+W2의 handle을 기록해 둔다. W1이 재작업을 마치면 재검수를 위해 이 터미널을 다시 깨운다.
 
 **반려 루프**: `REJECT`를 받으면 findings를 **W1의 터미널에 새 task로 재-디스패치**한다.
 W2의 `worker_done`으로 W1의 task는 이미 완료 상태이므로 mail로는 W1이 깨어나지 않는다
@@ -345,8 +351,11 @@ W2의 `worker_done`으로 W1의 task는 이미 완료 상태이므로 mail로는
 ```bash
 # 재작업 task spec 템플릿은 위 "반려·재작업은 mail이 아니라 재-디스패치다" 절의 히어독을 쓴다
 orca orchestration task-create --spec "<재작업 spec: findings + 무엇을 고칠지 + 원 산출물 경로>" --json
+orca terminal wait --terminal <W1_terminal_handle> --for tui-idle --timeout-ms 60000 --json
 orca orchestration dispatch --task <rework_task_id> --to <W1_terminal_handle> --inject --json
 ```
+
+여기서도 `dispatch --inject` 전에 idle을 확인한다 — 프롬프트 유실 방지.
 
 W1이 수정해 `worker_done`을 다시 보내면 W2도 같은 방식으로(새 task + `dispatch --inject`)
 W2 터미널을 다시 깨워 재검수시킨다.
@@ -417,7 +426,9 @@ SPEC
 )" --json
 ```
 
-기동은 W1과 같다 — `terminal create --command "claude --model opus"` → `worker-start --terminal <handle>`.
+기동은 W1과 같은 2단계 경로를 쓰되, 모델은 선택한 프로필의 W3 값을 넣는다(`비용` 프로필은
+Sonnet 5) — `terminal create --worktree current --command "claude --model <opus|sonnet>"` →
+`worker-start --terminal <handle>`.
 W3의 handle을 기록해 둔다. W4 반려 시 이 터미널을 다시 깨운다.
 
 ### W4 plan-reviewer
@@ -458,7 +469,10 @@ SPEC
 )" --json
 ```
 
-기동은 W2와 같다 — `terminal create --command "claude --model opus"` → `worker-start --terminal <handle>`.
+기동은 W2와 같은 2단계 경로를 쓰되, 모델은 선택한 프로필의 W4 값을 넣는다(`비용` 프로필은
+Sonnet 5) — `terminal create --worktree current --command "claude --model <opus|sonnet>"` →
+`worker-start --terminal <handle>`.
+W4의 handle을 기록해 둔다. W3이 재작업을 마치면 재검수를 위해 이 터미널을 다시 깨운다.
 
 균형 프로필에서 모델은 Opus 5다. 검사 항목이 명시적 체크리스트라 낮출 만해 보이지만,
 작성자 W3가 Opus 5라 "리뷰어는 작성자와 같은 티어 이상" 규칙이 이긴다.
@@ -482,19 +496,23 @@ G1과 같은 방식 — **코디네이터가 사용자에게 직접 묻는다.**
 가정한 채 `jq`로 자동화하면, 경로가 틀렸을 때 변수가 빈 문자열이 되고 `--deps '[""]'`가
 들어가 **의존이 조용히 깨진다**(에러 없이 순서만 무너진다).
 
-**먼저 눈으로 확인한다.**
+**먼저 눈으로 확인한다.** domain task는 **한 번만** 만든다 — 응답 전체를 변수에 캡처해 두고
+그 값을 눈으로 본 뒤, 같은 캡처에서 id를 뽑는다. `task-create`를 두 번 실행하면 domain
+task가 두 개 생겨 하나가 `pending`으로 남고, 그 orphan이 §8이 복구 근거로 쓰는
+`task-list --json`을 오염시킨다.
 
 ```bash
-orca orchestration task-create --spec "<domain task spec>" --json    # 출력 전체를 눈으로 본다
+DOMAIN_TASK_JSON=$(orca orchestration task-create --spec "<domain task spec>" --json)
+echo "$DOMAIN_TASK_JSON"                                             # 출력 전체를 눈으로 본다
 orca orchestration task-list --brief --json                          # id 필드 위치 확인
 ```
 
 **그다음에야 자동화한다.** 아래 `jq` 경로는 위 확인으로 실제 경로를 특정한 뒤 그 값으로
-바꿔 쓴다.
+바꿔 쓴다. `DOMAIN_TASK_JSON`은 이미 캡처했으므로 `task-create`를 다시 실행하지 않는다.
 
 ```bash
-DOMAIN_TASK=$(orca orchestration task-create --spec "<domain task spec>" --json | jq -r '<확인한 id 경로>')
-[ -n "$DOMAIN_TASK" ] || { echo "task id 추출 실패 — 중단"; }
+DOMAIN_TASK=$(echo "$DOMAIN_TASK_JSON" | jq -r '<확인한 id 경로>')
+[ -n "$DOMAIN_TASK" ] || { echo "task id 추출 실패 — 중단"; exit 1; }
 orca orchestration task-create --spec "<data task spec>"    --deps "[\"$DOMAIN_TASK\"]" --json
 orca orchestration task-create --spec "<feature task spec>" --deps "[\"$DOMAIN_TASK\"]" --json
 ```
@@ -608,16 +626,23 @@ RED·GREEN 로그가 하나라도 없으면 **반려**한다. 반려는 mail이 
 
 ```bash
 orca orchestration task-create --spec "증거 누락 재작업. RED 로그와 GREEN 로그를 모두 첨부해 다시 보고하라. 이미 작성한 테스트·구현은 그대로 두고, ./gradlew :<module>:test 실행 출력을 붙여 worker_done을 다시 보낸다. 로그가 없으면 이 task는 완료로 인정하지 않는다." --json
+orca terminal wait --terminal <해당 워커의 terminal handle> --for tui-idle --timeout-ms 60000 --json
 orca orchestration dispatch --task <rework_task_id> --to <해당 워커의 terminal handle> --inject --json
 ```
+
+여기서도 `dispatch --inject` 전에 idle을 확인한다 — 프롬프트 유실 방지.
 
 이 검사를 강제하는 이유는, 로그 두 개가 TDD를 지켰다는 **유일하게 검증 가능한 흔적**이기
 때문이다. 없으면 구현을 먼저 하고 통과하는 테스트를 나중에 붙인 것과 구분할 수 없다.
 
 GREEN에 도달하지 못했으면 같은 방식으로 1회 재시도시킨다. 재시도는 **한 티어 올린 모델**로
 한다 — 같은 모델에 같은 프롬프트를 다시 넣으면 같은 결과가 나온다. 모델을 바꾸려면
-`terminal create --command "claude --model opus"`로 터미널을 새로 만들고 그 handle에
+`terminal create --worktree name:wt-<module> --command "claude --model opus"`로 그 모듈의
+worktree 안에 터미널을 새로 만들고 그 handle에
 `worker-start --task <retry_task_id> --terminal <new_handle> --retry-of <원 dispatch_id>`로 붙인다.
+**`--worktree`를 빼면 기본값인 코디네이터의 현재 worktree(`feature/xxxxx-master`)에서 도는
+터미널이 되어 master 트리를 직접 건드리게 된다** — §6의 "master는 커밋하지 않는다"를 깨고,
+모듈 브랜치에는 재시도의 수정이 반영되지 않아 §5 병합 대상에서 빠진다.
 이미 최상위 티어(Opus 5)면 §1의 예외대로 프롬프트를 좁혀 같은 터미널에 재-디스패치한다.
 그래도 실패하면 escalation.
 
@@ -681,6 +706,9 @@ orca terminal create --worktree name:wt-integrate --command "claude --model opus
 orca orchestration worker-start --task <review_task_id> --terminal <handle> --json
 ```
 
+code-reviewer의 handle을 기록해 둔다. integrator가 재작업을 마치면 재리뷰를 위해 이
+터미널을 다시 깨운다.
+
 ```bash
 orca orchestration task-create --spec "$(cat <<'SPEC'
 [역할] 통합 diff 코드 리뷰. 너는 이 코드를 쓰지 않았다.
@@ -715,11 +743,14 @@ SPEC
 
 ```bash
 orca orchestration task-create --spec "코드 리뷰 findings 반영. <findings 원문>. 대상: wt-integrate의 현재 HEAD. 각 건을 고치거나, 고치지 않는다면 근거를 반박으로 적고 다시 ./gradlew test로 GREEN을 확인한 뒤 커밋하고 worker_done을 보낸다." --json
+orca terminal wait --terminal <integrator_terminal_handle> --for tui-idle --timeout-ms 60000 --json
 orca orchestration dispatch --task <rework_task_id> --to <integrator_terminal_handle> --inject --json
 ```
 
-수정 후 code-reviewer도 같은 방식으로(새 task + `dispatch --inject`) 그 터미널을 다시 깨워
-재리뷰시킨다. **상한 2회.** 3회째면 escalation.
+여기서도 `dispatch --inject` 전에 idle을 확인한다 — 프롬프트 유실 방지.
+
+수정 후 code-reviewer도 같은 방식으로(`terminal wait --for tui-idle` → 새 task +
+`dispatch --inject`) 그 터미널을 다시 깨워 재리뷰시킨다. **상한 2회.** 3회째면 escalation.
 
 ## 6. 최종 산출
 

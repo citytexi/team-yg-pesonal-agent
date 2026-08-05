@@ -122,9 +122,12 @@ idle 상태로 대기하며 `orchestration check`를 더 이상 돌리지 않고
 task와 dispatch를 자동으로 `completed`로 만든다. 따라서 완료된 워커에게
 `send --to dispatch:<id>`로 보낸 반려 지시는 읽히지 않고, 코디네이터는 오지 않을
 `worker_done`을 기다리며 교착한다. 반려 라운드마다 **새 task를 만들어
+`terminal wait --terminal <원 워커 터미널 handle> --for tui-idle --timeout-ms 60000` →
 `dispatch --task <new> --to <원 워커 터미널 handle> --inject`로 같은 터미널을 다시 깨운다.**
-터미널이 같으므로 작성자의 컨텍스트는 살아 있고, 라운드마다 새 task가 생겨 반려 이력이
-감사 흔적으로 남는다. 완료된 task를 `task-update`로 되살리지 않는다.
+`dispatch --inject` 앞에 idle 대기를 두는 이유는, 터미널이 아직 idle이 아닌 상태에서
+주입하면 프롬프트가 유실될 수 있기 때문이다. 터미널이 같으므로 작성자의 컨텍스트는 살아
+있고, 라운드마다 새 task가 생겨 반려 이력이 감사 흔적으로 남는다. 완료된 task를
+`task-update`로 되살리지 않는다.
 
 `send --to dispatch:<id>`는 **아직 돌고 있는(worker_done 전) 워커에게 주는 중간 안내**로만
 쓴다. 이 구분이 이 파이프라인이 정상 경로에서 멈추지 않기 위한 전제다.
