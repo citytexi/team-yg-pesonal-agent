@@ -1,4 +1,114 @@
 ---
+id: orchestration-session-pipeline
+title: 요구사항 → 구현 오케스트레이션 파이프라인 스킬 구현 계획
+status: draft
+type: work-order
+created: 2026-08-05
+updated: 2026-08-05
+platforms: android
+owner: harness
+related_adr:
+related_spec: orchestration-session-pipeline
+related_code: .claude/skills/start-orchestration-session/SKILL.md, .claude/skills/start-default-session/SKILL.md
+archived_reason:
+tags: [plan, parfait, tooling, orchestration]
+---
+
+# 오케스트레이션 세션 파이프라인 Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development(권장) 또는 superpowers:executing-plans로 task 단위 구현. 단계는 체크박스(`- [ ]`)로 추적.
+
+**Goal:** 요구사항 하나를 Orca orchestration + git worktree로 분석·설계·계획·TDD 구현·리뷰까지 다수 에이전트가 나눠 수행하는 파이프라인을 스킬 문서로 규정하고, 진입점 `start-orchestration-session`을 만든다.
+
+**Architecture:** 산출물은 마크다운 스킬 문서 2개와 라우팅 한 줄이다. 실행 로직은 코드가 아니라 스킬 문서에 적힌 절차이고, 그 절차를 코디네이터 세션이 `orca orchestration` CLI로 직접 수행한다. 기존 `start-session`은 `start-default-session`으로 개명해 두 진입점을 구분한다.
+
+**Tech Stack:** Markdown(SKILL.md frontmatter + 본문), `orca` CLI 1.4.164(`orchestration.contract.v1`), git worktree, Gradle(TJYG-Android).
+
+## Global Constraints
+
+- 대상 저장소는 team-yg-pesonal-agent(이 repo)다. TJYG-Android 코드는 이 계획에서 **한 줄도 건드리지 않는다**.
+- 브랜치는 `feat/orchestration-session-skill`. `main` 직접 커밋 금지.
+- **`git commit`·`git push`·`gh pr create`는 실행 전 사용자 확인 필수.** 각 Task의 커밋 단계는 승인 없이 자동 실행하지 않는다.
+- 스킬 디렉토리명과 `SKILL.md` frontmatter의 `name` 값은 **반드시 일치**해야 한다. 불일치 시 스킬이 로드되지 않는다.
+- 스킬 문서 본문은 한국어. 스킬 안에 인용하는 CLI 명령·플래그·frontmatter 키는 원문 그대로.
+- 검증에 쓰는 `orca` 명령은 **읽기 전용만**(`--help`, `status`, `repo list`, `worktree list`). `run-create`·`task-create`·`worker-start`처럼 상태를 만드는 명령은 이 계획에서 실행하지 않는다.
+- 확정된 사실(2026-08-05 실측): Orca 1.4.164 / `orchestration.contract.v1` 보유 / 설치된 에이전트 CLI는 `claude` 하나 / TJYG-Android·team-yg 모두 `setupAgentStartupPolicy: start-immediately`.
+- 스펙 정본: `parfait/specs/2026-08-05-orchestration-session-pipeline.md`. 계획과 스펙이 어긋나면 스펙이 정답이고, 스펙을 고쳐야 하면 사용자에게 먼저 알린다.
+
+---
+
+### Task 1: `start-session` → `start-default-session` 개명
+
+**Files:**
+- Rename: `.claude/skills/start-session/` → `.claude/skills/start-default-session/`
+- Modify: `.claude/skills/start-default-session/SKILL.md` (frontmatter `name`·`description`, 본문 제목)
+
+**Interfaces:**
+- Consumes: 없음(첫 Task)
+- Produces: 디렉토리 경로 `.claude/skills/start-default-session/`, 스킬 이름 `start-default-session`. Task 6의 CLAUDE.md 라우팅 문구가 이 이름을 참조한다.
+
+- [ ] **Step 1: 현재 참조처를 다시 확인**
+
+```bash
+grep -rn "start-session" --include="*.md" --include="*.json" . | grep -v "^./parfait/specs/archive/"
+```
+
+기대 출력: `.claude/skills/start-session/SKILL.md`의 2줄(`name:`, `description:`)과 본문 제목 1줄.
+`parfait/specs/archive/2026-07-22-vendor-android-kotlin-skills.md`의 2건은 아카이브된 역사 기록이므로 **고치지 않는다**.
+그 밖의 파일이 나오면 멈추고 사용자에게 보고한다.
+
+- [ ] **Step 2: git mv로 디렉토리 개명**
+
+```bash
+git mv .claude/skills/start-session .claude/skills/start-default-session
+```
+
+- [ ] **Step 3: frontmatter와 본문 제목 수정**
+
+`.claude/skills/start-default-session/SKILL.md`의 앞부분을 아래로 바꾼다. 내용(단계·주의)은 손대지 않는다.
+
+```markdown
+---
+name: start-default-session
+description: 이 repo에서 세션 시작 시 기본 온보딩. 사용자가 "/start-default-session", "세션 시작", "온보딩", "먼저 읽어", "claude.md·위키·개인정보 읽어"라고 하거나 새 세션에서 작업 방향을 잡기 전에 사용. repo 3축 구조·작업 라우팅·로컬 경로를 로드한다. 오케스트레이션 파이프라인을 돌릴 때는 start-orchestration-session을 쓴다.
+---
+
+# start-default-session — 세션 온보딩
+```
+
+- [ ] **Step 4: 개명이 완전한지 검증**
+
+```bash
+test -f .claude/skills/start-default-session/SKILL.md && echo "OK: file exists"
+test -d .claude/skills/start-session && echo "FAIL: old dir remains" || echo "OK: old dir gone"
+head -3 .claude/skills/start-default-session/SKILL.md | grep -q "^name: start-default-session" && echo "OK: name matches dir"
+grep -rn "start-session" --include="*.md" .claude/ | grep -v "start-default-session" | grep -v "start-orchestration-session"
+```
+
+기대: 앞 세 줄이 전부 `OK`, 마지막 grep은 **출력 없음**.
+
+- [ ] **Step 5: 커밋 (사용자 승인 후)**
+
+```bash
+git add .claude/skills/start-default-session
+git commit -m "refactor(skills): start-session을 start-default-session으로 개명"
+```
+
+---
+
+### Task 2: `start-orchestration-session` 골격 — 전제 확인과 Run 부트스트랩
+
+**Files:**
+- Create: `.claude/skills/start-orchestration-session/SKILL.md`
+
+**Interfaces:**
+- Consumes: Task 1이 확정한 이름 `start-default-session`(스킬 설명에서 구분 대상으로 언급)
+- Produces: `SKILL.md`의 frontmatter와 `## 0. 전제 확인` · `## 1. 요구사항 수집` · `## 2. Run 생성` 세 절. Task 3~5가 이 파일에 절을 이어 붙인다. 파이프라인 용어(`W1 analyst`, `W2 spec-reviewer`, `W3 planner`, `W4 plan-reviewer`, `wt-domain`/`wt-data`/`wt-feature`, `wt-integrate`, 게이트 `G1`/`G2`/`G3`, 프로필 `균형`/`품질`/`비용`)를 여기서 정의하고 이후 Task는 같은 표기를 쓴다.
+
+- [ ] **Step 1: 파일 생성 — frontmatter와 도입부**
+
+```markdown
+---
 name: start-orchestration-session
 description: 요구사항 하나를 Orca orchestration + git worktree로 분석·설계·계획·TDD 구현·리뷰까지 다수 에이전트에 나눠 수행하는 파이프라인 진입점. 사용자가 "/start-orchestration-session", "오케스트레이션 시작", "이 요구사항 파이프라인으로 돌려줘", "에이전트 나눠서 구현해줘"라고 할 때 사용. 코디네이터는 feature/xxxxx-master worktree에서 사람과 소통하고 나머지 단계는 워커에게 위임한다.
 ---
@@ -30,7 +140,11 @@ description: 요구사항 하나를 Orca orchestration + git worktree로 분석�
 | wt-integrate | 병합·전체 테스트·코드 리뷰 자식 worktree |
 | G1 / G2 / G3 | 사람 게이트 — 스펙 승인 / 계획 승인 / 최종 보고 |
 | 프로필 | 모델 배치 3종 — `균형`(기본) / `품질` / `비용` |
+```
 
+- [ ] **Step 2: `## 0. 전제 확인` 절 추가**
+
+```markdown
 ## 0. 전제 확인
 
 아래를 먼저 실행하고, 하나라도 실패하면 파이프라인을 시작하지 않고 사용자에게 보고한다.
@@ -51,9 +165,6 @@ orca worktree list --json
 | master worktree | `worktree list`에 `feature/…-master` 브랜치의 TJYG-Android worktree 존재 |
 | 시작 정책 | TJYG-Android `hookSettings.setupAgentStartupPolicy` 값을 기록해 둔다 |
 
-로컬 절대경로는 `wiki/personal-private/project-paths.md`에서 읽는다.
-이 문서에 직접 적지 않는다(public repo).
-
 `feature/…-master` worktree가 없으면 만들고 시작한다.
 
 ```bash
@@ -63,7 +174,11 @@ orca worktree create --name <xxxxx>-master --repo name:TJYG-Android --base-branc
 시작 정책이 `wait-for-setup`이면 모델 지정 2단계 경로(§4)를 쓸 수 없다.
 그때는 모든 워커를 `--agent claude`(기본 모델)로 띄우고, 그 사실을 사용자에게 알린다.
 `start-immediately`(2026-08-05 기준 현재 값)면 그대로 진행한다.
+```
 
+- [ ] **Step 3: `## 1. 요구사항 수집` 절 추가**
+
+```markdown
 ## 1. 요구사항 수집
 
 사용자에게 요구사항을 받고, 아래 세 가지를 확정한다. 답이 없으면 기본값을 쓰고 그 사실을 알린다.
@@ -99,7 +214,11 @@ orca worktree create --name <xxxxx>-master --repo name:TJYG-Android --base-branc
 
 요구사항 원문은 **그대로 보존**한다. 요약해서 워커에 넘기지 않는다.
 W1과 W2가 같은 원문을 보고 각자 판단해야 리뷰가 의미를 갖는다.
+```
 
+- [ ] **Step 4: `## 2. Run 생성` 절 추가**
+
+```markdown
 ## 2. Run 생성
 
 ```bash
@@ -120,7 +239,66 @@ orca worktree set --worktree current \
 이후 각 단계 전환마다 `--comment`를 갱신하고, 코드 리뷰 단계에서 `--workspace-status in-review`,
 최종 보고에서 `completed`로 옮긴다. 이것은 **장식층**이다 —
 진행의 정본은 `orca orchestration task-list --json`과 각 워커의 `worker_done`이다.
+```
 
+- [ ] **Step 5: 골격 검증**
+
+```bash
+head -3 .claude/skills/start-orchestration-session/SKILL.md | grep -q "^name: start-orchestration-session" && echo "OK: name matches dir"
+grep -c "^## " .claude/skills/start-orchestration-session/SKILL.md
+grep -n "TBD\|FIXME" .claude/skills/start-orchestration-session/SKILL.md
+```
+
+기대: 첫 줄 `OK`, `## ` 절 개수 5(이 스킬을 쓰지 않는 경우 / 용어 / 0. 전제 확인 / 1. 요구사항 수집 / 2. Run 생성), 마지막 grep은 **출력 없음**.
+
+- [ ] **Step 6: 문서에 적은 orca 명령이 실재하는지 검증**
+
+```bash
+orca orchestration run-create --help >/dev/null 2>&1 && echo "OK run-create"
+orca worktree create --help 2>&1 | grep -q -- "--base-branch" && echo "OK worktree create --base-branch"
+orca worktree set --help 2>&1 | grep -q -- "--workspace-status" && echo "OK worktree set --workspace-status"
+```
+
+세 줄 모두 `OK`가 나와야 한다. 하나라도 실패하면 그 명령을 문서에서 빼고,
+`orca skills get orchestration`으로 현재 문법을 다시 확인한 뒤 대체 명령을 적는다.
+
+- [ ] **Step 7: 커밋 (사용자 승인 후)**
+
+```bash
+git add .claude/skills/start-orchestration-session/SKILL.md
+git commit -m "feat(skills): start-orchestration-session 골격 — 전제 확인·요구사항 수집·Run 생성"
+```
+
+---
+
+### Task 3: 문서 단계 — W1~W4와 게이트 G1·G2
+
+**Files:**
+- Modify: `.claude/skills/start-orchestration-session/SKILL.md` (`## 3. 문서 단계` 절 추가)
+
+**Interfaces:**
+- Consumes: Task 2의 용어표(W1~W4, G1·G2, 프로필)와 §2의 Run
+- Produces: `## 3. 문서 단계` 절 — 워커 4종의 task spec 템플릿, 반려 루프 규칙, 게이트 처리. Task 4가 여기서 확정한 계획 문서 형식(각 task의 `model:` 필드와 담당 파일 화이트리스트)을 소비한다.
+
+- [ ] **Step 1: 문서 워커의 작업 디렉토리 제약을 실측**
+
+문서 워커는 TJYG-Android worktree에서 돌면서 team-yg repo의 `parfait/` 아래에 쓴다.
+cwd 밖 절대경로 쓰기가 막히는지 먼저 확인한다.
+
+```bash
+cd /Users/jeonheehoon/Documents/work_station/mashup/github/TJYG-Android
+printf 'probe\n' > /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent/.orch-write-probe
+test -f /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent/.orch-write-probe && echo "OK: cross-repo write allowed"
+rm /Users/jeonheehoon/Documents/work_station/mashup/team-yg-pesonal-agent/.orch-write-probe
+```
+
+`OK`가 나오면 Step 2의 표를 그대로 쓴다.
+막히면 문서 워커 4종의 `--worktree`를 team-yg repo worktree로 바꾸고(§3 표의 "실행 위치" 열),
+그 경우 워커가 TJYG-Android 코드를 읽을 때는 절대경로로 읽는다는 문장을 함께 적는다.
+
+- [ ] **Step 2: `## 3. 문서 단계` 절 — 워커 배치표 추가**
+
+```markdown
 ## 3. 문서 단계 (W1 → W2 → G1 → W3 → W4 → G2)
 
 문서 단계는 TJYG-Android 코드를 건드리지 않는다. 산출물은 team-yg repo의 `parfait/` 아래에
@@ -134,7 +312,11 @@ orca worktree set --worktree current \
 | W4 plan-reviewer | `--worktree current` | Opus 5 | findings(파일 없음) |
 
 네 워커는 순차 실행한다. 병렬 이득이 없고, 뒤 워커가 앞 산출물을 입력으로 받는다.
+```
 
+- [ ] **Step 3: W1 task spec 템플릿 추가**
+
+```markdown
 ### W1 analyst
 
 ```bash
@@ -142,8 +324,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 [역할] 요구사항 분석 + 설계. 산출물은 설계 스펙 문서 하나다.
 
 [읽어라]
-- 코드 대상: <TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
-  §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>
+- 코드 대상: /Users/jeonheehoon/Documents/work_station/mashup/github/TJYG-Android
 - 규약: <team-yg>/CLAUDE.md, <team-yg>/parfait/index.md, <team-yg>/parfait/specs/README.md
 - 형식: <team-yg>/parfait/specs/template.md
 - 기존 결정: <team-yg>/parfait/adr/, <team-yg>/parfait/architecture/
@@ -178,7 +359,11 @@ SPEC
 ```bash
 orca orchestration worker-start --task <task_id> --worktree current --agent claude --json
 ```
+```
 
+- [ ] **Step 4: W2 task spec 템플릿과 반려 루프 추가**
+
+```markdown
 ### W2 spec-reviewer
 
 리뷰어에게는 **요구사항 원문과 스펙 파일만** 준다. W1의 대화 컨텍스트는 주지 않는다.
@@ -227,7 +412,11 @@ orca orchestration send --to dispatch:<W1_dispatch_id> --subject "스펙 리뷰 
 W1이 수정해 `worker_done`을 다시 보내면 W2를 같은 방식으로 다시 띄운다.
 **상한 2회.** 3회째 반려면 escalation으로 사람을 부른다 —
 리뷰어와 작성자가 합의하지 못하는 상태이고 자동으로 풀리지 않는다.
+```
 
+- [ ] **Step 5: G1 게이트 처리 추가**
+
+```markdown
 ### G1 — 스펙 승인
 
 `자동진행` 모드면 건너뛴다. 아니면:
@@ -244,7 +433,11 @@ orca orchestration check --wait --types decision_gate,question --timeout-ms 9000
 - `중단` → Run을 남긴 채 종료하고, 재개 방법을 사용자에게 알린다
 
 타임아웃은 실패가 아니다. 사람이 아직 안 봤을 뿐이므로 계속 기다린다.
+```
 
+- [ ] **Step 6: W3·W4·G2 추가**
+
+```markdown
 ### W3 planner
 
 ```bash
@@ -253,8 +446,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 
 [읽어라]
 - 확정 스펙: <스펙 절대경로>
-- 코드 대상: <TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
-  §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>
+- 코드 대상: /Users/jeonheehoon/Documents/work_station/mashup/github/TJYG-Android
 - 형식: <team-yg>/parfait/plans/template.md, 규약: parfait/plans/README.md
 
 [해라]
@@ -308,7 +500,50 @@ W2와 같은 구조다. 리뷰어에게는 **스펙 파일과 계획 파일만**
 ### G2 — 계획 승인
 
 G1과 같은 방식. `자동진행`이면 건너뛴다.
+```
 
+- [ ] **Step 7: 절 구성과 명령 실재 검증**
+
+```bash
+grep -n "^## 3\. 문서 단계" .claude/skills/start-orchestration-session/SKILL.md
+grep -c "^### " .claude/skills/start-orchestration-session/SKILL.md
+grep -n "TBD\|FIXME" .claude/skills/start-orchestration-session/SKILL.md
+orca orchestration task-create --help >/dev/null 2>&1 && echo "OK task-create"
+orca orchestration gate-create --help >/dev/null 2>&1 && echo "OK gate-create"
+orca orchestration send --help 2>&1 | grep -q -- "--to" && echo "OK send --to"
+orca orchestration check --help 2>&1 | grep -q -- "--wait" && echo "OK check --wait"
+```
+
+기대: `OK` 4줄.
+
+`### ` 개수는 **7**이다 — 이 Task가 넣는 6개(W1 / W2 / G1 / W3 / W4 / G2)에 Task 2가 이미 넣은
+`### 프로필`이 더해진다. 새로 붙인 절만 떼어 세면 6이다.
+
+placeholder grep은 **2건 매치가 정상**이다. W1·W3의 task spec 템플릿에 있는 금지 문구
+(`placeholder("TBD", "추후 결정", 빈 섹션)`)가 걸리는 것이고, 실제 placeholder가 아니다.
+매치된 줄이 그 두 건인지 눈으로 확인하고, 다른 줄이 걸리면 그것이 진짜 결함이다.
+
+- [ ] **Step 8: 커밋 (사용자 승인 후)**
+
+```bash
+git add .claude/skills/start-orchestration-session/SKILL.md
+git commit -m "feat(skills): 문서 단계(W1~W4)와 게이트 G1·G2 추가"
+```
+
+---
+
+### Task 4: 구현 단계 — 모듈 worktree와 TDD 계약
+
+**Files:**
+- Modify: `.claude/skills/start-orchestration-session/SKILL.md` (`## 4. 구현 단계` 절 추가)
+
+**Interfaces:**
+- Consumes: Task 3의 계획 문서 형식(모듈별 담당 파일 화이트리스트, 테스트 명세, `model:` 필드, 의존 관계)
+- Produces: `## 4. 구현 단계` 절 — 자식 worktree 생성 명령, 모델 지정 2단계 경로, 구현 워커 task spec 템플릿, RED/GREEN 증거 검사 규칙. Task 5가 여기서 만든 모듈 브랜치들을 병합한다.
+
+- [ ] **Step 1: `## 4. 구현 단계` 도입부와 의존 표현 추가**
+
+```markdown
 ## 4. 구현 단계
 
 계획서가 나눈 모듈마다 자식 worktree를 하나씩 만들고 워커를 붙인다.
@@ -333,7 +568,11 @@ orca orchestration task-list --brief --json                          # id 필드
 ```
 
 id를 뽑은 뒤 `[ -n "$DOMAIN_TASK" ]`로 비어 있지 않은지 확인하고 나머지 task를 만든다.
+```
 
+- [ ] **Step 2: 워커 기동 — 모델 지정 2단계 경로 추가**
+
+```markdown
 ### 워커 기동
 
 `worker-start --agent claude`는 **모델을 지정하지 못한다.** 계획서가 정한 모델을 쓰려면
@@ -365,7 +604,11 @@ orca orchestration worker-start --task <task_id> --worktree new-child --name wt-
 세 모듈이 동시에 돌면 Gradle 데몬이 최대 3개, `build/`가 3벌이 된다. `~/.gradle`은 공유라
 동시 쓰기 잠금 경합이 생길 수 있다. 락 대기나 비정상적인 지연이 보이면 그때 모듈 워커를
 줄인다. 미리 튜닝하지 않는다.
+```
 
+- [ ] **Step 3: 구현 워커 task spec 템플릿 추가**
+
+```markdown
 ### 구현 워커 task spec
 
 ```bash
@@ -403,7 +646,11 @@ body에 다음 둘을 **모두** 넣는다:
 SPEC
 )" --json
 ```
+```
 
+- [ ] **Step 4: RED/GREEN 증거 검사 규칙 추가**
+
+```markdown
 ### 증거 검사
 
 `worker_done`을 받으면 코디네이터가 body를 확인한다.
@@ -427,7 +674,11 @@ orca orchestration send --to dispatch:<dispatch_id> --subject "증거 누락" \
 GREEN에 도달하지 못했으면 같은 dispatch에 회신해 1회 재시도시킨다.
 재시도는 **한 티어 올린 모델**로 한다 — 같은 모델에 같은 프롬프트를 다시 넣으면 같은
 결과가 나온다. 그래도 실패하면 escalation.
+```
 
+- [ ] **Step 5: 대기 루프 추가**
+
+```markdown
 ### 대기
 
 ```bash
@@ -439,7 +690,42 @@ Delivery 안의 메시지를 **전부 처리한 뒤** ack한다.
 타임아웃이나 `{count:0}`은 실패가 아니라 체크포인트다. 구현 task는 보통 오래 걸린다.
 워커를 죽이거나 재시작하지 않는다. 하트비트와 터미널 활동은 살아 있다는 뜻이지 끝났다는
 뜻이 아니다.
+```
 
+- [ ] **Step 6: 검증**
+
+```bash
+grep -n "^## 4\. 구현 단계" .claude/skills/start-orchestration-session/SKILL.md
+grep -q "RED 로그" .claude/skills/start-orchestration-session/SKILL.md && echo "OK: RED evidence rule present"
+grep -q "한 티어 올린" .claude/skills/start-orchestration-session/SKILL.md && echo "OK: escalation tier rule present"
+orca terminal create --help 2>&1 | grep -q -- "--command" && echo "OK terminal create --command"
+orca orchestration worker-start --help 2>&1 | grep -q -- "--terminal" && echo "OK worker-start --terminal"
+orca orchestration task-create --help 2>&1 | grep -q -- "--deps" && echo "OK task-create --deps"
+```
+
+기대: `OK` 5줄.
+
+- [ ] **Step 7: 커밋 (사용자 승인 후)**
+
+```bash
+git add .claude/skills/start-orchestration-session/SKILL.md
+git commit -m "feat(skills): 구현 단계 — 모듈 worktree·모델 지정 경로·RED/GREEN 증거 계약"
+```
+
+---
+
+### Task 5: 통합·코드 리뷰·최종 산출·에스컬레이션
+
+**Files:**
+- Modify: `.claude/skills/start-orchestration-session/SKILL.md` (`## 5. 통합과 코드 리뷰`, `## 6. 최종 산출`, `## 7. 에스컬레이션` 절 추가)
+
+**Interfaces:**
+- Consumes: Task 4가 만든 모듈 브랜치들(`wt-<module>`)과 그 커밋
+- Produces: 파이프라인 종료 절차. 이 Task 이후 스킬 문서는 기능적으로 완결된다.
+
+- [ ] **Step 1: `## 5. 통합과 코드 리뷰` 절 추가**
+
+```markdown
 ## 5. 통합과 코드 리뷰
 
 모듈 워커가 전부 `worker_done`을 보내고 증거 검사를 통과하면 통합 worktree를 만든다.
@@ -516,7 +802,11 @@ orca orchestration send --to dispatch:<integrator_dispatch_id> --subject "코드
 ```
 
 수정 후 다시 리뷰. **상한 2회.** 3회째면 escalation.
+```
 
+- [ ] **Step 2: `## 6. 최종 산출` 절 추가**
+
+```markdown
 ## 6. 최종 산출
 
 통합 worktree에서 diff를 뽑아 master 작업 트리에 적용한다. **커밋하지 않는다.**
@@ -559,7 +849,11 @@ git status --short
 기본 규칙은 "TJYG-Android는 구현이 끝나도 커밋하지 않는다"이다.
 이 파이프라인에 한해 **자식 worktree 브랜치의 커밋은 병합 수단으로 허용**한다.
 master 브랜치는 커밋하지 않고, push와 PR은 사용자 승인을 받는다.
+```
 
+- [ ] **Step 3: `## 7. 에스컬레이션` 절 추가**
+
+```markdown
 ## 7. 에스컬레이션
 
 | 상황 | 동작 |
@@ -581,3 +875,145 @@ orca orchestration task-list --brief --json
 orca orchestration dispatch-show --task <task_id> --json
 orca orchestration worker-read --dispatch <dispatch_id> --limit 50 --json
 ```
+```
+
+- [ ] **Step 4: 검증**
+
+```bash
+grep -c "^## " .claude/skills/start-orchestration-session/SKILL.md
+grep -q "커밋하지 않는다" .claude/skills/start-orchestration-session/SKILL.md && echo "OK: no-commit rule present"
+grep -q "직접 해결하지 말고 escalation" .claude/skills/start-orchestration-session/SKILL.md && echo "OK: conflict escalation present"
+grep -n "TBD\|FIXME" .claude/skills/start-orchestration-session/SKILL.md
+orca orchestration worker-read --help >/dev/null 2>&1 && echo "OK worker-read"
+orca orchestration dispatch-show --help >/dev/null 2>&1 && echo "OK dispatch-show"
+```
+
+기대: `## ` 절 개수 **11**(이 스킬을 쓰지 않는 경우 / 용어 / 0. 전제 확인 / 1. 요구사항 수집 /
+2. Run 생성 / 3. 문서 단계 / 4. 구현 단계 / 5. 통합과 코드 리뷰 / 6. 최종 산출 /
+7. 에스컬레이션 / 진행 상황 확인), `OK` 4줄.
+절 개수가 다르면 빠진 절을 찾아 보충한다.
+
+placeholder grep은 Task 3이 남긴 금지 문구 2건이 계속 걸린다(실제 placeholder 아님).
+그 2건 외의 매치만 결함으로 본다.
+
+- [ ] **Step 5: 커밋 (사용자 승인 후)**
+
+```bash
+git add .claude/skills/start-orchestration-session/SKILL.md
+git commit -m "feat(skills): 통합·코드 리뷰·최종 산출·에스컬레이션 절 추가"
+```
+
+---
+
+### Task 6: CLAUDE.md 라우팅과 문서 정합
+
+**Files:**
+- Modify: `CLAUDE.md` (작업 유형별 워크플로 라우팅 절)
+- Modify: `parfait/specs/2026-08-05-orchestration-session-pipeline.md` (frontmatter `status`)
+- Modify: `parfait/plans/README.md` (활성 계획 인덱스)
+
+**Interfaces:**
+- Consumes: Task 1의 `start-default-session`, Task 2~5의 `start-orchestration-session`
+- Produces: 없음(마지막 Task)
+
+- [ ] **Step 1: CLAUDE.md 라우팅에 진입점 추가**
+
+`## 작업 유형별 워크플로 라우팅 (필수)` 절의 도입부 아래, `### A.` 앞에 다음을 넣는다.
+
+```markdown
+> **세션 진입점 2종** — 온보딩만 필요하면 `start-default-session`.
+> 요구사항 하나를 다수 에이전트가 나눠 처리하는 파이프라인(분석·설계·스펙리뷰·계획·계획리뷰·
+> TDD 구현 병렬·통합·코드리뷰)을 돌릴 때는 `start-orchestration-session`.
+> 파이프라인 설계 정본은 [`parfait/specs/2026-08-05-orchestration-session-pipeline.md`](parfait/specs/2026-08-05-orchestration-session-pipeline.md).
+```
+
+- [ ] **Step 2: 스펙 status를 in-progress로 갱신**
+
+`parfait/specs/2026-08-05-orchestration-session-pipeline.md`의 frontmatter에서
+`status: draft`를 `status: in-progress`로 바꾼다. 파이프라인을 실제로 한 번 돌려
+동작을 확인한 뒤에야 `implemented`가 된다.
+
+- [ ] **Step 3: plans README 활성 인덱스에 등록**
+
+`parfait/plans/README.md`의 활성 카탈로그 테이블에서 `_(없음 — 진행 중인 계획 없음)_` 줄을
+아래로 교체한다.
+
+```markdown
+| [2026-08-05-orchestration-session-pipeline.md](2026-08-05-orchestration-session-pipeline.md) | 오케스트레이션 파이프라인 스킬 구현(6 Task, **TJYG-Android 코드 변경 0**): `start-session` → `start-default-session` 개명 → `start-orchestration-session` 골격(전제 확인·요구사항 수집·Run 생성) → 문서 단계 W1~W4 + 게이트 G1·G2 → 구현 단계(모듈 worktree·모델 지정 2단계 경로·RED/GREEN 증거 계약) → 통합·코드리뷰·최종 산출·에스컬레이션 → CLAUDE.md 라우팅. 산출물은 마크다운 스킬 문서 2개뿐이라 자동 테스트가 없고, 검증은 **frontmatter `name`↔디렉토리명 일치 · placeholder grep · 문서에 적은 orca 명령·플래그가 `--help`에 실재하는지 대조**로 한다. 스펙: [specs](../specs/2026-08-05-orchestration-session-pipeline.md) |
+```
+
+- [ ] **Step 4: 전체 정합 검증**
+
+```bash
+# 스킬 2종의 name과 디렉토리명 일치
+for d in start-default-session start-orchestration-session; do
+  n=$(grep -m1 "^name: " .claude/skills/$d/SKILL.md | sed 's/^name: //')
+  [ "$n" = "$d" ] && echo "OK: $d" || echo "FAIL: $d has name=$n"
+done
+
+# 낡은 참조 잔존 확인 (아카이브 스펙 제외)
+grep -rn "start-session" --include="*.md" . | grep -v "start-default-session" | grep -v "start-orchestration-session" | grep -v "parfait/specs/archive/"
+
+# 링크 대상 실재
+test -f parfait/specs/2026-08-05-orchestration-session-pipeline.md && echo "OK: spec exists"
+test -f parfait/plans/2026-08-05-orchestration-session-pipeline.md && echo "OK: plan exists"
+
+# CLAUDE.md 라우팅 반영
+grep -q "start-orchestration-session" CLAUDE.md && echo "OK: CLAUDE.md routing"
+
+# placeholder 잔존
+grep -rn "TBD\|FIXME" .claude/skills/start-orchestration-session/SKILL.md parfait/specs/2026-08-05-orchestration-session-pipeline.md
+```
+
+기대: `OK` 5줄, 낡은 참조 grep은 **출력 없음**.
+마지막 placeholder grep은 Task 3의 금지 문구 2건이 걸리는 것이 정상이고, 그 외 매치가 결함이다.
+
+- [ ] **Step 5: 민감정보 점검**
+
+스킬 문서에 절대경로가 들어간다. 이 repo는 public이므로 확인한다.
+
+```bash
+grep -rn "/Users/" .claude/skills/start-orchestration-session/SKILL.md
+```
+
+출력이 있으면 그 줄들을 `<TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조>`
+형태의 플레이스홀더로 바꾸고, 스킬이 실행 시점에 `wiki/personal-private/project-paths.md`를
+읽어 경로를 얻도록 §0 전제 확인에 한 줄 추가한다.
+
+```markdown
+로컬 절대경로는 `wiki/personal-private/project-paths.md`에서 읽는다.
+이 문서에 직접 적지 않는다(public repo).
+```
+
+- [ ] **Step 6: 커밋 (사용자 승인 후)**
+
+```bash
+git add CLAUDE.md parfait/specs/2026-08-05-orchestration-session-pipeline.md parfait/plans/
+git commit -m "docs: 오케스트레이션 파이프라인 라우팅·스펙 상태·계획 인덱스 반영"
+```
+
+- [ ] **Step 7: 사용자에게 다음 단계 보고**
+
+보고 내용:
+- 만들어진 스킬 2종과 각 역할
+- 파이프라인을 실제로 한 번 돌려봐야 `status: implemented`가 된다는 것
+- 첫 실행 때 관측할 것 두 가지: worktree 3개 동시 Gradle 데몬 경합, 문서 워커의 cross-repo 쓰기
+- PR 생성 여부 확인
+
+---
+
+## 검증 전략
+
+이 계획의 산출물은 마크다운 문서라 단위 테스트가 없다. 대신 **기계적으로 판정 가능한 검사**를
+Task마다 둔다.
+
+| 검사 | 방법 | 왜 |
+|---|---|---|
+| 스킬 로드 가능성 | frontmatter `name` ↔ 디렉토리명 일치 | 불일치하면 스킬이 로드되지 않는다 |
+| placeholder 부재 | `grep "TBD\|TODO\|FIXME"` | 계획 실패의 대표 징후 |
+| CLI 명령 실재 | 문서에 적은 각 `orca` 명령을 `--help`로 확인 | Orca 릴리스 간 문법이 바뀐다. 문서에 죽은 명령을 남기면 파이프라인이 첫 실행에서 멈춘다 |
+| 낡은 참조 부재 | `grep "start-session"` (아카이브 제외) | 개명 누락 탐지 |
+| 민감정보 | `grep "/Users/"` | public repo |
+
+**하지 않는 검증**: `run-create`·`task-create`·`worker-start` 실제 실행. 상태를 만드는 명령이고,
+파이프라인 첫 실행은 실제 요구사항으로 하는 것이 맞다.

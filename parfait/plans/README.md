@@ -6,7 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
-| _(없음 — 진행 중인 계획 없음)_ | |
+| [2026-08-05-orchestration-session-pipeline.md](2026-08-05-orchestration-session-pipeline.md) | 오케스트레이션 파이프라인 스킬 구현(6 Task, **TJYG-Android 코드 변경 0**): `start-session` → `start-default-session` 개명 → `start-orchestration-session` 골격(전제 확인·요구사항 수집·Run 생성) → 문서 단계 W1~W4 + 게이트 G1·G2 → 구현 단계(모듈 worktree·모델 지정 2단계 경로·RED/GREEN 증거 계약) → 통합·코드리뷰·최종 산출·에스컬레이션 → CLAUDE.md 라우팅. 산출물은 마크다운 스킬 문서 2개뿐이라 자동 테스트가 없고, 검증은 **frontmatter `name`↔디렉토리명 일치 · placeholder grep · 문서에 적은 orca 명령·플래그가 `--help`에 실재하는지 대조**로 한다. 스펙: [specs](../specs/2026-08-05-orchestration-session-pipeline.md) |
 
 ## 아카이브
 | 계획 | 내용 |
