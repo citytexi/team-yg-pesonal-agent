@@ -117,3 +117,189 @@ orca worktree set --worktree current \
 이후 각 단계 전환마다 `--comment`를 갱신하고, 코드 리뷰 단계에서 `--workspace-status in-review`,
 최종 보고에서 `completed`로 옮긴다. 이것은 **장식층**이다 —
 진행의 정본은 `orca orchestration task-list --json`과 각 워커의 `worker_done`이다.
+
+## 3. 문서 단계 (W1 → W2 → G1 → W3 → W4 → G2)
+
+문서 단계는 TJYG-Android 코드를 건드리지 않는다. 산출물은 team-yg repo의 `parfait/` 아래에
+절대경로로 쓴다. 그래서 worktree를 새로 파지 않고 터미널만 띄운다.
+
+| 워커 | 실행 위치 | 모델(균형 프로필) | 산출물 |
+|---|---|---|---|
+| W1 analyst | `--worktree current` | Opus 5 | `parfait/specs/YYYY-MM-DD-<topic>.md` |
+| W2 spec-reviewer | `--worktree current` | Opus 5 | findings(파일 없음) |
+| W3 planner | `--worktree current` | Opus 5 | `parfait/plans/YYYY-MM-DD-<topic>.md` |
+| W4 plan-reviewer | `--worktree current` | Opus 5 | findings(파일 없음) |
+
+네 워커는 순차 실행한다. 병렬 이득이 없고, 뒤 워커가 앞 산출물을 입력으로 받는다.
+
+### W1 analyst
+
+```bash
+orca orchestration task-create --spec "$(cat <<'SPEC'
+[역할] 요구사항 분석 + 설계. 산출물은 설계 스펙 문서 하나다.
+
+[읽어라]
+- 코드 대상: /Users/jeonheehoon/Documents/work_station/mashup/github/TJYG-Android
+- 규약: <team-yg>/CLAUDE.md, <team-yg>/parfait/index.md, <team-yg>/parfait/specs/README.md
+- 형식: <team-yg>/parfait/specs/template.md
+- 기존 결정: <team-yg>/parfait/adr/, <team-yg>/parfait/architecture/
+- 정책 SoT: <team-yg>/wiki/index.md에서 관련 페이지만
+
+[해라]
+1. superpowers:brainstorming 스킬을 로드한다.
+2. 주제와 관련된 벤더 스킬을 먼저 찾는다:
+   python3 <team-yg>/parfait/script/search.py "<주제>"
+   상위 후보 중 관련 스킬을 네이티브 Skill로 로드한 뒤 설계를 확정한다.
+3. 설계 스펙을 <team-yg>/parfait/specs/YYYY-MM-DD-<kebab-topic>.md에 쓴다.
+   형식은 template.md, frontmatter 필수. 라인번호·hex·변동수치는 적지 않는다.
+4. parfait/specs/README.md 인덱스에 한 줄 등록한다.
+
+[금지]
+- TJYG-Android 코드 수정. 이 단계는 읽기만 한다.
+- placeholder("TBD", "추후 결정", 빈 섹션). 결정할 수 없으면 열린 질문 절에 근거와 함께 적는다.
+- wiki/ 파일 수정.
+
+[요구사항 원문]
+<사용자 원문 그대로>
+
+[보고]
+worker_done --outcome succeeded --files-modified "<스펙 경로>,<README 경로>"
+body에 스펙 절대경로와 핵심 설계 결정 3~5줄 요약.
+SPEC
+)" --json
+```
+
+기동:
+
+```bash
+orca orchestration worker-start --task <task_id> --worktree current --agent claude --json
+```
+
+### W2 spec-reviewer
+
+리뷰어에게는 **요구사항 원문과 스펙 파일만** 준다. W1의 대화 컨텍스트는 주지 않는다.
+그래야 "문서만 읽고 이해되는가"가 실제로 검증된다.
+
+```bash
+orca orchestration task-create --spec "$(cat <<'SPEC'
+[역할] 설계 스펙 독립 검수. 너는 이 스펙을 쓰지 않았고, 작성 과정도 모른다.
+
+[입력]
+- 요구사항 원문: 아래
+- 검수 대상: <스펙 절대경로>
+- 대조 대상: <team-yg>/parfait/adr/, <team-yg>/parfait/architecture/, <team-yg>/wiki/
+
+[반려 사유 — 하나라도 해당하면 반려]
+1. 요구사항 원문의 항목 중 스펙에 담기지 않은 것
+2. placeholder·TBD·"추후 결정"
+3. 내부 모순 (아키텍처 서술 vs 기능 서술)
+4. 두 가지로 읽히는 요구사항
+5. parfait/adr/ 또는 parfait/architecture/의 기존 결정과 상충
+
+[에스컬레이션 — 반려하지 말고 escalation]
+- wiki/ 정책과 스펙이 상충. 기획 자체의 미결일 수 있어 에이전트가 판정하지 않는다.
+
+[금지]
+- 파일 수정. 너는 findings만 반환한다.
+- 스타일 지적(문장 다듬기, 표 정렬). 위 5개 사유에만 집중한다.
+
+[요구사항 원문]
+<사용자 원문 그대로>
+
+[보고]
+통과: worker_done --outcome succeeded, body 첫 줄에 "PASS"
+반려: worker_done --outcome succeeded, body 첫 줄에 "REJECT", 이어서 사유별로
+      "사유번호 / 스펙의 어느 절 / 무엇이 빠졌거나 어긋나는지"를 한 건씩.
+SPEC
+)" --json
+```
+
+**반려 루프**: `REJECT`를 받으면 findings를 W1에게 회신한다.
+
+```bash
+orca orchestration send --to dispatch:<W1_dispatch_id> --subject "스펙 리뷰 반려" --body "<findings 원문>" --json
+```
+
+W1이 수정해 `worker_done`을 다시 보내면 W2를 같은 방식으로 다시 띄운다.
+**상한 2회.** 3회째 반려면 escalation으로 사람을 부른다 —
+리뷰어와 작성자가 합의하지 못하는 상태이고 자동으로 풀리지 않는다.
+
+### G1 — 스펙 승인
+
+`자동진행` 모드면 건너뛴다. 아니면:
+
+```bash
+orca orchestration gate-create --task <spec_task_id> \
+  --question "스펙 검토 요청: <스펙 절대경로>. 구현 계획 단계로 넘어갈까?" \
+  --options '["진행","수정 요청","중단"]' --json
+orca orchestration check --wait --types decision_gate,question --timeout-ms 900000 --json
+```
+
+- `진행` → W3
+- `수정 요청` → 사용자 지적을 W1에게 회신하고 다시 W2 검수부터
+- `중단` → Run을 남긴 채 종료하고, 재개 방법을 사용자에게 알린다
+
+타임아웃은 실패가 아니다. 사람이 아직 안 봤을 뿐이므로 계속 기다린다.
+
+### W3 planner
+
+```bash
+orca orchestration task-create --spec "$(cat <<'SPEC'
+[역할] 구현 계획 작성. 파일 선택 + 모듈 분할 + 테스트 명세 + 모델 지정.
+
+[읽어라]
+- 확정 스펙: <스펙 절대경로>
+- 코드 대상: /Users/jeonheehoon/Documents/work_station/mashup/github/TJYG-Android
+- 형식: <team-yg>/parfait/plans/template.md, 규약: parfait/plans/README.md
+
+[해라]
+1. superpowers:writing-plans 스킬을 로드한다.
+2. 주제 관련 벤더 스킬을 먼저 찾는다:
+   python3 <team-yg>/parfait/script/search.py "<주제>"
+3. 변경이 필요한 파일을 전부 나열하고 **Gradle 모듈 경계로 묶는다.**
+   모듈 간 파일 집합이 겹치면 안 된다. 겹치면 분할을 다시 한다.
+4. 모듈별로 아래를 확정한다:
+   - 담당 파일 화이트리스트(절대경로)
+   - 테스트 명세: 무엇을 검증하고 기대값이 무엇인지. 실행 가능한 형태로.
+   - Gradle 테스트 태스크(예: :domain:test)
+   - model: opus | sonnet — 근거 한 줄과 함께
+     · opus — Compose UI·recomposition, 코루틴 동시성, 기존 코드 대수술, 파일 6개 이상
+     · sonnet — 시그니처까지 특정된 신규 파일, DTO·매퍼·Repository 같은 정형 작업
+   - 의존 관계(기본형: domain → data, domain → feature)
+5. 계획을 <team-yg>/parfait/plans/YYYY-MM-DD-<kebab-topic>.md에 쓰고
+   parfait/plans/README.md 인덱스에 한 줄 등록한다.
+
+[판단]
+- 파일이 한 모듈 안에서 많이 겹쳐 병렬 이득이 없으면 **단일 워커로 결정**해도 된다.
+  그 판단과 근거를 계획서에 적는다.
+
+[금지]
+- TJYG-Android 코드 수정.
+- placeholder. "적절히 처리", "테스트 추가" 같은 서술.
+
+[보고]
+worker_done --outcome succeeded --files-modified "<계획 경로>,<README 경로>"
+body에 모듈 분할 결과(모듈 / 파일 수 / model / 의존)를 표로.
+SPEC
+)" --json
+```
+
+### W4 plan-reviewer
+
+W2와 같은 구조다. 리뷰어에게는 **스펙 파일과 계획 파일만** 준다.
+
+[반려 사유]
+1. 스펙 항목 중 계획에 잡히지 않은 것
+2. **모듈 간 파일 집합 겹침** — merge 충돌 예고이므로 반려
+3. 테스트 명세가 실행 가능한 형태가 아님(검증 대상·기대값 미특정)
+4. 의존 순서가 실제 Gradle 모듈 의존과 어긋남
+5. task 하나의 크기가 과도함
+6. `model:` 필드 누락 또는 근거 없음
+
+균형 프로필에서 모델은 Opus 5다. 검사 항목이 명시적 체크리스트라 낮출 만해 보이지만,
+작성자 W3가 Opus라 "리뷰어는 작성자와 같은 티어 이상" 규칙이 이긴다.
+반려 루프와 상한 2회는 W2와 동일하다.
+
+### G2 — 계획 승인
+
+G1과 같은 방식. `자동진행`이면 건너뛴다.
