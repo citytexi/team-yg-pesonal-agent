@@ -78,9 +78,9 @@ tags: [api, parfait, server-contract, canvas]
 ## Android 매핑
 
 `:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)) —
-**단 `feature/sync-api-service` 브랜치까지이고 develop 미머지다**(2026-08-04 기준). 이 표면이 딛고 선
-공용 인프라(`ApiCaller` 3진입점·`ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로
-develop에 들어왔지만, 아래 Service·DataSource·DTO·VO는 아직 develop에 없다.
+**2026-08-06 PR #197로 develop 머지 완료**다. 이 표면이 딛고 선 공용 인프라(`ApiCaller` 4진입점·
+`ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로 먼저 들어왔고, 아래
+Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 **⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — C-201 캘린더 결선은
 이후 라운드다.
 

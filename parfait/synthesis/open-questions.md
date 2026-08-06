@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-04
+verified: 2026-08-06
 related_spec: designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer, navigation-flow, module-structure
@@ -202,13 +202,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-30] 도메인 모델 `VO` 접미사 규약이 기존 명명과 갈림
 - **출처**: `domain/model/TempVO.kt`·`data/source/temp/mapper/VOMapper.kt`·`data/source/temp/remote/TempRemoteDataSource.kt`(PR #174 develop 머지, 2026-08-01) — 원격 예시 세트가 도메인 모델을 `TempVO`로, 매퍼 파일을 `VOMapper.kt`로 명명한다. 기존 `domain.model`은 전부 무접미사(`SegmentationResult`·`GalleryImageGroup`·`InviteCodeResult`·`NameValidResult`·`DayWindow`)라 같은 패키지 안에서 규약이 둘이 된다.
 - **항목**: ① 원격 유래 모델만 `…VO`를 쓸지(=출처를 이름에 남길지), ② 전부 무접미사로 통일할지, ③ 통일한다면 매퍼 파일명(`VOMapper.kt`)도 `<도메인>Mapper.kt` 등으로 맞출지.
-- **상태**: 미해결 (예시 세트 `temp`가 placeholder라 실제 첫 도메인 API 확정 전에 정하면 개명 비용 없음)
+- **상태**: 미해결 (**개명 비용이 커졌다** — 아래 참고)
+  > 📌 **2026-08-06 (PR #197 머지) 갱신** — 예시 세트 `Temp*`는 삭제됐지만 규약을 정하기 전에 `VO` 접미사가 실제 도메인으로 퍼졌다(`KakaoLoginVO`·`AuthSessionVO`·`PolicyVO`·group 7종, mapper 파일도 도메인마다 `VOMapper.kt`). 반면 값 하나짜리 래퍼는 접미사 없는 value class(`GroupId`·`AccessToken`·`GroupName` 등 10종)라 **두 관례가 같은 패키지 트리에 공존**한다. "확정 전에 정하면 개명 비용 없음"이라는 전제는 지나갔다.
 - **해소 메모**: 결정 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "응답 → 도메인 매핑 위치" 조항과 [data-layer](../architecture/data-layer.md) "레이어 배치"·"응답 매핑", [data-network-setup 스펙](../specs/archive/2026-07-26-data-network-setup.md)의 심볼명을 함께 맞춘다.
 
 ### [2026-07-30] 원격 DataSource가 도메인 모델을 직접 반환 — Repository 매핑 여지 없음
 - **출처**: `data/source/temp/remote/TempRemoteDataSource.kt`(`Result<TempVO>` 반환)·`data/source/temp/mapper/VOMapper.kt`(PR #174 develop 머지, 2026-08-01) — [ADR-0017](../adr/0017-remote-network-datasource.md)이 data 전용 중간 모델을 기각하면서 변환이 DataSource 경계 1회로 고정됐다. `:data`→`:domain` 의존이라 레이어 역전은 아니나([ADR-0001](../adr/0001-layered-multi-module.md)), 로컬(DataStore·파일) DataSource들은 아직 이 규약의 적용 대상인지 명시되지 않았다.
 - **항목**: ① 로컬 DataSource(`RecentImageLocalDataSource`·`FileRecentImageLocalDataSource` 등)도 "DataSource는 도메인 모델 반환" 규약에 편입할지, 아니면 원격에만 적용할지. ② 원격+로컬을 합성하는 Repository가 생길 때 변환 책임이 어디로 가는지(현재는 변환할 것이 남지 않음).
-- **상태**: 미해결 (실제 도메인 API 연동 전까지 영향 없음 — 예시 세트만 존재)
+- **상태**: 미해결 (**쟁점이 실물이 됐다** — 아래 참고)
+  > 📌 **2026-08-06 (PR #197 머지) 갱신** — 14 엔드포인트 원격 DataSource 전량이 도메인 모델을 반환하며 develop에 들어왔다(`AuthRemoteDataSource#loginWithKakao: Result<KakaoLoginVO>` 등). 즉 이 위에 Repository를 얹을 때 **변환할 것이 남지 않은 상태**로 결선 라운드를 맞는다 — Repository를 둘지 UseCase가 DataSource를 직접 쓸지가 아래 "API 표면 14 엔드포인트가 소비처 0건" 항목과 같은 결정이다.
 - **해소 메모**: 확정 시 [data-layer](../architecture/data-layer.md) "신규 데이터 추가 체크리스트"에 DataSource 반환 타입 규칙으로 한 줄 고정.
 
 ### [2026-07-30] 사진 업로드 경로의 타임아웃 정책 미정
@@ -457,7 +459,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-03] 온보딩 약관 화면이 서버 약관 목록을 쓰지 않음(리터럴 잔존)
 - **출처**: `feature/intro/impl`의 `TermContent.kt#TERM_CONTENT_LIST`가 약관 항목 title을 코틀린 리터럴로 갖고 랜딩 URL은 TODO다. 서버는 `GET /api/v1/policies`로 `termsId`·`title`·`url`·`required`를 내려준다([api/policy.md](../api/policy.md)) — 앱 `:data`에 대응 Service·Response·DataSource가 아직 없다.
 - **항목**: 약관 동의 화면을 서버 목록 기반으로 전환. 응답이 **빈 배열일 수 있다**는 점(200 정상)과 배열 순서(`TERMS_OF_SERVICE` → `PRIVACY_POLICY` 서버 고정)를 화면 계약에 반영해야 한다. 리터럴 title 리소스화 건([2026-07-29] 다국어 항목 ③)도 이 전환에 흡수된다.
-- **상태**: 미해결 (앱 미착수)
+- **상태**: 미해결 (앱 화면 미착수 — data 표면은 준비됨)
+  > 📌 **2026-08-06 (PR #197 머지) 갱신** — `PolicyService#getPolicies`·`PolicyRemoteDataSource#getPolicies`·`PolicyVO`가 develop에 들어와 **"`:data`에 대응 표면이 없다"는 전제는 해소**됐다. 남은 것은 Repository·UseCase·화면 결선이고, `TERM_CONTENT_LIST` 리터럴도 그대로다.
 - **해소 메모**: 연동 후 [api/policy.md](../api/policy.md) "Android 매핑"과 엔드포인트 표 Android 열을 갱신한다.
 
 ### [2026-08-02] 키 유실(Keystore 무효화) 경로 미검증
@@ -490,15 +493,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `AuthInterceptor`가 `chain.request().tag(Invocation::class.java)?.method()?.isAnnotationPresent(NoAuth::class.java)`로 스킵 여부를 판정한다(`network/NoAuth.kt`, [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"). `Invocation` 태그는 **Retrofit이 만든 요청에만 자동으로 붙는다** — OkHttp를 직접 쓰는 요청(예: Coil 이미지 로딩이 같은 `OkHttpClient`를 공유하게 되는 경우)에는 태그가 없어 `skipAuth`가 `false`로 떨어져 헤더가 붙는다. 현재 그런 경로는 없다.
   **② R8 release 미검증 항목은 2026-08-03 `data-api-service-layer` 라운드 최종 리뷰에서 해소됐다 — 답은 부정이었다.** keep 규칙(`-keep @interface com.teamyg.parfait.data.network.NoAuth`)이 `data/proguard-rules.pro`에 있었는데, `:data`는 **Android 라이브러리 모듈**이라 `proguardFiles`는 그 모듈 자체의 R8 실행에만 쓰이고 앱(`:app`)의 R8 실행에는 `consumerProguardFiles`로 명시한 규칙만 전달된다. 컨벤션 플러그인(`setConfigAndroidLibrary`)이 `consumerProguardFiles`를 등록하지 않아 이 keep 규칙이 앱에 전혀 전달되지 않고 있었다 — release 빌드였다면 `@NoAuth` 어노테이션이 R8에 제거되고, 화이트리스트 4곳(`postAuthKakao`·`postAuthSignup`·`postAuthReissue`·`getPolicies`) 전부에 `Authorization` 헤더가 붙어 **토큰 재발급이 가장 필요한 순간(만료·미보유 상태)에 막혔을 것**이다. 조치: keep 규칙을 `data/consumer-rules.pro`로 옮기고 `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`를 등록하도록 수정.
 - **항목**: ① Coil 등 OkHttp를 직접 공유하는 신규 경로가 생기면 `Invocation` 태그 부재로 인증 헤더가 붙는지 확인하고 필요 시 별도 처리(잔존). ~~② `:app:assembleRelease`로 실제 release 빌드를 만들어 화이트리스트 엔드포인트가 여전히 헤더 없이 나가는지 확인~~(해소 — 위 참고, `consumerProguardFiles` 등록 후 `:app:assembleDebug`로 Hilt 그래프까지 재확인).
-  > ⚠️ **②가 develop에서 되살아났다(2026-08-04, PR #190)** — 위 수정(`consumer-rules.pro` 이관 + 컨벤션 플러그인 `consumerProguardFiles` 등록)은 `feature/sync-api-service` 브랜치 산출물이라 **develop 미머지**다. 반면 먼저 머지된 PR #190은 keep 규칙을 **`data/proguard-rules.pro`**에 넣었고, develop의 `AndroidConfig.kt#setConfigAndroidLibrary`는 `consumerProguardFiles`도 `proguardFiles`도 등록하지 않으며 `data/consumer-rules.pro`는 빈 파일이다(`consumerProguardFiles` 문자열이 develop 전체에 0건). **develop 기준으로 이 keep 규칙은 어디에도 전달되지 않는다.** 지금 당장 사고가 나지 않는 이유는 `@NoAuth`를 붙인 서비스 메서드가 develop에 0건이기 때문일 뿐이다 — auth·policy Service가 머지되는 순간 release 빌드에서 화이트리스트 전 경로에 `Authorization`이 붙는다.
-- **상태**: 부분 해소 → **② 재개**(브랜치에서 고쳤으나 develop 미반영 / ① 잔존 — Coil 등 OkHttp 직접 공유 경로 여전히 없음이 전제)
-- **해소 메모**: ②는 `data-api-service-layer` 브랜치가 develop에 머지되면 함께 닫힌다. 그 전에 auth Service만 따로 들어오는 순서가 되면 keep 규칙 이관을 선행해야 한다. 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 절과 [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 절을 갱신한다. ① 잔존 — 신규 OkHttp 직접 경로가 생기면 이 항목을 다시 연다.
+  > ⚠️ **②가 develop에서 되살아났다(2026-08-04, PR #190)** — 위 수정(`consumer-rules.pro` 이관 + 컨벤션 플러그인 `consumerProguardFiles` 등록)은 `feature/sync-api-service` 브랜치 산출물이라 **develop 미머지**였다. 반면 먼저 머지된 PR #190은 keep 규칙을 **`data/proguard-rules.pro`**에 넣었고, 당시 develop의 `AndroidConfig.kt#setConfigAndroidLibrary`는 `consumerProguardFiles`도 `proguardFiles`도 등록하지 않았다 — 즉 keep 규칙이 어디에도 전달되지 않는 상태였다.
+  > 📌 **②가 다시 닫혔다(2026-08-06, PR #197 머지)** — 그 브랜치가 머지되며 keep 규칙이 `data/consumer-rules.pro`로 옮겨지고 `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`를 등록했다. develop의 라이브러리 모듈 전부가 이미 `consumer-rules.pro` 파일을 갖고 있어 이 등록이 다른 모듈을 깨지 않는다. 같은 PR로 `@NoAuth` 사용처도 0곳→4곳이 됐다. **다만 `:app:assembleRelease`로 실제 R8 결과를 확인한 기록은 여전히 없다** — 배치가 옳다는 것과 release에서 검증했다는 것은 다르다.
+- **상태**: 부분 해소 (② 해소 — 배치 정상화 확인, release 빌드 실행 검증은 미수행 / ① 잔존 — Coil 등 OkHttp 직접 공유 경로 여전히 없음이 전제)
+- **해소 메모**: ② 반영처: [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" R8 절·[data-layer](../architecture/data-layer.md) "인증"·[specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "미결" 절을 머지 확정으로 갱신했다. ① 잔존 — 신규 OkHttp 직접 경로가 생기면 이 항목을 다시 연다.
 
 ### [2026-08-02] 카카오 로그인 판별자 JSON 키가 `newUser` — Android 응답 타입에 `@SerialName` 필요
 - **출처**: 서버 `KakaoLoginResponse`는 Kotlin `val isNewUser: Boolean`이지만, 서버가 발행한 OpenAPI 스키마의 `KakaoLoginResponse`는 필드를 **`newUser`**로 적는다. Jackson이 getter(`isNewUser()`) 이름에서 `is` 접두사를 떼고 직렬화하기 때문이다 → [api/conventions.md](../api/conventions.md) "직렬화 규약", [api/auth.md](../api/auth.md), [api/spec/auth-kakao-login.md](../api/spec/auth-kakao-login.md).
 - **항목**: Android가 이 응답 타입을 만들 때 `@SerialName("newUser")`를 반드시 붙인다. 붙이지 않으면 kotlinx-serialization이 기본값으로 조용히 떨어져 **신규 유저가 기존 회원으로 분기**되고 존재하지 않는 `accessToken`을 꺼낸다 — 예외가 나지 않아 발견이 늦다. 서버팀에 `@get:JsonProperty("isNewUser")`로 키를 고정할 의향이 있는지도 함께 확인한다(고정되면 클라이언트 쪽 어노테이션이 불필요해진다).
-- **상태**: 미해결 (auth 서비스 구현 라운드에서 반영 예정)
-- **해소 메모**: 반영 후 [api/auth.md](../api/auth.md)의 Android 매핑 절과 이 항목을 갱신한다.
+- **상태**: 해소됨 (2026-08-06, PR #197 develop 머지 — `KakaoLoginResponse.isNewUser`에 `@SerialName("newUser")` 부착 확인)
+- **해소 메모**: `data/service/model/response/auth/KakaoLoginResponse.kt`가 판별자 프로퍼티를 `isNewUser`로 두고 `@SerialName("newUser")`를 붙였다. 같은 라운드가 **DTO 전 프로퍼티에 `@SerialName` 명시**를 규약으로 굳혀(키가 프로퍼티명과 같아도 붙인다) 같은 종류의 사고를 구조적으로 막는다 → [data-layer](../architecture/data-layer.md) "패키지 배치". 서버팀에 `@get:JsonProperty("isNewUser")`로 키를 고정할 의향이 있는지는 묻지 않았고, 고정되면 이 어노테이션이 불필요해진다(현재 어느 쪽이든 동작은 같다). **역직렬화 실동작은 미검증** — 아래 "런타임 미검증" 항목이 안고 간다.
 
 ### [2026-08-02] 개발 서버가 평문 HTTP — 앱에서 전 요청이 cleartext 차단된다
 - **출처**: 개발 서버 base URL이 `https`가 아니라 평문 `http`다(주소는 private submodule `project-paths.md` 참고). TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTraffic`·`networkSecurityConfig`가 **둘 다 없다** → [api/conventions.md](../api/conventions.md) "직렬화 규약".
@@ -523,6 +527,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "검증" — 14 엔드포인트 Service·remote DataSource·domain VO가 전부 들어갔고 컴파일·ktlint·`:app:assembleDebug`(Hilt 그래프 resolve)는 통과했지만, **실제 서버로 나간 요청이 0건이다.** 개발 서버 base URL이 평문 `http`인데 `AndroidManifest.xml`에 `usesCleartextTraffic`·`networkSecurityConfig`가 둘 다 없고(위 "개발 서버가 평문 HTTP" 항목과 같은 근거), `local.properties`에 `YG_BASE_URL` 값 자체가 비어 있다. 검증 수단은 컴파일 + `http/` 요청 파일 육안 대조뿐이었다.
 - **항목**: 이 레이어가 짊어진 위험은 **컴파일·lint·Hilt 그래프 어디에도 걸리지 않는 종류의 결함**이 그대로 묻혀 들어갔다는 것이다. 대표 사례가 `KakaoLoginResponse`의 `@SerialName("newUser")`(auth.md 참고) — 이 애노테이션이 실수로 빠지거나 잘못된 키 문자열로 붙어도 컴파일은 통과하고 ktlint도 통과하고 Hilt 그래프도 정상 resolve되며, **실제 로그인 응답을 역직렬화하는 순간까지 아무 신호도 나지 않는다.** 실연동(로그인 붙이기) 라운드에서 반드시 실기기 또는 서버 목(mock)으로 14개 엔드포인트를 최소 1회씩 왕복시켜 확인해야 한다.
 - **상태**: 미해결 (실연동 라운드로 이월)
+  > 📌 **2026-08-06 (PR #197 머지) 갱신** — 이 표면이 develop에 들어왔다. 즉 미검증 코드가 브랜치가 아니라 **기본 브랜치에 있다**. 검증 조건(cleartext·`YG_BASE_URL`)은 하나도 바뀌지 않았고, 소비처가 0건이라 지금은 실행조차 되지 않는다.
 - **해소 메모**: 서버 HTTPS 전환 또는 `network_security_config.xml` 화이트리스트 결정(위 "개발 서버가 평문 HTTP" 항목)이 먼저 풀려야 이 항목도 풀린다. 확인 후 [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "검증" 절과 `parfait/api/` 4개 계약 문서의 "Android 매핑" 절(`android_status`를 `partial`→`done`으로)을 갱신한다.
 
 ### [2026-08-04] Top Bar의 두 우측 슬롯이 측정 의미가 다름 — `rightContent` vs `trailingContent`
@@ -603,14 +608,36 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: TJYG-Android 루트 `http/`(PR #190 develop 머지) — `auth.http`·`parfait-group.http`·`parfait.http`·`health.http`·`_reset.http` + `README.md`가 엔드포인트 경로·요청 바디·응답 형태·함정(예: `reissue`에 `Authorization`을 붙이면 막힘, `logout` 204라 본문 없음)을 서술한다. 같은 내용이 [api/](../api/README.md)의 도메인 문서 4건 + [api/conventions.md](../api/conventions.md)에도 있다. 두 표면 다 근거는 서버 코드지만 **갱신 절차가 다르다** — `api/`는 스킬 `sync-teamyg-server-api`가 서버 기준선 delta로 갱신하고, `http/`는 사람이 손으로 고친다.
 - **항목**: ① 서버 계약이 바뀔 때 `http/`도 함께 갱신하는 것을 `sync-teamyg-server-api` 절차에 넣을지(넣으면 이 위키 저장소의 스킬이 코드 저장소 파일을 고치게 된다), ② 아니면 `http/README.md`를 계약 서술 없이 "실행 방법"으로만 깎고 계약 근거는 `api/`로 단일화할지. 현재는 `http/README.md`가 envelope 5필드·204 예외·`errorDetail` 항상 null까지 자체 서술하고 있어 서버가 바뀌면 조용히 갈린다.
 - **상태**: 미해결 (아직 갈리지 않았으나 갱신 경로가 둘)
+  > 📌 **표면이 더 커졌다(2026-08-06, PR #197)** — `policy.http`가 추가돼 요청 모음이 **14 엔드포인트 전량**을 덮고, `README.md`도 약관 `termsId` 출처·`url` 전문 가능성·성공 코드 2종 같은 계약 서술을 더 얹었다. 이중 관리 면적이 늘었다는 뜻이라 결정을 미룰수록 비싸진다.
 - **해소 메모**: 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절과 `sync-teamyg-server-api` 스킬 절차에 반영한다.
 
 ### [2026-08-04] `@NoAuth`를 붙일 서비스 메서드가 develop에 0건 — 인증 스킵 경로가 통째로 死코드
 
-- **출처**: `data/.../network/NoAuth.kt`·`AuthInterceptor.kt`(PR #190 develop 머지) — 어노테이션과 판정 로직(Retrofit `Invocation` 태그 조회), R8 keep 규칙까지 들어왔지만 **`@NoAuth`를 실제로 붙인 곳은 develop에 없다.** develop의 원격 서비스는 `TempService` 하나뿐이고, 화이트리스트 대상(`postAuthKakao`·`postAuthSignup`·`postAuthReissue`·`getPolicies`)은 전부 `data-api-service-layer` 브랜치에 있다.
-- **항목**: 이 구조가 처음 실행되는 시점이 **auth Service 머지 시점**이라는 뜻이다. 그때 함께 확인할 것 ① `Invocation` 태그가 실제로 붙어 `skipAuth`가 `true`로 판정되는지(현재 판정 코드가 한 번도 `true`를 돌려준 적이 없다), ② keep 규칙이 유효한 자리로 옮겨졌는지(위 R8 항목), ③ 스킵 경로에서도 `getToken()`이 호출되는 비용이 실제로 문제인지.
-- **상태**: 미해결 (auth Service 머지 라운드로 이월)
-- **해소 메모**: 확인 후 [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" 절과 [network-envelope-token-storage 스펙](../specs/archive/2026-08-02-network-envelope-token-storage.md) 인증 절에 결과를 반영한다.
+- **출처**: `data/.../network/NoAuth.kt`·`AuthInterceptor.kt`(PR #190 develop 머지) — 어노테이션과 판정 로직(Retrofit `Invocation` 태그 조회), R8 keep 규칙까지 들어왔지만 **`@NoAuth`를 실제로 붙인 곳은 develop에 없었다.** 당시 develop의 원격 서비스는 `TempService` 하나뿐이고, 화이트리스트 대상(`postAuthKakao`·`postAuthSignup`·`postAuthReissue`·`getPolicies`)은 전부 `data-api-service-layer` 브랜치에 있었다.
+- **항목**: 이 구조가 처음 실행되는 시점이 **auth Service 머지 시점**이라는 뜻이다. 그때 함께 확인할 것 ① `Invocation` 태그가 실제로 붙어 `skipAuth`가 `true`로 판정되는지, ② keep 규칙이 유효한 자리로 옮겨졌는지(위 R8 항목), ③ 스킵 경로에서도 `getToken()`이 호출되는 비용이 실제로 문제인지.
+- **상태**: 해소됨 (2026-08-06, PR #197 develop 머지 — 사용처 4곳 확보·keep 규칙 이관 동반)
+- **해소 메모**: `AuthService`의 `postAuthKakao`·`postAuthSignup`·`postAuthReissue`와 `PolicyService.getPolicies`에 `@NoAuth`가 붙었다(서버 화이트리스트와 일치, `postAuthLogout`은 화이트리스트 밖이라 미부착). ②는 위 R8 항목에서 함께 닫혔다. **①③은 여전히 실행으로 확인되지 않았다** — 요청이 0건이라 판정 코드가 `true`를 돌려준 적이 없고 스킵 경로의 `getToken()` 비용도 측정된 적이 없다. 그 확인은 "런타임 미검증" 항목이 안고 간다. 반영처: [ADR-0017](../adr/0017-remote-network-datasource.md) "인증"·[data-layer](../architecture/data-layer.md) "인증".
+
+### [2026-08-06] API 표면 14 엔드포인트가 소비처 0건으로 머지됨
+
+- **출처**: `data/service/`(`AuthService`·`PolicyService`·`ParfaitGroupService`·`ParfaitService`)·`data/source/{auth,policy,group,parfait}/`·`domain/model/{auth,group,id,policy}/`(PR #197 develop 머지) — Service 4·DataSource 4쌍·DTO 21·VO/value class 21이 들어왔지만 **이들을 호출하는 Repository·UseCase·화면이 하나도 없다.** `domain/repository`에 대응 인터페이스도 없다(스펙이 명시적으로 범위 밖에 뒀다). 화면 쪽 placeholder는 그대로다 — S-002 닉네임·S-001 프로필·G-001 그룹 목록·온보딩 약관 전부 로컬 상태나 리터럴로 산다.
+- **항목**: ① 결선 순서를 무엇으로 잡을지(로그인 → 약관 → 그룹 목록이 의존 순서상 자연스럽다), ② DataSource와 화면 사이에 Repository를 둘지 UseCase가 DataSource를 직접 쓸지 — 현재 원격 DataSource가 **이미 도메인 모델을 반환**해서 Repository가 할 변환이 없다([2026-07-30] "원격 DataSource가 도메인 모델을 직접 반환" 항목과 같은 쟁점), ③ 결선 전까지 이 표면이 컴파일만 통과한 채 남는 기간을 얼마로 볼지.
+- **상태**: 미해결 (의도된 선행 구현 — 소비 라운드 미착수)
+- **해소 메모**: 첫 결선 라운드에서 ②를 확정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) 대안 D·[data-layer](../architecture/data-layer.md) "신규 데이터 추가 체크리스트"에 반영한다. 각 도메인이 결선되면 [api/](../api/README.md) 문서의 `android_status`를 `partial`→`done`으로 올린다.
+
+### [2026-08-06] 스펙이 지시한 근거 주석·KDoc 2건이 코드에 없다
+
+- **출처**: ① `data/source/group/mapper/VOMapper.kt`의 `recentImageUploadedAt` 변환 — 스펙([data-api-service-layer](../specs/archive/2026-08-03-data-api-service-layer.md) "계약이 던지는 함정" 6번)이 "mapper에 타임존 근거를 주석으로 남긴다"고 정했으나 주석이 없다. 서버가 오프셋 없는 문자열을 주고 실제 기준은 Asia/Seoul 벽시계라, 코드만 봐서는 UTC로 오인할 수 있다. ② `domain/model/auth/KakaoLoginVO.kt`·`domain/model/KakaoLoginResult.kt` — 스펙이 "양쪽 KDoc에 서로를 가리키는 한 줄"을 정했으나 두 파일 다 KDoc이 없다. 앞은 서버 응답, 뒤는 카카오 **SDK** 결과다.
+- **항목**: ① 주석·KDoc을 채울지, ② 아니면 계약 근거를 코드 주석에 두지 않고 `parfait/api/` 문서로만 유지하는 것을 규약으로 정할지 — 지금은 스펙이 "주석을 남긴다"고 적고 코드가 안 남긴 상태라 어느 쪽도 규약이 아니다. `PolicyItemResponse`에는 KDoc이 있어 관행도 갈린다.
+- **상태**: 미해결 (코드 수정 대상 — 동작 영향 없음, 오독 위험만)
+- **해소 메모**: 채우면 [data-api-service-layer 스펙](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 4·5번과 [api/parfait-group.md](../api/parfait-group.md)·[api/auth.md](../api/auth.md) Android 매핑 절의 지적을 정리한다.
+
+### [2026-08-06] `domain/model/`이 루트 평면과 도메인 하위 패키지로 갈림
+
+- **출처**: `domain/model/`(PR #197 머지 후) — 이번 라운드가 추가한 21선언은 `auth/`·`group/`·`id/`·`policy/` 하위 패키지로 들어갔고, 기존 8선언(`DayWindow`·`GalleryImageGroup`·`GroupCreateConfig`·`InviteCodeResult`·`KakaoLoginResult`·`Logger`·`NameValidResult`·`SegmentationResult`)은 루트에 남았다. 스펙은 "평면 10개에 9개 이상이 더 붙으면 하위 패키지로 나눈다"를 전제했는데 실제로는 신규분만 나뉘었다. `KakaoLoginResult`(루트)와 `KakaoLoginVO`(`auth/`)가 이름은 닮았는데 위치가 다른 것이 대표 사례다.
+- **항목**: ① 기존 8선언도 도메인 하위 패키지로 옮길지(`Logger`처럼 도메인이 애매한 것의 소속을 정해야 한다), ② 아니면 "원격 계약에서 온 모델만 하위 패키지"를 규칙으로 명문화할지. ②를 택하면 근거를 [data-layer](../architecture/data-layer.md) "레이어 배치"에 적는다.
+- **상태**: 미해결 (배치 규약 미정 — 새 모델을 어디 둘지 매번 판단해야 한다)
+- **해소 메모**: 결정 후 [data-layer](../architecture/data-layer.md) "레이어 배치"의 `domain/model/` 서술과 [data-api-service-layer 스펙](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 6번을 정리한다.
 
 <!--
 항목 추가 형식:

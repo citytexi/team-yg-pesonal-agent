@@ -340,9 +340,9 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 ## Android 매핑
 
 `:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)) —
-**단 `feature/sync-api-service` 브랜치까지이고 develop 미머지다**(2026-08-04 기준). 이 표면이 딛고 선
-공용 인프라(`ApiCaller` 3진입점·`ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로
-develop에 들어왔지만, 아래 Service·DataSource·DTO·VO는 아직 develop에 없다.
+**2026-08-06 PR #197로 develop 머지 완료**다. 이 표면이 딛고 선 공용 인프라(`ApiCaller` 4진입점·
+`ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로 먼저 들어왔고, 아래
+Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 **⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — 그룹 목록·생성·참여·닉네임
 변경·탈퇴·신고 화면 결선은 이후 라운드다.
 
@@ -373,7 +373,8 @@ develop에 들어왔지만, 아래 Service·DataSource·DTO·VO는 아직 develo
   `toParfaitGroupDetailVO`·`toParfaitGroupMemberVO`·`toJoinedGroupVO`·`toCreatedGroupVO`·
   `toGroupNicknameVO`·`toReportedGroupVO`·`toGroupName`·`toGroupId`). `recentImageUploadedAt`은
   이 mapper가 `kotlinx.datetime.LocalDateTime.parse()`로 변환한다(Asia/Seoul 벽시계 전제, 위 직렬화
-  포맷 절 참고).
+  포맷 절 참고). **코드에 그 전제를 밝히는 주석은 없다** — 오프셋 없는 문자열이라 읽는 쪽이 UTC로
+  오인할 여지가 남는다 → [open-questions](../synthesis/open-questions.md).
 
 ## 미결
 

@@ -160,8 +160,9 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 ([ADR-0019](../adr/0019-encrypted-token-storage.md)). 대응 [open-questions](../synthesis/open-questions.md)
 항목도 해소 처리했다.
 
-> **다만 "일치"가 "검증됨"은 아니다.** develop에서 서버로 나간 요청은 아직 0건이다(auth·policy
-> Service가 미머지). 계약 해석의 실동작은 실연동 라운드에서 확인한다 →
-> [open-questions](../synthesis/open-questions.md).
+> **다만 "일치"가 "검증됨"은 아니다.** 14 엔드포인트 Service·DataSource는 2026-08-06 PR #197로
+> develop에 들어왔지만, 이를 **호출하는 Repository·UseCase·화면이 없어** 서버로 나간 요청은 여전히
+> 0건이다(개발 서버 평문 HTTP 차단·`YG_BASE_URL` 부재도 그대로다). 계약 해석의 실동작은 실연동
+> 라운드에서 확인한다 → [open-questions](../synthesis/open-questions.md).
 
 새 간극이 발견되면 이 절에 표를 다시 세운다.

@@ -253,9 +253,9 @@ tags: [api, parfait, server-contract, auth]
 ## Android 매핑
 
 `:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)) —
-**단 `feature/sync-api-service` 브랜치까지이고 develop 미머지다**(2026-08-04 기준). 이 표면이 딛고 선
-공용 인프라(`ApiCaller` 3진입점·`ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로
-develop에 들어왔지만, 아래 Service·DataSource·DTO·VO는 아직 develop에 없다.
+**2026-08-06 PR #197로 develop 머지 완료**다. 이 표면이 딛고 선 공용 인프라(`ApiCaller` 4진입점·
+`ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로 먼저 들어왔고, 아래
+Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 **⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — 카카오 로그인·회원가입·재발급·
 로그아웃 화면 결선은 이후 라운드다. 지금 확인할 수 있는 것은 `:data`가 계약대로 요청을 만들고 응답을
 파싱할 수 있다는 것뿐이고, 실제 서버 호출로 검증되지도 않았다(개발 서버 평문 HTTP 차단 —
@@ -282,7 +282,12 @@ develop에 들어왔지만, 아래 Service·DataSource·DTO·VO는 아직 develo
   `AccessToken`·`RefreshToken`·`RegistrationToken` value class 각각 동명 파일(`domain/model/auth/
   AccessToken.kt`·`RefreshToken.kt`·`RegistrationToken.kt`)로 감싸 서로 대체할 수 없게 한다.
 - **Mapper**: `data/source/auth/mapper/VOMapper.kt`(`toKakaoLoginVO`·`toAuthSessionVO`(signup·reissue
-  각 1개)·`TermsAgreement#toRequest`).
+  각 1개)·`TermsAgreement#toRequest`). `toKakaoLoginVO`는 `newUser`로 분기하고 반대편 필드가 없으면
+  `requireNotNull`로 던진다 — 이 예외는 `ApiCaller#safeApiCall(block, transform)` 가드에 잡혀
+  `ApiException.Unknown`이 된다(호출부 크래시 아님).
+- **이름 충돌 주의**: `domain/model/auth/KakaoLoginVO`(서버 응답)와 `domain/model/KakaoLoginResult`
+  (카카오 **SDK** 로그인 결과)는 다른 것이다. 스펙이 예고한 상호 참조 KDoc은 두 파일 어디에도 없다
+  → [open-questions](../synthesis/open-questions.md).
 
 ## 미결
 

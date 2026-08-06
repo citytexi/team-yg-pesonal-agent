@@ -7,7 +7,7 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr: ADR-0001, ADR-0003, ADR-0004
-related_spec: data-network-setup
+related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer
 related_architecture: data-layer
 platforms: android
 tags: [adr, parfait, network, data]
@@ -119,19 +119,16 @@ DataSource 배치 관례를 확립한다.
   > 게이팅**하는 형태가 머지됐다. 헤더 부착 결과는 동일하고, 화이트리스트 경로에서 토큰 조회 비용만
   > 추가로 든다.
   >
-  > **R8 유지 규칙 — develop에는 무효한 배치가 들어와 있다.** 어노테이션을 런타임에 읽으므로
-  > `-keep @interface`가 필요한데, 규칙이 있어야 할 곳은 `data/proguard-rules.pro`가 아니라
+  > **R8 유지 규칙 — 유효한 자리로 정리됐다(2026-08-06, PR #197 머지).** 어노테이션을 런타임에
+  > 읽으므로 `-keep @interface`가 필요한데, 규칙이 있어야 할 곳은 `data/proguard-rules.pro`가 아니라
   > **`data/consumer-rules.pro`**다. `:data`는 Android **라이브러리** 모듈이라 `proguardFiles`는 그
   > 모듈 자체의 R8 실행에만 적용되고, 앱(`:app`)의 R8 실행에는 `consumerProguardFiles`로 명시한
-  > 규칙만 전달되기 때문이다. 2026-08-03 `data-api-service-layer` 라운드가 이 사실을 발견해
-  > `consumer-rules.pro` 이관 + `setConfigAndroidLibrary`의 `consumerProguardFiles("consumer-rules.pro")`
-  > 등록으로 고쳤으나 **그 브랜치는 아직 develop 미머지**다. 반면 PR #190은 keep 규칙을
-  > `data/proguard-rules.pro`에 넣어 머지했고, develop의 `AndroidConfig.kt#setConfigAndroidLibrary`는
-  > `consumerProguardFiles`·`proguardFiles` 어느 쪽도 등록하지 않으며 `data/consumer-rules.pro`는
-  > 비어 있다(`consumerProguardFiles` 문자열이 develop 전체에 0건). 즉 **develop 기준으로 이 keep
-  > 규칙은 어디에도 전달되지 않는다** — release 빌드에서 어노테이션이 제거되면 화이트리스트
-  > 엔드포인트 전부에 `Authorization` 헤더가 붙어 토큰 재발급이 가장 필요한 순간에 막힌다.
-  > 잔여 미검증 항목(Retrofit 밖 OkHttp 직접 요청)과 함께 [open-questions](../synthesis/open-questions.md).
+  > 규칙만 전달되기 때문이다. PR #190이 keep 규칙을 무효한 자리(`data/proguard-rules.pro`)에 넣어
+  > 머지한 뒤, PR #197이 이를 `data/consumer-rules.pro`로 옮기고
+  > `AndroidConfig.kt#setConfigAndroidLibrary`에 `consumerProguardFiles("consumer-rules.pro")`를
+  > 등록했다. develop의 라이브러리 모듈 전부가 `consumer-rules.pro`를 이미 갖고 있어 등록이 다른
+  > 모듈을 깨지 않는다. 잔여 미검증 항목(Retrofit 밖 OkHttp 직접 요청, release 빌드 실행 확인)은
+  > [open-questions](../synthesis/open-questions.md).
 - **로깅**: `HttpLoggingInterceptor` 레벨을 `BuildConfig.DEBUG`로 게이팅한다(debug=`BODY`,
   release=`NONE`). release 빌드에서 `Authorization` 토큰과 요청/응답 바디가 로그로 노출되는 것을
   막기 위한 결정이다. 여기에 더해 `redactHeader("Authorization")`로 **debug 빌드에서도 헤더 값을
@@ -142,6 +139,14 @@ DataSource 배치 관례를 확립한다.
 - **remote DataSource 배치**: 원격 DataSource는 `source.<도메인>.remote` 패키지에 인터페이스+`Impl`
   쌍으로 둔다. 예시 1세트로 `TempService`+`TempRequest`/`TempResponse`+`TempRemoteDataSource`(+`Impl`)를
   두고, `RemoteDataSourceModule`(`@Binds`)로 바인딩한다.
+
+  > ⚠️ **as-built 갱신(`data-api-service-layer` 라운드 — 2026-08-06 PR #197로 develop 머지)** —
+  > `Temp*` 예시 6파일이 **삭제**되고 실제 도메인 4세트(`auth`·`policy`·`group`·`parfait`)로
+  > 대체됐다. Service는 계약 문서와 1:1이고(`AuthService`·`PolicyService`·`ParfaitGroupService`·
+  > `ParfaitService`, 분할 기준은 서버 패키지가 아니라 **URL 세그먼트**), Service 함수명은
+  > `<method><경로 세그먼트 PascalCase>`(경로 변수는 `By<파라미터명>`) 규칙을 따른다 —
+  > 전송 계층이 계약을 그대로 비추고 의미 부여는 DataSource가 맡는다. 배치·규칙 전문은
+  > [data-api-service-layer 스펙](../specs/archive/2026-08-03-data-api-service-layer.md).
 - **응답 → 도메인 매핑 위치**: 원격 DataSource의 **반환 타입은 도메인 모델**이다
   (`TempRemoteDataSource.getTemp(id): Result<TempVO>`). 서버 응답 타입(머지 코드 기준
   `service.model.response`의 `TempResponse` — 요청 타입은 `service.model.request`)은 data 안에서만 살고, `source.<도메인>.mapper`의 확장 함수
@@ -199,6 +204,7 @@ DataSource 배치 관례를 확립한다.
   (모듈이 늘 때 재사용성으로 상쇄될 것으로 본다).
 - `TempService`/`TempRequest`/`TempResponse`/`TempVO`/`TempRemoteDataSource` 예시 세트가 실제
   도메인 API 확정 전까지 코드베이스에 placeholder로 남는다.
+  (**해소: 2026-08-06 PR #197로 6파일 전부 삭제** — 실제 도메인 4세트가 그 자리를 대신한다.)
 - 같은 역할 파일을 여러 브랜치가 동시에 고치면 append 지점에서 충돌이 난다(해소는 양쪽 유지로
   기계적). 파일이 커지면 그 파일만 쪼개는 것으로 대응한다.
 - DataSource 시그니처가 도메인 타입에 묶여, 서버 응답이 도메인과 갈라지는 도메인이 나오면 그때
@@ -214,8 +220,13 @@ DataSource 배치 관례를 확립한다.
   **as-built: 둘 다 2026-08-04 PR #190으로 develop 머지됐다** — 성공 판정은 `success` 필드로
   (`isSuccess`·`SUCCESS_CODE` 제거), `TokenProvider`는 `TokenStoreTokenProvider`(암호화 저장소 연동,
   [ADR-0019](0019-encrypted-token-storage.md))로 교체됐다. 해당 [open-questions](../synthesis/open-questions.md)
-  항목 3건은 해소 처리했다. 다만 **실서버 요청은 여전히 0건**이라(auth 도메인 Service가 미머지)
-  응답 파싱의 실동작은 확인되지 않았다.
+  항목 3건은 해소 처리했다. 다만 **실서버 요청은 여전히 0건**이다 — 2026-08-06 PR #197로 14 엔드포인트
+  Service·DataSource가 다 들어왔지만 이를 **호출하는 Repository·UseCase·화면이 없고**, 개발 서버 평문
+  HTTP 차단·`YG_BASE_URL` 부재로 앱에서 요청을 보낼 수도 없다. 응답 파싱의 실동작은 실연동 라운드까지
+  확인되지 않는다.
 - 도메인 모델 이름이 `TempVO`로 `VO` 접미사를 쓰는데, 기존 `domain.model`은 무접미사
   (`SegmentationResult`·`GalleryImageGroup`·`NameValidResult` 등)다. 접미사 규약이 갈라진 상태 →
   [open-questions](../synthesis/open-questions.md) [2026-07-30]로 추적.
+  **as-built: 2026-08-06 PR #197로 `VO` 접미사가 원격 도메인 모델 전반(`KakaoLoginVO`·`AuthSessionVO`·
+  `PolicyVO`·group 7종)으로 확산됐다** — 규약이 정해져서가 아니라 예시를 따라간 결과다. 값 하나짜리
+  래퍼는 접미사 없는 value class(`GroupId`·`AccessToken` 등)로 갈려 두 관례가 공존한다.
