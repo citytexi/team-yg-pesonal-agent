@@ -279,6 +279,12 @@ PR 타깃 브랜치는 `develop`, JDK 17(temurin), Gradle 캐시, `gradlew` 실�
   기기·에뮬레이터를 붙이는 시점까지 드러나지 않는다. CI에 기기를 붙일 때 재검증이 필요하다.
 - **`core:util:android`에 unit 테스트가 0개다.** 플러그인만 적용된 상태로 시작하며,
   Android 비의존 로직이 이 모듈에 추가되는 시점에 채워진다.
+- **`MainDispatcherRule`은 현재 사용처가 0이고 검증되지 않았다.** 이 룰은 `viewModelScope`·
+  `Dispatchers.Main`을 타는 테스트용인데 이번 범위(`domain`·`data`·`core:util:*`)에는 ViewModel이
+  없다. 컴파일만 될 뿐 `Dispatchers.setMain` 적용·복원과 `runTest(rule.dispatcher)` 스케줄러 공유는
+  아무것도 증명되지 않았다. **첫 ViewModel 테스트를 쓰는 사람이 여기서 막힐 수 있다** — 특히
+  `runTest`를 인자 없이 부르면 스케줄러가 갈려 `advanceUntilIdle()`이 Main 큐를 비우지 못한다.
+  그때 룰 자체를 검증하는 테스트를 함께 추가할 것.
 - **ADR 동반 여부 판단 필요.** 테스트 스택 선택(JUnit4 · Fake 우선 · MockK는 상호작용 검증
   한정)과 `:core:testing` 모듈 도입은 장기간 유지되는 구조 결정에 해당한다. parfait 규율상
   새 아키텍처 결정에는 ADR을 동반하므로, 구현 PR에서 ADR 신설 여부를 결정한다.
