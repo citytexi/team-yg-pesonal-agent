@@ -1969,6 +1969,228 @@ push와 PR 생성은 사람 확인 후에 한다. 아래를 보고하고 대기�
 
 ---
 
+### Task 10: `domain` UseCase 테스트 (로직 보유 4건) + Fake 3종 + `Clock` DI 바인딩
+
+Task 1~9로 기반이 섰고 `domain`에는 `CheckNameValidUseCase`·`DayWindow`만 테스트돼 있다. 남은
+UseCase 10개 중 **실제 분기·변환이 있는 4개만** 다룬다. `DecodeImageUseCase`·`SegmentImageUseCase`·
+`CreateCameraCacheUriUseCase(file)`는 한 줄 위임이라 테스트가 구현을 되읊는 데 그치고,
+`CheckInviteCodeValidUseCase`·`SplashInitialUseCase`는 `// Todo`가 붙은 임시 구현이라 지금 못 박으면
+안 된다. 의도적으로 제외한다.
+
+이 Task에서 `:core:testing`이 처음으로 Fake를 갖게 되며, Task 1~9의 최종 수정 웨이브에서 지웠던
+`api(projects.domain)`도 근거가 생겨 되살아난다(그때는 쓰는 곳이 없어서 지운 것이다).
+
+**Files:**
+- Modify: `core/testing/build.gradle.kts`
+- Create: `core/testing/src/main/kotlin/com/teamyg/parfait/core/testing/fake/FakeRecentImageRepository.kt`
+- Create: `core/testing/src/main/kotlin/com/teamyg/parfait/core/testing/fake/FakeGalleryRepository.kt`
+- Modify: `domain/src/main/java/com/teamyg/parfait/domain/usecase/image/GetRecentCacheImagesUseCase.kt`
+- Modify: `data/src/main/java/com/teamyg/parfait/data/di/SingletonInjectModule.kt`
+- Test: `domain/src/test/java/com/teamyg/parfait/domain/usecase/image/AddRecentImageUseCaseTest.kt`
+- Test: `domain/src/test/java/com/teamyg/parfait/domain/usecase/image/GetRecentCacheImagesUseCaseTest.kt`
+- Test: `domain/src/test/java/com/teamyg/parfait/domain/usecase/gallery/GalleryImageGroupsUseCaseTest.kt`
+
+**Interfaces:**
+- Consumes: `libs.plugins.parfait.test.unit`, `:core:testing`, `libs.bundles.test.unit`(Turbine 포함)
+- Produces:
+  - `FakeRecentImageRepository` — `RecentImageRepository` 구현. 인메모리 상태 + 테스트 전용 헬퍼
+    (`seed(vararg uri: String)`, `setLastModified(uri, millis)`, `setEvicted(List<String>)`,
+    `failStore()`, 관찰용 `deletedUris: List<String>`, `removedFromMetadata: List<String>`)
+  - `FakeGalleryRepository` — `GalleryRepository` 구현. `seedAll(...)`·`seedFiltered(...)`
+  - `GetRecentCacheImagesUseCase(recentImageRepository, clock)` — 생성자에 `Clock` 추가
+
+- [ ] **Step 1: `:core:testing`에 `domain` 의존 복구**
+
+`core/testing/build.gradle.kts`의 `dependencies`에 한 줄 추가한다. 파일 상단 주석은 유지한다.
+
+```kotlin
+dependencies {
+    api(projects.domain)
+
+    api(libs.junit4)
+    api(libs.kotlinx.coroutines.test)
+}
+```
+
+이번엔 Fake가 `domain`의 repository 인터페이스와 모델을 구현하므로 `api`가 정당하다.
+
+- [ ] **Step 2: `FakeRecentImageRepository` 작성**
+
+`core/testing/src/main/kotlin/com/teamyg/parfait/core/testing/fake/FakeRecentImageRepository.kt`:
+
+```kotlin
+package com.teamyg.parfait.core.testing.fake
+
+import com.teamyg.parfait.domain.repository.image.RecentImageRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+/**
+ * [RecentImageRepository] 의 인메모리 대역.
+ *
+ * 프로덕션 인터페이스에 없는 seed/관찰 헬퍼를 노출한다 — 테스트 소스셋에서만 소비되므로
+ * 프로덕션 계약은 오염되지 않는다.
+ */
+class FakeRecentImageRepository : RecentImageRepository {
+    private val cacheImages = MutableStateFlow<List<String>>(emptyList())
+    private val lastModified = mutableMapOf<String, Long>()
+
+    /** 다음 [addAndGetEvictedCacheFileName] 호출이 반환할 목록. */
+    var evictedOnAdd: List<String> = emptyList()
+
+    /** true 면 [storeRecentImageInInternalStorage] 가 예외를 던진다. */
+    var storeFails: Boolean = false
+
+    /** [storeRecentImageInInternalStorage] 가 돌려줄 안정 URI 접두사. */
+    var storedUriPrefix: String = "stored://"
+
+    val deletedUris = mutableListOf<String>()
+    val removedFromMetadata = mutableListOf<List<String>>()
+    val addedUris = mutableListOf<String>()
+
+    override val recentCacheImages: Flow<List<String>> = cacheImages.asStateFlow()
+
+    override suspend fun addAndGetEvictedCacheFileName(value: String): List<String> {
+        addedUris += value
+        cacheImages.value = cacheImages.value + value
+        return evictedOnAdd
+    }
+
+    override suspend fun removeCacheFileName(values: List<String>) {
+        removedFromMetadata += values
+        cacheImages.value = cacheImages.value - values.toSet()
+    }
+
+    override suspend fun storeRecentImageInInternalStorage(sourceUri: String): String {
+        if (storeFails) {
+            throw IllegalStateException("store failed: $sourceUri")
+        }
+        return "$storedUriPrefix$sourceUri"
+    }
+
+    override suspend fun deleteRecentImageInInternalStorage(sourceUri: String): Boolean {
+        deletedUris += sourceUri
+        return true
+    }
+
+    override suspend fun getLastModifiedCacheFile(sourceUri: String): Long? = lastModified[sourceUri]
+
+    fun seed(vararg uris: String) {
+        cacheImages.value = uris.toList()
+    }
+
+    fun setLastModified(uri: String, millis: Long) {
+        lastModified[uri] = millis
+    }
+}
+```
+
+- [ ] **Step 3: `FakeGalleryRepository` 작성**
+
+`core/testing/src/main/kotlin/com/teamyg/parfait/core/testing/fake/FakeGalleryRepository.kt`:
+
+```kotlin
+package com.teamyg.parfait.core.testing.fake
+
+import com.teamyg.parfait.domain.repository.gallery.GalleryRepository
+import kotlinx.datetime.LocalDate
+
+/** [GalleryRepository] 의 인메모리 대역. */
+class FakeGalleryRepository : GalleryRepository {
+    private var all = LinkedHashMap<LocalDate, MutableList<String>>()
+    private var filtered = LinkedHashMap<LocalDate, MutableList<String>>()
+
+    override suspend fun loadAllGalleryImages(): LinkedHashMap<LocalDate, MutableList<String>> = all
+
+    override suspend fun loadFilterYGGalleryImages(): LinkedHashMap<LocalDate, MutableList<String>> = filtered
+
+    fun seedAll(vararg entries: Pair<LocalDate, List<String>>) {
+        all = entries.toLinkedHashMap()
+    }
+
+    fun seedFiltered(vararg entries: Pair<LocalDate, List<String>>) {
+        filtered = entries.toLinkedHashMap()
+    }
+
+    private fun Array<out Pair<LocalDate, List<String>>>.toLinkedHashMap() =
+        LinkedHashMap<LocalDate, MutableList<String>>().also { map ->
+            forEach { (date, uris) -> map[date] = uris.toMutableList() }
+        }
+}
+```
+
+- [ ] **Step 4: 실패하는 테스트 3개 작성 (RED)**
+
+세 파일 모두 작성한다. `GetRecentCacheImagesUseCaseTest`는 아직 존재하지 않는 `clock` 파라미터를
+쓰므로 **컴파일 에러가 나야 한다** — 이 Task의 진짜 RED다.
+
+`AddRecentImageUseCaseTest.kt`는 저장 실패 시 조기 반환(evict·삭제가 일어나지 않음)과 성공 시
+evict된 항목이 전부 삭제되는 경로를 덮는다. `GalleryImageGroupsUseCaseTest.kt`는 두 로더가 맵의
+순서를 보존하고 `toList()`로 방어 복사하는지(원본 `MutableList`를 나중에 바꿔도 결과가 안 변하는지)
+확인한다. `GetRecentCacheImagesUseCaseTest.kt`는 고정 `Clock`으로 윈도우를 못 박고 Turbine으로
+방출을 검증한다 — 윈도우 밖 항목이 메타데이터·파일 양쪽에서 지워지고, 윈도우 안 항목은 남으며,
+지울 게 없으면 `removeCacheFileName`이 호출되지 않아야 한다.
+
+각 테스트의 정확한 본문은 구현자가 이 Task의 규약(GWT·`runTest`·Fake 우선)에 맞춰 작성한다.
+
+- [ ] **Step 5: 실행해 실패 확인 (RED)**
+
+Run: `./gradlew :domain:test`
+Expected: FAIL — `GetRecentCacheImagesUseCaseTest`가 `No parameter with name 'clock' found`로 컴파일 실패.
+
+- [ ] **Step 6: `GetRecentCacheImagesUseCase`에 `Clock` 주입**
+
+생성자에 `private val clock: Clock`을 추가하고, `clearOutsideDayWindow()`의
+`DayWindow.current()`를 `DayWindow.current(clock = clock)`으로 바꾼다. **기본값을 주지 않는다** —
+Hilt는 생성자 기본값을 쓰지 않으므로 기본값은 테스트에만 도움이 되고 프로덕션에서는 바인딩 누락을
+숨긴다. `import kotlin.time.Clock`을 추가한다.
+
+- [ ] **Step 7: Hilt 그래프에 `Clock` 바인딩**
+
+`data/src/main/java/com/teamyg/parfait/data/di/SingletonInjectModule.kt`에 추가:
+
+```kotlin
+    @Provides
+    @Singleton
+    fun provideClock(): Clock = Clock.System
+```
+
+`import kotlin.time.Clock`을 추가한다. 시각에 의존하는 후속 코드도 같은 결을 따르게 된다.
+
+- [ ] **Step 8: 실행해 통과 확인 (GREEN)**
+
+Run: `./gradlew :domain:test`
+Expected: PASS.
+
+- [ ] **Step 9: Hilt 그래프가 실제로 조립되는지 확인**
+
+Run: `./gradlew :app:kspDebugKotlin`
+Expected: BUILD SUCCESSFUL. `Clock` 바인딩이 빠졌거나 중복이면 여기서 KSP가 잡는다.
+유닛 테스트만으로는 DI 그래프 오류가 드러나지 않으므로 이 스텝을 생략하지 않는다.
+
+- [ ] **Step 10: 전체 검증 + 커밋**
+
+Run: `./gradlew test`, `./gradlew ktlintCheck`
+Expected: 모두 BUILD SUCCESSFUL.
+
+```bash
+git add core/testing domain data
+git commit -m "test: domain UseCase 4건 테스트 추가 및 Clock 을 DI 그래프에 바인딩
+
+로직·분기가 실재하는 UseCase 만 다룬다. 한 줄 위임(Decode·Segment)과
+// Todo 가 붙은 임시 구현(CheckInviteCodeValid·SplashInitial)은 제외했다.
+
+GetRecentCacheImagesUseCase 가 DayWindow.current() 를 직접 불러 시각을
+고정할 수 없었다. Hilt 는 생성자 기본값을 쓰지 않으므로 Clock 을 그래프에
+바인딩하고 주입받는다.
+
+:core:testing 에 Repository Fake 2종을 신설했다. 이 모듈이 domain 을
+다시 의존하는 근거가 여기서 생긴다."
+```
+
+---
+
 ## 실행 중 드러난 계획 오류 (2026-08-06 기록)
 
 이 계획은 아래 지점에서 틀렸다. 구현 중 발견해 고쳤고, 같은 실수를 반복하지 않도록 남긴다.
