@@ -249,14 +249,14 @@ class DateFormatTest {
     private val date = LocalDate(2026, 8, 6)
 
     @Test
-    fun fullMonthWithDay_augustSixth_returnsAugust6() {
+    fun fullMonthWithDay_augustSixth_returnsAugust06() {
         // Given 2026-08-06
 
         // When 전체 월 이름 + 일 포맷 적용
         val formatted = DateFormat.FullMonthWithDay.format(date)
 
-        // Then "August 6"
-        assertEquals("August 6", formatted)
+        // Then "August 06" — day() 는 kotlinx-datetime 기본값이 Padding.ZERO 라 0이 붙는다
+        assertEquals("August 06", formatted)
     }
 
     @Test
@@ -1968,6 +1968,32 @@ push와 PR 생성은 사람 확인 후에 한다. 아래를 보고하고 대기�
 - ktlint 통과 여부와, `.editorconfig` 완화를 적용했다면 그 사실
 
 ---
+
+## 실행 중 드러난 계획 오류 (2026-08-06 기록)
+
+이 계획은 아래 지점에서 틀렸다. 구현 중 발견해 고쳤고, 같은 실수를 반복하지 않도록 남긴다.
+
+1. **`DateFormat.FullMonthWithDay` 기대값** — `day()`는 kotlinx-datetime 기본값이 `Padding.ZERO`라
+   `"August 6"`이 아니라 `"August 06"`이다. 본문은 정정했다.
+2. **`kotlin-test-junit` 누락** — Android 모듈의 유닛 테스트 classpath는 Kotlin Gradle 플러그인의
+   `kotlin-test` → `kotlin-test-junit` 변형 치환을 받지 못한다. 순수 JVM 모듈만 자동으로 해결된다.
+   카탈로그 alias와 `test-unit` 번들에 추가해야 `kotlin.test.Test`가 해석된다.
+3. **순서 고정 테스트의 근거가 사실과 달랐다** — `CheckNameValidUseCase`에 입력 `" "`를 주면
+   `CheckSpaceStartOrEnd`만 실패하므로 enum 선언 순서를 바꿔도 결과가 같다. 순서를 실제로
+   고정하려면 `"  "`(공백 두 칸)처럼 두 규칙이 동시에 실패하는 입력이 필요하다.
+4. **빈 GWT 블록** — 계획의 테스트 코드 곳곳에 `// Given`·`// When` 아래 문장이 없는 형태가 있다.
+   Task 2·6·7·최종 리뷰에서 반복 지적됐다. 규약은 (a) 주석 아래 문장이 없으면 안 되고
+   (b) 파일 안에서 한 스타일이며, 설정·실행·단언이 각각 한 줄인 테스트는 주석 없이 **완전히 비운다**.
+5. **CI 모듈 목록 하드코딩** — 4개 모듈을 명시하면 이후 다른 모듈에 테스트가 생겨도 CI가 안 돌고
+   초록불이 뜬다. 루트 `./gradlew test`로 바꾸고, Android 모듈의 release 유닛 테스트 중복은
+   `beforeVariants`에서 `HostTestBuilder.UNIT_TEST_TYPE`을 끄는 방식으로 없앴다.
+6. **`:core:testing`의 `api(projects.domain)`** — `MainDispatcherRule`은 `domain`을 쓰지 않는다.
+   이 의존은 `core:util:jvm`을 자기 테스트 classpath에 되돌려 놓고 `core:designsystem` 계측 APK에
+   `domain`을 통째로 끌어들였다. 삭제했고, 도메인 픽스처를 실제로 넣을 때 되살린다.
+7. **`createComposeRule()` v1** — deprecated 경고가 난다. v2(`...junit4.v2.createComposeRule`)로 옮겼다.
+   v2의 `StandardTestDispatcher`가 `MainDispatcherRule` 기본값과도 일치한다.
+8. **Compose 스모크의 겹친 노드** — 카운터 `Box`와 클릭 `Box`를 부모 레이아웃 없이 같은 자리에 두면
+   앞의 것이 완전히 가려진다. `assertIsDisplayed()`는 가림을 보지 않아 우연히 통과한다. `Column`으로 감쌌다.
 
 ## 검증 요약
 
