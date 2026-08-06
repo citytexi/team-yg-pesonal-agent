@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-02
-related_spec: data-network-setup, network-envelope-token-storage
+verified: 2026-08-06
+related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -19,6 +19,7 @@ tags: [architecture, parfait]
 
 ## 레이어 배치
 - **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`InviteCodeResult`, `GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`) + 도메인 예외(sealed `SegmentationException`).
+  - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드(PR #197)가 추가한 VO·value class만 `auth/`·`group/`·`id/`·`policy/`로 들어갔고, 그 이전 선언 8개는 루트에 남았다. 어디에 새 모델을 둘지 규약이 서지 않은 상태 → [open-questions](../synthesis/open-questions.md).
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
 ## DataSource 종류
@@ -68,14 +69,15 @@ tags: [architecture, parfait]
 5. 반응형이면 `Flow`로 반환.
 
 ## 네트워킹
-> **develop 반영 범위(2026-08-04 기준)** — 기초 구조(PR #174) + 서버 계약 정합·토큰 저장
-> (`network-envelope-token-storage`, **PR #190 머지 완료**)까지 들어와 있다
+> **develop 반영 범위(2026-08-06 기준)** — 기초 구조(PR #174) + 서버 계약 정합·토큰 저장
+> (`network-envelope-token-storage`, PR #190) + **API 표면 전량**(`data-api-service-layer`,
+> **PR #197 머지 완료**)까지 들어와 있다
 > ([[0017-remote-network-datasource]]·[[0019-encrypted-token-storage]]).
-> 아래 서술 중 **`data-api-service-layer` 라운드 산출물은 아직 develop 미머지**다 —
-> 구체적으로 `safeApiCall(block, transform)` 오버로드(진입점 넷째), `PolicyService`/`PolicyVO`
-> 예시 세트, `source.<도메인>.mapper` 규약, DTO 전 프로퍼티 `@SerialName` 규약,
-> `AuthService`/`KakaoLoginResponse` 계열이 그렇다. **develop의 `ApiCaller` 진입점은 셋**이고
-> 원격 서비스는 `TempService` 하나뿐이다.
+> 아래 서술은 전부 develop 코드 기준이다 — `ApiCaller` 진입점 넷, Service 4개
+> (`AuthService`·`PolicyService`·`ParfaitGroupService`·`ParfaitService`, 14 엔드포인트),
+> remote DataSource 4쌍, `Temp*` 예시 세트 삭제.
+> **다만 이 표면을 소비하는 Repository·UseCase·화면은 아직 0건**이고 실서버 요청도 0건이다
+> → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
 매핑 지점도 확정(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.
@@ -99,7 +101,7 @@ tags: [architecture, parfait]
   | 메서드 | 서버 응답 | 언제 |
   |---|---|---|
   | `safeApiCall(block)` | envelope + `data` 필요 | payload를 그대로(도메인 모델 변환 없이) 쓰는 조회·생성 API |
-  | `safeApiCall(block, transform)` ⚠️미머지 | envelope + `data` 필요 + 도메인 모델로 매핑 | payload가 있고 VO로 변환해야 하는 API — 지금 있는 매핑 호출부 전부가 이 오버로드를 쓴다 |
+  | `safeApiCall(block, transform)` | envelope + `data` 필요 + 도메인 모델로 매핑 | payload가 있고 VO로 변환해야 하는 API — 지금 있는 매핑 호출부 전부가 이 오버로드를 쓴다 |
   | `safeApiCallWithoutData` | envelope, `data` 안 봄 | 본문은 `ApiResponse<Unit>`이지만 payload가 의미 없는 API |
   | `safeApiCallNoContent` | 본문 자체가 없음(204) | 서비스 메서드가 `Unit` 반환(예: `logout`) |
 
@@ -144,8 +146,11 @@ tags: [architecture, parfait]
   어노테이션 존재를 확인한다. **판정 후에도 토큰 조회는 그대로 수행하고, 헤더 부착만 건너뛴다**
   (PR #190 코드 리뷰 반영으로 early return이 제거됐다) — 화이트리스트 경로에서도 `runBlocking` +
   DataStore 읽기 + Keystore 복호화 비용이 든다. 근거는 [[0017-remote-network-datasource]] "인증".
-  `@NoAuth`의 R8 keep 규칙은 develop 기준 **앱에 전달되지 않는 자리**(`data/proguard-rules.pro`)에
-  있다 — 같은 ADR "인증"의 R8 절과 [open-questions](../synthesis/open-questions.md) 참고.
+  `@NoAuth`가 붙는 곳은 서버 화이트리스트 4경로(`postAuthKakao`·`postAuthSignup`·`postAuthReissue`·
+  `getPolicies`)다. R8 keep 규칙은 **`data/consumer-rules.pro`**에 두고 컨벤션 플러그인
+  `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`로 등록한다(PR #197) —
+  라이브러리 모듈의 `proguardFiles`는 앱의 R8 실행에 전달되지 않으므로 이 자리가 유일하게 유효하다.
+  근거는 같은 ADR "인증"의 R8 절.
 - **토큰 저장 경로**: `CryptoManager`(Android Keystore AES/GCM, `security/`) → `EncryptedTokenStore`
   (`TokenStore` 구현, `source/token/local/`, `DataStore<Preferences>`에 `IV+암호문` Base64 문자열 저장) →
   `TokenStore`(`LocalDataSourceModule.bindTokenStore`) → `TokenStoreTokenProvider`

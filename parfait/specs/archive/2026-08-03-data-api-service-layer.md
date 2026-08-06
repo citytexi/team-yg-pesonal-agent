@@ -4,7 +4,7 @@ title: :data API Service·remote DataSource 레이어 (14 엔드포인트)
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-03
+verified: 2026-08-06
 related_code: AuthService, PolicyService, ParfaitGroupService, ParfaitService, ApiCaller, NoAuth, ServiceModule, RemoteDataSourceModule
 related_adr: ADR-0017, ADR-0019, ADR-0016
 related_spec: 2026-08-02-network-envelope-token-storage
@@ -19,7 +19,7 @@ tags: [spec, parfait, data, network, api]
 서버 계약([api/README.md](../../api/README.md), 기준선 `69654bc`)의 **14개 엔드포인트 전량**을
 `:data`의 Retrofit Service와 remote DataSource로 구현하고, 대응 domain VO를 만든다.
 네트워크 기반 구조는 이미 있다([ADR-0017](../../adr/0017-remote-network-datasource.md),
-[2026-08-02-network-envelope-token-storage](../2026-08-02-network-envelope-token-storage.md)) —
+[2026-08-02-network-envelope-token-storage](2026-08-02-network-envelope-token-storage.md)) —
 이 스펙은 그 위에 **실제 API 표면**을 올린다.
 
 ## 범위
@@ -298,6 +298,11 @@ Service와 달리 **의미 기반 이름**이다. 인자에도 value class가 �
 
 ## As-built 이탈
 
+> **2026-08-06 develop 머지(PR #197) 시점 재대조** — Service 함수명 14/14, `@NoAuth` 4곳,
+> DTO 전 프로퍼티 `@SerialName`, `logout`만 `safeApiCallNoContent`, VO 미생성 3곳, `Temp*` 6파일 삭제,
+> DI 8바인딩까지 설계와 일치했다. 아래 1~3은 브랜치 리뷰 시점의 정정이고, **4~6은 머지 시점
+> 재대조에서 새로 확인된 미이행**이다.
+
 최종 전체 브랜치 리뷰(Critical 0 · Important 2 · Minor 3, fix 웨이브 1회로 전량 해소)가 잡은 항목 중
 이 스펙의 서술을 직접 정정해야 하는 두 가지.
 
@@ -330,6 +335,24 @@ Service와 달리 **의미 기반 이름**이다. 인자에도 value class가 �
    발동하므로, 선언이 여럿인 묶음 파일은 규칙을 피해 가고 파르페 도메인만 개명을 강제당했다.
    1선언 1파일로 통일하면 그 비대칭이 사라진다.
 
+4. **mapper의 타임존 근거 주석이 없다.** [계약이 던지는 함정](#계약이-던지는-함정) 6번이
+   "mapper에 타임존 근거를 주석으로 남긴다"고 정했으나, `source/group/mapper/VOMapper.kt`의
+   `recentImageUploadedAt` 변환에는 주석이 없다. 오프셋 없는 문자열이라 다음에 읽는 사람이 UTC로
+   오인하면 9시간 어긋난다 — 코드만 봐서는 Asia/Seoul 전제를 알 길이 없다
+   → [open-questions](../../synthesis/open-questions.md).
+
+5. **`KakaoLoginVO`↔`KakaoLoginResult` 상호 참조 KDoc이 없다.** [VO](#vo) 절이 "양쪽 KDoc에 서로를
+   가리키는 한 줄을 남긴다"고 정했으나 두 파일 모두 KDoc이 없다. 이름이 닮은 두 타입(서버 응답 vs
+   카카오 SDK 결과)이 `domain/model/auth/`와 `domain/model/` 루트에 나란히 있는 상태
+   → [open-questions](../../synthesis/open-questions.md).
+
+6. **`domain/model/`이 하위 패키지와 루트 평면으로 갈렸다.** [domain 타입](#domain-타입) 절은 "평면
+   10개에 9개 이상이 더 붙으면 하위 패키지로 나눈다"를 전제했는데, 실제로는 **이번 라운드 신규
+   선언만** `auth/`·`group/`·`id/`·`policy/`로 들어가고 기존 8선언(`DayWindow`·`GalleryImageGroup`·
+   `GroupCreateConfig`·`InviteCodeResult`·`KakaoLoginResult`·`Logger`·`NameValidResult`·
+   `SegmentationResult`)은 루트에 남았다. 다음 모델을 어디에 둘지 규약이 서지 않았다
+   → [open-questions](../../synthesis/open-questions.md).
+
 ## 미결
 
 - ~~`@NoAuth` 어노테이션의 R8 release 유지 여부 미검증~~ **해소됨(부정적으로) — 발견 즉시 수정됨.**
@@ -338,7 +361,9 @@ Service와 달리 **의미 기반 이름**이다. 인자에도 value class가 �
   경로가 없었다 — release 빌드였다면 `@NoAuth` 4곳 전부에서 어노테이션이 제거돼 화이트리스트
   엔드포인트에 `Authorization` 헤더가 붙어 토큰 재발급이 막혔을 것이다. 규칙을
   `data/consumer-rules.pro`로 옮기고 `setConfigAndroidLibrary`가 `consumerProguardFiles`를 등록하도록
-  고쳤다 → [open-questions](../../synthesis/open-questions.md).
+  고쳤다. **2026-08-06 PR #197로 develop 머지 확인** — develop의 라이브러리 모듈 전부가 이미
+  `consumer-rules.pro`를 갖고 있어 등록이 다른 모듈을 깨지 않는다. release 빌드 실행으로 확인한
+  것은 아니다 → [open-questions](../../synthesis/open-questions.md).
 - 이 레이어 전체가 런타임 미검증 상태로 들어간다(평문 HTTP 차단·`YG_BASE_URL` 부재)
   → [open-questions](../../synthesis/open-questions.md)
 - `PolicyVO.url`이 링크인지 약관 전문인지 서버 데이터 규약 미확정([policy.md](../../api/policy.md) 미결)
