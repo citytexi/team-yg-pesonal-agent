@@ -99,6 +99,17 @@ def _resolve_leaf(md, repo_name, seen):
     return leaf
 
 
+def _update_leaf(md, repo_name, manifest):
+    """update 경로의 leaf 결정. 다른 repo나 자작 스킬이 이미 쓰는 이름이면 접두사를 붙인다."""
+    leaf = leaf_name(md)
+    owner = manifest.get(leaf, {}).get("repo")
+    taken_by_other_repo = owner is not None and owner != repo_name
+    taken_by_local = owner is None and (SKILLS_DIR / leaf).exists()
+    if taken_by_other_repo or taken_by_local:
+        return f"{repo_name.split('-')[0]}-{leaf}"
+    return leaf
+
+
 def full_vendor(dry=False):
     sources = json.loads(SOURCES.read_text())["repos"]
     baseline, manifest, seen = {}, {}, {}
@@ -174,7 +185,9 @@ def update(dry=False):
         base = baseline.get(name, {}).get("sha")
         if base == head:
             continue
-        cur = {leaf_name(md): md for md in discover(cache, "HEAD")}
+        if not dry:
+            _copy_license(cache, name)
+        cur = {_update_leaf(md, name, manifest): md for md in discover(cache, "HEAD")}
         prev = {leaf for leaf, i in manifest.items() if i["repo"] == name}
         for leaf in list(prev):                       # 삭제분
             if leaf not in cur:

@@ -1,8 +1,8 @@
 {
   "agp-9-upgrade": {
     "repo": "android-skills",
-    "path": "build/agp/agp-9-upgrade/SKILL.md",
-    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+    "path": "build-system/agp/agp-9-upgrade/SKILL.md",
+    "sha": "28822b2306f34740542e4150888c5b0cde41724d"
   },
   "camerax": {
     "repo": "android-skills",
@@ -12,12 +12,12 @@
   "appfunctions": {
     "repo": "android-skills",
     "path": "device-ai/appfunctions/SKILL.md",
-    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+    "sha": "28822b2306f34740542e4150888c5b0cde41724d"
   },
   "android-cli": {
     "repo": "android-skills",
     "path": "devtools/android-cli/SKILL.md",
-    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+    "sha": "28822b2306f34740542e4150888c5b0cde41724d"
   },
   "verified-email": {
     "repo": "android-skills",
@@ -42,17 +42,17 @@
   "navigation-3": {
     "repo": "android-skills",
     "path": "navigation/navigation-3/SKILL.md",
-    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+    "sha": "28822b2306f34740542e4150888c5b0cde41724d"
   },
   "r8-analyzer": {
     "repo": "android-skills",
     "path": "performance/r8-analyzer/SKILL.md",
-    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+    "sha": "28822b2306f34740542e4150888c5b0cde41724d"
   },
   "engage-sdk-integration": {
     "repo": "android-skills",
     "path": "play/engage-sdk-integration/SKILL.md",
-    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+    "sha": "28822b2306f34740542e4150888c5b0cde41724d"
   },
   "play-billing-library-version-upgrade": {
     "repo": "android-skills",
@@ -92,12 +92,12 @@
   "wear-compose-m3": {
     "repo": "android-skills",
     "path": "wear/wear-compose-m3/SKILL.md",
-    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+    "sha": "28822b2306f34740542e4150888c5b0cde41724d"
   },
   "display-glasses-with-jetpack-compose-glimmer": {
     "repo": "android-skills",
     "path": "xr/display-glasses-with-jetpack-compose-glimmer/SKILL.md",
-    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea"
+    "sha": "28822b2306f34740542e4150888c5b0cde41724d"
   },
   "kotlin-backend-jpa-entity-mapping": {
     "repo": "kotlin-agent-skills",
@@ -282,7 +282,7 @@
   "compose-side-effects": {
     "repo": "chrisbanes-skills",
     "path": "skills/compose-side-effects/SKILL.md",
-    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+    "sha": "8d019ed3b8e634a14198709ec22e01afb121ea07"
   },
   "compose-slot-api-pattern": {
     "repo": "chrisbanes-skills",
@@ -302,26 +302,16 @@
   "compose-state-deferred-reads": {
     "repo": "chrisbanes-skills",
     "path": "skills/compose-state-deferred-reads/SKILL.md",
-    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+    "sha": "8d019ed3b8e634a14198709ec22e01afb121ea07"
   },
   "compose-state-hoisting": {
     "repo": "chrisbanes-skills",
     "path": "skills/compose-state-hoisting/SKILL.md",
-    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
-  },
-  "compose-state-holder-ui-split": {
-    "repo": "chrisbanes-skills",
-    "path": "skills/compose-state-holder-ui-split/SKILL.md",
-    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+    "sha": "8d019ed3b8e634a14198709ec22e01afb121ea07"
   },
   "compose-ui-testing-patterns": {
     "repo": "chrisbanes-skills",
     "path": "skills/compose-ui-testing-patterns/SKILL.md",
-    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
-  },
-  "implement-issue": {
-    "repo": "chrisbanes-skills",
-    "path": "skills/implement-issue/SKILL.md",
     "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
   },
   "kotlin-control-flow": {
@@ -337,7 +327,7 @@
   "kotlin-flow-state-event-modeling": {
     "repo": "chrisbanes-skills",
     "path": "skills/kotlin-flow-state-event-modeling/SKILL.md",
-    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+    "sha": "8d019ed3b8e634a14198709ec22e01afb121ea07"
   },
   "kotlin-functions": {
     "repo": "chrisbanes-skills",
@@ -347,7 +337,7 @@
   "kotlin-multiplatform-expect-actual": {
     "repo": "chrisbanes-skills",
     "path": "skills/kotlin-multiplatform-expect-actual/SKILL.md",
-    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+    "sha": "8d019ed3b8e634a14198709ec22e01afb121ea07"
   },
   "kotlin-types-value-class": {
     "repo": "chrisbanes-skills",
@@ -362,6 +352,286 @@
   "using-chrisbanes-skills": {
     "repo": "chrisbanes-skills",
     "path": "skills/using-chrisbanes-skills/SKILL.md",
-    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806"
+    "sha": "8d019ed3b8e634a14198709ec22e01afb121ea07"
+  },
+  "run-github-project": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/run-github-project/SKILL.md",
+    "sha": "8d019ed3b8e634a14198709ec22e01afb121ea07"
+  },
+  "to-plan": {
+    "repo": "chrisbanes-skills",
+    "path": "skills/to-plan/SKILL.md",
+    "sha": "8d019ed3b8e634a14198709ec22e01afb121ea07"
+  },
+  "installing-and-managing-apps": {
+    "repo": "android-testing-skills",
+    "path": "adb/apps/installing-and-managing-apps/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "understanding-adb-architecture": {
+    "repo": "android-testing-skills",
+    "path": "adb/architecture/understanding-adb-architecture/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "scripting-adb-for-ci": {
+    "repo": "android-testing-skills",
+    "path": "adb/automation/scripting-adb-for-ci/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "capturing-screenshots-and-screenrecord": {
+    "repo": "android-testing-skills",
+    "path": "adb/capture/capturing-screenshots-and-screenrecord/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "injecting-input-and-state": {
+    "repo": "android-testing-skills",
+    "path": "adb/control/injecting-input-and-state/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "connecting-over-wifi": {
+    "repo": "android-testing-skills",
+    "path": "adb/devices/connecting-over-wifi/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "connecting-to-devices": {
+    "repo": "android-testing-skills",
+    "path": "adb/devices/connecting-to-devices/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "extracting-logs-with-logcat": {
+    "repo": "android-testing-skills",
+    "path": "adb/observability/extracting-logs-with-logcat/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "running-instrumented-tests-via-adb": {
+    "repo": "android-testing-skills",
+    "path": "adb/tests/running-instrumented-tests-via-adb/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "extracting-test-artifacts": {
+    "repo": "android-testing-skills",
+    "path": "adb/transfer/extracting-test-artifacts/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "clicking-and-scrolling": {
+    "repo": "android-testing-skills",
+    "path": "compose/actions/clicking-and-scrolling/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "entering-text": {
+    "repo": "android-testing-skills",
+    "path": "compose/actions/entering-text/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "injecting-mouse-and-keyboard": {
+    "repo": "android-testing-skills",
+    "path": "compose/actions/injecting-mouse-and-keyboard/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "injecting-touch-gestures": {
+    "repo": "android-testing-skills",
+    "path": "compose/actions/injecting-touch-gestures/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "asserting-bounds-and-dimensions": {
+    "repo": "android-testing-skills",
+    "path": "compose/assertions/asserting-bounds-and-dimensions/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "asserting-node-state-and-text": {
+    "repo": "android-testing-skills",
+    "path": "compose/assertions/asserting-node-state-and-text/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "auditing-compose-test-suite": {
+    "repo": "android-testing-skills",
+    "path": "compose/audit/auditing-compose-test-suite/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "enabling-accessibility-checks": {
+    "repo": "android-testing-skills",
+    "path": "compose/debug/enabling-accessibility-checks/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "printing-the-semantics-tree": {
+    "repo": "android-testing-skills",
+    "path": "compose/debug/printing-the-semantics-tree/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "composing-semantics-matchers": {
+    "repo": "android-testing-skills",
+    "path": "compose/finders/composing-semantics-matchers/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "finding-nodes-by-tag-text-content": {
+    "repo": "android-testing-skills",
+    "path": "compose/finders/finding-nodes-by-tag-text-content/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "traversing-the-semantics-tree": {
+    "repo": "android-testing-skills",
+    "path": "compose/finders/traversing-the-semantics-tree/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "testing-with-espresso-interop": {
+    "repo": "android-testing-skills",
+    "path": "compose/interop/testing-with-espresso-interop/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "structuring-a-compose-test": {
+    "repo": "android-testing-skills",
+    "path": "compose/patterns/structuring-a-compose-test/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "testing-lazy-lists": {
+    "repo": "android-testing-skills",
+    "path": "compose/patterns/testing-lazy-lists/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "testing-state-restoration": {
+    "repo": "android-testing-skills",
+    "path": "compose/patterns/testing-state-restoration/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "capturing-preview-screenshots-in-ci": {
+    "repo": "android-testing-skills",
+    "path": "compose/preview/capturing-preview-screenshots-in-ci/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "developing-with-compose-previews": {
+    "repo": "android-testing-skills",
+    "path": "compose/preview/developing-with-compose-previews/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "choosing-test-rule-vs-runtest": {
+    "repo": "android-testing-skills",
+    "path": "compose/setup/choosing-test-rule-vs-runtest/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "configuring-test-dependencies": {
+    "repo": "android-testing-skills",
+    "path": "compose/setup/configuring-test-dependencies/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "setting-up-host-vs-device-tests": {
+    "repo": "android-testing-skills",
+    "path": "compose/setup/setting-up-host-vs-device-tests/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "validating-compose-stability": {
+    "repo": "android-testing-skills",
+    "path": "compose/stability/validating-compose-stability/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "controlling-the-test-clock": {
+    "repo": "android-testing-skills",
+    "path": "compose/synchronization/controlling-the-test-clock/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "synchronizing-with-idle": {
+    "repo": "android-testing-skills",
+    "path": "compose/synchronization/synchronizing-with-idle/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "testing-animations-deterministically": {
+    "repo": "android-testing-skills",
+    "path": "compose/synchronization/testing-animations-deterministically/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "choosing-what-to-test": {
+    "repo": "android-testing-skills",
+    "path": "fundamentals/concepts/choosing-what-to-test/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "understanding-the-testing-pyramid": {
+    "repo": "android-testing-skills",
+    "path": "fundamentals/concepts/understanding-the-testing-pyramid/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "picking-test-doubles": {
+    "repo": "android-testing-skills",
+    "path": "fundamentals/doubles/picking-test-doubles/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "applying-testing-strategies": {
+    "repo": "android-testing-skills",
+    "path": "fundamentals/strategies/applying-testing-strategies/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "organizing-test-source-sets": {
+    "repo": "android-testing-skills",
+    "path": "fundamentals/strategies/organizing-test-source-sets/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "writing-espresso-tests": {
+    "repo": "android-testing-skills",
+    "path": "instrumentation/espresso/writing-espresso-tests/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "running-tests-on-gradle-managed-devices": {
+    "repo": "android-testing-skills",
+    "path": "instrumentation/managed-devices/running-tests-on-gradle-managed-devices/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "running-instrumented-tests-with-androidjunit4": {
+    "repo": "android-testing-skills",
+    "path": "instrumentation/runner/running-instrumented-tests-with-androidjunit4/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "launching-activities-with-activityscenario": {
+    "repo": "android-testing-skills",
+    "path": "instrumentation/scenarios/launching-activities-with-activityscenario/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "launching-fragments-with-fragmentscenario": {
+    "repo": "android-testing-skills",
+    "path": "instrumentation/scenarios/launching-fragments-with-fragmentscenario/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "cross-app-tests-with-uiautomator": {
+    "repo": "android-testing-skills",
+    "path": "instrumentation/uiautomator/cross-app-tests-with-uiautomator/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "testing-coroutines-with-runtest": {
+    "repo": "android-testing-skills",
+    "path": "jvm-tests/coroutines/testing-coroutines-with-runtest/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "testing-flows-with-turbine": {
+    "repo": "android-testing-skills",
+    "path": "jvm-tests/coroutines/testing-flows-with-turbine/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "mocking-with-mockito": {
+    "repo": "android-testing-skills",
+    "path": "jvm-tests/mocking/mocking-with-mockito/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "mocking-with-mockk": {
+    "repo": "android-testing-skills",
+    "path": "jvm-tests/mocking/mocking-with-mockk/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "using-robolectric-correctly": {
+    "repo": "android-testing-skills",
+    "path": "jvm-tests/robolectric/using-robolectric-correctly/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "configuring-junit4-on-android": {
+    "repo": "android-testing-skills",
+    "path": "jvm-tests/runner/configuring-junit4-on-android/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "writing-tests-with-kotlin-test": {
+    "repo": "android-testing-skills",
+    "path": "kotlin/kotlin-test/writing-tests-with-kotlin-test/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
+  },
+  "migrating-from-android-test-classes": {
+    "repo": "android-testing-skills",
+    "path": "platform/legacy/migrating-from-android-test-classes/SKILL.md",
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1"
   }
 }

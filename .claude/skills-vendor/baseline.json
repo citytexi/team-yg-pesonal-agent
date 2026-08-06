@@ -1,6 +1,6 @@
 {
   "android-skills": {
-    "sha": "47e1dff74a5cde5d0128c5d15e74e000323135ea",
+    "sha": "28822b2306f34740542e4150888c5b0cde41724d",
     "branch": "main",
     "url": "https://github.com/android/skills.git"
   },
@@ -15,8 +15,13 @@
     "url": "https://github.com/skydoves/compose-performance-skills.git"
   },
   "chrisbanes-skills": {
-    "sha": "289eb24e1f516c15bda52a0d63986ff17174b806",
+    "sha": "8d019ed3b8e634a14198709ec22e01afb121ea07",
     "branch": "main",
     "url": "https://github.com/chrisbanes/skills.git"
+  },
+  "android-testing-skills": {
+    "sha": "8665ed59643c90eb1056a256a6ddec161aa1cfa1",
+    "branch": "main",
+    "url": "https://github.com/skydoves/android-testing-skills.git"
   }
 }

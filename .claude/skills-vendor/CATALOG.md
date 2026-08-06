@@ -1,8 +1,8 @@
 # 벤더 스킬 CATALOG (주제별)
 
-> 갱신: 2026-07-22 | spec/plan 작성 시 `skill-finder`로 검색, 목차는 아래.
+> 갱신: 2026-08-06 | spec/plan 작성 시 `skill-finder`로 검색, 목차는 아래.
 
-## android-skills / build
+## android-skills / build-system
 - **agp-9-upgrade** — Upgrades, or migrates, an Android project to use Android Gradle Plugin
 
 ## android-skills / camera
@@ -52,6 +52,74 @@
 ## android-skills / xr
 - **display-glasses-with-jetpack-compose-glimmer** — Provides guidelines for developing projected Android XR apps for display
 
+## android-testing-skills / adb
+- **capturing-screenshots-and-screenrecord** — Use this skill to capture visual artefacts from a device for test failures, golden image generation, QA repro, and demo videos. Covers `adb 
+- **connecting-over-wifi** — Use this skill to connect ADB to an Android 11+ device wirelessly with the modern `adb pair` flow (pairing code or QR via `Settings → Develo
+- **connecting-to-devices** — >-
+- **extracting-logs-with-logcat** — Use this skill to read device logs for test failures, debug, smoke testing, and CI repros. Covers `adb logcat` (stream), `adb logcat -d` (du
+- **extracting-test-artifacts** — Use this skill to move files between host and device with `adb pull` and `adb push`, including the modern `-z` (compression), `-Z` (no compr
+- **injecting-input-and-state** — Use this skill to drive an Android device from the host shell — inject taps, swipes, text, key events, and drag-and-drop via `adb shell inpu
+- **installing-and-managing-apps** — Use this skill to install, uninstall, list, inspect, and reset Android apps via `adb install` (with `-r` reinstall, `-d` allow-downgrade, `-
+- **running-instrumented-tests-via-adb** — Use this skill to run instrumented Android tests directly through `adb shell am instrument -w -r` without going through Gradle. Covers the r
+- **scripting-adb-for-ci** — Use this skill to wire `adb` reliably into CI — bash idioms, exit codes, parallel device fan-out with `xargs -P`, port forwarding (`adb forw
+- **understanding-adb-architecture** — Use this skill to reason about the three-piece ADB topology (client CLI, host server on TCP 5037, on-device daemon `adbd`), the lifecycle co
+
+## android-testing-skills / compose
+- **asserting-bounds-and-dimensions** — Use this skill to verify Compose layout measurements from a UI test using `assertWidthIsEqualTo`, `assertHeightIsEqualTo`, `assertWidthIsAtL
+- **asserting-node-state-and-text** — Use this skill to verify a Compose semantics node's properties from a UI test using `assertExists`, `assertDoesNotExist`, `assertIsDisplayed
+- **auditing-compose-test-suite** — Use this skill to perform an end-to-end review of an existing Jetpack Compose UI test file or test suite. Sequences six audit phases (setup 
+- **capturing-preview-screenshots-in-ci** — Use this skill to render every Jetpack Compose `@Preview` as a screenshot on a real Android device or emulator and publish a browsable HTML 
+- **choosing-test-rule-vs-runtest** — >-
+- **clicking-and-scrolling** — Use this skill to drive Jetpack Compose UI from tests with the high-level action APIs that do not go through a gesture builder — performClic
+- **composing-semantics-matchers** — Use this skill to build precise Compose UI test queries by composing `SemanticsMatcher` predicates with `infix and`, `infix or`, and `operat
+- **configuring-test-dependencies** — >-
+- **controlling-the-test-clock** — Use this skill to drive the Compose test clock by hand with MainTestClock — currentTime, autoAdvance, advanceTimeByFrame, advanceTimeBy(mill
+- **developing-with-compose-previews** — Use this skill to make `@Preview` functions the primary feedback loop for Jetpack Compose UI work — preview-driven development. Covers hoist
+- **enabling-accessibility-checks** — Use this skill to enable Espresso's `AccessibilityValidator` against the Compose semantics tree via `enableAccessibilityChecks(...)` from `a
+- **entering-text** — Use this skill to drive Jetpack Compose text fields from tests with the text-specific actions — performTextInput (insert at cursor via the I
+- **finding-nodes-by-tag-text-content** — Use this skill to locate Compose semantics nodes from a UI test using `onNodeWithTag`, `onNodeWithText`, `onNodeWithContentDescription`, `on
+- **injecting-mouse-and-keyboard** — Use this skill to drive Jetpack Compose UI from tests with non-touch input — performMouseInput (click, rightClick, doubleClick, tripleClick,
+- **injecting-touch-gestures** — Use this skill to drive Jetpack Compose UI with synthetic touch events through performTouchInput and the TouchInjectionScope DSL — click, lo
+- **printing-the-semantics-tree** — Use this skill to diagnose "no node matched", "found N nodes", and "useUnmergedTree" failures by dumping the actual semantics tree with `pri
+- **setting-up-host-vs-device-tests** — Use this skill to choose between host (Robolectric/JVM) and device (instrumentation) tests for Jetpack Compose, and to configure each correc
+- **structuring-a-compose-test** — Use this skill to structure a Jetpack Compose UI test class the way androidx itself writes them — `@MediumTest` + `@RunWith(AndroidJUnit4::c
+- **synchronizing-with-idle** — Use this skill to choose the right idle-synchronization primitive in Compose UI tests — waitForIdle, awaitIdle, waitUntil(conditionDescripti
+- **testing-animations-deterministically** — Use this skill to write non-flaky Compose animation tests by setting mainClock.autoAdvance = false and stepping frames by hand with advanceT
+- **testing-lazy-lists** — Use this skill to test `LazyColumn`, `LazyRow`, and `LazyVerticalGrid` correctly — tag the container with `Modifier.testTag(...)`, tag each 
+- **testing-state-restoration** — >-
+- **testing-with-espresso-interop** — Use this skill to mix Compose finders and Espresso `onView` in the same test — for Android `Dialog` windows, IME (soft keyboard) state, `Com
+- **traversing-the-semantics-tree** — Use this skill to navigate from one Compose semantics node to its relatives via `onParent`, `onChildren`, `onChild`, `onChildAt`, `onSibling
+- **validating-compose-stability** — >-
+
+## android-testing-skills / fundamentals
+- **applying-testing-strategies** — Use this skill to apply Android-team testing strategies — determinism, hermetic execution, Given-When-Then / Arrange-Act-Assert structure, n
+- **choosing-what-to-test** — Use this skill to pick which behaviors to cover in an Android test suite using Google's five-category state vocabulary plus the explicit "wh
+- **organizing-test-source-sets** — Use this skill to organize Android test source sets — `src/test/`, `src/androidTest/`, the community `src/sharedTest/` convention, and the m
+- **picking-test-doubles** — Use this skill to pick the right test double — fake, mock, stub, spy, dummy, or Robolectric shadow — for an Android test. Encodes Google's v
+- **understanding-the-testing-pyramid** — Use this skill to size an Android test suite using Google's small / medium / big scope vocabulary and the qualitative pyramid. Explains why 
+
+## android-testing-skills / instrumentation
+- **cross-app-tests-with-uiautomator** — Use this skill to drive cross-app and system-UI flows from instrumentation tests using UiAutomator 2.3.0 — `UiDevice`, `BySelector` / `UiObj
+- **launching-activities-with-activityscenario** — Use this skill to launch, drive, and tear down an Activity from an instrumentation test using `ActivityScenario` and the JUnit4 wrapper `Act
+- **launching-fragments-with-fragmentscenario** — Use this skill to test a `Fragment` in isolation using `FragmentScenario`, `launchFragmentInContainer<F>()`, and `launchFragment<F>()`. Cove
+- **running-instrumented-tests-with-androidjunit4** — Use this skill to stand up an Android instrumentation test source set with the canonical `AndroidJUnit4` runner, the correct `AndroidJUnitRu
+- **running-tests-on-gradle-managed-devices** — Use this skill to run instrumented Android tests on Gradle Managed Devices (GMD) — emulators that Gradle provisions, boots, runs tests on, a
+- **writing-espresso-tests** — Use this skill to write Espresso 3.7.0 tests against Android Views — `onView(matcher).perform(action).check(matches(...))`, `onData(...)` fo
+
+## android-testing-skills / jvm-tests
+- **configuring-junit4-on-android** — Use this skill to stand up a JUnit4-based JVM unit-test suite on an Android module. Covers the canonical Gradle dependency matrix (`junit:ju
+- **mocking-with-mockito** — Use this skill to wire Mockito (the dominant Android mocking framework, exclusively used by androidx itself) into a JVM unit-test suite. Cov
+- **mocking-with-mockk** — Use this skill to wire MockK (the Kotlin-first mocking framework) into a JVM unit-test suite, especially when coroutines, singleton/`object`
+- **testing-coroutines-with-runtest** — Use this skill to test suspend functions and coroutine-using classes on the JVM with kotlinx-coroutines-test. Covers runTest, TestScope, Sta
+- **testing-flows-with-turbine** — Use this skill to assert Flow emissions in tests with Cash App Turbine. Covers flow.test entry, ReceiveTurbine API (awaitItem, awaitComplete
+- **using-robolectric-correctly** — Use this skill to run Android-aware unit tests on the JVM with Robolectric — the right runner choice (AndroidJUnit4 vs RobolectricTestRunner
+
+## android-testing-skills / kotlin
+- **writing-tests-with-kotlin-test** — Use this skill to write tests with the `kotlin.test` library — the multiplatform assertion + annotation API that compiles the same in `commo
+
+## android-testing-skills / platform
+- **migrating-from-android-test-classes** — Use this skill to migrate a codebase off the deprecated `android.test.*` testing classes that ship in the Android platform SDK onto AndroidX
+
 ## chrisbanes-skills / skills
 - **compose-animations** — Use when writing or reviewing Jetpack Compose motion: visibility enter/exit, animating one property toward a target, color or size transitio
 - **compose-focus-navigation** — Use when writing or reviewing Jetpack Compose UI for TV, keyboard, desktop, accessibility focus, D-pad navigation, FocusRequester, focusProp
@@ -62,18 +130,18 @@
 - **compose-stability-diagnostics** — Use when writing or reviewing Jetpack Compose parameter stability, compiler reports, skippability, unstable UI state classes, collection par
 - **compose-state-authoring** — Use when writing or reviewing Jetpack Compose code with bare local var in a @Composable, remember { mutableStateOf(...) }, mutableStateListO
 - **compose-state-deferred-reads** — Use when Jetpack Compose code reads scroll, animation, gesture, or other frame-rate State in composition, passes changing values across comp
-- **compose-state-hoisting** — Use when deciding where Jetpack Compose UI element state or UI logic should live: local remember state, hoisted composable parameters, a pla
-- **compose-state-holder-ui-split** — Use when a Jetpack Compose screen-level composable takes a ViewModel/component/controller, collects state or effects, handles navigation/sna
+- **compose-state-hoisting** — Use when adding or refactoring interactive Jetpack Compose UI that introduces or moves remember state or coordinated UI logic, or when a scr
 - **compose-ui-testing-patterns** — Use when writing or reviewing Jetpack Compose UI tests, screenshot tests, previews, semantics assertions, fake image loading, keyboard input
-- **implement-issue** — Use when asked to review, fix, implement, resolve, or work through a specific GitHub, GitLab, Jira, or Linear issue reference.
 - **kotlin-control-flow** — Use when writing or reviewing Kotlin branching and control flow: when expressions, guard conditions, sealed type exhaustiveness, smart casts
 - **kotlin-coroutines-structured-concurrency** — Use when writing or reviewing Kotlin code that stores CoroutineScope, launches from init/non-suspending APIs, calls runBlocking, or catches 
 - **kotlin-flow-state-event-modeling** — Use when writing or reviewing Kotlin Flow state and event APIs with StateFlow, MutableStateFlow.update, SharedFlow, Channel, stateIn, Sharin
 - **kotlin-functions** — Use when choosing Kotlin member, top-level, extension, factory, or service functions for String, primitive, collection, Flow, framework, or 
 - **kotlin-multiplatform-expect-actual** — Use when designing Kotlin Multiplatform expect/actual or interface boundaries for platform services, native SDKs, source sets, Compose Multi
 - **kotlin-types-value-class** — Use when writing or reviewing Kotlin type declarations to choose @JvmInline value class over data class where appropriate, including Compose
+- **run-github-project** — Use when asked to set up or repair a repository's GitHub Project configuration, reconcile Project epics or human checkpoints, triage Backlog
 - **shepherd** — Use when asked to shepherd, babysit, monitor, or poll open pull requests or merge requests — including triaging review comments, detecting C
-- **using-chrisbanes-skills** — Use when a Kotlin, Android, or Jetpack Compose task is too broad for any single focused skill to obviously apply, especially for general rev
+- **to-plan** — Use when one ready GitHub issue or one explicitly confirmed conversation specification needs a repository-aware implementation plan for a la
+- **using-chrisbanes-skills** — Use when debugging, benchmarking, or profiling leads into Kotlin or Jetpack Compose source before the cause is known, or when a broad Kotlin
 
 ## compose-performance-skills / audit
 - **auditing-compose-performance** — Use this skill to run an end-to-end Jetpack Compose performance audit when the symptom is broad ("the app feels sluggish", "scroll is rough 
