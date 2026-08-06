@@ -70,7 +70,7 @@ tags: [spec, parfait, testing, build-logic]
 | `kotlinx-coroutines-test` | test | `runTest`·`StandardTestDispatcher`·가상 시간 |
 | `app.cash.turbine:turbine` | test | Flow 방출 검증 |
 | `io.mockk:mockk` | test | 상호작용 검증 · Retrofit Service 대역 |
-| OkHttp MockWebServer | test | HTTP 계층 검증 |
+| `com.squareup.okhttp3:mockwebserver3` | test | HTTP 계층 검증 |
 | `androidx.test.ext:junit` | androidTest | `AndroidJUnit4` 러너 |
 | `androidx.test:runner`·`androidx.test:rules` | androidTest | 계측 러너·룰 |
 | `androidx.compose.ui:ui-test-junit4` | androidTest | Compose UI 테스트 |
@@ -79,8 +79,9 @@ tags: [spec, parfait, testing, build-logic]
 `androidx.test.ext:junit`은 unit 소스셋에 넣지 않는다. Robolectric을 쓰지 않으므로
 `AndroidJUnit4` 러너가 필요 없고, 순수 JVM 테스트는 러너 지정 없이 기본 JUnit4로 돈다.
 
-MockWebServer는 OkHttp 5 계열에서 아티팩트 좌표가 갈린다(레거시 `okhttp3:mockwebserver` vs
-신규 `mockwebserver3` 패키지). 구현 시 실제 해석되는 좌표를 확인해 고정한다.
+MockWebServer는 OkHttp 5 계열에서 아티팩트가 둘로 갈리는데(레거시 `okhttp3:mockwebserver`와
+신규 `okhttp3:mockwebserver3`), 실물 확인 결과 **둘 다 5.4.0이 배포돼 있다.** OkHttp 버전과
+함께 움직이도록 `version.ref = "okhttp"`로 걸고 신규 패키지(`mockwebserver3`)를 쓴다.
 
 번들 3개로 묶는다.
 
@@ -268,8 +269,9 @@ PR 타깃 브랜치는 `develop`, JDK 17(temurin), Gradle 캐시, `gradlew` 실�
 
 ## 주의 / 열린 질문
 
-- **MockWebServer 좌표 미확정.** OkHttp 5.4.0 기준 레거시/신규 패키지 중 어느 쪽이 해석되는지
-  구현 시 확인해 고정한다.
+- **`mockwebserver3` API 표면.** 좌표는 확정했지만(`okhttp3:mockwebserver3` 5.4.0) 5.x에서
+  `MockResponse` 생성 방식과 `takeRequest()` 반환 타입의 프로퍼티명이 4.x와 다르다.
+  구현 시 컴파일 에러가 정확한 이름을 알려주므로 그에 맞춘다.
 - **ktlint와 테스트 함수명.** 영문 언더스코어 규약을 택했으므로 백틱 면제 여부는 쟁점이
   아니지만, `function-naming` 규칙이 언더스코어를 허용하는지는 첫 빌드에서 확인한다.
   걸리면 해당 규칙을 테스트 소스셋에 한해 완화한다.
