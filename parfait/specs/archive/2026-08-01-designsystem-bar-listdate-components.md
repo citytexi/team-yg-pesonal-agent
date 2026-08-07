@@ -48,6 +48,8 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 >   `null`이면 `drawBehind { drawRect(White75) }`, 아니면 `hazeEffect { blurRadius·backgroundColor·tints }`.
 > - `YGTopBarEmpty(date, day, onIconClick, modifier, hazeState = null, rightContent = {})` 순서로 확정.
 >   날짜·요일은 `titleContent` 안쪽 `weight(1f)` `Row`(`gap3`)에 들어가고 `rightContent`가 그 형제다.
+>   (**#194로 `hazeState`와 `rightContent` 사이에 `windowInsets`가 끼어들었다** — 상단 인셋을 탑바가
+>   흡수한다. 상세 → [ygtopbar 스펙](2026-07-18-ygtopbar.md) "주의 / 열린 질문".)
 > - `YGListDate`의 날짜 버튼 크기는 `Modifier.size(SizeTokens.Size44.getDp())`(아래 표기는 토큰명만).
 >
 > 스펙 범위 밖 동반 변경 없음. 같은 라운드에 **PR #189**(chore)가 G-001 라벨 3종을 `strings.xml`로

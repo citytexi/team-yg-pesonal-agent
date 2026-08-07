@@ -49,6 +49,13 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 > 배경 이미지·오버레이가 붙는 화면에서 위 2번 관용구가 부족했다는 신호다 →
 > [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) · [open-questions](../synthesis/open-questions.md) [2026-08-01].
 
+> ⚠️ **인셋 소유가 컴포넌트로 내려간 사례(2026-08-07, PR #194)** — G-001은 `YGTopBarEmpty`가
+> `windowInsets`(기본 `WindowInsets.statusBars`)를 자기 패딩으로 흡수하고, 그만큼 엔트리
+> `YGScaffold`가 `contentWindowInsets = systemBars.only(Horizontal + Bottom)`으로 상단을 뺀다.
+> 둘 다 상단을 주면 인셋이 이중 적용된다. 이로써 develop에 인셋 관용구가 **3형태**(엔트리 `YGScaffold`
+> 기본 / 화면이 직접 `windowInsetsPadding`(C-101) / 컴포넌트 흡수(G-001)) 공존한다 →
+> [open-questions](../synthesis/open-questions.md) [2026-08-07].
+
 > **의도적 예외(2026-08-01, PR #182)** — C-101 카메라 entry는 `YGScaffold`를 쓰되 **`innerPadding`을
 > 화면에 먹이지 않는다**. 카메라 피드가 시스템 바 아래까지 덮어야 하고 인셋은 컨트롤 영역이
 > `windowInsetsPadding`으로 직접 처리하기 때문이다(코드 주석에 근거 명시). 전체화면 카메라·미디어
