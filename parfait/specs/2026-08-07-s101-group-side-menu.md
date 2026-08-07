@@ -38,30 +38,43 @@ Figma의 `S-102`는 별도 화면이 아니라 **이 화면의 닉네임 편집 
   - Danger Zone 2항목 UI + 클릭 stub.
   - 화면 로컬 컴포넌트 2종(`GroupNicknameField`·`GroupMemberList`) + 문자열 리소스.
   - `YGColorChipType` 드리프트 2건 수정(아래 별도 절).
+  - `YGTextFormField`에 `keyboardOptions`·`keyboardActions` 파라미터 추가(기본값 있어 기존 호출부 무영향) — 키보드 엔터 확정을 위해 필요.
+  - `GroupSettingViewModel` **JVM 유닛 테스트**.
 - **제외**:
   - 그룹 상세 조회·닉네임 변경·그룹 탈퇴·신고 **API 연동**. Repository·UseCase 신설 없음(`ParfaitGroupRemoteDataSource`는 이미 있으나 이번엔 쓰지 않는다).
   - 그룹 나가기·신고 **확인 모달** — Figma 미제공.
   - 상단바 `List-Member`(멤버 겹침 칩) — Figma에서 `opacity 0`이라 비노출이 정답.
   - `+N` 칩(`NametagChipPlus`) — Figma 주석상 캔버스 전용(그룹 멤버수 > 5일 때 남은 수), 이 화면 소관 아님.
-  - 신규 디자인시스템 컴포넌트·에셋·토큰 **0건**.
+  - 신규 디자인시스템 **컴포넌트**·에셋·토큰 **0건**(위 `YGTextFormField` 확장은 기존 컴포넌트 파라미터 추가).
+  - Compose UI 계측 테스트 — feature 모듈에 계측 배선이 없고 값 대비 비용이 크다.
 
 ## 모듈 / 파일 구성
 
 ```
 feature/groups/setting/api/.../
   NavKeyGroupSetting.kt              (기존 유지 — data object, Mock이라 groupId 인자 없음)
-feature/groups/setting/impl/.../
-  route/GroupSettingRoute.kt         (구현: hiltViewModel + collectAsStateWithLifecycle + effect 수집)
-  screen/GroupSettingScreen.kt       (신규: stateless UI)
-  viewmodel/GroupSettingViewModel.kt (신규: State/Intent/SideEffect + VM 동거 — S-001 선례)
-  component/GroupNicknameField.kt    (신규: YGLabel + YGTextFormField)
-  component/GroupMemberList.kt       (신규: YGLabel + YGUserChip 목록)
-  navigation/EntryBuilder.kt         (수정: Scaffold 배경 White)
-  res/values/strings.xml             (신규)
+feature/groups/setting/impl/
+  build.gradle.kts                   (수정: parfait.test.unit 플러그인 적용)
+  src/main/.../route/GroupSettingRoute.kt         (구현: hiltViewModel + collectAsStateWithLifecycle + effect 수집)
+  src/main/.../screen/GroupSettingScreen.kt       (신규: stateless UI)
+  src/main/.../viewmodel/GroupSettingViewModel.kt (신규: State/Intent/SideEffect + VM 동거 — S-001 선례)
+  src/main/.../component/GroupNicknameField.kt    (신규: YGLabel + YGTextFormField)
+  src/main/.../component/GroupMemberList.kt       (신규: YGLabel + YGUserChip 목록)
+  src/main/res/values/strings.xml                 (신규)
+  src/test/.../viewmodel/GroupSettingViewModelTest.kt (신규: VM 상태 전이·유효성·SideEffect)
 core/designsystem/.../component/ygcolorchip/
   YGColorChipType.kt                 (수정: 드리프트 2건)
   YGNametagChipPreviewData.kt        (수정: 위 변경 반영)
+core/designsystem/.../component/textfield/
+  YGTextFieldImpl.kt                 (수정: keyboardOptions·keyboardActions 전달)
+  YGTextFormField.kt                 (수정: 위 두 파라미터 노출)
 ```
+
+`navigation/EntryBuilder.kt`는 **수정하지 않는다** — `YGScaffold`의 `containerColor` 기본값이 이미 `YGAtomicColors.Gray.White`라 S-101의 흰 배경이 그대로 나온다.
+
+## 브랜치 기반
+
+이 작업의 브랜치 `feature/#211-S-101-group-side-menu`는 `develop`이 아니라 **`feature/#215-test-environment`(PR #219, `develop` 대상 OPEN)** 위에 올라간다. ViewModel 유닛 테스트를 쓰려면 그 브랜치의 `parfait.test.unit` 컨벤션 플러그인과 `:core:testing`(`MainDispatcherRule`)이 필요하기 때문이다. PR은 #219 머지 후에 내거나 base를 그 브랜치로 잡는다.
 
 재사용 디자인시스템 심볼: `YGTopBarDetail` · `YGLabel` · `YGTextFormField` · `YGUserChip`/`YGNametagChip` · `YGInviteCard` · `YGDangerZone` + `YGActionItem` · `YGButton(YGButtonType.Large)` · `YGScreen`. 재사용 도메인 심볼: `CheckNameValidUseCase` · `NameValidResult` · `GroupCreateConfig`(닉네임 상한).
 
@@ -76,12 +89,12 @@ data class GroupMemberUiModel(
     val isMe: Boolean,
 )
 
-data class GroupSettingState(
+data class GroupSettingUiState(
     val groupName: String,                 // Mock
     val myNickname: String,                // 확정된 내 닉네임
     val nicknameInput: String,             // 편집 중 입력값
     val isEditing: Boolean = false,
-    val nicknameErrorResId: Int? = null,   // @StringRes, core:ui 리소스
+    val errorMessageResId: Int? = null,    // @StringRes, core:ui 리소스
     val members: List<GroupMemberUiModel>, // Mock
     val inviteCode: String,                // Mock
     val remainingCount: Int,               // Mock
@@ -90,9 +103,9 @@ data class GroupSettingState(
 
 sealed interface GroupSettingIntent : UiIntent {
     data object ClickBack : GroupSettingIntent
-    data class InputNickname(val value: String) : GroupSettingIntent
+    data class InputNickname(val nickname: String) : GroupSettingIntent
     data class ChangeNicknameFocus(val isFocused: Boolean) : GroupSettingIntent
-    data object ClickConfirmNickname : GroupSettingIntent
+    data object ConfirmNickname : GroupSettingIntent
     data object ClickCopyInviteCode : GroupSettingIntent
     data object ClickLeaveGroup : GroupSettingIntent
     data object ClickReportGroup : GroupSettingIntent
@@ -100,7 +113,7 @@ sealed interface GroupSettingIntent : UiIntent {
 
 sealed interface GroupSettingSideEffect : UiSideEffect {
     data object NavigateBack : GroupSettingSideEffect
-    data class CopyInviteCode(val code: String) : GroupSettingSideEffect
+    data class CopyInviteCode(val inviteCode: String) : GroupSettingSideEffect
 }
 ```
 
@@ -118,10 +131,13 @@ sealed interface GroupSettingSideEffect : UiSideEffect {
 | 닉네임 필드 포커스 획득 | `ChangeNicknameFocus(true)` → `isEditing = true`. `확인` 버튼 노출 |
 | 입력 | `InputNickname` → `nicknameInput` 갱신 + **매 입력마다** `CheckNameValidUseCase` 실행해 `nicknameErrorResId` 갱신 |
 | 유효성 실패 | 필드 `isError = true`(테두리·카운터 강조) + 하단 에러 문구 + `확인` 비활성. Figma `144:8245` 주석 "닉네임 유효성 검사 통과하지 못할 시 비활성화" |
-| `확인` 클릭 | `myNickname = nicknameInput`, `isEditing = false`, 포커스 해제 |
-| 배경 탭 / 뒤로가기 | 편집 취소 — `nicknameInput = myNickname`, `nicknameErrorResId = null`, `isEditing = false` |
+| `확인` 클릭 **또는 키보드 완료(엔터)** | `ConfirmNickname` 하나로 모인다 — `myNickname = nicknameInput`, 그룹원 목록의 내 항목 동기화, `isEditing = false`, 포커스 해제. 유효성 미통과면 **아무 일도 안 일어난다**(활성 버튼과 같은 조건) |
+| 배경 탭 / 뒤로가기 / 포커스 상실 | 편집 취소 — `nicknameInput = myNickname`, `errorMessageResId = null`, `isEditing = false` |
 
 - 길이 상한은 `YGTextFormField(maxLength = GroupCreateConfig.NICKNAME_MAX_LENGTH)`로 컴포넌트가 입력 자체를 막는다(15자). 카운터 `n/15`·클리어 버튼·포커스/에러 테두리는 `YGTextFieldImpl`에 이미 구현돼 있어 추가 작업이 없다.
+- 엔터 확정을 받으려면 `ImeAction.Done` + `onDone` 콜백이 필요한데 `YGTextFormField`가 그 통로를 안 갖고 있었다 → `keyboardOptions`·`keyboardActions`를 기본값과 함께 뚫는다(위 범위 참고).
+- 화면에서 확정 콜백은 **`onConfirmNickname()` 실행 뒤 `focusManager.clearFocus()`** 순서여야 한다. 뒤집으면 포커스 상실이 먼저 편집을 취소해 입력값이 되돌아가고, 뒤이은 확정이 조건 미달로 아무 일도 하지 않는다.
+- `확인` 버튼은 `isEditing`일 때만 컴포지션한다. 포커스와 키보드가 같이 움직이므로 이것이 "키보드가 올라와 있을 때만 노출"이다. IME 인셋 높이를 직접 재지 않는 이유는 키보드 애니메이션 중 버튼이 깜빡이기 때문이다.
 - 검증 시점이 기존 `GroupNickNameViewModel`(클릭 시점)과 다르다. 이 화면은 버튼 활성 상태 자체가 검증 결과에 걸려 있어 **입력 시점 검증**이어야 한다 — `AccountInfoViewModel`(S-002)과 같은 방식이다.
 - 에러 문자열은 `core:ui`의 기존 리소스를 재사용한다(`error_duplicated_space`·`error_invalid_character`·`error_space_at_edge_nickname`·`error_empty_space_nickname`). ADR-0016의 매핑 위치 미결(도메인 결과 → `@StringRes`)은 이 화면에서 새로 결정하지 않고 S-002 as-built(VM에서 매핑)를 따른다.
 - 배경 탭 취소는 `clearFocusOnTap()`(opt-in Modifier)을 화면 루트에 건다. 포커스 해제가 곧 편집 종료이므로 별도 취소 버튼을 두지 않는다.
@@ -194,8 +210,10 @@ Figma 컴포넌트셋 `144:5415`는 타입 `1~12` + `+` = 13종인데 코드는 
 
 ## 검증
 
-- **자동화 테스트 없음** — 이 저장소는 테스트 소스셋이 없다(테스트 기반은 별도 스펙 `2026-08-06-unit-test-infrastructure` 진행 중). 별도 지침 전까지 테스트 파일을 만들지 않는다.
-- 검증선: `:feature:groups:setting:impl` · `:core:designsystem` **컴파일** + **ktlint** 통과.
+- **`GroupSettingViewModel` JVM 유닛 테스트**(`src/test/`) — `feature/#215-test-environment`의 `parfait.test.unit` + `:core:testing`(`MainDispatcherRule`) + Turbine을 쓴다. 잠그는 규칙: 유효성 5케이스 매핑 · 확정 가드(`isConfirmEnabled` 아니면 무시) · 편집 취소 시 입력 원복 · 포커스 전이 · 확정 시 그룹원 목록 동기화 · `NavigateBack`/`CopyInviteCode` 방출.
+  - **유닛 테스트가 못 잡는 것**: 확정과 포커스 해제의 호출 순서, `imePadding()` 동작, 클립보드 실제 복사, 긴 문자열 레이아웃 → 육안이 유일한 그물이다.
+  - Compose UI 계측 테스트는 이번 범위 밖(feature 모듈 계측 미배선).
+- 검증선: `:feature:groups:setting:impl:testDebugUnitTest` + `:feature:groups:setting:impl` · `:core:designsystem` **컴파일** + **ktlint** + `:app:assembleDebug`(Hilt 그래프 및 `YGTextFormField` 기존 호출부 회귀).
 - `@YGPreview` + `PreviewBox` 프리뷰: 기본 상태 / 편집 유효 / 편집 오류 / 초대 코드 `복사됨` / `Invalid`(정원 초과) 5종.
 - 실기기 육안: 키보드 오르내림에 따라 `확인` 버튼이 붙어 움직이는지, 배경 탭으로 편집이 취소되는지, 클립보드에 코드가 실제로 복사되는지.
 - **긴 닉네임 프리뷰를 반드시 포함한다** — `bar-listdate` 라운드에서 짧은 샘플만 쓰다 폭 측정 결함을 놓친 전례가 있다. 15자 닉네임 + 긴 그룹명 케이스를 프리뷰에 넣는다.
