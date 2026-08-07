@@ -6,6 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
+| [2026-08-06-unit-test-infrastructure.md](2026-08-06-unit-test-infrastructure.md) | 유닛 테스트 기반 구조 구현(9 Task, 브랜치 `feature/#215-test-environment`): 카탈로그·`parfait-test-unit`·`core:util:jvm` 첫 테스트 → `:core:testing` 모듈 + `MainDispatcherRule` + `domain` → `DayWindow` `Clock` 주입(유일한 프로덕션 변경, 이 Task만 진짜 RED가 성립) → `data` 배선 + `VOMapper` → `PolicyRemoteDataSourceImpl`(MockK) → `AuthInterceptor`(MockWebServer + Retrofit 실제 구성, `Invocation` 태그 때문에 Request 직접 조립으로는 검증 불가) + `ApiCaller` → `parfait-test-android` + 계측 스모크 → `parfait-test-compose` + Compose 스모크 → CI. 기존 코드 특성화 테스트가 대부분이라 논리적 RED가 없어, 각 Task는 **기대값을 일부러 뒤집어 FAIL을 확인한 뒤 되돌리는 절차**로 테스트가 실제 구현을 호출함을 증명한다. 공용 Fake는 이번에 만들지 않는다 — 쓰이는 곳이 없어 미리 만들면 첫 사용자가 다시 고친다. 최종 검증에 `runBlocking`·`isReturnDefaultValues`·백틱 메서드명 grep 포함. 스펙: [specs](../specs/2026-08-06-unit-test-infrastructure.md) |
 | [2026-08-05-orchestration-session-pipeline.md](2026-08-05-orchestration-session-pipeline.md) | 오케스트레이션 파이프라인 스킬 구현(6 Task, **TJYG-Android 코드 변경 0**): `start-session` → `start-default-session` 개명 → `start-orchestration-session` 골격(전제 확인·요구사항 수집·Run 생성) → 문서 단계 W1~W4 + 게이트 G1·G2 → 구현 단계(모듈 worktree·모델 지정 2단계 경로·RED/GREEN 증거 계약) → 통합·코드리뷰·최종 산출·에스컬레이션 → CLAUDE.md 라우팅. 산출물은 마크다운 스킬 문서 2개뿐이라 자동 테스트가 없고, 검증은 **frontmatter `name`↔디렉토리명 일치 · placeholder grep · 문서에 적은 orca 명령·플래그가 `--help`에 실재하는지 대조**로 한다. 스펙: [specs](../specs/2026-08-05-orchestration-session-pipeline.md) |
 
 ## 아카이브
