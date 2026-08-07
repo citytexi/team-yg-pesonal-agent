@@ -1969,7 +1969,17 @@ push와 PR 생성은 사람 확인 후에 한다. 아래를 보고하고 대기�
 
 ---
 
-### Task 10: `domain` UseCase 테스트 (로직 보유 4건) + Fake 3종 + `Clock` DI 바인딩
+### Task 10: `domain` UseCase 테스트 (로직 보유 4건) + Fake 3종 + `Clock` DI 바인딩 — **보류(미실행)**
+
+> **이 Task는 구현했다가 되돌렸다(2026-08-06).** 커밋 `a2b67ca7`·`35146ea0`으로 전부 구현하고
+> 리뷰까지 통과했지만(테스트 58 → 72건), Fake 2종을 `:core:testing`에 넣고 나니 그 구조의 대가가
+> 드러났다 — **Repository가 늘 때마다 Fake가 한 모듈에 쌓이고**, 그 모듈은 `setConfigTestUnit()`을 통해
+> 모든 대상 모듈의 테스트 classpath에 걸려 있어 `data`용 Fake 하나를 고쳐도 `core:util:jvm` 테스트까지
+> 재컴파일된다. 소유권도 어긋난다(`domain` repository의 Fake를 `core:testing`이 소유).
+>
+> 그래서 브랜치를 `c6d7a57c`(Task 9 완료 시점)로 되돌렸다. 폐기한 커밋은 reflog에 남아 있다.
+> **Fake 배치 방식을 정한 뒤** 이 Task를 다시 실행한다 — 선택지는 스펙의 미결 항목 참고.
+> 아래 본문은 그때 재사용할 수 있도록 그대로 둔다. 단 Fake의 위치는 재검토 결과에 따라 바뀐다.
 
 Task 1~9로 기반이 섰고 `domain`에는 `CheckNameValidUseCase`·`DayWindow`만 테스트돼 있다. 남은
 UseCase 10개 중 **실제 분기·변환이 있는 4개만** 다룬다. `DecodeImageUseCase`·`SegmentImageUseCase`·

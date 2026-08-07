@@ -279,6 +279,16 @@ PR 타깃 브랜치는 `develop`, JDK 17(temurin), Gradle 캐시, `gradlew` 실�
   기기·에뮬레이터를 붙이는 시점까지 드러나지 않는다. CI에 기기를 붙일 때 재검증이 필요하다.
 - **`core:util:android`에 unit 테스트가 0개다.** 플러그인만 적용된 상태로 시작하며,
   Android 비의존 로직이 이 모듈에 추가되는 시점에 채워진다.
+- **Repository Fake를 어디에 둘지 미결.** 이 스펙은 공용 Fake를 `:core:testing`에 두기로 했는데,
+  실제로 Fake 2종을 만들어보니(2026-08-06, 이후 되돌림) 대가가 드러났다 — Repository가 늘 때마다
+  한 모듈에 쌓이고, `:core:testing`은 `setConfigTestUnit()`을 통해 **모든 대상 모듈의 테스트
+  classpath**에 걸려 있어 한 Fake를 고치면 무관한 모듈의 테스트까지 재컴파일된다. `domain`
+  repository의 Fake를 `core:testing`이 소유하는 것도 어긋난다. 선택지 셋:
+  (1) 모듈별 `src/testFixtures` — 소유권 명확·재컴파일 범위 최소, 대신 소스셋이 모듈마다 늘고
+  AGP `testFixtures` 활성화 필요 / (2) `:core:testing`은 모듈 비종속 유틸(`MainDispatcherRule` 등)만
+  두고 도메인 Fake는 `testFixtures`로 / (3) 각 모듈 `src/test`에 두고 공유하지 않음 — 소비자가
+  하나뿐인 Fake가 많다면 중복이 오히려 싸다. **첫 Fake가 실제로 필요해지는 시점에 정한다.**
+  현재 상태(`:core:testing`에 `MainDispatcherRule`만)는 어느 쪽도 강제하지 않는다.
 - **`MainDispatcherRule`은 현재 사용처가 0이고 검증되지 않았다.** 이 룰은 `viewModelScope`·
   `Dispatchers.Main`을 타는 테스트용인데 이번 범위(`domain`·`data`·`core:util:*`)에는 ViewModel이
   없다. 컴파일만 될 뿐 `Dispatchers.setMain` 적용·복원과 `runTest(rule.dispatcher)` 스케줄러 공유는
