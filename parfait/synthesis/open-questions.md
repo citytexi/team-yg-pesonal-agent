@@ -324,8 +324,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-01] G-001 파르페·툴팁이 위키 정책과 미결선 — 화면 골격만 머지됨
 - **출처**: `feature/groups/list/impl/route/GroupListParfaitLayout.kt`·`GroupListScreen.kt`·`GroupListViewModel.kt`·`route/component/GroupListTooltip.kt`(PR #173·#176·#180 develop 머지) — ① `GroupListUiState.groupList`가 `List<String>` placeholder고 렌더에 쓰이지 않아 [[무한-파르페-그리드]]의 지그재그 배치·인셋·y좌표·6타입 변형·활동순 정렬·상대시간이 전부 미구현이다. ② 크림 반복이 정책의 "토핑 0~3 → 3개, 4개부터 1:1" 규칙이 아니라 `content` 높이를 덮을 때까지의 올림 나눗셈이다. ③ 툴팁이 `LaunchedEffect(Unit) { show() }`로 **진입 시 무조건** 뜬다 — [[g-001-empty-툴팁]]의 노출 조건은 "그룹 0건". ④ `GroupListUiState.isTooltipVisible`은 死필드이고 실제 노출은 화면 로컬 `rememberTooltipState`가 쥔다. ⑤ 툴팁 문구·앵커가 코드에 리터럴로 확정됐는데 위키 정책은 문구·앵커를 미정으로 둔다(정책 소스 미수집).
 - **항목**: ① 목록 조회 API가 붙는 라운드에서 파르페 좌표 정책을 어디까지 컴포넌트(`YGToppingGroup`)로 흡수할지, ② 크림 개수 규칙을 정책대로 되돌릴지 레이아웃 파생값으로 유지할지, ③ 툴팁 노출 조건을 `groupList.isEmpty()`로 결선하고 상태 소유를 VM/화면 중 어디로 정할지(`isTooltipVisible` 존폐), ④ 툴팁 문구·앵커를 위키 정책으로 역수집할지.
-- **상태**: 미해결 (의도된 골격 선행 — 그룹 조회 미구현)
-- **해소 메모**: 데이터 결선 라운드에서 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)의 "정책 대조" 표를 갱신한다. ④는 위키 소관이라 정책 소스 수집 요청이 먼저다([[open-questions]]의 툴팁 문구·앵커 미정 항목).
+- **상태**: 미해결 — **①은 부분 해소(2026-08-07, PR #194)**, ②③④ 잔존
+- **해소 메모**: **①**: 토핑 배치가 화면의 `ToppingLayout`(지그재그 커스텀 `Layout`)으로 들어왔고 좌·우 인셋 4·같은 side 갭 -12·`Right = Left + 86`·저개수 N≤3 +12가 전부 [[G-001-무한파르페-간격-정책-v0.3]]과 **일치**한다. 소유 갈림은 "컴포넌트(`YGToppingGroup`)는 한 토핑의 회전·오프셋만, 화면은 열·간격"으로 결론났다. 다만 **변형 타입은 정책의 랜덤 재부여가 아니라 index 순환**이라 별도 항목으로 뗀다([2026-08-07](#2026-08-07-토핑-변형-타입이-index-순환으로-부여됨--정책은-랜덤-재부여)). **②**: 크림 반복 기준이 접시 제외로 좁혀졌을 뿐 여전히 높이 파생이다. **③**: 조회가 아직 mock이라 그대로고, mock 기본값이 4건이라 **0건 아닌 상태에서도 툴팁이 뜬다**. **④**는 위키 소관이라 정책 소스 수집 요청이 먼저다([[open-questions]]의 툴팁 문구·앵커 미정 항목). 표 갱신은 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "정책 대조"에 반영했다.
 
 ### [2026-08-01] 테마 비의존 그리기 확장의 소유 모듈이 갈림
 - **출처**: `core/util/android/extension/Modifier.kt#drawTooltipCornerTop`(PR #176 develop 머지) vs `core:designsystem`의 `border/DashedBorder.kt#dashedBorder`·`shape/CanvasCutCornerShape.kt#canvasCutCornerShape` — 셋 다 테마를 읽지 않고 색·치수를 인자로 받는 순수 그리기 확장인데, 툴팁 꼬리만 `core:util:android`에 있다. 같은 갈림이 clickable 유틸에서 이미 [2026-07-14 항목](#2026-07-14-clickable-유틸이-coreutilandroid로-이동--ripple-색-테마-비의존)으로 등록돼 있다.
@@ -638,6 +638,41 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 기존 8선언도 도메인 하위 패키지로 옮길지(`Logger`처럼 도메인이 애매한 것의 소속을 정해야 한다), ② 아니면 "원격 계약에서 온 모델만 하위 패키지"를 규칙으로 명문화할지. ②를 택하면 근거를 [data-layer](../architecture/data-layer.md) "레이어 배치"에 적는다.
 - **상태**: 미해결 (배치 규약 미정 — 새 모델을 어디 둘지 매번 판단해야 한다)
 - **해소 메모**: 결정 후 [data-layer](../architecture/data-layer.md) "레이어 배치"의 `domain/model/` 서술과 [data-api-service-layer 스펙](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 6번을 정리한다.
+
+### [2026-08-07] 토핑 변형 타입이 index 순환으로 부여됨 — 정책은 랜덤 재부여
+
+- **출처**: `feature/groups/list/impl/route/GroupListScreen.kt#TOPPING_PLACEMENT_TYPES`(PR #194 develop 머지) — 6타입(`YGToppingGroupType`의 `TYPE_1~3_LEFT/RIGHT`)을 목록 index로 나눈 나머지로 고른다. 코드에 `// Todo : 로직 추후 변경하기`가 붙어 있다. 위키 [[G-001-무한파르페-정책설계-v0.3]]은 **변형 번호를 랜덤 재부여**하고 재추첨 시점을 "목록 조회 응답 1회"로 못박았다(리렌더·셀 재사용 시 재추첨 금지 = 회전각 튐 방지). index 순환이면 같은 자리의 토핑은 항상 같은 회전각이고, 앞에 하나만 추가돼도 뒤 전부의 회전각이 결정적으로 밀린다.
+- **항목**: ① 랜덤 부여를 어디서 할지 — 조회 응답을 받는 VM(정책의 "응답 1회"와 맞음) vs 화면(`remember(groupList)`), ② 랜덤 시드 없이 `Random`을 쓰면 프로세스 재생성·상태 복원에서 각이 바뀌는데 그걸 허용할지, ③ 좌/우(`index % 2`)는 정책상 결정적이므로 랜덤 대상은 번호(1/2/3)뿐임을 코드에 못박을지.
+- **상태**: 미해결 (조회 결선 라운드 종속)
+- **해소 메모**: 결정 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)의 "토핑 배치"·"정책 대조"를 갱신한다. [2026-08-01 파르페·툴팁 항목](#2026-08-01-g-001-파르페툴팁이-위키-정책과-미결선--화면-골격만-머지됨) ①에서 떨어져 나온 항목이다.
+
+### [2026-08-07] G-001이 mock 그룹 4건을 UiState 기본값으로 들고 머지됨
+
+- **출처**: `feature/groups/list/impl/route/GroupListViewModel.kt#MockToppingGroup`·`GroupListUiState`(PR #194 develop 머지) — `groupList`의 **기본값 자체가** 이름·원격 이미지 URL·상대시간 문자열을 박은 4건이다(`chipType`도 전 항목 동일 값 고정). 조회 경로가 없으므로 develop 빌드는 항상 이 4건을 그린다. URL 중 1건은 스킴이 두 번 붙어 로드에 실패하고, `AsyncImage(error = …)` 폴백 덕에 조회 실패 그래픽으로 그려진다 — 즉 **실패 경로가 의도 없이 상시 노출**된다. 부작용으로 0건 상태를 실행 중에 볼 수 없어 [[g-001-empty-툴팁]] 조건 위반이 가려진다.
+- **항목**: ① mock을 VM 기본값이 아니라 프리뷰 파라미터·`@VisibleForTesting`으로 옮길지, ② 조회가 붙기 전까지 develop에 mock 데이터를 두는 것을 허용할지(같은 판단이 앞으로 반복된다), ③ 상대시간을 문자열로 들고 있는 임시 모델을 도메인 모델 결선 시 어떻게 걷어낼지.
+- **상태**: 미해결 (조회 결선 라운드 종속)
+- **해소 메모**: 조회가 붙는 라운드에서 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "API / 인터페이스"의 `MockToppingGroup` 블록을 실제 모델로 교체한다.
+
+### [2026-08-07] 토핑이 그려지는데 클릭 경로가 없다 — `ClickTopping` 死경로
+
+- **출처**: `GroupListScreen.kt#GroupListContent`·`YGToppingGroup.kt#YGToppingGroup`(PR #194 develop 머지) — 화면이 `onClickTopping` 콜백을 파라미터로 받고 VM에 `GroupListIntent.ClickTopping`·`GroupListSideEffect.NavigateToCanvas`가 있는데, 토핑을 그리는 자리에서 아무것도 연결하지 않는다. `YGToppingGroup`은 설계상 `onClick`을 갖지 않고 [design-system](../architecture/design-system.md)이 "터치 범위는 호출자가 `clickableYG`로 감쌈"이라 적어 뒀는데, **첫 호출자가 감싸지 않았다**. 위키 [[무한-파르페-그리드]]의 "대표 토핑 클릭 → C-001"이 실행 불가다.
+- **항목**: ① 터치 범위를 어디로 잡을지 — 160dp 프레임 전체 vs 96dp 이미지 + 칩(회전·오프셋 때문에 프레임과 시각 영역이 어긋난다), ② 그래도 호출자 책임으로 둘지 아니면 `YGToppingGroup`에 `onClick`을 열지(열면 컴포넌트가 상호작용을 갖게 되어 현재 "상호작용 없음" 분류가 바뀐다), ③ `NavigateToCanvas` 대상 `NavKey`가 아직 없어 C-001 결선과 함께 처리해야 하는지.
+- **상태**: 미해결
+- **해소 메모**: 결정 시 [design-system](../architecture/design-system.md)의 `YGToppingGroup` 서술과 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "동작 / 상태"를 함께 고친다.
+
+### [2026-08-07] 상단 인셋 관용구가 3형태로 갈림 — 탑바 흡수 vs 화면 처리 vs Scaffold 기본
+
+- **출처**: `component/ygtopbar/YGTopBar.kt#YGTopBarEmpty`·`YGTopBarDefaults.kt#windowInsets`·`GroupListRoute.kt`(PR #194 develop 머지) — `YGTopBarEmpty`가 `windowInsets`(기본 `WindowInsets.statusBars`)를 자기 패딩으로 흡수하고 호출 화면은 `YGScaffold(contentWindowInsets = systemBars.only(Horizontal + Bottom))`로 상단을 뺀다. develop에는 이미 ① 엔트리 `YGScaffold` 기본 인셋(대부분 화면), ② 화면이 직접 `windowInsetsPadding`(C-101 카메라, 의도적 예외)이 있어 세 번째 형태가 추가됐다. 게다가 이 파라미터는 **`Empty` 변형에만** 있어 `Back`·`Detail`·`Canvas`를 쓰는 화면은 같은 관용구를 못 쓴다.
+- **항목**: ① 인셋 소유의 기본을 어디로 정할지(엔트리 컨테이너 / 화면 / 컴포넌트), ② 컴포넌트 흡수를 채택하면 나머지 탑바 3변형에도 `windowInsets`를 열지, ③ 흡수형을 쓰는 화면이 `YGScaffold` 상단을 빼는 것을 규약으로 강제할지(빼먹으면 이중 적용인데 컴파일로 못 막는다).
+- **상태**: 미해결 (코드 머지됨 — 규약 쪽 결정 필요)
+- **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번과 [design-system](../architecture/design-system.md) `YGTopBar`·"화면 컨테이너" 절, [ygtopbar 스펙](../specs/archive/2026-07-18-ygtopbar.md)을 함께 정리한다. [2026-08-01 화면 컨테이너 규약 이탈 항목](#2026-08-01-g-001-목록-화면이-화면-컨테이너-규약을-벗어남)과 같은 화면에 걸린다.
+
+### [2026-08-07] `animateToppingPlacement`가 사용처 0건으로 머지됨
+
+- **출처**: `feature/groups/list/impl/route/component/ToppingLayout.kt#animateToppingPlacement`·`ToppingLayoutDefaults`(PR #194 develop 머지) — 목록 중간 삽입·삭제로 자리가 밀릴 때 순간이동 대신 애니메이션시키는 `Modifier` 확장인데 호출부가 없다. KDoc이 "호출부에서 각 항목을 안정적인 key로 감싸야 항목 이동으로 인식된다"고 전제를 다는데 `ToppingLayout` 호출부는 `fastForEachIndexed`로 key 없이 그린다. 같은 파일의 `ToppingLayout`·`ToppingLayoutDefaults`가 feature `impl` 내부 전용인데도 `public`이라(같은 폴더 `GroupListParfaitLayout`은 `internal`) 가시성도 갈린다.
+- **항목**: ① 조회 결선 라운드에서 실제로 붙일지, 아니면 걷어낼지(사용처 0 공개 API를 남긴 선례가 이미 있다 — [2026-08-03 `clickableYGNoRipple` 항목](#2026-08-03-clickableygnoripple-사용처-0--존치-여부)), ② feature `impl` 내부 심볼의 기본 가시성을 `internal`로 못박을지.
+- **상태**: 미해결
+- **해소 메모**: 결정 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "토핑 배치" 절을 정리한다.
 
 <!--
 항목 추가 형식:
