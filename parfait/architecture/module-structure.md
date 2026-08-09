@@ -54,7 +54,7 @@ app / app-preview
 - 새 모듈 = 알맞은 컨벤션 플러그인 적용 + `settings.gradle.kts` 등록(같은 커밋).
 - **`core:testing`은 프로덕션 코드에서 참조 금지.** 배선은 `setConfigTestUnit()`이 `testImplementation`으로
   넣어주고, 계측 소스셋에는 붙지 않는다. 이 모듈은 junit4·coroutines-test를 `api`로 재노출하지
-  않으므로 `bundles.test-unit`과 짝일 때만 성립한다([spec](../specs/2026-08-06-unit-test-infrastructure.md)).
+  않으므로 `bundles.test-unit`과 짝일 때만 성립한다([spec](../specs/archive/2026-08-06-unit-test-infrastructure.md)).
 - **여러 feature가 공유하는 화면**은 특정 도메인 feature 밑이 아니라 `feature/common/*`에 둔다([[0015-feature-common-shared-layer]]). 단, **2개 이상 소비처가 확정된 경우에만**(단일 소비면 소유 feature 유지).
 - **표시 문자열은 `strings.xml` + `stringResource`**(코틀린 리터럴 금지). 화면 전용 정적 라벨은 그 화면의 `feature/*/impl` `res/values/strings.xml`
   (같은 모듈의 여러 화면이 한 파일 공용), **여러 feature가 공유하는 문구**(유효성 에러 등)는 `core:ui` `res/values/strings.xml`([[0016-domain-result-presentation-string-mapping]]).

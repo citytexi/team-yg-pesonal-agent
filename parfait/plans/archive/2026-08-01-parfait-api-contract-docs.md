@@ -123,7 +123,7 @@ tags: [api, parfait, server-contract, <도메인>]
 
 ## 미결
 
-- <항목> → [open-questions](../synthesis/open-questions.md)
+- <항목> → [open-questions](../../synthesis/open-questions.md)
 ```
 
 - [ ] **Step 2: `parfait/api/conventions.md` 작성**
@@ -217,7 +217,7 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 | `/api/<도메인>` (버전 없음) | `/api/parfait-groups` |
 
 버전 프리픽스 유무가 갈리고, **그룹을 가리키는 경로가 `groups`와 `parfait-groups` 둘**이다.
-서버에 URL 규약 문서가 없어 관측 사실로만 적는다 → [open-questions](../synthesis/open-questions.md).
+서버에 URL 규약 문서가 없어 관측 사실로만 적는다 → [open-questions](../../synthesis/open-questions.md).
 
 ## OpenAPI
 
@@ -227,7 +227,7 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 
 ## Android 불일치
 
-TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
+TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
 **세 건 모두 코드 미수정 상태**다.
 
 | # | 불일치 | 영향 |
@@ -236,7 +236,7 @@ TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote
 | 2 | Android `ApiResponse.isSuccess`가 `code == "SUCCESS"` 단일 비교(`SUCCESS_CODE` 상수가 `TODO`) — 서버는 `"OK"`/`"CREATED"` | **현 상태로 모든 호출이 `ApiException.Business` 실패 판정** |
 | 3 | Android `TokenProvider` 구현이 `EmptyTokenProvider`(항상 null 반환) | 화이트리스트 밖 전 API가 401 |
 
-세 건은 [open-questions](../synthesis/open-questions.md)에 등록돼 있다.
+세 건은 [open-questions](../../synthesis/open-questions.md)에 등록돼 있다.
 ```
 
 - [ ] **Step 3: `parfait/api/server-baseline.md` 작성**
@@ -259,7 +259,7 @@ TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote
 `develop`은 main을 주기적으로 끌어오는 쪽이라 **뒤처진다** — 체계 신설 시점에 develop은
 signup·파르페 연도 조회 두 API를 갖고 있지 않았다. 앱이 바라볼 서버는 main에서 나온다.
 
-⚠️ TJYG-Android는 `develop`을 추적한다([doc-baseline.md](../doc-baseline.md)).
+⚠️ TJYG-Android는 `develop`을 추적한다([doc-baseline.md](../../doc-baseline.md)).
 **두 저장소의 통합 브랜치 이름이 다르다** — 혼동하지 말 것.
 
 ## 점검 절차 (다음 요청 시)

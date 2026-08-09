@@ -1,7 +1,7 @@
 ---
 id: unit-test-infrastructure
 title: 유닛 테스트 기반 구조 (Unit Test Infrastructure)
-status: draft
+status: implemented
 category: build-spec
 platforms: android
 verified: 2026-08-09
@@ -151,8 +151,12 @@ Main looper가 있어 쓸 일이 없다. `test-android` 번들에 coroutines-tes
 | 플러그인 | 적용 모듈 |
 |---|---|
 | `parfait-test-unit` | `domain`, `data`, `core:util:jvm`, `core:util:android` |
-| `parfait-test-android` | `core:util:android` (스모크) |
+| `parfait-test-android` | `core:util:android`, `core:designsystem` (둘 다 스모크) |
 | `parfait-test-compose` | `core:designsystem` (스모크) |
+
+`core:designsystem`은 `parfait-test-android`와 `parfait-test-compose`를 **함께** 적용한다.
+`parfait-test-compose`는 Compose 테스트 의존만 추가하고 계측 러너·`testOptions`는 여전히
+`parfait-test-android` 소관이라, 하나만 붙이면 계측 테스트가 돌지 않는다.
 
 계측·Compose 플러그인을 아무 모듈에도 적용하지 않으면 build-logic 컴파일만 통과할 뿐
 의존성 좌표 오타·매니페스트 누락 같은 실제 배선 오류가 드러나지 않는다. 스모크 적용 1개씩이
@@ -327,6 +331,27 @@ host-test 컴포넌트를 끄는 방식으로 막는다(모듈을 일일이 나�
 - `settings.gradle.kts` — `:core:testing` include
 - 대상 6개 모듈의 `build.gradle.kts` — 플러그인 alias 추가
 - `domain/.../DayWindow.kt` — `clock` 파라미터 추가
+
+## as-built (PR #219 develop 머지, 2026-08-09)
+
+`develop` 실물과 대조했다. 이 스펙이 지시한 산출물은 전량 들어왔고 **드리프트 1건**만 나와
+위 "적용 대상" 표에 반영했다 — `parfait-test-android`가 `core:util:android`뿐 아니라
+`core:designsystem`에도 적용된다. 스펙 본문이 이미 "`parfait-test-compose`는
+`parfait-test-android`를 대체하지 않는다"고 적고 있어 논리적으로 필연인데 표에만 빠져 있었다.
+
+일치 확인 항목:
+
+- 컨벤션 플러그인 3종 + `TestConfig.kt`의 `setConfigTestXxx()` 3함수
+- `:core:testing` 모듈 — `MainDispatcherRule` 단일 파일, junit4·coroutines-test `implementation`,
+  `domain` 의존 없음, `setConfigTestAndroid()`에 미배선
+- 번들 2종(`test-unit`·`test-compose` 없음), `DayWindow.current(timeZone, clock)` 파라미터
+- 시범 테스트 대상 전량(순수 로직 · 매퍼 · DataSource · HTTP 계층) + 계측 스모크 2건
+  (`YGThemeSmokeTest`·`ContextExtensionTest`)
+- CI — `test.yml`(composite action 2개 + 루트 `./gradlew test` + 계측 컴파일 + 리포트·아티팩트),
+  `ktlint.yml`(job `lint`, 기존 `--info test` 스텝 제거됨)
+
+규약 검증은 `runBlocking`·`isReturnDefaultValues`·백틱 메서드명 grep 3건 모두 0건이다.
+유닛 테스트는 `./gradlew test` 통과하고 계측 2건은 설계대로 컴파일까지만 검증된다.
 
 ## 주의 / 열린 질문
 
