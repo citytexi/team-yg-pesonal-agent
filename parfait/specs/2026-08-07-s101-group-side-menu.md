@@ -1,11 +1,11 @@
 ---
 id: s101-group-side-menu
 title: 그룹 사이드 메뉴 화면 (S-101 GroupSetting) + S-102 닉네임 편집 모드
-status: draft
+status: in-progress
 category: ui-spec
 platforms: android
-verified: 2026-08-07
-related_code: NavKeyGroupSetting.kt, GroupSettingRoute.kt#GroupSettingRoute, GroupSettingScreen.kt#GroupSettingScreen, GroupSettingViewModel.kt#GroupSettingViewModel, GroupSettingViewModel.kt#GroupSettingState, GroupNicknameField.kt#GroupNicknameField, GroupMemberList.kt#GroupMemberList, EntryBuilder.kt#featureGroupSettingEntryBuilder, YGColorChipType.kt, YGNametagChipPreviewData.kt, YGTopBar.kt#YGTopBarDetail, YGTextFormField.kt#YGTextFormField, YGUserChip.kt#YGUserChip, YGInviteCard.kt#YGInviteCard, YGDangerZone.kt#YGDangerZone, YGActionItem.kt#YGActionItem, CheckNameValidUseCase.kt
+verified: 2026-08-09
+related_code: NavKeyGroupSetting.kt, GroupSettingRoute.kt#GroupSettingRoute, GroupSettingScreen.kt#GroupSettingScreen, GroupSettingViewModel.kt#GroupSettingViewModel, GroupSettingViewModel.kt#GroupSettingUiState, GroupMemberUiModel.kt#GroupMemberUiModel, GroupSettingViewModelTest.kt, GroupNicknameField.kt#GroupNicknameField, GroupMemberList.kt#GroupMemberList, EntryBuilder.kt#featureGroupSettingEntryBuilder, YGColorChipType.kt, YGNametagChipPreviewData.kt, YGTextFieldImpl.kt, YGTextFormField.kt#YGTextFormField, NameValidResultUiText.kt#toStringResource, NameValidResultUiText.kt#NameFieldType, YGTopBar.kt#YGTopBarDetail, YGUserChip.kt#YGUserChip, YGInviteCard.kt#YGInviteCard, YGDangerZone.kt#YGDangerZone, YGActionItem.kt#YGActionItem, CheckNameValidUseCase.kt
 related_adr: ADR-0005, ADR-0006, ADR-0010, ADR-0016
 related_spec: app-setting-s001, s002-account-info, s102-group-nickname, designsystem-grouptag-topping-components, clearfocusontap-modifier
 related_architecture: design-system, navigation-flow, state-management, module-structure
@@ -22,6 +22,20 @@ tags: [spec, parfait, feature, groups, setting, navigation]
 - 위키 화면 정의: `S-` = Sidebar, `S-101`(그룹 메뉴) — [[화면-ID-체계]] / 닉네임 유효성 [[S-102-닉네임-정책-v0.2]] / 컬러칩 [[nametag-chip]]
 
 > 상태·날짜·대상·관련은 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+>
+> 🔁 **2026-08-09 개정 — 구현 완료 시점의 as-built 반영.** 초안 이후 사양 추가와 구조 정정이 여러 건 들어와
+> 본문을 그에 맞춰 고쳤다. 초안과 갈린 곳은 아래 절에 각각 근거와 함께 적었다. 요약:
+>
+> | 항목 | 초안 | as-built |
+> |---|---|---|
+> | `복사됨` 복귀 | 규칙 미기재 → 화면 이탈까지 유지로 가정 | **2초 뒤 자동 복귀**(사용자 사양) |
+> | 클립보드 내용 | 초대 코드 6자리 | **초대 문구 템플릿 2줄**(코드 포함) |
+> | State 타입 | 전부 원시 타입 | `groupName`·`myNickname`·`inviteCode`를 **도메인 VO**로, 에러는 **`NameValidResult.Error?`** |
+> | 유효성 표시 매핑 | VM이 `@StringRes` 산출(S-002 as-built 답습) | **`core:ui` 확장으로 이관**(ADR-0016 원안 수렴, 4개 화면 동시) |
+> | 확인 버튼 배치 | 스크롤 위 오버레이(`Box` 하단 정렬) | **스크롤 영역의 형제**(`weight(1f)`), 겹침 없음 |
+> | `EntryBuilder` | 수정 불필요 | **`consumeWindowInsets` 추가**(인셋 이중 계산으로 버튼이 떠오름) |
+> | 화면 모델 위치 | `viewmodel` 패키지 동거 | **`impl.model` 패키지 분리** |
+> | 테스트 | 없음(테스트 기반 미머지) | **유닛 테스트 16개**(#219 머지로 기반 확보) |
 
 ## 목표
 
@@ -34,12 +48,14 @@ Figma의 `S-102`는 별도 화면이 아니라 **이 화면의 닉네임 편집 
 - **포함**:
   - `GroupSettingRoute`(현재 `// TODO impl` stub) 본문 구현 + `GroupSettingScreen`(stateless) + `GroupSettingViewModel`(MVI).
   - 닉네임 인라인 편집 모드: 포커스 진입 · 실시간 유효성 검사 · `확인` 버튼 활성/비활성 · 확정/취소.
-  - 초대 코드 복사(클립보드) + 카드 우측 텍스트 `복사됨` 전환.
+  - 초대 문구 클립보드 복사 + 카드 우측 텍스트 `복사됨` 전환(2초 뒤 자동 복귀).
   - Danger Zone 2항목 UI + 클릭 stub.
   - 화면 로컬 컴포넌트 2종(`GroupNicknameField`·`GroupMemberList`) + 문자열 리소스.
   - `YGColorChipType` 드리프트 2건 수정(아래 별도 절).
   - `YGTextFormField`에 `keyboardOptions`·`keyboardActions` 파라미터 추가(기본값 있어 기존 호출부 무영향) — 키보드 엔터 확정을 위해 필요.
-  - `GroupSettingViewModel` **JVM 유닛 테스트**.
+  - `YGTextFieldImpl` 최소 높이 48 고정(`defaultMinSize` + `SizeTokens.Size48`) — 클리어 버튼 등장·소멸마다 행 높이가 재계산돼 필드가 들썩였다.
+  - **유효성 표시 매핑을 `core:ui`로 이관**(ADR-0016 원안 수렴) — 이 화면 포함 4개 화면 동시 전환. 아래 별도 절.
+  - `GroupSettingViewModel` **JVM 유닛 테스트 16개**.
 - **제외**:
   - 그룹 상세 조회·닉네임 변경·그룹 탈퇴·신고 **API 연동**. Repository·UseCase 신설 없음(`ParfaitGroupRemoteDataSource`는 이미 있으나 이번엔 쓰지 않는다).
   - 그룹 나가기·신고 **확인 모달** — Figma 미제공.
@@ -58,23 +74,29 @@ feature/groups/setting/impl/
   src/main/.../route/GroupSettingRoute.kt         (구현: hiltViewModel + collectAsStateWithLifecycle + effect 수집)
   src/main/.../screen/GroupSettingScreen.kt       (신규: stateless UI)
   src/main/.../viewmodel/GroupSettingViewModel.kt (신규: State/Intent/SideEffect + VM 동거 — S-001 선례)
+  src/main/.../model/GroupMemberUiModel.kt        (신규: 화면 모델 — component가 viewmodel을 참조하지 않게 분리)
   src/main/.../component/GroupNicknameField.kt    (신규: YGLabel + YGTextFormField)
   src/main/.../component/GroupMemberList.kt       (신규: YGLabel + YGUserChip 목록)
+  src/main/.../navigation/EntryBuilder.kt         (수정: consumeWindowInsets — 아래 인셋 절)
   src/main/res/values/strings.xml                 (신규)
-  src/test/.../viewmodel/GroupSettingViewModelTest.kt (신규: VM 상태 전이·유효성·SideEffect)
+  src/test/.../viewmodel/GroupSettingViewModelTest.kt (신규: VM 상태 전이·유효성·타이머·SideEffect 16개)
 core/designsystem/.../component/ygcolorchip/
   YGColorChipType.kt                 (수정: 드리프트 2건)
   YGNametagChipPreviewData.kt        (수정: 위 변경 반영)
 core/designsystem/.../component/textfield/
-  YGTextFieldImpl.kt                 (수정: keyboardOptions·keyboardActions 전달)
+  YGTextFieldImpl.kt                 (수정: keyboardOptions·keyboardActions 전달 + 최소 높이 48)
   YGTextFormField.kt                 (수정: 위 두 파라미터 노출)
+core/ui/.../text/
+  NameValidResultUiText.kt           (신규: NameFieldType + NameValidResult.Error.toStringResource)
+core/ui/build.gradle.kts             (수정: implementation(projects.domain) 추가)
+feature/{app/setting,groups/enter}/impl/...  (수정: VM 3곳이 위 확장으로 전환 — ADR-0016 절)
 ```
-
-`navigation/EntryBuilder.kt`는 **수정하지 않는다** — `YGScaffold`의 `containerColor` 기본값이 이미 `YGAtomicColors.Gray.White`라 S-101의 흰 배경이 그대로 나온다.
 
 ## 브랜치 기반
 
-이 작업의 브랜치 `feature/#211-S-101-group-side-menu`는 `develop`이 아니라 **`feature/#215-test-environment`(PR #219, `develop` 대상 OPEN)** 위에 올라간다. ViewModel 유닛 테스트를 쓰려면 그 브랜치의 `parfait.test.unit` 컨벤션 플러그인과 `:core:testing`(`MainDispatcherRule`)이 필요하기 때문이다. PR은 #219 머지 후에 내거나 base를 그 브랜치로 잡는다.
+이 작업의 브랜치 `feature/#211-S-101-group-side-menu`는 처음에 `feature/#215-test-environment` 위에 올렸다 — ViewModel 유닛 테스트에 그 브랜치의 `parfait.test.unit` 컨벤션 플러그인과 `:core:testing`(`MainDispatcherRule`)이 필요했기 때문이다.
+
+🔁 **2026-08-09** — 그 브랜치가 **PR #219로 `develop`에 머지**되고 리모트에서 삭제돼, 이 브랜치를 `origin/develop` 위로 rebase했다. 테스트 기반이 이제 develop에 있으므로 **PR은 `develop` 대상으로 바로 낸다**(#219 대기 불필요).
 
 재사용 디자인시스템 심볼: `YGTopBarDetail` · `YGLabel` · `YGTextFormField` · `YGUserChip`/`YGNametagChip` · `YGInviteCard` · `YGDangerZone` + `YGActionItem` · `YGButton(YGButtonType.Large)` · `YGScreen`. 재사용 도메인 심볼: `CheckNameValidUseCase` · `NameValidResult` · `GroupCreateConfig`(닉네임 상한).
 
@@ -83,21 +105,22 @@ core/designsystem/.../component/textfield/
 한 파일(`GroupSettingViewModel.kt`)에 State + Intent/SideEffect + ViewModel 동거(MVI, `BaseViewModel` 상속). 내비게이션·클립보드는 Intent → SideEffect 경유.
 
 ```kotlin
+// impl/model/GroupMemberUiModel.kt — component가 viewmodel 패키지를 참조하지 않도록 분리
 data class GroupMemberUiModel(
     val nickname: String,
     val colorChipType: YGColorChipType,
-    val isMe: Boolean,
+    val isMe: Boolean = false,
 )
 
 data class GroupSettingUiState(
-    val groupName: String,                 // Mock
-    val myNickname: String,                // 확정된 내 닉네임
-    val nicknameInput: String,             // 편집 중 입력값
+    val groupName: GroupName,                     // Mock
+    val myNickname: GroupNickname,                // 확정된 내 닉네임
+    val nicknameInput: String,                    // 편집 중 입력값 — VO 아님(아래 근거)
     val isEditing: Boolean = false,
-    val errorMessageResId: Int? = null,    // @StringRes, core:ui 리소스
-    val members: List<GroupMemberUiModel>, // Mock
-    val inviteCode: String,                // Mock
-    val remainingCount: Int,               // Mock
+    val nicknameError: NameValidResult.Error? = null,  // 도메인 의미. 표시 변환은 화면 소관
+    val members: List<GroupMemberUiModel>,        // Mock
+    val inviteCode: InviteCode,                   // Mock
+    val remainingCount: Int,                      // Mock
     val isCodeCopied: Boolean = false,
 ) : UiState
 
@@ -118,55 +141,82 @@ sealed interface GroupSettingSideEffect : UiSideEffect {
 ```
 
 - `processIntent`는 intent별 private `handle*()`에 위임하고, 각 `handle*`이 `updateState`/`postSideEffect`를 호출한다(S-001 선례와 동일하게 `when` 분기가 직접 `postSideEffect`를 부르지 않는다).
-- 파생값은 State의 계산 프로퍼티로 둔다.
-  - `isConfirmEnabled` = `nicknameErrorResId == null && nicknameInput != myNickname` — 유효성 통과 + 실제 변경이 있을 때만 활성.
-  - `inviteCardStatus` = `remainingCount > 0`이면 `Active`, 아니면 `Invalid`.
-  - `memberCount` = `members.size`.
-- Mock 데이터는 State 기본값으로 둔다(G-001 `GroupListUiState` 선례). 실연동 시 교체 지점을 한 곳으로 모으기 위해 `// TODO: API 연동` 주석을 기본값 옆에 남긴다.
+- `isConfirmEnabled` = `nicknameError == null && nicknameInput != myNickname.value` — 유효성 통과 + 실제 변경이 있을 때만 활성. State의 계산 프로퍼티다.
+- 초대 카드의 상태·문구 선택(`Active`/`Invalid`, `N명 남음`/`복사됨`/`최대 인원 도달`)은 **화면의 private 헬퍼**가 한다. 표시 규칙이라 State가 들 이유가 없다.
+- Mock 데이터는 State 기본값으로 둔다(G-001 `GroupListUiState` 선례). 실연동 시 교체 지점을 한 곳으로 모으기 위해 파일 하단 private 상수 블록에 모으고 각 `// TODO: API 연동` 주석에 대응 엔드포인트를 적는다.
+
+**도메인 VO 치환(🔁 2026-08-09)** — `groupName`·`myNickname`·`inviteCode`를 `domain.model.group`의 VO로 올렸다. 전부 검증 없는 얇은 `@JvmInline value class`라 실익은 타입 구분이지만, 실연동 시 매핑이 자연스러워지고 인자 바꿔 넣기 사고를 막는다.
+
+- **`nicknameInput`은 `String`으로 남긴다.** 편집 중 값이라 빈 문자열·공백 시작·특수문자 같은 **유효하지 않은 중간 상태**를 담는다. `GroupNickname`으로 감싸면 "GroupNickname인데 유효하지 않다"는 모순이 되고, `CheckNameValidUseCase`도 `String`을 받는다. `remainingCount`는 대응 VO가 없다(서버 계약에 `memberLimit` 부재).
+- Mock 상수는 `String`으로 두고 State 선언부에서 감싼다 — `MOCK_MY_NICKNAME`이 `myNickname`(VO)과 `nicknameInput`(String) 양쪽에 쓰여, 상수를 VO로 만들면 언랩이 되레 늘어난다.
+- `CopyInviteCode` SideEffect는 `String`을 싣는다. Route는 클립보드 문자열만 조립하는 프레젠테이션 계층이라 도메인 VO를 알 필요가 없다.
+- 이 저장소에서 **UI State가 도메인 VO를 보유하는 첫 사례**다(`AccountInfoUiState` 등은 원시 타입). 실연동 라운드에서 다른 화면도 따를지는 그때 판단한다.
 
 ## 편집 모드 동작
 
 | 사건 | 처리 |
 |---|---|
 | 닉네임 필드 포커스 획득 | `ChangeNicknameFocus(true)` → `isEditing = true`. `확인` 버튼 노출 |
-| 입력 | `InputNickname` → `nicknameInput` 갱신 + **매 입력마다** `CheckNameValidUseCase` 실행해 `nicknameErrorResId` 갱신 |
+| 입력 | `InputNickname` → `nicknameInput` 갱신 + **매 입력마다** `CheckNameValidUseCase` 실행해 `nicknameError` 갱신(Success는 `null`로 접는다) |
 | 유효성 실패 | 필드 `isError = true`(테두리·카운터 강조) + 하단 에러 문구 + `확인` 비활성. Figma `144:8245` 주석 "닉네임 유효성 검사 통과하지 못할 시 비활성화" |
-| `확인` 클릭 **또는 키보드 완료(엔터)** | `ConfirmNickname` 하나로 모인다 — `myNickname = nicknameInput`, 그룹원 목록의 내 항목 동기화, `isEditing = false`, 포커스 해제. 유효성 미통과면 **아무 일도 안 일어난다**(활성 버튼과 같은 조건) |
-| 배경 탭 / 뒤로가기 / 포커스 상실 | 편집 취소 — `nicknameInput = myNickname`, `errorMessageResId = null`, `isEditing = false` |
+| `확인` 클릭 **또는 키보드 완료(엔터)** | `ConfirmNickname` 하나로 모인다 — `myNickname = nicknameInput`, 그룹원 목록의 내 항목 동기화, `isEditing = false`, 포커스 해제 |
+| 배경 탭 / 뒤로가기 / 포커스 상실 | 편집 취소 — `nicknameInput = myNickname.value`, `nicknameError = null`, `isEditing = false` |
 
 - 길이 상한은 `YGTextFormField(maxLength = GroupCreateConfig.NICKNAME_MAX_LENGTH)`로 컴포넌트가 입력 자체를 막는다(15자). 카운터 `n/15`·클리어 버튼·포커스/에러 테두리는 `YGTextFieldImpl`에 이미 구현돼 있어 추가 작업이 없다.
 - 엔터 확정을 받으려면 `ImeAction.Done` + `onDone` 콜백이 필요한데 `YGTextFormField`가 그 통로를 안 갖고 있었다 → `keyboardOptions`·`keyboardActions`를 기본값과 함께 뚫는다(위 범위 참고).
-- 화면에서 확정 콜백은 **`onConfirmNickname()` 실행 뒤 `focusManager.clearFocus()`** 순서여야 한다. 뒤집으면 포커스 상실이 먼저 편집을 취소해 입력값이 되돌아가고, 뒤이은 확정이 조건 미달로 아무 일도 하지 않는다.
-- `확인` 버튼은 `isEditing`일 때만 컴포지션한다. 포커스와 키보드가 같이 움직이므로 이것이 "키보드가 올라와 있을 때만 노출"이다. IME 인셋 높이를 직접 재지 않는 이유는 키보드 애니메이션 중 버튼이 깜빡이기 때문이다.
+- 화면에서 확정 콜백은 **`onConfirmNickname()` 실행 뒤 `focusManager.clearFocus()`** 순서여야 한다. 뒤집으면 포커스 상실이 먼저 편집을 취소해 입력값이 되돌아가고, 뒤이은 확정이 조건 미달로 아무 일도 하지 않는다. 이 불변식은 테스트로 잠갔다(`confirmNickname_thenLosesFocus_keepsConfirmedNickname`).
+- 확정 게이트는 **`nicknameError == null`** 이다(`isConfirmEnabled`가 아니다). 값을 안 바꾸고 엔터를 누르면 확정은 ViewModel 가드가 무시하고 **키보드만 닫힌다** — `isConfirmEnabled`로 잠그면 키보드가 갇힌다. 버튼은 여전히 `isEnabled = isConfirmEnabled`라 변경이 없으면 눌리지 않는다.
+- **뒤로가기는 화면이 포커스 해제로 번역한다** — `if (isEditing) focusManager.clearFocus() else onClickBack()`. 배경 탭·포커스 상실 경로는 "포커스 해제가 원인 → 편집 취소가 결과"인데 뒤로가기만 결과만 실행하면, `isEditing`은 꺼지는데 키보드·커서가 남아 편집 모드가 아닌 상태에서 엔터로 확정이 일어난다. 시스템 back은 IME가 먼저 소비하므로 이 처리 없이는 화면을 닫는 데 back을 3번 눌러야 한다. ViewModel의 `handleClickBack` 편집 분기는 이중 방어로 남긴다.
+- `확인` 버튼은 `isEditing`일 때만 컴포지션한다. 포커스와 키보드가 같이 움직이므로 이것이 "키보드가 올라와 있을 때만 노출"이다.
 - 검증 시점이 기존 `GroupNickNameViewModel`(클릭 시점)과 다르다. 이 화면은 버튼 활성 상태 자체가 검증 결과에 걸려 있어 **입력 시점 검증**이어야 한다 — `AccountInfoViewModel`(S-002)과 같은 방식이다.
-- 에러 문자열은 `core:ui`의 기존 리소스를 재사용한다(`error_duplicated_space`·`error_invalid_character`·`error_space_at_edge_nickname`·`error_empty_space_nickname`). ADR-0016의 매핑 위치 미결(도메인 결과 → `@StringRes`)은 이 화면에서 새로 결정하지 않고 S-002 as-built(VM에서 매핑)를 따른다.
 - 배경 탭 취소는 `clearFocusOnTap()`(opt-in Modifier)을 화면 루트에 건다. 포커스 해제가 곧 편집 종료이므로 별도 취소 버튼을 두지 않는다.
 
 ## UI 매핑 (Figma → 심볼)
 
-루트: `YGScreen(modifier.clearFocusOnTap())` 안에 `Box(fillMaxSize)` — 스크롤 콘텐츠 + 하단 고정 버튼 영역.
+루트: `YGScreen(modifier.clearFocusOnTap())` 안에 **단일 `Column(fillMaxSize)`** — 상단바 / 스크롤 영역 / 확인 버튼 영역이 **형제**로 쌓인다.
 
 | Figma | 구현 |
 |---|---|
-| Top Bar (Status=Detail) | `YGTopBarDetail(title = state.groupName, onIconClick = onClickBack)` |
-| Contents 컨테이너 | `Column(verticalScroll)` · 좌우 `padding.padding7` · 블록 간 `Arrangement.spacedBy(gap.gap8)` · 상단 `padding.padding8` |
-| Input-Field | `GroupNicknameField`: `YGLabel` + `YGTextFormField(value, onValueChange, maxLength, isError, errorDescription)`, 라벨↔필드 `gap.gap4` |
-| Member-List | `GroupMemberList`: `YGLabel` + `Column(spacedBy(gap.gap4), padding top gap.gap3)` |
-| └ User-Chip | `YGUserChip(colorChipType, userFirstName, chip = YGNametagChipStyle.Style40, userName, userStyle)` — 본인은 `YGUserNameStyle.StyleBold` + 이름 뒤 `(나)`, 타인은 `StyleMedium` |
+| Top Bar (Status=Detail) | `YGTopBarDetail(title = state.groupName.value, onIconClick = handleBack)` |
+| Contents 컨테이너 | `Column(weight(1f) + verticalScroll)` · 좌우 `padding.padding7` · 하단 `padding.padding8` · 블록 간 `Arrangement.spacedBy(gap.gap8)`. **상단 패딩 없음**(Figma에서 Status Bar 48 + Top Bar 60 = 108이고 Contents top도 108) |
+| Input-Field | `GroupNicknameField`: `YGLabel` + `YGTextFormField(value, onValueChange, maxLength, isError, errorDescription, keyboardOptions, keyboardActions)`, 라벨↔필드 `gap.gap4` |
+| Member-List | `GroupMemberList`: `YGLabel` + `Column(spacedBy(gap.gap4), padding top gap.gap3)`. 라벨↔목록 총 간격이 `gap4 + gap3`인 것은 Figma 그대로다(Member-List gap 12 + List-Container padding-top 8) |
+| └ User-Chip | `YGUserChip(colorChipType, userFirstName, chip = YGNametagChipStyle.Style40, userName, userStyle)` — 본인은 `YGUserNameStyle.StyleBold` + 이름 뒤 `(나)`, 타인은 `StyleMedium`. **클릭 없음**(Figma 주석 "내 프로필 눌러도 뎁스없음") |
 | Invite-Card | `YGInviteCard(label, inviteCode, subText, status, copyButtonText, onCopyClick)` 그대로 사용(신규 없음) |
 | Danger-Zone | `YGDangerZone(topZone = YGActionItem(그룹 나가기), bottomZone = YGActionItem(그룹 신고하기))`, `fillMaxWidth` |
-| Button-Area (편집 모드) | `Box`의 `Alignment.BottomCenter` + `Modifier.imePadding()`, 배경 `YGAtomicColors.Gray.White` + 사방 `padding.padding7`, `YGButton(text = 확인, buttonType = YGButtonType.Large, isEnabled = state.isConfirmEnabled)`. `isEditing`일 때만 컴포지션 |
+| Button-Area (편집 모드) | 스크롤 영역의 **형제** `Box` + `Modifier.imePadding()`, 배경 `YGAtomicColors.Gray.White` + 사방 `padding.padding7`, `YGButton(text = 확인, buttonType = YGButtonType.Large, isEnabled = state.isConfirmEnabled)`. `isEditing`일 때만 컴포지션 |
 
-- 목록은 최대 12명(위키 [[그룹]])이라 `LazyColumn` 대신 `Column` + `verticalScroll`을 쓴다. 화면 전체가 하나의 스크롤 축이어야 초대 코드·Danger Zone까지 자연스럽게 따라온다.
-- 닉네임 첫 글자는 `nickname.first()`로 뽑는다(`YGUserChip.userFirstName`).
-- `imePadding()`은 `GroupInviteCodeRoute` 선례와 같고, `MainActivity`가 `enableEdgeToEdge()`를 켜둬 IME 인셋이 전달된다.
+**버튼을 오버레이가 아니라 형제로 두는 이유(🔁 2026-08-09)** — 초안은 `Box` 안에서 버튼을 하단 정렬 오버레이로 얹었는데, 실기기에서 **편집 중 끝까지 스크롤해도 초대 코드 카드와 Danger Zone이 버튼 뒤에 갇혔다**. 키보드가 뜨면 뷰포트가 줄어 스크롤이 생기고 버튼이 마지막 구간을 덮기 때문이다. Figma `Contents`가 `Height=Hug(659)`·`Scroll position=Fixed`라 스크롤이 없다고 읽었으나, 그건 375×812 + 키보드 없는 조건이다.
+
+하단 여백을 버튼 높이만큼 더해 보정하는 방법(측정 상태 + `isEditing` 분기)을 거쳤다가 **겹침 자체를 없애는 쪽으로 정리했다.** 스크롤 영역에 `weight(1f)`를 주면 뷰포트가 버튼 위까지로 제한돼 마지막 블록이 항상 도달 가능하고, 높이 측정·패딩 분기가 전부 불필요해진다. 측정값 변화가 화면 전체 recomposition을 유발하던 문제와 편집 진입 첫 프레임에 여백이 부족하던 문제도 함께 사라졌다.
+
+- 목록은 최대 12명(위키 [[그룹]])이라 `LazyColumn` 대신 `Column` + `verticalScroll`을 쓴다.
+- 닉네임 첫 글자는 `nickname.take(1)`로 뽑는다(`first()`는 빈 문자열에서 예외).
+- `MainActivity`가 `enableEdgeToEdge()`를 켜둬 IME 인셋이 전달된다. 인셋 이중 계산은 아래 절 참고.
+
+## 창 인셋 처리
+
+`EntryBuilder`가 `YGScaffold`의 `innerPadding`을 `padding`으로 적용하되 **`consumeWindowInsets(innerPadding)`으로 소비**한다.
+
+소비하지 않으면 하위의 `imePadding()`이 창 바닥 기준 IME 인셋(키보드 + 내비게이션 바)을 통째로 다시 적용해, **확인 버튼이 키보드 위로 내비게이션 바 높이만큼 떠오른다**(실기기에서 확인). 초안은 "`EntryBuilder` 수정 불필요"였으나 그건 배경색만 본 판단이었다.
+
+> ⚠️ 같은 패턴(`padding(innerPadding)` + 하위 `imePadding()`, 소비 없음)이 `GroupInviteCodeRoute`에도 있다. 이번 범위 밖이라 손대지 않았다 → 열린 질문.
 
 ## 초대 코드 복사
 
-- `ClickCopyInviteCode` → `postSideEffect(CopyInviteCode(state.inviteCode))` + `isCodeCopied = true`.
-- `GroupSettingRoute`가 effect를 받아 Compose 클립보드 API로 복사한다(화면 밖 플랫폼 자원이므로 VM이 직접 만지지 않는다).
-- 카드 우측 문구는 `isCodeCopied`면 `복사됨`(Figma `430:977`), 아니면 `N명 남음`. `remainingCount == 0`이면 `YGInviteCardStatus.Invalid`로 떨어지며 이때 문구는 컴포넌트 규약대로 별도 문자열을 넘긴다.
-- **`복사됨`의 복귀 규칙이 디자인에 없다.** 이 스펙은 *화면을 벗어나기 전까지 유지*로 확정한다(타이머 없음) — 근거 없는 초 단위 값을 만들지 않기 위함. → 열린 질문.
+- `ClickCopyInviteCode` → `isCodeCopied = true` + `postSideEffect(CopyInviteCode(inviteCode.value))`.
+- `GroupSettingRoute`가 effect를 받아 Compose 클립보드 API(`LocalClipboard` + `ClipEntry`)로 복사한다. 화면 밖 플랫폼 자원이라 VM이 직접 만지지 않는다.
+- **클립보드에 들어가는 것은 코드가 아니라 초대 문구다**(사용자 사양):
+  ```
+  친구가 파르페에 초대했어요.
+  체리 올리러 가볼까요? {코드}
+  ```
+  `strings.xml`에 `%1$s` 포맷으로 두고 **조립은 Route가** 한다(`stringResource`는 UI 계층 소관). `CopyInviteCode` SideEffect는 코드만 싣고 ViewModel은 문자열 리소스를 모른다. `stringResource`는 `LaunchedEffect` 밖에서 템플릿만 읽어두고 안에서 포맷한다(`LaunchedEffect` 블록은 `@Composable`이 아니다).
+- 카드 우측 문구 우선순위: `remainingCount <= 0`이면 `최대 인원 도달`(`Invalid`) → `isCodeCopied`면 `복사됨` → 그 외 `N명 남음`.
+- **`복사됨`은 2초 뒤 원래 문구로 돌아온다**(사용자 사양). ViewModel이 `viewModelScope`에서 타이머를 소유하고, **연타 시 이전 Job을 `cancel()`** 해 마지막 클릭 기준 2초가 되게 한다. 취소하지 않으면 먼저 걸린 타이머가 중간에 문구를 되돌린다. 지연값은 파일 하단 private 상수.
+- 복사 토스트는 **띄우지 않는다**. 디자인시스템에 `YGToastType.InviteCode("초대 코드를 복사했어요")`가 있으나 이 화면 사양에 없고, 카드 문구 전환 자체가 피드백이다.
+
+> 🔁 초안의 "복귀 규칙 디자인 미기재 → 화면 이탈까지 유지" 가정은 폐기됐다.
 
 ## `YGColorChipType` 드리프트 수정 (동반 변경)
 
@@ -198,30 +248,78 @@ Figma 컴포넌트셋 `144:5415`는 타입 `1~12` + `+` = 13종인데 코드는 
 | `group_setting_leave` | 그룹 나가기 |
 | `group_setting_report` | 그룹 신고하기 |
 | `group_setting_confirm` | 확인 |
-| `group_setting_me_suffix` | (나) |
+| `group_setting_member_name_me` | %1$s (나) |
+| `group_setting_invite_message` | 친구가 파르페에 초대했어요.\n체리 올리러 가볼까요? %1$s |
 
 정적 UI 라벨만 리소스화한다. 닉네임·그룹명·초대 코드처럼 **데이터인 값은 State 소유**다. 유효성 에러 문구는 `core:ui` 기존 리소스를 재사용한다.
 
+## 유효성 표시 매핑 — ADR-0016 원안 수렴 (동반 변경)
+
+이 화면을 만들며 VM `when`으로 `@StringRes`를 산출하는 기존 방식을 답습하면 **같은 매핑이 4번째로 복제**된다. [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)이 결정한 원안은 `core:ui`가 매핑을 단일 소유하는 것이고, 그 ADR이 명시적으로 기각한 대안이 "feature마다 매핑 보유"다. 그래서 이번 라운드에 **4개 화면을 동시에 원안으로 수렴**시켰다.
+
+신설: `core/ui/.../text/NameValidResultUiText.kt`
+```kotlin
+enum class NameFieldType { NICKNAME, GROUP_NAME }
+
+@Composable
+fun NameValidResult.Error.toStringResource(fieldType: NameFieldType): String
+```
+- `core:ui` → `:domain` 의존을 추가한다(ui → domain, 허용 방향).
+- UI State는 `NameValidResult.Error?`(도메인 의미)를 보유하고 **화면이 렌더 시점에 변환**한다.
+- `fieldType`이 필요한 이유: `SpaceAtEdge`·`EmptyString`은 닉네임용/그룹명용 문구가 갈리고(`error_space_at_edge_nickname` / `_groupname`) 나머지 2종은 공용이라, 확장 하나로 못 덮는다.
+
+전환 대상 4곳 — `GroupSettingViewModel`·`AccountInfoViewModel`·`GroupNickNameViewModel`(전부 `nicknameError`, `NICKNAME`) / `GroupCreateViewModel`(`groupNameError`, `GROUP_NAME`).
+
+부수 이득 두 가지:
+- **클릭 시점 검증 2곳의 `when`이 5분기 → 2분기**로 줄었다(`Success` / `is Error`).
+- ViewModel과 그 테스트에서 `core:ui`의 `R` 참조가 사라졌다. 저장소 전체에서 `CoreR`를 쓰는 곳은 이제 실제 리소스를 해석하는 `NameValidResultUiText.kt` 하나뿐이다.
+
+**Compose stability 실측(2026-08-09)** — State가 도메인 sealed 타입을 들면 `domain`이 Compose Compiler를 안 거치므로 unstable로 뒤집힐 수 있다는 우려가 리뷰에서 나왔다. compose compiler report를 켜서 확인한 결과 `AccountInfoUiState`는 `runtime class` / `<runtime stability> = Uncertain(Error)`이고 `AccountInfoScreen`은 **`restartable skippable`을 유지**한다. `data object` 싱글턴이라 런타임 동일성 비교도 성립한다 — **실질 skip 회귀 없음**이라 stability 화이트리스트는 불필요하다.
+
+이 변경으로 [open-questions](../synthesis/open-questions.md) `[2026-07-29] 유효성 결과 매핑 as-built가 ADR-0016 원안과 다름`이 ①(원안 수렴)으로 닫힌다.
+
+## `YGTextFieldImpl` 최소 높이 (동반 변경)
+
+`showClear`(포커스 또는 에러 + 값 있음)일 때 상하 패딩이 `padding5`(12) → `padding1`(2)로 줄고 대신 44dp `YGIconButton`이 행에 들어오는 구조라, 클리어 버튼 등장·소멸마다 행 높이가 재계산돼 필드가 들썩였다.
+
+`Modifier.defaultMinSize(minHeight = SizeTokens.Size48.getDp())`를 체인 맨 앞(배경·테두리보다 먼저)에 걸어 최소 높이를 고정한다. 고정 높이가 아니라 최소 높이라 콘텐츠가 커질 여지는 남는다.
+
+> 토큰 산술로는 두 상태 모두 48이 나온다(12×2+24 = 2×2+44 = 48). 즉 명목상 no-op이고, 실제 들썩임은 폰트 렌더링이 명목 line-height와 어긋나 생긴 오차로 보인다 — `minHeight`가 그 오차를 흡수한다. 실기기에서 흔들림이 남으면 원인이 다른 곳(텍스트 실측 높이)이다.
+
 ## 네비게이션 배선
 
-- `EntryBuilder`(`featureGroupSettingEntryBuilder`)는 기존 entry 하나를 유지하되 `YGScaffold` 배경을 `YGAtomicColors.Gray.White`로 지정한다(S-101 화면 흰 배경).
+- `EntryBuilder`(`featureGroupSettingEntryBuilder`)는 entry 하나를 유지한다. `YGScaffold`의 `containerColor` 기본값이 이미 `YGAtomicColors.Gray.White`라 배경은 손댈 필요가 없고, 대신 위 [창 인셋 처리](#창-인셋-처리) 절의 `consumeWindowInsets`가 추가된다.
 - `NavigateBack → navigator.onBack()`.
 - 이 화면으로 들어오는 경로(G-001 또는 C-001)는 이번 범위 밖이다. 현재 `goTo(NavKeyGroupSetting)` 호출자는 없다.
 
 ## 검증
 
-- **`GroupSettingViewModel` JVM 유닛 테스트**(`src/test/`) — `feature/#215-test-environment`의 `parfait.test.unit` + `:core:testing`(`MainDispatcherRule`) + Turbine을 쓴다. 잠그는 규칙: 유효성 5케이스 매핑 · 확정 가드(`isConfirmEnabled` 아니면 무시) · 편집 취소 시 입력 원복 · 포커스 전이 · 확정 시 그룹원 목록 동기화 · `NavigateBack`/`CopyInviteCode` 방출.
-  - **유닛 테스트가 못 잡는 것**: 확정과 포커스 해제의 호출 순서, `imePadding()` 동작, 클립보드 실제 복사, 긴 문자열 레이아웃 → 육안이 유일한 그물이다.
+- **`GroupSettingViewModel` JVM 유닛 테스트 16개**(`src/test/`) — `parfait.test.unit` + `:core:testing`(`MainDispatcherRule`) + Turbine. 잠그는 규칙: 유효성 5케이스 매핑(연속 공백 포함) · 확정 가드 · 편집 취소 시 입력 원복과 에러 초기화 · 포커스 전이 · 확정 시 그룹원 목록 동기화 · **확정 → 포커스 상실 순서 불변식** · `NavigateBack`/`CopyInviteCode` 방출 · **복사 2초 복귀와 연타 시 타이머 리셋**(가상 시간 제어).
+  - **유닛 테스트가 못 잡는 것**: `imePadding()`·인셋 동작, 클립보드 실제 복사, 긴 문자열 레이아웃, 스크롤 도달성 → 육안이 유일한 그물이다. 실제로 이번 라운드의 결함 2건(버튼이 내비바만큼 떠오름, 편집 중 마지막 블록이 버튼 뒤에 갇힘)이 **실기기에서만** 드러났다.
   - Compose UI 계측 테스트는 이번 범위 밖(feature 모듈 계측 미배선).
-- 검증선: `:feature:groups:setting:impl:testDebugUnitTest` + `:feature:groups:setting:impl` · `:core:designsystem` **컴파일** + **ktlint** + `:app:assembleDebug`(Hilt 그래프 및 `YGTextFormField` 기존 호출부 회귀).
-- `@YGPreview` + `PreviewBox` 프리뷰: 기본 상태 / 편집 유효 / 편집 오류 / 초대 코드 `복사됨` / `Invalid`(정원 초과) 5종.
-- 실기기 육안: 키보드 오르내림에 따라 `확인` 버튼이 붙어 움직이는지, 배경 탭으로 편집이 취소되는지, 클립보드에 코드가 실제로 복사되는지.
-- **긴 닉네임 프리뷰를 반드시 포함한다** — `bar-listdate` 라운드에서 짧은 샘플만 쓰다 폭 측정 결함을 놓친 전례가 있다. 15자 닉네임 + 긴 그룹명 케이스를 프리뷰에 넣는다.
+- 검증선: `:feature:groups:setting:impl:testDebugUnitTest` + 관련 모듈 **컴파일** + **ktlint** + `:app:assembleDebug`(Hilt 그래프, `YGTextFormField` 기존 호출부 회귀, ADR-0016 전환으로 바뀐 테스트 없는 화면 3곳의 회귀).
+- `@YGPreview` + `PreviewBox` 프리뷰 **13종**: 화면 6종(기본 / `복사됨` / `Invalid` / 긴 문자열 / 편집 유효 / 편집 오류) + `GroupNicknameField` 4종(기본 / 빈 값 / 에러 / 15자) + `GroupMemberList` 3종(본인만 / 여러 명 / 긴 닉네임 혼합).
+- 실기기 육안: 아래 [남은 확인](#남은-실기기-확인) 절.
+- **긴 문자열 케이스를 반드시 포함한다** — `bar-listdate` 라운드에서 짧은 샘플만 쓰다 폭 측정 결함을 놓친 전례가 있다. 그룹명 10자·닉네임 15자를 화면·컴포넌트 프리뷰 양쪽에 넣었다.
+
+## 남은 실기기 확인
+
+서브에이전트가 기기를 다룰 수 없어 사람이 해야 하는 항목이다. 굵은 것은 이미 한 번 결함이 나왔던 자리다.
+
+1. **확인 버튼이 키보드 상단에 딱 붙는지** — 제스처 내비게이션과 3버튼 내비게이션 **양쪽**(인셋 높이가 다르다).
+2. **편집 중 끝까지 스크롤했을 때 초대 코드 카드·Danger Zone이 다 보이는지.**
+3. 편집 중 back 동작 — 몇 번에 닫히는지, 키보드·커서가 남는지.
+4. 무효 입력에서 엔터 → 아무 일도 안 일어나고 키보드 유지. 값 미변경에서 엔터 → 키보드만 닫힘.
+5. 복사 → 다른 앱에 붙여넣어 **초대 문구 2줄**이 나오는지, 카드 문구가 2초 뒤 돌아오는지, 연타 시 마지막 클릭 기준인지.
+6. 15자 닉네임 + `(나)` 접미가 `YGUserChip`에서 줄바꿈되는지, 긴 그룹명이 상단바에서 2줄로 감기는지(→ 열린 질문의 `YGTopBarDetail`).
+7. 닉네임 필드 높이가 클리어 버튼 등장·소멸에 흔들리지 않는지.
 
 ## 주의 / 열린 질문
 
-- **`복사됨` 복귀 규칙 없음** — 디자인 미기재. 이 스펙은 화면 이탈 전까지 유지로 가정한다.
 - **`NavKeyGroupSetting`에 `groupId`가 없다** — Mock이라 지금은 무해하나 실연동 시 인자 추가가 필요하다.
+- **`YGTopBarDetail`에 `maxLines`·`overflow`가 없다** — 같은 파일의 `YGTopBarCanvas`·`YGTopBarEmpty`는 `maxLines = 1`을 갖는데 `Detail`만 없어 긴 그룹명이 2줄로 감길 수 있다. 디자인시스템 소관이라 이번 범위 밖.
+- **`GroupInviteCodeRoute`에 같은 인셋 이중 계산이 남아 있다** — `padding(innerPadding)` + 하위 `imePadding()`인데 소비가 없다. 이 화면과 같은 증상일 것.
+- **`setClipEntry` 예외 처리 없음** — 실패해도 UI는 무손상이나, `LaunchedEffect` 수집 코루틴이 죽으면 이후 SideEffect가 멈추는 이론적 경로가 있다.
 - **서버 그룹 상세 응답에 `groupName`·`memberLimit`가 없다** — `GET /api/parfait-groups/{groupId}`는 `groupId`·`groupNickname`·`inviteCode`·`members`만 준다([api/parfait-group.md](../api/parfait-group.md)). 상단바 제목과 `N명 남음`의 출처가 계약상 없다. 그룹 목록 API에서 이름을 받아 NavKey로 넘기거나 서버에 필드 추가를 요청해야 한다.
 - **컬러칩 타입 부여 주체 미정** — 서버 응답에 타입이 없어 Mock 인덱스 순환으로 대체.
 - **그룹 나가기·신고 확인 모달 미제공** — 클릭은 stub(로그 + TODO)이다. Danger Zone 동작 자체가 미구현이라는 뜻이다.

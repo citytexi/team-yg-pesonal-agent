@@ -1,7 +1,7 @@
 ---
 id: s101-group-side-menu
 title: S-101 그룹 사이드 메뉴 화면 구현 계획
-status: todo
+status: done
 spec: ../specs/2026-08-07-s101-group-side-menu.md
 branch: feature/#211-S-101-group-side-menu
 issue: mash-up-kr/TEAMYG-Android#211
@@ -12,6 +12,32 @@ tags: [plan, parfait, feature, groups, setting]
 # S-101 그룹 사이드 메뉴 화면 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+> ✅ **실행 완료(2026-08-09, 미머지).** Task 1~7 전량 + 추가 라운드. 체크박스는 실행 기록을 이 블록에
+> 모으는 관례대로 미체크로 둔다. **산출물 계약의 정본은 [스펙](../specs/2026-08-07-s101-group-side-menu.md)이다**
+> — 아래 본문은 실행 당시 지시서이고 이후 뒤집힌 결정이 있다(특히 Task 6의 하단 여백 처리).
+>
+> **실행 방식**: SDD(Task별 구현자 + 리뷰) 7 Task, 이후 사용자 요청으로 추가 라운드 5회.
+> `develop` 위 rebase 후 커밋 20개. 유닛 테스트 16개·프리뷰 13종, `:app:assembleDebug` 통과.
+>
+> **계획이 틀렸던 곳 3건** — 계획서를 그대로 따랐다면 결함이 남았을 자리다.
+> 1. **Task 1 Step 1의 grep 전제가 틀렸다.** "`ygcolorchip` 밖 사용처 없음"으로 적었으나 `app-preview`가
+>    `NametagChip12`를 쓰고 있었다(컨트롤러의 사전 조사가 `head -30`에 잘려 놓쳤다). 구현자가 멈추고
+>    보고해 잡혔고, 재번호 시 **같은 색을 계속 가리키도록** 사용처를 함께 옮겼다.
+> 2. **Task 2 브리프의 호출부 목록이 부정확했다.** `InviteCodeInputFieldElement`는 `YGTextFormField`가
+>    아니라 raw `BasicTextField`를 쓴다. 구현자가 정정했고 리뷰가 확인했다.
+> 3. **Task 6의 "편집 중 하단 여백" 처리는 두 번 뒤집혔다.** 계획엔 없던 것을 리뷰 지적으로 넣었다가
+>    (버튼 높이 실측 + `isEditing` 분기) Figma 근거로 걷어냈고, 실기기에서 마지막 블록이 버튼 뒤에
+>    갇히는 것이 확인돼 **버튼을 오버레이에서 빼내 스크롤 영역의 형제로** 두는 구조로 정리했다.
+>    교훈: 레이아웃 겹침은 여백으로 보정하지 말고 겹침 자체를 없애라.
+>
+> **유닛 테스트가 못 잡은 것** — 실기기에서만 드러난 결함 2건: 인셋 이중 계산으로 확인 버튼이
+> 내비게이션 바 높이만큼 떠오름, 편집 중 마지막 블록이 버튼 뒤에 갇힘. 둘 다 최종 리뷰가 M1/Important로
+> 예측했으나 기기 없이는 확정할 수 없어 이월했던 항목이다.
+>
+> **계획 범위 밖으로 추가된 것**(사용자 요청): 초대 문구 클립보드 복사 + `복사됨` 2초 복귀 ·
+> `YGTextFieldImpl` 최소 높이 48 · `GroupMemberUiModel` `model` 패키지 분리 · State 3필드 도메인 VO 치환 ·
+> **ADR-0016 원안 수렴**(유효성 표시 매핑을 `core:ui`로, 4개 화면 동시) · 컴포넌트 프리뷰 7종.
 
 **Goal:** 그룹 사이드 메뉴 화면 S-101(닉네임 조회·인라인 편집 / 그룹원 목록 / 초대 코드 / Danger Zone)을 Mock 데이터로 구현한다.
 
