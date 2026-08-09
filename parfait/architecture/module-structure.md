@@ -4,11 +4,13 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-01
-related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm
+verified: 2026-08-09
+related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
-related_code: settings.gradle.kts
+related_code:
+  - settings.gradle.kts
+  - build-logic/convention/src/main/kotlin/com/teamyg/parfait/buildlogic/TestConfig.kt#setConfigTestUnit
 tags: [architecture, parfait]
 ---
 # 모듈 구조
@@ -38,6 +40,7 @@ app / app-preview
 | core | `core:navigation` | `Navigator`, NavKey 레지스트리, 엔트리 등록 | android-library |
 | core | `core:util:android` | Android 전용 유틸(`decodeUriToBitmap`, `AndroidBitmap`) + Compose clickable 유틸(`clickable/`: `clickableYG`·`clickableYGNoRipple`·`ygDimRipple`·`ygScaleRipple`, 테마 비의존) + 포커스 유틸(`focus/`: `Modifier.clearFocusOnTap`) + Compose 확장(`extension/`: `Modifier.navigationBarsAndImePadding`·`Modifier.drawTooltipCornerTop`·`AnnotatedString.Builder.withStyle`). `core:util:jvm` 의존 | android-library + compose |
 | core | `core:util:jvm` | 순수 Kotlin 유틸·로깅·플랫폼 무관 추상(`BitmapWrapper`) + 공용 날짜 포맷(`model/DateFormat`·`model/DateTextFormat`, `kotlinx-datetime`) | kotlin-jvm |
+| core | `core:testing` | **테스트 전용** 공용 유틸(`MainDispatcherRule`). 테스트 소스셋만 소비하므로 위 의존 방향 그래프에 없다 | kotlin-jvm |
 | domain | `domain` | UseCase, Repository 인터페이스, 도메인 모델 | `ModuleDomain`(kotlin-jvm) |
 | data | `data` | Repository 구현, DataSource, DI 모듈 | `ModuleData` |
 | feature | `feature/{login,segmentation,camera,gallery,intro}/{api,impl}` | 화면·VM(impl) / NavKey 계약(api) | `ModuleFeatureApi` / `ModuleFeatureImpl` |
@@ -49,6 +52,9 @@ app / app-preview
 - feature 간 이동은 상대 **`:api`(NavKey)만** 참조. `:impl`끼리 직접 의존 금지([[0002-feature-api-impl-split]]).
 - `domain`은 Android 의존 금지(순수 Kotlin 유지). Android 타입이 도메인에 필요하면 `core:util:jvm`의 플랫폼 무관 추상으로 감싼다 — 비트맵은 `BitmapWrapper`([[0011-cross-module-bitmap-abstraction]]).
 - 새 모듈 = 알맞은 컨벤션 플러그인 적용 + `settings.gradle.kts` 등록(같은 커밋).
+- **`core:testing`은 프로덕션 코드에서 참조 금지.** 배선은 `setConfigTestUnit()`이 `testImplementation`으로
+  넣어주고, 계측 소스셋에는 붙지 않는다. 이 모듈은 junit4·coroutines-test를 `api`로 재노출하지
+  않으므로 `bundles.test-unit`과 짝일 때만 성립한다([spec](../specs/2026-08-06-unit-test-infrastructure.md)).
 - **여러 feature가 공유하는 화면**은 특정 도메인 feature 밑이 아니라 `feature/common/*`에 둔다([[0015-feature-common-shared-layer]]). 단, **2개 이상 소비처가 확정된 경우에만**(단일 소비면 소유 feature 유지).
 - **표시 문자열은 `strings.xml` + `stringResource`**(코틀린 리터럴 금지). 화면 전용 정적 라벨은 그 화면의 `feature/*/impl` `res/values/strings.xml`
   (같은 모듈의 여러 화면이 한 파일 공용), **여러 feature가 공유하는 문구**(유효성 에러 등)는 `core:ui` `res/values/strings.xml`([[0016-domain-result-presentation-string-mapping]]).

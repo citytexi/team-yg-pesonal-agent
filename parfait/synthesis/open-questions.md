@@ -468,6 +468,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: 키 유실을 실기기에서 재현(기기 복원 또는 잠금 자격증명 변경)해 `clear()` 분기가 실제로 타는지, 앱이 정상적으로 "토큰 없음" 상태로 전환되는지 확인.
 - **상태**: 미해결 (재현 수단 없음)
   > 📌 **as-built 범위 확대(2026-08-04, PR #190 머지본)** — `read()`의 `runCatching`이 복호화뿐 아니라 **DataStore 읽기까지** 감싼다. 즉 일시적 저장소 I/O 실패도 같은 경로로 떨어져 토큰이 삭제된다 — 재현해야 할 경우의 수가 하나 늘었다.
+  > 📌 **2026-08-09 갱신(PR #219)** — "코드베이스에 `test`/`androidTest`가 없다"는 전제는 해소됐다. `parfait-test-unit`·`parfait-test-android` 배선과 `src/androidTest/` 소스셋이 들어왔다([spec](../specs/2026-08-06-unit-test-infrastructure.md)). 그래도 **재현 수단 없음은 그대로다.** Android Keystore는 여전히 JVM 유닛 테스트에서 동작하지 않고(Robolectric 제외), 계측 테스트는 CI에서 `assembleDebugAndroidTest` 컴파일까지만 검증해 실행되지 않는다. 막고 있는 것이 둘로 명확해졌다 — CI에 기기·에뮬레이터가 없다는 점, 그리고 키 무효화 자체가 기기 복원·잠금 자격증명 변경이라 프로그램으로 유발할 수 없다는 점.
 - **해소 메모**: 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md) "키 유실 시 정책"과 [specs/archive/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "검증" 절에 결과를 반영한다.
 
 ### [2026-08-02] 인터셉터 `runBlocking`이 코드리뷰를 통과할지 미확정
