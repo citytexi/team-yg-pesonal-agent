@@ -4,11 +4,19 @@ title: 유닛 테스트 기반 구조 (Unit Test Infrastructure)
 status: draft
 category: build-spec
 platforms: android
-verified: 2026-08-06
+verified: 2026-08-09
 related_code:
   - build-logic/convention/src/main/kotlin/BaseConventionPlugin.kt
   - build-logic/convention/src/main/kotlin/com/teamyg/parfait/buildlogic/AndroidConfig.kt#setConfigAndroidLibrary
   - build-logic/convention/src/main/kotlin/com/teamyg/parfait/buildlogic/KotlinJvmConfig.kt#setConfigKotlinJvm
+  - build-logic/convention/src/main/kotlin/com/teamyg/parfait/buildlogic/TestConfig.kt#setConfigTestUnit
+  - build-logic/convention/src/main/kotlin/com/teamyg/parfait/buildlogic/TestConfig.kt#setConfigTestAndroid
+  - core/testing/build.gradle.kts
+  - core/testing/src/main/kotlin/com/teamyg/parfait/core/testing/MainDispatcherRule.kt#MainDispatcherRule
+  - .github/workflows/test.yml
+  - .github/workflows/ktlint.yml
+  - .github/actions/setup-android-build/action.yml
+  - .github/actions/restore-app-secrets/action.yml
   - gradle/libs.versions.toml
   - domain/src/main/java/com/teamyg/parfait/domain/usecase/CheckNameValidUseCase.kt#CheckNameValidUseCase
   - domain/src/main/java/com/teamyg/parfait/domain/model/DayWindow.kt#DayWindow
@@ -83,11 +91,18 @@ MockWebServer는 OkHttp 5 계열에서 아티팩트가 둘로 갈리는데(레�
 신규 `okhttp3:mockwebserver3`), 실물 확인 결과 **둘 다 5.4.0이 배포돼 있다.** OkHttp 버전과
 함께 움직이도록 `version.ref = "okhttp"`로 걸고 신규 패키지(`mockwebserver3`)를 쓴다.
 
-번들 3개로 묶는다.
+번들 2개로 묶는다.
 
-- `test-unit` — junit, kotlin-test, kotlinx-coroutines-test, turbine, mockk, mockwebserver
-- `test-android` — androidx.test.ext:junit, androidx.test:runner, androidx.test:rules
-- `test-compose` — androidx.compose.ui:ui-test-junit4 (Compose BOM에 정렬)
+- `test-unit` — junit4, kotlin-test, kotlin-test-junit, kotlinx-coroutines-test, turbine, mockk, mockwebserver
+- `test-android` — junit4, androidx.test:core, androidx.test:runner, androidx.test:rules, androidx.test.ext:junit
+
+`test-compose` 번들은 만들지 않는다. Compose UI 테스트 의존은 BOM platform과 짝지어 걸어야 하고
+`ui-test-manifest`는 소스셋이 달라서(`debugImplementation`), 번들로 묶으면 그 구분이 사라진다.
+`setConfigTestCompose()`가 개별 좌표로 직접 선언한다.
+
+`test-unit`이 `:core:testing`의 의존까지 책임진다. 그 모듈이 junit4와 coroutines-test를 `api`로
+재노출하지 않기 때문이다(아래 [`:core:testing` 모듈](#coretesting-모듈) 참고). 번들에서 둘 중
+하나를 빼면 `MainDispatcherRule`을 쓰는 테스트가 컴파일되지 않는다.
 
 ## 컨벤션 플러그인
 
@@ -113,9 +128,13 @@ Android 의존 코드가 잘못 통과한다. 예외로 실패하는 편이 "이
 ### `parfait-test-android` → `setConfigTestAndroid()`
 
 - `androidTestImplementation(bundles.test-android)`
-- `androidTestImplementation(projects.core.testing)` — Fake를 계측 테스트에서도 재사용
 - `testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"`
 - `testOptions.animationsDisabled = true` — 계측 테스트 flake의 주원인 차단
+
+`:core:testing`은 붙이지 않는다. 그 모듈의 유일한 자산인 `MainDispatcherRule`은
+`Dispatchers.Main`을 테스트 디스패처로 바꾸는 JVM 유닛 테스트용이고, 계측 테스트에는 실제
+Main looper가 있어 쓸 일이 없다. `test-android` 번들에 coroutines-test도 없어서 붙여봐야
+`TestDispatcher`를 찾지 못한다. 계측용 공유 자산이 생기면 그때 `:core:testing:android`를 만든다.
 
 ### `parfait-test-compose` → `setConfigTestCompose()`
 
@@ -146,14 +165,23 @@ JVM 모듈이고 `data`·`core:util:android`는 Android 라이브러리인데, A
 라이브러리를 소비하는 건 가능하지만 그 반대는 불가능하다. 따라서 JVM으로 만든다.
 `ApplicationProvider` 같은 Android 전용 유틸이 필요해지면 그때 `:core:testing-android`를 분리한다.
 
-`domain`을 `api` 의존으로 당긴다 — repository 인터페이스 대역을 제공해야 하기 때문이다.
-테스트 소스셋만 이 모듈을 소비하므로 프로덕션 의존 그래프는 변하지 않는다.
+`domain` 의존은 넣지 않는다. 공유 Fake를 이번 범위에서 빼기로 하면서(아래 미결 항목 참고)
+repository 인터페이스를 참조할 일이 없어졌다. Fake가 실제로 필요해지는 시점에 되살린다.
 
 **구성**
 
 - `MainDispatcherRule` — `TestWatcher` 기반, `val dispatcher: TestDispatcher`를 **공개**한다.
-- 공유 Fake — `domain`의 repository 인터페이스 대역. 인메모리 구현 + 테스트 전용 seed 헬퍼.
-- 픽스처 — 그룹·토큰·닉네임 등 도메인 샘플 상수.
+
+### junit4·coroutines-test는 `implementation`이다
+
+`MainDispatcherRule`은 `TestWatcher`를 상속하고 `TestDispatcher`를 public property로 노출한다.
+그래서 이 룰을 쓰는 쪽도 두 라이브러리가 있어야 컴파일된다. ABI만 보면 `api`가 정석이지만,
+`setConfigTestUnit()`이 `bundles.test-unit`을 늘 함께 넣어 소비자가 두 라이브러리를 직접
+갖추므로 재노출이 아무것도 더하지 않는다. 그 중복을 없애려고 `implementation`으로 내렸다.
+
+대가는 이 모듈이 유닛 테스트 배선과 짝일 때만 성립한다는 점이다. `bundles.test-unit`에서
+junit4나 kotlinx-coroutines-test를 빼면 컴파일 에러가 `:core:testing`이 아니라 소비자 쪽에서
+난다. 그래서 번들 선언 자리에도 경고 주석을 남겼다.
 
 ### `MainDispatcherRule`이 dispatcher를 공개해야 하는 이유
 
@@ -187,6 +215,14 @@ androidx 정본은 dispatcher를 private으로 받는 `TestRule` 형태인데, �
    불가능하다. 파라미터로 받고 기본값을 두는 방식으로 해결한다.
 10. 소스셋 디렉토리는 각 모듈의 `main`을 따른다 — `domain`·`data`는 `src/test/java/`,
     `core:util:*`·`core:designsystem`은 `src/test/kotlin`·`src/androidTest/kotlin`.
+11. **매퍼는 결정이 있는 곳만 테스트한다.** 필드를 그대로 옮기기만 하는 매퍼는 컴파일러가
+    막아주니 테스트하지 않는다. 문자열을 enum으로 옮기는 규칙, nullable 처리, 기본값 주입,
+    단위 변환처럼 판단이 들어간 지점만 그 판단을 잠근다. 예외가 하나 있는데, 같은 타입 필드가
+    둘 이상이면(`title`·`url`이 둘 다 `String`) 뒤바꿔 넣어도 컴파일이 통과하므로 배선을
+    한 번 확인한다. VO가 늘어날 때 같은 테스트를 기계적으로 복제하지 않는 게 이 규칙의 목적이다.
+12. **테스트 클래스명은 대상 심볼을 그대로 딴다.** 매퍼 파일 하나에 도메인이 여럿 들어갈 수
+    있으므로 `PolicyVOMapperTest`처럼 도메인까지 붙인다. `VOMapperTest` 같은 넓은 이름은
+    VO가 늘 때 한 파일에 전부 몰린다.
 
 ## 프로덕션 코드 변경
 
@@ -211,7 +247,7 @@ fun current(
 | `core:util:jvm` | `DateFormat` · `DateTextFormat` | 포맷 변환 |
 | `domain` | `CheckNameValidUseCase` | 검증 규칙 4종 각각 + 규칙 적용 우선순위 |
 | `domain` | `DayWindow` | 03시 경계 직전·직후, `contains`의 반열림 구간 |
-| `data` | `VOMapper#toPolicyVO` | 응답 → VO 매핑, 미지의 type이 `UNKNOWN`으로 |
+| `data` | `VOMapper#toPolicyVO` | 미지의 type과 대소문자 불일치가 `UNKNOWN`으로, 필드 배선, 리스트 변환 (규약 11) |
 | `data` | `PolicyRemoteDataSourceImpl` | Service를 MockK로 대역, 성공·실패 경로 매핑 |
 | `data` | `AuthInterceptor` + `ApiCaller` | MockWebServer로 토큰 헤더 부착 · `@NoAuth` 분기 · 에러 변환 |
 | `core:util:android` | (unit 없음) | 내용물이 Compose Modifier·Context/Bitmap 확장이라 대상 없음 |
@@ -228,18 +264,40 @@ fun current(
 새 워크플로를 추가하면 같은 테스트가 두 번 실행되므로 **`ktlint.yml`에서 그 스텝을 제거하고**
 테스트 실행을 `test.yml`로 옮긴다. `ktlint.yml`은 포매팅 검사만 담당한다.
 
-`.github/workflows/test.yml`을 신설한다. `ktlint.yml`의 구조를 그대로 따른다 —
-PR 타깃 브랜치는 `develop`, JDK 17(temurin), Gradle 캐시, `gradlew` 실행 권한 부여,
-그리고 **빌드에 필요한 시크릿 파일 생성 2건**(`local.properties`의 `KAKAO_NATIVE_APP_KEY`,
-`app/google-services.json`)까지 동일하다. 이 두 스텝이 없으면 빌드 자체가 실패한다.
+### 셋업 스텝은 composite action으로 뽑는다
 
-실행 태스크는 모듈 종류에 따라 갈린다 — JVM 모듈은 `test`, Android 모듈은 `testDebugUnitTest`다.
-루트에서 `./gradlew test`를 돌리면 전 모듈이 대상이 되고 Android 모듈은 debug·release
-유닛 테스트를 둘 다 실행하므로, 이번 범위인 4개 모듈만 명시한다.
+`test.yml`과 `ktlint.yml`이 셋업 스텝을 글자 그대로 공유한다. 두 워크플로에 같은 30줄을 두는
+대신 `.github/actions/` 아래 composite action 2개로 뽑는다. 조직 내 `Team-MINO-Android`가 쓰는
+구조와 같다.
+
+| action | 내용 |
+|---|---|
+| `setup-android-build` | JDK 17(temurin) + `gradle/actions/setup-gradle@v4` |
+| `restore-app-secrets` | `local.properties`의 `KAKAO_NATIVE_APP_KEY` + `app/google-services.json` |
+
+`reusable workflow`(`workflow_call`)가 아니라 composite action인 이유는 공통부가 job 전체가
+아니라 step 묶음이라는 점이다. 가운데 본체(`./gradlew test` 대 `ktlintCheck`)가 다르고
+`test.yml`은 뒤에 리포트 게시·아티팩트 업로드가 더 붙는다.
+
+composite action 안에서는 `secrets` context가 동작하지 않는다. 시크릿은 `inputs`로 받아
+`env:`에 담고 `printf`로 파일에 쓴다. 호출부에서 `${{ secrets.* }}`를 넘긴다.
+
+`gradle/actions/setup-gradle@v4`가 Gradle User Home 캐시를 직접 관리하면서 저장 전에
+`modules-2.lock`·`gc.properties` 같은 휘발성 파일을 제외한다. 그래서 수동 `actions/cache`
+설정과 두 워크플로에 있던 `Cleanup Gradle Cache` 스텝이 둘 다 사라진다. `chmod +x gradlew`도
+빠진다. 저장소의 `gradlew`가 이미 `100755`로 커밋돼 있어 처음부터 무의미한 스텝이었다.
+
+### 실행 태스크
+
+루트에서 `./gradlew test`를 돌린다. 테스트가 없는 모듈은 `NO-SOURCE`로 즉시 스킵되고,
+Android 라이브러리의 debug·release 중복 실행은 `setConfigTestUnit()`이 release 변형의
+host-test 컴포넌트를 끄는 방식으로 막는다(모듈을 일일이 나열하지 않아도 된다).
+
+계측 테스트는 에뮬레이터 없이 컴파일만 검증한다. 배선·매니페스트 회귀를 잡는 그물이다.
 
 ```
-./gradlew :domain:test :core:util:jvm:test \
-          :data:testDebugUnitTest :core:util:android:testDebugUnitTest
+./gradlew test
+./gradlew :core:util:android:assembleDebugAndroidTest :core:designsystem:assembleDebugAndroidTest
 ```
 
 실패 여부와 무관하게(`if: always()`) 결과를 남긴다.
@@ -255,13 +313,16 @@ PR 타깃 브랜치는 `develop`, JDK 17(temurin), Gradle 캐시, `gradlew` 실�
 - `build-logic/convention/src/main/kotlin/TestAndroidConventionPlugin.kt`
 - `build-logic/convention/src/main/kotlin/TestComposeConventionPlugin.kt`
 - `build-logic/convention/src/main/kotlin/com/teamyg/parfait/buildlogic/TestConfig.kt`
-- `core/testing/build.gradle.kts` + `MainDispatcherRule`·Fake·픽스처
+- `core/testing/build.gradle.kts` + `MainDispatcherRule`
 - 각 대상 모듈의 `src/test/` · 스모크 모듈의 `src/androidTest/`
 - `.github/workflows/test.yml`
+- `.github/actions/setup-android-build/action.yml`
+- `.github/actions/restore-app-secrets/action.yml`
 
 **수정**
 
-- `.github/workflows/ktlint.yml` — `./gradlew --info test` 스텝 제거(중복 실행 방지)
+- `.github/workflows/ktlint.yml` — `./gradlew --info test` 스텝 제거(중복 실행 방지),
+  셋업 스텝을 composite action 호출로 교체
 - `gradle/libs.versions.toml` — 버전·라이브러리·번들·플러그인 id 추가
 - `settings.gradle.kts` — `:core:testing` include
 - 대상 6개 모듈의 `build.gradle.kts` — 플러그인 alias 추가
@@ -289,12 +350,18 @@ PR 타깃 브랜치는 `develop`, JDK 17(temurin), Gradle 캐시, `gradlew` 실�
   두고 도메인 Fake는 `testFixtures`로 / (3) 각 모듈 `src/test`에 두고 공유하지 않음 — 소비자가
   하나뿐인 Fake가 많다면 중복이 오히려 싸다. **첫 Fake가 실제로 필요해지는 시점에 정한다.**
   현재 상태(`:core:testing`에 `MainDispatcherRule`만)는 어느 쪽도 강제하지 않는다.
-- **`MainDispatcherRule`은 현재 사용처가 0이고 검증되지 않았다.** 이 룰은 `viewModelScope`·
-  `Dispatchers.Main`을 타는 테스트용인데 이번 범위(`domain`·`data`·`core:util:*`)에는 ViewModel이
-  없다. 컴파일만 될 뿐 `Dispatchers.setMain` 적용·복원과 `runTest(rule.dispatcher)` 스케줄러 공유는
-  아무것도 증명되지 않았다. **첫 ViewModel 테스트를 쓰는 사람이 여기서 막힐 수 있다** — 특히
-  `runTest`를 인자 없이 부르면 스케줄러가 갈려 `advanceUntilIdle()`이 Main 큐를 비우지 못한다.
-  그때 룰 자체를 검증하는 테스트를 함께 추가할 것.
+- **`MainDispatcherRule`은 현재 사용처가 0이다.** 이 룰은 `viewModelScope`·`Dispatchers.Main`을
+  타는 테스트용인데 이번 범위(`domain`·`data`·`core:util:*`)에는 ViewModel이 없다. 배선까지는
+  확인했다(2026-08-09, `api` 제거 검증차 `domain`에 임시 테스트를 넣어 `@get:Rule` +
+  `runTest(rule.dispatcher)`가 컴파일·통과함을 보고 지웠다). 하지만 `Dispatchers.setMain`
+  적용·복원과 스케줄러 공유가 실제로 무엇을 막아주는지는 여전히 증명되지 않았다.
+  **첫 ViewModel 테스트를 쓰는 사람이 여기서 막힐 수 있다** — 특히 `runTest`를 인자 없이 부르면
+  스케줄러가 갈려 `advanceUntilIdle()`이 Main 큐를 비우지 못한다. 그때 룰 자체를 검증하는
+  테스트를 함께 추가할 것.
+- **계측 테스트에서 코루틴을 다루려면 `test-android` 번들에 `kotlinx-coroutines-test`를 넣어야
+  한다.** 현재 그 번들엔 없고 `:core:testing`도 계측 소스셋에 붙지 않으므로, `androidTest`에서
+  `runTest`를 부르는 순간 컴파일이 깨진다. 지금 미리 넣지 않은 이유는 계측 테스트 2건
+  (`YGThemeSmokeTest`·`ContextExtensionTest`)이 코루틴을 쓰지 않아서다. 필요해지는 시점에 추가한다.
 - **ADR 동반 여부 판단 필요.** 테스트 스택 선택(JUnit4 · Fake 우선 · MockK는 상호작용 검증
   한정)과 `:core:testing` 모듈 도입은 장기간 유지되는 구조 결정에 해당한다. parfait 규율상
   새 아키텍처 결정에는 ADR을 동반하므로, 구현 PR에서 ADR 신설 여부를 결정한다.

@@ -2227,11 +2227,36 @@ GetRecentCacheImagesUseCase 가 DayWindow.current() 를 직접 불러 시각을
 8. **Compose 스모크의 겹친 노드** — 카운터 `Box`와 클릭 `Box`를 부모 레이아웃 없이 같은 자리에 두면
    앞의 것이 완전히 가려진다. `assertIsDisplayed()`는 가림을 보지 않아 우연히 통과한다. `Column`으로 감쌌다.
 
+## PR 리뷰 반영 (2026-08-09)
+
+PR #219에 달린 리뷰 3건을 반영했다. 위 Task 본문의 코드 블록은 당시 상태이므로, 최종 형태는
+[스펙](../specs/2026-08-06-unit-test-infrastructure.md)이 정본이다.
+
+1. **CI 셋업 스텝 공통화** (Task 9). `test.yml`과 `ktlint.yml`이 셋업 6스텝을 글자 그대로
+   공유한다는 지적. `.github/actions/setup-android-build`·`restore-app-secrets` composite action
+   2개로 뽑았다. 옮기면서 3스텝이 사라졌다 — `gradle/actions/setup-gradle@v4`가 캐시를 직접
+   관리하며 lock 파일을 제외하므로 수동 `actions/cache`와 `Cleanup Gradle Cache`가 불필요하고,
+   `chmod +x gradlew`는 `gradlew`가 이미 `100755`라 처음부터 무의미했다.
+   `test.yml` 82줄 → 55줄, `ktlint.yml` 53줄 → 25줄.
+2. **`:core:testing`의 `api` 제거** (Task 2). `implementation`으로 충분하지 않냐는 질문.
+   ABI만 보면 `api`가 정석이지만(`MainDispatcherRule`이 `TestWatcher`를 상속하고
+   `TestDispatcher`를 노출) `bundles.test-unit`이 두 라이브러리를 소비자에 이미 넣어 재노출이
+   중복이었다. `implementation`으로 내리는 전제로 `setConfigTestAndroid()`에서
+   `androidTestImplementation(project(":core:testing"))`을 **제거**했다. 그 선을 남기면
+   `test-android` 번들에 coroutines-test가 없어 계측 테스트에서 `TestDispatcher`가 깨진다.
+   검증은 `domain`에 임시 테스트를 넣어 `@get:Rule` + `runTest(rule.dispatcher)`가 통과함을 보고 지웠다.
+3. **VO 매퍼 테스트 축약** (Task 4). 단순 매핑에 테스트가 필요하냐는 질문. 절반 맞다 —
+   `toPolicyType()`의 `else -> UNKNOWN` fallback은 크래시를 가르는 결정이라 남기고, 순수 필드
+   복사와 `List.map` 순서 검증은 줄였다. 6건 → 4건. `VOMapperTest` → `PolicyVOMapperTest`로
+   개명하고(VO가 늘 때 한 파일에 몰리는 것을 막는다) 규약 11·12를 스펙에 신설했다.
+   테스트가 실제로 버그를 잡는지 뮤테이션 2건으로 확인했다 — `enumValueOf`로 교체하면 2건 실패,
+   `title`·`url` 뒤바꾸면 1건 실패.
+
 ## 검증 요약
 
 구현 완료 시점에 아래가 모두 성립해야 한다.
 
-- [ ] `./gradlew :domain:test :core:util:jvm:test :data:testDebugUnitTest :core:util:android:testDebugUnitTest` 통과
+- [ ] `./gradlew test` 통과 (모듈 목록 하드코딩은 위 "계획 오류" 5번에서 걷어냈다)
 - [ ] `./gradlew :core:util:android:assembleDebugAndroidTest :core:designsystem:assembleDebugAndroidTest` 통과
 - [ ] `./gradlew :core:designsystem:lintDebug`에 `TestManifestGradleConfiguration` 경고 없음
 - [ ] `./gradlew ktlintCheck` 통과
