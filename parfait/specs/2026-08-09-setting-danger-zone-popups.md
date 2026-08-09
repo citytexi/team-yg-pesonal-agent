@@ -18,13 +18,23 @@ tags: [spec, parfait, feature, setting, modal]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 
-> **2026-08-09 구현 완료(미머지)** — 브랜치 `feature/group-and-app-setting-pop-up`에 커밋 4개
-> (`08b97005`·`4ea6b210`·`8d5f477c`·`5b3290e8`). **설계에서 뒤집힌 결정 0건** — 아래 본문이
-> 그대로 as-built다. 검증: `./gradlew test` 53/53(신규 4 + 확장 6)·`ktlintCheck`·
-> `:app:assembleDebug` 전부 통과, 경고 0. 최종 전체 리뷰 Critical 0·Important 0.
-> **육안 확인 8항목 중 문구·버튼 좌우·닫기 경로·문자열 일치는 코드 대조로 판정 완료**이고,
-> 본문 soft-wrap 실제 위치·편집 중 팝업 왕복 후 IME 복귀·아이콘 틴트 피그마 대조 3건은
-> 실기기가 잠겨 있어 **미확인 이월**이다.
+> **2026-08-09 구현 완료(미머지)** — 브랜치 `feature/group-and-app-setting-pop-up`에 커밋 5개
+> (`08b97005`·`4ea6b210`·`8d5f477c`·`5b3290e8` + 리뷰 반영 `fff6159e`). **설계에서 뒤집힌 결정
+> 0건** — 아래 본문이 그대로 as-built다. 검증: 유닛 테스트 전량 통과·`ktlintCheck`·
+> `:app:assembleDebug`, 경고 0.
+>
+> **2026-08-10 독립 리뷰가 Important 3건을 추가로 잡았다.** ① 세 확인 핸들러에 멱등 가드가 없어
+> 동시 멀티터치 시 확인과 취소가 둘 다 발화했다 — API가 붙으면 "취소를 눌렀는데 탈퇴"가 되는
+> 경로라 가드 3개 + 교차 방어 테스트를 넣어 해소(`fff6159e`). ② "API 연동은 본문 채우기로 끝난다"는
+> 목표 절의 주장이 사실이 아니었다 — 정정하고 열린 질문으로 승격. ③ 좌우 배치 회귀를 잠그는 자동
+> 검증이 없다 — 이월(열린 질문).
+>
+> **육안 확인은 기기가 잠겨 8항목 전부 미수행이다.** 그중 문구·버튼 좌우·닫기 경로·문자열 일치는
+> 코드 대조로 판정했지만(리뷰 3회가 `YGModalPopup`의 `Row` 자식 순서와 `YGButtonType` 색까지
+> 확인), **실기기 항목이 닫힌 것은 아니다.** 남은 것: 닉네임 편집 중 팝업 왕복 시 입력값 생존
+> (**1순위** — 열린 질문 참고)·본문 soft-wrap 실제 위치·IME 복귀·시스템 바 아티팩트
+> (`enableEdgeToEdge` vs `decorFitsSystemWindows`)·200% 글꼴 세로 오버플로·아이콘 틴트 대조·
+> TalkBack 다이얼로그 인식.
 
 ## 목표
 
@@ -33,8 +43,13 @@ tags: [spec, parfait, feature, setting, modal]
 피그마가 정의한 확인 모달 3종을 붙여, 되돌릴 수 없는 액션 앞에 사용자 확인 단계를 세운다.
 
 기능(탈퇴·나가기·신고 실제 수행)은 이번 범위가 아니다 — 확인 버튼은 팝업만 닫고 TODO로 남는다.
-서버 계약이 아직 Android에 연결되지 않았고([api/README](../api/README.md) 기준 Android 대응 심볼
-0건), 팝업 UI를 먼저 확정해두면 API가 붙을 때 확인 핸들러 본문만 채우면 된다.
+서버 계약이 아직 Android에 연결되지 않았기 때문이다([api/README](../api/README.md) 기준 Android
+대응 심볼 0건이고, **회원 탈퇴는 서버에 엔드포인트 자체가 없다**).
+
+> **정정(2026-08-10)**: 초안은 여기에 "API가 붙을 때 확인 핸들러 본문만 채우면 된다"고 적었는데
+> 사실이 아니다. 로딩·실패·중복요청을 담을 자리가 세 군데 다 비어 있다 → [주의 / 열린
+> 질문](#주의--열린-질문)의 해당 항목. UI 확정을 먼저 하는 것 자체는 여전히 이득이지만,
+> 연동이 "본문 채우기"로 끝나지는 않는다.
 
 ## 범위
 
@@ -117,9 +132,12 @@ sealed interface AppSettingIntent : UiIntent {
 ```
 
 - `ClickWithdraw` — 기존 stub 로그를 대체해 `isWithdrawDialogVisible = true`.
-- `ConfirmWithdraw` — `false`로 되돌리고 `// TODO 회원 탈퇴 API 연동` + `viewModelLogger`.
+- `ConfirmWithdraw` — **팝업이 떠 있을 때만** `false`로 되돌리고 `// TODO 회원 탈퇴 API 연동` +
+  `viewModelLogger`. 첫 줄이 `if (!state.value.isWithdrawDialogVisible) return`이다(아래 [멱등
+  가드](#확인-핸들러의-멱등-가드)).
 - `DismissWithdrawDialog` — `false`. "그만두기" 버튼과 `onDismissRequest`(바깥 탭·뒤로가기)가
-  같은 Intent를 쓴다.
+  같은 Intent를 쓴다. **dismiss에는 가드를 두지 않는다** — 이미 닫힌 것을 또 닫는 것은 무해하고,
+  가드는 되돌릴 수 없는 쪽에만 필요하다.
 
 `AppSettingSideEffect`는 변경 없다 — 팝업은 화면 안에서 끝나고 내비게이션을 유발하지 않는다.
 
@@ -139,8 +157,8 @@ sealed interface GroupSettingIntent : UiIntent {
     // 기존 …
     data object ClickLeaveGroup : GroupSettingIntent     // visibleDialog = Leave
     data object ClickReportGroup : GroupSettingIntent    // visibleDialog = Report
-    data object ConfirmLeaveGroup : GroupSettingIntent   // null + TODO
-    data object ConfirmReportGroup : GroupSettingIntent  // null + TODO
+    data object ConfirmLeaveGroup : GroupSettingIntent   // 가드 통과 시 null + TODO
+    data object ConfirmReportGroup : GroupSettingIntent  // 가드 통과 시 null + TODO
     data object DismissDialog : GroupSettingIntent       // null
 }
 ```
@@ -154,6 +172,30 @@ API가 다르므로(`DELETE …/members/me` vs `POST …/reports`) Intent를 합
 `handleClickLeaveGroup`·`handleClickReportGroup` TODO 주석이 그대로 확인 핸들러로 옮겨간다.
 
 `DismissDialog`는 두 팝업 공용이다 — 무엇을 닫는지는 `visibleDialog`가 이미 안다.
+
+### 확인 핸들러의 멱등 가드
+
+세 확인 핸들러는 **자기 팝업이 실제로 떠 있을 때만** 진행한다. 첫 줄이 조기 반환이고, 상태 갱신·
+TODO·로그는 그 뒤에 온다.
+
+```kotlin
+private fun handleConfirmLeaveGroup() {
+    if (state.value.visibleDialog != GroupSettingDialog.Leave) return
+    …
+}
+```
+
+없으면 무엇이 깨지나: Compose `Modifier.clickable`은 형제 컴포저블에 대한 동시 멀티터치를 분리
+전달한다. 두 손가락으로 "나가기"와 "그만두기"를 동시에 누르면 확인과 dismiss가 **둘 다** 발화하고,
+TODO 자리에 API가 들어간 뒤라면 취소를 누른 사용자가 그룹에서 나가진다. 확인 버튼 연타로 요청이
+N번 나가는 것도 같은 뿌리다.
+
+`Leave`/`Report`를 각각 비교하므로 **교차 확인도 막힌다** — 신고 팝업이 떠 있는데 나가기 확인이
+들어오면 아무 일도 일어나지 않는다. 이것이 가드의 핵심 가치이고, 유닛 테스트가 잠그는 것도 그
+시나리오다.
+
+같은 파일의 `handleConfirmNickname`이 이미 `if (!state.value.isConfirmEnabled) return`으로
+시작한다 — 새 핸들러가 그 규약에 합류한 것이지 새 패턴이 아니다.
 
 ### 닉네임 편집 상태와의 관계
 
@@ -234,3 +276,27 @@ API가 다르므로(`DELETE …/members/me` vs `POST …/reports`) Intent를 합
   `usePlatformDefaultWidth`를 건드리지 않기로 해 팝업 폭은 플랫폼 기본값이다. 피그마는 375 프레임
   안에서 좌우 10 여백을 준 폭으로 그려져 있어 실제 렌더 폭이 더 좁을 수 있고, 그러면 본문 2줄
   줄바꿈이 피그마와 달라진다. 육안 확인 대상 — 어긋나면 DS 쪽 미결이지 이 스펙의 결정이 아니다.
+  **같은 뿌리의 미결 1건 추가(2026-08-10 리뷰)**: `YGModalPopup`의 최외곽 `Column`에
+  `verticalScroll`이 없어, 좁은 폭 + `\n` 강제 개행 + 200% 글꼴 배율이 겹치면 하단 버튼이 잘릴 수
+  있다. 갇히지는 않는다(바깥 탭·뒤로가기 이탈 경로 생존).
+- **API 연동이 "본문 채우기"로 끝나지 않는다(2026-08-10 리뷰)** — 세 확인 핸들러의 TODO 자리에
+  실제 네트워크 호출이 들어가려면 지금 없는 것 셋이 필요하다. ① 두 `UiState` 어디에도 in-flight·
+  error 필드가 없다. ② 확인 핸들러가 **팝업을 먼저 닫는다** — 진행 표시나 실패 재시도를 팝업 안에
+  둘 자리가 없어지므로 "닫고 나서 요청" 순서를 뒤집어야 한다. ③ `YGModalPopup.isEnabledButton`이
+  좌우 버튼 **공용 단일 플래그**라 "요청 중엔 확인만 비활성, 취소는 살림"이 표현 불가능하다(DS
+  무수정 방침이 만든 제약). 탈퇴·나가기·신고는 실패 시 알려야 하는 되돌릴 수 없는 작업인데 현재
+  구조의 기본값은 "성공한 것처럼 팝업만 닫힘"이다.
+- **좌우 배치 회귀를 잠그는 자동 검증이 없다(2026-08-10 리뷰)** — `YGModalPopup`의 네 인자
+  (`secondaryText`·`onSecondaryClick`·`primaryText`·`onPrimaryClick`)가 전부 같은 타입이라
+  뒤바꿔 써도 컴파일·유닛 테스트·ktlint가 전부 통과한다. `Dialog`는 `@Preview`에 안 뜨므로
+  프리뷰도 그물이 아니다. 현재 배치가 맞다는 것은 리뷰 3회가 `YGModalPopup`의 `Row` 자식 순서와
+  `YGButtonType` 색까지 대조해 확인했지만, 다음 변경을 막는 장치는 없다. `parfait.test.compose`가
+  build-logic에 이미 있어 계측 테스트를 붙일 수 있으나 feature 모듈 선례가 0건이고 Robolectric이
+  없어 실행에 기기가 필요하다. **확인 버튼이 실제로 파괴적이 되는 시점(API 연동)에는 필요하다.**
+- **닉네임 편집 중 팝업이 입력값을 지울 수 있다(2026-08-10 리뷰, 실기기 확인 1순위)** —
+  `GroupNicknameField`의 `onFocusChanged`가 `ChangeNicknameFocus(false)`로 이어지고 그것이
+  `cancelEditing()`을 불러 **`nicknameInput`을 확정값으로 되돌린다.** 팝업이 부모 창의 Compose
+  포커스를 떨어뜨리면 입력하던 닉네임이 조용히 사라진다. 코드상으로는 `Dialog`가 윈도우 포커스만
+  가져가고 Compose 포커스는 유지할 것으로 보이나 단정할 수 없다. 유닛 테스트
+  `dialogIntents_whileEditing_keepEditingState`는 Intent를 직접 주입할 뿐 **`onFocusChanged`
+  경로를 지나지 않아** 이 실패 모드를 방어하지 못한다.
