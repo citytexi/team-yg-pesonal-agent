@@ -1,7 +1,7 @@
 ---
 id: setting-danger-zone-popups
 title: 설정 Danger Zone 확인 팝업 (App/Group Setting confirmation dialogs)
-status: draft
+status: in-progress
 category: behavior-spec
 platforms: android
 verified: 2026-08-09
@@ -17,6 +17,14 @@ tags: [spec, parfait, feature, setting, modal]
 # Spec: 설정 Danger Zone 확인 팝업
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+
+> **2026-08-09 구현 완료(미머지)** — 브랜치 `feature/group-and-app-setting-pop-up`에 커밋 4개
+> (`08b97005`·`4ea6b210`·`8d5f477c`·`5b3290e8`). **설계에서 뒤집힌 결정 0건** — 아래 본문이
+> 그대로 as-built다. 검증: `./gradlew test` 53/53(신규 4 + 확장 6)·`ktlintCheck`·
+> `:app:assembleDebug` 전부 통과, 경고 0. 최종 전체 리뷰 Critical 0·Important 0.
+> **육안 확인 8항목 중 문구·버튼 좌우·닫기 경로·문자열 일치는 코드 대조로 판정 완료**이고,
+> 본문 soft-wrap 실제 위치·편집 중 팝업 왕복 후 IME 복귀·아이콘 틴트 피그마 대조 3건은
+> 실기기가 잠겨 있어 **미확인 이월**이다.
 
 ## 목표
 
