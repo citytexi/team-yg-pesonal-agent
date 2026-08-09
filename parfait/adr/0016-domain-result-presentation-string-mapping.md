@@ -35,6 +35,32 @@ tags: [adr, parfait, i18n, domain, presentation]
 > 📌 **2026-08-04 (PR #192) 갱신** — S-002(`AccountInfoViewModel`)가 as-built 형태로 머지되면서 VM `when` 매핑 사례가
 > `GroupNickNameViewModel`·`GroupCreateViewModel`·`AccountInfoViewModel` **3건**이 됐다. S-002 브랜치는 원안대로
 > `toStringResource()` 확장을 구현해 갖고 있었으나 develop rebase에서 폐기했다 — 원안으로 되돌리려면 이제 3곳을 동시에 고쳐야 한다.
+>
+> ✅ **2026-08-09 — 원안으로 수렴함**(S-101 라운드, 브랜치 `feature/#211-S-101-group-side-menu`, 미머지).
+> S-101이 4번째 복제를 만들 자리에서 방향을 뒤집어 **4개 화면을 동시에 전환**했다. as-built 표는 이제 역사이고
+> 아래 "결정"이 다시 정본이다. 원안과 갈리는 부분은 다음 두 가지뿐이다.
+>
+> | 항목 | 이 ADR 원안 | 2026-08-09 수렴본 |
+> |---|---|---|
+> | 결과 타입 | `NicknameResult` | **`NameValidResult`**(그룹명 공용, #179 as-built 유지) |
+> | 확장 시그니처 | `NicknameResult.Error.toStringResource()` | **`NameValidResult.Error.toStringResource(fieldType: NameFieldType)`** |
+> | 매핑 소유 | `core:ui` | 동일 — `core/ui/.../text/NameValidResultUiText.kt` |
+> | UI State | 도메인 의미 보유 | 동일 — `NameValidResult.Error?` |
+> | `core:ui` → `:domain` | 추가 | 동일 — `implementation(projects.domain)` |
+>
+> **`fieldType` 파라미터가 원안에 없던 이유**: 원안은 닉네임 전용을 전제했다. 실제로는 `SpaceAtEdge`·`EmptyString`의
+> 문구가 닉네임용/그룹명용으로 갈리므로(`error_space_at_edge_nickname` / `_groupname`) 확장 하나로 덮으려면 대상 구분이
+> 필요하다. `NameFieldType`은 부가 데이터 없는 순수 판별자라 저장소 관례대로 `enum class`다.
+>
+> 부수 결과: 클릭 시점 검증 2곳(`GroupNickName`·`GroupCreate`)의 `when`이 **5분기 → 2분기**(`Success`/`is Error`)로 줄었고,
+> ViewModel·테스트에서 `core:ui`의 `R` 참조가 사라져 저장소에서 `CoreR`를 쓰는 곳은 `NameValidResultUiText.kt` 하나가 됐다.
+>
+> **Compose stability 실측** — State가 도메인 sealed를 들면 `domain`이 Compose Compiler를 안 거쳐 unstable로 뒤집힐 수
+> 있다는 우려가 리뷰에서 나왔으나, compose compiler report로 확인한 결과 `AccountInfoUiState`는 `runtime class` /
+> `<runtime stability> = Uncertain(Error)`이고 `AccountInfoScreen`은 **`restartable skippable`을 유지**한다.
+> `data object` 싱글턴이라 런타임 동일성 비교도 성립한다 — skip 회귀 없음, stability 화이트리스트 불필요.
+>
+> 상세는 [s101-group-side-menu 스펙](../specs/2026-08-07-s101-group-side-menu.md)의 "유효성 표시 매핑" 절.
 
 ## 맥락
 
