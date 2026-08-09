@@ -164,9 +164,12 @@ sealed interface GroupSettingSideEffect : UiSideEffect {
 
 - 길이 상한은 `YGTextFormField(maxLength = GroupCreateConfig.NICKNAME_MAX_LENGTH)`로 컴포넌트가 입력 자체를 막는다(15자). 카운터 `n/15`·클리어 버튼·포커스/에러 테두리는 `YGTextFieldImpl`에 이미 구현돼 있어 추가 작업이 없다.
 - 엔터 확정을 받으려면 `ImeAction.Done` + `onDone` 콜백이 필요한데 `YGTextFormField`가 그 통로를 안 갖고 있었다 → `keyboardOptions`·`keyboardActions`를 기본값과 함께 뚫는다(위 범위 참고).
-- 화면에서 확정 콜백은 **`onConfirmNickname()` 실행 뒤 `focusManager.clearFocus()`** 순서여야 한다. 뒤집으면 포커스 상실이 먼저 편집을 취소해 입력값이 되돌아가고, 뒤이은 확정이 조건 미달로 아무 일도 하지 않는다. 이 불변식은 테스트로 잠갔다(`confirmNickname_thenLosesFocus_keepsConfirmedNickname`).
+- 화면에서 확정 콜백은 **`onConfirmNickname()` 실행 뒤 `focusManager.clearFocus()`** 순서여야 한다. 뒤집으면 포커스 상실이 먼저 편집을 취소해 입력값이 되돌아가고, 뒤이은 확정이 조건 미달로 아무 일도 하지 않는다.
+  > ⚠️ **테스트가 잠그는 범위에 주의.** `confirmNickname_thenLosesFocus_keepsConfirmedNickname`은 VM에 두 Intent를 그 순서로 직접 넣어 **VM이 그 순서를 견딘다**는 것만 확인한다. **화면이 그 순서로 호출하는지는 어떤 테스트도 잠그지 않는다** — 화면에서 순서를 뒤집어도 유닛 테스트 16개는 전부 통과하고 앱만 깨진다. 이 호출 순서는 육안 확인 항목이다.
 - 확정 게이트는 **`nicknameError == null`** 이다(`isConfirmEnabled`가 아니다). 값을 안 바꾸고 엔터를 누르면 확정은 ViewModel 가드가 무시하고 **키보드만 닫힌다** — `isConfirmEnabled`로 잠그면 키보드가 갇힌다. 버튼은 여전히 `isEnabled = isConfirmEnabled`라 변경이 없으면 눌리지 않는다.
-- **뒤로가기는 화면이 포커스 해제로 번역한다** — `if (isEditing) focusManager.clearFocus() else onClickBack()`. 배경 탭·포커스 상실 경로는 "포커스 해제가 원인 → 편집 취소가 결과"인데 뒤로가기만 결과만 실행하면, `isEditing`은 꺼지는데 키보드·커서가 남아 편집 모드가 아닌 상태에서 엔터로 확정이 일어난다. 시스템 back은 IME가 먼저 소비하므로 이 처리 없이는 화면을 닫는 데 back을 3번 눌러야 한다. ViewModel의 `handleClickBack` 편집 분기는 이중 방어로 남긴다.
+- **뒤로가기는 화면이 포커스 해제로 번역한다** — `if (isEditing) focusManager.clearFocus() else onClickBack()`. 배경 탭·포커스 상실 경로는 "포커스 해제가 원인 → 편집 취소가 결과"인데 뒤로가기만 결과만 실행하면, `isEditing`은 꺼지는데 키보드·커서가 남아 편집 모드가 아닌 상태에서 엔터로 확정이 일어난다.
+  - ViewModel의 `handleClickBack` 편집 분기는 **이중 방어**로 남긴다. 화면이 편집 중에는 `ClickBack` Intent를 아예 쏘지 않으므로 그 분기는 **프로덕션에서 도달하지 않는다**. 그것을 덮는 테스트(`clickBack_whileEditing_…`)도 마찬가지로 앱에서 발생하지 않는 경로를 잠근다 — 커버리지 착시에 주의.
+  - **시스템 back 횟수는 미검증이다.** IME가 back을 먼저 소비할 때 키보드는 닫히지만 **포커스는 남으므로**, 두 번째 back에서 편집 취소, 세 번째에서 화면 종료가 될 수 있다. 실기기로 실측해 이 문장을 정정할 것 → 아래 [남은 실기기 확인](#남은-실기기-확인).
 - `확인` 버튼은 `isEditing`일 때만 컴포지션한다. 포커스와 키보드가 같이 움직이므로 이것이 "키보드가 올라와 있을 때만 노출"이다.
 - 검증 시점이 기존 `GroupNickNameViewModel`(클릭 시점)과 다르다. 이 화면은 버튼 활성 상태 자체가 검증 결과에 걸려 있어 **입력 시점 검증**이어야 한다 — `AccountInfoViewModel`(S-002)과 같은 방식이다.
 - 배경 탭 취소는 `clearFocusOnTap()`(opt-in Modifier)을 화면 루트에 건다. 포커스 해제가 곧 편집 종료이므로 별도 취소 버튼을 두지 않는다.
@@ -274,7 +277,9 @@ fun NameValidResult.Error.toStringResource(fieldType: NameFieldType): String
 - **클릭 시점 검증 2곳의 `when`이 5분기 → 2분기**로 줄었다(`Success` / `is Error`).
 - ViewModel과 그 테스트에서 `core:ui`의 `R` 참조가 사라졌다. 저장소 전체에서 `CoreR`를 쓰는 곳은 이제 실제 리소스를 해석하는 `NameValidResultUiText.kt` 하나뿐이다.
 
-**Compose stability 실측(2026-08-09)** — State가 도메인 sealed 타입을 들면 `domain`이 Compose Compiler를 안 거치므로 unstable로 뒤집힐 수 있다는 우려가 리뷰에서 나왔다. compose compiler report를 켜서 확인한 결과 `AccountInfoUiState`는 `runtime class` / `<runtime stability> = Uncertain(Error)`이고 `AccountInfoScreen`은 **`restartable skippable`을 유지**한다. `data object` 싱글턴이라 런타임 동일성 비교도 성립한다 — **실질 skip 회귀 없음**이라 stability 화이트리스트는 불필요하다.
+**Compose stability 실측(2026-08-09)** — State가 도메인 sealed 타입을 들면 `domain`이 Compose Compiler를 안 거치므로 unstable로 뒤집힐 수 있다는 우려가 리뷰에서 나왔다. compose compiler report를 켜서 확인한 결과 `AccountInfoUiState`는 `runtime class` / `<runtime stability> = Uncertain(Error)`이고 `AccountInfoScreen`은 **`restartable skippable`을 유지**한다. `data object` 싱글턴이라 런타임 동일성 비교도 성립한다 — 전환으로 인한 **skip 회귀 없음**이라 stability 화이트리스트는 불필요하다.
+
+> ⚠️ **측정 범위**: 실측 대상은 `AccountInfoUiState`(`String` + sealed 2필드)다. `GroupSettingUiState`는 `List<GroupMemberUiModel>` 때문에 **이 전환과 무관하게 이미 unstable**이라 위 결론이 그대로 적용되지 않는다. 다만 `List` unstable은 이 저장소 공통 관례이고(`GroupListUiState`·`TermAgreeUiState` 등 동일, `kotlinx.collections.immutable` 도입 이력 0건) 이번 변경이 만든 회귀가 아니다.
 
 이 변경으로 [open-questions](../synthesis/open-questions.md) `[2026-07-29] 유효성 결과 매핑 as-built가 ADR-0016 원안과 다름`이 ①(원안 수렴)으로 닫힌다.
 
@@ -308,11 +313,13 @@ fun NameValidResult.Error.toStringResource(fieldType: NameFieldType): String
 
 1. **확인 버튼이 키보드 상단에 딱 붙는지** — 제스처 내비게이션과 3버튼 내비게이션 **양쪽**(인셋 높이가 다르다).
 2. **편집 중 끝까지 스크롤했을 때 초대 코드 카드·Danger Zone이 다 보이는지.**
-3. 편집 중 back 동작 — 몇 번에 닫히는지, 키보드·커서가 남는지.
-4. 무효 입력에서 엔터 → 아무 일도 안 일어나고 키보드 유지. 값 미변경에서 엔터 → 키보드만 닫힘.
-5. 복사 → 다른 앱에 붙여넣어 **초대 문구 2줄**이 나오는지, 카드 문구가 2초 뒤 돌아오는지, 연타 시 마지막 클릭 기준인지.
-6. 15자 닉네임 + `(나)` 접미가 `YGUserChip`에서 줄바꿈되는지, 긴 그룹명이 상단바에서 2줄로 감기는지(→ 열린 질문의 `YGTopBarDetail`).
-7. 닉네임 필드 높이가 클리어 버튼 등장·소멸에 흔들리지 않는지.
+3. **편집 중 back을 몇 번 눌러야 화면이 닫히는지 실측** — IME가 back을 먼저 소비할 때 키보드는 닫히지만 포커스는 남으므로 3회일 수 있다. 각 단계에서 키보드·커서·확인 버튼 상태를 기록하고, 그 결과로 위 [편집 모드 동작](#편집-모드-동작)의 서술을 정정할 것.
+4. **확인 버튼이 비활성일 때 버튼·주변 여백을 탭해도 입력이 유지되는지** — `clickable(enabled = false)`가 탭을 소비하지 않아 루트 `clearFocusOnTap`이 발화하던 결함을 고쳤다. Compose 버전에 따라 소비 동작이 다를 수 있어 실기기 확인이 확실하다.
+5. 무효 입력에서 엔터 → 아무 일도 안 일어나고 키보드 유지. 값 미변경에서 엔터 → 키보드만 닫힘.
+6. 복사 → 다른 앱에 붙여넣어 **초대 문구 2줄**이 나오는지, 카드 문구가 2초 뒤 돌아오는지, 연타 시 마지막 클릭 기준인지.
+7. 15자 닉네임 + `(나)` 접미가 `YGUserChip`에서 줄바꿈되는지, 긴 그룹명이 상단바에서 2줄로 감기는지(→ 열린 질문의 `YGTopBarDetail`).
+8. 닉네임 필드 높이가 클리어 버튼 등장·소멸에 흔들리지 않는지. `YGTextFormField` 기존 호출부 3곳(`AccountInfo`·`GroupCreate`·`GroupNickName`)의 높이도 변하지 않았는지 프리뷰로 대조 — 특히 `GroupCreateScreen`의 `enabled = false` 필드는 `showClear = false` 경로만 탄다.
+9. `NametagChip9`의 글자색을 `Pudding500`으로 고친 뒤 `Melon500` 배경 위 대비가 실제로 읽히는지(Figma 정본 대조).
 
 ## 주의 / 열린 질문
 
