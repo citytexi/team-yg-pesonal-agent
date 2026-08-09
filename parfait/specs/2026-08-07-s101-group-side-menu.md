@@ -326,7 +326,10 @@ fun NameValidResult.Error.toStringResource(fieldType: NameFieldType): String
 - **`NavKeyGroupSetting`에 `groupId`가 없다** — Mock이라 지금은 무해하나 실연동 시 인자 추가가 필요하다.
 - **`YGTopBarDetail`에 `maxLines`·`overflow`가 없다** — 같은 파일의 `YGTopBarCanvas`·`YGTopBarEmpty`는 `maxLines = 1`을 갖는데 `Detail`만 없어 긴 그룹명이 2줄로 감길 수 있다. 디자인시스템 소관이라 이번 범위 밖.
 - **`GroupInviteCodeRoute`에 같은 인셋 이중 계산이 남아 있다** — `padding(innerPadding)` + 하위 `imePadding()`인데 소비가 없다. 이 화면과 같은 증상일 것.
-- **`setClipEntry` 예외 처리 없음** — 실패해도 UI는 무손상이나, `LaunchedEffect` 수집 코루틴이 죽으면 이후 SideEffect가 멈추는 이론적 경로가 있다.
+- **`setClipEntry` 예외 처리 없음** — 실패해도 UI는 무손상이나, `LaunchedEffect` 수집 코루틴이 죽으면 이후 SideEffect가 멈추는 이론적 경로가 있다. 다만 이 화면의 SideEffect는 2종뿐이고 뒤로가기는 `OnBack`(BackHandler)이 별도 경로로 살아 있어 화면이 갇히지는 않는다.
+- **`core:ui`가 `:domain`을 `implementation`으로 갖는다** — `NameValidResultUiText.kt`의 `toStringResource`는 public이고 리시버가 domain 타입이라 **public API 시그니처에 domain이 노출되는데 의존은 숨어 있다.** 지금은 소비자 4곳이 컨벤션 플러그인으로 `:domain`을 직접 갖고 있어 컴파일되지만, 그 컨벤션에서 `:domain`이 빠지면 원인 불명으로 깨진다.
+  - `api` 승격이 의미상 맞으나 **저장소에 `api(...)` 선언이 0건**이고 컨벤션 플러그인 `DependencyHandler`에 `api` 확장 함수 자체가 없다. `0fbddfb1`·`09f49a92`가 `api`를 되돌린 이력도 있어 이번엔 손대지 않았다 — 팀 결정 대상.
+- **확인 버튼 스트립의 탭 흡수 방식** — `pointerInput { detectTapGestures {} }`로 탭을 소비해 루트 `clearFocusOnTap`이 발화하지 않게 한다. `detectTapGestures`의 `awaitFirstDown(requireUnconsumed = true)` 동작에 기대는 방식이라 Compose 버전이 바뀌면 깨질 수 있다. 다만 `clearFocusOnTap` 자체가 같은 패턴이라 저장소 관례와는 일관된다.
 - **서버 그룹 상세 응답에 `groupName`·`memberLimit`가 없다** — `GET /api/parfait-groups/{groupId}`는 `groupId`·`groupNickname`·`inviteCode`·`members`만 준다([api/parfait-group.md](../api/parfait-group.md)). 상단바 제목과 `N명 남음`의 출처가 계약상 없다. 그룹 목록 API에서 이름을 받아 NavKey로 넘기거나 서버에 필드 추가를 요청해야 한다.
 - **컬러칩 타입 부여 주체 미정** — 서버 응답에 타입이 없어 Mock 인덱스 순환으로 대체.
 - **그룹 나가기·신고 확인 모달 미제공** — 클릭은 stub(로그 + TODO)이다. Danger Zone 동작 자체가 미구현이라는 뜻이다.
