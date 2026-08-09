@@ -4,7 +4,7 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-09
+verified: 2026-08-10
 related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
@@ -44,9 +44,14 @@ app / app-preview
 | domain | `domain` | UseCase, Repository 인터페이스, 도메인 모델 | `ModuleDomain`(kotlin-jvm) |
 | data | `data` | Repository 구현, DataSource, DI 모듈 | `ModuleData` |
 | feature | `feature/{login,segmentation,camera,gallery,intro}/{api,impl}` | 화면·VM(impl) / NavKey 계약(api) | `ModuleFeatureApi` / `ModuleFeatureImpl` |
-| feature | `feature/groups/{canvas,enter,home,list,setting}/{api,impl}` | 그룹 관련 화면 묶음 | 동일 |
+| feature | `feature/groups/{canvas,enter,list,setting}/{api,impl}` | 그룹 관련 화면 묶음 | 동일 |
 | feature | `feature/app/setting/{api,impl}` | 앱 설정 화면(`NavKeyAppSetting`, `AppSettingRoute`) | 동일 |
 | feature | `feature/common/terms/{api,impl}` | 약관·개인정보 화면(`NavKeyServiceTerms`/`NavKeyPrivacyPolicy`, `ServiceTermsRoute`/`PrivacyPolicyRoute`, `NotionWebView`) — 여러 feature 공유([[0015-feature-common-shared-layer]]) | 동일 |
+
+> **`feature/groups/home/{api,impl}` 삭제(2026-08-09, PR #220)** — `NavKeyGroupHome`·`GroupHomeRoute`는
+> `ResultEventBus` 왕복을 시연하던 임시 화면이었고, 로그인 다음 목적지가 온보딩 체인으로 바뀌면서
+> 모듈 2개가 `settings.gradle.kts`·`app`·`core:navigation`에서 함께 빠졌다. 그룹 개별 화면은 별도
+> 목적지 없이 G-001 목록에서 캔버스(C-001)로 직접 가는 구조라 대체 모듈을 만들지 않았다.
 
 ## 규칙
 - feature 간 이동은 상대 **`:api`(NavKey)만** 참조. `:impl`끼리 직접 의존 금지([[0002-feature-api-impl-split]]).
