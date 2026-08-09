@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-06
-related_spec: designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure
+verified: 2026-08-10
+related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -484,6 +484,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: 로그인이 실제로 붙어 `TokenStoreTokenProvider`/`EncryptedTokenStore.save()`가 호출되는 다음 라운드에서 저장 → 종료 → 재시작 → 읽기 왕복을 실기기로 확인한다(DataStore 파일에 평문이 없는지 포함).
 - **상태**: 미해결 (로그인 연동 라운드로 이월)
   > 📌 **코드가 develop에 머지됐어도 상태 불변(2026-08-04, PR #190)** — 저장 경로 전체가 develop에 들어왔지만 `TokenStore.save()` 호출부는 여전히 0건이다. 머지가 검증을 대신하지 않는다.
+  > 📌 **로그인 화면이 다음 단계로 이어져도 상태 불변(2026-08-09, PR #220)** — 카카오 토큰은 `LoginState`에만 담기고 저장 호출은 여전히 0건이다 → [2026-08-10] 온보딩 체인 항목.
 - **해소 메모**: 로그인 연동 라운드에서 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md)와 [specs/archive/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "검증" 절을 갱신한다.
 
 ### [2026-08-02] debug 빌드 `Level.BODY` 로깅이 `reissue`/`logout` 요청 바디의 refresh token을 평문 노출
@@ -582,6 +583,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (코드 수정 대상 — 죽은 결과 수신부)
 - **해소 메모**: [2026-08-01 확인 화면 이후 경로 항목](#2026-08-01-c-101-confirm-이후-경로-미결선--확인-화면에서-앞으로-못-감)과 같은 라운드에서 처리하고 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md)·[navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번 마커를 정리한다.
 
+  > 📌 **다른 死 `ResultEffect` 하나는 걷혔다(2026-08-09, PR #220)** — 로그인 화면의 `ResultEffect<String>` Toast가 짝(`GroupHomeRoute`)과 함께 삭제됐다. 여기 남은 `CanvasImageAddRoute` 건은 그대로다 → [2026-08-10] 데코레이터 존치 항목.
+
 ### [2026-08-04] 갤러리 그리드 셀이 `clickableYG` 대신 표준 `clickable` 사용
 - **출처**: `feature/gallery/impl/.../component/GalleryImageGridComponent.kt#GalleryImageCell`(PR #191 develop 머지) — 셀 클릭이 `Modifier.clickable`이라 `core:util:android`의 leading-throttle(`clickableYG`)을 타지 않는다. 이 클릭은 `navigator.goTo`로 이어지므로 연타 시 확인 화면이 백스택에 중복으로 쌓일 수 있다. 같은 규약 이탈이 [2026-07-18 `YGDateButton` 항목](#2026-07-18-ygdatebutton-clickableyg-미사용--스로틀-규약-이탈)으로 이미 등록돼 있다.
 - **항목**: ① 화면(feature) 쪽 클릭에도 `clickableYG`를 규약으로 적용할지 — 지금까지 이 규약은 디자인시스템 컴포넌트 기준으로만 서술됐다, ② 적용한다면 리플 변형(그리드 셀은 이미지 위라 dim/scale 중 무엇인지) 선택.
@@ -627,6 +630,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 결선 순서를 무엇으로 잡을지(로그인 → 약관 → 그룹 목록이 의존 순서상 자연스럽다), ② DataSource와 화면 사이에 Repository를 둘지 UseCase가 DataSource를 직접 쓸지 — 현재 원격 DataSource가 **이미 도메인 모델을 반환**해서 Repository가 할 변환이 없다([2026-07-30] "원격 DataSource가 도메인 모델을 직접 반환" 항목과 같은 쟁점), ③ 결선 전까지 이 표면이 컴파일만 통과한 채 남는 기간을 얼마로 볼지.
 - **상태**: 미해결 (의도된 선행 구현 — 소비 라운드 미착수)
 - **해소 메모**: 첫 결선 라운드에서 ②를 확정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) 대안 D·[data-layer](../architecture/data-layer.md) "신규 데이터 추가 체크리스트"에 반영한다. 각 도메인이 결선되면 [api/](../api/README.md) 문서의 `android_status`를 `partial`→`done`으로 올린다.
+
+  > 📌 **①의 화면 순서만 먼저 코드로 굳었다(2026-08-09, PR #220)** — `Splash → Login → TermAgree → GroupList` 전이가 결선됐다. 데이터 쪽은 **한 줄도 붙지 않았다**(Service 호출 0건 유지) → [2026-08-10] 온보딩 체인 항목.
 
 ### [2026-08-06] 스펙이 지시한 근거 주석·KDoc 2건이 코드에 없다
 
@@ -690,6 +695,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: 선택지 셋 중 하나를 고른다. (1) 모듈별 `src/testFixtures` — 소유권 명확·재컴파일 범위 최소, 대신 소스셋이 모듈마다 늘고 AGP `testFixtures` 활성화 필요 / (2) `:core:testing`은 모듈 비종속 유틸만 두고 도메인 Fake는 `testFixtures`로 / (3) 각 모듈 `src/test`에 두고 공유하지 않음 — 소비자가 하나뿐인 Fake가 많다면 중복이 오히려 싸다.
 - **상태**: 미해결 (첫 Fake가 실제로 필요해지는 시점에 정한다 — 현재 상태는 어느 쪽도 강제하지 않는다)
 - **해소 메모**: 정하면 [module-structure](../architecture/module-structure.md)의 `:core:testing` 행과 스펙 "`:core:testing` 모듈" 절에 반영한다. (2)를 고르면 `domain` 의존이 `api`로 되살아난다.
+
+### [2026-08-10] 온보딩 체인이 화면 전이만 결선 — 인증·동의 저장이 통째로 빠져 있다
+
+- **출처**: PR #220 develop 머지 — `feature/login/impl` `LoginRoute.kt`·`LoginViewModel.kt`, `feature/intro/impl` `termagree/TermAgreeRoute.kt`. `Splash → Login → TermAgree → GroupList`가 이어졌지만 세 구멍이 그대로다. ① 카카오 로그인 성공 토큰은 `LoginState.token`에만 담기고 서버 `POST /api/v1/auth/login`·`/auth/signup` 호출도, `TokenStore` 저장도 없다 — [ADR-0019](../adr/0019-encrypted-token-storage.md)의 저장 경로는 여전히 호출자 0건이다. ② 서버 로그인 응답이 신규/기존 회원을 가르는데(`KakaoLoginResponse`의 `newUser` 판별자, [api/auth.md](../api/auth.md)) 화면은 분기 없이 **누구나 매번 약관 화면**을 지난다. ③ `TermAgreeViewModel`의 동의 저장은 여전히 `// Todo`라 `signup`이 필수로 받는 `agreements[].termsId`를 만들 자리가 없다(약관 목록도 `TERM_CONTENT_LIST` 리터럴).
+- **항목**: ① 서버 인증을 어느 단계에 넣을지 — 카카오 토큰 획득 직후 `login` 호출 후 `newUser`로 약관/그룹목록을 가를지, 아니면 약관 동의까지 받고 `signup` 한 번으로 끝낼지. ② ①이 정해져야 `clearBackStack()` 리셋 지점(현재 약관 → 그룹목록)이 맞는지도 확정된다 — 기존 회원이 약관을 건너뛰면 리셋 지점이 로그인 쪽으로 올라간다. ③ `termsId` 출처를 `GET /api/v1/policies` 연동으로 세우는 건([2026-08-03] 항목)이 이 체인의 선행 조건인지.
+- **상태**: 미해결 (다음 라운드 = 로그인 실연동 — [2026-08-06] "표면 소비처 0건" 항목의 ① 결선 순서와 같은 작업)
+- **해소 메모**: 해소 시 [navigation-flow](../architecture/navigation-flow.md) "앱 진입 체인"·[intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)·[ADR-0019](../adr/0019-encrypted-token-storage.md) 검증 절을 함께 갱신한다.
+
+### [2026-08-10] `ResultEventBus` 왕복을 검증하던 유일한 화면이 사라졌다
+
+- **출처**: PR #220 develop 머지 — `feature/groups/home/{api,impl}` 모듈 삭제(`NavKeyGroupHome`·`GroupHomeRoute`·`EntryBuilder`·`NavigationModule`)와 `LoginRoute`의 `ResultEffect<String>` Toast 제거. 둘은 짝이었다(홈이 `sendResult` + `onBack`, 로그인이 `ResultEffect`로 수신). `MainRoute`의 `rememberResultEventBusNavEntryDecorator`는 그대로 남고, 남은 실사용은 카메라·시스템 갤러리의 `sendResult` 3곳 + `CanvasImageAddRoute`의 `ResultEffect` 1곳인데 그 수신부는 이미 死경로로 등록돼 있다([2026-08-04] 항목).
+- **항목**: ① 결과 반환 관용구를 계속 쓸지 — 커스텀 갤러리·카메라는 이미 `goTo` 전진으로 갈아탔고 남은 소비처가 死경로뿐이라, 데코레이터째 걷어낼지 아니면 재사용처를 확정할지. ② 걷어낸다면 `Navigator.onBack()`의 `size <= 1` 가드 주석("`ResultEffect` 발동 상황에서 사이즈가 1인 경우 크래시")이 가리키는 전제도 같이 정리한다.
+- **상태**: 미해결 (② 가드 자체는 현재 앱 진입 체인에서도 필요하다 — 그룹 목록에서 백스택이 1개다)
+- **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번과 [2026-08-04] 항목을 함께 닫는다.
 
 <!--
 항목 추가 형식:

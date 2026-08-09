@@ -51,7 +51,7 @@ tags: [spec, parfait, groups, group-create, a005]
 ## API / 인터페이스
 
 ```kotlin
-// api — 인자 있는 NavKey(선례: NavKeySegmentation·NavKeyCanvasEdit·NavKeyGroupHome)
+// api — 인자 있는 NavKey(선례: NavKeySegmentation·NavKeyCanvasEdit·NavKeyPictureConfirm)
 @Serializable data class NavKeyGroupCreate(val nickName: String) : NavKey
 
 // domain — 그룹 생성/참여 공용 상수

@@ -23,7 +23,7 @@ feature가 다른 feature로 이동(navigate)하려면 목적지를 알아야 �
 - **:api** — 공개 계약만. 목적지 `NavKey`(예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`)뿐. `@Serializable`. `ModuleFeatureApiConventionPlugin`이 Android library + serialization + navigation3 번들(`libs.bundles.navigation`)을 적용 — NavKey가 navigation3 타입을 참조하므로 필요.
 - **:impl** — 화면·ViewModel·컴포넌트·엔트리 빌더. `:api`와 core·domain에 의존. Compose + Hilt 적용(`ModuleFeatureImplConventionPlugin`).
 
-한 feature가 다른 feature로 이동할 때는 상대의 `:impl`이 아니라 **`:api`(NavKey)만** 참조한다. 예: `feature/login/impl`은 `feature/groups/home/api`에 의존.
+한 feature가 다른 feature로 이동할 때는 상대의 `:impl`이 아니라 **`:api`(NavKey)만** 참조한다. 예: `feature/login/impl`은 `feature/intro/api`(`NavKeyTermAgree`)에, `feature/intro/impl`은 `feature/groups/list/api`(`NavKeyGroupList`)에 의존.
 
 ## 대안
 - **feature 단일 모듈** — 구조 단순. 그러나 feature 간 이동 시 impl 전체 결합.

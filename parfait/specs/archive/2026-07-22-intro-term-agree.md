@@ -4,7 +4,7 @@ title: 온보딩 약관 동의 화면 (TermAgree)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-26
+verified: 2026-08-10
 related_code:
   - NavKeyTermAgree
   - TermAgreeRoute.kt#TermAgreeRoute
@@ -29,9 +29,15 @@ tags: [spec, parfait, intro, terms, onboarding]
 > 파르페 완성도 유지를 위해 as-built로 역기록. 코드가 SoT.
 >
 > **as-built 갱신(2026-07-26, #166)**: 화면 정적 문자열이 하드코딩 → `strings.xml` + `stringResource`로 이동. 문구 자체는 불변.
+>
+> **as-built 갱신(2026-08-09, #220)**: TODO 3종 중 **다음 화면 네비게이션이 결선**됨 —
+> `NavigateToNext` stub → `navigator.clearBackStack()` + `goTo(NavKeyGroupList)`. 동시에 이 화면이
+> 로그인의 다음 목적지가 돼(`LoginRoute`가 `NavKeyGroupHome` 대신 `NavKeyTermAgree`로) **도달 불가
+> 상태가 해소**됐다. 저장·랜딩 URL TODO는 그대로.
 
-- **대상 모듈**: `feature/intro/impl`(`termagree/`) + `feature/intro/api`(NavKey)
-- **흐름 위치**: 온보딩 intro 플로우(splash/login 계열)의 약관 동의 단계.
+- **대상 모듈**: `feature/intro/impl`(`termagree/`) + `feature/intro/api`(NavKey). `feature/groups/list/api` 의존(#220, 다음 목적지).
+- **흐름 위치**: 온보딩 intro 플로우의 약관 동의 단계. 진입은 `NavKeyLogin`, 다음은 `NavKeyGroupList`
+  ([navigation-flow](../../architecture/navigation-flow.md) "앱 진입 체인").
 
 ## 목표
 
@@ -44,7 +50,7 @@ tags: [spec, parfait, intro, terms, onboarding]
 - 제외(구현 TODO 상태):
   - **동의 결과 저장 로직** — `ClickNextButton`에서 `NavigateToNext`만 post, 저장(서버/앱내)은 `// Todo`.
   - **랜딩 URL 실값** — `TermContent.landingUrl`은 빈 문자열(`// Todo : 노션 생성 후`), `NavigateToUrl` effect는 Route에서 stub(`/* navigate to url */`).
-  - **다음 화면 네비게이션** — `NavigateToNext` Route에서 stub.
+- 결선 완료(#220): **다음 화면 네비게이션** — `NavigateToNext`가 `clearBackStack()` 후 `NavKeyGroupList`로 `goTo`.
 
 ## API / 인터페이스
 
@@ -101,7 +107,7 @@ sealed interface TermAgreeSideEffect {
 
 - `api/NavKeyTermAgree.kt` — 목적지 키.
 - `impl/termagree/TermAgreeScreen.kt` — stateless UI(`LazyColumn`).
-- `impl/termagree/TermAgreeRoute.kt` — `hiltViewModel()` + state/effect collect, back→`navigator.onBack()`, url/next stub.
+- `impl/termagree/TermAgreeRoute.kt` — `hiltViewModel()` + state/effect collect, back→`navigator.onBack()`, next→`clearBackStack()`+`goTo(NavKeyGroupList)`(#220), url은 stub.
 - `impl/termagree/TermAgreeViewModel.kt` — MVI State/Intent/SideEffect + `processIntent`.
 - `impl/termagree/model/TermContent.kt` — 데이터 클래스 + `TERM_CONTENT_LIST` 상수.
 - `impl/res/values/strings.xml` — 화면 정적 라벨(제목·모두동의·(필수)·확인). #166 신설.
@@ -109,5 +115,7 @@ sealed interface TermAgreeSideEffect {
 
 ## 주의 / 열린 질문
 
-- **동의 저장·랜딩 URL·다음 네비게이션 미구현**(TODO 3종) — 서버/앱내 저장 방침, 노션 공개페이지 URL, 다음 화면 확정 필요. 랜딩은 [s004-terms-privacy-webview](2026-07-20-s004-terms-privacy-webview.md)의 NotionWebView 재사용 후보.
+- **동의 저장·랜딩 URL 미구현**(다음 네비게이션은 #220으로 해소) — 서버/앱내 저장 방침, 노션 공개페이지 URL 확정 필요. 랜딩은 [s004-terms-privacy-webview](2026-07-20-s004-terms-privacy-webview.md)의 NotionWebView 재사용 후보.
+- **저장 없이 다음 화면으로 전진한다** — 서버 `POST /api/v1/auth/signup`은 `agreements[].termsId`를 필수로 받는데
+  이 화면은 동의 결과를 어디에도 남기지 않고 그룹 목록으로 넘어간다 → [open-questions](../../synthesis/open-questions.md) [2026-08-10].
 - "모두 동의하기" 클릭 영역이 `clickable`(스로틀 `clickableYG` 미사용) — 캘린더 셀 등과 동일한 스로틀 규약 이탈 패턴(연타 방어 부재).

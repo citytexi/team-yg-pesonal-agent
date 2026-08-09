@@ -4,8 +4,8 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-04
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker
+verified: 2026-08-10
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree
 related_adr: ADR-0002, ADR-0006
 related_architecture:
 related_code: core:navigation, Navigator
@@ -19,7 +19,7 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 
 ## 구성 요소
 - **Navigator**(`core:navigation`, `@ActivityRetainedScoped`) — 백스택 = `SnapshotStateList<NavKey>`. `goTo()`, `onBack()`, `clearBackStack()`.
-- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupHome`·`NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasImageAdd`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`, `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
+- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasImageAdd`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`, `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
 - **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas의 4개 NavKey(`ImageAdd`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
   - `rememberSaveableStateHolderNavEntryDecorator` — 엔트리별 상태 보존.
@@ -28,8 +28,26 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 
 ## 이동/뒤로
 - 이동: ViewModel의 side effect → Screen이 소비 → `navigator.goTo(NavKeyXxx(...))`.
-- 뒤로: `navigator.onBack()`. **빈 백스택 접근 가드 필수**(과거 크래시 이력).
+- 뒤로: `navigator.onBack()`. **빈 백스택 접근 가드 필수**(과거 크래시 이력) — `backStack.size <= 1`이면 no-op.
 - feature 간 이동은 상대 `:impl`이 아니라 **`:api`의 NavKey만** 참조.
+
+## 앱 진입 체인 (2026-08-09, PR #220)
+
+시작 목적지는 `NavigatorConst.INITIAL_NAVIGATION_KEY = NavKeySplash`(`core:navigation`)다.
+그 뒤 체인이 이 PR에서 처음 끝까지 이어졌다:
+
+`NavKeySplash` → `NavKeyLogin` → `NavKeyTermAgree` → `NavKeyGroupList`
+
+- 이전에는 로그인이 `NavKeyGroupHome`(`ResultEventBus` 시연용 임시 화면)으로 갔고, `NavKeyTermAgree`·
+  `NavKeyGroupList`는 entry만 등록된 **도달 불가 화면**이었다. 체크리스트 6번의 사례가 하나 닫힌 것.
+- **백스택 리셋 관용구**: 되돌아가면 안 되는 경계에서 `navigator.clearBackStack()` 직후
+  `navigator.goTo(...)`를 부른다 — `SplashRoute`(→ 로그인), `TermAgreeRoute`(→ 그룹 목록) 2곳.
+  `clearBackStack()`은 백스택을 비우기만 하므로 **반드시 같은 블록에서 `goTo`가 따라와야** 한다.
+  결과적으로 그룹 목록에서는 백스택이 1개라 뒤로가기가 no-op이다.
+- 의존 방향은 규약대로 `:api`만: `feature/login/impl` → `feature/intro/api`,
+  `feature/intro/impl` → `feature/groups/list/api`.
+- **화면 전이만 결선됐다** — 서버 인증(`/auth/login`·`/auth/signup`)·토큰 저장·약관 동의 저장은
+  붙지 않았고 신규/기존 회원 분기도 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-10].
 
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.
@@ -64,7 +82,7 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 ## 인자 있는 목적지 (`data class NavKey`)
 
 목적지가 값을 받으면 `data object`가 아니라 `@Serializable data class NavKeyXxx(val …)`로 정의한다
-(`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupHome`·`NavKeyGroupCreate`·
+(`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupCreate`·
 `NavKeyPictureConfirm`).
 **ViewModel이 없는 화면이면 엔트리 빌더가 `navKey.…` 값을 Route 파라미터로 그냥 넘긴다**
 (`NavKeyPictureConfirm(uri, source)` → `PictureConfirmRoute(uri = …, source = …)`, #182·#191).
