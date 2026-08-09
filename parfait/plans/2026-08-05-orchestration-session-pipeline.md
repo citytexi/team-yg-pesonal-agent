@@ -135,7 +135,7 @@ description: 요구사항 하나를 Orca orchestration + git worktree로 분석�
 요구사항 하나를 받아 분석 → 설계 → 스펙 리뷰 → 계획 → 계획 리뷰 → TDD 구현(모듈 병렬)
 → 통합 → 코드 리뷰 → 최종 반환까지 자동으로 돈다.
 
-설계 정본은 [`parfait/specs/2026-08-05-orchestration-session-pipeline.md`](../../../parfait/specs/2026-08-05-orchestration-session-pipeline.md).
+설계 정본은 [`parfait/specs/2026-08-05-orchestration-session-pipeline.md`](../specs/2026-08-05-orchestration-session-pipeline.md).
 이 문서와 스펙이 어긋나면 스펙이 정답이다.
 
 ## 이 스킬을 쓰지 않는 경우

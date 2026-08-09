@@ -8,9 +8,14 @@
 
 **Tech Stack:** JUnit4 · kotlin-test · kotlinx-coroutines-test · Turbine · MockK · MockWebServer(mockwebserver3) · androidx.test · Compose ui-test-junit4 · Gradle 컨벤션 플러그인 · GitHub Actions
 
-**설계 스펙:** [`parfait/specs/2026-08-06-unit-test-infrastructure.md`](../specs/2026-08-06-unit-test-infrastructure.md) (스킬·위키 repo 경로. 코드 작업은 TJYG-Android repo에서 한다)
+**설계 스펙:** [`parfait/specs/archive/2026-08-06-unit-test-infrastructure.md`](../../specs/archive/2026-08-06-unit-test-infrastructure.md) (스킬·위키 repo 경로. 코드 작업은 TJYG-Android repo에서 한다)
 
 **GitHub 이슈:** `mash-up-kr/TJYG-Android#215`
+
+> **완료 — PR #219 `develop` 머지(2026-08-09).** Task 1~9 전량 반영(Task 10은 아래 보류 블록 참고).
+> 커밋 17개. 계획 본문의 코드 블록은 작성 시점 스냅샷이고, 산출물 계약의 정본은
+> [스펙](../../specs/archive/2026-08-06-unit-test-infrastructure.md)이다. 본문 Task 체크박스는
+> 실행 기록을 상단·말미 블록에 모으는 관례대로 미체크로 둔다.
 
 ## Global Constraints
 
@@ -2230,7 +2235,7 @@ GetRecentCacheImagesUseCase 가 DayWindow.current() 를 직접 불러 시각을
 ## PR 리뷰 반영 (2026-08-09)
 
 PR #219에 달린 리뷰 3건을 반영했다. 위 Task 본문의 코드 블록은 당시 상태이므로, 최종 형태는
-[스펙](../specs/2026-08-06-unit-test-infrastructure.md)이 정본이다.
+[스펙](../../specs/archive/2026-08-06-unit-test-infrastructure.md)이 정본이다.
 
 1. **CI 셋업 스텝 공통화** (Task 9). `test.yml`과 `ktlint.yml`이 셋업 6스텝을 글자 그대로
    공유한다는 지적. `.github/actions/setup-android-build`·`restore-app-secrets` composite action
@@ -2256,11 +2261,13 @@ PR #219에 달린 리뷰 3건을 반영했다. 위 Task 본문의 코드 블록�
 
 구현 완료 시점에 아래가 모두 성립해야 한다.
 
-- [ ] `./gradlew test` 통과 (모듈 목록 하드코딩은 위 "계획 오류" 5번에서 걷어냈다)
-- [ ] `./gradlew :core:util:android:assembleDebugAndroidTest :core:designsystem:assembleDebugAndroidTest` 통과
-- [ ] `./gradlew :core:designsystem:lintDebug`에 `TestManifestGradleConfiguration` 경고 없음
-- [ ] `./gradlew ktlintCheck` 통과
-- [ ] `grep -rn "runBlocking" --include="*.kt" */src/test` 결과 없음
-- [ ] `grep -rn "isReturnDefaultValues" build-logic` 결과 없음
-- [ ] 백틱 테스트 메서드명 없음 — `grep -rn 'fun \`' --include="*.kt" */src/test */src/androidTest` 결과 없음
-- [ ] `feature/#215-test-environment` 브랜치에 커밋 9개
+- [x] `./gradlew test` 통과 (모듈 목록 하드코딩은 위 "계획 오류" 5번에서 걷어냈다)
+- [x] `./gradlew :core:util:android:assembleDebugAndroidTest :core:designsystem:assembleDebugAndroidTest` 통과
+- [x] `./gradlew :core:designsystem:lintDebug`에 `TestManifestGradleConfiguration` 경고 없음
+- [x] `./gradlew ktlintCheck` 통과
+- [x] `grep -rn "runBlocking" --include="*.kt" */src/test` 결과 없음
+- [x] `grep -rn "isReturnDefaultValues" build-logic` 결과 없음
+- [x] 백틱 테스트 메서드명 없음 — `grep -rn 'fun \`' --include="*.kt" */src/test */src/androidTest` 결과 없음
+- [x] `feature/#215-test-environment` 브랜치에 커밋 — 계획은 9개를 예상했고 리뷰 대응까지 포함해 최종 17개로 머지됐다
+
+위 8항목은 `develop` 머지본(PR #219)에서 확인했다(2026-08-09).

@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-06
-related_spec: designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer
+related_spec: designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -468,7 +468,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: 키 유실을 실기기에서 재현(기기 복원 또는 잠금 자격증명 변경)해 `clear()` 분기가 실제로 타는지, 앱이 정상적으로 "토큰 없음" 상태로 전환되는지 확인.
 - **상태**: 미해결 (재현 수단 없음)
   > 📌 **as-built 범위 확대(2026-08-04, PR #190 머지본)** — `read()`의 `runCatching`이 복호화뿐 아니라 **DataStore 읽기까지** 감싼다. 즉 일시적 저장소 I/O 실패도 같은 경로로 떨어져 토큰이 삭제된다 — 재현해야 할 경우의 수가 하나 늘었다.
-  > 📌 **2026-08-09 갱신(PR #219)** — "코드베이스에 `test`/`androidTest`가 없다"는 전제는 해소됐다. `parfait-test-unit`·`parfait-test-android` 배선과 `src/androidTest/` 소스셋이 들어왔다([spec](../specs/2026-08-06-unit-test-infrastructure.md)). 그래도 **재현 수단 없음은 그대로다.** Android Keystore는 여전히 JVM 유닛 테스트에서 동작하지 않고(Robolectric 제외), 계측 테스트는 CI에서 `assembleDebugAndroidTest` 컴파일까지만 검증해 실행되지 않는다. 막고 있는 것이 둘로 명확해졌다 — CI에 기기·에뮬레이터가 없다는 점, 그리고 키 무효화 자체가 기기 복원·잠금 자격증명 변경이라 프로그램으로 유발할 수 없다는 점.
+  > 📌 **2026-08-09 갱신(PR #219)** — "코드베이스에 `test`/`androidTest`가 없다"는 전제는 해소됐다. `parfait-test-unit`·`parfait-test-android` 배선과 `src/androidTest/` 소스셋이 들어왔다([spec](../specs/archive/2026-08-06-unit-test-infrastructure.md)). 그래도 **재현 수단 없음은 그대로다.** Android Keystore는 여전히 JVM 유닛 테스트에서 동작하지 않고(Robolectric 제외), 계측 테스트는 CI에서 `assembleDebugAndroidTest` 컴파일까지만 검증해 실행되지 않는다. 막고 있는 것이 둘로 명확해졌다 — CI에 기기·에뮬레이터가 없다는 점, 그리고 키 무효화 자체가 기기 복원·잠금 자격증명 변경이라 프로그램으로 유발할 수 없다는 점.
 - **해소 메모**: 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md) "키 유실 시 정책"과 [specs/archive/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "검증" 절에 결과를 반영한다.
 
 ### [2026-08-02] 인터셉터 `runBlocking`이 코드리뷰를 통과할지 미확정
@@ -674,6 +674,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 조회 결선 라운드에서 실제로 붙일지, 아니면 걷어낼지(사용처 0 공개 API를 남긴 선례가 이미 있다 — [2026-08-03 `clickableYGNoRipple` 항목](#2026-08-03-clickableygnoripple-사용처-0--존치-여부)), ② feature `impl` 내부 심볼의 기본 가시성을 `internal`로 못박을지.
 - **상태**: 미해결
 - **해소 메모**: 결정 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "토핑 배치" 절을 정리한다.
+
+### [2026-08-09] 테스트 기반 구조에 검증되지 않은 표면 3건
+
+- **출처**: PR #219 develop 머지([unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)). 유닛 테스트는 배선·통과했지만 세 표면이 실제로 동작하는지는 증명되지 않았다. ① `MainDispatcherRule`은 사용처가 0건이다 — 배선(`@get:Rule` + `runTest(rule.dispatcher)` 컴파일·통과)까지만 확인했고 `Dispatchers.setMain` 적용·복원과 스케줄러 공유가 무엇을 막아주는지는 미검증이다. 이번 범위(`domain`·`data`·`core:util:*`)에 ViewModel이 없어서다. ② 계측 테스트 2건(`YGThemeSmokeTest`·`ContextExtensionTest`)은 CI에서 `assembleDebugAndroidTest` 컴파일까지만 검증돼 런타임 오류가 드러나지 않는다. ③ `core:util:android`는 `parfait-test-unit`이 적용됐지만 unit 테스트가 0개다(내용물이 Compose Modifier·Context/Bitmap 확장이라 대상 없음).
+- **항목**: ① 첫 ViewModel 테스트를 쓸 때 룰 자체를 검증하는 테스트를 함께 추가할지 — 계측 소스셋에서 코루틴을 다루려면 `bundles.test-android`에 `kotlinx-coroutines-test`를 넣어야 하고(현재 없고 `:core:testing`도 계측에 미배선), `runTest`를 인자 없이 부르면 스케줄러가 갈려 `advanceUntilIdle()`이 Main 큐를 비우지 못한다. ② CI에 기기·에뮬레이터를 붙일 시점. ③ Android 비의존 로직이 `core:util:android`에 생기는 시점에 채운다.
+- **상태**: 미해결 (셋 다 트리거 대기 — ViewModel 등장 / CI 기기 도입 / 대상 로직 추가)
+- **해소 메모**: 해소 시 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "주의 / 열린 질문" 절의 대응 항목을 지운다.
+
+### [2026-08-09] Repository Fake를 어디에 둘지 미결
+
+- **출처**: PR #219 develop 머지 — [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)은 공용 Fake를 `:core:testing`에 두기로 설계했으나, 실제로 Fake 2종을 만들어보고(2026-08-06, 커밋 후 되돌림) 대가가 드러나 이번 머지에서 빼기로 했다. `:core:testing`은 `setConfigTestUnit()`을 통해 **모든 대상 모듈의 테스트 classpath**에 걸려 있어 한 Fake를 고치면 무관한 모듈의 테스트까지 재컴파일된다. `domain` repository의 Fake를 `core:testing`이 소유하는 것도 소유권상 어긋난다. 현재 `:core:testing`에는 `MainDispatcherRule`만 있고 `domain` 의존도 없다.
+- **항목**: 선택지 셋 중 하나를 고른다. (1) 모듈별 `src/testFixtures` — 소유권 명확·재컴파일 범위 최소, 대신 소스셋이 모듈마다 늘고 AGP `testFixtures` 활성화 필요 / (2) `:core:testing`은 모듈 비종속 유틸만 두고 도메인 Fake는 `testFixtures`로 / (3) 각 모듈 `src/test`에 두고 공유하지 않음 — 소비자가 하나뿐인 Fake가 많다면 중복이 오히려 싸다.
+- **상태**: 미해결 (첫 Fake가 실제로 필요해지는 시점에 정한다 — 현재 상태는 어느 쪽도 강제하지 않는다)
+- **해소 메모**: 정하면 [module-structure](../architecture/module-structure.md)의 `:core:testing` 행과 스펙 "`:core:testing` 모듈" 절에 반영한다. (2)를 고르면 `domain` 의존이 `api`로 되살아난다.
 
 <!--
 항목 추가 형식:
