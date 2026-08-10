@@ -120,7 +120,11 @@ S3에 직접 PUT한 뒤 ③ 서버에 업로드 완료를 알린다. 이미지 �
 |---|---|---|---|
 | `imageId` | Long | 아니오 | 확정된 이미지 id |
 | `imageUrl` | String | 아니오 | 발급 때 내려준 `imageUrl`과 같은 값(`ImageMeta.url` 그대로) |
-| `status` | String | 아니오 | `ImageStatus` 이름 문자열. **성공 응답이면 항상 `"COMPLETED"`** — `PENDING`은 409로 걸러진다 |
+| `status` | String | 아니오 | `ImageStatus` 이름 문자열. **성공 응답이면 항상 `"COMPLETED"`** — 아래 참고 |
+
+  **성공 조건은 `PENDING`이다.** `ImageMeta.confirm`이 `status != PENDING`이면
+  `IMAGE_ALREADY_CONFIRMED`를 던진다 — 즉 **걸러지는 쪽은 이미 `COMPLETED`인 이미지**이고,
+  통과한 `PENDING`이 `COMPLETED`로 전이돼 나간다. 그래서 성공 응답의 `status`는 항상 `COMPLETED`다.
 
   ⚠️ **서버는 S3에 객체가 실제로 있는지 확인하지 않는다.** `ConfirmImageUploadService`는 상태 전이만
   한다(`ImageMeta.confirm`). 앱이 PUT을 건너뛰고 confirm만 불러도 `COMPLETED` 행이 남고, 그 `imageUrl`은

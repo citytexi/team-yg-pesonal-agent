@@ -155,7 +155,8 @@ data class ConfirmedImageVO(
 (`AuthSessionVO.expiresIn` 선례). 단위가 타입에 실려 소비 측이 밀리초로 오해할 여지가 없어진다.
 
 `ConfirmedImageVO`를 축약하지 않은 이유: **성공 시 `status`가 항상 `COMPLETED`인 것은 현재 서버 구현의
-성질이지 계약의 보장이 아니다**(`PENDING`은 409로 걸러진다). 값으로 축약하면 서버가 상태를 늘릴 때
+성질이지 계약의 보장이 아니다**(`ImageMeta.confirm`이 `status != PENDING`이면 409를 던지므로, 통과하는
+것은 `PENDING`뿐이고 그것이 `COMPLETED`로 전이돼 나간다). 값으로 축약하면 서버가 상태를 늘릴 때
 시그니처를 되돌려야 한다. `leaveGroup`·`previewJoin`이 값으로 축약된 것과 다른 판단이며, 그 둘은
 응답 필드가 실제로 하나였다.
 
@@ -251,6 +252,10 @@ confirm 재시도 시 첫 호출이 이미 성공했다면 `IMAGE_ALREADY_CONFIR
 TJYG-Android 루트 `http/`에 요청 파일을 추가한다. 기존 요청 모음이 14 엔드포인트를 덮고 있었는데
 서버가 16이 되며 깨진 상태다([open-questions](../synthesis/open-questions.md) `[2026-08-10]`).
 발급·확인 두 요청과, **발급 응답의 `imageId`를 확인 요청이 쓰도록 변수 추출**을 넣는다.
+
+**`http/README.md`도 함께 고친다** — 파일 목록·디렉토리 트리뿐 아니라 **에러 코드 서술 2곳**이 이번
+변경으로 틀리게 된다. `MEMBER_NOT_FOUND`가 "`AuthErrorCode` 401 / `ParfaitGroupApiErrorCode` 404
+**두** enum에 중복"이라고 적혀 있는데 이제 셋이고, "자주 나오는 에러" 표에 image 에러 3종이 없다.
 
 **S3 PUT 요청도 이 파일에 함께 둔다.** 범위 제외인 "S3 PUT"은 **앱 코드**를 말하고, `http/`는 사람이
 손으로 쏘는 확인 수단이라 성격이 다르다. 오히려 여기 있어야 하는 이유가 있다 — PUT 요청 헤더의
