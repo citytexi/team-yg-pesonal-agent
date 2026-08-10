@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 미결 항목 문서 (정책)
+    url: https://github.com/citytexi/team-yg-pesonal-agent/blob/main/wiki/synthesis/open-questions.md
+    about: 정책·기획 미결의 정본. 이슈는 이 문서의 투영이다.
+  - name: 미결 항목 문서 (구현)
+    url: https://github.com/citytexi/team-yg-pesonal-agent/blob/main/parfait/synthesis/open-questions.md
+    about: 구현·계약 미결의 정본. 이슈는 이 문서의 투영이다.

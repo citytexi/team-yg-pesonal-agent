@@ -15,6 +15,7 @@
 |---|---|---|
 | _(구현 후 채움)_ `vendor.py` | 4 repo 스킬 벤더링 + baseline/diff 업데이트 | `update-injected-skills` |
 | _(구현 후 채움)_ `search.py` | 벤더 스킬 자연어 검색 랭킹 | `skill-finder` |
+| `oq_sync.py` | open-questions 문서 → GitHub 이슈 단방향 동기화(assign-ids/plan/apply) | `sync-open-questions` |
 
 ## 템플릿
 - [`_script-template.py`](_script-template.py) — 파이썬 스크립트 헤더/경로 규약.
