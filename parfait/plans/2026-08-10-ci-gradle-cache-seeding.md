@@ -8,6 +8,13 @@
 
 **Tech Stack:** GitHub Actions, `gradle/actions/setup-gradle@v4`, Gradle 9.4.1(wrapper), AGP 9.2.1, Kotlin 2.4.0, JDK 17(temurin)
 
+> **실행 결과 (2026-08-10, Task 1·2 완료 · 미푸시)** — 브랜치 `chore/build-action-cache`,
+> 커밋 `1db48217`~`027631a3`. 아래 Task 1의 `gradle.properties` 내용은 **as-built가 아니다.**
+> 최종 리뷰 이후 사용자 판단으로 `org.gradle.parallel`·힙 상향·`kotlin.daemon.jvmargs`를 전부
+> 되돌렸고, 실제로 남은 변경은 `org.gradle.caching=true` 한 줄이다. 되돌린 근거와 재도입 시
+> 필요한 사실은 스펙의 "검토했다가 뺀 것" 절에 있다. Task 3은 push 보류로 미착수.
+> 진행 원장: `.superpowers/sdd/2026-08-10-ci-gradle-cache-seeding/progress.md`
+
 ## Global Constraints
 
 - **작업 저장소는 `TJYG-Android`다.** 이 계획 문서가 있는 wiki 저장소가 아니다. 로컬 경로는 `wiki/personal-private/project-paths.md`에 있고, 리모트는 `mash-up-kr/TJYG-Android`(현재 `mash-up-kr/TEAMYG-Android`로 리다이렉트).
