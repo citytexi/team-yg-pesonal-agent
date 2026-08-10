@@ -2,8 +2,8 @@
 id: image
 title: 이미지(업로드 URL 발급·업로드 확인)
 server_module: http/image
-server_commit: 5bb2a3a
-verified: 2026-08-10
+server_commit: 2c5499a
+verified: 2026-08-11
 android_status: none
 related_spec:
 related_adr: ADR-0017

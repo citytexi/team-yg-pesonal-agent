@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: 5bb2a3a
-verified: 2026-08-10
+server_commit: 2c5499a
+verified: 2026-08-11
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -44,9 +44,11 @@ tags: [api, parfait, server-contract, conventions]
 | enum | 위치 | 종수 |
 |---|---|---|
 | `CommonErrorCode` | `common/error` | 2 |
-| `AuthErrorCode` | `core/auth/exception` | 12 |
+| `AuthErrorCode` | `core/auth/exception` | 14 |
 | `ParfaitGroupApiErrorCode` | `http/parfaitgroup` | 11 |
 | `ImageErrorCode` | `core/image/exception` | 4 |
+| `MemberErrorCode` | `core/member/exception` | 2 |
+| `ParfaitImageErrorCode` | `core/parfaitimage/exception` | 5 |
 
 ### `CommonErrorCode`
 
@@ -61,11 +63,16 @@ tags: [api, parfait, server-contract, conventions]
 
 `code` 문자열은 **각 enum 내부에서만** 유일하다 — enum을 넘어서는 전역 유일성 보장이 없다. 실례:
 `MEMBER_NOT_FOUND`는 `AuthErrorCode`에서 **401**(존재하지 않는 회원, [auth.md](auth.md) "도메인 에러 코드
-전수" 참고)이고 `ParfaitGroupApiErrorCode`·`ImageErrorCode`에서는 **404**(같은 의미지만 다른 status,
-[parfait-group.md](parfait-group.md)·[image.md](image.md) "도메인 에러 코드 전수" 참고)다. **소비 측은
-envelope `code` 문자열 단독이 아니라 HTTP status와 함께 판정해야 한다** — `code`만으로 분기하면 서로 다른
-세 상황(만료된 access/refresh 토큰의 회원 부재 vs 그룹 관련 회원 부재 vs 업로드 URL 발급 시 회원 부재)을
-한 브랜치로 뭉갠다. 중복 코드는 하나가 아니라 **셋**이 됐다(2026-08-10 image 도메인 신설).
+전수" 참고)이고 `ParfaitGroupApiErrorCode`·`ImageErrorCode`·`MemberErrorCode`에서는 **404**(같은 의미지만
+다른 status, [parfait-group.md](parfait-group.md)·[image.md](image.md)·[member.md](member.md) "도메인 에러
+코드 전수" 참고)다. **소비 측은 envelope `code` 문자열 단독이 아니라 HTTP status와 함께 판정해야 한다** —
+`code`만으로 분기하면 서로 다른 네 상황(토큰의 회원 부재 vs 그룹 관련 회원 부재 vs 업로드 URL 발급 시
+회원 부재 vs 계정 조회·닉네임 변경 시 회원 부재)을 한 브랜치로 뭉갠다. **같은 문자열을 가진 enum이 넷**이
+됐다(2026-08-11 member 도메인 신설).
+
+⚠️ **한 엔드포인트가 같은 `code`를 서로 다른 status로 낼 수도 있다.** `GET /api/v1/users/me`가 그렇다 —
+`JwtAuthFilter`가 던지면 **401**, `MemberService`가 던지면 **404**인데 문자열은 둘 다 `MEMBER_NOT_FOUND`다
+([member.md](member.md)).
 
 ## 인증
 
@@ -79,6 +86,7 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 - `/favicon.ico`
 - `/v3/api-docs/**`
 - `/api/v1/auth/kakao`
+- `/api/v1/auth/apple`
 - `/api/v1/auth/signup`
 - `/api/v1/auth/reissue`
 - `/api/v1/policies`
@@ -86,14 +94,20 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 인증 실패는 `AuthErrorCode.UNAUTHORIZED`(401)로 나간다.
 
 `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`(`6f5bffc`)이 기존 `/api/v1/auth/**` 와일드카드를
-위 auth 3경로 개별 등록으로 좁혔다. **`/api/v1/auth/logout`은 화이트리스트에 없어 인증 대상**이다 — 인증 도메인
-4개 엔드포인트 중 access token이 필요한 유일한 엔드포인트다(상세는 [auth.md](auth.md)).
-`/api/v1/policies`는 `[Feat/#64] 약관 목록 조회 API 구현 (#65)`(`69654bc`)이 같은 개별 등록 방식으로
-추가했다(상세는 [policy.md](policy.md)).
+위 auth 경로 개별 등록으로 좁혔다. **`/api/v1/auth/logout`은 화이트리스트에 없어 인증 대상**이다 — 인증 도메인
+5개 엔드포인트 중 access token이 필요한 유일한 엔드포인트다(상세는 [auth.md](auth.md)).
+`/api/v1/policies`는 `[Feat/#64] 약관 목록 조회 API 구현 (#65)`(`69654bc`)이,
+`/api/v1/auth/apple`은 `[Feat/#50] 애플 로그인 API 구현 (#76)`(`96affd0`)이 같은 개별 등록 방식으로
+추가했다(상세는 [policy.md](policy.md)·[auth.md](auth.md)).
 
 **2026-08-10 image 도메인 2건이 들어왔지만 화이트리스트는 그대로다** — `/api/v1/images`와
 `/api/v1/images/{imageId}/confirm`은 **인증 대상**이다(상세는 [image.md](image.md)). 단 confirm은
 토큰 유효성만 보고 **이미지 소유자를 대조하지 않는다** → [open-questions](../synthesis/open-questions.md).
+
+**2026-08-11 member 2건·parfait-image 2건도 화이트리스트 밖이라 전부 인증 대상**이다
+([member.md](member.md)·[parfait-image.md](parfait-image.md)). 네 엔드포인트 모두 대상 회원을 요청이 아니라
+**토큰에서** 정한다 — 남의 계정을 지목할 경로가 없다. 다만 토핑 배치(POST)는 배치자 대조가 없어
+**같은 그룹의 다른 멤버가 남의 배치를 덮어쓸 수 있다** → [parfait-image.md](parfait-image.md).
 
 **관측 사실**: `HealthController`가 매핑한 `GET /health`(`http/global/health`, #63이 `http/api/health`에서
 옮겼다)는 화이트리스트의 `/actuator/health`와 경로가 달라 **인증 대상**이다.
@@ -104,27 +118,51 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 
 | 형태 | 예 |
 |---|---|
-| `/api/v1/<도메인>` | `/api/v1/auth/kakao` · `/api/v1/auth/signup` · `/api/v1/auth/reissue` · `/api/v1/auth/logout` · `/api/v1/policies` · `/api/v1/images` |
+| `/api/v1/<도메인>` | `/api/v1/auth/kakao` · `/api/v1/auth/apple` · `/api/v1/auth/signup` · `/api/v1/auth/reissue` · `/api/v1/auth/logout` · `/api/v1/policies` · `/api/v1/images` |
 | `/api/v1/<도메인>/{id}/<동작>` | `/api/v1/images/{imageId}/confirm` |
-| `/api/v1/groups/{groupId}/<하위>` | `/api/v1/groups/{groupId}/parfaits/year` |
+| `/api/v1/<도메인>/me/<하위>` | `/api/v1/users/me` · `/api/v1/users/me/nickname` |
+| `/api/v1/groups/{groupId}/<하위>` | `/api/v1/groups/{groupId}/parfaits/year` · `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}` |
 | `/api/<도메인>` (버전 없음) | `/api/parfait-groups` |
 
 버전 프리픽스 유무가 갈리고, **그룹을 가리키는 경로가 `groups`와 `parfait-groups` 둘**이다.
 서버에 URL 규약 문서가 없어 관측 사실로만 적는다 → [open-questions](../synthesis/open-questions.md).
 
+**URL 세그먼트와 서버 도메인 이름이 갈리는 사례가 늘었다** — `users`↔`member`,
+그룹 하위 `images`↔`parfaitimage`. 도메인 파일명 규약은 경로 기준이지만([README.md](README.md))
+이 둘은 경로만으로 이름이 겹치거나(`images`) 뜻이 흐려져(`users`) **서버 도메인 이름을 따랐다** —
+`users` 경로는 [member.md](member.md)가, 그룹 하위 `images` 경로는 [parfait-image.md](parfait-image.md)가
+다룬다.
+
+⚠️ **`images`라는 세그먼트가 두 도메인에 있다** — 최상위 `/api/v1/images`는 업로드([image.md](image.md)),
+그룹 하위 `.../parfaits/{parfaitId}/images`는 배치([parfait-image.md](parfait-image.md))다.
+
 ## 직렬화 규약
 
-### Boolean 필드의 `is` 접두사는 JSON 키에서 사라진다
+### Boolean 필드의 `is` 접두사는 JSON 키에 **남는다**
 
-서버는 Jackson으로 직렬화한다. Kotlin `val isXxx: Boolean`은 getter가 `isXxx()`가 되고, Jackson의
-bean 이름 규칙이 `is` 접두사를 떼어 **JSON 키는 `xxx`**로 나간다.
+> 🔁 **2026-08-11 정정.** 2026-08-02~08-10 판본은 이 절을 "`is` 접두사가 사라진다"로 적었다. **틀렸다.**
+> 근거를 OpenAPI 스키마 하나에만 뒀던 것이 원인이다.
 
-현재 계약에서 해당하는 필드는 하나다 — `KakaoLoginResponse`의 `isNewUser` → **`newUser`**
-(→ [auth.md](auth.md) `POST /api/v1/auth/kakao`). 서버가 발행한 OpenAPI 스키마로 확인했다.
+서버 `http` 모듈이 `tools.jackson.module:jackson-module-kotlin`을 의존한다. 이 모듈이 붙으면 Jackson이
+getter 이름이 아니라 **Kotlin 주 생성자 파라미터명**으로 프로퍼티를 잡으므로, `val isXxx: Boolean`의
+**JSON 키는 `isXxx` 그대로**다.
 
-**소비 측 규칙**: 서버 DTO에 `is` 접두사 Boolean이 보이면 **JSON 키는 접두사 없는 이름**으로 가정하고,
-Android는 `@SerialName`으로 명시한다. 이름이 어긋나면 kotlinx-serialization이 기본값으로 조용히
-떨어져 **분기가 반대로 뒤집힌다** — 예외가 나지 않아 발견이 늦다.
+해당 필드는 둘이다 — `KakaoLoginResponse`·`AppleLoginResponse`의 `isNewUser`
+(→ [auth.md](auth.md) "판별자 키"). `KakaoLoginControllerTest`·`AppleLoginControllerTest`가 실제 직렬화된
+응답 본문에 대해 `jsonPath("$.data.isNewUser")`를 단언한다.
+
+**OpenAPI 스키마는 이 필드를 `newUser`로 적는다.** springdoc이 swagger-core의 자체 ObjectMapper로 모델을
+유도하는데 거기엔 Kotlin 모듈이 없어 bean 규칙(`is` 제거)이 적용되기 때문이다. **런타임 직렬화 결과와
+다르다** — 아래 [OpenAPI](#openapi) 절의 "코드가 정본" 규칙이 그대로 적용된다.
+
+**소비 측 규칙**: 서버 DTO 프로퍼티명을 **그대로** JSON 키로 본다. 스키마가 다르게 적어도 스키마를 믿지
+않는다. Android는 어느 쪽이든 `@SerialName`으로 키를 명시하되 **값은 서버 DTO 프로퍼티명**이어야 한다 —
+어긋나면 기본값 없는 필드에서 `MissingFieldException`이 나고 호출이 통째로 실패한다.
+
+### 응답 `null` 필드는 생략되지 않는다
+
+`spring.jackson.default-property-inclusion: always`(`application.yaml`)라, 분기 응답에서 채워지지 않은
+쪽도 **키가 `null` 값으로 실려 온다.** 키 존재 여부로 분기를 판정하면 안 된다는 뜻이다.
 
 ### 서버는 평문 HTTP로 서비스된다
 
@@ -146,15 +184,19 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 
 **2026-08-02, OpenAPI 실물을 받아 코드와 대조했다.** 그 결과 두 축이 서로를 보완한다는 것이 확인됐다.
 
-- **스키마만 아는 것**: 직렬화 결과. `isNewUser` → `newUser` 키 변환은 Kotlin 소스만 봐서는 알 수 없고
-  스키마가 유일한 근거였다(→ 위 [직렬화 규약](#직렬화-규약)).
 - **코드만 아는 것**: 에러 코드 열거(스키마는 성공 응답만 문서화한다), 검증 규칙, 그리고 **실제 HTTP
   상태 코드**. `POST /api/v1/auth/signup`이 대표적이다 — 스키마는 **200**으로 적었으나 컨트롤러가
   `ResponseEntity.status(HttpStatus.CREATED)`를 쓰므로 실제는 **201**이다. springdoc이 `ResponseEntity`의
   런타임 status를 읽지 못한 것이다. 같은 이유로 `@ResponseStatus`를 쓴 엔드포인트는 정확히 나온다.
+- **스키마가 틀리는 것**: 직렬화 키와 `required` 목록. 둘 다 springdoc이 **앱의 ObjectMapper가 아닌
+  자기 ObjectMapper**로 유도해 생기는 차이다 → 위 [직렬화 규약](#직렬화-규약)·아래 `required` 절.
 
-**규칙**: 두 근거가 갈리면 **코드가 정본**이다. 단 직렬화 키처럼 코드가 답하지 못하는 항목은 스키마를
-근거로 삼고, 그 사실을 문서에 남긴다.
+> 🔁 **2026-08-11 정정.** 이전 판본은 여기에 "스키마만 아는 것: 직렬화 결과"를 두고 `isNewUser` → `newUser`
+> 변환을 그 예로 들었다. 실제로는 **스키마가 틀린 사례**였다 — 직렬화 결과도 코드(컨트롤러 테스트의
+> 응답 본문 단언)가 답한다.
+
+**규칙**: 두 근거가 갈리면 **코드가 정본**이다. 스키마는 코드 대조를 대체하지 못한다 — 지금까지 확인된
+스키마-코드 차이는 3건(성공 status, `required` 목록, 직렬화 키)이고 전부 코드가 옳았다.
 
 ### 스키마 `required`는 Bean Validation 애노테이션만 반영한다
 
@@ -169,6 +211,16 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 | `IssueImageUploadUrlRequest` | `fileName`·`contentType` | + `imageType` |
 | `CreateParfaitGroupRequest` | (없음) | `groupName`·`groupNickname`·`memberLimit` |
 
+**2026-08-11 delta로 이 간극이 넓어졌다.** 스키마 실물을 다시 받지는 않았으나(서버 실행 필요) 규칙상
+아래가 예측된다 — 애노테이션이 하나도 없어 `required`가 통째로 비고 실제로는 전부 필수다.
+
+| 요청 DTO | 스키마 `required`(예측) | 실제 비널 필드 |
+|---|---|---|
+| `AppleLoginRequest` | `identityToken`·`nonce`·`authorizationCode` | 같음(셋 다 `@NotBlank`) |
+| `ChangeGlobalNicknameRequest` | `nickname` | 같음 |
+| `PlaceParfaitImageRequest` | (없음) | `imageId`·`positionX`·`positionY`·`positionZ`·`scale`·`rotation`·`borderType` |
+| `UpdateParfaitImageRequest` | (없음) | (없음 — 전 필드가 널 허용, 빈 바디도 유효) |
+
 빠진 필드도 **누락하면 400이다** — jackson-module-kotlin이 비널 파라미터 부재에서 실패하고
 `GlobalExceptionHandler`의 bad-request 핸들러가 `INVALID_REQUEST`로 바꾼다.
 
@@ -179,6 +231,16 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 ## Android 불일치
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
+
+⚠️ **2026-08-11 기준 1건.**
+
+| 항목 | 계약 | Android | 영향 |
+|---|---|---|---|
+| 로그인 판별자 키 | 응답 키는 `isNewUser` | `KakaoLoginResponse.isNewUser`에 `@SerialName("newUser")` | 키를 못 찾아 `MissingFieldException` → **카카오 로그인 호출이 통째로 실패** |
+
+이 불일치는 **이 문서가 만들었다** — 2026-08-02 판본이 OpenAPI 스키마만 근거로 키를 `newUser`로 기술했고,
+Android가 그대로 따랐다. 정정 근거는 위 [직렬화 규약](#직렬화-규약)
+→ [open-questions](../synthesis/open-questions.md).
 
 **2026-08-04 기준 남은 항목 없음.** 오래 걸려 있던 3건(Android `ApiResponse`에 `success`·`errorDetail`
 부재 / `isSuccess`가 `code == "SUCCESS"` 단일 비교 / `TokenProvider`가 항상 null)은
@@ -192,7 +254,8 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 > 0건이다(개발 서버 평문 HTTP 차단·`YG_BASE_URL` 부재도 그대로다). 계약 해석의 실동작은 실연동
 > 라운드에서 확인한다 → [open-questions](../synthesis/open-questions.md).
 
-**2026-08-10 기준 서버 엔드포인트는 16개고 Android 표면은 14개다.** 늘어난 image 2건은 대응 심볼이
-0건이라 **불일치가 아니라 공백**이다(불일치는 심볼이 있는데 어긋날 때만 쓴다, [README.md](README.md) 규약).
+**2026-08-11 기준 서버 엔드포인트는 21개고 Android 표면은 14개다.** 늘어난 7건(image 2 · auth 애플 1 ·
+member 2 · parfait-image 2)은 develop 대응 심볼이 0건이라 **불일치가 아니라 공백**이다(불일치는 심볼이
+있는데 어긋날 때만 쓴다, [README.md](README.md) 규약). 서버가 앞서고 앱이 일곱 칸 뒤에 있다.
 
 새 간극이 발견되면 이 절에 표를 다시 세운다.

@@ -2,8 +2,8 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: 5bb2a3a
-verified: 2026-08-10
+server_commit: 2c5499a
+verified: 2026-08-11
 android_status: partial
 related_spec:
 related_adr: ADR-0017
@@ -378,9 +378,17 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 
 ## 미결
 
-- **회원 전역 닉네임과 그룹 닉네임 규칙(1~15자·문자 패턴)이 같은지 미대조.** join-preview·join의
-  `INVALID_GROUP_NICKNAME`은 요청 필드가 아니라 `requireMemberNickname`이 반환한 **회원의 전역 닉네임**에
-  `GroupNickname.of`를 적용한 결과다(`ParfaitGroupService.validateJoin`). 전역 닉네임을 검증하는
-  `core/member` 쪽 값 객체를 이번 조사 범위(브리프 Step 1 파일 목록)에서 확인하지 못했다 — 두 규칙이 다르면
-  회원이 그룹 참여를 시도할 때 본인이 입력한 값과 무관하게 `INVALID_GROUP_NICKNAME`을 받을 수 있다.
-  → [open-questions](../synthesis/open-questions.md)
+✅ **회원 전역 닉네임과 그룹 닉네임 규칙 대조 — 2026-08-11 해소.** 두 값 객체가 **문자 그대로 같은
+규칙**이다: `core/member/domain/GlobalNickname`과 `core/parfaitgroup/domain/GroupNickname` 모두
+`MAX_LENGTH = 15`, 패턴 `^[가-힣A-Za-z0-9]+(?: [가-힣A-Za-z0-9]+)*$`, 길이 검사 `1..MAX_LENGTH`.
+다른 것은 위반 시 던지는 코드(`INVALID_NICKNAME` vs `INVALID_GROUP_NICKNAME`)와 `GroupNickname.unknown()`
+센티널의 존재뿐이다. 따라서 join-preview·join이 회원의 전역 닉네임에 `GroupNickname.of`를 적용해도
+**정상 경로에서는 통과한다** — 우려했던 "본인 입력과 무관한 `INVALID_GROUP_NICKNAME`"은 발생하지 않는다.
+
+> ⚠️ 예외 하나. `GroupNickname.unknown()`이 만드는 `(알수없음)`은 괄호를 포함해 **자기 패턴을 통과하지
+> 못하는 값**이다(private 생성자를 직접 호출해 만든다). 이 값이 전역 닉네임 자리에 흘러들면 검증이 깨지는데,
+> 그런 경로는 현재 코드에 없다.
+
+전역 닉네임을 바꾸는 API는 [member.md](member.md)에 있다.
+
+미결 없음.

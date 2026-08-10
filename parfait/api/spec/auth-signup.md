@@ -4,8 +4,8 @@ title: 회원가입 완료 (약관동의)
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#49"
-server_commit: 69654bc
-verified: 2026-08-03
+server_commit: 2c5499a
+verified: 2026-08-11
 related_api: auth.md
 tags: [api, parfait, spec, auth]
 ---
@@ -99,9 +99,12 @@ tags: [api, parfait, spec, auth]
   만들어 `MemberRegistrar.register`에 넘긴다. **앱은 닉네임을 보내지 않고, 받지도 않는다** — 이 응답에
   닉네임 필드가 없다. 명세에 언급이 없다.
 - **전체가 하나의 트랜잭션**이다(`@Transactional`). 가입 실패 시 회원 데이터가 남지 않는다.
-- 애플 로그인은 `handleProviderSpecificRegistration`에 **빈 분기 + TODO(#50)**로 자리만 있다.
-  `RegistrationTokenClaims`가 `provider`/`providerUserId`만 담고 있어 애플 revoke용 refreshToken을
-  저장할 수 없는 상태다. 명세는 `/auth/apple`을 이미 흐름에 적었으나 서버는 미완이다.
+- **애플 분기가 채워졌다(2026-08-11 정정).** `[Feat/#50] 애플 로그인 API 구현 (#76)` 이전 판본은 이 자리에
+  "빈 분기 + TODO(#50)"를 적었다 — 지금은 `handleProviderSpecificRegistration`이 `LoginProvider.APPLE`에서
+  `RegistrationTokenClaims.appleRefreshToken`을 꺼내 `MemberAppleRefreshTokenSavePort.saveRefreshToken`으로
+  저장한다(마이그레이션 `V9__add_apple_refresh_token_to_member.sql`). 클레임이 비어 있으면 **401
+  `INVALID_TOKEN`**을 던진다 — 명세에 없는 실패 경로다. `/auth/apple`은 이제 실재한다
+  ([../auth.md](../auth.md)).
 - envelope 5필드 — 명세의 JSON 예시는 `data` 안쪽만 보여준다 → [conventions.md](../conventions.md)
 - **`termsId`의 출처가 되는 약관 목록 조회 API가 생겼다.** `GET /api/v1/policies`
   (`69654bc`, [../policy.md](../policy.md))가 `termsId`·`type`·`title`·`url`·`required`를 내려준다.
@@ -114,10 +117,10 @@ tags: [api, parfait, spec, auth]
 
 ### 표기 차이
 
-- 명세 개요가 로그인 응답 판별자를 `isNewUser: true`로 적었으나 **실제 JSON 키는 `newUser`**다
-  (서버 DTO 프로퍼티명은 `isNewUser`, Jackson이 `is` 접두사를 떼고 직렬화)
-  → [auth-kakao-login.md](auth-kakao-login.md) "코드 대조". 이 API 자체의 요청·응답 필드에는
-  영향이 없다 — 앞 단계에서 분기를 잘못 읽으면 이 API를 아예 호출하지 않게 되는 것이 영향이다.
+- 🔁 **2026-08-11 철회.** 이전 판본은 "명세는 `isNewUser`인데 실제 JSON 키는 `newUser`"라고 적었다 —
+  **명세가 맞았다.** 실제 응답 키는 `isNewUser`다
+  → [auth-kakao-login.md](auth-kakao-login.md) "철회된 불일치", [../conventions.md](../conventions.md)
+  "직렬화 규약".
 - 스웨거(OpenAPI)는 이 엔드포인트를 **200**으로 문서화하나 실제는 **201**이다. `SignupController`가
   `ResponseEntity.status(HttpStatus.CREATED)`로 내보내는데 springdoc이 `ResponseEntity`의 런타임
   status를 읽지 못해 기본값을 적은 것이다 — 위 "일치" 절의 201이 맞다.
@@ -127,7 +130,8 @@ tags: [api, parfait, spec, auth]
 1. **로그인만으로 끝나지 않는다.** `isNewUser=true`면 약관 동의 화면을 거쳐 이 API까지 성공해야
    access/refresh를 받는다. `registrationToken`은 10분 만료라 UI 흐름에서 고려한다.
 2. **닉네임을 보내지 마라.** 서버가 자동 생성한다. 초기 닉네임을 화면에 보여줘야 한다면 이 응답이 아니라
-   별도 회원 조회 API가 필요하다(현재 계약에 없음).
+   별도 회원 조회 API가 필요하다 — **2026-08-11 그 API가 생겼다**: `GET /api/v1/users/me`
+   ([../member.md](../member.md)). 바꾸는 것도 같은 문서의 `PATCH /api/v1/users/me/nickname`이다.
 3. `agreed=false` 항목을 목록에 포함해도 된다. 다만 **필수 약관이 `agreed:true`로 없으면**
    `REQUIRED_TERMS_NOT_AGREED` 400이다.
 4. `termsId` 목록은 서버가 정하는 "현재 유효한 약관"이다. 하드코딩하면 약관이 개정될 때

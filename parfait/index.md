@@ -4,8 +4,10 @@
 
 ## 지금 상태 (1줄)
 Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록(#222로 실패 화면·pull-to-refresh·A-005 이동까지)·C-101 카메라 플로우까지 들어왔고 둘 다 **데이터·후속 화면 미결선** 상태다. 앱 진입 체인은 Splash→Login→TermAgree→GroupList로 이어졌다(#220). 디자인시스템은 Figma 바 3종(Top Bar Canvas·List-Date·Floating Bar)과 배경 블러(Haze, ADR-0018)까지 머지됐다(#188).
-서버 계약은 `api/`에 스냅샷돼 있다(도메인 5건·엔드포인트 16개 — 2026-08-10 image 2건 신설). Android 표면은
-14 엔드포인트까지 와 있고(PR #197) image 2건은 대응 심볼 0건이며, 어느 표면도 실서버 요청 경험은 없다.
+서버 계약은 `api/`에 스냅샷돼 있다(도메인 7건·엔드포인트 21개 — 2026-08-11 애플 로그인 1·member 2·
+parfait-image 2 신설). Android 표면은 여전히 14 엔드포인트고(PR #197) 나머지 7건은 대응 심볼 0건이며,
+어느 표면도 실서버 요청 경험은 없다. **카카오 로그인 응답 판별자 키가 계약과 어긋난다**(`@SerialName("newUser")`
+vs 실제 `isNewUser`) — 앱 수정 대상이다([api/auth.md](api/auth.md)).
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |
