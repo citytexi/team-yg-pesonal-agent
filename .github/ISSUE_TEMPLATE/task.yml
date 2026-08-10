@@ -1,0 +1,26 @@
+name: 작업
+description: 문서·스킬·툴링 작업을 등록한다
+title: "[TASK] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 무엇을
+      description: 하려는 일 한두 줄
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: 왜
+      description: 지금 무엇이 불편하거나 틀렸는지
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      description: 무엇이 되면 닫히는지
+    validations:
+      required: true

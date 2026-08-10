@@ -1,0 +1,33 @@
+name: 버그
+description: 스킬·스크립트·문서의 오류를 신고한다
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: input
+    id: target
+    attributes:
+      label: 대상
+      description: 스킬명·스크립트 경로·문서 경로
+      placeholder: parfait/script/oq_sync.py
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대한 동작
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 동작
+      description: 오류 메시지가 있으면 그대로 붙인다(요약하지 말 것)
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 절차
+      placeholder: |
+        1. python3 parfait/script/oq_sync.py plan
+        2. ...

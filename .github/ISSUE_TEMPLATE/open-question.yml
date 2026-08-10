@@ -1,0 +1,49 @@
+name: 미결 항목 (open question)
+description: 정책·구현에서 결정되지 않은 것을 등록한다
+title: "[OQ] "
+labels: ["oq:open"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **정본은 문서다.** 이 이슈는 `wiki/synthesis/open-questions.md` 또는
+        `parfait/synthesis/open-questions.md`에 옮겨져야 최종 추적된다.
+        `sync-open-questions` 스킬이 다음 실행에서 이 이슈를 "문서에 없는 항목"으로 보고한다.
+  - type: dropdown
+    id: series
+    attributes:
+      label: 계열
+      description: 정책·기획이면 wiki, 코드·계약·정합이면 parfait
+      options:
+        - wiki (정책·기획)
+        - parfait (구현·계약)
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: 출처
+      description: 근거가 되는 파일·심볼·문서. 라인번호가 아니라 파일명+심볼명으로 적는다
+      placeholder: "`component/ygbutton/YGButtonType.kt` — colors가 원자 색을 직접 참조"
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: 결정해야 할 것
+      description: 무엇을 정해야 하는지. 선택지가 있으면 ①②③으로 나눠 적는다
+    validations:
+      required: true
+  - type: input
+    id: status
+    attributes:
+      label: 상태
+      description: "`미해결` / `보류 (…)` / `부분 해소 (…)` 중 하나. 괄호 안 서술을 깎지 말 것"
+      value: 미해결
+    validations:
+      required: true
+  - type: textarea
+    id: memo
+    attributes:
+      label: 해소 조건
+      description: 무엇이 확정되면 닫히는지, 닫힐 때 어느 문서를 고쳐야 하는지
