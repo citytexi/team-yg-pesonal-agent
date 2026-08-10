@@ -12,7 +12,9 @@
 - 정본은 문서다. 이슈 → 문서 역방향 반영은 하지 않는다.
 """
 import hashlib
+import json
 import re
+import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -208,3 +210,170 @@ def issue_body(item, repo):
 
 def labels_for(item):
     return [SERIES_LABEL[item["series"]], STATE_LABEL[classify(item["status"])]]
+
+
+ACTION_KINDS = ["create", "update", "close", "reopen", "noop", "orphan", "unmanaged"]
+
+
+def gh(args, input_=None):
+    """`gh` CLI 래퍼. 실패하면 stderr를 담아 예외를 던진다."""
+    proc = subprocess.run(
+        ["gh"] + args, capture_output=True, text=True, input=input_
+    )
+    if proc.returncode != 0:
+        raise RuntimeError("gh %s 실패: %s" % (" ".join(args), (proc.stderr or proc.stdout).strip()))
+    return proc.stdout
+
+
+def current_repo():
+    return json.loads(gh(["repo", "view", "--json", "nameWithOwner"]))["nameWithOwner"]
+
+
+def fetch_issues():
+    """이슈 전량을 받아온다.
+
+    `--label`을 여러 번 주면 gh는 AND로 묶어 oq:wiki·oq:parfait 동시 지정 시
+    결과가 0건이 된다. 라벨로 거르지 않고 마커로 판별한다.
+    """
+    out = gh(
+        [
+            "issue", "list", "--state", "all", "--limit", "1000",
+            "--json", "number,title,body,state,labels",
+        ]
+    )
+    return json.loads(out)
+
+
+def _label_diff(current, wanted):
+    """우리가 관리하는 라벨만 대상으로 add/remove를 계산한다."""
+    managed = set(SERIES_LABEL.values()) | set(STATE_LABEL.values())
+    cur = set(current) & managed
+    want = set(wanted)
+    return sorted(want - cur), sorted(cur - want)
+
+
+def build_plan(items, issues, repo):
+    """문서 항목과 기존 이슈를 대조해 액션 계획을 만든다. 순수 함수."""
+    by_id = {}
+    actions = []
+    for iss in issues:
+        oq_id = marker(iss.get("body") or "", "oq-id")
+        if oq_id:
+            by_id[oq_id] = iss
+        elif (iss.get("state") or "").upper() == "OPEN":
+            actions.append(
+                {
+                    "action": "unmanaged",
+                    "oq_id": "",
+                    "issue": iss.get("number"),
+                    "title": iss.get("title") or "",
+                }
+            )
+
+    noop = 0
+    seen = set()
+    for it in items:
+        seen.add(it["oq_id"])
+        kind = classify(it["status"])
+        title = issue_title(it)
+        body = issue_body(it, repo)
+        wanted = labels_for(it)
+        iss = by_id.get(it["oq_id"])
+
+        if iss is None:
+            if kind == "resolved":
+                continue
+            actions.append(
+                {
+                    "action": "create",
+                    "oq_id": it["oq_id"],
+                    "title": title,
+                    "body": body,
+                    "labels": wanted,
+                }
+            )
+            continue
+
+        current = [l.get("name") for l in (iss.get("labels") or [])]
+        add, remove = _label_diff(current, wanted)
+        stale = (
+            marker(iss.get("body") or "", "oq-hash") != item_hash(it["body"])
+            or (iss.get("title") or "") != title
+        )
+        is_open = (iss.get("state") or "").upper() == "OPEN"
+
+        if is_open and kind == "resolved":
+            memo = field(it["body"], "해소 메모")
+            comment = "문서 상태가 `%s`로 바뀌어 닫는다." % it["status"]
+            if memo:
+                comment += "\n\n**해소 메모**: " + memo
+            actions.append(
+                {
+                    "action": "close",
+                    "oq_id": it["oq_id"],
+                    "issue": iss["number"],
+                    "comment": comment,
+                    "title": title,
+                    "body": body,
+                    "add_labels": add,
+                    "remove_labels": remove,
+                }
+            )
+        elif is_open and (stale or add or remove):
+            actions.append(
+                {
+                    "action": "update",
+                    "oq_id": it["oq_id"],
+                    "issue": iss["number"],
+                    "title": title,
+                    "body": body,
+                    "add_labels": add,
+                    "remove_labels": remove,
+                }
+            )
+        elif not is_open and kind != "resolved":
+            actions.append(
+                {
+                    "action": "reopen",
+                    "oq_id": it["oq_id"],
+                    "issue": iss["number"],
+                    "title": title,
+                    "body": body,
+                    "add_labels": add,
+                    "remove_labels": remove,
+                }
+            )
+        else:
+            noop += 1
+
+    for oq_id, iss in by_id.items():
+        if oq_id in seen:
+            continue
+        if (iss.get("state") or "").upper() != "OPEN":
+            continue
+        actions.append(
+            {
+                "action": "orphan",
+                "oq_id": oq_id,
+                "issue": iss["number"],
+                "title": iss.get("title") or "",
+            }
+        )
+
+    summary = {k: 0 for k in ACTION_KINDS}
+    summary["noop"] = noop
+    for a in actions:
+        summary[a["action"]] += 1
+    return {"repo": repo, "summary": summary, "actions": actions}
+
+
+def render_plan_table(plan):
+    lines = ["| 액션 | 건수 |", "|---|---|"]
+    for k in ACTION_KINDS:
+        lines.append("| %s | %d |" % (k, plan["summary"][k]))
+    for a in plan["actions"]:
+        if a["action"] in ("orphan", "unmanaged"):
+            lines.append(
+                "- %s: #%s %s" % (a["action"], a.get("issue"), a.get("title", ""))
+            )
+    return "\n".join(lines)

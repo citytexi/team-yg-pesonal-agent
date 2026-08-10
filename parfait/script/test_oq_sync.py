@@ -265,5 +265,132 @@ class RenderTest(unittest.TestCase):
         )
 
 
+def _item(oq_id, status="미해결", body="- **상태**: 미해결", series="P"):
+    return {
+        "series": series,
+        "doc": "parfait/synthesis/open-questions.md",
+        "date": "2026-07-10",
+        "title": "제목 " + oq_id,
+        "heading_text": "### [2026-07-10] 제목 " + oq_id,
+        "oq_id": oq_id,
+        "body": body,
+        "status": status,
+    }
+
+
+def _issue(number, oq_id, hash_, state="OPEN", labels=("oq:parfait", "oq:open"), title=None):
+    return {
+        "number": number,
+        "title": title or ("[%s] 제목 %s" % (oq_id, oq_id)),
+        "body": "<!-- oq-id: %s -->\n<!-- oq-hash: %s -->\n본문" % (oq_id, hash_),
+        "state": state,
+        "labels": [{"name": n} for n in labels],
+    }
+
+
+class BuildPlanTest(unittest.TestCase):
+    REPO = "citytexi/team-yg-pesonal-agent"
+
+    def test_new_unresolved_item_creates(self):
+        plan = oq_sync.build_plan([_item("OQ-P-001")], [], self.REPO)
+        self.assertEqual(plan["summary"]["create"], 1)
+        act = plan["actions"][0]
+        self.assertEqual(act["action"], "create")
+        self.assertEqual(act["labels"], ["oq:parfait", "oq:open"])
+
+    def test_new_resolved_item_is_skipped(self):
+        plan = oq_sync.build_plan([_item("OQ-P-001", status="해소됨 (2026-08-04)")], [], self.REPO)
+        self.assertEqual(plan["summary"]["create"], 0)
+        self.assertEqual(plan["actions"], [])
+
+    def test_same_hash_and_labels_is_noop(self):
+        it = _item("OQ-P-001")
+        iss = _issue(1, "OQ-P-001", oq_sync.item_hash(it["body"]), title=oq_sync.issue_title(it))
+        plan = oq_sync.build_plan([it], [iss], self.REPO)
+        self.assertEqual(plan["summary"]["noop"], 1)
+        self.assertEqual(plan["actions"], [])
+
+    def test_hash_change_updates(self):
+        it = _item("OQ-P-001", body="- **상태**: 미해결\n- **항목**: 새 내용")
+        iss = _issue(1, "OQ-P-001", "000000000000", title=oq_sync.issue_title(it))
+        plan = oq_sync.build_plan([it], [iss], self.REPO)
+        self.assertEqual(plan["summary"]["update"], 1)
+        self.assertEqual(plan["actions"][0]["issue"], 1)
+
+    def test_label_change_updates_with_add_and_remove(self):
+        it = _item("OQ-P-001", status="보류 (원격 연동 이후)")
+        iss = _issue(1, "OQ-P-001", oq_sync.item_hash(it["body"]), title=oq_sync.issue_title(it))
+        plan = oq_sync.build_plan([it], [iss], self.REPO)
+        act = plan["actions"][0]
+        self.assertEqual(act["action"], "update")
+        self.assertEqual(act["add_labels"], ["oq:blocked"])
+        self.assertEqual(act["remove_labels"], ["oq:open"])
+
+    def test_resolved_item_closes_with_comment(self):
+        it = _item(
+            "OQ-P-001",
+            status="해소됨 (2026-08-04, PR #190)",
+            body="- **상태**: 해소됨 (2026-08-04, PR #190)\n- **해소 메모**: 계약 확정.",
+        )
+        iss = _issue(1, "OQ-P-001", "000000000000")
+        plan = oq_sync.build_plan([it], [iss], self.REPO)
+        act = plan["actions"][0]
+        self.assertEqual(act["action"], "close")
+        self.assertIn("계약 확정.", act["comment"])
+        self.assertIn("해소됨 (2026-08-04, PR #190)", act["comment"])
+        self.assertEqual(act["add_labels"], ["oq:resolved"])
+
+    def test_closed_issue_reopens_when_doc_unresolved(self):
+        it = _item("OQ-P-001")
+        iss = _issue(1, "OQ-P-001", oq_sync.item_hash(it["body"]), state="CLOSED",
+                     labels=("oq:parfait", "oq:resolved"))
+        plan = oq_sync.build_plan([it], [iss], self.REPO)
+        act = plan["actions"][0]
+        self.assertEqual(act["action"], "reopen")
+        self.assertEqual(act["add_labels"], ["oq:open"])
+        self.assertEqual(act["remove_labels"], ["oq:resolved"])
+
+    def test_closed_and_resolved_is_noop(self):
+        it = _item("OQ-P-001", status="해소됨 (2026-08-04)")
+        iss = _issue(1, "OQ-P-001", oq_sync.item_hash(it["body"]), state="CLOSED",
+                     labels=("oq:parfait", "oq:resolved"))
+        plan = oq_sync.build_plan([it], [iss], self.REPO)
+        self.assertEqual(plan["actions"], [])
+
+    def test_missing_doc_item_is_orphan_not_closed(self):
+        iss = _issue(9, "OQ-P-099", "000000000000")
+        plan = oq_sync.build_plan([], [iss], self.REPO)
+        self.assertEqual(plan["summary"]["orphan"], 1)
+        self.assertEqual(plan["actions"][0]["action"], "orphan")
+
+    def test_issue_without_marker_is_unmanaged(self):
+        iss = {"number": 5, "title": "손으로 쓴 이슈", "body": "마커 없음", "state": "OPEN", "labels": []}
+        plan = oq_sync.build_plan([], [iss], self.REPO)
+        self.assertEqual(plan["summary"]["unmanaged"], 1)
+        self.assertEqual(plan["actions"][0]["action"], "unmanaged")
+
+    def test_closed_orphan_is_ignored(self):
+        iss = _issue(9, "OQ-P-099", "000000000000", state="CLOSED")
+        plan = oq_sync.build_plan([], [iss], self.REPO)
+        self.assertEqual(plan["summary"]["orphan"], 0)
+
+    def test_build_plan_never_touches_gh(self):
+        def boom(*a, **kw):
+            raise AssertionError("plan은 리모트에 쓰지 않는다")
+
+        original = oq_sync.gh
+        oq_sync.gh = boom
+        try:
+            oq_sync.build_plan([_item("OQ-P-001")], [], self.REPO)
+        finally:
+            oq_sync.gh = original
+
+    def test_render_plan_table_has_counts(self):
+        plan = oq_sync.build_plan([_item("OQ-P-001")], [], self.REPO)
+        table = oq_sync.render_plan_table(plan)
+        self.assertIn("create", table)
+        self.assertIn("1", table)
+
+
 if __name__ == "__main__":
     unittest.main()
