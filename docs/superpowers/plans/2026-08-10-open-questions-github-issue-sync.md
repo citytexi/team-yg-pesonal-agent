@@ -1354,7 +1354,7 @@ Expected: PASS — 55 tests
 - [ ] **Step 5: CLI가 붙었는지 확인한다**
 
 Run: `python3 parfait/script/oq_sync.py --help && python3 parfait/script/oq_sync.py assign-ids --check`
-Expected: 서브커맨드 3종이 보이고, `--check`가 미부여 건수(138 근처)를 출력하며 종료 코드 1
+Expected: 서브커맨드 3종이 보이고, `--check`가 미부여 건수(136)를 출력하며 종료 코드 1
 
 - [ ] **Step 6: 커밋한다**
 
@@ -1641,12 +1641,12 @@ Run:
 python3 parfait/script/oq_sync.py assign-ids --check
 grep -c '^### \[' wiki/synthesis/open-questions.md parfait/synthesis/open-questions.md
 ```
-Expected: 미부여 138건 안팎, wiki 26 / parfait 112
+Expected: 미부여 136건, wiki 25 / parfait 111 (파서 실측값. `grep -c '^### \['`는 주석 안 템플릿 2건을 더 세어 138이 나온다 — 정상)
 
 - [ ] **Step 2: ID를 부여한다**
 
 Run: `python3 parfait/script/oq_sync.py assign-ids`
-Expected: `OQ-W-001`~`OQ-W-026`, `OQ-P-001`~`OQ-P-112` 목록 출력 후 `부여 138건`
+Expected: `OQ-W-001`~`OQ-W-025`, `OQ-P-001`~`OQ-P-111` 목록 출력 후 `부여 136건`
 
 - [ ] **Step 3: 헤딩이 안 바뀌었는지 확인한다**
 
@@ -1676,7 +1676,7 @@ from collections import Counter
 print(Counter(oq_sync.classify(i['status']) for i in items))
 "
 ```
-Expected: 총 138, 분류 카운트 출력(`resolved` 20건 안팎). 예외 없이 끝나야 한다 — `SystemExit`가 나면 ID 미부여 항목이 남은 것이다
+Expected: 총 136, 분류 카운트 출력(`resolved` 20건 안팎). 예외 없이 끝나야 한다 — `SystemExit`가 나면 ID 미부여 항목이 남은 것이다
 
 - [ ] **Step 7: 커밋한다**
 
@@ -1697,5 +1697,5 @@ git commit -m "docs(oq): open-questions 항목에 안정 ID 부여
 2. 요약 표 보고 → **사용자 승인**
 3. `python3 parfait/script/oq_sync.py apply <스크래치패드>/oq-plan.json`
 
-첫 실행은 118건 안팎을 만든다. 나눠 받으려면 `--limit`을 쓴다.
+첫 실행은 115건 안팎을 만든다(136 − `해소됨` 약 21건). 나눠 받으려면 `--limit`을 쓴다.
 브랜치 push와 PR도 사용자 확인 후에 한다(`CLAUDE.md`).
