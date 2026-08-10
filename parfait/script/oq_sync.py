@@ -30,6 +30,24 @@ STATUS_RE = re.compile(r"^- \*\*상태\*\*:\s*(.+?)\s*$", re.M)
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 NEXT_RE = re.compile(r"<!--\s*oq-next:\s*(\d+)\s*-->")
 
+SERIES_LABEL = {"W": "oq:wiki", "P": "oq:parfait"}
+STATE_LABEL = {
+    "open": "oq:open",
+    "partial": "oq:partial",
+    "blocked": "oq:blocked",
+    "resolved": "oq:resolved",
+}
+LABEL_SPECS = [
+    {"name": "oq:wiki", "color": "0075ca", "desc": "정책·기획 미결(wiki open-questions)"},
+    {"name": "oq:parfait", "color": "5319e7", "desc": "구현·계약 미결(parfait open-questions)"},
+    {"name": "oq:open", "color": "d73a4a", "desc": "미결"},
+    {"name": "oq:partial", "color": "fbca04", "desc": "부분 해소 — 잔존 항목 있음"},
+    {"name": "oq:blocked", "color": "cfd3d7", "desc": "보류"},
+    {"name": "oq:resolved", "color": "0e8a16", "desc": "해소됨"},
+]
+TITLE_LIMIT = 256
+SOT_NOTE = "> 정본은 문서다. 이 이슈는 투영이며, 여기서 본문을 고쳐도 다음 동기화에 덮어써진다."
+
 
 def strip_html_comments(text):
     """HTML 주석을 공백으로 치환한다 — 길이와 줄 수를 보존한다.
@@ -148,3 +166,45 @@ def assign_ids(text, series):
     pieces.append(text[cursor:])
     out = "".join(pieces)
     return _write_next_marker(out, counter), assigned
+
+
+def marker(body, name):
+    """이슈 본문의 `<!-- name: 값 -->` 마커를 읽는다."""
+    m = re.search(r"<!--\s*" + re.escape(name) + r":\s*(.+?)\s*-->", body or "")
+    return m.group(1).strip() if m else ""
+
+
+def issue_title(item):
+    t = re.sub(r"[`*]", "", item["title"]).strip()
+    prefix = "[%s] " % item["oq_id"]
+    limit = TITLE_LIMIT - len(prefix)
+    if len(t) > limit:
+        t = t[: limit - 1] + "…"
+    return prefix + t
+
+
+def issue_body(item, repo):
+    url = "https://github.com/%s/blob/main/%s#%s" % (
+        repo,
+        item["doc"],
+        github_anchor(item["heading_text"]),
+    )
+    return "\n".join(
+        [
+            "<!-- oq-id: %s -->" % item["oq_id"],
+            "<!-- oq-hash: %s -->" % item_hash(item["body"]),
+            "<!-- oq-source: %s -->" % item["doc"],
+            "",
+            SOT_NOTE,
+            "> 원본: [%s](%s)" % (item["doc"], url),
+            "",
+            "**발견일**: %s" % item["date"],
+            "",
+            item["body"],
+            "",
+        ]
+    )
+
+
+def labels_for(item):
+    return [SERIES_LABEL[item["series"]], STATE_LABEL[classify(item["status"])]]

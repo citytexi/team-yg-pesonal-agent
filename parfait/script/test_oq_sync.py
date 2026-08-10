@@ -199,5 +199,71 @@ class AssignIdsTest(unittest.TestCase):
         self.assertNotIn("**ID**", out.split("<!--")[1])
 
 
+class RenderTest(unittest.TestCase):
+    ITEM = {
+        "series": "P",
+        "doc": "parfait/synthesis/open-questions.md",
+        "date": "2026-07-10",
+        "title": "YGButton `토큰` 규칙 **미확정**",
+        "heading_text": "### [2026-07-10] YGButton 토큰 규칙 미확정",
+        "oq_id": "OQ-P-001",
+        "body": "- **출처**: 가\n- **상태**: 미해결",
+        "status": "미해결",
+    }
+
+    def test_title_has_id_prefix_and_no_inline_markdown(self):
+        self.assertEqual(
+            oq_sync.issue_title(self.ITEM), "[OQ-P-001] YGButton 토큰 규칙 미확정"
+        )
+
+    def test_title_truncated_at_256(self):
+        item = dict(self.ITEM, title="가" * 400)
+        t = oq_sync.issue_title(item)
+        self.assertLessEqual(len(t), 256)
+        self.assertTrue(t.endswith("…"))
+
+    def test_body_has_three_markers(self):
+        body = oq_sync.issue_body(self.ITEM, "citytexi/team-yg-pesonal-agent")
+        self.assertIn("<!-- oq-id: OQ-P-001 -->", body)
+        self.assertIn("<!-- oq-hash: %s -->" % oq_sync.item_hash(self.ITEM["body"]), body)
+        self.assertIn("<!-- oq-source: parfait/synthesis/open-questions.md -->", body)
+
+    def test_body_has_absolute_permalink_with_anchor(self):
+        body = oq_sync.issue_body(self.ITEM, "citytexi/team-yg-pesonal-agent")
+        self.assertIn(
+            "https://github.com/citytexi/team-yg-pesonal-agent/blob/main/"
+            "parfait/synthesis/open-questions.md#2026-07-10-ygbutton-토큰-규칙-미확정",
+            body,
+        )
+
+    def test_body_carries_source_text_verbatim(self):
+        body = oq_sync.issue_body(self.ITEM, "o/r")
+        self.assertIn("- **출처**: 가", body)
+        self.assertIn("- **상태**: 미해결", body)
+
+    def test_body_states_document_is_source_of_truth(self):
+        body = oq_sync.issue_body(self.ITEM, "o/r")
+        self.assertIn("정본은 문서다", body)
+
+    def test_labels(self):
+        self.assertEqual(oq_sync.labels_for(self.ITEM), ["oq:parfait", "oq:open"])
+        blocked = dict(self.ITEM, status="보류 (원격 연동 이후)")
+        self.assertEqual(oq_sync.labels_for(blocked), ["oq:parfait", "oq:blocked"])
+        wiki = dict(self.ITEM, series="W", status="해소됨 (2026-08-04)")
+        self.assertEqual(oq_sync.labels_for(wiki), ["oq:wiki", "oq:resolved"])
+
+    def test_marker_roundtrip(self):
+        body = oq_sync.issue_body(self.ITEM, "o/r")
+        self.assertEqual(oq_sync.marker(body, "oq-id"), "OQ-P-001")
+        self.assertEqual(oq_sync.marker(body, "없음"), "")
+
+    def test_label_specs_cover_every_label(self):
+        names = {spec["name"] for spec in oq_sync.LABEL_SPECS}
+        self.assertEqual(
+            names,
+            set(oq_sync.SERIES_LABEL.values()) | set(oq_sync.STATE_LABEL.values()),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
