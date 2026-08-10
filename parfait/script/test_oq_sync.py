@@ -1,4 +1,8 @@
+import json
+import tempfile
+import types
 import unittest
+from pathlib import Path
 
 import oq_sync
 
@@ -386,16 +390,89 @@ class BuildPlanTest(unittest.TestCase):
             oq_sync.gh = original
 
     def test_render_plan_table_has_counts(self):
-        plan = oq_sync.build_plan([_item("OQ-P-001")], [], self.REPO)
+        it1 = _item("OQ-P-001")
+        it2 = _item("OQ-P-002", status="보류 (원격 연동 이후)")
+        plan = oq_sync.build_plan([it1, it2], [], self.REPO)
         table = oq_sync.render_plan_table(plan)
-        self.assertIn("create", table)
-        self.assertIn("1", table)
+        # 액션 종류별 건수 줄 자체를 검증한다(문자열 "1"이 어딘가 있는지가 아니라).
+        self.assertIn("| create | 2 |", table)
+        self.assertIn("| update | 0 |", table)
+        self.assertIn("| close | 0 |", table)
+        self.assertIn("| reopen | 0 |", table)
+        self.assertIn("| noop | 0 |", table)
+        self.assertIn("| orphan | 0 |", table)
+        self.assertIn("| unmanaged | 0 |", table)
+        self.assertIn("| duplicate | 0 |", table)
+
+    def test_render_plan_table_lists_orphan_unmanaged_duplicate_individually(self):
+        plan = {
+            "repo": self.REPO,
+            "summary": {k: 0 for k in oq_sync.ACTION_KINDS},
+            "actions": [
+                {"action": "orphan", "oq_id": "OQ-P-099", "issue": 9, "title": "고아"},
+                {"action": "unmanaged", "oq_id": "", "issue": 5, "title": "수동"},
+                {"action": "duplicate", "oq_id": "OQ-P-001", "issue": 12, "title": "중복"},
+            ],
+        }
+        table = oq_sync.render_plan_table(plan)
+        self.assertIn("- orphan: #9 고아", table)
+        self.assertIn("- unmanaged: #5 수동", table)
+        self.assertIn("- duplicate: #12 중복", table)
+
+
+class LabelDiffTest(unittest.TestCase):
+    """`_label_diff`는 우리가 관리하는 라벨(oq:* 계열)만 대상으로 한다."""
+
+    def test_managed_label_add_and_remove(self):
+        add, remove = oq_sync._label_diff(["oq:open"], ["oq:blocked"])
+        self.assertEqual(add, ["oq:blocked"])
+        self.assertEqual(remove, ["oq:open"])
+
+    def test_unmanaged_label_is_preserved_not_removed(self):
+        # "bug"는 관리 대상이 아니므로 wanted에 없어도 remove 대상에 들어가면 안 된다.
+        add, remove = oq_sync._label_diff(["oq:open", "bug"], ["oq:open"])
+        self.assertEqual(add, [])
+        self.assertEqual(remove, [])
+
+    def test_unmanaged_label_does_not_block_needed_add(self):
+        add, remove = oq_sync._label_diff(["bug"], ["oq:parfait", "oq:open"])
+        self.assertEqual(sorted(add), ["oq:open", "oq:parfait"])
+        self.assertEqual(remove, [])
+
+
+class DuplicateActionTest(unittest.TestCase):
+    """같은 oq-id가 여러 OPEN 이슈에 있을 때: 조용히 사라지지 않고 duplicate로 보고한다."""
+
+    REPO = "citytexi/team-yg-pesonal-agent"
+
+    def test_two_open_issues_same_id_reports_duplicate_and_keeps_smallest(self):
+        it = _item("OQ-P-001")
+        iss_small = _issue(5, "OQ-P-001", oq_sync.item_hash(it["body"]), title=oq_sync.issue_title(it))
+        iss_big = _issue(9, "OQ-P-001", "000000000000", title="다른 제목")
+        # 순서를 뒤섞어도(입력 순서가 아니라 이슈 번호로) 대표를 골라야 한다.
+        plan = oq_sync.build_plan([it], [iss_big, iss_small], self.REPO)
+        self.assertEqual(plan["summary"]["duplicate"], 1)
+        dup = [a for a in plan["actions"] if a["action"] == "duplicate"][0]
+        self.assertEqual(dup["issue"], 9)
+        self.assertEqual(dup["oq_id"], "OQ-P-001")
+        # 대표(#5, 해시·제목 동일)로 매칭되므로 create/update가 따로 생기면 안 된다.
+        self.assertNotIn("create", [a["action"] for a in plan["actions"]])
+        self.assertNotIn("update", [a["action"] for a in plan["actions"]])
+
+    def test_closed_duplicate_is_not_reported(self):
+        it = _item("OQ-P-001")
+        iss_open = _issue(5, "OQ-P-001", oq_sync.item_hash(it["body"]), title=oq_sync.issue_title(it))
+        iss_closed = _issue(9, "OQ-P-001", "000000000000", state="CLOSED")
+        plan = oq_sync.build_plan([it], [iss_open, iss_closed], self.REPO)
+        self.assertEqual(plan["summary"]["duplicate"], 0)
 
 
 class ApplyTest(unittest.TestCase):
     def setUp(self):
         self.calls = []
         self._orig = oq_sync.gh
+        self._orig_interval = oq_sync.WRITE_INTERVAL_SEC
+        oq_sync.WRITE_INTERVAL_SEC = 0  # 테스트가 실제로 대기하면 안 된다
 
         def fake(args, input_=None):
             self.calls.append((list(args), input_))
@@ -405,6 +482,7 @@ class ApplyTest(unittest.TestCase):
 
     def tearDown(self):
         oq_sync.gh = self._orig
+        oq_sync.WRITE_INTERVAL_SEC = self._orig_interval
 
     def _cmds(self):
         return [" ".join(c[0][:3]) for c in self.calls]
@@ -479,6 +557,10 @@ class ApplyTest(unittest.TestCase):
         oq_sync.apply_action({"action": "unmanaged", "oq_id": "", "issue": 5, "title": "y"})
         self.assertEqual(self.calls, [])
 
+    def test_duplicate_does_nothing(self):
+        oq_sync.apply_action({"action": "duplicate", "oq_id": "OQ-P-001", "issue": 9, "title": "x"})
+        self.assertEqual(self.calls, [])
+
     def test_apply_plan_collects_failures_and_continues(self):
         def flaky(args, input_=None):
             self.calls.append((list(args), input_))
@@ -512,12 +594,205 @@ class ApplyTest(unittest.TestCase):
         oq_sync.apply_plan(plan, limit=2)
         self.assertEqual(len(self.calls), 2)
 
+    def test_apply_plan_ignores_duplicate_action(self):
+        plan = {
+            "repo": "o/r",
+            "summary": {},
+            "actions": [
+                {"action": "duplicate", "oq_id": "OQ-P-001", "issue": 9, "title": "x"},
+            ],
+        }
+        failures = oq_sync.apply_plan(plan)
+        self.assertEqual(self.calls, [])
+        self.assertEqual(failures, [])
+
     def test_ensure_labels_uses_force(self):
         oq_sync.ensure_labels()
         for args, _ in self.calls:
             self.assertEqual(args[:2], ["label", "create"])
             self.assertIn("--force", args)
         self.assertEqual(len(self.calls), len(oq_sync.LABEL_SPECS))
+
+
+class ApplyPlanThrottleTest(unittest.TestCase):
+    """연속 실패 중단(Important 4)과 쓰기 간격을 검증한다."""
+
+    def setUp(self):
+        self.calls = []
+        self._orig_gh = oq_sync.gh
+        self._orig_interval = oq_sync.WRITE_INTERVAL_SEC
+        oq_sync.WRITE_INTERVAL_SEC = 0
+
+    def tearDown(self):
+        oq_sync.gh = self._orig_gh
+        oq_sync.WRITE_INTERVAL_SEC = self._orig_interval
+
+    def _plan_with(self, n):
+        return {
+            "repo": "o/r",
+            "summary": {},
+            "actions": [
+                {"action": "create", "oq_id": "OQ-P-%03d" % i, "title": "t", "body": "b", "labels": []}
+                for i in range(1, n + 1)
+            ],
+        }
+
+    def test_stops_after_max_consecutive_failures(self):
+        def always_fail(args, input_=None):
+            self.calls.append(args)
+            raise RuntimeError("boom")
+
+        oq_sync.gh = always_fail
+        plan = self._plan_with(9)
+        failures = oq_sync.apply_plan(plan)
+        # MAX_CONSECUTIVE_FAILURES건 실패한 시점에 중단 — 나머지는 실행하지 않는다.
+        self.assertEqual(len(self.calls), oq_sync.MAX_CONSECUTIVE_FAILURES)
+        self.assertEqual(len(failures), oq_sync.MAX_CONSECUTIVE_FAILURES)
+
+    def test_success_resets_consecutive_failure_counter(self):
+        # 4번 실패 → 1번 성공(리셋) → 4번 실패: 연속 실패가 5에 도달한 적이 없으므로 끝까지 돈다.
+        pattern = ["fail"] * 4 + ["ok"] + ["fail"] * 4
+        self.assertLess(4, oq_sync.MAX_CONSECUTIVE_FAILURES)
+
+        def scripted(args, input_=None):
+            step = pattern[len(self.calls)]
+            self.calls.append(args)
+            if step == "fail":
+                raise RuntimeError("boom")
+            return "{}"
+
+        oq_sync.gh = scripted
+        plan = self._plan_with(len(pattern))
+        failures = oq_sync.apply_plan(plan)
+        self.assertEqual(len(self.calls), len(pattern))
+        self.assertEqual(len(failures), 8)
+
+    def test_sleeps_between_write_actions(self):
+        class FakeTime:
+            def __init__(self):
+                self.sleeps = []
+
+            def sleep(self, seconds):
+                self.sleeps.append(seconds)
+
+        def ok(args, input_=None):
+            self.calls.append(args)
+            return "{}"
+
+        oq_sync.gh = ok
+        oq_sync.WRITE_INTERVAL_SEC = 0.01
+        fake_time = FakeTime()
+        orig_time = oq_sync.time
+        oq_sync.time = fake_time
+        try:
+            oq_sync.apply_plan(self._plan_with(3))
+        finally:
+            oq_sync.time = orig_time
+        self.assertEqual(fake_time.sleeps, [0.01, 0.01, 0.01])
+
+
+class GhSubprocessTest(unittest.TestCase):
+    """`gh`가 cwd와 무관하게 항상 repo 루트에서 실행되는지 검증한다(Important 2)."""
+
+    def test_gh_runs_with_repo_root_cwd(self):
+        captured = {}
+
+        def fake_run(cmd, **kwargs):
+            captured["cmd"] = cmd
+            captured["cwd"] = kwargs.get("cwd")
+
+            class Result:
+                returncode = 0
+                stdout = "ok"
+                stderr = ""
+
+            return Result()
+
+        orig_run = oq_sync.subprocess.run
+        oq_sync.subprocess.run = fake_run
+        try:
+            oq_sync.gh(["repo", "view"])
+        finally:
+            oq_sync.subprocess.run = orig_run
+        self.assertEqual(captured["cwd"], str(oq_sync.REPO_ROOT))
+
+
+class CmdApplyGuardTest(unittest.TestCase):
+    """plan 재사용 차단(Critical 1)과 repo 불일치 중단(Important 3)을 검증한다."""
+
+    REPO = "citytexi/team-yg-pesonal-agent"
+
+    def setUp(self):
+        self._orig_gh = oq_sync.gh
+        self._orig_interval = oq_sync.WRITE_INTERVAL_SEC
+        oq_sync.WRITE_INTERVAL_SEC = 0
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+
+    def tearDown(self):
+        oq_sync.gh = self._orig_gh
+        oq_sync.WRITE_INTERVAL_SEC = self._orig_interval
+
+    def _write_plan(self, repo=None, actions=None):
+        plan = {
+            "repo": repo if repo is not None else self.REPO,
+            "summary": {k: 0 for k in oq_sync.ACTION_KINDS},
+            "actions": actions or [],
+        }
+        path = Path(self.tmpdir.name) / "plan.json"
+        path.write_text(json.dumps(plan, ensure_ascii=False), encoding="utf-8")
+        return path
+
+    def test_refuses_when_already_applied_marker_exists(self):
+        plan_path = self._write_plan()
+        marker_path = Path(str(plan_path) + oq_sync.PLAN_APPLIED_SUFFIX)
+        marker_path.write_text("applied\n", encoding="utf-8")
+
+        def boom(args, input_=None):
+            raise AssertionError("이미 applied된 계획은 gh를 호출하면 안 된다")
+
+        oq_sync.gh = boom
+        args = types.SimpleNamespace(plan=str(plan_path), limit=None)
+        with self.assertRaises(SystemExit):
+            oq_sync.cmd_apply(args)
+
+    def test_refuses_when_repo_mismatch(self):
+        plan_path = self._write_plan(repo="someone/other-repo")
+
+        def fake_gh(args, input_=None):
+            if args[:2] == ["repo", "view"]:
+                return json.dumps({"nameWithOwner": self.REPO})
+            raise AssertionError("repo 불일치면 쓰기 gh 호출이 발생하면 안 된다: %s" % args)
+
+        oq_sync.gh = fake_gh
+        args = types.SimpleNamespace(plan=str(plan_path), limit=None)
+        with self.assertRaises(SystemExit):
+            oq_sync.cmd_apply(args)
+
+    def test_writes_marker_after_apply_and_blocks_rerun(self):
+        plan_path = self._write_plan(
+            actions=[{"action": "create", "oq_id": "OQ-P-001", "title": "t", "body": "b", "labels": []}]
+        )
+
+        def fake_gh(args, input_=None):
+            if args[:2] == ["repo", "view"]:
+                return json.dumps({"nameWithOwner": self.REPO})
+            return "{}"
+
+        oq_sync.gh = fake_gh
+        args = types.SimpleNamespace(plan=str(plan_path), limit=None)
+        code = oq_sync.cmd_apply(args)
+        self.assertEqual(code, 0)
+
+        marker_path = Path(str(plan_path) + oq_sync.PLAN_APPLIED_SUFFIX)
+        self.assertTrue(marker_path.exists())
+
+        def boom(args, input_=None):
+            raise AssertionError("재적용 시도는 gh를 호출하면 안 된다")
+
+        oq_sync.gh = boom
+        with self.assertRaises(SystemExit):
+            oq_sync.cmd_apply(args)
 
 
 if __name__ == "__main__":

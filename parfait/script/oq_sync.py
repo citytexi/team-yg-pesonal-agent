@@ -17,6 +17,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -50,7 +51,15 @@ LABEL_SPECS = [
     {"name": "oq:resolved", "color": "0e8a16", "desc": "해소됨"},
 ]
 TITLE_LIMIT = 256
-SOT_NOTE = "> 정본은 문서다. 이 이슈는 투영이며, 여기서 본문을 고쳐도 다음 동기화에 덮어써진다."
+SOT_NOTE = (
+    "> 정본은 문서다. 이 이슈는 문서의 투영이며, 문서가 바뀌면 이 본문은 덮어써진다. "
+    "여기서 고친 내용은 문서에 반영되지 않는다."
+)
+
+ISSUE_FETCH_LIMIT = 1000  # `gh issue list --limit` 상한. 도달하면 계획이 잘릴 수 있다(경고 출력).
+WRITE_INTERVAL_SEC = 1.0  # 쓰기 액션 사이 대기(2차 rate limit 방어). 테스트에서 0으로 낮춘다.
+MAX_CONSECUTIVE_FAILURES = 5  # 연속 실패 시 중단(대량 실패로 rate limit을 계속 두드리는 것을 막는다).
+PLAN_APPLIED_SUFFIX = ".applied"  # 계획 파일 소비 표시 마커의 접미사.
 
 
 def strip_html_comments(text):
@@ -214,13 +223,19 @@ def labels_for(item):
     return [SERIES_LABEL[item["series"]], STATE_LABEL[classify(item["status"])]]
 
 
-ACTION_KINDS = ["create", "update", "close", "reopen", "noop", "orphan", "unmanaged"]
+ACTION_KINDS = ["create", "update", "close", "reopen", "noop", "orphan", "unmanaged", "duplicate"]
+NO_WRITE_KINDS = ("orphan", "unmanaged", "noop", "duplicate")  # apply가 건드리지 않는 액션(보고 전용 포함)
 
 
 def gh(args, input_=None):
-    """`gh` CLI 래퍼. 실패하면 stderr를 담아 예외를 던진다."""
+    """`gh` CLI 래퍼. 실패하면 stderr를 담아 예외를 던진다.
+
+    `cwd`를 repo 루트로 고정한다 — 지정하지 않으면 실행 시점의 cwd에 있는 리모트를
+    따라가서, 다른 저장소 디렉토리에서 실행하면 그쪽에 이슈가 생긴다. 이 도구는
+    이 저장소 하나만 대상으로 한다.
+    """
     proc = subprocess.run(
-        ["gh"] + args, capture_output=True, text=True, input=input_
+        ["gh"] + args, capture_output=True, text=True, input=input_, cwd=str(REPO_ROOT)
     )
     if proc.returncode != 0:
         raise RuntimeError("gh %s 실패: %s" % (" ".join(args), (proc.stderr or proc.stdout).strip()))
@@ -239,11 +254,16 @@ def fetch_issues():
     """
     out = gh(
         [
-            "issue", "list", "--state", "all", "--limit", "1000",
+            "issue", "list", "--state", "all", "--limit", str(ISSUE_FETCH_LIMIT),
             "--json", "number,title,body,state,labels",
         ]
     )
-    return json.loads(out)
+    data = json.loads(out)
+    if len(data) >= ISSUE_FETCH_LIMIT:
+        print(
+            "경고: 이슈 조회가 상한 %d건에 도달했다. 계획이 부정확할 수 있다." % ISSUE_FETCH_LIMIT
+        )
+    return data
 
 
 def _label_diff(current, wanted):
@@ -256,12 +276,12 @@ def _label_diff(current, wanted):
 
 def build_plan(items, issues, repo):
     """문서 항목과 기존 이슈를 대조해 액션 계획을 만든다. 순수 함수."""
-    by_id = {}
+    groups = {}
     actions = []
     for iss in issues:
         oq_id = marker(iss.get("body") or "", "oq-id")
         if oq_id:
-            by_id[oq_id] = iss
+            groups.setdefault(oq_id, []).append(iss)
         elif (iss.get("state") or "").upper() == "OPEN":
             actions.append(
                 {
@@ -271,6 +291,23 @@ def build_plan(items, issues, repo):
                     "title": iss.get("title") or "",
                 }
             )
+
+    # 같은 oq-id가 2건 이상이면 이슈 번호가 가장 작은 것(먼저 만들어진 것)을 대표로 남기고
+    # 나머지 중 OPEN인 것은 duplicate로 보고한다(자동으로 닫지 않는다 — orphan과 같은 철학).
+    by_id = {}
+    for oq_id, group in groups.items():
+        group_sorted = sorted(group, key=lambda g: g.get("number") or 0)
+        by_id[oq_id] = group_sorted[0]
+        for extra in group_sorted[1:]:
+            if (extra.get("state") or "").upper() == "OPEN":
+                actions.append(
+                    {
+                        "action": "duplicate",
+                        "oq_id": oq_id,
+                        "issue": extra.get("number"),
+                        "title": extra.get("title") or "",
+                    }
+                )
 
     noop = 0
     seen = set()
@@ -374,7 +411,7 @@ def render_plan_table(plan):
     for k in ACTION_KINDS:
         lines.append("| %s | %d |" % (k, plan["summary"][k]))
     for a in plan["actions"]:
-        if a["action"] in ("orphan", "unmanaged"):
+        if a["action"] in ("orphan", "unmanaged", "duplicate"):
             lines.append(
                 "- %s: #%s %s" % (a["action"], a.get("issue"), a.get("title", ""))
             )
@@ -404,9 +441,9 @@ def _edit_args(act):
 
 
 def apply_action(act):
-    """액션 하나를 실행한다. orphan·unmanaged는 보고 전용이라 아무것도 하지 않는다."""
+    """액션 하나를 실행한다. orphan·unmanaged·duplicate는 보고 전용이라 아무것도 하지 않는다."""
     kind = act["action"]
-    if kind in ("orphan", "unmanaged", "noop"):
+    if kind in NO_WRITE_KINDS:
         return
     if kind == "create":
         args = ["issue", "create", "--title", act["title"], "--body-file", "-"]
@@ -427,19 +464,37 @@ def apply_action(act):
 
 
 def apply_plan(plan, limit=None):
-    """계획을 순차 실행하고 실패 목록을 돌려준다. 실패해도 나머지를 계속 실행한다."""
-    actions = [a for a in plan["actions"] if a["action"] not in ("orphan", "unmanaged", "noop")]
+    """계획을 순차 실행하고 실패 목록을 돌려준다.
+
+    쓰기 액션 사이 `WRITE_INTERVAL_SEC`만큼 대기하고, 연속 실패가
+    `MAX_CONSECUTIVE_FAILURES`에 도달하면 남은 액션을 실행하지 않고 중단한다
+    (GitHub 2차 rate limit — 콘텐츠 생성 분당 약 80건 — 을 계속 두드리는 것을 막는다).
+    성공하면 연속 실패 카운터는 0으로 리셋한다.
+    """
+    actions = [a for a in plan["actions"] if a["action"] not in NO_WRITE_KINDS]
     if limit is not None:
         actions = actions[:limit]
     failures = []
+    consecutive_failures = 0
     for i, act in enumerate(actions, 1):
         label = "%s %s" % (act["action"], act.get("oq_id") or act.get("issue"))
         try:
             apply_action(act)
             print("[%d/%d] %s" % (i, len(actions), label))
-        except Exception as exc:  # noqa: BLE001 — 실패해도 나머지를 계속 실행한다
+            consecutive_failures = 0
+        except Exception as exc:  # noqa: BLE001 — 실패해도 나머지를 계속 실행한다(단, 연속 실패는 중단)
             failures.append((act.get("oq_id", ""), str(exc)))
+            consecutive_failures += 1
             print("[%d/%d] 실패 %s — %s" % (i, len(actions), label, exc))
+            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                remaining = len(actions) - i
+                print(
+                    "연속 실패 %d건으로 중단한다. 남은 %d건은 실행하지 않았다."
+                    % (consecutive_failures, remaining)
+                )
+                return failures
+        if WRITE_INTERVAL_SEC:
+            time.sleep(WRITE_INTERVAL_SEC)
     return failures
 
 
@@ -491,9 +546,27 @@ def cmd_plan(args):
 
 
 def cmd_apply(args):
-    plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
+    plan_path = Path(args.plan)
+    marker_path = Path(str(plan_path) + PLAN_APPLIED_SUFFIX)
+    if marker_path.exists():
+        raise SystemExit(
+            "이 계획은 이미 apply됐다(%s). 같은 계획 파일에는 실행 이력이 없어 재실행하면 "
+            "이미 만든 이슈를 다시 만든다. plan을 다시 산출한 뒤 apply하라." % marker_path
+        )
+
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+
+    plan_repo = plan.get("repo")
+    repo = current_repo()
+    if plan_repo != repo:
+        raise SystemExit(
+            "계획의 repo(%s)가 현재 repo(%s)와 다르다. 이 도구는 이 저장소 하나만 대상으로 "
+            "한다 — plan을 다시 산출하라." % (plan_repo, repo)
+        )
+
     ensure_labels()
     failures = apply_plan(plan, limit=args.limit)
+    marker_path.write_text("applied\n", encoding="utf-8")
     if failures:
         print("\n실패 %d건:" % len(failures))
         for oq_id, msg in failures:
