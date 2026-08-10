@@ -218,7 +218,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-30] 사진 업로드 경로의 타임아웃 정책 미정
 - **출처**: `data/di/NetworkModule.kt#provideOkHttpClient`(PR #174 develop 머지, 2026-08-01) — 단일 `OkHttpClient`가 connect/read/write 타임아웃을 모든 호출에 공통 적용하고 `callTimeout`은 설정하지 않는다(=전체 소요 무제한). 코드리뷰에서 30초가 과하다는 지적을 받아 값을 낮췄으나, 토핑 사진 업로드(누끼 PNG) API는 아직 없어 실제 전송·서버 처리 시간을 모른 채 정한 값이다. OkHttp의 read/write는 전체 전송 시간이 아니라 바이트 간 유휴 상한이라, 업로드가 느린 것 자체는 이 값으로 잡히지 않는다.
 - **항목**: ① 업로드 API 확정 후 전체 소요 상한(`callTimeout`)을 둘지 — 두면 스피너·취소 UX와 값이 묶인다. ② 업로드 전용 `OkHttpClient`(`@Qualifier`)를 분리해 read/write만 늘릴지, 아니면 단일 클라이언트 값을 상향할지. ③ 실패 시 재시도(멱등성 확인 필요)를 어디에 둘지 — 인터셉터 vs 호출부.
-- **상태**: 미해결 (업로드 API 미구현 — 값 확정에 필요한 실측 데이터 없음)
+- **상태**: 미해결 (실측 대기 — **보류 사유였던 "업로드 API 미구현"은 2026-08-10 해소됐다**)
+  > 📌 **전제가 사라졌다(2026-08-10, 서버 `5bb2a3a`)** — 업로드 API가 [api/image.md](../api/image.md)로 들어왔고, 형태가 예상과 다르다. **바이트가 서버를 지나지 않는다**(S3 presigned PUT 직접 업로드). 그래서 타임아웃 결정 대상이 `YG_BASE_URL` 호출이 아니라 **S3로 나가는 PUT**이다 — 이 요청은 Retrofit 서비스가 아니므로 ②의 "업로드 전용 `OkHttpClient` 분리"는 선택이 아니라 사실상 전제가 되고, ③ 재시도는 `expiresIn` 만료 시 URL 재발급이 선행돼야 한다(만료된 presigned URL은 재시도해도 실패한다). ①의 `callTimeout`도 서버 API가 아니라 이 PUT에 걸 값이다.
+  > 📌 **클라이언트 분리의 진짜 강제 사유는 타임아웃이 아니다(2026-08-10 최종 코드리뷰).** `AuthInterceptor`가 `request.tag(Invocation::class.java)?.method()`로 **Retrofit 메서드 애노테이션**을 읽어 `@NoAuth`를 판정한다. 발급받은 `uploadUrl`로 raw OkHttp `Request`를 만들어 쏘면 `Invocation` 태그가 없어 `skipAuth = false`가 되고, 토큰이 있는 한 `Authorization: Bearer …`가 **무조건 붙는다.** presigned URL 요청에 이 헤더가 실리면 S3가 인증 수단 중복으로 거절한다. 즉 공유 `OkHttpClient`를 그대로 쓰면 업로드가 **아예 동작하지 않는다** — 분리는 성능 선택이 아니라 기능 전제다. `writeTimeout`이 이미지 업로드에 짧다는 것도 같은 결정에 묶인다.
 - **해소 메모**: 업로드 엔드포인트 붙일 때 실측 후 결정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅"·타임아웃 서술과 [data-layer](../architecture/data-layer.md) 네트워킹 섹션에 반영. 파르페 규율상 문서에 수치는 적지 않고 구조(클라이언트 분리 여부·callTimeout 유무)만 기록한다.
 
 ### [2026-07-30] Figma가 아이콘 tint 색을 노출하지 않아 대조 불가 — Button-Icon·Action-Item
@@ -613,8 +615,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **출처**: TJYG-Android 루트 `http/`(PR #190 develop 머지) — `auth.http`·`parfait-group.http`·`parfait.http`·`health.http`·`_reset.http` + `README.md`가 엔드포인트 경로·요청 바디·응답 형태·함정(예: `reissue`에 `Authorization`을 붙이면 막힘, `logout` 204라 본문 없음)을 서술한다. 같은 내용이 [api/](../api/README.md)의 도메인 문서 4건 + [api/conventions.md](../api/conventions.md)에도 있다. 두 표면 다 근거는 서버 코드지만 **갱신 절차가 다르다** — `api/`는 스킬 `sync-teamyg-server-api`가 서버 기준선 delta로 갱신하고, `http/`는 사람이 손으로 고친다.
 - **항목**: ① 서버 계약이 바뀔 때 `http/`도 함께 갱신하는 것을 `sync-teamyg-server-api` 절차에 넣을지(넣으면 이 위키 저장소의 스킬이 코드 저장소 파일을 고치게 된다), ② 아니면 `http/README.md`를 계약 서술 없이 "실행 방법"으로만 깎고 계약 근거는 `api/`로 단일화할지. 현재는 `http/README.md`가 envelope 5필드·204 예외·`errorDetail` 항상 null까지 자체 서술하고 있어 서버가 바뀌면 조용히 갈린다.
-- **상태**: 미해결 (아직 갈리지 않았으나 갱신 경로가 둘)
+- **상태**: 미해결 (**2026-08-10 실제로 갈렸다** — 아래 참고)
   > 📌 **표면이 더 커졌다(2026-08-06, PR #197)** — `policy.http`가 추가돼 요청 모음이 **14 엔드포인트 전량**을 덮고, `README.md`도 약관 `termsId` 출처·`url` 전문 가능성·성공 코드 2종 같은 계약 서술을 더 얹었다. 이중 관리 면적이 늘었다는 뜻이라 결정을 미룰수록 비싸진다.
+  > 📌 **갈라짐 발생(2026-08-10, 서버 `5bb2a3a`)** — image 도메인 2건이 들어와 서버는 16 엔드포인트인데 `http/`는 14에 멈춰 있다. `api/`만 스킬로 갱신되고 `http/`는 손이 닿지 않은 첫 사례다 → 후속 항목 [2026-08-10] `http/` 요청 모음 공백.
 - **해소 메모**: 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절과 `sync-teamyg-server-api` 스킬 절차에 반영한다.
 
 ### [2026-08-04] `@NoAuth`를 붙일 서비스 메서드가 develop에 0건 — 인증 스킵 경로가 통째로 死코드
@@ -709,6 +712,48 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 결과 반환 관용구를 계속 쓸지 — 커스텀 갤러리·카메라는 이미 `goTo` 전진으로 갈아탔고 남은 소비처가 死경로뿐이라, 데코레이터째 걷어낼지 아니면 재사용처를 확정할지. ② 걷어낸다면 `Navigator.onBack()`의 `size <= 1` 가드 주석("`ResultEffect` 발동 상황에서 사이즈가 1인 경우 크래시")이 가리키는 전제도 같이 정리한다.
 - **상태**: 미해결 (② 가드 자체는 현재 앱 진입 체인에서도 필요하다 — 그룹 목록에서 백스택이 1개다)
 - **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번과 [2026-08-04] 항목을 함께 닫는다.
+
+### [2026-08-10] 이미지 업로드 확인 API에 소유자 검증이 없다
+
+- **출처**: TEAMYG-SERVER `main` `5bb2a3a`([api/image.md](../api/image.md)) — `POST /api/v1/images/{imageId}/confirm`. `ConfirmImageUploadController.confirm`이 `@PathVariable imageId`만 받고 `Authentication`을 받지 않는다. `ConfirmImageUploadCommand`에도 memberId가 없고 `ConfirmImageUploadService`는 `imageMetaQueryPort.findById` 결과의 `uploadedByMemberId`를 대조하지 않는다. 화이트리스트 밖이라 토큰은 필요하지만, **유효한 토큰을 가진 아무 회원이나 남의 `imageId`를 `COMPLETED`로 올릴 수 있다.** id가 auto-increment Long이라 값 추측도 쉽다. 발급 API(`POST /api/v1/images`)는 반대로 memberId를 확실히 쓴다(S3 키에 `user<memberId>`가 들어간다).
+- **항목**: ① 서버 이슈로 올려 confirm에도 소유자 대조를 넣을지 — 넣으면 남의 이미지 확정 시 새 에러 코드(403 계열)가 생기고 앱의 에러 매핑이 늘어난다. ② 앱이 붙기 전에 서버가 고칠 것이라 보고 [api/image.md](../api/image.md)에 관측 사실로만 남길지. ③ confirm 재시도로 받는 `IMAGE_ALREADY_CONFIRMED`(409)를 앱이 성공으로 간주할지 — 소유자 검증이 없는 현재 상태에서는 **409가 "내가 이미 했다"인지 "남이 했다"인지 구분되지 않는다**. 검증이 들어오면 이 모호함도 같이 사라진다.
+- **상태**: 미해결 (서버 소관 — 앱 연동 착수 전에 확인 필요)
+- **해소 메모**: 서버가 고치면 [api/image.md](../api/image.md) confirm 절의 ⚠️ 두 개(소유자 미검증·409 해석)와 [api/conventions.md](../api/conventions.md) "인증" 절 말미를 함께 지운다.
+
+### [2026-08-10] 이미지 업로드 계약의 미사용 필드·정리 경로 부재
+
+- **출처**: TEAMYG-SERVER `main` `5bb2a3a`([api/image.md](../api/image.md)) — 두 건이다. ① `IssueImageUploadUrlRequest.fileName`이 `@NotBlank` 필수인데 `toCommand`가 싣지 않아 서버 로직에 닿지 않는다. S3 키는 `ImageKeyGenerator`가 UUID로 만들고 확장자는 `contentType`에서 유도하므로 원본 파일명은 어디에도 저장되지 않는다 — 앱은 **쓰이지 않을 값을 반드시 채워야** 400을 면한다. ② 발급 시점에 `ImageMeta.createPending`이 행을 먼저 만드는데, 앱이 S3 PUT을 하지 않거나 confirm을 부르지 않으면 `PENDING` 행과 S3 키가 그대로 남는다. 서버에 `@Scheduled`가 0건이고 `ImageMetaRepository`는 `JpaRepository` 기본 메서드뿐이라 **정리 경로가 없다**. `referenceCount` 컬럼도 도메인·엔티티에만 있고 증감 코드가 없다.
+- **항목**: ① `fileName`을 계약에서 뺄지, 아니면 메타 컬럼·S3 키에 반영할지(서버 결정). 앱은 그때까지 더미가 아닌 실제 파일명을 보내 둔다 — 나중에 서버가 쓰기 시작해도 값이 맞는다. ② 고아 `PENDING` 정리를 서버 배치로 둘지, 앱이 실패 시 취소 API를 부르게 할지(현재 취소 API 없음). ③ `referenceCount`를 누가 증감할지 — 토핑·캔버스가 이미지를 참조하기 시작하는 시점의 계약이다.
+- **상태**: 미해결 (셋 다 서버 소관이나 ①은 앱 요청 바디 구성에 즉시 영향)
+- **해소 메모**: 해소 시 [api/image.md](../api/image.md) 요청 필드 표의 ⚠️와 "미결" 절을 갱신한다.
+
+### [2026-08-10] `http/` 요청 모음이 서버 신규 엔드포인트 2건을 덮지 못한다
+
+- **출처**: 서버 delta `5bb2a3a`로 엔드포인트가 16개가 됐는데 TJYG-Android 루트 `http/`에는 `images.http`가 없었다(당시 `auth`·`policy`·`parfait-group`·`parfait`·`health` 5개 파일 = 14 엔드포인트). PR #197 시점의 "전량 커버"가 깨졌다. 이는 [2026-08-04] `http/`↔`api/` 이중 관리 항목이 예고한 갈라짐이 **처음 실제로 발생한 사례**다.
+- **항목**: [2026-08-04] 항목의 선택지 ①(스킬이 `http/`도 갱신)·②(`http/`를 실행 방법으로만 축소) 중 무엇을 고를지. 갱신 경로가 둘이라는 구조 자체는 그대로다.
+- **상태**: **부분 해소** (공백은 메웠고 **구조는 미해결**)
+- **해소 메모**: `image-api-service-layer` 라운드가 `images.http`를 신설해 **16/16 커버를 회복**했고(브랜치 `feature/sync-backend-api-260810`, 미머지) `http/README.md` 5곳·`http-client.env.json`·`_reset.http`도 함께 갱신했다. S3 PUT 요청도 같은 파일에 뒀다 — 서버 계약이 아니라 AWS 계약이지만, `Content-Type` 불일치로 S3가 거절하는 실패는 **서버 로그에 남지 않아** 이 파일이 재현할 유일한 자리라서다. 다만 이번엔 **사람이 손으로 메운 것**이고 [2026-08-04]의 "갱신 경로가 둘"은 그대로라, 다음 서버 delta에서 같은 일이 반복된다. 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절의 ⚠️와 [2026-08-04] 항목을 함께 닫는다.
+
+### [2026-08-10] presigned `uploadUrl`이 debug 로그로 새어나간다
+
+- **출처**: `data/di/NetworkModule.kt#provideOkHttpClient` × `data/service/ImageService.kt#postImages`(브랜치 `feature/sync-backend-api-260810`, 미머지) — 로깅 인터셉터가 `BuildConfig.DEBUG`에서 `Level.BODY`이고 `redactHeader("Authorization")`은 **헤더만** 가린다. 발급 응답 본문의 `uploadUrl`은 `X-Amz-Signature`를 포함한 **그 자체가 자격증명**이다(만료 전까지 누구나 그 버킷 키에 PUT할 수 있다). 응답 바디 전량이 logcat에 찍힌다. 기존 14 엔드포인트에는 본문에 자격증명을 싣는 응답이 없어 **이번에 처음 생긴 성질**이다.
+- **항목**: ① debug 로그 레벨을 `BODY`로 유지할지, 아니면 이미지 도메인만 응답 본문을 가릴지(OkHttp 로깅 인터셉터에는 바디 redact 기능이 없어 커스텀 인터셉터가 필요하다). ② 아니면 debug 빌드 한정 + `expiresIn` 만료라는 이중 제한으로 충분하다고 볼지.
+- **상태**: 미해결 (debug 빌드 한정이라 즉시 위험은 낮음 — 실연동 라운드에서 판정)
+- **해소 메모**: 결정 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절에 반영한다.
+
+### [2026-08-10] `image`라는 이름이 domain에서 기기 이미지 뜻으로 선점돼 있다
+
+- **출처**: `image-api-service-layer` 라운드 최종 코드리뷰. `data/source/image/`는 `remote`/`local` 하위 구분이 출처를 갈라 문제가 없지만(저장소 규칙이 "폴더=도메인, 하위=출처"), **`domain/`에는 출처 축이 없다.** 그리고 거기서 `image`는 이미 기기 이미지 뜻이다 — `domain/repository/image/`에 `RecentImageRepository`(기기 캐시)·`ImageSegmentationRepository`(누끼 분할), `domain/usecase/image/`에 `DecodeImageUseCase`·`SegmentImageUseCase`·`AddRecentImageUseCase`·`GetRecentCacheImagesUseCase`가 있고 넷 다 기기 측이다. 이번에 `domain/model/image/`(서버 업로드)가 그 옆에 들어왔다. [image-api-service-layer 스펙](../specs/2026-08-10-image-api-service-layer.md)은 `GalleryImageGroup`만 검토했고 이 두 패키지는 짚지 못했다.
+- **항목**: 다음 라운드가 `ImageRepository`·`UploadImageUseCase`를 만들면 **기기 이미지 심볼들과 같은 패키지에 앉는다.** ① 서버 업로드 쪽을 다른 이름으로 가를지(`imageupload`·`upload`), ② 기기 쪽을 `gallery`·`localimage`로 개명할지(카메라·갤러리 feature가 소비 중이라 파급이 크다), ③ 그대로 두고 클래스명으로만 구분할지. **다음 라운드가 이름을 정하기 전에 결정돼야 한다** — 나중에 바꾸면 소비자가 늘어난 뒤다.
+- **상태**: 미해결 (선행 결정 — S3 PUT·Repository 라운드의 첫 단계)
+- **해소 메모**: 기존 `RecentImageLocalDataSource` 이름이 부정확하다는 지적(같은 라운드 스펙 미결)이 이 항목의 부분집합이다. 결정 시 [module-structure](../architecture/module-structure.md)와 [data-layer](../architecture/data-layer.md)에 반영한다.
+
+### [2026-08-10] `ImageUploadUrlVO.expiresIn`이 상대값이라 만료 판정에 쓸 수 없다
+
+- **출처**: `domain/model/image/ImageUploadUrlVO.kt`(브랜치 `feature/sync-backend-api-260810`, 미머지) — 서버가 주는 초 단위 `Long`을 `Duration`으로 바꿔 담는다(`AuthSessionVO.expiresIn` 선례). 그런데 **발급 시각이 어디에도 기록되지 않는다** — 매퍼도 응답 도착 시각을 남기지 않는다. "이 `uploadUrl`이 아직 유효한가"를 물으려면 호출부가 별도로 시각을 잡아야 한다.
+- **항목**: ① VO에 발급 시각(또는 만료 시각 절대값)을 실을지. ② 아니면 재발급을 **만료 판정 없이 실패 시 재시도**로 처리할지(S3가 만료된 URL을 거절하면 발급부터 다시). ②가 단순하지만 실패 한 번을 반드시 치른다. 관련: `contentType`이 발급 요청과 PUT 헤더 **두 곳에 각각 전달**되는데 서명 대상이라 어긋나면 서버 로그에 안 남는 실패가 난다 — 지금 타입으로는 아무것도 강제되지 않는다([스펙 미결](../specs/2026-08-10-image-api-service-layer.md)의 `contentType` 열거형화가 같은 라운드다).
+- **상태**: 미해결 (소비자 0건이라 현재 무해 — 재발급 흐름 설계 시점에 정한다)
+- **해소 메모**: 결정 시 VO 시그니처가 바뀌므로 [api/image.md](../api/image.md) Android 매핑 절도 함께 갱신한다.
 
 <!--
 항목 추가 형식:

@@ -2,8 +2,8 @@
 id: auth
 title: 인증(카카오 로그인·회원가입·토큰 재발급·로그아웃)
 server_module: http/auth
-server_commit: 69654bc
-verified: 2026-08-03
+server_commit: 5bb2a3a
+verified: 2026-08-10
 android_status: partial
 related_spec:
 related_adr: ADR-0017

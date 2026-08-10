@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: 69654bc
-verified: 2026-08-03
+server_commit: 5bb2a3a
+verified: 2026-08-10
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -46,6 +46,7 @@ tags: [api, parfait, server-contract, conventions]
 | `CommonErrorCode` | `common/error` | 2 |
 | `AuthErrorCode` | `core/auth/exception` | 12 |
 | `ParfaitGroupApiErrorCode` | `http/parfaitgroup` | 11 |
+| `ImageErrorCode` | `core/image/exception` | 4 |
 
 ### `CommonErrorCode`
 
@@ -60,10 +61,11 @@ tags: [api, parfait, server-contract, conventions]
 
 `code` 문자열은 **각 enum 내부에서만** 유일하다 — enum을 넘어서는 전역 유일성 보장이 없다. 실례:
 `MEMBER_NOT_FOUND`는 `AuthErrorCode`에서 **401**(존재하지 않는 회원, [auth.md](auth.md) "도메인 에러 코드
-전수" 참고)이고 `ParfaitGroupApiErrorCode`에서는 **404**(같은 의미지만 다른 status, [parfait-group.md](parfait-group.md)
-"도메인 에러 코드 전수" 참고)다. **소비 측은 envelope `code` 문자열 단독이 아니라 HTTP status와 함께
-판정해야 한다** — `code`만으로 분기하면 서로 다른 두 상황(만료된 access/refresh 토큰의 회원 부재 vs
-그룹 관련 회원 부재)을 한 브랜치로 뭉갠다.
+전수" 참고)이고 `ParfaitGroupApiErrorCode`·`ImageErrorCode`에서는 **404**(같은 의미지만 다른 status,
+[parfait-group.md](parfait-group.md)·[image.md](image.md) "도메인 에러 코드 전수" 참고)다. **소비 측은
+envelope `code` 문자열 단독이 아니라 HTTP status와 함께 판정해야 한다** — `code`만으로 분기하면 서로 다른
+세 상황(만료된 access/refresh 토큰의 회원 부재 vs 그룹 관련 회원 부재 vs 업로드 URL 발급 시 회원 부재)을
+한 브랜치로 뭉갠다. 중복 코드는 하나가 아니라 **셋**이 됐다(2026-08-10 image 도메인 신설).
 
 ## 인증
 
@@ -89,6 +91,10 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 `/api/v1/policies`는 `[Feat/#64] 약관 목록 조회 API 구현 (#65)`(`69654bc`)이 같은 개별 등록 방식으로
 추가했다(상세는 [policy.md](policy.md)).
 
+**2026-08-10 image 도메인 2건이 들어왔지만 화이트리스트는 그대로다** — `/api/v1/images`와
+`/api/v1/images/{imageId}/confirm`은 **인증 대상**이다(상세는 [image.md](image.md)). 단 confirm은
+토큰 유효성만 보고 **이미지 소유자를 대조하지 않는다** → [open-questions](../synthesis/open-questions.md).
+
 **관측 사실**: `HealthController`가 매핑한 `GET /health`(`http/global/health`, #63이 `http/api/health`에서
 옮겼다)는 화이트리스트의 `/actuator/health`와 경로가 달라 **인증 대상**이다.
 
@@ -98,7 +104,8 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 
 | 형태 | 예 |
 |---|---|
-| `/api/v1/<도메인>` | `/api/v1/auth/kakao` · `/api/v1/auth/signup` · `/api/v1/auth/reissue` · `/api/v1/auth/logout` · `/api/v1/policies` |
+| `/api/v1/<도메인>` | `/api/v1/auth/kakao` · `/api/v1/auth/signup` · `/api/v1/auth/reissue` · `/api/v1/auth/logout` · `/api/v1/policies` · `/api/v1/images` |
+| `/api/v1/<도메인>/{id}/<동작>` | `/api/v1/images/{imageId}/confirm` |
 | `/api/v1/groups/{groupId}/<하위>` | `/api/v1/groups/{groupId}/parfaits/year` |
 | `/api/<도메인>` (버전 없음) | `/api/parfait-groups` |
 
@@ -149,6 +156,26 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 **규칙**: 두 근거가 갈리면 **코드가 정본**이다. 단 직렬화 키처럼 코드가 답하지 못하는 항목은 스키마를
 근거로 삼고, 그 사실을 문서에 남긴다.
 
+### 스키마 `required`는 Bean Validation 애노테이션만 반영한다
+
+**2026-08-10 OpenAPI 실물을 다시 받아 image 도메인 포함 전 요청 DTO를 대조했다.** 스키마 `required`
+배열에 들어가는 필드는 `@NotBlank` 같은 Bean Validation 애노테이션이 붙은 것뿐이고, **Kotlin 비널
+타입이지만 애노테이션이 없는 필드는 빠진다.**
+
+| 요청 DTO | 스키마 `required` | 실제 비널 필드 |
+|---|---|---|
+| `KakaoLoginRequest` | `idToken`·`nonce` | 같음 |
+| `SignupRequest` | `registrationToken` | + `agreements` |
+| `IssueImageUploadUrlRequest` | `fileName`·`contentType` | + `imageType` |
+| `CreateParfaitGroupRequest` | (없음) | `groupName`·`groupNickname`·`memberLimit` |
+
+빠진 필드도 **누락하면 400이다** — jackson-module-kotlin이 비널 파라미터 부재에서 실패하고
+`GlobalExceptionHandler`의 bad-request 핸들러가 `INVALID_REQUEST`로 바꾼다.
+
+**소비 측 규칙**: **스키마에서 클라이언트 모델을 생성하지 않는다.** 생성하면 비널 필드가 nullable로
+떨어져 "보내도 되고 안 보내도 되는" 것처럼 보인다. 각 도메인 문서의 "필수" 열이 이 구분을 이미
+표기하고 있다 — `필수(@NotBlank)`(스키마에도 있음) vs `필수(non-null 타입)`(스키마에는 없음).
+
 ## Android 불일치
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
@@ -164,5 +191,8 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 > develop에 들어왔지만, 이를 **호출하는 Repository·UseCase·화면이 없어** 서버로 나간 요청은 여전히
 > 0건이다(개발 서버 평문 HTTP 차단·`YG_BASE_URL` 부재도 그대로다). 계약 해석의 실동작은 실연동
 > 라운드에서 확인한다 → [open-questions](../synthesis/open-questions.md).
+
+**2026-08-10 기준 서버 엔드포인트는 16개고 Android 표면은 14개다.** 늘어난 image 2건은 대응 심볼이
+0건이라 **불일치가 아니라 공백**이다(불일치는 심볼이 있는데 어긋날 때만 쓴다, [README.md](README.md) 규약).
 
 새 간극이 발견되면 이 절에 표를 다시 세운다.

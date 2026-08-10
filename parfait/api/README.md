@@ -27,10 +27,13 @@
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨 |
 | [parfait.md](parfait.md) | `http/parfait` | 1 (그룹 캘린더 연도 리스트) | 구현됨 |
+| [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 미구현 |
 
 > **`구현됨`은 `:data`에 Service·DataSource 표면이 있고 계약과 일치한다는 뜻**이다(2026-08-06, PR #197
 > develop 머지). 이 표면을 소비하는 Repository·UseCase·화면은 아직 0건이고 실서버 요청도 0건이라
 > 각 문서 `android_status`는 `partial`이다 → [open-questions](../synthesis/open-questions.md).
+>
+> `image.md`는 2026-08-10 서버 delta로 신설됐고 **Android 대응 심볼이 0건**이라 `android_status: none`이다.
 
 `auth.md`와 `policy.md`는 서버 모듈이 같고(`http/auth`, OpenAPI 태그도 둘 다 `Auth`) URL 세그먼트가
 다르다(`/api/v1/auth/*` vs `/api/v1/policies`). 파일명 규약이 서버 패키지가 아니라 경로 기준이라
@@ -59,9 +62,13 @@
 
 TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다 — develop 머지본
 (PR #197) 기준 `auth.http`·`policy.http`·`parfait-group.http`·`parfait.http`·`health.http`·`_reset.http` +
-`http-client.env.json` + 사용법 `README.md`다(`policy.http`가 PR #197로 추가되며 **14 엔드포인트 전량이
-요청 파일로 덮인다** — 회원가입이 쓰는 `termsId` 출처가 그 요청이다). 여기 문서에 적힌 계약을 서버에
+`http-client.env.json` + 사용법 `README.md`다(`policy.http`가 PR #197로 추가되며 당시 **14 엔드포인트 전량이
+요청 파일로 덮였다** — 회원가입이 쓰는 `termsId` 출처가 그 요청이다). 여기 문서에 적힌 계약을 서버에
 직접 쏴서 확인할 수 있다.
+
+> ⚠️ **전량 커버는 2026-08-10 서버 delta로 깨졌다.** image 도메인 2건(`POST /api/v1/images`·
+> `POST /api/v1/images/{imageId}/confirm`)에 대응하는 `images.http`가 없다 — 16 중 14만 덮인다
+> → [open-questions](../synthesis/open-questions.md).
 
 - 로그인 응답에서 토큰을 자동 추출해 다음 요청이 그대로 쓴다 — 스웨거에서 복붙할 필요가 없다
 - 각 요청 주석에 이 문서들의 함정을 옮겨 뒀다(`reissue`에 `Authorization`을 붙이면 재발급이 막히는 건은
