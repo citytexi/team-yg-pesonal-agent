@@ -1,7 +1,7 @@
 ---
 id: image-api-service-layer
 title: :data image API Service·remote DataSource 레이어 (2 엔드포인트)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-08-10
@@ -24,6 +24,21 @@ Retrofit Service와 remote DataSource로 구현하고 대응 domain VO를 만든
 이 스펙은 그 규칙을 image 도메인에 적용하며 **규칙이 답하지 않는 지점만** 새로 결정한다.
 
 작업 브랜치는 `feature/sync-backend-api-260810`(develop 기준).
+
+> 🔁 **2026-08-10 구현 완료(미머지·미푸시)** — SDD 3 Task, 커밋 4개(`abd4b99a`·`d1ff627d`·`7a2f9488` + fix `f6f76813`).
+> **설계에서 뒤집힌 결정 0건** — 본문이 그대로 as-built다. Task별 리뷰 3회 전부 fix 라운드 0으로 통과했고,
+> 유닛 테스트 14개(매퍼 6 + DataSource 8)·`ktlintCheck`·`:app:assembleDebug` 통과.
+>
+> **최종 전체 리뷰(opus)가 Important 2건을 잡았고 둘 다 이 스펙이 아니라 계획서의 사실 오류였다** —
+> `http/images.http` 주석이 ① 존재하지 않는 재현 절차("5번에서 재현할 수 있다"인데 5번은 404 테스트다)를
+> 가리키고 ② "Content-Type이 **달라야 하면** 거절한다"로 뜻이 뒤집혀, 이 파일이 잡으라고 만들어진 함정으로
+> 사람을 밀어 넣고 있었다. fix 웨이브 1회로 해소(재검수 전부 ADDRESSED).
+>
+> **다음 라운드로 넘긴 발견 4건**은 [open-questions](../synthesis/open-questions.md)에 등록했다.
+> 가장 큰 것은 **`AuthInterceptor`가 S3 PUT에 Bearer를 붙인다**는 것 — `@NoAuth` 판정이 Retrofit `Invocation`
+> 태그를 읽는 방식이라 raw OkHttp 요청에는 태그가 없어 `skipAuth = false`가 되고, presigned URL에
+> `Authorization`이 실리면 S3가 거절한다. 즉 **업로드 전용 `OkHttpClient` 분리는 성능 선택이 아니라 기능 전제**이고,
+> 이 스펙이 "타임아웃 미결 때문에 S3 PUT을 뺀다"고 적은 것보다 강한 사유가 뒤에 있었다.
 
 ## 범위
 
