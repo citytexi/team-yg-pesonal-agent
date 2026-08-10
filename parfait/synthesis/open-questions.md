@@ -914,8 +914,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-117
 - **출처**: 서버 `2c5499a` 기준 21 엔드포인트. TJYG-Android develop의 원격 표면은 `AuthService`·`ParfaitGroupService`·`ParfaitService`·`PolicyService` 4개(= 14 엔드포인트)로 그대로다. 공백은 image 2(미머지 브랜치 `feature/sync-backend-api-260810`에 `ImageService`가 있다) · 애플 로그인 1 · member 2 · parfait-image 2 → [api/README.md](../api/README.md), [api/conventions.md](../api/conventions.md) "Android 불일치".
-- **항목**: ① 앱이 어느 순서로 따라갈지 — 화면 결선 순서(온보딩 → 캔버스)와 서버 순서가 다르다. ② **애플 로그인은 iOS만의 요구가 아니다** — Android가 붙일지, 붙는다면 `identityToken`·`authorizationCode`를 어디서 얻을지(애플 로그인 SDK가 Android에 없어 웹 플로가 필요하다) 결정한다. ③ 토핑 배치(`parfait-image`)는 **목록 조회 API가 없어** 배치만 되고 다시 그릴 수 없다 — 앱 결선은 그 API를 기다려야 한다.
-- **상태**: 미해결 (②는 제품 결정, ①③은 일정)
+- **항목**: ① 앱이 어느 순서로 따라갈지 — 화면 결선 순서(온보딩 → 캔버스)와 서버 순서가 다르다. ~~② **애플 로그인은 iOS만의 요구가 아니다** — Android가 붙일지, 붙는다면 `identityToken`·`authorizationCode`를 어디서 얻을지(애플 로그인 SDK가 Android에 없어 웹 플로가 필요하다) 결정한다.~~(해소 — 아래) ③ 토핑 배치(`parfait-image`)는 **목록 조회 API가 없어** 배치만 되고 다시 그릴 수 없다 — 앱 결선은 그 API를 기다려야 한다.
+  > 📌 **② 해소(2026-08-11)** — **Android는 애플 로그인을 쓰지 않는다.** 서버 계약은 그대로 두되 앱 대응 심볼을 만들지 않고 `http/auth.http`에도 요청을 넣지 않는다. [api/README.md](../api/README.md) Android 열에 `해당 없음` 값을 신설해 `미구현`(아직 없음)과 구분했고 — 표면 개수를 셀 때 분모에서 뺀다 — [api/auth.md](../api/auth.md) 엔드포인트 표·Android 매핑 절에 반영했다. 근거는 [member·parfait-image 서비스 레이어 스펙](../specs/2026-08-11-member-parfait-image-api-service-layer.md) "범위". iOS가 붙으면 계약은 그대로 유효하다.
+  > 📌 **공백이 곧 0이 된다(진행 중)** — 분모가 21에서 **20**으로 줄고(애플 1 제외), develop 14 + PR #229의 image 2 + 위 스펙의 member 2·parfait-image 2 = **20**이다. 즉 표면 공백 자체는 이 라운드로 닫히고 **①이 말하는 "순서" 문제는 표면이 아니라 소비처 쪽으로 옮겨간다.**
+- **상태**: 부분 해소 (② 해소 — Android 미사용 확정 / ①③ 잔존)
 - **해소 메모**: 앱 표면이 붙으면 각 도메인 문서의 `android_status`·"Android 매핑" 절은 스킬 `sync-tjyg-develop-baseline`이 갱신한다. 이 항목은 **간극의 존재**만 추적한다.
 
 ### [2026-08-11] 토핑 배치 POST가 남의 배치를 덮어쓰고 소유자를 가져간다
@@ -950,6 +952,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (서버팀 확인 필요 — 도달 불가라 급하지 않음)
 - **해소 메모**: 확인 후 [api/member.md](../api/member.md) 응답 필드 표의 ⚠️와 "미결"을 갱신한다.
 
+### [2026-08-11] parfait-image 팀 명세 원문이 `api/spec/`에 없다 — 코드에서 못 읽는 클라이언트 책임이 거기 있다
+
+- **ID**: OQ-P-122
+- **출처**: 팀 명세에 `PATCH /api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}` 페이지가 있고 **관련 화면을 C-305로, 요구를 "자신이 올린 토핑의 위치·크기·각도 수정, 캔버스 영역 이탈 시 자동 보정"으로** 적었다. `api/spec/`에는 auth 4건뿐이라 이 원문이 저장소에 없다. 서버 코드에는 좌표 검증이 **0건**이므로(→ [api/parfait-image.md](../api/parfait-image.md)) "이탈 보정을 누가 하는가"는 코드가 답하지 못한다 — 명세만 답한다.
+- **항목**: ① `spec/parfait-image-place.md`·`spec/parfait-image-update.md`를 수집하고 `## 코드 대조` 절을 돌린다. ② 그 결과로 OQ-P-119 ④(좌표·`scale`·`rotation` 범위를 서버가 강제할지 앱 책임으로 둘지)가 닫히는지 확인한다 — 명세가 앱 책임으로 읽히지만 근거가 화면 설명 한 줄이라 서버팀 확인이 함께 필요하다. ③ 같은 방식으로 member 도메인 명세도 있는지 확인한다.
+- **상태**: 미해결 (수집은 사용자만 할 수 있다 — 명세 도구 접근 필요)
+- **해소 메모**: 수집 후 [api/spec/README.md](../api/spec/README.md) 목록과 [api/README.md](../api/README.md) "팀 명세 원문" 절에 등록하고, [api/parfait-image.md](../api/parfait-image.md)에 **명세 델타** 문단을 추가한다(auth 도메인 문서들과 같은 형식). 이번 서비스 레이어 라운드는 이 수집을 기다리지 않는다 — 자동 보정은 화면 계층 일이라 `:data` 범위 밖이다.
+
 <!--
 항목 추가 형식:
 
@@ -960,4 +970,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 122 -->
+<!-- oq-next: 123 -->

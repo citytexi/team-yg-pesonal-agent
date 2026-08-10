@@ -20,13 +20,18 @@ tags: [api, parfait, server-contract, auth]
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
 | POST | `/api/v1/auth/kakao` | 불필요(화이트리스트) | `KakaoLoginRequest` | `KakaoLoginResponse` | ⚠️불일치[^newuser] |
-| POST | `/api/v1/auth/apple` | 불필요(화이트리스트) | `AppleLoginRequest` | `AppleLoginResponse` | 미구현 |
+| POST | `/api/v1/auth/apple` | 불필요(화이트리스트) | `AppleLoginRequest` | `AppleLoginResponse` | 해당 없음[^apple] |
 | POST | `/api/v1/auth/signup` | 불필요(화이트리스트) | `SignupRequest` | `SignupResponse` | 구현됨 |
 | POST | `/api/v1/auth/reissue` | 불필요(화이트리스트) | `ReissueRequest` | `ReissueResponse` | 구현됨 |
 | POST | `/api/v1/auth/logout` | **필요**(화이트리스트 밖) | `LogoutRequest` | 없음(204, envelope 없음) | 구현됨 |
 
 [^newuser]: Android `KakaoLoginResponse.isNewUser`에 붙은 `@SerialName("newUser")`가 실제 응답 키
 (`isNewUser`)와 어긋난다 — 아래 [판별자 키](#판별자-키는-isnewuser다) 참고.
+
+[^apple]: **Android는 애플 로그인을 쓰지 않기로 결정했다**(2026-08-11). 서버에는 있으나 앱 대응
+심볼을 만들지 않으며 `http/auth.http`에도 요청을 넣지 않는다 — `미구현`(아직 없음)이 아니라
+닫힌 결정이다. 근거는 [member·parfait-image 서비스 레이어 스펙](../specs/2026-08-11-member-parfait-image-api-service-layer.md)
+"범위". iOS가 붙을 때 이 계약은 그대로 유효하다.
 
 ⚠️ **`logout`만 화이트리스트 밖이라는 비대칭.** `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`
 (`6f5bffc`)이 기존 `/api/v1/auth/**` 와일드카드를 `/api/v1/auth/kakao`·`/api/v1/auth/signup`·
@@ -355,13 +360,13 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 파싱할 수 있다는 것뿐이고, 실제 서버 호출로 검증되지도 않았다(개발 서버 평문 HTTP 차단 —
 [open-questions](../synthesis/open-questions.md)).
 
-**애플 로그인은 Android 대응 심볼이 0건**이다(`AuthService`에 함수 없음, `AppleLogin`류 이름이 develop과
-진행 중 브랜치 어디에도 없음 — 2026-08-11 확인).
+**애플 로그인은 Android가 쓰지 않기로 했다**(2026-08-11 결정, 위 각주). 대응 심볼 0건이 공백이 아니라
+결론이므로 이 표에서 "앞으로 채울 자리"로 세지 않는다.
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|
 | POST `/api/v1/auth/kakao` | `AuthService#postAuthKakao` | `AuthRemoteDataSource#loginWithKakao` |
-| POST `/api/v1/auth/apple` | **없음** | **없음** |
+| POST `/api/v1/auth/apple` | — (해당 없음) | — (해당 없음) |
 | POST `/api/v1/auth/signup` | `AuthService#postAuthSignup` | `AuthRemoteDataSource#signup` |
 | POST `/api/v1/auth/reissue` | `AuthService#postAuthReissue` | `AuthRemoteDataSource#reissue` |
 | POST `/api/v1/auth/logout` | `AuthService#postAuthLogout` | `AuthRemoteDataSource#logout` |
