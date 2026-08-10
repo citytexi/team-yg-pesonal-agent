@@ -156,6 +156,26 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 **규칙**: 두 근거가 갈리면 **코드가 정본**이다. 단 직렬화 키처럼 코드가 답하지 못하는 항목은 스키마를
 근거로 삼고, 그 사실을 문서에 남긴다.
 
+### 스키마 `required`는 Bean Validation 애노테이션만 반영한다
+
+**2026-08-10 OpenAPI 실물을 다시 받아 image 도메인 포함 전 요청 DTO를 대조했다.** 스키마 `required`
+배열에 들어가는 필드는 `@NotBlank` 같은 Bean Validation 애노테이션이 붙은 것뿐이고, **Kotlin 비널
+타입이지만 애노테이션이 없는 필드는 빠진다.**
+
+| 요청 DTO | 스키마 `required` | 실제 비널 필드 |
+|---|---|---|
+| `KakaoLoginRequest` | `idToken`·`nonce` | 같음 |
+| `SignupRequest` | `registrationToken` | + `agreements` |
+| `IssueImageUploadUrlRequest` | `fileName`·`contentType` | + `imageType` |
+| `CreateParfaitGroupRequest` | (없음) | `groupName`·`groupNickname`·`memberLimit` |
+
+빠진 필드도 **누락하면 400이다** — jackson-module-kotlin이 비널 파라미터 부재에서 실패하고
+`GlobalExceptionHandler`의 bad-request 핸들러가 `INVALID_REQUEST`로 바꾼다.
+
+**소비 측 규칙**: **스키마에서 클라이언트 모델을 생성하지 않는다.** 생성하면 비널 필드가 nullable로
+떨어져 "보내도 되고 안 보내도 되는" 것처럼 보인다. 각 도메인 문서의 "필수" 열이 이 구분을 이미
+표기하고 있다 — `필수(@NotBlank)`(스키마에도 있음) vs `필수(non-null 타입)`(스키마에는 없음).
+
 ## Android 불일치
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.

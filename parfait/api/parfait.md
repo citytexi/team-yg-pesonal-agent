@@ -2,8 +2,8 @@
 id: parfait
 title: 파르페(캔버스) 조회
 server_module: http/parfait
-server_commit: 69654bc
-verified: 2026-08-03
+server_commit: 5bb2a3a
+verified: 2026-08-10
 android_status: partial
 related_spec:
 related_adr: ADR-0017

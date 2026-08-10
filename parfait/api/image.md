@@ -48,9 +48,14 @@ S3에 직접 PUT한 뒤 ③ 서버에 업로드 완료를 알린다. 이미지 �
 
 | 필드 | 타입 | 필수 | 비고 |
 |---|---|---|---|
-| `fileName` | String | 예(`@NotBlank`) | ⚠️ **서버가 쓰지 않는다** — 아래 참고 |
-| `contentType` | String | 예(`@NotBlank`) | MIME 타입. **`image/png`·`image/jpeg` 2종만 허용** |
-| `imageType` | String(enum) | 예 | `NUKKI`(토핑 누끼) · `BACKGROUND`(배경). 검증 애노테이션 없음 — 아래 참고 |
+| `fileName` | String | 필수(`@NotBlank`) | ⚠️ **서버가 쓰지 않는다** — 아래 참고 |
+| `contentType` | String | 필수(`@NotBlank`) | MIME 타입. **`image/png`·`image/jpeg` 2종만 허용** |
+| `imageType` | String(enum) | 필수(non-null 타입) | `NUKKI`(토핑 누끼) · `BACKGROUND`(배경). 검증 애노테이션 없음 — 아래 참고 |
+
+  ⚠️ **`imageType`은 OpenAPI 스키마의 `required` 목록에 없다.** springdoc이 `required`를 Bean Validation
+  애노테이션에서만 유도하기 때문이다(`fileName`·`contentType`만 `@NotBlank`가 붙어 있다). Kotlin 비널
+  타입이라 **실제로는 빼면 400**인데 스키마는 선택 필드로 광고한다 — 스키마에서 클라이언트 코드를
+  생성하면 nullable로 떨어진다. 전역 규칙은 [conventions.md](conventions.md) "OpenAPI" 참고.
 
   ⚠️ **`fileName`은 요청 계약에만 있고 서버 로직에 닿지 않는다.** `IssueImageUploadUrlRequest.toCommand`가
   `memberId`·`contentType`·`imageType`만 `IssueImageUploadUrlCommand`에 싣는다. S3 키의 파일명 부분은
@@ -149,9 +154,13 @@ S3에 직접 PUT한 뒤 ③ 서버에 업로드 완료를 알린다. 이미지 �
 
 ## Android 매핑
 
-**없음.** develop에 대응 심볼이 0건이다 — `data/source/image/local/RecentImageLocalDataSource`와
-`data/source/file/local/FileRecentImageLocalDataSource`는 **기기 갤러리 조회용 로컬 소스**라 이 API와
-무관하다. 원격 이미지 Service·DataSource·DTO 어느 것도 없다.
+**없음.** develop뿐 아니라 **origin의 진행 중 브랜치 전수(2026-08-10 기준)에도 심볼이 0건**이다 —
+`ImageService`·`ImageRemoteDataSource`·`UploadUrl`류 이름이 어느 브랜치에도 없다.
+`data/source/image/local/RecentImageLocalDataSource`와 `data/source/file/local/FileRecentImageLocalDataSource`는
+**기기 갤러리 조회용 로컬 소스**라 이 API와 무관하다.
+
+develop의 원격 표면은 여전히 `AuthService`·`ParfaitGroupService`·`ParfaitService`·`PolicyService`
+4개뿐이다(= 14 엔드포인트). 즉 **서버가 앞서 있고 앱이 두 칸 뒤에 있다.**
 
 TJYG-Android 루트의 `http/` 요청 모음에도 `images` 요청 파일이 없다 — PR #197로 "14 엔드포인트 전량"을
 덮었던 그 모음이 **이번 서버 delta로 2건 부족해졌다** → [open-questions](../synthesis/open-questions.md).
