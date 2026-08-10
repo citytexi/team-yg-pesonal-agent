@@ -78,6 +78,10 @@ on:
     branches: [ develop ]
   workflow_dispatch:
 
+concurrency:
+  group: gradle-cache-seed
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -116,17 +120,25 @@ jobs:
 재시딩하기 위한 것이다.
 
 태스크 목록은 PR 워크플로 둘의 합집합이다. `test`와 두 `assembleDebugAndroidTest`는 `test.yml`이,
-`ktlintCheck`는 `ktlint.yml`이 실행한다. 한 job 안에서 한 번의 Gradle 호출로 묶는 이유는 두 가지다.
-워크플로 둘에 각각 `push` 트리거를 다는 방식은 job 2개가 동시에 같은 캐시 키에 쓰게 되어 한쪽
-저장이 버려질 수 있고, 의존성 해석과 데몬 기동을 두 번 치르게 된다.
+`ktlintCheck`는 `ktlint.yml`이 실행한다. 한 job 안에서 한 번의 Gradle 호출로 묶는 이유는, 워크플로
+둘에 각각 `push` 트리거를 달면 체크아웃·JDK 설정·의존성 해석·데몬 기동을 두 번 치르고, 두 job이
+각자 자기 job 이름이 박힌 키로 **거의 같은 내용을 두 번 업로드**해 캐시 예산을 갉아먹기 때문이다.
 
 `--continue`는 `ktlintCheck` 실패가 뒤따르는 컴파일 태스크의 캐시 적재를 막지 못하게 한다.
 시딩 job의 목적은 게이트가 아니라 캐시 적재이므로, 실패해도 최대한 많이 채우는 쪽이 맞다.
 
-`concurrency` 그룹은 두지 않는다. `cancel-in-progress: true`는 캐시 저장 직전의 런을 죽여 목적을
-훼손한다. 연속 머지로 두 런이 겹치는 경우도 해가 없는데, 캐시 키에 `github.sha`가 들어가 두 런이
-**서로 다른 키**에 저장되고 복원은 프리픽스 폴백으로 최신 항목을 집기 때문이다. 러너 시간 절약이
-목적이라면 `cancel-in-progress: false`가 선택지지만 필수는 아니다.
+`concurrency` 그룹은 **초안에서 뺐다가 팀 리뷰(P3)를 받아 넣었다.** 시딩의 목적이 "가장 최신
+상태의 캐시"이므로 앞 런을 취소해도 잃는 것이 없고, 연속 머지에서 러너 시간을 아낀다.
+
+리뷰가 근거로 든 "같은 캐시 키에 대한 동시 쓰기 경합"은 **실제로는 발생하지 않는다.** 캐시 키에
+`github.sha`가 들어가 두 런이 서로 다른 키에 저장하고, 복원은 job 이름을 뺀 프리픽스까지 폴백해
+최신 항목을 집는다. 채택 근거는 경합 회피가 아니라 러너 시간 절약 쪽이다.
+
+대신 `cancel-in-progress: true`가 지는 비용이 있다. **취소된 런은 캐시를 저장하지 않는다**
+(`setup-gradle`의 post 스텝이 `post-if: '!cancelled()'`). seed 소요시간보다 촘촘한 간격으로
+`develop` 머지가 이어지면 seed가 계속 취소돼 캐시가 한동안 갱신되지 않을 수 있다 — 하필 캐시가
+가장 필요한 구간이다. 그 사이에도 직전 성공 캐시가 프리픽스 폴백으로 계속 쓰이고, 막히면
+`workflow_dispatch`로 수동 재시딩한다. 이 트레이드오프는 워크플로 주석에도 적어 뒀다.
 
 ### `gradle.properties`
 
@@ -197,9 +209,11 @@ Kotlin 데몬이 Gradle 데몬의 `-Xmx`를 상속한다** — 힙 상향이 조
   repo secret 생성이 필요하고, Crashlytics·google-services 플러그인의 config cache 호환을
   따로 검증해야 한다. 이번 스펙에서 의도적으로 제외했다.
 - **미채택으로 판단한 것** — `paths-ignore`(TJYG-Android는 코드 전용 저장소라 `**.md`·`docs/**`에
-  해당하는 파일이 없다. 거를 대상이 없으므로 규칙만 늘어난다) · `concurrency` 그룹(위 근거) ·
-  캐시 키에 `github.sha`가 들어가 머지마다 새 Gradle Home 항목이 쌓이는 것(10GB LRU 축출로
-  자기 제한적, 예상된 트레이드오프).
+  해당하는 파일이 없다. 거를 대상이 없으므로 규칙만 늘어난다) · 캐시 키에 `github.sha`가 들어가
+  머지마다 새 Gradle Home 항목이 쌓이는 것(10GB LRU 축출로 자기 제한적, 예상된 트레이드오프).
+- **뒤집힌 결정: `concurrency` 그룹.** 초안은 "취소가 캐시 저장 직전의 런을 죽인다"를 이유로
+  뺐는데, 팀 리뷰 P3를 받아 넣었다(위 §변경 대상 참조). 초안의 우려 자체는 사실이지만 러너 시간
+  절약이 더 크다고 봤고, 굶주림은 `workflow_dispatch`로 복구된다.
 - **열린 질문: Node 20 deprecation.** 두 런 모두 `actions/checkout@v4` · `actions/setup-java@v4` ·
   `actions/upload-artifact@v4` · `dorny/test-reporter@v2` · `gradle/actions/setup-gradle@v4`에 대해
   경고를 냈고, `setup-java@v4`는 별도 deprecation 경고까지 붙었다. 캐시와 무관한 별건.
