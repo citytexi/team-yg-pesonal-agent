@@ -10,8 +10,15 @@
 
 | 문서 | 소관 | 항목 수(2026-08-10) |
 |---|---|---|
-| `wiki/synthesis/open-questions.md` | 정책·기획 미결 | 26 |
-| `parfait/synthesis/open-questions.md` | 구현·계약·정합 미결 | 112 |
+| `wiki/synthesis/open-questions.md` | 정책·기획 미결 | 25 |
+| `parfait/synthesis/open-questions.md` | 구현·계약·정합 미결 | 111 |
+
+계 136항목, 그중 `해소됨`이 24건이라 첫 실행의 `create` 대상은 112건이다.
+
+> 참고: `grep -c '^### \['`로 세면 26/112(계 138)가 나온다 — 두 문서 말미의 "항목 추가
+> 형식" 예시가 HTML 주석 안에 있는데, `grep`은 주석을 구분하지 못해 그 안의
+> `### [YYYY-MM-DD] [주제 요약]`까지 각 문서 1건씩 헤딩으로 센다. 파서는 주석 내부를
+> 제외하므로(파싱 규칙 2번) 실제 항목 수는 136이다.
 
 문서 안에서만 살아 있어서 담당자 배정·알림·검색·상태 추적이 안 된다. 이 저장소의 GitHub
 이슈는 현재 0건이다. 미결을 이슈로 투영하면 GitHub의 협업 표면(assignee·알림·검색·마일스톤)을
@@ -99,7 +106,8 @@
 <!-- oq-hash: 8f2a1c0d3e5b -->
 <!-- oq-source: parfait/synthesis/open-questions.md -->
 
-> 정본은 문서다. 이 이슈는 투영이며, 여기서 본문을 고쳐도 다음 동기화에 덮어써진다.
+> 정본은 문서다. 이 이슈는 문서의 투영이며, 문서가 바뀌면 이 본문은 덮어써진다.
+> 여기서 고친 내용은 문서에 반영되지 않는다.
 > 원본: [parfait/synthesis/open-questions.md](https://github.com/citytexi/team-yg-pesonal-agent/blob/main/parfait/synthesis/open-questions.md#2026-07-10-ygbutton-디자인-토큰-규칙-미확정)
 
 **발견일**: 2026-07-10
@@ -233,13 +241,16 @@ GitHub 접근은 `gh` CLI를 `subprocess`로 호출한다(토큰 취급을 직�
 `open-question.yml` 템플릿으로 손수 만든 이슈는 `oq-id` 마커가 없다 → `unmanaged`로 분류해
 별도 보고한다. 문서에 옮길지는 사람이 정한다.
 
+같은 `oq-id`가 여러 OPEN 이슈에 걸쳐 있으면(예: 수동 재생성) 이슈 번호가 가장 작은 것
+(먼저 만들어진 것)을 문서 항목의 짝으로 삼고, 나머지는 `duplicate`로 보고한다. `orphan`과
+같은 철학으로 자동으로 닫지 않는다 — 정리는 사람이 한다.
+
 4. 출력: 사람이 읽는 표(stdout) + 계획 JSON 파일
 
 ```json
 {
-  "generated_at": "2026-08-10T12:00:00Z",
   "repo": "citytexi/team-yg-pesonal-agent",
-  "summary": {"create": 118, "update": 0, "close": 0, "reopen": 0, "noop": 0, "orphan": 0, "unmanaged": 0},
+  "summary": {"create": 112, "update": 0, "close": 0, "reopen": 0, "noop": 0, "orphan": 0, "unmanaged": 0, "duplicate": 0},
   "actions": [
     {"action": "create", "oq_id": "OQ-P-001", "title": "...", "body": "...", "labels": ["oq:parfait", "oq:open"]},
     {"action": "close", "oq_id": "OQ-W-003", "issue": 42, "comment": "..."}
@@ -247,16 +258,31 @@ GitHub 접근은 `gh` CLI를 `subprocess`로 호출한다(토큰 취급을 직�
 }
 ```
 
+시각 값(`generated_at` 등)은 넣지 않는다 — 계획을 다시 산출할 때마다 값이 바뀌어 diff
+노이즈만 만들고, 매칭·비교 로직 어디에서도 쓰이지 않는다.
+
 계획 JSON은 스크래치패드에 쓴다(저장소에 커밋하지 않는다).
 
 #### `apply`
 
 - 계획 JSON을 읽어 순차 실행한다
+- 시작 전에 `plan.repo`와 `gh repo view`로 얻은 현재 repo를 대조한다. 다르면 즉시 중단한다
+  (다른 저장소에서 뜬 계획이 그대로 실행되는 사고를 막는다)
 - 필요한 라벨이 없으면 먼저 만든다
 - **항목 단위 멱등**: 중간에 실패해도 `plan`을 다시 돌리면 남은 것만 잡힌다
+- 쓰기 액션 사이 `WRITE_INTERVAL_SEC`(기본 1초)만큼 대기하고, 연속 실패가
+  `MAX_CONSECUTIVE_FAILURES`(기본 5)건에 도달하면 남은 액션을 실행하지 않고 중단한다
+  (GitHub 2차 rate limit — 콘텐츠 생성 분당 약 80건 — 을 계속 두드리는 것을 막는다)
 - 실패는 삼키지 않는다. 실패 목록을 마지막에 출력하고 종료 코드 1
 - `--limit N`으로 실행 건수를 제한할 수 있다(첫 실행을 나눠 받고 싶을 때)
-- 진행 상황을 건별로 출력한다(118건이 조용히 도는 것을 막는다)
+- 진행 상황을 건별로 출력한다(112건이 조용히 도는 것을 막는다)
+
+**같은 계획 파일을 두 번 실행하지 않는다.** 계획 파일 자체에는 실행 이력이 없다 —
+`--limit`으로 나눠 받거나 실패 후 재실행할 때 같은 계획 파일을 다시 `apply`하면 이미 만든
+이슈를 또 만든다. 그래서 `apply`는 실행이 끝나면 계획 파일 옆에 `<plan>.applied` 마커
+파일을 남기고, 마커가 있는 계획으로 다시 `apply`를 시도하면 종료 코드로 즉시 중단한다
+(우회 옵션 없음). 나눠 받거나 실패 건이 있으면 다음 배치 전에 반드시 `plan`을 다시
+산출해 새 계획 파일을 만든다.
 
 ## 이슈 템플릿 `.github/ISSUE_TEMPLATE/`
 
@@ -310,11 +336,12 @@ stdlib `unittest`. `gh`는 호출하지 않는다(주입 가능한 함수로 분
 
 ## 실행 계획
 
-첫 실행은 118건 안팎의 이슈를 만든다. `apply --limit`으로 나눠 받을 수 있게 하되 기본은 전량이다.
+첫 실행은 112건의 이슈를 만든다(136항목 중 `해소됨` 24건 제외). `apply --limit`으로 나눠
+받을 수 있게 하되 기본은 전량이다.
 
 1. 템플릿 4종 추가
 2. `oq_sync.py` + 테스트 작성
-3. `assign-ids` 실행 → 138항목에 ID 부여, 로컬 커밋
+3. `assign-ids` 실행 → 136항목에 ID 부여, 로컬 커밋
 4. `plan` → 사용자 승인 → `apply`
 5. `parfait/script/README.md` 인덱스에 등록
 

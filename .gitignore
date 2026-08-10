@@ -18,3 +18,8 @@
 
 # OS
 .DS_Store
+
+# oq_sync 계획 산출물 — 저장소에 커밋하지 않는다(스크래치패드용).
+# `--out` 기본값이 repo 루트에 떨어지므로 여기서 막는다.
+/oq-plan.json
+/oq-plan.json.applied
