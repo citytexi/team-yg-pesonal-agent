@@ -83,5 +83,68 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(oq_sync.field(items[0]["body"], "없는필드"), "")
 
 
+class HashTest(unittest.TestCase):
+    BODY = "- **출처**: 가\n- **상태**: 미해결\n"
+
+    def test_trailing_whitespace_does_not_change_hash(self):
+        self.assertEqual(
+            oq_sync.item_hash(self.BODY),
+            oq_sync.item_hash("- **출처**: 가   \n- **상태**: 미해결\t\n"),
+        )
+
+    def test_blank_lines_do_not_change_hash(self):
+        self.assertEqual(
+            oq_sync.item_hash(self.BODY),
+            oq_sync.item_hash("- **출처**: 가\n\n\n- **상태**: 미해결\n"),
+        )
+
+    def test_content_change_changes_hash(self):
+        self.assertNotEqual(
+            oq_sync.item_hash(self.BODY),
+            oq_sync.item_hash("- **출처**: 나\n- **상태**: 미해결\n"),
+        )
+
+    def test_hash_is_twelve_hex_chars(self):
+        h = oq_sync.item_hash(self.BODY)
+        self.assertEqual(len(h), 12)
+        self.assertRegex(h, r"^[0-9a-f]{12}$")
+
+
+class AnchorTest(unittest.TestCase):
+    def test_matches_anchor_used_in_parfait_doc(self):
+        self.assertEqual(
+            oq_sync.github_anchor("### [2026-08-01] 카메라 줌 UI가 死코드로 남음"),
+            "2026-08-01-카메라-줌-ui가-死코드로-남음",
+        )
+
+    def test_punctuation_removed_and_hyphen_kept(self):
+        self.assertEqual(
+            oq_sync.github_anchor("### [2026-07-10] YGButton `토큰`·규칙 (미확정)"),
+            "2026-07-10-ygbutton-토큰규칙-미확정",
+        )
+
+
+class ClassifyTest(unittest.TestCase):
+    def test_resolved_prefix(self):
+        self.assertEqual(oq_sync.classify("해소됨 (2026-08-04, PR #190)"), "resolved")
+
+    def test_partial_beats_unresolved_prefix(self):
+        self.assertEqual(
+            oq_sync.classify("미해결 (부분 해소 — ⑤ 확정, 금칙어만 잔존)"), "partial"
+        )
+
+    def test_partial_with_bold_markers(self):
+        self.assertEqual(
+            oq_sync.classify("**부분 해소** (공백은 메웠고 구조는 미해결)"), "partial"
+        )
+
+    def test_blocked_prefix(self):
+        self.assertEqual(oq_sync.classify("보류 (원격 연동 이후)"), "blocked")
+
+    def test_default_is_open(self):
+        self.assertEqual(oq_sync.classify("미해결"), "open")
+        self.assertEqual(oq_sync.classify(""), "open")
+
+
 if __name__ == "__main__":
     unittest.main()

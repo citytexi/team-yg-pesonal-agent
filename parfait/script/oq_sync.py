@@ -11,6 +11,7 @@
 - repo 루트 = Path(__file__).resolve().parents[2] 기준 상대 경로.
 - 정본은 문서다. 이슈 → 문서 역방향 반영은 하지 않는다.
 """
+import hashlib
 import re
 from pathlib import Path
 
@@ -74,3 +75,34 @@ def parse_doc(text, series, doc_path):
             }
         )
     return items
+
+
+def item_hash(body):
+    """항목 본문의 정규화 해시. 줄 끝 공백·빈 줄에는 불변, 내용 변경에는 가변."""
+    lines = [ln.rstrip() for ln in body.splitlines()]
+    lines = [ln for ln in lines if ln]
+    joined = "\n".join(lines)
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:12]
+
+
+def github_anchor(heading_text):
+    """GitHub 헤딩 slug. 문서 내부에서 쓰이는 앵커와 같은 결과를 낸다."""
+    t = heading_text.lstrip("#").strip().lower()
+    t = "".join(ch for ch in t if ch.isalnum() or ch in " -_")
+    return t.replace(" ", "-")
+
+
+def classify(status):
+    """문서 상태 서술을 이슈 액션용 분류로 접는다.
+
+    평가 순서가 중요하다 — '미해결 (부분 해소 …)'처럼 접두는 미해결이지만
+    부분 해소인 항목이 실재한다.
+    """
+    s = status.strip()
+    if s.startswith("해소됨"):
+        return "resolved"
+    if "부분 해소" in s:
+        return "partial"
+    if s.startswith("보류"):
+        return "blocked"
+    return "open"
