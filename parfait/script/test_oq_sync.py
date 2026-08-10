@@ -392,5 +392,133 @@ class BuildPlanTest(unittest.TestCase):
         self.assertIn("1", table)
 
 
+class ApplyTest(unittest.TestCase):
+    def setUp(self):
+        self.calls = []
+        self._orig = oq_sync.gh
+
+        def fake(args, input_=None):
+            self.calls.append((list(args), input_))
+            return "{}"
+
+        oq_sync.gh = fake
+
+    def tearDown(self):
+        oq_sync.gh = self._orig
+
+    def _cmds(self):
+        return [" ".join(c[0][:3]) for c in self.calls]
+
+    def test_create_calls_issue_create_with_labels(self):
+        act = {
+            "action": "create",
+            "oq_id": "OQ-P-001",
+            "title": "[OQ-P-001] 제목",
+            "body": "본문",
+            "labels": ["oq:parfait", "oq:open"],
+        }
+        oq_sync.apply_action(act)
+        args, input_ = self.calls[0]
+        self.assertEqual(args[:2], ["issue", "create"])
+        self.assertIn("--label", args)
+        self.assertIn("oq:parfait", args)
+        self.assertEqual(input_, "본문")
+
+    def test_update_edits_and_swaps_labels(self):
+        act = {
+            "action": "update",
+            "oq_id": "OQ-P-001",
+            "issue": 7,
+            "title": "T",
+            "body": "B",
+            "add_labels": ["oq:blocked"],
+            "remove_labels": ["oq:open"],
+        }
+        oq_sync.apply_action(act)
+        args, _ = self.calls[0]
+        self.assertEqual(args[:3], ["issue", "edit", "7"])
+        self.assertIn("--add-label", args)
+        self.assertIn("oq:blocked", args)
+        self.assertIn("--remove-label", args)
+        self.assertIn("oq:open", args)
+
+    def test_close_comments_then_closes(self):
+        act = {
+            "action": "close",
+            "oq_id": "OQ-P-001",
+            "issue": 7,
+            "comment": "해소",
+            "title": "T",
+            "body": "B",
+            "add_labels": ["oq:resolved"],
+            "remove_labels": ["oq:open"],
+        }
+        oq_sync.apply_action(act)
+        cmds = self._cmds()
+        self.assertEqual(cmds[0], "issue edit 7")
+        self.assertEqual(cmds[1], "issue comment 7")
+        self.assertEqual(cmds[2], "issue close 7")
+
+    def test_reopen_reopens_then_edits(self):
+        act = {
+            "action": "reopen",
+            "oq_id": "OQ-P-001",
+            "issue": 7,
+            "title": "T",
+            "body": "B",
+            "add_labels": ["oq:open"],
+            "remove_labels": ["oq:resolved"],
+        }
+        oq_sync.apply_action(act)
+        cmds = self._cmds()
+        self.assertEqual(cmds[0], "issue reopen 7")
+        self.assertEqual(cmds[1], "issue edit 7")
+
+    def test_orphan_and_unmanaged_do_nothing(self):
+        oq_sync.apply_action({"action": "orphan", "oq_id": "OQ-P-099", "issue": 9, "title": "x"})
+        oq_sync.apply_action({"action": "unmanaged", "oq_id": "", "issue": 5, "title": "y"})
+        self.assertEqual(self.calls, [])
+
+    def test_apply_plan_collects_failures_and_continues(self):
+        def flaky(args, input_=None):
+            self.calls.append((list(args), input_))
+            if "OQ-P-002" in " ".join(args) + (input_ or ""):
+                raise RuntimeError("boom")
+            return "{}"
+
+        oq_sync.gh = flaky
+        plan = {
+            "repo": "o/r",
+            "summary": {},
+            "actions": [
+                {"action": "create", "oq_id": "OQ-P-001", "title": "a", "body": "OQ-P-001", "labels": []},
+                {"action": "create", "oq_id": "OQ-P-002", "title": "b", "body": "OQ-P-002", "labels": []},
+                {"action": "create", "oq_id": "OQ-P-003", "title": "c", "body": "OQ-P-003", "labels": []},
+            ],
+        }
+        failures = oq_sync.apply_plan(plan)
+        self.assertEqual([f[0] for f in failures], ["OQ-P-002"])
+        self.assertEqual(len(self.calls), 3)
+
+    def test_apply_plan_limit(self):
+        plan = {
+            "repo": "o/r",
+            "summary": {},
+            "actions": [
+                {"action": "create", "oq_id": "OQ-P-00%d" % i, "title": "t", "body": "b", "labels": []}
+                for i in range(1, 6)
+            ],
+        }
+        oq_sync.apply_plan(plan, limit=2)
+        self.assertEqual(len(self.calls), 2)
+
+    def test_ensure_labels_uses_force(self):
+        oq_sync.ensure_labels()
+        for args, _ in self.calls:
+            self.assertEqual(args[:2], ["label", "create"])
+            self.assertIn("--force", args)
+        self.assertEqual(len(self.calls), len(oq_sync.LABEL_SPECS))
+
+
 if __name__ == "__main__":
     unittest.main()

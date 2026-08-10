@@ -11,10 +11,12 @@
 - repo 루트 = Path(__file__).resolve().parents[2] 기준 상대 경로.
 - 정본은 문서다. 이슈 → 문서 역방향 반영은 하지 않는다.
 """
+import argparse
 import hashlib
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -377,3 +379,150 @@ def render_plan_table(plan):
                 "- %s: #%s %s" % (a["action"], a.get("issue"), a.get("title", ""))
             )
     return "\n".join(lines)
+
+
+def ensure_labels():
+    """라벨을 만든다. `--force`라 이미 있으면 갱신된다(멱등)."""
+    for spec in LABEL_SPECS:
+        gh(
+            [
+                "label", "create", spec["name"],
+                "--color", spec["color"],
+                "--description", spec["desc"],
+                "--force",
+            ]
+        )
+
+
+def _edit_args(act):
+    args = ["issue", "edit", str(act["issue"]), "--title", act["title"], "--body-file", "-"]
+    for name in act.get("add_labels") or []:
+        args += ["--add-label", name]
+    for name in act.get("remove_labels") or []:
+        args += ["--remove-label", name]
+    return args
+
+
+def apply_action(act):
+    """액션 하나를 실행한다. orphan·unmanaged는 보고 전용이라 아무것도 하지 않는다."""
+    kind = act["action"]
+    if kind in ("orphan", "unmanaged", "noop"):
+        return
+    if kind == "create":
+        args = ["issue", "create", "--title", act["title"], "--body-file", "-"]
+        for name in act.get("labels") or []:
+            args += ["--label", name]
+        gh(args, input_=act["body"])
+    elif kind == "update":
+        gh(_edit_args(act), input_=act["body"])
+    elif kind == "close":
+        gh(_edit_args(act), input_=act["body"])
+        gh(["issue", "comment", str(act["issue"]), "--body-file", "-"], input_=act["comment"])
+        gh(["issue", "close", str(act["issue"])])
+    elif kind == "reopen":
+        gh(["issue", "reopen", str(act["issue"])])
+        gh(_edit_args(act), input_=act["body"])
+    else:
+        raise RuntimeError("알 수 없는 액션: %s" % kind)
+
+
+def apply_plan(plan, limit=None):
+    """계획을 순차 실행하고 실패 목록을 돌려준다. 실패해도 나머지를 계속 실행한다."""
+    actions = [a for a in plan["actions"] if a["action"] not in ("orphan", "unmanaged", "noop")]
+    if limit is not None:
+        actions = actions[:limit]
+    failures = []
+    for i, act in enumerate(actions, 1):
+        label = "%s %s" % (act["action"], act.get("oq_id") or act.get("issue"))
+        try:
+            apply_action(act)
+            print("[%d/%d] %s" % (i, len(actions), label))
+        except Exception as exc:  # noqa: BLE001 — 실패해도 나머지를 계속 실행한다
+            failures.append((act.get("oq_id", ""), str(exc)))
+            print("[%d/%d] 실패 %s — %s" % (i, len(actions), label, exc))
+    return failures
+
+
+def read_docs():
+    """두 문서를 읽어 항목 전량을 돌려준다. ID 미부여 항목이 있으면 중단한다."""
+    items = []
+    missing = []
+    for series, rel in DOCS:
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        for it in parse_doc(text, series, rel):
+            if it["oq_id"] is None:
+                missing.append("%s — %s" % (rel, it["title"]))
+            items.append(it)
+    if missing:
+        raise SystemExit(
+            "ID 미부여 항목 %d건. 먼저 assign-ids를 실행하라:\n  " % len(missing)
+            + "\n  ".join(missing[:10])
+        )
+    return items
+
+
+def cmd_assign_ids(args):
+    total = 0
+    for series, rel in DOCS:
+        path = REPO_ROOT / rel
+        text = path.read_text(encoding="utf-8")
+        new_text, assigned = assign_ids(text, series)
+        total += len(assigned)
+        if assigned and not args.check:
+            path.write_text(new_text, encoding="utf-8")
+        for oq_id, title in assigned:
+            print("%s  %s" % (oq_id, title))
+    if args.check:
+        print("미부여 %d건" % total)
+        return 1 if total else 0
+    print("부여 %d건" % total)
+    return 0
+
+
+def cmd_plan(args):
+    items = read_docs()
+    repo = current_repo()
+    plan = build_plan(items, fetch_issues(), repo)
+    print(render_plan_table(plan))
+    out = Path(args.out)
+    out.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+    print("\n계획 저장: %s" % out)
+    return 0
+
+
+def cmd_apply(args):
+    plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
+    ensure_labels()
+    failures = apply_plan(plan, limit=args.limit)
+    if failures:
+        print("\n실패 %d건:" % len(failures))
+        for oq_id, msg in failures:
+            print("  %s — %s" % (oq_id, msg))
+        return 1
+    print("\n완료")
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(description="open-questions → GitHub 이슈 단방향 동기화")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    p_ids = sub.add_parser("assign-ids", help="ID 없는 항목에 안정 ID 부여")
+    p_ids.add_argument("--check", action="store_true", help="수정하지 않고 미부여 건수만 보고")
+    p_ids.set_defaults(func=cmd_assign_ids)
+
+    p_plan = sub.add_parser("plan", help="계획 산출(리모트 읽기만)")
+    p_plan.add_argument("--out", default="oq-plan.json", help="계획 JSON 저장 경로")
+    p_plan.set_defaults(func=cmd_plan)
+
+    p_apply = sub.add_parser("apply", help="계획 실행(리모트 쓰기)")
+    p_apply.add_argument("plan", help="계획 JSON 경로")
+    p_apply.add_argument("--limit", type=int, default=None, help="실행 건수 상한")
+    p_apply.set_defaults(func=cmd_apply)
+
+    args = ap.parse_args()
+    sys.exit(args.func(args))
+
+
+if __name__ == "__main__":
+    main()
