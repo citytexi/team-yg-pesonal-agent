@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-10
-related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure
+verified: 2026-08-11
+related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -210,9 +210,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-025
 - **출처**: `feature/groups/enter/api/NavKeyGroupCreate.kt`·`feature/groups/enter/impl/navigation/EntryBuilder.kt#featureGroupCreateEntryBuilder`(PR #179 develop 머지) — entry·DI는 등록됐으나 `NavKeyGroupCreate`로 `goTo` 하는 호출자가 코드 전체에 없다. 직전 단계 후보인 `GroupNickNameRoute`의 `NavigateToNext`는 여전히 stub이고, A-005는 `nickName` 인자를 요구한다.
 - **항목**: ① 그룹 참여(S-102)와 그룹 생성(A-005)의 진입 관계를 확정할지(기획상 참여 플로우 다음이 맞는지), ② 확정 시 `GroupNickNameRoute`에서 `navigator.goTo(NavKeyGroupCreate(nickName))` 결선.
-- **상태**: 미해결 (코드 수정 대상 — 현재 도달 불가 화면)
+- **상태**: **부분 해소** (② 결선됨 — 화면은 도달 가능해졌다. ① 진입 관계 확정과 인자 값의 출처는 잔존)
 - **해소 메모**: 결선 후 [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md)의 "다음 네비게이션 미구현" 항목을 함께 정리. 위키 [[기능정의서-v6]] 화면 흐름과 대조 필요.
   > 📌 **진입점 UI는 생겼고 결선만 남음(2026-08-01, PR #173)** — G-001 그룹 추가 오버레이의 "그룹 만들기"가 `GroupListSideEffect.NavigateToCreateGroup`을 발신하지만 Route 소비부가 `// Todo : navigator.goTo(NavKeyGroupCreate)` 주석이다. 같은 오버레이의 "그룹 들어가기"는 `NavKeyGroupInviteCode`로 실제 결선됐다. 남은 것은 `goTo` 한 줄과 `nickName` 인자 출처(A-005가 인자 있는 NavKey)다.
+  > ✅ **② 결선됨(2026-08-10, PR #222)** — `GroupListRoute`가 `navigator.goTo(NavKeyGroupCreate(nickName = uiState.nickName))`를 부른다. 다만 **① 진입 관계는 그대로 미결**이고(기획상 참여 플로우 다음이 맞는지), 후보였던 `GroupNickNameRoute.NavigateToNext`는 여전히 stub이라 **A-005 진입점이 G-001 오버레이 하나뿐**이다. 또 넘기는 `nickName`이 `GroupListUiState` 기본값 mock 리터럴이라 **값의 출처는 안 정해졌다**([2026-08-07] mock 항목과 같은 뿌리).
 
 ### [2026-07-29] `GroupCreateConfig`가 표시 관심사를 domain에 보유
 - **ID**: OQ-P-026
@@ -759,8 +760,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-098
 - **출처**: `feature/groups/list/impl/route/GroupListViewModel.kt#MockToppingGroup`·`GroupListUiState`(PR #194 develop 머지) — `groupList`의 **기본값 자체가** 이름·원격 이미지 URL·상대시간 문자열을 박은 4건이다(`chipType`도 전 항목 동일 값 고정). 조회 경로가 없으므로 develop 빌드는 항상 이 4건을 그린다. URL 중 1건은 스킴이 두 번 붙어 로드에 실패하고, `AsyncImage(error = …)` 폴백 덕에 조회 실패 그래픽으로 그려진다 — 즉 **실패 경로가 의도 없이 상시 노출**된다. 부작용으로 0건 상태를 실행 중에 볼 수 없어 [[g-001-empty-툴팁]] 조건 위반이 가려진다.
 - **항목**: ① mock을 VM 기본값이 아니라 프리뷰 파라미터·`@VisibleForTesting`으로 옮길지, ② 조회가 붙기 전까지 develop에 mock 데이터를 두는 것을 허용할지(같은 판단이 앞으로 반복된다), ③ 상대시간을 문자열로 들고 있는 임시 모델을 도메인 모델 결선 시 어떻게 걷어낼지.
-- **상태**: 미해결 (조회 결선 라운드 종속)
+- **상태**: 미해결 (조회 결선 라운드 종속 — **mock 범위가 늘었다**)
 - **해소 메모**: 조회가 붙는 라운드에서 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "API / 인터페이스"의 `MockToppingGroup` 블록을 실제 모델로 교체한다.
+  > 📌 **mock 필드 추가(2026-08-10, PR #222)** — `GroupListUiState.nickName`이 같은 방식으로 기본값 리터럴이 됐고, 그 값이 **화면 밖으로 나간다** — `goTo(NavKeyGroupCreate(nickName))`로 A-005가 받는다([2026-07-29] 항목). 새로고침(`Refresh`)도 조회 없이 고정 지연만 두는 mock이다. 즉 mock이 표시용을 넘어 **다른 화면의 입력**이 됐다.
 
 ### [2026-08-07] 토핑이 그려지는데 클릭 경로가 없다 — `ClickTopping` 死경로
 
@@ -866,6 +868,38 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (소비자 0건이라 현재 무해 — 재발급 흐름 설계 시점에 정한다)
 - **해소 메모**: 결정 시 VO 시그니처가 바뀌므로 [api/image.md](../api/image.md) Android 매핑 절도 함께 갱신한다.
 
+### [2026-08-11] G-001 실패 화면이 도달 불가 — `isError`를 세우는 코드가 없다
+
+- **ID**: OQ-P-112
+- **출처**: `feature/groups/list/impl/route/GroupListErrorScreen.kt`·`GroupListRoute.kt`·`GroupListViewModel.kt`(PR #222 develop 머지) — 화면·상태 필드(`GroupListUiState.isError`)·Route 분기가 모두 있는데 `isError = true`가 나타나는 자리는 **`GroupListErrorScreen` 프리뷰 하나뿐**이다. 조회가 없으니 실패도 없어서 실기기에서는 이 화면이 뜨지 않는다. 같은 라운드의 `Refresh` 인텐트도 조회 없이 고정 지연 후 `isRefreshing`을 되돌리는 mock이라, 문구가 안내하는 "아래로 당겨 다시 시도"가 실제로 재시도하는 것이 없다. 앞선 死경로 선례(`ClickTopping`·`animateToppingPlacement`, [2026-08-07])와 같은 형태다.
+- **항목**: ① 조회가 붙기 전에 UI만 먼저 머지하는 것을 계속 허용할지 — 허용한다면 도달 불가 상태를 어디에 기록할지(현재는 스펙·이 문서뿐이고 코드에는 표시가 없다). ② 실패 판정의 소유 — 조회 결선 시 `isError`를 VM이 예외에서 파생할지, 로딩·성공·실패·0건을 **sealed 상태 하나**로 접을지(지금은 `isError`·`isRefreshing`·`groupList` 세 필드가 독립이라 "로딩 중 실패" 같은 조합이 표현되지 않는다). ③ 재시도 수단을 pull-to-refresh 하나로 둘지(문구가 그것만 안내한다).
+- **상태**: 미해결 (조회 결선 라운드 종속 — [2026-08-07] mock 항목과 같은 라운드에서 닫힌다)
+- **해소 메모**: 결선 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "에러·새로고침" 절과 정책 대조 표의 실패 행을 갱신한다.
+
+### [2026-08-11] 로딩 표현이 위키 정책의 "자체 로딩 그래픽"과 다르다
+
+- **ID**: OQ-P-113
+- **출처**: `feature/groups/list/impl/route/component/GroupListPullToRefreshBox.kt`(PR #222 develop 머지) — Material3 `PullToRefreshBox` 기본 인디케이터를 그대로 쓴다(래퍼가 더한 것은 `graphicsLayer`로 콘텐츠를 함께 내리는 동작뿐). 위키 [[무한-파르페-그리드]] 상태 규칙은 **초기 로딩을 "인디케이터·스켈레톤 대신 제작한 자체 로딩 그래픽"**으로 못박았다. 두 가지가 갈린다: ① 초기 로딩 상태가 코드에 아예 없고, ② 새로고침 표현이 플랫폼 기본이다. 함께 머지된 에러 문구(`strings.xml` `group_list_error`)도 위키에 대응 정책 소스가 없어 **코드가 먼저 확정**한 상태다(툴팁 문구와 같은 성격).
+- **항목**: ① 자체 로딩 그래픽의 적용 범위 — 초기 로딩만인지 pull-to-refresh 인디케이터까지인지(후자면 `PullToRefreshBox`의 `indicator` 슬롯 교체가 필요하다). ② 파르페 메타포 로딩 에셋을 디자인에서 받아야 한다. ③ 에러 문구·컵 그래픽 구성을 정책 소스로 역수집할지, 코드를 정본으로 인정할지.
+- **상태**: 미해결 (① ②는 디자인 입력 대기, ③은 위키 ingest 판단)
+- **해소 메모**: 확정 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) 정책 대조 표의 로딩 행을 갱신하고, 문구 정책이 수집되면 위키 쪽 미결과 함께 닫는다.
+
+### [2026-08-11] CI 빌드 성능 후속 2축 — `org.gradle.parallel` 재도입과 configuration cache
+
+- **ID**: OQ-P-114
+- **출처**: PR #227 develop 머지([ci-gradle-cache-seeding 스펙](../specs/archive/2026-08-10-ci-gradle-cache-seeding.md)) — 캐시 시딩은 들어갔고 효과도 확인됐다(PR `unit-test` 6m16s → 2m45s). 초안에 있던 `org.gradle.parallel`·힙 상향·`kotlin.daemon.jvmargs`는 **의도적으로 되돌렸고**, configuration cache는 처음부터 범위 밖이었다. 둘 다 "안 하기로" 한 것이 아니라 **별건으로 미룬 것**이다.
+- **항목**: ① `parallel` 재도입 여부 — 다시 켠다면 검증을 `test` 그래프 하나로 끝내지 말고 `assembleRelease`·`lint`까지 돌려야 한다(미선언 모듈 간 의존은 태스크 그래프마다 다르게 나타나고 릴리스 간헐 실패는 "플래키"로 오진되기 쉽다). 힙과 `kotlin.daemon.jvmargs`가 함께 가야 한다 — 적지 않으면 Kotlin 데몬이 Gradle 데몬 `-Xmx`를 상속해 조용히 2배 예약이 된다. ② configuration cache를 CI에서 살릴지 — `setup-gradle`의 `cache-encryption-key` 입력 + repo secret 생성이 필요하고 Crashlytics·google-services 플러그인 호환을 따로 검증해야 한다. 지금 상태로는 매 런 새 러너인 CI에서 이득이 0이다.
+- **상태**: 미해결 (효과 측정이 끝난 뒤 별건으로 — 캐시 변경과 섞으면 원인을 못 가른다)
+- **해소 메모**: 착수 시 [ci-gradle-cache-seeding 스펙](../specs/archive/2026-08-10-ci-gradle-cache-seeding.md) "검토했다가 뺀 것"·"범위" 절을 근거로 삼고, 결과를 새 스펙으로 분리한다.
+
+### [2026-08-11] GitHub Actions Node 20 deprecation 경고
+
+- **ID**: OQ-P-115
+- **출처**: PR CI 런 로그(진단 시점 `31323149207`·`31323027198`, 머지 후에도 동일) — `actions/checkout@v4`·`actions/setup-java@v4`·`actions/upload-artifact@v4`·`dorny/test-reporter@v2`·`gradle/actions/setup-gradle@v4`에 대해 Node 20 deprecation 경고가 런마다 붙고, `setup-java@v4`는 별도 deprecation 경고까지 낸다. 워크플로 4종 + 합성 액션 2종이 전부 해당한다.
+- **항목**: ① 일괄 메이저 버전 올림을 언제 할지 — 액션 하나씩 올리면 런마다 경고가 남고, 한꺼번에 올리면 캐시 키(`setup-gradle` 버전 포함)가 바뀌어 첫 런이 콜드로 돈다. ② 캐시 시딩 직후라 **효과 측정 기간과 겹치지 않게** 시점을 잡을 것.
+- **상태**: 미해결 (경고일 뿐 실패는 아님 — 강제 종료일 전에 처리)
+- **해소 메모**: 올리면 `.github/workflows/*.yml`과 `.github/actions/{setup-android-build,restore-app-secrets}/action.yml`을 함께 본다.
+
 <!--
 항목 추가 형식:
 
@@ -876,4 +910,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 112 -->
+<!-- oq-next: 116 -->

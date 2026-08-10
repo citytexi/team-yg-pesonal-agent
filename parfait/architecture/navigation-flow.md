@@ -59,7 +59,9 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
    > 갤러리가 `sendResult` 대신 확인 화면으로 `goTo` 하도록 바뀌었는데, 호출 화면
    > `CanvasImageAddRoute`의 `ResultEffect<String>`는 그대로 남아 아무것도 받지 못한다
    > → [open-questions](../synthesis/open-questions.md) [2026-08-04].
-6. **`goTo` 호출자를 같은 PR에 넣는다** — entry만 등록하고 진입 경로가 없으면 도달 불가 화면이 된다(선례: `NavKeyGroupCreate`, [open-questions](../synthesis/open-questions.md) [2026-07-29]).
+6. **`goTo` 호출자를 같은 PR에 넣는다** — entry만 등록하고 진입 경로가 없으면 도달 불가 화면이 된다
+   (선례: `NavKeyGroupCreate` — 등록 후 **약 2주 뒤**인 #222에서야 G-001 그룹 추가 오버레이가 호출자가 됐다,
+   [open-questions](../synthesis/open-questions.md) [2026-07-29]).
 
 > ⚠️ **이탈 사례(2026-08-01, PR #173)** — G-001 `featureGroupListEntryBuilder`는 엔트리 컨테이너를
 > `YGScaffold`가 아니라 `Box`(전면 배경 이미지)로 두고 `YGScaffold`를 Route 안으로 내렸으며, 그룹 추가
@@ -89,6 +91,9 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 **여러 진입점이 한 화면을 공유하면 출처를 NavKey 인자(`@Serializable` enum)로 넘긴다** — 확인 화면은
 카메라·갤러리 공용이고 `PictureConfirmSource`로 문구만 가른다(#191). 이때 호출하는 feature는 대상
 feature의 `:api`만 참조한다(`feature/gallery/impl` → `feature/camera/api`).
+**인자 값의 출처는 호출 화면의 상태다** — G-001이 `goTo(NavKeyGroupCreate(nickName = uiState.nickName))`로
+A-005를 연다(#222). 현재 그 `nickName`은 `GroupListUiState` 기본값 mock이라, 인자 결선과 값의 진위는
+별개 문제로 남아 있다 → [open-questions](../synthesis/open-questions.md) [2026-08-07].
 그 값을 ViewModel 초기 상태로 넘길 때는 **Assisted 주입**을 쓴다 — `@HiltViewModel(assistedFactory = …)` + `@AssistedInject` +
 `@Assisted` 파라미터, 엔트리 빌더에서 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.…) })`로 생성해 Route에 넘긴다
 (`GroupCreateViewModel`·`SegmentationViewModel`).
