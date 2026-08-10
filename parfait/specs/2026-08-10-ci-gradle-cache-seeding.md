@@ -196,9 +196,10 @@ Kotlin 데몬이 Gradle 데몬의 `-Xmx`를 상속한다** — 힙 상향이 조
 - **열린 질문: configuration cache를 CI에서 살릴 것인가.** `cache-encryption-key` 입력 +
   repo secret 생성이 필요하고, Crashlytics·google-services 플러그인의 config cache 호환을
   따로 검증해야 한다. 이번 스펙에서 의도적으로 제외했다.
-- **미채택으로 판단한 것** — `paths-ignore`(문서만 바뀐 머지에도 시딩이 도는 러너 시간 낭비지만
-  캐시 갱신 관점에선 무해) · `concurrency` 그룹(위 근거) · 캐시 키에 `github.sha`가 들어가
-  머지마다 새 Gradle Home 항목이 쌓이는 것(10GB LRU 축출로 자기 제한적, 예상된 트레이드오프).
+- **미채택으로 판단한 것** — `paths-ignore`(TJYG-Android는 코드 전용 저장소라 `**.md`·`docs/**`에
+  해당하는 파일이 없다. 거를 대상이 없으므로 규칙만 늘어난다) · `concurrency` 그룹(위 근거) ·
+  캐시 키에 `github.sha`가 들어가 머지마다 새 Gradle Home 항목이 쌓이는 것(10GB LRU 축출로
+  자기 제한적, 예상된 트레이드오프).
 - **열린 질문: Node 20 deprecation.** 두 런 모두 `actions/checkout@v4` · `actions/setup-java@v4` ·
   `actions/upload-artifact@v4` · `dorny/test-reporter@v2` · `gradle/actions/setup-gradle@v4`에 대해
   경고를 냈고, `setup-java@v4`는 별도 deprecation 경고까지 붙었다. 캐시와 무관한 별건.
