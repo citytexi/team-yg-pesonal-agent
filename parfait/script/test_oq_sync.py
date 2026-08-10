@@ -146,5 +146,58 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual(oq_sync.classify(""), "open")
 
 
+class AssignIdsTest(unittest.TestCase):
+    DOC = (
+        "# Open Questions\n\n"
+        "### [2026-07-10] 가\n"
+        "- **상태**: 미해결\n\n"
+        "### [2026-07-12] 나\n"
+        "- **ID**: OQ-P-007\n"
+        "- **상태**: 미해결\n"
+    )
+
+    def test_assigns_from_max_plus_one(self):
+        out, assigned = oq_sync.assign_ids(self.DOC, "P")
+        self.assertEqual(assigned, [("OQ-P-008", "가")])
+        self.assertIn("### [2026-07-10] 가\n- **ID**: OQ-P-008\n", out)
+
+    def test_heading_unchanged(self):
+        out, _ = oq_sync.assign_ids(self.DOC, "P")
+        self.assertIn("### [2026-07-10] 가\n", out)
+        self.assertIn("### [2026-07-12] 나\n", out)
+
+    def test_idempotent(self):
+        once, _ = oq_sync.assign_ids(self.DOC, "P")
+        twice, assigned = oq_sync.assign_ids(once, "P")
+        self.assertEqual(once, twice)
+        self.assertEqual(assigned, [])
+
+    def test_writes_high_water_marker(self):
+        out, _ = oq_sync.assign_ids(self.DOC, "P")
+        self.assertIn("<!-- oq-next: 9 -->", out)
+
+    def test_deleted_id_number_is_not_reused(self):
+        out, _ = oq_sync.assign_ids(self.DOC, "P")
+        # OQ-P-008 항목을 통째로 지운 뒤 새 항목을 붙인다
+        shrunk = out.replace("### [2026-07-10] 가\n- **ID**: OQ-P-008\n- **상태**: 미해결\n\n", "")
+        shrunk += "\n### [2026-07-20] 다\n- **상태**: 미해결\n"
+        out2, assigned = oq_sync.assign_ids(shrunk, "P")
+        self.assertEqual(assigned, [("OQ-P-009", "다")])
+
+    def test_starts_at_one_when_empty(self):
+        doc = "# X\n\n### [2026-01-01] 첫\n- **상태**: 미해결\n"
+        _, assigned = oq_sync.assign_ids(doc, "W")
+        self.assertEqual(assigned, [("OQ-W-001", "첫")])
+
+    def test_comment_example_gets_no_id(self):
+        doc = (
+            "### [2026-01-01] 진짜\n- **상태**: 미해결\n\n"
+            "<!--\n### [YYYY-MM-DD] [주제 요약]\n- **상태**: 미해결\n-->\n"
+        )
+        out, assigned = oq_sync.assign_ids(doc, "W")
+        self.assertEqual(len(assigned), 1)
+        self.assertNotIn("**ID**", out.split("<!--")[1])
+
+
 if __name__ == "__main__":
     unittest.main()

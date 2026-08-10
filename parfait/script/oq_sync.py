@@ -28,6 +28,7 @@ HEADING_RE = re.compile(r"^### \[(\d{4}-\d{2}-\d{2})\]\s+(.+?)\s*$", re.M)
 ID_LINE_RE = re.compile(r"^- \*\*ID\*\*:\s*(OQ-[WP]-\d+)[ \t]*\n?", re.M)
 STATUS_RE = re.compile(r"^- \*\*상태\*\*:\s*(.+?)\s*$", re.M)
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+NEXT_RE = re.compile(r"<!--\s*oq-next:\s*(\d+)\s*-->")
 
 
 def strip_html_comments(text):
@@ -106,3 +107,44 @@ def classify(status):
     if s.startswith("보류"):
         return "blocked"
     return "open"
+
+
+def next_counter(text, series):
+    """다음 채번 값. 문서 내 최대 ID+1과 하이워터마크 중 큰 쪽."""
+    clean = strip_html_comments(text)
+    used = [int(m.group(1)) for m in re.finditer(r"OQ-" + series + r"-(\d+)", clean)]
+    hi = max(used) + 1 if used else 1
+    m = NEXT_RE.search(text)
+    if m:
+        hi = max(hi, int(m.group(1)))
+    return hi
+
+
+def _write_next_marker(text, counter):
+    marker = "<!-- oq-next: %d -->" % counter
+    if NEXT_RE.search(text):
+        return NEXT_RE.sub(marker, text)
+    return text.rstrip("\n") + "\n\n" + marker + "\n"
+
+
+def assign_ids(text, series):
+    """ID 없는 항목에 번호를 부여한다. 멱등 — 이미 있는 ID는 건드리지 않는다."""
+    clean = strip_html_comments(text)
+    counter = next_counter(text, series)
+    matches = list(HEADING_RE.finditer(clean))
+    pieces = []
+    cursor = 0
+    assigned = []
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(clean)
+        if ID_LINE_RE.search(clean[m.end() : end]):
+            continue
+        oq_id = "OQ-%s-%03d" % (series, counter)
+        counter += 1
+        pieces.append(text[cursor : m.end()])
+        pieces.append("\n- **ID**: " + oq_id)
+        cursor = m.end()
+        assigned.append((oq_id, m.group(2)))
+    pieces.append(text[cursor:])
+    out = "".join(pieces)
+    return _write_next_marker(out, counter), assigned
