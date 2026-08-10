@@ -8,12 +8,24 @@
 
 **Tech Stack:** GitHub Actions, `gradle/actions/setup-gradle@v4`, Gradle 9.4.1(wrapper), AGP 9.2.1, Kotlin 2.4.0, JDK 17(temurin)
 
-> **실행 결과 (2026-08-10, Task 1·2 완료 · 미푸시)** — 브랜치 `chore/build-action-cache`,
-> 커밋 `1db48217`~`027631a3`. 아래 Task 1의 `gradle.properties` 내용은 **as-built가 아니다.**
+> **실행 결과 (2026-08-10, 전 Task 완료 · PR #227 develop 머지)** — 브랜치 `chore/build-action-cache`,
+> 커밋 `1db48217`~`027631a3` + push 이후 커밋. 아래 Task 1의 `gradle.properties` 내용은 **as-built가 아니다.**
 > 최종 리뷰 이후 사용자 판단으로 `org.gradle.parallel`·힙 상향·`kotlin.daemon.jvmargs`를 전부
 > 되돌렸고, 실제로 남은 변경은 `org.gradle.caching=true` 한 줄이다. 되돌린 근거와 재도입 시
-> 필요한 사실은 스펙의 "검토했다가 뺀 것" 절에 있다. Task 3은 push 보류로 미착수.
+> 필요한 사실은 스펙의 "검토했다가 뺀 것" 절에 있다.
 > 진행 원장: `.superpowers/sdd/2026-08-10-ci-gradle-cache-seeding/progress.md`
+>
+> **Task 2 as-built** — 아래 Step 2의 워크플로 본문에 셋이 더 붙었다: `workflow_dispatch` 트리거,
+> `concurrency` 그룹(`cancel-in-progress: true`, 팀 리뷰 P3 반영), `timeout-minutes: 45`,
+> `continue-on-error: true`(`--continue`가 종료 코드를 성공으로 바꾸지 않으므로 seed 실패가
+> `develop`을 빨갛게 만드는 것을 막는다). 확정본은
+> [스펙 §변경 대상](../../specs/archive/2026-08-10-ci-gradle-cache-seeding.md)에 있다.
+>
+> **Task 3 완료(2026-08-10 머지 후)** — Step 3·4의 관측값은
+> [스펙 §머지 후 관측](../../specs/archive/2026-08-10-ci-gradle-cache-seeding.md)에 표로 남겼다.
+> 요지: seed 런 `cache-read-only: false`로 캐시 저장 확인, 후속 PR `unit-test`에서
+> `Gradle User Home cache not found`가 사라지고 `608 actionable tasks: 240 executed, 368 from cache`,
+> 소요 6m16s → 2m45s. **계획의 성공 판정 조건을 둘 다 만족했다.**
 
 ## Global Constraints
 
@@ -24,7 +36,7 @@
 - **`clean`과 빌드 태스크를 한 번의 Gradle 호출에 섞지 않는다.** `org.gradle.parallel=true`가 켜진 뒤에는 `clean`이 다른 태스크와 경쟁할 수 있다. 항상 `./gradlew clean` 따로, 빌드 태스크 따로 호출한다.
 - **`configuration cache`는 이번 범위에서 제외다.** `org.gradle.configuration-cache`를 켜지 않는다. 이유는 스펙 "범위" 절에 있다(CI 이득 0 + 시크릿 필요).
 - **파일 3개만 건드린다.** `gradle.properties`(수정), `.github/workflows/gradle-cache-seed.yml`(신규). 그 외 워크플로·합성 액션·빌드 스크립트는 수정 대상이 아니다.
-- 스펙: [`parfait/specs/2026-08-10-ci-gradle-cache-seeding.md`](../specs/2026-08-10-ci-gradle-cache-seeding.md)
+- 스펙: [`parfait/specs/archive/2026-08-10-ci-gradle-cache-seeding.md`](../../specs/archive/2026-08-10-ci-gradle-cache-seeding.md)
 
 ---
 
@@ -53,7 +65,7 @@ Task 1(`gradle.properties`)이 Task 2(워크플로)보다 먼저다. 순서가 �
 
 **주의:** 이 Task는 전체 유닛 테스트를 세 번 돌린다. 한 번에 수 분씩 걸리므로 시간을 잡고 시작한다. 중간에 끊으면 캐시 상태가 애매해져 Step 6 판정이 무의미해진다.
 
-- [ ] **Step 1: 작업 저장소·브랜치 확인**
+- [x] **Step 1: 작업 저장소·브랜치 확인**
 
 TJYG-Android 저장소 루트에서:
 
@@ -68,7 +80,7 @@ Expected:
 - 둘째 명령이 **빈 출력**(develop과 동일).
 - 셋째 명령이 빈 출력(작업 트리 클린). 클린하지 않으면 중단하고 사용자에게 보고한다.
 
-- [ ] **Step 2: 실패하는 테스트 — 현재 캐시 미적중을 관측**
+- [x] **Step 2: 실패하는 테스트 — 현재 캐시 미적중을 관측**
 
 ```bash
 ./gradlew --stop
@@ -88,7 +100,7 @@ NNN actionable tasks: NNN executed
 
 `NNN` 값을 기록해 둔다. Step 6에서 같은 총량과 비교한다.
 
-- [ ] **Step 3: `gradle.properties` 수정**
+- [x] **Step 3: `gradle.properties` 수정**
 
 파일 전체를 아래로 만든다(주석 포함).
 
@@ -106,7 +118,7 @@ org.gradle.parallel=true
 kotlin.code.style=official
 ```
 
-- [ ] **Step 4: 데몬 재기동 후 콜드 빌드 — 변경이 빌드를 깨지 않는지**
+- [x] **Step 4: 데몬 재기동 후 콜드 빌드 — 변경이 빌드를 깨지 않는지**
 
 ```bash
 ./gradlew --stop
@@ -120,7 +132,7 @@ Expected: `BUILD SUCCESSFUL`.
 
 **FAIL 시 판정 기준** — 여기서 깨지면 원인은 십중팔구 `org.gradle.parallel=true`이고, 모듈 간에 선언되지 않은 암묵적 의존이 있다는 뜻이다. 임의로 우회하지 말고 실패한 태스크명과 에러 메시지를 사용자에게 보고한다. 병렬을 빼면 캐시 효과 자체는 유지되므로 축소 적용이 가능한 선택지다.
 
-- [ ] **Step 5: 빌드 산출물만 지우고 캐시는 남긴다**
+- [x] **Step 5: 빌드 산출물만 지우고 캐시는 남긴다**
 
 ```bash
 ./gradlew clean
@@ -128,7 +140,7 @@ Expected: `BUILD SUCCESSFUL`.
 
 `clean`은 프로젝트의 `build/` 디렉토리를 지우지만 `~/.gradle/caches/build-cache-1`은 건드리지 않는다. 이 비대칭이 다음 스텝의 관측을 가능하게 한다.
 
-- [ ] **Step 6: 통과하는 테스트 — 캐시 적중 관측**
+- [x] **Step 6: 통과하는 테스트 — 캐시 적중 관측**
 
 ```bash
 ./gradlew test 2>&1 | tail -5
@@ -145,7 +157,7 @@ NNN actionable tasks: A executed, B from cache
 
 `from cache`가 여전히 0이면 `org.gradle.caching`이 먹지 않은 것이다. Task 2로 넘어가지 말고 중단한다 — 시딩 워크플로를 붙여도 아무 효과가 없기 때문이다.
 
-- [ ] **Step 7: 커밋 (사용자 승인 후)**
+- [x] **Step 7: 커밋 (사용자 승인 후)**
 
 ```bash
 git add gradle.properties
@@ -169,7 +181,7 @@ Gradle User Home 에 의존성만 쌓이고 태스크 출력 저장소가 비어
 - Consumes: Task 1이 켠 `org.gradle.caching`. 없으면 이 워크플로가 데우는 것은 의존성뿐이다.
 - Produces: `develop` push마다 갱신되는 Gradle User Home 캐시 항목. `test.yml`·`ktlint.yml`이 PR에서 이것을 읽는다.
 
-- [ ] **Step 1: 실패하는 테스트 — 캐시 저장 job이 없음을 확인**
+- [x] **Step 1: 실패하는 테스트 — 캐시 저장 job이 없음을 확인**
 
 ```bash
 grep -l "push:" .github/workflows/*.yml
@@ -179,7 +191,7 @@ Expected: **빈 출력**(매칭 파일 0건). 워크플로 4종 어디에도 `pu
 
 빈 출력이 아니면 이미 누가 `push` 트리거를 추가했다는 뜻이므로, 파일을 새로 만들지 말고 사용자에게 보고한다.
 
-- [ ] **Step 2: 워크플로 파일 생성**
+- [x] **Step 2: 워크플로 파일 생성**
 
 `.github/workflows/gradle-cache-seed.yml`:
 
@@ -222,7 +234,7 @@ jobs:
             --continue
 ```
 
-- [ ] **Step 3: YAML 파싱 검증**
+- [x] **Step 3: YAML 파싱 검증**
 
 이 환경에는 `actionlint`도 PyYAML도 없다. macOS 기본 ruby의 psych를 쓴다.
 
@@ -240,7 +252,7 @@ Expected:
 
 파싱 에러가 나면 들여쓰기를 고친다.
 
-- [ ] **Step 4: 태스크 경로가 실재하는지 검증**
+- [x] **Step 4: 태스크 경로가 실재하는지 검증**
 
 ```bash
 ./gradlew --dry-run test ktlintCheck \
@@ -252,7 +264,7 @@ Expected:
 
 Expected: `BUILD SUCCESSFUL`. `Task 'xxx' not found` 류 에러가 나면 경로 오타다.
 
-- [ ] **Step 5: PR 워크플로 태스크 합집합을 실제로 덮는지 대조**
+- [x] **Step 5: PR 워크플로 태스크 합집합을 실제로 덮는지 대조**
 
 ```bash
 grep -h "gradlew" .github/workflows/test.yml .github/workflows/ktlint.yml
@@ -266,7 +278,7 @@ Expected 출력에 담긴 Gradle 태스크는 아래 셋이다.
 
 시딩 워크플로의 `Warm Gradle caches` 스텝이 이 셋을 모두 포함하는지 눈으로 대조한다. 빠진 것이 있으면 그 워크플로는 PR에서 계속 콜드로 돈다.
 
-- [ ] **Step 6: 커밋 (사용자 승인 후)**
+- [x] **Step 6: 커밋 (사용자 승인 후)**
 
 ```bash
 git add .github/workflows/gradle-cache-seed.yml
@@ -293,7 +305,7 @@ test·ktlint 두 워크플로의 태스크 합집합을 한 번의 Gradle 호출
 
 **주의:** Step 3·4는 `develop` 머지 이후에만 수행 가능하다. 이 Task는 머지를 기다리며 중단되는 것이 정상이다.
 
-- [ ] **Step 1: push (사용자 확인 필수)**
+- [x] **Step 1: push (사용자 확인 필수)**
 
 사용자에게 먼저 물어보고 승인받는다. 승인 전 실행 금지.
 
@@ -301,7 +313,7 @@ test·ktlint 두 워크플로의 태스크 합집합을 한 번의 Gradle 호출
 git push -u origin chore/build-action-cache
 ```
 
-- [ ] **Step 2: PR 생성 (사용자 확인 필수)**
+- [x] **Step 2: PR 생성 (사용자 확인 필수)**
 
 사용자에게 먼저 물어보고 승인받는다. base는 `develop`이다.
 
@@ -338,7 +350,7 @@ EOF
 )"
 ```
 
-- [ ] **Step 3: 머지 후 — seed 런이 캐시를 저장했는지**
+- [x] **Step 3: 머지 후 — seed 런이 캐시를 저장했는지**
 
 `develop` 머지 후:
 
@@ -361,7 +373,7 @@ Expected:
 
 `grep`에 `-a`를 붙이는 이유: Actions 로그는 제어문자가 섞여 grep이 바이너리로 판정하면 매칭 결과를 출력하지 않는다.
 
-- [ ] **Step 4: 다음 PR — 적중 판정**
+- [x] **Step 4: 다음 PR — 적중 판정**
 
 seed 런 이후에 생성되거나 재실행된 PR의 `unit-test` job 로그에서:
 
@@ -376,7 +388,7 @@ Expected:
 
 이 둘이 최종 성공 판정이다. `Run unit tests` 소요 시간도 함께 기록해 진단 시점(4분대)과 비교한다.
 
-- [ ] **Step 5: 문서 갱신 (wiki 저장소)**
+- [x] **Step 5: 문서 갱신 (wiki 저장소)**
 
 이 스텝만 wiki 저장소(`team-yg-pesonal-agent`)에서 수행한다. TJYG-Android가 아니다.
 

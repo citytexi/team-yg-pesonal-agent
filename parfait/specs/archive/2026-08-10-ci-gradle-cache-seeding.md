@@ -1,10 +1,10 @@
 ---
 id: ci-gradle-cache-seeding
 title: CI Gradle 캐시 시딩 (GitHub Actions Gradle cache seeding)
-status: draft
+status: implemented
 category: build-ci
 platforms: android
-verified: 2026-08-10
+verified: 2026-08-11
 related_code: gradle-cache-seed.yml, test.yml, ktlint.yml, setup-android-build/action.yml, gradle.properties
 related_adr:
 related_spec:
@@ -17,6 +17,10 @@ tags: [spec, parfait, ci, build]
 # Spec: CI Gradle 캐시 시딩
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+
+> ✅ **머지됨(2026-08-10, PR #227 `chore/build-action-cache`)** — 아래 [머지 후 관측](#머지-후-관측-2026-08-10)에
+> 실측값이 있다. 설계와 코드가 일치하고, 머지 전에는 증명할 수 없다고 적어 둔 두 전제
+> (`cache-read-only: false` 전환 · 후속 PR 적중)가 실제 런 로그로 확인됐다.
 
 ## 목표
 
@@ -194,6 +198,22 @@ Kotlin 데몬이 Gradle 데몬의 `-Xmx`를 상속한다** — 힙 상향이 조
 `|<os>-<arch>` 프리픽스까지 폴백하기 때문이다(그렇지 않으면 job 이름이 다른 `seed` → `unit-test`
 복원이 조용히 실패한다).
 
+## 머지 후 관측 (2026-08-10)
+
+관측은 런 ID에 고정한다(저장소 `mash-up-kr/TEAMYG-Android`).
+
+| 대상 | 런 | 관측 |
+|---|---|---|
+| seed(`gradle-cache-seed`) — 첫 실행 | `31402546861` (job `93500821956`) | `cache-read-only: false` · `Gradle User Home cache not found. Will initialize empty.` · `861 actionable tasks: 661 executed, 200 from cache` · `Caching Gradle state` 그룹 존재 · 7m46s |
+| PR `unit-test` — seed 이전 | `31401758683` | 6m16s |
+| PR `unit-test` — seed 이후 | `31403327032` (job `93503472919`) | `cache-read-only: true` · **`Gradle User Home cache not found`가 사라짐** · `608 actionable tasks: 240 executed, 368 from cache` · 2m45s |
+
+- **전제 2건 확인됨**: 기본 브랜치 push job이 쓰기 모드로 전환된다는 것(`cache-read-only: false`),
+  그리고 job 이름이 다른 `seed` → `unit-test` 복원이 프리픽스 폴백으로 성립한다는 것.
+- **효과**: 진단 시점 대비 PR `unit-test` 런이 6분대 → 2분대. 태스크의 절반 이상이 from-cache다.
+- seed 자신은 첫 런이라 복원할 캐시가 없었고(`cache not found`), 그럼에도 `200 from cache`가 잡힌 것은
+  같은 런 안에서 태스크 출력이 재사용됐기 때문이다.
+
 ## 주의 / 열린 질문
 
 - **첫 PR은 여전히 느리다.** seed가 `develop`에 들어간 뒤 도는 PR부터 효과가 난다.
@@ -201,6 +221,8 @@ Kotlin 데몬이 Gradle 데몬의 `-Xmx`를 상속한다** — 힙 상향이 조
   PR 수가 머지 수보다 많은 통상적 흐름에서는 총량이 준다.
 - **기대 효과의 범위** — 사라지는 것은 의존성 재다운로드와 태스크 재실행이다. 데몬 기동과 설정
   단계는 configuration cache를 범위에서 뺐으므로 그대로 남는다.
+- 아래 열린 질문 3건은 머지 후 [open-questions](../../synthesis/open-questions.md) [2026-08-11] 2항목으로 등록됐다
+  (빌드 성능 후속 = `parallel` 재도입 + configuration cache / 액션 Node 20 deprecation).
 - **열린 질문: `org.gradle.parallel`을 별건으로 다시 켤 것인가.** 위 "검토했다가 뺀 것" 참조.
   다시 켠다면 검증을 `test` 그래프 하나로 끝내지 말고 `assembleRelease`·`lint`까지 돌려야 한다 —
   미선언 모듈 간 의존은 태스크 그래프마다 다르게 나타나고, 릴리스 빌드의 간헐 실패는 "플래키"로
