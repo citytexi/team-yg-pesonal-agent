@@ -4,7 +4,8 @@
 
 ## 지금 상태 (1줄)
 Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록 골격·C-101 카메라 플로우까지 들어왔고 둘 다 **데이터·후속 화면 미결선** 상태다. 디자인시스템은 Figma 바 3종(Top Bar Canvas·List-Date·Floating Bar)과 배경 블러(Haze, ADR-0018)까지 머지됐다(#188).
-서버 계약은 `api/`에 스냅샷돼 있고(도메인 4건·엔드포인트 14개), Android 대응 심볼은 아직 0건이다.
+서버 계약은 `api/`에 스냅샷돼 있다(도메인 5건·엔드포인트 16개 — 2026-08-10 image 2건 신설). Android 표면은
+14 엔드포인트까지 와 있고(PR #197) image 2건은 대응 심볼 0건이며, 어느 표면도 실서버 요청 경험은 없다.
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |

@@ -218,7 +218,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-07-30] 사진 업로드 경로의 타임아웃 정책 미정
 - **출처**: `data/di/NetworkModule.kt#provideOkHttpClient`(PR #174 develop 머지, 2026-08-01) — 단일 `OkHttpClient`가 connect/read/write 타임아웃을 모든 호출에 공통 적용하고 `callTimeout`은 설정하지 않는다(=전체 소요 무제한). 코드리뷰에서 30초가 과하다는 지적을 받아 값을 낮췄으나, 토핑 사진 업로드(누끼 PNG) API는 아직 없어 실제 전송·서버 처리 시간을 모른 채 정한 값이다. OkHttp의 read/write는 전체 전송 시간이 아니라 바이트 간 유휴 상한이라, 업로드가 느린 것 자체는 이 값으로 잡히지 않는다.
 - **항목**: ① 업로드 API 확정 후 전체 소요 상한(`callTimeout`)을 둘지 — 두면 스피너·취소 UX와 값이 묶인다. ② 업로드 전용 `OkHttpClient`(`@Qualifier`)를 분리해 read/write만 늘릴지, 아니면 단일 클라이언트 값을 상향할지. ③ 실패 시 재시도(멱등성 확인 필요)를 어디에 둘지 — 인터셉터 vs 호출부.
-- **상태**: 미해결 (업로드 API 미구현 — 값 확정에 필요한 실측 데이터 없음)
+- **상태**: 미해결 (실측 대기 — **보류 사유였던 "업로드 API 미구현"은 2026-08-10 해소됐다**)
+  > 📌 **전제가 사라졌다(2026-08-10, 서버 `5bb2a3a`)** — 업로드 API가 [api/image.md](../api/image.md)로 들어왔고, 형태가 예상과 다르다. **바이트가 서버를 지나지 않는다**(S3 presigned PUT 직접 업로드). 그래서 타임아웃 결정 대상이 `YG_BASE_URL` 호출이 아니라 **S3로 나가는 PUT**이다 — 이 요청은 Retrofit 서비스가 아니므로 ②의 "업로드 전용 `OkHttpClient` 분리"는 선택이 아니라 사실상 전제가 되고, ③ 재시도는 `expiresIn` 만료 시 URL 재발급이 선행돼야 한다(만료된 presigned URL은 재시도해도 실패한다). ①의 `callTimeout`도 서버 API가 아니라 이 PUT에 걸 값이다.
 - **해소 메모**: 업로드 엔드포인트 붙일 때 실측 후 결정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅"·타임아웃 서술과 [data-layer](../architecture/data-layer.md) 네트워킹 섹션에 반영. 파르페 규율상 문서에 수치는 적지 않고 구조(클라이언트 분리 여부·callTimeout 유무)만 기록한다.
 
 ### [2026-07-30] Figma가 아이콘 tint 색을 노출하지 않아 대조 불가 — Button-Icon·Action-Item
@@ -613,8 +614,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **출처**: TJYG-Android 루트 `http/`(PR #190 develop 머지) — `auth.http`·`parfait-group.http`·`parfait.http`·`health.http`·`_reset.http` + `README.md`가 엔드포인트 경로·요청 바디·응답 형태·함정(예: `reissue`에 `Authorization`을 붙이면 막힘, `logout` 204라 본문 없음)을 서술한다. 같은 내용이 [api/](../api/README.md)의 도메인 문서 4건 + [api/conventions.md](../api/conventions.md)에도 있다. 두 표면 다 근거는 서버 코드지만 **갱신 절차가 다르다** — `api/`는 스킬 `sync-teamyg-server-api`가 서버 기준선 delta로 갱신하고, `http/`는 사람이 손으로 고친다.
 - **항목**: ① 서버 계약이 바뀔 때 `http/`도 함께 갱신하는 것을 `sync-teamyg-server-api` 절차에 넣을지(넣으면 이 위키 저장소의 스킬이 코드 저장소 파일을 고치게 된다), ② 아니면 `http/README.md`를 계약 서술 없이 "실행 방법"으로만 깎고 계약 근거는 `api/`로 단일화할지. 현재는 `http/README.md`가 envelope 5필드·204 예외·`errorDetail` 항상 null까지 자체 서술하고 있어 서버가 바뀌면 조용히 갈린다.
-- **상태**: 미해결 (아직 갈리지 않았으나 갱신 경로가 둘)
+- **상태**: 미해결 (**2026-08-10 실제로 갈렸다** — 아래 참고)
   > 📌 **표면이 더 커졌다(2026-08-06, PR #197)** — `policy.http`가 추가돼 요청 모음이 **14 엔드포인트 전량**을 덮고, `README.md`도 약관 `termsId` 출처·`url` 전문 가능성·성공 코드 2종 같은 계약 서술을 더 얹었다. 이중 관리 면적이 늘었다는 뜻이라 결정을 미룰수록 비싸진다.
+  > 📌 **갈라짐 발생(2026-08-10, 서버 `5bb2a3a`)** — image 도메인 2건이 들어와 서버는 16 엔드포인트인데 `http/`는 14에 멈춰 있다. `api/`만 스킬로 갱신되고 `http/`는 손이 닿지 않은 첫 사례다 → 후속 항목 [2026-08-10] `http/` 요청 모음 공백.
 - **해소 메모**: 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절과 `sync-teamyg-server-api` 스킬 절차에 반영한다.
 
 ### [2026-08-04] `@NoAuth`를 붙일 서비스 메서드가 develop에 0건 — 인증 스킵 경로가 통째로 死코드
@@ -709,6 +711,27 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 결과 반환 관용구를 계속 쓸지 — 커스텀 갤러리·카메라는 이미 `goTo` 전진으로 갈아탔고 남은 소비처가 死경로뿐이라, 데코레이터째 걷어낼지 아니면 재사용처를 확정할지. ② 걷어낸다면 `Navigator.onBack()`의 `size <= 1` 가드 주석("`ResultEffect` 발동 상황에서 사이즈가 1인 경우 크래시")이 가리키는 전제도 같이 정리한다.
 - **상태**: 미해결 (② 가드 자체는 현재 앱 진입 체인에서도 필요하다 — 그룹 목록에서 백스택이 1개다)
 - **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번과 [2026-08-04] 항목을 함께 닫는다.
+
+### [2026-08-10] 이미지 업로드 확인 API에 소유자 검증이 없다
+
+- **출처**: TEAMYG-SERVER `main` `5bb2a3a`([api/image.md](../api/image.md)) — `POST /api/v1/images/{imageId}/confirm`. `ConfirmImageUploadController.confirm`이 `@PathVariable imageId`만 받고 `Authentication`을 받지 않는다. `ConfirmImageUploadCommand`에도 memberId가 없고 `ConfirmImageUploadService`는 `imageMetaQueryPort.findById` 결과의 `uploadedByMemberId`를 대조하지 않는다. 화이트리스트 밖이라 토큰은 필요하지만, **유효한 토큰을 가진 아무 회원이나 남의 `imageId`를 `COMPLETED`로 올릴 수 있다.** id가 auto-increment Long이라 값 추측도 쉽다. 발급 API(`POST /api/v1/images`)는 반대로 memberId를 확실히 쓴다(S3 키에 `user<memberId>`가 들어간다).
+- **항목**: ① 서버 이슈로 올려 confirm에도 소유자 대조를 넣을지 — 넣으면 남의 이미지 확정 시 새 에러 코드(403 계열)가 생기고 앱의 에러 매핑이 늘어난다. ② 앱이 붙기 전에 서버가 고칠 것이라 보고 [api/image.md](../api/image.md)에 관측 사실로만 남길지. ③ confirm 재시도로 받는 `IMAGE_ALREADY_CONFIRMED`(409)를 앱이 성공으로 간주할지 — 소유자 검증이 없는 현재 상태에서는 **409가 "내가 이미 했다"인지 "남이 했다"인지 구분되지 않는다**. 검증이 들어오면 이 모호함도 같이 사라진다.
+- **상태**: 미해결 (서버 소관 — 앱 연동 착수 전에 확인 필요)
+- **해소 메모**: 서버가 고치면 [api/image.md](../api/image.md) confirm 절의 ⚠️ 두 개(소유자 미검증·409 해석)와 [api/conventions.md](../api/conventions.md) "인증" 절 말미를 함께 지운다.
+
+### [2026-08-10] 이미지 업로드 계약의 미사용 필드·정리 경로 부재
+
+- **출처**: TEAMYG-SERVER `main` `5bb2a3a`([api/image.md](../api/image.md)) — 두 건이다. ① `IssueImageUploadUrlRequest.fileName`이 `@NotBlank` 필수인데 `toCommand`가 싣지 않아 서버 로직에 닿지 않는다. S3 키는 `ImageKeyGenerator`가 UUID로 만들고 확장자는 `contentType`에서 유도하므로 원본 파일명은 어디에도 저장되지 않는다 — 앱은 **쓰이지 않을 값을 반드시 채워야** 400을 면한다. ② 발급 시점에 `ImageMeta.createPending`이 행을 먼저 만드는데, 앱이 S3 PUT을 하지 않거나 confirm을 부르지 않으면 `PENDING` 행과 S3 키가 그대로 남는다. 서버에 `@Scheduled`가 0건이고 `ImageMetaRepository`는 `JpaRepository` 기본 메서드뿐이라 **정리 경로가 없다**. `referenceCount` 컬럼도 도메인·엔티티에만 있고 증감 코드가 없다.
+- **항목**: ① `fileName`을 계약에서 뺄지, 아니면 메타 컬럼·S3 키에 반영할지(서버 결정). 앱은 그때까지 더미가 아닌 실제 파일명을 보내 둔다 — 나중에 서버가 쓰기 시작해도 값이 맞는다. ② 고아 `PENDING` 정리를 서버 배치로 둘지, 앱이 실패 시 취소 API를 부르게 할지(현재 취소 API 없음). ③ `referenceCount`를 누가 증감할지 — 토핑·캔버스가 이미지를 참조하기 시작하는 시점의 계약이다.
+- **상태**: 미해결 (셋 다 서버 소관이나 ①은 앱 요청 바디 구성에 즉시 영향)
+- **해소 메모**: 해소 시 [api/image.md](../api/image.md) 요청 필드 표의 ⚠️와 "미결" 절을 갱신한다.
+
+### [2026-08-10] `http/` 요청 모음이 서버 신규 엔드포인트 2건을 덮지 못한다
+
+- **출처**: 서버 delta `5bb2a3a`로 엔드포인트가 16개가 됐는데 TJYG-Android 루트 `http/`에는 `images.http`가 없다(현재 `auth`·`policy`·`parfait-group`·`parfait`·`health` 5개 파일 = 14 엔드포인트). PR #197 시점의 "전량 커버"가 이번에 깨졌다. 이는 [2026-08-04] `http/`↔`api/` 이중 관리 항목이 예고한 갈라짐이 **처음 실제로 발생한 사례**다 — 두 표면의 갱신 경로가 다르다는 문제가 가설이 아니게 됐다.
+- **항목**: [2026-08-04] 항목의 선택지 ①(스킬이 `http/`도 갱신)·②(`http/`를 실행 방법으로만 축소)를 이제 고른다. 미루면 서버 delta마다 격차가 누적된다. 어느 쪽이든 image 2건의 요청 파일은 앱 연동 라운드에서 만든다 — presigned PUT은 IntelliJ HTTP Client로도 재현 가능하지만 **S3로 나가는 두 번째 요청은 서버 계약이 아니라 AWS 계약**이라 모음의 성격이 달라진다는 점도 함께 정한다.
+- **상태**: 미해결 (갈라짐 발생 — [2026-08-04] 항목의 후속이자 촉발 사례)
+- **해소 메모**: 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절의 ⚠️와 [2026-08-04] 항목을 함께 닫는다.
 
 <!--
 항목 추가 형식:
