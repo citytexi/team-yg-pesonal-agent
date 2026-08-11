@@ -99,6 +99,12 @@ base URL은 호스트까지만 두고(`BuildConfig.BASE_URL`) 각 메서드가 �
 
 ### 1. `newUser` 키 변환 — 조용히 틀리는 유일한 건
 
+> 🔁 **2026-08-11 정정 — 이 절의 전제가 틀렸다.** 실제 JSON 키는 **`isNewUser`**다(서버가
+> `jackson-module-kotlin`을 쓰므로 `is` 접두사가 남는다). 아래 서술은 당시 계약 문서를 그대로 따른
+> as-built 기록으로 남기고, **정본은** [../../api/auth.md](../../api/auth.md) "판별자 키"·
+> [../../api/conventions.md](../../api/conventions.md) "직렬화 규약"이다. 이 절대로 구현된
+> `@SerialName("newUser")`는 **수정 대상**이다 → [open-questions](../../synthesis/open-questions.md).
+
 서버 `KakaoLoginResponse`는 Kotlin `val isNewUser: Boolean`인데 Jackson이 `is` 접두사를 떼어
 **JSON 키는 `newUser`**로 나간다([conventions.md](../../api/conventions.md) "직렬화 규약").
 

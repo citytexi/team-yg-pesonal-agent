@@ -471,7 +471,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: 서버 `KakaoLoginController`·`SignupController`·`ReissueController`·`LogoutController`(`/api/v1/auth/**`) · `ParfaitController`(`/api/v1/groups/{groupId}/parfaits/**`) · `ParfaitGroupController`(`/api/parfait-groups`, 버전 프리픽스 없음) — [api/conventions.md](../api/conventions.md) "URL 규약".
 - **항목**: 버전 프리픽스(`/api/v1/`) 유무와 그룹 경로(`groups` vs `parfait-groups`) 통일 여부 확정.
 - **상태**: 미해결 (서버팀 확인 필요 — 서버에 URL 규약 문서 없음)
-- **해소 메모**: 서버가 정리하면 [api/conventions.md](../api/conventions.md) "URL 규약" 표와 각 도메인 문서(`auth.md`·`parfait-group.md`·`parfait.md`)의 엔드포인트 표 경로를 함께 갱신한다.
+  > 📌 **2026-08-11 delta로 형태가 5종이 됐다** — `/api/v1/users/me/<하위>`가 더해졌고, 그룹 하위 경로가 `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}`까지 깊어졌다. **`images` 세그먼트가 두 도메인(최상위 업로드 / 그룹 하위 배치)에 동시에 존재**한다. 통일을 미룰수록 클라이언트 경로 상수 설계가 굳는다.
+- **해소 메모**: 서버가 정리하면 [api/conventions.md](../api/conventions.md) "URL 규약" 표와 각 도메인 문서(`auth.md`·`parfait-group.md`·`parfait.md`·`member.md`·`parfait-image.md`)의 엔드포인트 표 경로를 함께 갱신한다.
 
 ### [2026-08-02] 파르페 연도 조회 경로 `year`(단수) vs 응답 필드 `years`(복수) 불일치
 - **ID**: OQ-P-061
@@ -484,8 +485,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-062
 - **출처**: `ParfaitGroupService.validateJoin`의 `requireMemberNickname`이 반환한 **회원 전역 닉네임**에 `GroupNickname.of`를 그대로 적용한다(join-preview·join의 `INVALID_GROUP_NICKNAME`). [api/parfait-group.md](../api/parfait-group.md) "미결" — 전역 닉네임을 검증하는 `core/member` 값 객체는 이번 서버 계약 조사 범위(컨트롤러·DTO·`ParfaitGroupError`·`GroupName`/`GroupNickname`/`GroupMemberLimit`) 밖이라 확인하지 못했다.
 - **항목**: 전역 닉네임 규칙(길이·문자 패턴)이 `GroupNickname`(1~15자, `^[가-힣A-Za-z0-9]+(?: [가-힣A-Za-z0-9]+)*$`)과 같은지 서버 `core/member` 코드를 추가로 읽어 확정한다 — 다르면 회원이 그룹 참여를 시도할 때 본인이 입력한 값과 무관하게 `INVALID_GROUP_NICKNAME`을 받을 수 있다.
-- **상태**: 미해결 (조사 범위 확장 필요)
-- **해소 메모**: 확인 후 [api/parfait-group.md](../api/parfait-group.md) join-preview/join 절과 "정책 대조 메모"에 반영한다.
+- **상태**: 해소됨 (2026-08-11, 서버 `2c5499a` — 두 규칙이 문자 그대로 같다)
+- **해소 메모**: `[Feat/#66] 전역 닉네임 변경 API (#77)`가 `core/member/domain/GlobalNickname`을 신설하면서 전역 닉네임 검증 지점이 코드로 드러났다. `MAX_LENGTH = 15`·패턴·길이 검사가 `GroupNickname`과 동일하고, 다른 것은 던지는 코드(`INVALID_NICKNAME` vs `INVALID_GROUP_NICKNAME`)와 `GroupNickname.unknown()` 센티널의 존재뿐이다 — 정상 경로에서 우려한 오탐은 발생하지 않는다. [api/parfait-group.md](../api/parfait-group.md) "미결"을 해소 서술로 바꾸고 [api/member.md](../api/member.md)에 대조 결과를 적었다. 잔여: `GroupNickname.unknown()`이 만드는 `(알수없음)`은 자기 패턴을 통과하지 못하는 값인데, 이 값이 전역 닉네임 자리로 흘러드는 경로는 현재 코드에 없다.
 
 ### [2026-08-02] `errorDetail`이 계약에만 있고 값이 채워지지 않는 상태가 의도인지 미확정
 - **ID**: OQ-P-063
@@ -583,8 +584,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-075
 - **출처**: 서버 `KakaoLoginResponse`는 Kotlin `val isNewUser: Boolean`이지만, 서버가 발행한 OpenAPI 스키마의 `KakaoLoginResponse`는 필드를 **`newUser`**로 적는다. Jackson이 getter(`isNewUser()`) 이름에서 `is` 접두사를 떼고 직렬화하기 때문이다 → [api/conventions.md](../api/conventions.md) "직렬화 규약", [api/auth.md](../api/auth.md), [api/spec/auth-kakao-login.md](../api/spec/auth-kakao-login.md).
 - **항목**: Android가 이 응답 타입을 만들 때 `@SerialName("newUser")`를 반드시 붙인다. 붙이지 않으면 kotlinx-serialization이 기본값으로 조용히 떨어져 **신규 유저가 기존 회원으로 분기**되고 존재하지 않는 `accessToken`을 꺼낸다 — 예외가 나지 않아 발견이 늦다. 서버팀에 `@get:JsonProperty("isNewUser")`로 키를 고정할 의향이 있는지도 함께 확인한다(고정되면 클라이언트 쪽 어노테이션이 불필요해진다).
-- **상태**: 해소됨 (2026-08-06, PR #197 develop 머지 — `KakaoLoginResponse.isNewUser`에 `@SerialName("newUser")` 부착 확인)
-- **해소 메모**: `data/service/model/response/auth/KakaoLoginResponse.kt`가 판별자 프로퍼티를 `isNewUser`로 두고 `@SerialName("newUser")`를 붙였다. 같은 라운드가 **DTO 전 프로퍼티에 `@SerialName` 명시**를 규약으로 굳혀(키가 프로퍼티명과 같아도 붙인다) 같은 종류의 사고를 구조적으로 막는다 → [data-layer](../architecture/data-layer.md) "패키지 배치". 서버팀에 `@get:JsonProperty("isNewUser")`로 키를 고정할 의향이 있는지는 묻지 않았고, 고정되면 이 어노테이션이 불필요해진다(현재 어느 쪽이든 동작은 같다). **역직렬화 실동작은 미검증** — 아래 "런타임 미검증" 항목이 안고 간다.
+- **상태**: ⚠️ **재개(2026-08-11) — 전제가 틀렸다.** 실제 응답 키는 `isNewUser`이고, 위 "해소"로 붙인 `@SerialName("newUser")`가 **지금은 그 자체로 불일치**다 → 후속 항목 [2026-08-11] 판별자 키 정정.
+- **해소 메모**: `data/service/model/response/auth/KakaoLoginResponse.kt`가 판별자 프로퍼티를 `isNewUser`로 두고 `@SerialName("newUser")`를 붙였다. 같은 라운드가 **DTO 전 프로퍼티에 `@SerialName` 명시**를 규약으로 굳혀(키가 프로퍼티명과 같아도 붙인다) 같은 종류의 사고를 구조적으로 막는다 → [data-layer](../architecture/data-layer.md) "패키지 배치". **다만 이 규약은 키 값이 옳을 때만 방어가 된다** — 이번엔 계약 문서가 틀린 값을 줬고 규약이 그 값을 성실히 고정했다. 이 항목은 후속 항목으로 이어진다.
 
 ### [2026-08-02] 개발 서버가 평문 HTTP — 앱에서 전 요청이 cleartext 차단된다
 - **ID**: OQ-P-076
@@ -841,7 +842,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-108
 - **출처**: 서버 delta `5bb2a3a`로 엔드포인트가 16개가 됐는데 TJYG-Android 루트 `http/`에는 `images.http`가 없었다(당시 `auth`·`policy`·`parfait-group`·`parfait`·`health` 5개 파일 = 14 엔드포인트). PR #197 시점의 "전량 커버"가 깨졌다. 이는 [2026-08-04] `http/`↔`api/` 이중 관리 항목이 예고한 갈라짐이 **처음 실제로 발생한 사례**다.
 - **항목**: [2026-08-04] 항목의 선택지 ①(스킬이 `http/`도 갱신)·②(`http/`를 실행 방법으로만 축소) 중 무엇을 고를지. 갱신 경로가 둘이라는 구조 자체는 그대로다.
-- **상태**: **부분 해소** (공백은 메웠고 **구조는 미해결**)
+- **상태**: **부분 해소 → 다시 벌어짐** (공백은 image 2건만 메웠고 **구조는 미해결**)
+  > 📌 **2026-08-11 서버 delta로 7건 공백**(21 엔드포인트 중 14만 덮임) — 애플 로그인 1 · member 2 · parfait-image 2가 새로 비었고, image 2는 `images.http`가 **아직 미머지 브랜치에만** 있다. 손으로 메우는 방식이 서버 delta 한 번에 다시 무너졌다 — [2026-08-04] 항목의 구조 결정을 더 미룰 근거가 없다.
 - **해소 메모**: `image-api-service-layer` 라운드가 `images.http`를 신설해 **16/16 커버를 회복**했고(브랜치 `feature/sync-backend-api-260810`, 미머지) `http/README.md` 5곳·`http-client.env.json`·`_reset.http`도 함께 갱신했다. S3 PUT 요청도 같은 파일에 뒀다 — 서버 계약이 아니라 AWS 계약이지만, `Content-Type` 불일치로 S3가 거절하는 실패는 **서버 로그에 남지 않아** 이 파일이 재현할 유일한 자리라서다. 다만 이번엔 **사람이 손으로 메운 것**이고 [2026-08-04]의 "갱신 경로가 둘"은 그대로라, 다음 서버 delta에서 같은 일이 반복된다. 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절의 ⚠️와 [2026-08-04] 항목을 함께 닫는다.
 
 ### [2026-08-10] presigned `uploadUrl`이 debug 로그로 새어나간다
@@ -900,6 +902,64 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (경고일 뿐 실패는 아님 — 강제 종료일 전에 처리)
 - **해소 메모**: 올리면 `.github/workflows/*.yml`과 `.github/actions/{setup-android-build,restore-app-secrets}/action.yml`을 함께 본다.
 
+### [2026-08-11] 로그인 판별자 키를 계약 문서가 틀리게 기술했고 Android가 그대로 구현했다
+
+- **ID**: OQ-P-116
+- **출처**: 서버 `KakaoLoginResponse`·`AppleLoginResponse`의 `val isNewUser: Boolean`. 서버 `http` 모듈이 `tools.jackson.module:jackson-module-kotlin`을 의존해 **`is` 접두사가 JSON 키에 남고**, `KakaoLoginControllerTest`·`AppleLoginControllerTest`가 실제 응답 본문에 `jsonPath("$.data.isNewUser")`를 단언한다. 팀 명세도 `isNewUser`로 적었다. **OpenAPI 스키마만 `newUser`**인데, springdoc이 swagger-core 자체 ObjectMapper(Kotlin 모듈 없음)로 모델을 유도하기 때문이다. Android `data/service/model/response/auth/KakaoLoginResponse.kt`는 `@SerialName("newUser")`를 붙이고 있다 → [api/auth.md](../api/auth.md) "판별자 키", [api/conventions.md](../api/conventions.md) "직렬화 규약".
+- **항목**: ① Android의 `@SerialName("newUser")`를 제거하거나 `isNewUser`로 고친다 — 현재 상태로는 키를 못 찾아 `MissingFieldException`이 나고 **카카오 로그인 호출이 통째로 실패**한다(기본값이 없는 필드다). ② 실서버 응답으로 키를 한 번 확인한다 — 근거 3축(서버 코드·컨트롤러 테스트·팀 명세)이 한 방향이고 스키마만 반대지만, 실물 응답을 본 적은 없다. `http/auth.http`로 찍는 것이 가장 싸다. ③ 서버팀에 `@JsonProperty`로 키를 명시 고정할 의향을 확인한다 — Jackson 모듈 구성이 바뀌면 키가 조용히 뒤집힌다.
+- **상태**: 미해결 (①은 앱 코드 수정 대상, ②는 실연동 라운드에서)
+- **해소 메모**: 이 불일치는 **계약 문서가 만들었다** — 2026-08-02 판본이 스키마 하나를 근거로 키를 `newUser`로 적었고 앱이 성실히 따랐다. 재발 방지로 [api/conventions.md](../api/conventions.md) "OpenAPI"에 "스키마가 틀리는 것: 직렬화 키와 `required`"를 명시하고, 직렬화 키의 근거를 **컨트롤러 테스트의 응답 본문 단언**으로 바꿨다. ①이 끝나면 [api/README.md](../api/README.md) 도메인 표의 `⚠️불일치`와 [api/conventions.md](../api/conventions.md) "Android 불일치" 표를 함께 지운다. 선행 항목은 OQ-P-075.
+
+### [2026-08-11] 서버가 앱보다 7 엔드포인트 앞섰다 — 애플 로그인·회원·토핑 배치가 통째로 공백
+
+- **ID**: OQ-P-117
+- **출처**: 서버 `2c5499a` 기준 21 엔드포인트. TJYG-Android develop의 원격 표면은 `AuthService`·`ParfaitGroupService`·`ParfaitService`·`PolicyService` 4개(= 14 엔드포인트)로 그대로다. 공백은 image 2(미머지 브랜치 `feature/sync-backend-api-260810`에 `ImageService`가 있다) · 애플 로그인 1 · member 2 · parfait-image 2 → [api/README.md](../api/README.md), [api/conventions.md](../api/conventions.md) "Android 불일치".
+- **항목**: ① 앱이 어느 순서로 따라갈지 — 화면 결선 순서(온보딩 → 캔버스)와 서버 순서가 다르다. ~~② **애플 로그인은 iOS만의 요구가 아니다** — Android가 붙일지, 붙는다면 `identityToken`·`authorizationCode`를 어디서 얻을지(애플 로그인 SDK가 Android에 없어 웹 플로가 필요하다) 결정한다.~~(해소 — 아래) ③ 토핑 배치(`parfait-image`)는 **목록 조회 API가 없어** 배치만 되고 다시 그릴 수 없다 — 앱 결선은 그 API를 기다려야 한다.
+  > 📌 **② 해소(2026-08-11)** — **Android는 애플 로그인을 쓰지 않는다.** 서버 계약은 그대로 두되 앱 대응 심볼을 만들지 않고 `http/auth.http`에도 요청을 넣지 않는다. [api/README.md](../api/README.md) Android 열에 `해당 없음` 값을 신설해 `미구현`(아직 없음)과 구분했고 — 표면 개수를 셀 때 분모에서 뺀다 — [api/auth.md](../api/auth.md) 엔드포인트 표·Android 매핑 절에 반영했다. 근거는 [member·parfait-image 서비스 레이어 스펙](../specs/2026-08-11-member-parfait-image-api-service-layer.md) "범위". iOS가 붙으면 계약은 그대로 유효하다.
+  > 📌 **공백이 곧 0이 된다(진행 중)** — 분모가 21에서 **20**으로 줄고(애플 1 제외), develop 14 + PR #229의 image 2 + 위 스펙의 member 2·parfait-image 2 = **20**이다. 즉 표면 공백 자체는 이 라운드로 닫히고 **①이 말하는 "순서" 문제는 표면이 아니라 소비처 쪽으로 옮겨간다.**
+- **상태**: 부분 해소 (② 해소 — Android 미사용 확정 / ①③ 잔존)
+- **해소 메모**: 앱 표면이 붙으면 각 도메인 문서의 `android_status`·"Android 매핑" 절은 스킬 `sync-tjyg-develop-baseline`이 갱신한다. 이 항목은 **간극의 존재**만 추적한다.
+
+### [2026-08-11] 토핑 배치 POST가 남의 배치를 덮어쓰고 소유자를 가져간다
+
+- **ID**: OQ-P-118
+- **출처**: 서버 `PlaceParfaitImageService.place` — `parfaitImageQueryPort.findByParfaitIdAndImageMetaId(parfaitId, imageId)`로 기존 배치를 찾아 있으면 `ParfaitImage.reposition(placedByGroupMemberId = 호출자, …)`을 부른다. **배치자 대조가 없다.** 반면 `UpdateParfaitImageService`는 `groupMember.id != parfaitImage.placedByGroupMemberId`면 `PARFAIT_IMAGE_NOT_OWNED`(403)로 막는다 → [api/parfait-image.md](../api/parfait-image.md).
+- **항목**: ① 같은 그룹 멤버가 남의 토핑을 옮기는 것이 의도인지(협업 캔버스라 허용일 수도 있다). ② 허용이라면 **PATCH의 소유자 검사와 모순**이므로 한쪽을 맞춘다 — 지금은 "PATCH로는 못 옮기지만 POST로는 옮기고 소유권까지 가져간다". ③ POST의 upsert 동작(`imageId` 재사용 시 새 행이 안 생김) 자체를 앱이 알아야 한다 — 같은 이미지를 두 번 배치할 수 없다는 뜻이다.
+- **상태**: 미해결 (서버팀 확인 필요 — 권한 모델 결정)
+- **해소 메모**: 확인 후 [api/parfait-image.md](../api/parfait-image.md) POST 절의 ⚠️와 "미결"을 갱신한다. 정책 근거는 위키 [[토핑]]·[[토핑-spotlight]](C-202는 타인 토핑 탭을 조회로만 규정한다) 쪽도 함께 본다.
+
+### [2026-08-11] 토핑 배치 계약의 공백 — 목록 조회·삭제 부재, 테두리 수정 경로 없음, 좌표 검증 없음
+
+- **ID**: OQ-P-119
+- **출처**: 서버 `http/parfaitimage` 전수 — 컨트롤러는 `PlaceParfaitImageController`(POST)·`UpdateParfaitImageController`(PATCH) 둘뿐이다. `PlaceParfaitImageRequest`·`UpdateParfaitImageRequest`에 검증 애노테이션이 없고 컨트롤러도 `@Valid`를 붙이지 않는다. `UpdateParfaitImageRequest`에 테두리 필드가 없고 두 응답 DTO도 테두리를 돌려주지 않는다 → [api/parfait-image.md](../api/parfait-image.md).
+- **항목**: ① **배치 목록 조회 API**가 언제 나오는지 — 없으면 앱이 캔버스를 다시 그릴 수 없다(현재는 자기가 방금 보낸 값만 안다). ② **배치 삭제 API** 부재 — 토핑을 지울 수 없다. ③ 배치 후 **테두리 변경 경로**를 PATCH에 넣을지, 아니면 같은 `imageId` 재-POST로 가게 둘지(후자는 위 소유권 문제와 얽힌다). ④ `positionX/Y/Z`·`scale`·`rotation` 범위를 서버가 강제할지 앱 책임으로 둘지 — 현재 음수 `scale`도 저장된다.
+- **상태**: 미해결 (전부 서버 소관이나 ①은 앱 화면 결선의 선행 조건)
+- **해소 메모**: 서버가 채우면 [api/parfait-image.md](../api/parfait-image.md)에 엔드포인트를 추가하고 [api/README.md](../api/README.md) 도메인 표의 개수를 갱신한다.
+
+### [2026-08-11] 전역 닉네임을 바꿔도 기존 그룹 닉네임이 그대로다
+
+- **ID**: OQ-P-120
+- **출처**: 서버 `MemberService.change` — `Member.globalNickname` 한 컬럼만 갱신한다(`MemberAdapter.updateGlobalNickname`). 그룹 참여 시점에 복사된 `groupNickname`은 별도 컬럼이고 그룹별 변경 API가 따로 있다([api/parfait-group.md](../api/parfait-group.md)) → [api/member.md](../api/member.md).
+- **항목**: ① 의도된 설계인지 확인 — 그룹마다 다른 이름을 쓰는 것이 기능이라면 맞고, 아니면 전파가 빠진 것이다. ② 앱이 두 값을 어느 화면에서 어떻게 보여줄지 — S-002(앱 닉네임)와 S-101(그룹 프로필)이 서로 다른 값을 보이게 된다. 위키 [[닉네임-자동-생성]]은 "앱↔그룹 값 공유"를 초기값 한정으로 적고 있어 **변경 이후의 동기화는 정책에도 없다**.
+- **상태**: 미해결 (①은 서버팀·기획 확인, ②는 그 결과에 종속)
+- **해소 메모**: 확인 후 [api/member.md](../api/member.md) "미결"과 위키 [[닉네임-자동-생성]] 쪽 대응 서술을 갱신한다.
+
+### [2026-08-11] 영속 `LoginProvider.GOOGLE`이 core enum에 없어 계정 조회가 500이 된다
+
+- **ID**: OQ-P-121
+- **출처**: 서버 `MemberAdapter.toCoreProvider` — 영속 `LoginProvider`는 `KAKAO`·`APPLE`·`GOOGLE` 3종인데 core `LoginProvider`는 2종이라, `GOOGLE` 행에서 `error("GOOGLE login provider is not supported yet")`로 `IllegalStateException`을 던진다. `GlobalExceptionHandler`의 `Exception` 핸들러가 **500 `INTERNAL_SERVER_ERROR`**로 바꾼다 → [api/member.md](../api/member.md) `GET /api/v1/users/me`.
+- **항목**: 구글 로그인을 계약에서 뺄지(영속 enum에서도 제거), 아니면 core에 넣고 로그인 엔드포인트를 만들지 결정한다. 지금은 **구글 회원 행이 하나라도 생기면 그 회원의 계정 조회가 깨진다** — 현재는 구글 로그인 경로 자체가 없어 도달하지 않는다.
+- **상태**: 미해결 (서버팀 확인 필요 — 도달 불가라 급하지 않음)
+- **해소 메모**: 확인 후 [api/member.md](../api/member.md) 응답 필드 표의 ⚠️와 "미결"을 갱신한다.
+
+### [2026-08-11] parfait-image 팀 명세 원문이 `api/spec/`에 없다 — 코드에서 못 읽는 클라이언트 책임이 거기 있다
+
+- **ID**: OQ-P-122
+- **출처**: 팀 명세에 `PATCH /api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}` 페이지가 있고 **관련 화면을 C-305로, 요구를 "자신이 올린 토핑의 위치·크기·각도 수정, 캔버스 영역 이탈 시 자동 보정"으로** 적었다. `api/spec/`에는 auth 4건뿐이라 이 원문이 저장소에 없다. 서버 코드에는 좌표 검증이 **0건**이므로(→ [api/parfait-image.md](../api/parfait-image.md)) "이탈 보정을 누가 하는가"는 코드가 답하지 못한다 — 명세만 답한다.
+- **항목**: ① `spec/parfait-image-place.md`·`spec/parfait-image-update.md`를 수집하고 `## 코드 대조` 절을 돌린다. ② 그 결과로 OQ-P-119 ④(좌표·`scale`·`rotation` 범위를 서버가 강제할지 앱 책임으로 둘지)가 닫히는지 확인한다 — 명세가 앱 책임으로 읽히지만 근거가 화면 설명 한 줄이라 서버팀 확인이 함께 필요하다. ③ 같은 방식으로 member 도메인 명세도 있는지 확인한다.
+- **상태**: 미해결 (수집은 사용자만 할 수 있다 — 명세 도구 접근 필요)
+- **해소 메모**: 수집 후 [api/spec/README.md](../api/spec/README.md) 목록과 [api/README.md](../api/README.md) "팀 명세 원문" 절에 등록하고, [api/parfait-image.md](../api/parfait-image.md)에 **명세 델타** 문단을 추가한다(auth 도메인 문서들과 같은 형식). 이번 서비스 레이어 라운드는 이 수집을 기다리지 않는다 — 자동 보정은 화면 계층 일이라 `:data` 범위 밖이다.
+
 <!--
 항목 추가 형식:
 
@@ -910,4 +970,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 116 -->
+<!-- oq-next: 123 -->

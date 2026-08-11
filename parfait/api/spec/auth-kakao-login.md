@@ -4,8 +4,8 @@ title: 카카오 로그인 / 회원가입
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#48"
-server_commit: 6f5bffc
-verified: 2026-08-02
+server_commit: 2c5499a
+verified: 2026-08-11
 related_api: auth.md
 tags: [api, parfait, spec, auth]
 ---
@@ -89,12 +89,13 @@ tags: [api, parfait, spec, auth]
 
 ## 코드 대조
 
-서버 `main` `6f5bffc` 기준.
+서버 `main` `2c5499a` 기준(2026-08-11 재실행).
 
 ### 일치
 
 - 경로·메서드·인증 불필요, 성공 200 `OK`, 요청 2필드(`idToken`·`nonce` 둘 다 `@NotBlank`)
 - 응답 5필드와 `isNewUser` 분기 구조 — `KakaoLoginResult.ExistingMember` / `NewUser`
+- **판별자 JSON 키 `isNewUser`** — 2026-08-11 정정으로 "실질 불일치"에서 여기로 옮겨 왔다(아래)
 - 400 `INVALID_REQUEST` · 401 `INVALID_ID_TOKEN` · 502 `KAKAO_JWKS_FETCH_FAILED` ·
   503 `KAKAO_SERVER_UNAVAILABLE`
 - **토큰 수명 3종이 설정값과 일치**한다 — `jwt.access-token-expiration-seconds` 3600(1시간),
@@ -104,7 +105,7 @@ tags: [api, parfait, spec, auth]
 
 - **`nonce` 생성 책임이 앱에 있다는 사실.** 서버 코드는 `nonce`를 받아 대조할 뿐이라
   "누가 만드는가"를 코드에서 읽을 수 없다. **Android 구현에 직접 영향**([아래](#android-구현-시-주의)).
-- **429 요청 한도 초과** — 서버에 대응 코드가 없다. `AuthErrorCode` 12종에 없고, rate limit 구현 흔적도
+- **429 요청 한도 초과** — 서버에 대응 코드가 없다. `AuthErrorCode` 14종에 없고, rate limit 구현 흔적도
   코드에서 발견되지 않는다. **명세에만 존재하는 미구현 항목** → [open-questions](../../synthesis/open-questions.md)
 - 토큰 수명을 **사람이 읽는 단위**로 표기(1시간·2주·10분). 코드에는 초 단위 숫자만 있다.
 
@@ -112,21 +113,25 @@ tags: [api, parfait, spec, auth]
 
 - `AuthErrorCode`의 나머지 코드들(`UNAUTHORIZED`·`INVALID_TOKEN`·`EXPIRED_TOKEN`·`MEMBER_NOT_FOUND`·
   `ALREADY_REGISTERED`·`DUPLICATE_TERMS_ID`·`TERMS_NOT_FOUND`·`REQUIRED_TERMS_NOT_AGREED`·
-  `FORBIDDEN_REFRESH_TOKEN`)은 이 엔드포인트 명세에 열거되지 않았다. 대부분 다른 엔드포인트 소관이다.
+  `FORBIDDEN_REFRESH_TOKEN`·`APPLE_SERVER_ERROR`·`APPLE_SERVER_UNAVAILABLE`)은 이 엔드포인트 명세에
+  열거되지 않았다. 대부분 다른 엔드포인트 소관이다.
+- **애플 로그인**(`POST /api/v1/auth/apple`)이 2026-08-11 delta로 들어왔다. 이 명세는 카카오만 다루고
+  애플 전용 명세 문서는 아직 없다 — 계약은 [../auth.md](../auth.md)에 있다.
 - envelope 5필드(`success`·`code`·`message`·`data`·`errorDetail`) — 명세의 JSON 예시는 `data` 안쪽만
   보여준다. **실제 응답은 envelope로 한 겹 감싸여 온다** → [conventions.md](../conventions.md)
 
-### ⚠️ 실질 불일치 — 판별자 JSON 키가 다르다
+### 🔁 철회된 불일치 — 판별자 JSON 키는 명세가 맞았다
 
-명세(위 응답 표·예시)는 판별자를 **`isNewUser`**로 적었으나 **실제 응답 키는 `newUser`**다.
+**2026-08-02~08-10 판본은 이 자리에 "명세는 `isNewUser`인데 실제 키는 `newUser`"라는 실질 불일치를
+적었다. 그 판단이 틀렸다** — 근거를 OpenAPI 스키마 하나에만 뒀기 때문이다.
 
-서버 `KakaoLoginResponse`는 Kotlin `val isNewUser: Boolean`이지만 Jackson이 getter 이름에서 `is`
-접두사를 떼고 직렬화한다. 서버가 발행한 OpenAPI 스키마의 `KakaoLoginResponse`가 `newUser`로 적혀
-있는 것이 근거다(2026-08-02 확인).
+서버 `http` 모듈이 `jackson-module-kotlin`을 쓰므로 `is` 접두사가 JSON 키에 남고,
+`KakaoLoginControllerTest`가 실제 응답 본문에 `jsonPath("$.data.isNewUser")`를 단언한다.
+**명세 예시 JSON을 그대로 응답 타입으로 옮기는 것이 옳다.** 상세는
+[../conventions.md](../conventions.md) "직렬화 규약"·[../auth.md](../auth.md) "판별자 키".
 
-**명세 예시 JSON을 그대로 응답 타입으로 옮기면 판별이 깨진다** — 신규 유저가 기존 회원으로 분기되고
-없는 `accessToken`을 꺼내게 된다. Android는 `@SerialName("newUser")`가 필요하다
-→ [open-questions](../../synthesis/open-questions.md).
+⚠️ 다만 **Android가 이미 틀린 쪽을 따라 구현했다** — `KakaoLoginResponse.isNewUser`에
+`@SerialName("newUser")`가 붙어 있어 정정이 필요하다 → [open-questions](../../synthesis/open-questions.md).
 
 ### 표기 차이 (실질 불일치 아님)
 

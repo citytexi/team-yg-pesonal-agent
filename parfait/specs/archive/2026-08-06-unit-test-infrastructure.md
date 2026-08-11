@@ -219,14 +219,21 @@ androidx 정본은 dispatcher를 private으로 받는 `TestRule` 형태인데, �
    불가능하다. 파라미터로 받고 기본값을 두는 방식으로 해결한다.
 10. 소스셋 디렉토리는 각 모듈의 `main`을 따른다 — `domain`·`data`는 `src/test/java/`,
     `core:util:*`·`core:designsystem`은 `src/test/kotlin`·`src/androidTest/kotlin`.
-11. **매퍼는 결정이 있는 곳만 테스트한다.** 필드를 그대로 옮기기만 하는 매퍼는 컴파일러가
-    막아주니 테스트하지 않는다. 문자열을 enum으로 옮기는 규칙, nullable 처리, 기본값 주입,
-    단위 변환처럼 판단이 들어간 지점만 그 판단을 잠근다. 예외가 하나 있는데, 같은 타입 필드가
-    둘 이상이면(`title`·`url`이 둘 다 `String`) 뒤바꿔 넣어도 컴파일이 통과하므로 배선을
-    한 번 확인한다. VO가 늘어날 때 같은 테스트를 기계적으로 복제하지 않는 게 이 규칙의 목적이다.
-12. **테스트 클래스명은 대상 심볼을 그대로 딴다.** 매퍼 파일 하나에 도메인이 여럿 들어갈 수
-    있으므로 `PolicyVOMapperTest`처럼 도메인까지 붙인다. `VOMapperTest` 같은 넓은 이름은
-    VO가 늘 때 한 파일에 전부 몰린다.
+11. **매퍼는 단독 테스트하지 않는다.** 판단이 든 변환(문자열→enum 매핑, nullable 처리, 기본값
+    주입, 단위 변환, 같은 타입 필드의 배선)은 **그 매퍼를 통과시키는 DataSource 테스트의
+    케이스**로 잠근다. `XxxVOMapperTest` 같은 파일을 새로 만들지 않는다.
+    > 🔁 **2026-08-11 개정.** 이전 규약은 "결정이 있는 곳만 테스트한다"였고 "같은 타입 필드가
+    > 둘 이상이면 배선을 한 번 확인한다"는 예외를 열어 뒀다. **그 예외가 매퍼 테스트를 계속
+    > 만들어 내는 통로였고, 리뷰에서 반복 지적됐다** — 매퍼는 DataSource가 유일한 호출자라
+    > `PolicyRemoteDataSourceImplTest`가 이미 같은 변환을 통과시키고 있었다(성공 경로 케이스가
+    > `type` 문자열→`PolicyType` 매핑과 리스트 순서를 단언한다). 두 파일이 같은 것을 두 번
+    > 검증하는 대신 **검증 지점을 DataSource 하나로 모은다.**
+    >
+    > 잃는 것을 명시한다 — 매퍼 테스트에만 있던 케이스(모르는 enum 값의 폴백, 대소문자 민감성)는
+    > **DataSource 테스트에 케이스로 옮겨 담는다.** 규약이 "검증을 줄이자"가 아니라 "한 곳에서
+    > 하자"이므로, 옮기지 않고 지우면 규약 위반이다.
+12. **테스트 클래스명은 대상 심볼을 그대로 딴다.** `PolicyRemoteDataSourceImplTest`처럼
+    클래스명 + `Test`. 한 파일에 여러 대상을 몰지 않는다.
 
 ## 프로덕션 코드 변경
 
@@ -251,8 +258,8 @@ fun current(
 | `core:util:jvm` | `DateFormat` · `DateTextFormat` | 포맷 변환 |
 | `domain` | `CheckNameValidUseCase` | 검증 규칙 4종 각각 + 규칙 적용 우선순위 |
 | `domain` | `DayWindow` | 03시 경계 직전·직후, `contains`의 반열림 구간 |
-| `data` | `VOMapper#toPolicyVO` | 미지의 type과 대소문자 불일치가 `UNKNOWN`으로, 필드 배선, 리스트 변환 (규약 11) |
-| `data` | `PolicyRemoteDataSourceImpl` | Service를 MockK로 대역, 성공·실패 경로 매핑 |
+| ~~`data`~~ | ~~`VOMapper#toPolicyVO`~~ | 🔁 **2026-08-11 규약 11 개정으로 폐기** — 검증은 아래 DataSource 행으로 흡수한다 |
+| `data` | `PolicyRemoteDataSourceImpl` | Service를 MockK로 대역, 성공·실패 경로 매핑 + **매퍼 판단 케이스**(미지의 type·대소문자 불일치가 `UNKNOWN`으로) |
 | `data` | `AuthInterceptor` + `ApiCaller` | MockWebServer로 토큰 헤더 부착 · `@NoAuth` 분기 · 에러 변환 |
 | `core:util:android` | (unit 없음) | 내용물이 Compose Modifier·Context/Bitmap 확장이라 대상 없음 |
 | `core:util:android` | 계측 스모크 1건 | `assembleDebugAndroidTest` 컴파일 검증 |
@@ -347,6 +354,11 @@ host-test 컴포넌트를 끄는 방식으로 막는다(모듈을 일일이 나�
 - 번들 2종(`test-unit`·`test-compose` 없음), `DayWindow.current(timeZone, clock)` 파라미터
 - 시범 테스트 대상 전량(순수 로직 · 매퍼 · DataSource · HTTP 계층) + 계측 스모크 2건
   (`YGThemeSmokeTest`·`ContextExtensionTest`)
+  > 🔁 **2026-08-11 — 매퍼 항목은 규약 개정으로 폐기됐다.** `PolicyVOMapperTest`는 develop에
+  > 있으나 **삭제 대상**이고, 그 케이스는 `PolicyRemoteDataSourceImplTest`로 옮긴다. 삭제는
+  > 다음 API 서비스 레이어 구현 PR(member·parfait-image)에 함께 묶기로 했다 — 규약 변경과 정리가
+  > 한 PR에 보여야 리뷰어가 맥락을 안다. 미머지 브랜치 `feature/sync-backend-api-260810`의
+  > `ImageVOMapperTest`도 같은 대상이다.
 - CI — `test.yml`(composite action 2개 + 루트 `./gradlew test` + 계측 컴파일 + 리포트·아티팩트),
   `ktlint.yml`(job `lint`, 기존 `--info test` 스텝 제거됨)
 
