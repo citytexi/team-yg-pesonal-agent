@@ -4,8 +4,8 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-10
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree
+verified: 2026-08-11
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding
 related_adr: ADR-0002, ADR-0006
 related_architecture:
 related_code: core:navigation, Navigator
@@ -48,6 +48,9 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
   `feature/intro/impl` → `feature/groups/list/api`.
 - **화면 전이만 결선됐다** — 서버 인증(`/auth/login`·`/auth/signup`)·토큰 저장·약관 동의 저장은
   붙지 않았고 신규/기존 회원 분기도 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-10].
+- 📌 **체인 첫 화면이 실물이 됐다(2026-08-11, PR #218)** — A-002 로그인의 온보딩 자리가 placeholder
+  박스에서 일러스트 3장으로 채워졌다. 전이·인증 구조는 그대로다(카카오 토큰은 여전히 `LoginState`
+  안에서 끝난다) → [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md).
 
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.
