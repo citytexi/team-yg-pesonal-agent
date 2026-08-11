@@ -1,7 +1,7 @@
 ---
 id: member-parfait-image-api-service-layer
 title: ":data member·parfait-image API Service·remote DataSource 레이어 (4 엔드포인트)"
-status: in-progress
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-08-11
@@ -19,6 +19,26 @@ tags: [spec, parfait, data, network, api, member, parfait-image]
 서버 delta `2c5499a`가 들여온 두 도메인 4 엔드포인트([api/member.md](../api/member.md)·
 [api/parfait-image.md](../api/parfait-image.md))를 `:data`의 Retrofit Service와 remote DataSource로
 구현하고 대응 domain VO를 만든다.
+
+> 🔁 **2026-08-11 구현 완료(미머지·미푸시)** — SDD 5 Task, 브랜치 `feature/member-parfait-image-api-260811`,
+> 커밋 7개(`40e8e5a6`~`24dd7c11`). **설계에서 뒤집힌 결정 0건** — 본문이 그대로 as-built다.
+> Task 리뷰 5회 중 fix 라운드는 1회뿐(Task 5, README 파일 목록이 두 곳인데 한쪽만 갱신됨).
+> 유닛 테스트 신규 25건(member 10 + parfait-image 15) + 이관 6건, `test`·`ktlintCheck`·`:app:assembleDebug` 통과.
+>
+> **최종 전체 리뷰(opus)가 Important 1건**을 잡았고 그것도 코드가 아니라 **주석의 자기모순**이었다 —
+> `http/parfait-image.http`가 4줄 위에서 "업로드와 **다른 도메인**"이라 경고해 놓고 아래에서 "**같은
+> 도메인**의 이미지 발급이 200"이라 적어, 이 파일이 가르치려는 구분을 반대로 알려주고 있었다.
+> fix 웨이브 1회로 7건(Important 1 + Minor 6) 반영, 재검수 전부 ADDRESSED·새 breakage 0.
+>
+> **실행 중 드러난 것 하나가 계획서 밖이었다.** Task 1 리뷰어가 `:app` Hilt 컴파일 에러를 올렸는데,
+> 파 보니 `CreateGroupUseCase`·`EnterGroupUseCase`를 못 찾는 에러였고 **두 클래스는 추적 소스에 0건**
+> (develop에도 PR #229에도 없다)이었다 — 다른 브랜치 빌드 잔재였다. `clean` 후 통과. 이걸 안 잡았으면
+> Task 2~4의 `:app:assembleDebug` DI 게이트가 통째로 무의미했다.
+>
+> **이월 minor 5건은 최종 리뷰가 전부 "이월 가능"으로 판정**했다. 그중 테스트명 2세그먼트 건은
+> 규약 위반이 아니라 **기존 관행과 일치**함이 확인됐다(merge base에 이미 같은 형태가 있다).
+> 사람 결정으로 남긴 것: `parfait_image_id`가 `http-client.env.json`·`_reset.http`에 미등록
+> (이 스펙이 "변수를 더하지 않는다"고 했으나 형제 변수는 전부 등록돼 있다 → 계획 충돌이라 미조치).
 
 **앞선 라운드들이 세운 관용구의 증분이다.** 계층·이름 규칙·타입 경계의 정본은
 [2026-08-03-data-api-service-layer](archive/2026-08-03-data-api-service-layer.md)이고,
@@ -278,7 +298,13 @@ open-questions OQ-P-119 ③). 없는 것을 지어내지 않는다 — 앱은 �
 | 파일 | 잠그는 것 |
 |---|---|
 | `MemberRemoteDataSourceImplTest` (신규) | provider 미지값 → `UNKNOWN`, 대소문자 민감성, 성공 매핑, 요청 바디 배선, Business·Network 실패 경로 |
-| `ParfaitImageRemoteDataSourceImplTest` (신규) | `ToppingBorder.None` → `borderColor`·`borderWidth`가 `null`, `Solid` → 둘 다 실림, `ToppingTransform` 5필드 배선, PATCH가 지정 안 한 필드를 `null`로 보냄, `placedBy` 중첩 매핑, `INVALID_BORDER`·`GROUP_NOT_JOINED` |
+| `ParfaitImageRemoteDataSourceImplTest` (신규) | `ToppingBorder.None` → `borderColor`·`borderWidth`가 `null`, `Solid` → 둘 다 실림, `ToppingTransform` 5필드 배선, PATCH가 지정 안 한 필드를 `null`로 보냄, `placedBy` 중첩 매핑, `GROUP_NOT_JOINED`·`IMAGE_NOT_CONFIRMED`·`PARFAIT_IMAGE_NOT_OWNED`[^errcase] |
+
+[^errcase]: **2026-08-11 as-built 정정.** 이 표의 초안은 `INVALID_BORDER`를 잠근다고 적었다. 구현이
+`IMAGE_NOT_CONFIRMED`로 바꿨고 **그쪽이 맞다** — `INVALID_BORDER`는 `ToppingBorder` sealed 때문에
+앱에서 도달 불가능해서 envelope 실패로 흉내 내는 테스트의 가치가 낮고, `IMAGE_NOT_CONFIRMED`는
+앱이 실제로 만나는 실패다(업로드 confirm 누락). 최종 브랜치 리뷰가 같은 판정을 냈다. sealed가
+`INVALID_BORDER`를 막는다는 사실은 `placeTopping_solidBorder_sendsColorAndWidth` 주석이 문서화한다.
 | `PolicyRemoteDataSourceImplTest` (보강) | `PolicyVOMapperTest`에서 옮겨오는 `UNKNOWN` 폴백·대소문자 민감성 |
 | `ImageRemoteDataSourceImplTest` (보강) | `ImageVOMapperTest`에서 옮겨오는 status 폴백·대소문자·`expiresIn` 초 해석·두 URL 배선 |
 | 삭제 | `PolicyVOMapperTest` · `ImageVOMapperTest` |
