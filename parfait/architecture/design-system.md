@@ -4,8 +4,8 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-04
-related_spec: designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm
+verified: 2026-08-11
+related_spec: designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding
 related_adr: ADR-0007, ADR-0010, ADR-0018
 related_architecture:
 related_code: core:designsystem, YGTheme
@@ -27,7 +27,8 @@ core/designsystem/.../theme/
     YGColorScheme         시맨틱 홀더 (primary/secondary/tertiary/danger/warning/success/info/grayScale/transparency)
     YGColorGrayScale, YGColorTransparency   서브 홀더
     YGSemanticColorDefaults    원자→시맨틱 매핑 (YGLightColorScheme / YGDarkColorScheme)
-    KakaoDesignGuideColors     외부 가이드 색 참조
+    KakaoDesignGuideColors     외부 가이드 색 참조(A-002 카카오 버튼)
+    AppleDesignGuideColors     외부 가이드 색 참조 (#218 신설, **사용처 0** — 애플 로그인 철회 잔여물)
   typography/             ← YGTypography(title/body/caption) + YGFontFamily(SUIT) + *Defaults
   shapes/                 ← YGShapes(radius: YGShapeRadius) + YGShapesDefaults
   layout/                 ← YGLayout(gap: YGLayoutGap, padding: YGLayoutPadding) + YGLayoutDefaults
@@ -51,8 +52,12 @@ screen/                   ← 화면 루트 컨테이너 (아래 "화면 컨테�
   YGScaffold.kt           Material3 Scaffold 래퍼 (nav/EntryBuilder)
   YGScreenScope.kt        YGScreenScope + OnBack(@Composable, BackHandler 래핑)
 res/font/                 ← suit_regular/medium/semi_bold/bold.ttf
-res/drawable/             ← ic_* 아이콘 리소스
+res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-002 온보딩 일러스트 `image_onboarding_*` 추가)
 ```
+
+> **에셋 소유가 갈린다** — 화면 전용 이미지가 여기 들어오는 경우(A-002 온보딩 일러스트)와 해당 feature
+> 모듈 `res/`에 두는 경우(같은 화면의 카카오·애플 로고 벡터)가 공존한다. 기준이 문서에 없다
+> → [open-questions](../synthesis/open-questions.md) [2026-08-11].
 
 ## 테마 접근 규약
 
@@ -154,6 +159,7 @@ res/drawable/             ← ic_* 아이콘 리소스
 - **`YGChipButton`**: pill(`shapes.radius.round`) 칩 버튼. text + 선택 start/end 아이콘, 아이콘 유무로 좌/우 패딩 비대칭. **Colors 패턴 준수** — `YGChipButtonColors`(@Immutable, default/pressed×fg/bg/border) 주입 + `YGChipButtonColorsDefaults` 프리셋(**#183으로 `CherrySubtle`·`CherrySolid` 재명명**, **#188로 `CherrySubtle`→`GrayOutline` 교체·개명**(Figma `Button-Chip-Left`가 Cherry 계열 → 흰 배경 + 회색 테두리로 바뀌어 값과 이름을 함께 갈았다. 프리셋 하나를 고치자 소비처 6곳이 따라오며 G-001 칩 드리프트도 닫혔다) — Figma `Button-Chip-Left`/`Right`를 KDoc으로 병기. 세로 패딩도 #183에서 `padding2`로 내려 `YGAlert`·`YGTopBar` 높이에 전파). pressed 분기(아래 관용구). 프리셋 색은 `YGAtomicColors` 직접 참조(과도기).
 - **`YGToggleButton` 삭제(#183 develop 머지, 2026-08-01)**: 대응 Figma 원본이 없고 실화면 사용처가 0건이라 제거했다(대체물은 신설 `YGEditButton`). `component/ygtogglebutton/` 2파일 + `:app-preview` 잔재까지 함께 지웠고, 이로써 [2026-07-16 규약 이탈 항목](../synthesis/open-questions.md)이 해소됐다.
 - **화면 적용(#182 develop 머지, 2026-08-01)**: C-101 카메라·C-101-confirm·갤러리 화면이 `YGCameraShutter`·`YGCircleButton`(플래시·전환·닫기)·`YGButton`·`YGDate`·`YGToast` 호스트를 쓰면서 feature 로컬 임시 셔터·flip 구현이 삭제됐다 — **셔터 2구현 공존 해소**([2026-07-30 항목](../synthesis/open-questions.md)). `YGToastPolicy`/`YGToastHost`의 첫 실사용처이기도 하다(촬영 가이드 토스트) → [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md).
+- **화면 적용(#218 develop 머지, 2026-08-11)**: A-002 로그인이 실물화되면서 `KakaoSignInButton`이 `RoundedCornerShape` 리터럴 → `YGTheme.shapes.radius.none`, 리터럴 dp 패딩 → `YGTheme.layout.padding.*`, 라벨 타이포 → `YGTheme.typography.body.b01SB`로 토큰화됐다. 다만 **버튼 자체는 DS 컴포넌트가 아니라 feature 로컬 Material3 `Button`**이고(외부 로그인 가이드 색을 따라야 해서 `YGButton` 변형에 안 맞는다), 주입한 `ButtonColors.contentColor`는 내부 `Text`가 색을 명시해 死필드다. 같은 화면 `PagerIndicator`의 활성/비활성 색은 여전히 리터럴이다 → [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md).
 - **버튼 신설 5종**(#183, `ygcirclebutton`·`ygeditbutton`·`ygedittabbutton`·`ygeditactionbutton`·`ygcamerashutter`): `YGCircleButton`만 변형 타입(`YGCircleButtonType`)이 색·아이콘 크기·tint·`paintsOuterCircle`을 들고(단 `@Immutable` + 평범한 `val`이라 `YGButtonType`의 `@get:Composable` 패턴과 갈린다), 나머지 4종은 컴포저블 본문 상태 분기다. Colors data class는 5종 모두 미분리 — 규약과 갈리는 판단(→ [open-questions](../synthesis/open-questions.md)). 선택형(`YGEditButton`·`YGEditTabButton`)은 `selectable`(`Role.Button`/`Role.Tab`), 나머지는 `clickable(indication = null)` + `role = Role.Button`. 밑줄 폭은 `width(IntrinsicSize.Max)`로 텍스트에 묶는다.
 - **캔버스 5종 + 컷 도형**(#185, `ygcanvas`·`ygcanvasmenu`·`ygcanvasdateselect`·`ygstrokebutton`·`ygmenuitem` + `shape/`): `YGCanvas`가 배경(`YGCanvasBackground` sealed — `Solid`/`Image`+Coil)·토핑 `BoxScope` 슬롯·날짜바·메뉴·Dim을 합성한다. Figma 5상태를 단일 enum이 아니라 **직교 불리언 플래그**(`isDimmed`·`isMenuExpanded`·`isEmpty`·`isCalendarVisible`)로 표현하고, 값 파라미터는 내용만 든다(모순 조합 방지는 호출자 책임). Dim은 항상 최상단에서 아래 레이어 터치를 **소비**하고 확장 메뉴·캘린더만 그 위로 승격하며, 승격 시 `Spacer(Size44)`로 총높이를 유지한다. 좌상단 컷 실루엣은 배경·날짜바·Dim이 공유하므로 `shape/canvasCutCornerShape()`로 분리했다(`border/`와 같은 "컴포넌트 아닌 그리기 프리미티브" 층위). 높이 44는 패딩 도출 대신 `SizeTokens.Size44` 고정.
 - **`YGGrouptagChip` / `YGToppingGroup`**(#186, G-001 그룹 목록용): 칩은 이름+구분점+상대시간 pill이고 `YGGrouptagChipType` 6종이 **타임스탬프 색만** 결정한다(Nametag용 `YGColorChipType`과 매핑이 별개라 타입도 분리). `YGToppingGroup`은 160dp 프레임에 96dp 토핑을 회전·오프셋으로 얹고 칩을 겹치며 **클리핑·`onClick`이 없다**(오버플로우 허용, 터치 범위는 호출자가 `clickableYG`로 감쌈). 대체 그래픽 정책은 갖지 않고 `YGToppingImage` 3상태(`Remote`/`Template`/`Error`)를 주입받아 렌더만 한다. 고정폭 프레임이 칩에 **측정** 제약을 내리므로 칩에 `wrapContentWidth(unbounded = true)`, 비정사각 원격 이미지 때문에 `rotate` **안쪽**에 `clip(RectangleShape)`가 필요하다(둘 다 실기기 검증에서 드러난 조건). **첫 소비처(#194 develop 머지, 2026-08-07)** — G-001이 `YGToppingGroup`을 그리기 시작했다. 다만 ① 호출부가 `clickableYG`로 감싸지 않아 토핑 클릭 경로가 없고, ② `YGToppingImage`는 `Remote`만 쓰여 템플릿·에러 분기가 화면 선택으로 들어오지 않았으며(에러는 `AsyncImage(error = …)` 폴백으로만 그려짐), ③ `chipType`이 전 항목 동일 값 고정이라 위키 [[S-101-프로필-닉네임-컬러-규칙-v0.3]] 매핑이 미구현이다 → [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) · [open-questions](../synthesis/open-questions.md) [2026-08-07]. 배치(지그재그·인셋·저개수 규칙)는 컴포넌트가 아니라 화면의 `ToppingLayout`이 쥔다.

@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-11
-related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding
+related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -164,6 +164,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ✅ **카메라·갤러리는 규약을 따름(2026-08-01, PR #182)** — `feature/camera/impl`·`feature/gallery/impl`에 `strings.xml`이 신설되고 권한·확인 화면 라벨이 전부 `stringResource`로 갔다. **예외 1건**: `CustomGalleryPickerScreen`의 빈 상태 문구가 코틀린 리터럴로 남았다(같은 화면의 다른 문구는 리소스) → 아래 [갤러리 빈 상태 항목](#2026-08-01-갤러리-빈-상태-그래픽이-상시-노출되고-문구가-리터럴)에서 함께 추적.
   > 📌 **신규 화면이 규약을 안 따름(2026-08-01, PR #173)** — G-001 `GroupListScreen`·`GroupListAddGroupScreen`의 라벨 3종("그룹 추가하기"·"그룹 만들기"·"그룹 들어가기")이 코틀린 리터럴이고, 코드 주석은 `Todo : core:ui 에 string resource 로 분리`라고 적는다. 화면 전용 정적 라벨은 **feature `strings.xml`**이 규약(공유 문구만 `core:ui`)이라 주석의 목적지부터 규약과 어긋난다. 규약이 문서에만 있고 코드 리뷰에서 안 걸린다는 신호다.
   > ✅ **그 3종은 해소됨(2026-08-04, PR #189 chore)** — `feature/groups/list/impl` `strings.xml`이 신설되고 `group_add`·`group_create`·`group_enter`로 옮겨졌다. 주석이 가리키던 `core:ui`가 아니라 **규약대로 feature 모듈**에 들어갔다. 잔존은 여전히 ②`InviteCodeResult`·③ 약관 title·미착수 화면(캔버스 등) 리터럴이다.
+  > ✅ **A-002도 규약을 따름(2026-08-11, PR #218)** — `feature/login/impl` `strings.xml`이 신설되고 온보딩 설명 3종·카카오 버튼 라벨·`contentDescription`이 전부 `stringResource`로 갔다. 화면 소유 모듈에 둔 배치도 규약대로다. 남은 리터럴은 여전히 ②`InviteCodeResult`·③ 약관 title·미착수 화면(캔버스 등)이다.
   > ✅ **갤러리 예외 1건도 해소됨(2026-08-04, PR #191)** — 빈 상태 문구가 `feature/gallery/impl` `strings.xml`로 갔고, 같은 PR이 추가한 헤더·재선택 버튼·가이드 토스트 문구도 전부 리소스다. 다만 **가이드 토스트 문구가 카메라 것과 문자 그대로 같은데 두 모듈에 각각 정의**돼 아래 [중복 정의 항목](#2026-08-04-가이드-토스트-문구가-카메라갤러리-두-모듈에-중복-정의)으로 갈라졌다.
 - **해소 메모**: ① 화면 전용 라벨=feature `strings.xml` / 공유 문구=`core:ui` `strings.xml` / domain 문자열 미보유 규약을 module-structure에 명시(#179가 `NickNameResult`의 domain 문자열을 걷어내 선례 확정). ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, G-002 후속) 시점에 함께 정리 — `InviteCodeResult`는 아직 `errorMessage: String?` 그대로다. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
 
@@ -811,6 +812,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: PR #220 develop 머지 — `feature/login/impl` `LoginRoute.kt`·`LoginViewModel.kt`, `feature/intro/impl` `termagree/TermAgreeRoute.kt`. `Splash → Login → TermAgree → GroupList`가 이어졌지만 세 구멍이 그대로다. ① 카카오 로그인 성공 토큰은 `LoginState.token`에만 담기고 서버 `POST /api/v1/auth/login`·`/auth/signup` 호출도, `TokenStore` 저장도 없다 — [ADR-0019](../adr/0019-encrypted-token-storage.md)의 저장 경로는 여전히 호출자 0건이다. ② 서버 로그인 응답이 신규/기존 회원을 가르는데(`KakaoLoginResponse`의 `newUser` 판별자, [api/auth.md](../api/auth.md)) 화면은 분기 없이 **누구나 매번 약관 화면**을 지난다. ③ `TermAgreeViewModel`의 동의 저장은 여전히 `// Todo`라 `signup`이 필수로 받는 `agreements[].termsId`를 만들 자리가 없다(약관 목록도 `TERM_CONTENT_LIST` 리터럴).
 - **항목**: ① 서버 인증을 어느 단계에 넣을지 — 카카오 토큰 획득 직후 `login` 호출 후 `newUser`로 약관/그룹목록을 가를지, 아니면 약관 동의까지 받고 `signup` 한 번으로 끝낼지. ② ①이 정해져야 `clearBackStack()` 리셋 지점(현재 약관 → 그룹목록)이 맞는지도 확정된다 — 기존 회원이 약관을 건너뛰면 리셋 지점이 로그인 쪽으로 올라간다. ③ `termsId` 출처를 `GET /api/v1/policies` 연동으로 세우는 건([2026-08-03] 항목)이 이 체인의 선행 조건인지.
 - **상태**: 미해결 (다음 라운드 = 로그인 실연동 — [2026-08-06] "표면 소비처 0건" 항목의 ① 결선 순서와 같은 작업)
+  > 📌 **화면만 더 채워졌다(2026-08-11, PR #218)** — A-002가 일러스트·문구를 실물로 얻었지만 ①②③ 구멍은 그대로다. 게다가 카카오 로그인 실패·취소는 **로그만 남기고 화면 표현이 0**이라, 실연동이 붙으면 에러 표현부터 새로 설계해야 한다 → [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md).
 - **해소 메모**: 해소 시 [navigation-flow](../architecture/navigation-flow.md) "앱 진입 체인"·[intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)·[ADR-0019](../adr/0019-encrypted-token-storage.md) 검증 절을 함께 갱신한다.
 
 ### [2026-08-10] `ResultEventBus` 왕복을 검증하던 유일한 화면이 사라졌다
@@ -918,6 +920,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **② 해소(2026-08-11)** — **Android는 애플 로그인을 쓰지 않는다.** 서버 계약은 그대로 두되 앱 대응 심볼을 만들지 않고 `http/auth.http`에도 요청을 넣지 않는다. [api/README.md](../api/README.md) Android 열에 `해당 없음` 값을 신설해 `미구현`(아직 없음)과 구분했고 — 표면 개수를 셀 때 분모에서 뺀다 — [api/auth.md](../api/auth.md) 엔드포인트 표·Android 매핑 절에 반영했다. 근거는 [member·parfait-image 서비스 레이어 스펙](../specs/2026-08-11-member-parfait-image-api-service-layer.md) "범위". iOS가 붙으면 계약은 그대로 유효하다.
   > 📌 **공백이 곧 0이 된다(진행 중)** — 분모가 21에서 **20**으로 줄고(애플 1 제외), develop 14 + PR #229의 image 2 + 위 스펙의 member 2·parfait-image 2 = **20**이다. 즉 표면 공백 자체는 이 라운드로 닫히고 **①이 말하는 "순서" 문제는 표면이 아니라 소비처 쪽으로 옮겨간다.**
 - **상태**: 부분 해소 (② 해소 — Android 미사용 확정 / ①③ 잔존)
+  > ⚠️ **② 결정과 어긋난 잔여물이 develop에 있다(2026-08-11, PR #218)** — 같은 날 머지된 로그인 PR이 애플 버튼을 넣었다 지우면서 심볼 3종을 남겼다 → 아래 [애플 잔여 심볼 항목](#2026-08-11-애플-로그인-잔여-심볼-3종이-사용처-0으로-develop에-남았다). 결정 자체는 유효하고, 코드에서 걷어내는 것이 남았다.
 - **해소 메모**: 앱 표면이 붙으면 각 도메인 문서의 `android_status`·"Android 매핑" 절은 스킬 `sync-tjyg-develop-baseline`이 갱신한다. 이 항목은 **간극의 존재**만 추적한다.
 
 ### [2026-08-11] 토핑 배치 POST가 남의 배치를 덮어쓰고 소유자를 가져간다
@@ -960,6 +963,38 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (수집은 사용자만 할 수 있다 — 명세 도구 접근 필요)
 - **해소 메모**: 수집 후 [api/spec/README.md](../api/spec/README.md) 목록과 [api/README.md](../api/README.md) "팀 명세 원문" 절에 등록하고, [api/parfait-image.md](../api/parfait-image.md)에 **명세 델타** 문단을 추가한다(auth 도메인 문서들과 같은 형식). 이번 서비스 레이어 라운드는 이 수집을 기다리지 않는다 — 자동 보정은 화면 계층 일이라 `:data` 범위 밖이다.
 
+### [2026-08-11] 애플 로그인 잔여 심볼 3종이 사용처 0으로 develop에 남았다
+
+- **ID**: OQ-P-123
+- **출처**: PR #218 develop 머지 — 브랜치가 애플 로그인 버튼을 넣었다가 같은 브랜치에서 지웠는데(`chore: 애플 로그인 관련 코드 삭제`) 부속물이 남았다. `core:designsystem` `theme/colors/AppleDesignGuideColors.kt`(신규 파일), `feature/login/impl` `res/drawable/icon_logo_apple.xml`, `feature/login/impl` `strings.xml`의 애플 버튼 라벨·`contentDescription` 2건. develop 전수 검색에서 **참조가 0건**이다. 바로 전날 **Android는 애플 로그인을 쓰지 않기로 확정**했으므로([2026-08-11] 서버 delta 항목의 ② 해소) 이 심볼들은 앞으로도 소비처가 생기지 않는다.
+- **항목**: ① 지금 걷어낼지, 아니면 "언젠가 붙을 수도"로 두고 死코드 목록에 올려둘지 — 사용처 0 공개 심볼을 남긴 선례가 이미 둘 있다(`clickableYGNoRipple` [2026-08-03], `animateToppingPlacement` [2026-08-07]). ② 걷어낸다면 `AppleDesignGuideColors`는 `core:designsystem` 소관이라 로그인 PR과 별개 정리 대상이다. ③ 브랜치 안에서 되돌린 기능의 부속 리소스를 리뷰가 못 잡는다는 신호 — 체크 지점을 어디에 둘지(R8은 리소스 축소를 하지만 소스 심볼은 남는다).
+- **상태**: 미해결 (기능 영향 0 — 정리 시점 문제)
+- **해소 메모**: 걷어내면 [design-system](../architecture/design-system.md) 색 트리의 `AppleDesignGuideColors` 줄과 [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md) "드리프트" 1번을 함께 지운다. 서버 계약 쪽 애플 엔드포인트는 그대로 둔다(iOS 소관).
+
+### [2026-08-11] A-002 치수 리터럴 4종 — 토큰 스케일에 없는 값을 코드가 자인한다
+
+- **ID**: OQ-P-124
+- **출처**: `feature/login/impl` `screen/LoginScreen.kt`·`component/OnboardingPager.kt`(PR #218 develop 머지) — 상단 여백, 페이저 좌/우 여백(둘이 1 차이로 갈린다), 일러스트↔설명·페이저↔버튼 간격 두 곳이 `dp` 리터럴이다. 간격 두 곳에는 코드 주석이 **"gap 없음"**이라고 붙어 있어, 쓰는 사람이 스케일 공백을 인지한 채 리터럴을 남겼다. `YGLayoutGap`·`YGLayoutPadding`은 짝수 스케일이라 이 값들이 실제로 없다. 같은 PR이 카카오 버튼 패딩은 토큰으로 옮겼으므로 **부분 토큰화**다.
+- **항목**: ① 스케일에 값을 추가할지(홀더 + `*Defaults` 동시 수정이 강제되므로 비용이 명확하다), ② 화면 고유 여백은 리터럴을 허용하고 규약에 예외로 적을지(`YGInputNumber`의 "디자인가이드 고정 크기" 선례가 있다), ③ 좌/우가 1 차이로 갈린 것이 Figma 실측인지 오차인지 확인.
+- **상태**: 미해결 (③이 먼저 — 실측이면 ②, 오차면 대칭으로 고치고 ①)
+- **해소 메모**: 결정 시 [design-system](../architecture/design-system.md) "토큰 계층"·"신규 토큰 값 추가 체크리스트"에 예외 규약을 적고 [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md) "드리프트" 2번을 갱신한다.
+
+### [2026-08-11] 화면 에셋 소유가 `core:designsystem`과 feature로 갈린다
+
+- **ID**: OQ-P-125
+- **출처**: PR #218 develop 머지 — A-002 온보딩 일러스트(`image_onboarding_1`~`_3`)는 `core:designsystem` `res/drawable*`에 들어가 feature가 `DesignSystemR`로 참조하는데, **같은 화면의** 카카오·애플 로고 벡터는 `feature/login/impl` `res/drawable/`에 있다. 문자열은 "화면 전용 = feature / 공유 = `core:ui`" 규약이 [module-structure](../architecture/module-structure.md)에 있지만 **이미지에는 대응 규약이 없다**. 밀도 버킷도 이미지마다 다르게 채워졌다 — `image_onboarding_1`만 xhdpi 버킷이 없고 대신 밀도 없는 기본 `drawable/`에 하나 더 있으며, `_3`은 ldpi가 없다. 렌더는 되지만(가장 가까운 버킷을 스케일) 세 장이 같은 조건으로 그려지지 않는다.
+- **항목**: ① 이미지 에셋 소유 기준을 문자열과 같은 축(화면 전용 = feature / 여러 화면 공용 = `core:designsystem`)으로 못박을지, 아니면 "디자인이 준 것은 전부 DS"로 갈지. ② 버킷 세트를 채울지 — 세 장 다 같은 세트를 갖게 할지, 아니면 벡터·WebP로 갈지. ③ 기존 화면 에셋(갤러리 빈 상태 PNG 등)도 그 기준으로 재배치할지.
+- **상태**: 미해결 (①이 정해져야 ③의 범위가 정해진다)
+- **해소 메모**: 정하면 [module-structure](../architecture/module-structure.md) "규칙"에 이미지 축을 한 줄 추가하고 [design-system](../architecture/design-system.md) `res/drawable*` 노트를 갱신한다.
+
+### [2026-08-11] 온보딩 3장의 문구·구성이 정책 소스 없이 코드로 확정됐다
+
+- **ID**: OQ-P-126
+- **출처**: PR #218 develop 머지 — `feature/login/impl` `strings.xml`의 온보딩 설명 3종과 일러스트 3장 구성. 위키에 A-002 슬라이드 정책이 없다(수집된 것은 [[기능정의서-v5]]의 "프로필 이미지 안 넣음" 한 줄과 [[화면-ID-체계]]의 `A-002 로그인` 뿐). G-001 에러 문구·툴팁 문구와 같은 성격으로 **코드가 정본이 된 문구**가 하나 더 늘었다. 겸해서 `OnboardingPagesPreviewParameterProvider`가 세 번째 페이지에 `image_onboarding_3`이 아니라 `_1`을 넣고 설명 줄바꿈도 `strings.xml`과 달라, 프리뷰가 실화면과 갈린다.
+- **항목**: ① 온보딩 문구·일러스트 구성을 정책 소스로 역수집할지, 코드를 정본으로 인정할지([2026-08-11] 로딩 그래픽 항목의 ③과 같은 판단이다). ② 프리뷰 파라미터를 실화면과 일치시킬지 — 프리뷰가 실기기 없이 볼 수 있는 유일한 그물인데 세 번째 장이 다르다. ③ 프리뷰용 데이터와 Route의 `remember` 목록이 두 벌로 존재하는 구조를 유지할지(둘이 어긋나도 컴파일은 통과한다).
+- **상태**: 미해결 (②는 즉시 고칠 수 있는 코드 수정, ①은 위키 ingest 판단)
+- **해소 메모**: ①이 정해지면 위키 쪽 미결과 함께 닫고, ②③ 처리 시 [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md) "드리프트" 4번을 지운다.
+
 <!--
 항목 추가 형식:
 
@@ -970,4 +1005,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 123 -->
+<!-- oq-next: 127 -->
