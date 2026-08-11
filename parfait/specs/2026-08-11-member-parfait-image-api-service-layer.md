@@ -37,8 +37,13 @@ tags: [spec, parfait, data, network, api, member, parfait-image]
 >
 > **이월 minor 5건은 최종 리뷰가 전부 "이월 가능"으로 판정**했다. 그중 테스트명 2세그먼트 건은
 > 규약 위반이 아니라 **기존 관행과 일치**함이 확인됐다(merge base에 이미 같은 형태가 있다).
-> 사람 결정으로 남긴 것: `parfait_image_id`가 `http-client.env.json`·`_reset.http`에 미등록
-> (이 스펙이 "변수를 더하지 않는다"고 했으나 형제 변수는 전부 등록돼 있다 → 계획 충돌이라 미조치).
+> **계획의 "변수를 더하지 않는다"는 뒤집혔다(2026-08-11, 사용자 결정, 커밋 `70203174`).** 최종 리뷰가
+> `parfait_image_id`만 `http-client.env.json`·`_reset.http`에 없다고 지적했고, 형제 변수
+> (`terms_id_*`·`group_id`·`image_*`)가 **전부 스크립트가 채우는 값인데도 등록돼 있다**는 것이 근거였다.
+> 계획의 논거("런타임에 채우므로 선언 불필요")가 그 관행과 어긋났다. 등재하면서 `_reset.http`에
+> 도메인별 비우기 항목(`0-1-3`)도 짝을 맞췄고, **`http/README.md` 샘플 블록이 `image_*` 2건까지
+> 이미 어긋나 있던 것**(PR #229 때부터)도 함께 정정했다. 동작 변화는 없다 — 목적은 처음 쓰는 사람이
+> 미해결 `{{parfait_image_id}}`를 설정 누락으로 오해하지 않게 하는 것이다.
 
 **앞선 라운드들이 세운 관용구의 증분이다.** 계층·이름 규칙·타입 경계의 정본은
 [2026-08-03-data-api-service-layer](archive/2026-08-03-data-api-service-layer.md)이고,
