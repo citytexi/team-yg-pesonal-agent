@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-11
-related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding
+verified: 2026-08-12
+related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -165,6 +165,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **신규 화면이 규약을 안 따름(2026-08-01, PR #173)** — G-001 `GroupListScreen`·`GroupListAddGroupScreen`의 라벨 3종("그룹 추가하기"·"그룹 만들기"·"그룹 들어가기")이 코틀린 리터럴이고, 코드 주석은 `Todo : core:ui 에 string resource 로 분리`라고 적는다. 화면 전용 정적 라벨은 **feature `strings.xml`**이 규약(공유 문구만 `core:ui`)이라 주석의 목적지부터 규약과 어긋난다. 규약이 문서에만 있고 코드 리뷰에서 안 걸린다는 신호다.
   > ✅ **그 3종은 해소됨(2026-08-04, PR #189 chore)** — `feature/groups/list/impl` `strings.xml`이 신설되고 `group_add`·`group_create`·`group_enter`로 옮겨졌다. 주석이 가리키던 `core:ui`가 아니라 **규약대로 feature 모듈**에 들어갔다. 잔존은 여전히 ②`InviteCodeResult`·③ 약관 title·미착수 화면(캔버스 등) 리터럴이다.
   > ✅ **A-002도 규약을 따름(2026-08-11, PR #218)** — `feature/login/impl` `strings.xml`이 신설되고 온보딩 설명 3종·카카오 버튼 라벨·`contentDescription`이 전부 `stringResource`로 갔다. 화면 소유 모듈에 둔 배치도 규약대로다. 남은 리터럴은 여전히 ②`InviteCodeResult`·③ 약관 title·미착수 화면(캔버스 등)이다.
+  > ✅ **캔버스 화면도 규약을 따름(2026-08-11, PR #199)** — ③이 대표 사례로 들던 `feature/groups/canvas/impl`의 `CanvasImageAddScreen` 리터럴이 사라졌다. 같은 모듈에 `strings.xml`이 신설되고 빈 캔버스 안내·메뉴 라벨 4종·`+N` 포맷이 전부 `stringResource`다. **남은 리터럴은 ②`InviteCodeResult`·③ 약관 title**이고, 미착수 화면 목록에서 캔버스는 빠진다. 다만 같은 화면의 **mock 그룹명**은 ViewModel 코틀린 리터럴로 남았다(문자열 리소스화 대상이 아니라 데이터 미결선 — [2026-08-12] mock 항목).
   > ✅ **갤러리 예외 1건도 해소됨(2026-08-04, PR #191)** — 빈 상태 문구가 `feature/gallery/impl` `strings.xml`로 갔고, 같은 PR이 추가한 헤더·재선택 버튼·가이드 토스트 문구도 전부 리소스다. 다만 **가이드 토스트 문구가 카메라 것과 문자 그대로 같은데 두 모듈에 각각 정의**돼 아래 [중복 정의 항목](#2026-08-04-가이드-토스트-문구가-카메라갤러리-두-모듈에-중복-정의)으로 갈라졌다.
 - **해소 메모**: ① 화면 전용 라벨=feature `strings.xml` / 공유 문구=`core:ui` `strings.xml` / domain 문자열 미보유 규약을 module-structure에 명시(#179가 `NickNameResult`의 domain 문자열을 걷어내 선례 확정). ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, G-002 후속) 시점에 함께 정리 — `InviteCodeResult`는 아직 `errorMessage: String?` 그대로다. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
 
@@ -342,8 +343,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-042
 - **출처**: `feature/groups/canvas/impl`의 `CanvasImageAddScreen`("카메라로 촬영"·"갤러리에서 선택"을 맨 Material3 `Button`+`Text`로 그림) vs 신설 `core/designsystem` `component/ygcanvas/`·`ygcanvasmenu/`·`ygmenuitem/`(PR #185 develop 머지). [캔버스 컴포넌트 스펙](../specs/archive/2026-07-31-designsystem-canvas-components.md)이 화면 치환을 범위 밖으로 두어 셔터([2026-07-30 카메라 항목](#2026-07-30-카메라-컨트롤-임시-구현체-잔존--셔터-구현이-두-곳에-공존))와 같은 공존 상태가 하나 더 생겼다.
 - **항목**: ① C-001 화면 라운드에서 임시 버튼을 `YGCanvas`+`YGCanvasMenu`로 치환하고 feature 쪽 임시 컴포저블을 지울지, ② 캔버스 화면이 `YGCanvas`의 직교 플래그를 어떤 UI 상태에 매핑할지(플래그 조합 모순 방지 책임이 호출자에 있다).
-- **상태**: 미해결 (의도된 이월 — 컴포넌트 sync 범위 밖)
-- **해소 메모**: C-001 화면 스펙에서 처리하고 치환 완료 시 [design-system](../architecture/design-system.md) 인벤토리 서술을 정리한다.
+- **상태**: **해소됨** (2026-08-11, PR #199)
+- **해소 메모**: ① 임시 `Text` + Material3 `Button` 2개가 걷혔고 화면이 `YGTopBarCanvas` + `YGCanvas`(+`YGCanvasMenu`)만 쓴다 — 메뉴 구현 공존 종료. ② 매핑은 **화면 로컬 `remember` 플래그 하나**(`isMenuExpanded`)가 `isDimmed`·`isMenuExpanded`를 함께 켜는 형태로 확정됐고(Figma `Status=Expanded` 조합), `isEmpty`는 상수 `true`, `isCalendarVisible`는 미사용이다. 상세 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md), 인벤토리 서술은 [design-system](../architecture/design-system.md) "캔버스 5종" 절에 반영했다. 남은 미결(mock 데이터·`isEmpty` 상수·도달 불가)은 [2026-08-12] 항목들로 갈라 뒀다.
 
 ### [2026-08-01] 컷 도형 다리 길이·Empty 배경색의 근거가 Figma 벡터뿐
 - **ID**: OQ-P-043
@@ -363,8 +364,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-045
 - **출처**: `component/ygcanvas/YGCanvas.kt#YGCanvas`(PR #185 develop 머지) — ① Dim은 소비 전용 `pointerInput`으로 아래 레이어 터치를 막지만 **탭했을 때의 동작이 없다**(`onDimClick` 미노출). `Expanded`·`Calendar`를 Dim 탭으로 닫을지가 규정되지 않았고 Figma도 다루지 않는다. 부작용으로 드래그도 막히는데 스크림으로선 의도된 동작이다. ② `calendarContent` 슬롯을 채울 컴포넌트가 없어 `Status=Calendar`를 실물로 대조하지 못했다 — 패널·`List-Date`·`Chip-Indicator`는 C-201 라운드 몫이다. 같은 이유로 `YGCanvasBackground.Image` 화면의 실제 렌더도 여전히 미검증이다(막고 있던 Coil 네트워크 페처 부재는 #186로 해소).
 - **항목**: ① Dim 탭 닫기를 컴포넌트 API로 열지(=`onDimClick`) 화면이 바깥에서 처리할지, ② 캘린더 패널이 붙은 뒤 `Status=Calendar`·`Image` 배경을 재대조할지.
-- **상태**: 미해결 (화면 라운드 결정 대기)
-- **해소 메모**: C-201 캘린더 라운드에서 슬롯을 채우며 함께 확정하고 [캔버스 컴포넌트 스펙](../specs/archive/2026-07-31-designsystem-canvas-components.md)의 "주의 / 열린 질문"을 정리한다.
+- **상태**: **부분 해소** (① 해소 — 2026-08-11 PR #199, ② 잔존)
+- **해소 메모**: **①**: 컴포넌트 API를 여는 쪽으로 결론났다 — `YGCanvas(onDimClick: () -> Unit = {})` 신설, 구현이 소비 전용 `pointerInput`에서 `clickable(interactionSource = null, indication = null)`로 바뀌어 터치 소비는 유지된다. C-001이 이걸로 확장 메뉴를 닫는다. **②**: `calendarContent`는 여전히 미충전이고(C-001이 `isCalendarVisible`를 안 켠다) `YGCanvasBackground.Image`도 미검증이다 — C-001이 배경 기본값 `Solid(Gray100)`으로만 그린다. C-201 캘린더 라운드에서 슬롯을 채우며 확정하고 [캔버스 컴포넌트 스펙](../specs/archive/2026-07-31-designsystem-canvas-components.md)의 "주의 / 열린 질문"을 정리한다.
 
 ### [2026-08-01] G-001 목록 화면이 화면 컨테이너 규약을 벗어남
 - **ID**: OQ-P-046
@@ -385,6 +386,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `core/util/android/extension/Modifier.kt#drawTooltipCornerTop`(PR #176 develop 머지) vs `core:designsystem`의 `border/DashedBorder.kt#dashedBorder`·`shape/CanvasCutCornerShape.kt#canvasCutCornerShape` — 셋 다 테마를 읽지 않고 색·치수를 인자로 받는 순수 그리기 확장인데, 툴팁 꼬리만 `core:util:android`에 있다. 같은 갈림이 clickable 유틸에서 이미 [2026-07-14 항목](#2026-07-14-clickable-유틸이-coreutilandroid로-이동--ripple-색-테마-비의존)으로 등록돼 있다.
 - **항목**: ① 그리기 프리미티브의 기본 소유를 `core:designsystem`(`border/`·`shape/`)으로 못박을지, ② `core:util:android`를 "Compose 확장 잡동사니" 자리로 인정하고 기준을 문서화할지 — 후자면 두 모듈의 경계 서술이 필요하다.
 - **상태**: 미해결
+  > 📌 **네 번째 자리가 생김(2026-08-11, PR #199)** — 배경 점 격자 `Modifier.ygBackgroundDotGrid()`가 `core:designsystem`에 들어가되 `border/`·`shape/`가 아니라 **`component/ygbackgrounddotgrid/`**다. 컴포저블이 아닌 `Modifier` 확장인데 "컴포넌트당 폴더" 규약을 따랐고, 기본 인자로 `YGAtomicColors`·`SizeTokens`를 읽어 **테마 비의존도 아니다**(위 세 사례와 성격이 갈린다). ①을 정할 때 "프리미티브가 토큰 기본값을 가져도 되는가"까지 함께 정해야 한다.
 - **해소 메모**: 결정 시 [module-structure](../architecture/module-structure.md) `core:util:android` 행과 [design-system](../architecture/design-system.md) 과도기 마커를 함께 정리한다. [2026-07-14 항목](#2026-07-14-clickable-유틸이-coreutilandroid로-이동--ripple-색-테마-비의존) ②와 같은 결정에 묶인다.
 
 ### [2026-08-01] 화면 PR이 `YGButtonType.radius`를 삭제 — 각짐 토큰 경유 회귀
@@ -637,6 +639,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `component/ygtopbar/YGTopBar.kt#YGTopBarEmpty`(PR #188) + `feature/groups/list/impl` `GroupListViewModel`·`core:util:jvm` `model/DateFormat` — 상단 바가 완성된 문자열 2개(`date`·`day`)를 받기만 하고, 실제 값은 VM이 `DateFormat.FullMonthWithDay`·`AbbreviatedDayOfWeek`로 만든다. 두 포맷 모두 **영문 표기**(Figma `December 31 (Wed)`)인데 앱 UI는 한국어다. 같은 화면의 `YGDate`도 같은 값을 쓴다.
 - **항목**: ① 날짜·요일 표기를 한국어로 갈지 Figma대로 영문을 유지할지(제품 결정), ② 포맷 소유를 `core:util:jvm` 상수로 둘지 로케일 기반 포맷터로 바꿀지, ③ 정책 소스가 위키에 없다 — 수집 대상인지.
 - **상태**: 미해결 (컴포넌트는 무관 — 호출 화면·정책 소관)
+  > 📌 **세 번째 소비처(2026-08-11, PR #199)** — C-001 캔버스 날짜 라벨이 같은 `DateTextFormat` 2종을 쓴다(`"May 20"` + `"(Wed)"`, 괄호는 화면이 문자열 결합으로 붙인다). 화면 3곳으로 퍼졌다.
   > 📌 **두 번째 소비처(2026-08-04, PR #191)** — C-102 갤러리 목록의 날짜 헤더가 `core:util:jvm` `DateTextFormat`(`monthDayFormat`·`weekdayFormat`, 둘 다 영문 약어)을 쓴다. 즉 영문 표기가 상단 바 한 곳이 아니라 **화면 2곳·포맷 객체 2개**(`DateFormat`·`DateTextFormat`)로 퍼졌고, ②의 "포맷 소유" 질문에는 **같은 성격의 객체가 둘로 나뉜 것**도 포함된다.
 - **해소 메모**: ①이 정해지면 `DateFormat`·`DateTextFormat`과 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)·[c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md)을 함께 고친다. 위키 정책이 필요하면 소스 수집을 요청한다.
 
@@ -780,6 +783,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `component/ygtopbar/YGTopBar.kt#YGTopBarEmpty`·`YGTopBarDefaults.kt#windowInsets`·`GroupListRoute.kt`(PR #194 develop 머지) — `YGTopBarEmpty`가 `windowInsets`(기본 `WindowInsets.statusBars`)를 자기 패딩으로 흡수하고 호출 화면은 `YGScaffold(contentWindowInsets = systemBars.only(Horizontal + Bottom))`로 상단을 뺀다. develop에는 이미 ① 엔트리 `YGScaffold` 기본 인셋(대부분 화면), ② 화면이 직접 `windowInsetsPadding`(C-101 카메라, 의도적 예외)이 있어 세 번째 형태가 추가됐다. 게다가 이 파라미터는 **`Empty` 변형에만** 있어 `Back`·`Detail`·`Canvas`를 쓰는 화면은 같은 관용구를 못 쓴다.
 - **항목**: ① 인셋 소유의 기본을 어디로 정할지(엔트리 컨테이너 / 화면 / 컴포넌트), ② 컴포넌트 흡수를 채택하면 나머지 탑바 3변형에도 `windowInsets`를 열지, ③ 흡수형을 쓰는 화면이 `YGScaffold` 상단을 빼는 것을 규약으로 강제할지(빼먹으면 이중 적용인데 컴파일로 못 막는다).
 - **상태**: 미해결 (코드 머지됨 — 규약 쪽 결정 필요)
+  > 📌 **형태 선택이 화면 정책을 깎았다(2026-08-11, PR #199)** — C-001은 ①(엔트리 `YGScaffold` 기본)을 골랐고, 그 결과 배경 점 격자가 `innerPadding` 안쪽에만 그려져 위키 정책의 "화면 전체 뒤"를 못 지킨다(아래 [2026-08-12] Dot Grid 항목). `YGTopBarCanvas`에 `windowInsets`가 없어 G-001 관용구를 쓸 수도 없으니, ②는 이제 취향 문제가 아니라 **정책 이행을 막는 제약**이다.
 - **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번과 [design-system](../architecture/design-system.md) `YGTopBar`·"화면 컨테이너" 절, [ygtopbar 스펙](../specs/archive/2026-07-18-ygtopbar.md)을 함께 정리한다. [2026-08-01 화면 컨테이너 규약 이탈 항목](#2026-08-01-g-001-목록-화면이-화면-컨테이너-규약을-벗어남)과 같은 화면에 걸린다.
 
 ### [2026-08-07] `animateToppingPlacement`가 사용처 0건으로 머지됨
@@ -994,6 +998,46 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 온보딩 문구·일러스트 구성을 정책 소스로 역수집할지, 코드를 정본으로 인정할지([2026-08-11] 로딩 그래픽 항목의 ③과 같은 판단이다). ② 프리뷰 파라미터를 실화면과 일치시킬지 — 프리뷰가 실기기 없이 볼 수 있는 유일한 그물인데 세 번째 장이 다르다. ③ 프리뷰용 데이터와 Route의 `remember` 목록이 두 벌로 존재하는 구조를 유지할지(둘이 어긋나도 컴파일은 통과한다).
 - **상태**: 미해결 (②는 즉시 고칠 수 있는 코드 수정, ①은 위키 ingest 판단)
 - **해소 메모**: ①이 정해지면 위키 쪽 미결과 함께 닫고, ②③ 처리 시 [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md) "드리프트" 4번을 지운다.
+
+### [2026-08-12] 캔버스 날짜가 03시 경계를 안 쓴다 — 같은 저장소에 `DayWindow`가 있는데도
+
+- **ID**: OQ-P-127
+- **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasImageAddViewModel.kt#loadCanvasImageAddInfo`(PR #199 develop 머지) — 캔버스 날짜 라벨을 `Clock.System.todayIn(TimeZone.currentSystemDefault())`로 만든다. 위키 [[캔버스-마감-스케줄]]은 하루 경계가 **03:00 KST 고정**이고(서버 기준 KST), `domain`의 `DayWindow.current(timeZone, clock)`가 그 경계를 이미 구현해 C-102 갤러리가 쓰고 있다. 지금 구현은 경계가 00:00이고 시간대도 기기 설정을 따른다 — 00:00~02:59 사이에는 화면이 **캔버스의 실제 날짜보다 하루 뒤 날짜**를 보여준다.
+- **항목**: ① 화면 날짜를 `DayWindow` 기준으로 옮길지(경계·시간대 둘 다), ② 시간대를 KST로 고정할지 기기 시간대를 인정할지 — 서버가 KST로 캔버스를 마감하므로 해외 사용자는 어느 쪽이든 정책 결정이 필요하다. ③ 날짜가 화면에서 계산되는 구조 자체를 유지할지(서버가 캔버스 날짜를 내려주면 표시만 남는다).
+- **상태**: 미해결 (그룹·캔버스 데이터 미결선이라 지금은 표시만 틀린다)
+- **해소 메모**: ①②가 정해지면 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) "정책 대조" 표와 드리프트 1번을 고치고, `DayWindow`를 화면 계층에서도 쓰는 관용구를 [module-structure](../architecture/module-structure.md)에 한 줄 남긴다. [2026-08-04] 날짜 영문 표기 항목과 같은 화면·같은 값에 걸린다.
+
+### [2026-08-12] Dot Grid가 시스템 바 영역을 못 덮는다 — 정책은 "화면 전체 뒤"
+
+- **ID**: OQ-P-128
+- **출처**: `feature/groups/canvas/impl` `screen/CanvasImageAddScreen.kt` + `core:designsystem` `component/ygbackgrounddotgrid/YGBackgroundDotGrid.kt#ygBackgroundDotGrid`(PR #199 develop 머지) — 격자 Modifier가 엔트리 `YGScaffold`의 `innerPadding` **안쪽** `Column`에 붙는다. 위키 [[캔버스-반응형-레이아웃]]은 "화면 전체(상단바·하단바·캔버스 포함) 뒤에 동일하게 깔리고, 앵커는 화면 좌상단 (0,0)"이라고 못박는다. 지금은 상태바·내비게이션 바 영역이 `YGScaffold`의 흰 `containerColor`만 남고, 격자 원점도 상단 인셋만큼 밀려 **점 위치가 정책 좌표와 어긋난다**. 점 스펙(지름 2·`Gray100`·간격 20)은 정책과 일치한다.
+- **항목**: ① 격자를 엔트리 컨테이너 쪽으로 올릴지(`YGScaffold` 배경 슬롯 신설 / entry에서 `Box`로 감싸기 — 후자는 [2026-08-01] G-001 컨테이너 이탈과 같은 형태다), ② 탑바가 인셋을 흡수하는 G-001 관용구로 갈지(그러려면 `YGTopBarCanvas`에 `windowInsets`를 열어야 한다 — [2026-08-07] 항목 ②), ③ 정책의 "앵커 (0,0)"을 화면 원점으로 볼지 콘텐츠 원점으로 볼지 디자이너에게 확인할지.
+- **상태**: 미해결 (렌더는 되지만 정책 불일치)
+- **해소 메모**: ①②는 인셋 관용구 결정([2026-08-07])과 한 몸이다. 정하면 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) "정책 대조" 표와 [navigation-flow](../architecture/navigation-flow.md) 인셋 사례 노트를 함께 고친다.
+
+### [2026-08-12] C-001이 도달 불가로 머지됐고 화면 안 콜백 3종이 빈 람다
+
+- **ID**: OQ-P-129
+- **출처**: `feature/groups/canvas/impl` `route/CanvasImageAddRoute.kt` + `feature/groups/list/impl` `route/GroupListRoute.kt`(PR #199 develop 머지) — ① `NavKeyCanvasImageAdd`를 `goTo` 하는 호출자가 develop에 **0건**이다(entry 등록만 있다). 유일한 후보인 G-001의 `GroupListSideEffect.NavigateToCanvas` 분기는 여전히 `// Todo : canvas page 이동`이고, 애초에 그 이펙트를 쏘는 토핑 클릭 경로도 없다([2026-08-07] 死경로 항목). ② 화면 안에서도 `onClickDateSelect`·`onClickMenu`·`onClickEditCanvasBG`가 TODO 주석 달린 빈 람다다 — 날짜 선택(캘린더)·상단 메뉴·캔버스 편집이 전부 미결선이고, `NavKeyCanvasEdit`·`NavKeyCanvasImageSelect` entry는 등록돼 있는데 이 화면에서 가지 않는다. ③ 이름과 목적지도 어긋난다 — `CanvasImageAddIntent.OnClickCanvas`·`CanvasImageAddEffect.NavigateToCanvas`가 실제로는 갤러리(`NavKeyCustomGalleryPicker`)로 간다.
+- **항목**: ① G-001 토핑 클릭 → C-001 진입을 어느 라운드에서 결선할지(그룹 데이터 결선과 묶일 수밖에 없다 — 캔버스는 `groupId`가 필요한데 `NavKeyCanvasImageAdd`는 `data object`다), ② 날짜 선택·상단 메뉴·캔버스 편집의 목적지를 확정할지, ③ `OnClickCanvas`/`NavigateToCanvas` 이름을 목적지에 맞게 고칠지(화면 이름 `CanvasImageAdd*`가 C-001 캔버스 메인을 가리키는 것도 같은 성격이다).
+- **상태**: 미해결
+- **해소 메모**: ①을 열 때 `NavKeyCanvasImageAdd`에 `groupId` 인자를 붙일지 함께 정한다([navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지"). 체크리스트 6번 사례 목록도 그때 정리한다. 상세는 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 3·6번.
+
+### [2026-08-12] C-001이 mock을 ViewModel 로직에 박고 `isEmpty`를 상수로 넘긴다
+
+- **ID**: OQ-P-130
+- **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasImageAddViewModel.kt#loadCanvasImageAddInfo`·`screen/CanvasImageAddScreen.kt`(PR #199 develop 머지) — ① `init`이 부르는 로드 함수가 그룹명 문자열과 멤버 7명을 TODO 주석과 함께 채운다(G-001이 mock을 UiState **기본값**에 둔 것과 또 다른 형태다 — [2026-08-07] 항목). ② 프리뷰 `CanvasImageAddScreenPreviewParameterProvider`가 같은 7명을 **다른 이름·다른 칩 타입**으로 따로 들고 있어 두 벌이 어긋나는데 컴파일은 통과한다(A-002 프리뷰 드리프트와 같은 구조 — [2026-08-11] 항목). ③ `isEmpty = true`가 화면에 상수로 박혀 있고 `content` 토핑 슬롯을 아예 안 넘긴다 — 토핑이 하나라도 생기면 빈 상태 문구가 그 위에 계속 그려진다.
+- **항목**: ① mock 소유를 어디로 통일할지(UiState 기본값 / 로드 함수 / 프리뷰 전용) — 지금 develop에 세 형태가 있다. ② 프리뷰 데이터와 실행 데이터가 갈리는 것을 막을 방법(공유 provider·`@PreviewParameter` 재사용)을 규약으로 둘지. ③ `isEmpty`를 UiState의 토핑 목록 유무에서 파생시킬지 — 캔버스 데이터가 붙는 라운드의 선행 결정이다.
+- **상태**: 미해결 (그룹·캔버스 API 미결선)
+- **해소 메모**: 캔버스 데이터 결선 라운드에서 ①③을 함께 닫고 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 4번·"정책 대조" 표를 고친다. ②는 [2026-08-11] A-002 프리뷰 항목과 같은 결정이다.
+
+### [2026-08-12] `MAX_VISIBLE_MEMBER_CHIPS`가 死상수 — 임계값이 리터럴로 두 번 적혔다
+
+- **ID**: OQ-P-131
+- **출처**: `feature/groups/canvas/impl` `screen/CanvasImageAddScreen.kt`(PR #199 develop 머지) — 상단 바 멤버 칩 개수 상한을 `private const val MAX_VISIBLE_MEMBER_CHIPS`로 선언해 두고, 정작 `take(…)`와 초과분 계산은 **리터럴 숫자**를 쓴다. 상수를 고쳐도 동작이 안 바뀌고 리터럴 둘 중 하나만 고치면 칩 개수와 `+N`이 어긋난다. 칩 겹침 간격도 `dp` 리터럴이라 토큰 스케일 밖이다([2026-08-11] A-002 치수 리터럴 항목과 같은 성격).
+- **항목**: ① 상수를 실제로 쓰게 고칠지(즉시 가능한 코드 수정), ② 겹침 간격을 토큰으로 올릴지 화면 고유 값으로 인정할지, ③ `+N` 임계값 자체의 근거 — Figma 주석("캔버스 전용 `+` 칩")뿐이고 위키에 그룹원 표시 정책이 없다. 그룹 정원은 [[그룹]]이 12명으로 못박는데 상단 바가 몇 명까지 보여야 하는지는 정책 소스가 없다.
+- **상태**: 미해결 (①은 즉시 고칠 수 있는 코드 수정, ③은 정책 수집 판단)
+- **해소 메모**: ①② 처리 시 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 5번을 지운다. ③은 위키 소관이라 정책 소스 수집 요청이 먼저다. ②는 [2026-08-11] 치수 리터럴 항목과 같은 결정에 묶인다.
 
 <!--
 항목 추가 형식:
