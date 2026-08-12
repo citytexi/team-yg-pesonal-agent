@@ -110,10 +110,15 @@ fun YGModalPopup(
 - **첫 실화면 소비처(2026-08-12, PR #224)** — A-005 그룹 생성·A-004 초대코드가 확인 모달로 쓴다
   ([a005](2026-07-29-a005-group-create.md)·[a004](2026-08-12-a004-group-invite-code.md) 스펙).
   ① "표시 여부는 호출자" 규약은 그대로 지켜졌고(각 UiState `isConfirmPopupVisible`),
-  ② 두 화면 다 **취소=좌 Secondary / 실행=우 Primary**라 미머지 [Danger Zone 팝업 스펙](../2026-08-09-setting-danger-zone-popups.md)의
+  ② 두 화면 다 **취소=좌 Secondary / 실행=우 Primary**라 [Danger Zone 팝업 스펙](2026-08-09-setting-danger-zone-popups.md)의
   반대 배치와 갈렸으며, ③ 위 "버튼 개별 비활성 불가"가 실제로 걸렸다 — A-005가 생성 중
   `isEnabledButton = isCreating.not()`을 주는 탓에 취소 버튼까지 함께 잠긴다
   → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
+- **반대 배치가 develop에 공존 확정(2026-08-13, PR #225)** — Danger Zone 확인 팝업 3종(서비스 탈퇴 ·
+  그룹 나가기 · 그룹 신고)이 머지되면서 **파괴적 액션=좌 Secondary / 취소("그만두기")=우 Primary**가
+  develop 코드가 됐다. 같은 컴포넌트에서 "오른쪽 Primary가 무엇인가"가 화면 성격에 따라 갈리는 것이
+  이제 가정이 아니라 사실이다(#224 3화면 = 실행이 우 / #225 3팝업 = 취소가 우). 네 인자가 전부 같은
+  타입이고 `Dialog`가 프리뷰에 안 떠서 **뒤바꿈을 잡는 자동 검증이 여전히 0건**이다.
 - **API 재설계(#135 브랜치 refactor)**: 초기 `confirmText`/`onConfirm`/`cancelText`/`onCancel` + `confirmEnabled`/`cancelEnabled` 시맨틱 API에서, **버튼 타입 기준**(`secondaryText`/`onSecondaryClick`·`primaryText`/`onPrimaryClick`) + **단일 `isEnabledButton`**으로 변경. 컴포넌트가 confirm/cancel 의미를 규정하지 않게 되고, 버튼 활성 개별 제어가 사라짐(양 버튼 공통).
 - **버튼 개별 비활성 불가**: `isEnabledButton` 단일 → 한쪽만 비활성(예: 확인만 disable) 요구 시 개별 플래그 재분리 필요. 현재 미지원.
 - **Title 색**: Figma `#333333`. 정확 매칭 아토믹 토큰 없음(`Gray.Gray850`=#333537 근사, `Gray.Gray900`=#29292C). **해소** — 구현(#135 브랜치 atomic color refactor)에서 `YGAtomicColors.Gray.Gray900` 채택(하드코딩 리터럴 폐기, 아토믹 토큰 사용). Figma #333333과 미세 차이(#29292C)는 디자인 토큰 우선 방침에 따라 수용. 육안 확인 대상.

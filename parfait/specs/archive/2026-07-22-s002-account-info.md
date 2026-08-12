@@ -38,6 +38,7 @@ tags: [spec, parfait, setting, account, nickname, s002]
 > `NicknameResult` → **`NameValidResult`**(그룹명 공용), `Error.Empty` → **`Error.EmptyString`**(enum 순서상 마지막이나 결과 동일),
 > UseCase 패키지에서 `group` 제거·인자명 `name`, 길이 상한은 `domain` **`GroupCreateConfig`**,
 > **`core:ui` `toStringResource()` 확장은 머지되지 않았고** 표시 매핑은 각 feature ViewModel이 `@StringRes` ID로 수행한다.
+> 🔁 **이 갈림은 2026-08-13(PR #223)에 원안으로 수렴하며 닫혔다** — 아래 as-built 갱신 블록 참고.
 > 에러 문자열 리소스는 `core:ui` `strings.xml`에 이미 존재(닉네임용 4종). 아래 본문은 **as-built 계약 기준으로 갱신**했고,
 > 매핑 위치를 원안(core:ui 확장)으로 되돌릴지는 미결 → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
 > **남은 구현 범위는 `feature/app/setting/impl`의 AccountInfo 3종(Route/Screen/ViewModel)뿐이다.**
@@ -113,12 +114,13 @@ class CheckNameValidUseCase @Inject constructor() {   // ADR-0009, 패키지 dom
 }
 
 // core:ui — 에러 문자열 리소스(닉네임용 4종). **as-built, #179로 이미 머지됨(무변경)**
-//   원안의 NicknameResult.Error.toStringResource() 확장은 미머지 → VM이 리소스 ID로 매핑.
+//   2026-07-22 시점: 원안의 toStringResource() 확장이 미머지라 VM이 리소스 ID로 매핑했다.
+//   2026-08-13(PR #223): core:ui text/NameValidResultUiText.kt로 이관 — 아래 갱신 블록.
 
 // impl — MVI (기존 AppSetting 패턴 미러 + GroupNickNameViewModel as-built 미러)
 data class AccountInfoUiState(
     val nickname: String = /* placeholder */ "대충지은랜덤닉네임",
-    val errorMessageResId: Int? = null,   // VM이 NameValidResult.Error → core:ui @StringRes 매핑
+    val errorMessageResId: Int? = null,   // 2026-07-22 as-built. #223에서 nicknameError: NameValidResult.Error? 로 교체
 ) : UiState
 
 sealed interface AccountInfoIntent : UiIntent {
@@ -138,6 +140,7 @@ sealed interface AccountInfoSideEffect : UiSideEffect {
 - **입력**(`InputWord`): `nickname` 갱신 + **즉시** `CheckNameValidUseCase(nickName)` 실행 →
   결과를 `when`으로 분기해 `errorMessageResId`에 `core:ui` 문자열 리소스 ID를 담는다(`Success`면 `null`).
   확인 버튼이 없으므로 검증은 실시간. Screen은 `stringResource(id)`로 렌더한다(as-built 관용구, `GroupNickNameViewModel` 미러).
+  > 🔁 **#223(2026-08-13 머지) 이후**: `checkNameValid(nickName) as? NameValidResult.Error`가 `nicknameError`에 그대로 들어가고(`when` 소멸), Screen이 `nicknameError?.toStringResource(NameFieldType.NICKNAME)`로 렌더한다.
 - **길이 상한**: `domain` `GroupCreateConfig.NICKNAME_MAX_LENGTH` → `YGTextFormField(maxLength = …)`가
   16번째 글자 입력을 하드 차단. UseCase는 길이 미검사(입력 단계에서 강제). 위키 "1~15자"와 일치.
   (#179에서 상수 소유처가 Screen 지역 상수 → domain 설정 객체로 이동됨 — 화면별 상수 재정의 금지.)
@@ -160,7 +163,7 @@ sealed interface AccountInfoSideEffect : UiSideEffect {
 > 원안은 빈 값 규칙을 **선두**에 두려 했으나 as-built는 마지막이다. 빈 문자열은 앞 3규칙을 모두 공백 통과하므로 결과는 같다.
 
 - **에러 문자열 출처**: domain은 `Error` 변형만 반환, 문자열은 `core:ui` `strings.xml`이 소유(다국어 통합). setting·groups 공용.
-  단 **매핑 코드는 각 feature ViewModel**에 있다(as-built) — 원안의 `core:ui` 확장으로 수렴할지는 미결.
+  ~~단 **매핑 코드는 각 feature ViewModel**에 있다~~ — **매핑도 `core:ui`가 단일 소유한다**(#223 develop 머지, 2026-08-13). ADR-0016 원안 수렴.
 - **S-102·A-005 동반**: 같은 UseCase를 그룹 내 닉네임(S-102)·그룹명(A-005)이 공유한다. 그룹명 화면은 `SpaceAtEdge`·`EmptyString`만 그룹명용 문자열로 분기.
   `EmptyString`은 S-102·S-002 모두 입력 비어있을 때만 도달.
 
@@ -170,11 +173,24 @@ sealed interface AccountInfoSideEffect : UiSideEffect {
 - `feature/app/setting/impl/navigation/EntryBuilder.kt` — `entry<NavKeyAccountInfo>` 이미 `AccountInfoRoute` 연결(**무변경**).
 - `feature/app/setting/impl/route/AccountInfoRoute.kt` — VM 배선(`hiltViewModel`·`collectAsStateWithLifecycle`·`LaunchedEffect` effect 수집), back→onBack. **stub 본문 채움**.
 - `feature/app/setting/impl/screen/AccountInfoScreen.kt` — stateless UI(길이 상한은 `GroupCreateConfig` 참조, 라벨은 `YGLabel`, 최외곽 `clearFocusOnTap()`). `@YGPreview`(기본/에러 상태 PreviewParameter).
-- `feature/app/setting/impl/viewmodel/AccountInfoViewModel.kt` — MVI, `CheckNameValidUseCase` 주입 + `NameValidResult.Error` → `core:ui` `@StringRes` 매핑.
+- `feature/app/setting/impl/viewmodel/AccountInfoViewModel.kt` — MVI, `CheckNameValidUseCase` 주입. 검증 결과를 **도메인 의미 그대로** State에 담는다(#223 이후 `nicknameError: NameValidResult.Error?`, 그 전에는 `@StringRes` ID).
 - `feature/app/setting/impl/res/values/strings.xml` — `account_info_title`·`account_info_nickname_label`
   (닉네임 에러 문자열은 core:ui 소유라 제외. `setting_logout`·`setting_withdraw`는 S-001 소속으로 이관 — 초안의 `account_info_logout`/`account_info_withdraw` 키는 폐기).
 - ~~`domain` 모델·UseCase 변경~~ — **#179로 머지 완료(무변경)**: `NameValidResult` sealed, `CheckNameValidUseCase`(`domain.usecase`) 4규칙, `GroupCreateConfig` 길이 상한.
-- ~~`core/ui` 매핑 확장·strings 신설~~ — 에러 문자열 4종은 **#179로 `core:ui` `strings.xml`에 이미 존재**. 매핑 확장(`toStringResource`)은 미머지이며 as-built는 VM 매핑(→ open-questions).
+- ~~`core/ui` 매핑 확장·strings 신설~~ — 에러 문자열 4종은 **#179로 `core:ui` `strings.xml`에 이미 존재**. 매핑 확장(`toStringResource`)은 이 화면 구현 시점엔 미머지였다가 **#223(2026-08-13)에 `core/ui/.../text/NameValidResultUiText.kt`로 신설**됐다.
+
+## 🔁 as-built 갱신 (2026-08-13, PR #223 — 유효성 표시 매핑 이관)
+
+이 화면은 [S-101 라운드](2026-08-07-s101-group-side-menu.md)가 ADR-0016 원안으로 수렴시킨 4개 화면 중 하나다. 화면 UI·동작·문자열은 변하지 않았고 **에러 표현 위치만** 옮겼다.
+
+| 항목 | 이 스펙 구현 시점(#192) | develop 현재(#223) |
+|---|---|---|
+| State 필드 | `errorMessageResId: Int?` | **`nicknameError: NameValidResult.Error?`** |
+| 매핑 주체 | `AccountInfoViewModel`의 `when` 5분기 | **`core:ui` `NameValidResult.Error.toStringResource(NameFieldType.NICKNAME)`** |
+| 변환 시점 | VM(상태 산출 시) | **화면(렌더 시)** |
+| `CoreR` 참조 | VM이 직접 | 저장소에서 `NameValidResultUiText.kt` 한 곳만 |
+
+Compose stability는 이 화면을 실측 대상으로 삼아 검증했다 — `AccountInfoUiState`가 `runtime class`/`Uncertain(Error)`로 뒤집혀도 `AccountInfoScreen`은 `restartable skippable`을 유지한다(`data object` 싱글턴이라 런타임 동일성 비교가 성립). 상세는 [ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md) 수렴본 표.
 
 ## 검증
 

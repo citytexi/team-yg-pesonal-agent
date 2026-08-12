@@ -44,6 +44,11 @@ tags: [spec, parfait, groups, nickname, s102]
 > UiState `errorMessage: String?` → `errorMessageResId: Int?`(ViewModel이 `core:ui` `strings.xml` 리소스 ID로 매핑).
 > ADR-0016이 설계한 `core:ui` `toStringResource()` 확장은 **머지되지 않았다** → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
 >
+> **as-built 갱신(2026-08-13, #223)**: 위 갈림이 **원안으로 수렴하며 닫혔다**. `errorMessageResId: Int?` →
+> **`nicknameError: NameValidResult.Error?`**, VM의 `when` 5분기 → `is NameValidResult.Error` 2분기,
+> 표시 변환은 화면이 `nicknameError?.toStringResource(NameFieldType.NICKNAME)`로 한다. 화면 문구·동작 불변
+> ([S-101 라운드](2026-08-07-s101-group-side-menu.md)가 4개 화면을 동시에 전환).
+>
 > **as-built 갱신(2026-08-12, #224)**: 확인이 `EnterGroupUseCase`(mock)를 거쳐 **G-001 그룹 목록으로 복귀**하는
 > 데까지 결선됐다. 스펙이 유일한 미구현으로 뒀던 "다음 화면 네비게이션"이 닫혔다 — 다만 목적지는
 > 당시 후보였던 A-005(그룹 생성)가 아니라 그룹 목록이다. **그룹 참여 API는 여전히 미연동.**
@@ -75,7 +80,9 @@ class CheckNameValidUseCase @Inject constructor() {
     operator fun invoke(name: String): NameValidResult
 }
 // 🔁 as-built(#179): NameValidResult sealed, 문자열 미보유. 표시 문자열은 ViewModel이
-//    core:ui strings.xml 리소스 ID로 매핑(ADR-0016의 toStringResource 확장은 미머지).
+//    core:ui strings.xml 리소스 ID로 매핑.
+// 🔁 as-built(#223, 2026-08-13): 매핑이 core:ui text/NameValidResultUiText.kt의
+//    NameValidResult.Error.toStringResource(NameFieldType)로 이관 — State는 Error?를 그대로 든다.
 sealed interface NameValidResult {
     data object Success : NameValidResult
     sealed interface Error : NameValidResult { /* EmptyString, SpaceAtEdge, DuplicatedSpace, InvalidCharacter */ }
@@ -115,8 +122,8 @@ sealed interface GroupNickNameSideEffect { data object NavigateToBack; data obje
 
 ### 유효성 규칙 (`CheckNameValidUseCase`, 순차 검사 — 첫 실패 반환)
 
-> 🔁 **as-built(#179)**: 각 규칙은 문자열 대신 `NameValidResult.Error` 변형을 반환하고, 표시 문자열은 **ViewModel**이
-> `core:ui` `strings.xml` 리소스 ID로 매핑한다(에러 문자열 리소스는 닉네임용·그룹명용이 별도 항목으로 공존).
+> 🔁 **as-built(#179)**: 각 규칙은 문자열 대신 `NameValidResult.Error` 변형을 반환하고, 표시 문자열은 `core:ui` `strings.xml`이 소유한다
+> (에러 문자열 리소스는 닉네임용·그룹명용이 별도 항목으로 공존). 매핑 주체는 #179 시점엔 **ViewModel**이었고 **#223(2026-08-13)에 `core:ui` 확장으로 이관**됐다.
 > 빈 값 규칙 `CheckEmptyString`(→`Error.EmptyString`)이 추가됐으나 **enum 순서상 마지막**이다 — S-002 스펙은 선두를 전제했으나,
 > 빈 문자열은 앞 3규칙을 공백으로 통과하므로 결과는 동일하다. S-102는 확인 버튼 `isNotEmpty()` 비활성으로 런타임 미도달.
 
@@ -133,7 +140,7 @@ sealed interface GroupNickNameSideEffect { data object NavigateToBack; data obje
 ## 표시·제어 규칙
 
 - 상단 `YGTopBarDetail(title=R.string.group_enter, "그룹 참여하기")`, 제목/부제 텍스트, `YGTextFormField`(placeholder·isError·errorDescription·maxLength), 하단 `YGButton` `Large`.
-- 에러 상태는 `uiState.errorMessage != null` → `isError` + 하단 `errorDescription`.
+- 에러 상태는 `uiState.nicknameError != null` → `isError` + 하단 `errorDescription`(#223 as-built. #179~#223 사이엔 `errorMessageResId`, 그 전엔 `errorMessage: String?`).
 - **정적 UI 라벨은 `feature/groups/enter/impl` `res/values/strings.xml` + `stringResource(R.string.*)`**(상단 타이틀·제목·부제·placeholder·확인 버튼, #166). 같은 모듈의 A-004 초대코드 화면([a004 스펙](2026-08-12-a004-group-invite-code.md))과 문자열 파일 공용(`submit`·`group_enter` 공유). 에러 문자열은 별개 경로 — `core:ui` `toStringResource` 매핑(ADR-0016).
 
 ## 파일 구성

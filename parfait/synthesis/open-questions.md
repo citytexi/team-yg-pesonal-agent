@@ -95,9 +95,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-010
 - **출처**: `component/ygcolorchip/YGColorChipType.kt` — `NametagChip1`~`NametagChip13` + `NametagChipPlus` = **14종**(숫자 13 + Plus). 위키 정책 [[nametag-chip]]([[S-101-프로필-닉네임-컬러-규칙-v0.3]])은 **Nametag-Chip 12종**으로 기술. **#165(2026-07-31 머지)에서 `NametagChipPlus`의 용도가 코드 주석으로 확정**됐다(멤버 5명 이상일 때의 "+" 칩 = 색 타입이 아니라 접기 표시) — 즉 정책 대응 색 타입은 13종이고 정책은 12종이라 **숫자 타입 1종 초과가 실질 쟁점**으로 좁혀졌다.
 - **항목**: ① 실제 색 매핑이 12종인지 13종인지 확정(`Plus`는 집계 표시용으로 제외), ② 코드↔정책 중 어느 쪽이 SoT인지(원칙: 코드>정책, 단 색 규칙은 디자인 정책 소관). 위키 정책 재확인 필요.
-- **상태**: 해소됨 (2026-08-09, 코드를 12종+Plus로 정정 — 단 코드는 아직 미머지)
-- **해소 메모**: **Figma 컴포넌트셋 `144:5415`가 정본이었고, 코드 쪽 결함 2건이 원인이었다.** ① `NametagChip11`이 `NametagChip3`과 fill/stroke/text 3색이 전부 같은 **완전 중복**이라 뒤 항목이 한 칸씩 밀려 있었다(코드 12 = Figma 11, 코드 13 = Figma 12). ② `NametagChip9`의 `textColor`가 테두리색과 같은 `Cherry50`이었다(Figma는 `Pudding500`) — 민트 배경에 글자가 묻힌다. S-101 라운드에서 중복을 삭제하고 재번호해 **`NametagChip1`~`NametagChip12` + `NametagChipPlus`** 로 정렬했고 9번 글자색을 정정했다. 즉 정책 12종이 맞고 코드가 13종이었던 것이며, 위키 [[nametag-chip]]·[[S-101-프로필-닉네임-컬러-규칙-v0.3]]은 **수정 불필요**다. 사용처는 프리뷰 데이터와 `app-preview` 갤러리 1곳뿐이었고, 갤러리는 같은 색을 계속 가리키도록 `NametagChip12` → `NametagChip11`로 함께 옮겨 렌더가 변하지 않는다. 상세는 [s101 스펙](../specs/2026-08-07-s101-group-side-menu.md) "`YGColorChipType` 드리프트 수정" 절.
-  > ⚠️ **머지 전이다.** PR이 develop에 들어가면 [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md)의 타입 표와 [design-system](../architecture/design-system.md) 인벤토리의 "14종" 서술을 12종+Plus로 맞춰야 한다(design-system은 이번에 선반영).
+- **상태**: 해소됨 (2026-08-13, PR #223 develop 머지 — 코드가 12종+Plus)
+- **해소 메모**: **Figma 컴포넌트셋 `144:5415`가 정본이었고, 코드 쪽 결함 2건이 원인이었다.** ① `NametagChip11`이 `NametagChip3`과 fill/stroke/text 3색이 전부 같은 **완전 중복**이라 뒤 항목이 한 칸씩 밀려 있었다(코드 12 = Figma 11, 코드 13 = Figma 12). ② `NametagChip9`의 `textColor`가 테두리색과 같은 `Cherry50`이었다(Figma는 `Pudding500`) — 민트 배경에 글자가 묻힌다. S-101 라운드에서 중복을 삭제하고 재번호해 **`NametagChip1`~`NametagChip12` + `NametagChipPlus`** 로 정렬했고 9번 글자색을 정정했다. 즉 정책 12종이 맞고 코드가 13종이었던 것이며, 위키 [[nametag-chip]]·[[S-101-프로필-닉네임-컬러-규칙-v0.3]]은 **수정 불필요**다. 사용처는 프리뷰 데이터와 `app-preview` 갤러리 1곳뿐이었고, 갤러리는 같은 색을 계속 가리키도록 `NametagChip12` → `NametagChip11`로 함께 옮겨 렌더가 변하지 않는다. 상세는 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md) "`YGColorChipType` 드리프트 수정" 절.
+  > ✅ **머지됨(2026-08-13, PR #223).** [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md) 타입 표·주의 절과 [design-system](../architecture/design-system.md) 인벤토리를 12종+Plus로 정리했다. 다만 **스펙의 영향 범위 서술이 틀렸던 것도 이때 드러났다** — 사용처가 "프리뷰 데이터뿐"이 아니라 `app-preview` `YGTopBarPreviewScreen.MemberListSample`도 포함이었고, 재번호와 함께 `NametagChip12` → `NametagChip11`로 옮겨 렌더는 불변이다. 같은 PR이 **첫 화면 소비처**(S-101 `GroupMemberList`)도 열었는데 타입 배정이 목록 인덱스 순환 mock이라 위키 [[nametag-chip]]의 "타입은 유저별 고정"은 여전히 미구현이다.
 
 ### [2026-07-18] YGDateButton clickableYG 미사용 — 스로틀 규약 이탈
 - **ID**: OQ-P-011
@@ -167,6 +167,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ✅ **A-002도 규약을 따름(2026-08-11, PR #218)** — `feature/login/impl` `strings.xml`이 신설되고 온보딩 설명 3종·카카오 버튼 라벨·`contentDescription`이 전부 `stringResource`로 갔다. 화면 소유 모듈에 둔 배치도 규약대로다. 남은 리터럴은 여전히 ②`InviteCodeResult`·③ 약관 title·미착수 화면(캔버스 등)이다.
   > ✅ **캔버스 화면도 규약을 따름(2026-08-11, PR #199)** — ③이 대표 사례로 들던 `feature/groups/canvas/impl`의 `CanvasImageAddScreen` 리터럴이 사라졌다. 같은 모듈에 `strings.xml`이 신설되고 빈 캔버스 안내·메뉴 라벨 4종·`+N` 포맷이 전부 `stringResource`다. **남은 리터럴은 ②`InviteCodeResult`·③ 약관 title**이고, 미착수 화면 목록에서 캔버스는 빠진다. 다만 같은 화면의 **mock 그룹명**은 ViewModel 코틀린 리터럴로 남았다(문자열 리소스화 대상이 아니라 데이터 미결선 — [2026-08-12] mock 항목).
   > ✅ **갤러리 예외 1건도 해소됨(2026-08-04, PR #191)** — 빈 상태 문구가 `feature/gallery/impl` `strings.xml`로 갔고, 같은 PR이 추가한 헤더·재선택 버튼·가이드 토스트 문구도 전부 리소스다. 다만 **가이드 토스트 문구가 카메라 것과 문자 그대로 같은데 두 모듈에 각각 정의**돼 아래 [중복 정의 항목](#2026-08-04-가이드-토스트-문구가-카메라갤러리-두-모듈에-중복-정의)으로 갈라졌다.
+  > ✅ **S-101·설정 팝업도 규약을 따름(2026-08-13, PR #223·#225)** — `feature/groups/setting/impl` `strings.xml`이 신설되고 라벨·초대 문구 템플릿·팝업 문구가 전부 `stringResource`이며, `feature/app/setting/impl` `strings.xml`에 탈퇴 팝업 문구 4종이 추가됐다. 유효성 에러 문구는 공유 문구라 `core:ui` 소유 그대로다 — **①의 "화면 전용은 feature / 공유는 core:ui" 규약이 문서와 코드 양쪽에서 지켜진 라운드**다. 남은 리터럴은 여전히 ②`InviteCodeResult`·③ 약관 title.
   > 📌 **②가 오히려 커졌다(2026-08-12, PR #224)** — `InviteCodeResult`에 `groupName: String`이 추가됐고 그 값도 `CheckInviteCodeValidUseCase` 안 **한국어 리터럴 mock**이다(확인 모달 제목에 들어간다). 즉 domain이 들고 있는 표시성 문자열이 하나 더 늘었다. 화면 정적 라벨은 모달 문구까지 전부 `feature/groups/enter/impl` `strings.xml`이라 규약을 지키는데, domain 경유 문자열만 예외로 남는다 → [a004 스펙](../specs/archive/2026-08-12-a004-group-invite-code.md).
 - **해소 메모**: ① 화면 전용 라벨=feature `strings.xml` / 공유 문구=`core:ui` `strings.xml` / domain 문자열 미보유 규약을 module-structure에 명시(#179가 `NickNameResult`의 domain 문자열을 걷어내 선례 확정). ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, A-004 후속) 시점에 함께 정리 — `InviteCodeResult`는 아직 `errorMessage: String?` 그대로다. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
 
@@ -203,9 +204,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-024
 - **출처**: `domain/model/NameValidResult.kt`·`domain/usecase/CheckNameValidUseCase.kt`·`feature/groups/enter/impl` `GroupNickNameViewModel`·`GroupCreateViewModel`·`core/ui/res/values/strings.xml`(PR #179 develop 머지). [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)은 `NicknameResult` sealed + `core:ui` `NicknameResult.Error.toStringResource()` 확장 + `core:ui`→`:domain` 의존을 결정했으나, 머지된 코드는 타입명이 `NameValidResult`(그룹명 공용)이고 **표시 매핑이 각 feature ViewModel의 `when`**(리소스 ID 산출)이며 `toStringResource` 확장·`core:ui`→`:domain` 의존은 없다. 에러 문자열 자체는 `core:ui` `strings.xml` 공용.
 - **항목**: ① 매핑을 ADR 원안대로 `core:ui` 확장으로 끌어올려 VM 중복을 없앨지, ② as-built(VM이 `@StringRes` 산출)를 정본으로 ADR-0016을 개정할지. ②를 택하면 "UI State가 리소스 ID를 보유"가 규약이 되므로 [state-management](../architecture/state-management.md)에도 한 줄 필요.
-- **상태**: 해소됨 (2026-08-09, ①로 결정 — 단 코드는 아직 미머지)
-- **해소 메모**: **①(원안 수렴)을 택했다.** S-101 라운드(브랜치 `feature/#211-S-101-group-side-menu`)가 4번째 복제를 만들 자리에서 방향을 뒤집어 **4개 화면을 동시에 전환**했다. `core/ui/.../text/NameValidResultUiText.kt`에 `NameFieldType` enum + `@Composable NameValidResult.Error.toStringResource(fieldType)`를 신설하고 `core:ui` → `:domain` 의존을 추가했으며, UI State 4곳이 `NameValidResult.Error?`(도메인 의미)를 보유하고 화면이 렌더 시점에 변환한다. 원안과 갈리는 것은 타입명(`NameValidResult`, #179 as-built 유지)과 `fieldType` 파라미터 두 가지뿐 — 후자는 `SpaceAtEdge`·`EmptyString` 문구가 닉네임용/그룹명용으로 갈려서 필요하다. 부수 결과로 클릭 시점 검증 2곳의 `when`이 5분기 → 2분기로 줄고 `CoreR` 참조가 저장소에서 한 곳(`NameValidResultUiText.kt`)만 남았다. Compose stability 회귀 우려는 compose compiler report 실측으로 반증(`Uncertain(Error)` + `restartable skippable` 유지). [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)의 as-built 표를 "역사"로 정리하고 수렴본 표를 추가함. 상세는 [s101 스펙](../specs/2026-08-07-s101-group-side-menu.md) "유효성 표시 매핑" 절.
-  > ⚠️ **머지 전이다.** PR이 develop에 들어가면 [s002-account-info](../specs/archive/2026-07-22-s002-account-info.md)·[s102](../specs/archive/2026-07-22-s102-group-nickname.md)·[a005](../specs/archive/2026-07-29-a005-group-create.md) 세 스펙의 "VM에서 매핑" 서술을 이 결정에 맞춰 고쳐야 한다.
+- **상태**: 해소됨 (2026-08-13, PR #223 develop 머지 — ①로 결정·구현·머지 완료)
+- **해소 메모**: **①(원안 수렴)을 택했다.** S-101 라운드(브랜치 `feature/#211-S-101-group-side-menu`)가 4번째 복제를 만들 자리에서 방향을 뒤집어 **4개 화면을 동시에 전환**했다. `core/ui/.../text/NameValidResultUiText.kt`에 `NameFieldType` enum + `@Composable NameValidResult.Error.toStringResource(fieldType)`를 신설하고 `core:ui` → `:domain` 의존을 추가했으며, UI State 4곳이 `NameValidResult.Error?`(도메인 의미)를 보유하고 화면이 렌더 시점에 변환한다. 원안과 갈리는 것은 타입명(`NameValidResult`, #179 as-built 유지)과 `fieldType` 파라미터 두 가지뿐 — 후자는 `SpaceAtEdge`·`EmptyString` 문구가 닉네임용/그룹명용으로 갈려서 필요하다. 부수 결과로 클릭 시점 검증 2곳의 `when`이 5분기 → 2분기로 줄고 `CoreR` 참조가 저장소에서 한 곳(`NameValidResultUiText.kt`)만 남았다. Compose stability 회귀 우려는 compose compiler report 실측으로 반증(`Uncertain(Error)` + `restartable skippable` 유지). [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)의 as-built 표를 "역사"로 정리하고 수렴본 표를 추가함. 상세는 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md) "유효성 표시 매핑" 절.
+  > ✅ **머지됨(2026-08-13, PR #223).** [s002-account-info](../specs/archive/2026-07-22-s002-account-info.md)·[s102](../specs/archive/2026-07-22-s102-group-nickname.md)·[a005](../specs/archive/2026-07-29-a005-group-create.md) 세 스펙의 "VM에서 매핑" 서술을 as-built로 고쳤고, [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)·[state-management](../architecture/state-management.md)·[module-structure](../architecture/module-structure.md)에 머지 표기를 넣었다. State 필드도 함께 개명됐다(`errorMessageResId`/`groupNameErrorTextResId` → `nicknameError`/`groupNameError`). **남은 것 하나** — `core:ui`가 `:domain`을 `implementation`으로 갖는 탓에 public 확장의 리시버 타입이 숨은 의존이 됐다 → [2026-08-13] 항목.
   > 📌 **as-built 쪽으로 한 표 더 쌓임(2026-08-03)** — S-002 브랜치(`feature/#86-app-setting-account-info-screen`)가 원안대로 `NicknameResult` + `core:ui` `text/NickNameResultUiText.kt#toStringResource` 확장을 실제로 구현해 갖고 있었으나, develop rebase에서 **폐기하고 VM `when` 매핑으로 수렴**시켰다(develop이 이미 `NameValidResult`로 머지돼 타입·패키지가 충돌). 이로써 `toStringResource` 확장은 코드베이스 어디에도 남지 않고, VM 매핑 사례가 `GroupNickNameViewModel`·`GroupCreateViewModel`·`AccountInfoViewModel` **3건**이 됐다. 원안(①)으로 되돌리려면 이제 3곳을 동시에 고쳐야 한다 — 결정을 미룰수록 ① 비용이 오른다.
   > 📌 **2026-08-04 (PR #192) 머지 확정** — 위 3번째 사례(`AccountInfoViewModel`의 `NameValidResult` → `core:ui` `@StringRes` `when` 매핑)가 develop에 들어왔다. as-built 3건이 이제 전부 develop 코드다.
 
@@ -793,6 +794,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 인셋 소유의 기본을 어디로 정할지(엔트리 컨테이너 / 화면 / 컴포넌트), ② 컴포넌트 흡수를 채택하면 나머지 탑바 3변형에도 `windowInsets`를 열지, ③ 흡수형을 쓰는 화면이 `YGScaffold` 상단을 빼는 것을 규약으로 강제할지(빼먹으면 이중 적용인데 컴파일로 못 막는다).
 - **상태**: 미해결 (코드 머지됨 — 규약 쪽 결정 필요)
   > 📌 **형태 선택이 화면 정책을 깎았다(2026-08-11, PR #199)** — C-001은 ①(엔트리 `YGScaffold` 기본)을 골랐고, 그 결과 배경 점 격자가 `innerPadding` 안쪽에만 그려져 위키 정책의 "화면 전체 뒤"를 못 지킨다(아래 [2026-08-12] Dot Grid 항목). `YGTopBarCanvas`에 `windowInsets`가 없어 G-001 관용구를 쓸 수도 없으니, ②는 이제 취향 문제가 아니라 **정책 이행을 막는 제약**이다.
+  > 📌 **4형태·5형태가 더 붙었다(2026-08-13, PR #223)** — S-101 그룹 설정 entry가 ①에 **`consumeWindowInsets(innerPadding)`**을 얹는 형태를 도입했다(하위 `imePadding()`이 인셋을 두 번 세지 않게). 소비를 빼면 확인 버튼이 내비게이션 바 높이만큼 떠오르는데 컴파일로 못 막는다 — ③과 같은 성질의 암묵 규약이 하나 더 생긴 셈이다. 대조적으로 `feature/groups/enter/impl`의 세 entry는 `contentWindowInsets = WindowInsets(0.dp)`로 인셋을 끄고 `statusBarsPadding()` + `navigationBarsAndImePadding()`을 직접 붙인다. 즉 develop의 인셋 관용구는 이제 **다섯 형태**다.
 - **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번과 [design-system](../architecture/design-system.md) `YGTopBar`·"화면 컨테이너" 절, [ygtopbar 스펙](../specs/archive/2026-07-18-ygtopbar.md)을 함께 정리한다. [2026-08-01 화면 컨테이너 규약 이탈 항목](#2026-08-01-g-001-목록-화면이-화면-컨테이너-규약을-벗어남)과 같은 화면에 걸린다.
 
 ### [2026-08-07] `animateToppingPlacement`가 사용처 0건으로 머지됨
@@ -1102,10 +1104,60 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-12] 확인 모달의 문구·좌우 배치가 정책 소스 없이 코드로 확정됐다
 
 - **ID**: OQ-P-137
-- **출처**: `feature/groups/enter/impl` `strings.xml`(`group_create_confirm_*`·`group_enter_confirm_*`)·`GroupCreateScreen.kt`·`GroupInviteCodeScreen.kt`(PR #224 develop 머지) — ① 위키에 그룹 생성·참여 확인 모달의 **존재도 문구도 정책 문서가 없다**([[기능정의서-v6]]에 팝업 언급 없음). A-002 온보딩 문구와 같은 방식으로 코드가 먼저 확정했다. ② 두 화면은 **취소=좌 Secondary / 실행=우 Primary**인데, 미머지 [Danger Zone 팝업 스펙](../specs/2026-08-09-setting-danger-zone-popups.md)은 피그마 근거로 **파괴적 액션=좌 Secondary / 취소=우 Primary**다 — 같은 컴포넌트에서 "오른쪽이 무엇인가"가 화면마다 뒤집힌다. ③ 참여 모달의 Primary는 "참여하기"인데 실제로는 닉네임 입력 화면으로 **이동만** 하고 합류는 그다음 화면 몫이다(문구가 약속하는 시점과 코드의 시점이 어긋난다). ④ dismiss 가드도 비대칭이다 — A-005는 `isCreating` 중 닫기를 막고 `isEnabledButton`으로 두 버튼을 함께 비활성하지만, A-004는 가드가 없다.
+- **출처**: `feature/groups/enter/impl` `strings.xml`(`group_create_confirm_*`·`group_enter_confirm_*`)·`GroupCreateScreen.kt`·`GroupInviteCodeScreen.kt`(PR #224 develop 머지) — ① 위키에 그룹 생성·참여 확인 모달의 **존재도 문구도 정책 문서가 없다**([[기능정의서-v6]]에 팝업 언급 없음). A-002 온보딩 문구와 같은 방식으로 코드가 먼저 확정했다. ② 두 화면은 **취소=좌 Secondary / 실행=우 Primary**인데, 미머지 [Danger Zone 팝업 스펙](../specs/archive/2026-08-09-setting-danger-zone-popups.md)은 피그마 근거로 **파괴적 액션=좌 Secondary / 취소=우 Primary**다 — 같은 컴포넌트에서 "오른쪽이 무엇인가"가 화면마다 뒤집힌다. ③ 참여 모달의 Primary는 "참여하기"인데 실제로는 닉네임 입력 화면으로 **이동만** 하고 합류는 그다음 화면 몫이다(문구가 약속하는 시점과 코드의 시점이 어긋난다). ④ dismiss 가드도 비대칭이다 — A-005는 `isCreating` 중 닫기를 막고 `isEnabledButton`으로 두 버튼을 함께 비활성하지만, A-004는 가드가 없다.
 - **항목**: ① 모달 문구를 디자인·기획 소스로 확정받을지(피그마 프레임 존재 여부부터), ② `YGModalPopup` 좌우 배치 규약을 세울지 — 파괴/비파괴로 가를지, 아니면 "확인은 항상 오른쪽"으로 통일할지(뒤집으면 Danger Zone 스펙이 함께 바뀐다), ③ "참여하기" 문구를 이동 의미로 바꿀지 실제 합류를 이 시점으로 옮길지, ④ 진행 중 dismiss 가드를 두 화면에 통일할지.
 - **상태**: 미해결 (문구·배치 근거 부재)
 - **해소 메모**: ②를 정하면 [design-system](../architecture/design-system.md) `YGModalPopup` 노트와 [ygmodalpopup 스펙](../specs/archive/2026-07-15-ygmodalpopup.md)의 "버튼 의미는 호출자 소관" 서술에 규약 한 줄을 얹는다(현재는 컴포넌트가 의미를 규정하지 않는다는 것만 적혀 있다).
+  > 📌 **②가 가정에서 사실이 됐다(2026-08-13, PR #225)** — Danger Zone 확인 팝업 3종(서비스 탈퇴·그룹 나가기·그룹 신고)이 **파괴적 액션=좌 Secondary / 취소=우 Primary**로 머지돼, `YGModalPopup` 호출자 6곳의 좌우 의미가 정확히 반으로 갈렸다(#224 3화면=실행이 우 / #225 3팝업=취소가 우). 어느 쪽도 코드 결함이 아니라 규약이 없는 것이며, 네 인자가 전부 같은 타입이고 `Dialog`가 프리뷰에 안 떠서 **뒤바꿈을 잡는 자동 검증은 여전히 0건**이다.
+
+
+### [2026-08-13] S-101 그룹 설정 화면이 도달 불가로 머지됐다
+
+- **ID**: OQ-P-138
+- **출처**: `feature/groups/setting/api/NavKeyGroupSetting.kt`·`feature/groups/setting/impl/navigation/EntryBuilder.kt`(PR #223·#225 develop 머지) — develop 전체에서 `NavKeyGroupSetting` 참조는 **선언과 entry 등록 두 곳뿐**이고 `goTo` 호출자가 없다. 화면 본문(닉네임 인라인 편집·그룹원 목록·초대 코드 복사·Danger Zone)과 확인 팝업 2종이 전부 들어왔는데 앱에서 열 방법이 없다. 진입 후보는 G-001 그룹 목록 또는 C-001 캔버스이나 어느 쪽에도 진입점 UI가 없다. C-001(도달 불가)·A-005(약 2주 뒤 호출자 확보)에 이어 같은 패턴이 세 번째다.
+- **항목**: ① 진입점을 어느 화면에 둘지 확정(위키 [[화면-ID-체계]]상 `S-` = Sidebar라 상단바 메뉴가 자연스러우나 문서 근거가 없다), ② 진입 시 `groupId`를 넘겨야 하는데 `NavKeyGroupSetting`이 `data object`라 인자 추가가 함께 필요하다, ③ 화면을 도달 가능하게 만들기 전까지 실기기 육안 확인 항목(S-101 9건 + 팝업 8건)이 통째로 막혀 있다는 점을 어떻게 다룰지.
+- **상태**: 미해결 (동작 결함 아님 — 배선 부재)
+- **해소 메모**: 결선하면 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md)의 "화면 진입 경로 없음" 항목과 [navigation-flow](../architecture/navigation-flow.md) 신규 목적지 체크리스트 6번 사례를 함께 정리한다.
+
+### [2026-08-13] S-101 데이터가 전량 mock이고 서버 계약에 필요한 필드가 없다
+
+- **ID**: OQ-P-139
+- **출처**: `GroupSettingViewModel.kt`의 `MOCK_GROUP_NAME`·`MOCK_MY_NICKNAME`·`MOCK_INVITE_CODE`·`MOCK_REMAINING_COUNT`·`MOCK_MEMBER_NICKNAMES`(전부 `GroupSettingUiState` 기본값) × [api/parfait-group.md](../api/parfait-group.md) — 화면이 쓰는 값 중 **서버 `GET /api/parfait-groups/{groupId}` 응답에 없는 것이 둘**이다: 상단바 제목이 되는 `groupName`, `N명 남음` 계산에 필요한 `memberLimit`. 응답은 `groupId`·`groupNickname`·`inviteCode`·`members`만 준다. 닉네임 변경·그룹 나가기·신고도 엔드포인트는 있으나 호출하는 코드가 없다(확인 핸들러가 TODO). G-001·C-001과 같은 뿌리의 mock이지만, 이 화면은 **계약 자체가 화면을 못 채운다**는 점이 다르다.
+- **항목**: ① `groupName`을 그룹 목록 API에서 받아 NavKey로 넘길지 서버에 필드 추가를 요청할지, ② `memberLimit`(위키 [[그룹]] 최대 12명)을 서버가 줄지 클라이언트 상수로 둘지 — 상수로 두면 정책 변경 시 앱 배포가 필요하다, ③ 컬러칩 타입도 응답에 없다(아래 항목).
+- **상태**: 미해결
+- **해소 메모**: 서버 소관 결정이면 [api/parfait-group.md](../api/parfait-group.md) Android 매핑 절에, 클라이언트 소관이면 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md)에 반영한다.
+
+### [2026-08-13] 네임태그 컬러칩 배정 주체가 여전히 미정 — 첫 소비처가 인덱스 순환으로 열렸다
+
+- **ID**: OQ-P-140
+- **출처**: `GroupSettingViewModel.kt`의 `NAMETAG_CHIP_TYPES` + `MOCK_MEMBERS`(PR #223 develop 머지) — 위키 [[nametag-chip]]은 "타입은 유저별로 **고정**"이라고 정하지만 **부여 주체를 적지 않았고**, 서버 `ParfaitGroupMemberResponse`도 `memberId`·`groupNickname` 2필드뿐이라 타입 정보가 없다. `YGColorChipType`이 12종+Plus로 정렬되며 개수 쟁점([2026-07-18])은 닫혔는데, 그 타입들의 **첫 화면 소비처**가 목록 인덱스 `% 12` 순환으로 열렸다 — 멤버가 나가고 들어오면 남은 사람의 색이 바뀐다. 정책이 요구하는 고정성과 정반대다.
+- **항목**: ① 타입 부여 주체를 서버로 할지(응답에 필드 추가) 클라이언트가 `memberId` 해시로 유도할지, ② 후자면 그룹 간 같은 유저가 같은 색인지(앱 닉네임처럼 계정 공통인지) 정해야 한다 — 위키 [[nametag-chip]]에 그 범위가 없다, ③ G-001의 `YGGrouptagChipType`도 전 항목 동일 값 고정이라 같은 결정에 걸린다([2026-08-07] 토핑 항목).
+- **상태**: 미해결
+- **해소 메모**: 정하면 위키 [[nametag-chip]]에 부여 주체·범위를 추가하고(정책 소관), 구현 쪽은 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md) "컬러칩 배정 규칙"과 [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md)에 반영한다.
+
+### [2026-08-13] Danger Zone 확인 3종이 되돌릴 수 없는 동작을 담을 자리 없이 머지됐다
+
+- **ID**: OQ-P-141
+- **출처**: `AppSettingViewModel.kt#handleConfirmWithdraw`·`GroupSettingViewModel.kt#handleConfirmLeaveGroup`·`#handleConfirmReportGroup`(PR #225 develop 머지) — 세 핸들러 모두 멱등 가드를 통과하면 **팝업을 먼저 닫고** TODO 로그만 남긴다. 실제 네트워크 호출을 넣으려면 지금 없는 것이 셋이다: ① 두 `UiState` 어디에도 in-flight·error 필드가 없고, ② 팝업을 먼저 닫아 진행 표시·실패 재시도를 얹을 자리가 사라지므로 "닫고 나서 요청" 순서를 뒤집어야 하며, ③ `YGModalPopup.isEnabledButton`이 좌우 공용 단일 플래그라 "요청 중엔 확인만 비활성, 취소는 살림"이 표현 불가능하다. 게다가 **회원 탈퇴는 서버에 엔드포인트 자체가 없다**. 현재 구조의 기본값은 실패해도 "성공한 것처럼 팝업만 닫힘"이다.
+- **항목**: ① 확인 핸들러의 순서를 "요청 → 결과 → 닫기"로 뒤집을지, ② `isEnabledButton`을 좌우 개별 플래그로 재분리할지(`YGModalPopup` 변경 — [ygmodalpopup 스펙](../specs/archive/2026-07-15-ygmodalpopup.md)이 이미 "개별 비활성 불가"를 미결로 안고 있다), ③ 회원 탈퇴 엔드포인트를 서버에 요청할지, ④ 탈퇴·나가기 성공 후 이동할 화면(로그인 / 그룹 목록)을 정할지 — SideEffect 신설이 필요하다.
+- **상태**: 미해결 (지금은 동작 미구현이라 무해)
+- **해소 메모**: [Danger Zone 팝업 스펙](../specs/archive/2026-08-09-setting-danger-zone-popups.md) "API 연동" 열린 질문의 develop 확정판이다. 연동 시 [state-management](../architecture/state-management.md)의 로딩·에러 표현 규약과 함께 본다.
+
+### [2026-08-13] `core:ui`의 표시 매핑 확장이 숨은 `:domain` 의존 위에 서 있다
+
+- **ID**: OQ-P-142
+- **출처**: `core/ui/build.gradle.kts`(`implementation(projects.domain)`)·`core/ui/.../text/NameValidResultUiText.kt#toStringResource`(PR #223 develop 머지) — 확장 함수가 `public`이고 리시버가 `NameValidResult.Error`(domain 타입)라 **public API 시그니처에 domain이 노출되는데 의존은 `implementation`이라 소비자에게 전파되지 않는다.** 지금 컴파일되는 것은 소비 feature 4곳이 컨벤션 플러그인으로 `:domain`을 직접 갖고 있기 때문이고, 그 컨벤션에서 `:domain`이 빠지면 원인 불명으로 깨진다.
+- **항목**: ① `api(projects.domain)`으로 승격할지 — 저장소에 `api(...)` 선언이 **0건**이고 컨벤션 플러그인 `DependencyHandler`에 `api` 확장 함수 자체가 없어 build-logic 변경이 선행한다(`0fbddfb1`·`09f49a92`가 과거에 `api`를 되돌린 이력도 있다), ② 아니면 확장을 `internal`로 낮추고 `core:ui`가 표시용 래퍼를 노출할지, ③ 그대로 두고 컨벤션 플러그인이 `:domain`을 항상 준다는 것을 규약으로 명문화할지.
+- **상태**: 미해결 (현재 컴파일·동작 정상 — 잠재 취약)
+- **해소 메모**: 정하면 [module-structure](../architecture/module-structure.md) `core:ui` 행과 [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)에 반영한다.
+
+### [2026-08-13] `GroupInviteCodeRoute`가 IME 인셋을 두 번 적용한다
+
+- **ID**: OQ-P-143
+- **출처**: `feature/groups/enter/impl/navigation/EntryBuilder.kt#featureGroupInviteCodeEntryBuilder`(`navigationBarsAndImePadding()`) × `invitecode/GroupInviteCodeRoute.kt`(`modifier.imePadding()`) — entry가 이미 IME 인셋을 붙이는데 Route가 같은 인셋을 한 번 더 얹는다. S-101 라운드가 자기 화면의 같은 증상(확인 버튼이 내비게이션 바 높이만큼 떠오름)을 `consumeWindowInsets`로 고치며 지목한 항목인데, **기전은 다르다** — S-101은 `YGScaffold` `innerPadding` 미소비였고 이쪽은 `contentWindowInsets = WindowInsets(0.dp)`라 `innerPadding`이 0이고 수동 인셋끼리 겹친다. 같은 파일의 `GroupNickName`·`GroupCreate` entry는 Route가 `imePadding()`을 안 써서 무사하다.
+- **항목**: ① Route의 `imePadding()`을 제거할지 entry의 `navigationBarsAndImePadding()`을 제거할지, ② 세 entry가 공유하는 인셋 관용구(`contentWindowInsets = WindowInsets(0.dp)` + 수동 패딩)를 유지할지 S-101 형태로 통일할지([2026-08-07] 인셋 관용구 항목과 같은 결정), ③ 실기기에서 실제로 키보드 위 여백이 두 배인지 확인 — 코드 대조만 했다.
+- **상태**: 미해결
+- **해소 메모**: [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md) "창 인셋 처리" 절의 경고와 [navigation-flow](../architecture/navigation-flow.md) 인셋 사례 블록을 함께 정리한다.
 
 <!--
 항목 추가 형식:
@@ -1117,4 +1169,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 138 -->
+<!-- oq-next: 144 -->

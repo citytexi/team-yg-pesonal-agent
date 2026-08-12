@@ -113,6 +113,16 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
 > 골랐는데, 화면 배경 점 격자를 `innerPadding` 안쪽 `Column`에 걸어 위키 [[캔버스-반응형-레이아웃]]이
 > 요구하는 "상단바·하단바 포함 화면 전체 뒤"를 못 지킨다. `YGTopBarCanvas`에는 `windowInsets`가 없어
 > G-001 관용구를 그대로 쓸 수도 없다 → [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md).
+> 📌 **4형태째 — 엔트리가 인셋을 소비하는 관용구(2026-08-13, PR #223)** — S-101 그룹 설정은 ①(엔트리
+> `YGScaffold` 기본)을 쓰되 `padding(innerPadding)` **뒤에 `consumeWindowInsets(innerPadding)`을 얹는다**.
+> 화면 하단 확인 버튼이 `imePadding()`을 쓰는데, 소비하지 않으면 그 `imePadding()`이 창 바닥 기준
+> IME 인셋(키보드 + 내비게이션 바)을 통째로 다시 적용해 버튼이 내비게이션 바 높이만큼 떠오른다
+> (실기기에서 드러났다). **엔트리가 `innerPadding`을 주고 하위가 `imePadding()`·`navigationBarsPadding()`
+> 계열을 쓰는 화면은 소비가 필수**라는 뜻이고, 저장소에서 이 규약을 지키는 곳은 아직 여기뿐이다 —
+> `feature/groups/enter/impl`의 세 entry는 `contentWindowInsets = WindowInsets(0.dp)`로 인셋을 끄고
+> `statusBarsPadding()` + `navigationBarsAndImePadding()`을 직접 붙이는 **또 다른 형태**이며, 그중
+> `GroupInviteCodeRoute`는 거기에 `imePadding()`을 한 번 더 얹어 IME가 이중 적용된다
+> → [open-questions](../synthesis/open-questions.md) [2026-08-07]·[2026-08-13].
 
 > **의도적 예외(2026-08-01, PR #182)** — C-101 카메라 entry는 `YGScaffold`를 쓰되 **`innerPadding`을
 > 화면에 먹이지 않는다**. 카메라 피드가 시스템 바 아래까지 덮어야 하고 인셋은 컨트롤 영역이
