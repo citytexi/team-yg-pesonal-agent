@@ -2,7 +2,7 @@
 id: s101-group-side-menu
 title: S-101 그룹 사이드 메뉴 화면 구현 계획
 status: done
-spec: ../specs/2026-08-07-s101-group-side-menu.md
+spec: ../../specs/archive/2026-08-07-s101-group-side-menu.md
 branch: feature/#211-S-101-group-side-menu
 issue: mash-up-kr/TEAMYG-Android#211
 created: 2026-08-07
@@ -13,8 +13,13 @@ tags: [plan, parfait, feature, groups, setting]
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ✅ **develop 머지 완료(2026-08-13, PR #223).** 아래 실행 기록은 그대로 유효하고, 머지 시점
+> 재대조에서 확정한 as-built는 [스펙](../../specs/archive/2026-08-07-s101-group-side-menu.md) 상단
+> 머지 블록에 있다. 계획서 Task 1의 grep 전제 오류(`app-preview` 사용처 누락)는 실제 코드에서
+> 구현자 정정본 그대로 머지됐다.
+
 > ✅ **실행 완료(2026-08-09, 미머지).** Task 1~7 전량 + 추가 라운드. 체크박스는 실행 기록을 이 블록에
-> 모으는 관례대로 미체크로 둔다. **산출물 계약의 정본은 [스펙](../specs/2026-08-07-s101-group-side-menu.md)이다**
+> 모으는 관례대로 미체크로 둔다. **산출물 계약의 정본은 [스펙](../../specs/archive/2026-08-07-s101-group-side-menu.md)이다**
 > — 아래 본문은 실행 당시 지시서이고 이후 뒤집힌 결정이 있다(특히 Task 6의 하단 여백 처리).
 >
 > **실행 방식**: SDD(Task별 구현자 + 리뷰) 7 Task, 이후 사용자 요청으로 추가 라운드 5회.

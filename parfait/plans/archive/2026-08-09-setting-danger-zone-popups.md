@@ -1,5 +1,19 @@
 # 설정 Danger Zone 확인 팝업 구현 계획
 
+> ✅ **완료 · develop 머지(2026-08-13, PR #225).** Task 1~5 전량 실행 후 브랜치
+> `feature/group-and-app-setting-pop-up`이 머지됐다. 체크박스는 실행 기록을 이 블록에 모으는
+> 관례대로 미체크로 둔다. **산출물 계약의 정본은
+> [스펙](../../specs/archive/2026-08-09-setting-danger-zone-popups.md)이다.**
+>
+> 머지 시점 재대조 결과 **계획서가 틀린 곳 0건 · 드리프트 0건** — 계획의 코드블록이 그대로 as-built다.
+> 계획 이후 추가된 것은 2026-08-10 독립 리뷰가 넣은 **확인 핸들러 3종의 멱등 가드**와 교차 방어
+> 테스트뿐이다(커밋 `6965d901`). 유닛 테스트 as-built: `AppSettingViewModelTest` 5개,
+> `GroupSettingViewModelTest` 16개 → 24개.
+>
+> 계획서의 "커밋하지 마라" 제약은 실행 시점에 뒤집혔다(SDD가 Task별 `BASE..HEAD` diff로 리뷰
+> 패키지를 만들어 커밋 없이는 리뷰 게이트가 못 돈다 — 사용자가 Task별 로컬 커밋을 승인). 육안 확인
+> 8항목은 기기 잠금으로 미수행이고 그중 코드 대조로 판정 가능한 것만 닫혔다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 앱 설정의 "서비스 탈퇴하기"와 그룹 설정의 "그룹 나가기"·"그룹 신고하기"를 눌렀을 때 피그마가 정의한 확인 모달이 뜨고, 취소하면 닫히도록 배선한다.
@@ -8,7 +22,7 @@
 
 **Tech Stack:** Kotlin, Jetpack Compose, Hilt, 자체 MVI(`BaseViewModel`/`UiState`/`UiIntent`), JUnit4 + kotlin-test + kotlinx-coroutines-test(`MainDispatcherRule`), Gradle 컨벤션 플러그인.
 
-**설계 정본:** [`parfait/specs/2026-08-09-setting-danger-zone-popups.md`](../specs/2026-08-09-setting-danger-zone-popups.md)
+**설계 정본:** [`parfait/specs/2026-08-09-setting-danger-zone-popups.md`](../../specs/archive/2026-08-09-setting-danger-zone-popups.md)
 
 ## Global Constraints
 
@@ -771,7 +785,7 @@ Expected: BUILD SUCCESSFUL
 
 ## 참고
 
-- 설계 근거·열린 질문: [`parfait/specs/2026-08-09-setting-danger-zone-popups.md`](../specs/2026-08-09-setting-danger-zone-popups.md)
-- 팝업 컴포넌트 스펙: [`parfait/specs/archive/2026-07-15-ygmodalpopup.md`](../specs/archive/2026-07-15-ygmodalpopup.md)
-- 그룹 설정 화면 스펙: [`parfait/specs/2026-08-07-s101-group-side-menu.md`](../specs/2026-08-07-s101-group-side-menu.md)
-- MVI 규약: [ADR-0005](../adr/0005-custom-mvi-baseviewmodel.md), [state-management](../architecture/state-management.md)
+- 설계 근거·열린 질문: [`parfait/specs/2026-08-09-setting-danger-zone-popups.md`](../../specs/archive/2026-08-09-setting-danger-zone-popups.md)
+- 팝업 컴포넌트 스펙: [`parfait/specs/archive/2026-07-15-ygmodalpopup.md`](../../specs/archive/2026-07-15-ygmodalpopup.md)
+- 그룹 설정 화면 스펙: [`parfait/specs/2026-08-07-s101-group-side-menu.md`](../../specs/archive/2026-08-07-s101-group-side-menu.md)
+- MVI 규약: [ADR-0005](../../adr/0005-custom-mvi-baseviewmodel.md), [state-management](../../architecture/state-management.md)

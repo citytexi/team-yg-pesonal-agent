@@ -35,7 +35,7 @@ app / app-preview
 | 그룹 | 모듈 | 목적 | 적용 컨벤션 플러그인 |
 |------|------|------|----------------------|
 | 진입 | `app`, `app-preview` | 앱 진입점(`BaseApplication`, `MainActivity`, `MainRoute`), 전체 조립 | `AndroidApplication*`, 서명 |
-| core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 여러 feature 공용 레이아웃(`VerticalGridLayout`)·공용 문자열 리소스(유효성 에러 문구, [[0016-domain-result-presentation-string-mapping]]) | android-library + compose |
+| core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 여러 feature 공용 레이아웃(`VerticalGridLayout`)·공용 문자열 리소스(유효성 에러 문구) + **도메인 결과 → 표시 문자열 매핑**(`text/NameValidResultUiText.kt`, [[0016-domain-result-presentation-string-mapping]]). `:domain` 의존(#223, 2026-08-13) | android-library + compose |
 | core | `core:designsystem` | 테마(`YGMaterialTheme`)·토큰(`YGSemanticColors`, `SizeTokens` 등) | android-library + compose |
 | core | `core:navigation` | `Navigator`, NavKey 레지스트리, 엔트리 등록 | android-library |
 | core | `core:util:android` | Android 전용 유틸(`decodeUriToBitmap`, `AndroidBitmap`) + Compose clickable 유틸(`clickable/`: `clickableYG`·`clickableYGNoRipple`·`ygDimRipple`·`ygScaleRipple`, 테마 비의존) + 포커스 유틸(`focus/`: `Modifier.clearFocusOnTap`) + Compose 확장(`extension/`: `Modifier.navigationBarsAndImePadding`·`Modifier.drawTooltipCornerTop`·`AnnotatedString.Builder.withStyle`). `core:util:jvm` 의존 | android-library + compose |
@@ -64,6 +64,7 @@ app / app-preview
 - **표시 문자열은 `strings.xml` + `stringResource`**(코틀린 리터럴 금지). 화면 전용 정적 라벨은 그 화면의 `feature/*/impl` `res/values/strings.xml`
   (같은 모듈의 여러 화면이 한 파일 공용), **여러 feature가 공유하는 문구**(유효성 에러 등)는 `core:ui` `res/values/strings.xml`([[0016-domain-result-presentation-string-mapping]]).
   `domain`은 표시 문자열을 보유하지 않는다. 미착수 화면에 잔존한 리터럴은 [open-questions](../synthesis/open-questions.md) [2026-07-26]에서 추적.
+- **`core:ui` → `:domain` 의존**(#223 develop 머지, 2026-08-13) — 표시 매핑 확장(`NameValidResult.Error.toStringResource`)의 리시버가 도메인 타입이라 필요하다. 방향은 허용(ui → domain)이나 **`implementation`이라 public API 시그니처에 domain 타입이 노출되면서 의존은 숨어 있다** — 소비 feature가 컨벤션 플러그인으로 `:domain`을 직접 갖고 있어 지금은 컴파일된다. 저장소에 `api(...)` 선언이 0건이고 컨벤션 플러그인에 `api` 확장 함수 자체가 없어 승격은 팀 결정 대상 → [open-questions](../synthesis/open-questions.md) [2026-08-13].
 
 ## 현재 수치가 필요하면 코드에서 측정
 ```bash

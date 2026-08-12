@@ -1,10 +1,10 @@
 ---
 id: setting-danger-zone-popups
 title: 설정 Danger Zone 확인 팝업 (App/Group Setting confirmation dialogs)
-status: in-progress
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-09
+verified: 2026-08-13
 related_code: AppSettingScreen.kt#AppSettingScreen, AppSettingRoute.kt#AppSettingRoute, AppSettingViewModel.kt#AppSettingState, AppSettingViewModel.kt#AppSettingIntent, GroupSettingScreen.kt#GroupSettingScreen, GroupSettingRoute.kt#GroupSettingRoute, GroupSettingViewModel.kt#GroupSettingUiState, GroupSettingViewModel.kt#GroupSettingIntent, GroupSettingViewModelTest.kt, YGModalPopup.kt#YGModalPopup, YGButtonType.kt#Medium
 related_adr: ADR-0005, ADR-0010
 related_spec: ygmodalpopup, s101-group-side-menu, app-setting-s001, s002-account-info, unit-test-infrastructure
@@ -17,6 +17,16 @@ tags: [spec, parfait, feature, setting, modal]
 # Spec: 설정 Danger Zone 확인 팝업
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+
+> ✅ **2026-08-13 develop 머지(PR #225).** 머지 시점 재대조에서 **드리프트 0건** — 아래 본문의
+> State 필드·Intent 8종·멱등 가드·문자열 19키·좌우 배치가 코드와 문자 그대로 일치한다.
+> 확정된 수치 2건: `GroupSettingViewModelTest`가 16개 → **24개**, `AppSettingViewModelTest`가
+> **5개**(상태 전이 3 + 멱등·교차 2). 앞선 PR #223(S-101 화면)과 **같은 날 연이어** 머지돼
+> 그룹 설정 화면은 첫 머지 시점부터 팝업을 갖고 있다.
+>
+> 남은 것은 본문이 이미 적은 그대로다 — 확인 버튼은 팝업만 닫고 TODO이고(탈퇴·나가기·신고 **동작
+> 미구현**), 실기기 육안 항목은 여전히 미수행이며, `GroupSettingScreen` 자체가 `goTo` 호출자
+> 0건이라 **팝업까지 통째로 도달 불가**다(→ [s101 스펙](2026-08-07-s101-group-side-menu.md)).
 
 > **2026-08-09 구현 완료(미머지)** — 브랜치 `feature/group-and-app-setting-pop-up`에 커밋 5개
 > (`08b97005`·`4ea6b210`·`8d5f477c`·`5b3290e8` + 리뷰 반영 `fff6159e`). **설계에서 뒤집힌 결정
@@ -43,7 +53,7 @@ tags: [spec, parfait, feature, setting, modal]
 피그마가 정의한 확인 모달 3종을 붙여, 되돌릴 수 없는 액션 앞에 사용자 확인 단계를 세운다.
 
 기능(탈퇴·나가기·신고 실제 수행)은 이번 범위가 아니다 — 확인 버튼은 팝업만 닫고 TODO로 남는다.
-서버 계약이 아직 Android에 연결되지 않았기 때문이다([api/README](../api/README.md) 기준 Android
+서버 계약이 아직 Android에 연결되지 않았기 때문이다([api/README](../../api/README.md) 기준 Android
 대응 심볼 0건이고, **회원 탈퇴는 서버에 엔드포인트 자체가 없다**).
 
 > **정정(2026-08-10)**: 초안은 여기에 "API가 붙을 때 확인 핸들러 본문만 채우면 된다"고 적었는데
@@ -89,11 +99,16 @@ tags: [spec, parfait, feature, setting, modal]
 `DialogProperties`는 기본값을 쓴다 — 바깥 영역 탭·시스템 뒤로가기로 닫힌다. 피그마에 다른 지시가
 없고, 파괴적 액션이 기본 동작이 아니라 명시적 좌측 버튼이라 쉬운 이탈이 안전한 쪽이다.
 
+> ✅ **두 배치가 develop에 공존 확정(2026-08-13, PR #225)** — 이 스펙이 머지되면서 `YGModalPopup`
+> 호출자가 6곳이 됐고 좌우 의미가 정확히 반으로 갈렸다: #224의 3화면은 **실행이 우 Primary**,
+> 이 스펙의 3팝업은 **취소가 우 Primary**. 어느 쪽도 틀린 게 아니라 규약이 없는 것이다
+> → [open-questions](../../synthesis/open-questions.md) [2026-08-12] ②.
+>
 > 📌 **develop이 반대 배치를 먼저 머지했다(2026-08-12, PR #224)** — A-005 그룹 생성·A-004 초대코드의
 > 확인 모달이 **취소=좌 Secondary / 실행(만들기·참여하기)=우 Primary**다. 그쪽은 파괴적 액션이 아니라
 > 이 스펙의 근거("강조된 오른쪽이 하지 않기")와 곧장 충돌하지는 않지만, 같은 컴포넌트를 쓰는 화면들의
 > 좌우 의미가 화면 성격에 따라 갈리게 됐다. 이 스펙 머지 시 규약으로 세울지 판단 필요 →
-> [open-questions](../synthesis/open-questions.md) [2026-08-12]. 또 위 "API 연동" 절이 지적한
+> [open-questions](../../synthesis/open-questions.md) [2026-08-12]. 또 위 "API 연동" 절이 지적한
 > `isEnabledButton` 단일 플래그 제약은 #224의 `isCreating` 처리로 **develop에 실사례가 생겼다**
 > (생성 중 취소 버튼까지 함께 비활성).
 
@@ -253,6 +268,8 @@ N번 나가는 것도 같은 뿌리다.
   `ClickReportGroup` → `Report` / `ConfirmLeaveGroup`·`ConfirmReportGroup`·`DismissDialog` → `null`.
   팝업 Intent가 `isEditing`·`nicknameInput`을 바꾸지 않는 것도 확인한다.
 
+as-built 개수(2026-08-13 머지 기준): `AppSettingViewModelTest` **5개**(신설 파일), `GroupSettingViewModelTest` 16개 → **24개**.
+
 `AppSettingViewModel`은 생성자 의존성이 없어 테스트가 직접 생성한다. 다만 해당 모듈에 유닛 테스트
 컨벤션 플러그인(`parfait.test.unit`)이 아직 없어 `build.gradle.kts`에 추가해야 한다
 (`feature/groups/setting/impl`이 이미 쓰는 방식 그대로).
@@ -280,7 +297,7 @@ N번 나가는 것도 같은 뿌리다.
   확인이 필요하다.
 - **확인 후 화면 전환 미정** — 탈퇴·나가기·신고가 실제로 수행되면 어디로 가는지(로그인 화면,
   그룹 목록 등)가 정해지지 않았다. API 연동 시 SideEffect 신설이 필요하다.
-- **팝업 폭 미제어(기존 미결 상속)** — [ygmodalpopup](archive/2026-07-15-ygmodalpopup.md) 스펙이
+- **팝업 폭 미제어(기존 미결 상속)** — [ygmodalpopup](2026-07-15-ygmodalpopup.md) 스펙이
   `usePlatformDefaultWidth`를 건드리지 않기로 해 팝업 폭은 플랫폼 기본값이다. 피그마는 375 프레임
   안에서 좌우 10 여백을 준 폭으로 그려져 있어 실제 렌더 폭이 더 좁을 수 있고, 그러면 본문 2줄
   줄바꿈이 피그마와 달라진다. 육안 확인 대상 — 어긋나면 DS 쪽 미결이지 이 스펙의 결정이 아니다.

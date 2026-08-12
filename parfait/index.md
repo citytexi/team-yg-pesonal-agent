@@ -51,7 +51,7 @@ Android 미사용 결정이라 분모에서 뺀다). 다만 **이 표면을 소�
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `45de9413`(2026-08-12, #224 그룹 생성·참여 플로우 확인 모달·목록 복귀 결선까지).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `0521e0bc`(2026-08-13, #223 S-101 그룹 사이드 메뉴 화면 + #225 Danger Zone 확인 팝업 3종까지).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md

@@ -1,10 +1,10 @@
 ---
 id: s101-group-side-menu
 title: 그룹 사이드 메뉴 화면 (S-101 GroupSetting) + S-102 닉네임 편집 모드
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-09
+verified: 2026-08-13
 related_code: NavKeyGroupSetting.kt, GroupSettingRoute.kt#GroupSettingRoute, GroupSettingScreen.kt#GroupSettingScreen, GroupSettingViewModel.kt#GroupSettingViewModel, GroupSettingViewModel.kt#GroupSettingUiState, GroupMemberUiModel.kt#GroupMemberUiModel, GroupSettingViewModelTest.kt, GroupNicknameField.kt#GroupNicknameField, GroupMemberList.kt#GroupMemberList, EntryBuilder.kt#featureGroupSettingEntryBuilder, YGColorChipType.kt, YGNametagChipPreviewData.kt, YGTextFieldImpl.kt, YGTextFormField.kt#YGTextFormField, NameValidResultUiText.kt#toStringResource, NameValidResultUiText.kt#NameFieldType, YGTopBar.kt#YGTopBarDetail, YGUserChip.kt#YGUserChip, YGInviteCard.kt#YGInviteCard, YGDangerZone.kt#YGDangerZone, YGActionItem.kt#YGActionItem, CheckNameValidUseCase.kt
 related_adr: ADR-0005, ADR-0006, ADR-0010, ADR-0016
 related_spec: app-setting-s001, s002-account-info, s102-group-nickname, designsystem-grouptag-topping-components, clearfocusontap-modifier
@@ -22,6 +22,17 @@ tags: [spec, parfait, feature, groups, setting, navigation]
 - 위키 화면 정의: `S-` = Sidebar, `S-101`(그룹 메뉴) — [[화면-ID-체계]] / 닉네임 유효성 [[S-102-닉네임-정책-v0.2]] / 컬러칩 [[nametag-chip]]
 
 > 상태·날짜·대상·관련은 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+>
+> ✅ **2026-08-13 develop 머지(PR #223).** 아래 2026-08-09 개정본이 머지된 코드와 **거의 그대로 일치**한다.
+> 머지 시점 재대조에서 확정한 as-built 3건과 서술 오류 2건만 아래에 반영했다.
+>
+> | 항목 | 2026-08-09 개정본 | develop as-built |
+> |---|---|---|
+> | `GroupMemberUiModel` | `nickname`·`colorChipType`·`isMe` | **`id: Long` 선두 추가** — `GroupMemberList`가 `key(member.id)`로 감싼다 |
+> | State 계산 프로퍼티 | `isConfirmEnabled` 하나 | **`isNicknameValid`**(= `nicknameError == null`) 추가 — 화면의 Done 게이트가 이 이름을 읽는다 |
+> | 유닛 테스트 | 16개 | 16개로 머지 후 **PR #225가 8개 추가해 24개** |
+> | `YGColorChipType` 사용처 | "프리뷰 데이터 + `YGTopBar` 프리뷰(`NametagChip5`)뿐" | **틀린 서술** — `app-preview` `YGTopBarPreviewScreen.MemberListSample`이 `NametagChip12`를 쓰고 있었고 재번호와 함께 `NametagChip11`로 옮겼다 |
+> | `GroupInviteCodeRoute` 인셋 | "`padding(innerPadding)` + 소비 없는 `imePadding()`" | **기전이 다르다** — 그쪽 `YGScaffold`는 `contentWindowInsets = WindowInsets(0.dp)`라 `innerPadding`이 0이고, EntryBuilder의 `navigationBarsAndImePadding()`과 Route의 `imePadding()`이 **IME 인셋을 두 번** 적용한다 |
 >
 > 🔁 **2026-08-09 개정 — 구현 완료 시점의 as-built 반영.** 초안 이후 사양 추가와 구조 정정이 여러 건 들어와
 > 본문을 그에 맞춰 고쳤다. 초안과 갈린 곳은 아래 절에 각각 근거와 함께 적었다. 요약:
@@ -107,6 +118,7 @@ feature/{app/setting,groups/enter}/impl/...  (수정: VM 3곳이 위 확장으�
 ```kotlin
 // impl/model/GroupMemberUiModel.kt — component가 viewmodel 패키지를 참조하지 않도록 분리
 data class GroupMemberUiModel(
+    val id: Long,                                 // GroupMemberList의 key. Mock은 인덱스, 실연동은 서버 memberId
     val nickname: String,
     val colorChipType: YGColorChipType,
     val isMe: Boolean = false,
@@ -141,7 +153,7 @@ sealed interface GroupSettingSideEffect : UiSideEffect {
 ```
 
 - `processIntent`는 intent별 private `handle*()`에 위임하고, 각 `handle*`이 `updateState`/`postSideEffect`를 호출한다(S-001 선례와 동일하게 `when` 분기가 직접 `postSideEffect`를 부르지 않는다).
-- `isConfirmEnabled` = `nicknameError == null && nicknameInput != myNickname.value` — 유효성 통과 + 실제 변경이 있을 때만 활성. State의 계산 프로퍼티다.
+- State의 계산 프로퍼티는 둘이다. `isNicknameValid` = `nicknameError == null`("닫아도 되는가"), `isConfirmEnabled` = `isNicknameValid && nicknameInput != myNickname.value`(유효성 통과 + 실제 변경이 있을 때만 확인 버튼 활성). 화면이 두 게이트를 각각 읽으므로 이름이 필요하다 — 아래 [편집 모드 동작](#편집-모드-동작) 참고.
 - 초대 카드의 상태·문구 선택(`Active`/`Invalid`, `N명 남음`/`복사됨`/`최대 인원 도달`)은 **화면의 private 헬퍼**가 한다. 표시 규칙이라 State가 들 이유가 없다.
 - Mock 데이터는 State 기본값으로 둔다(G-001 `GroupListUiState` 선례). 실연동 시 교체 지점을 한 곳으로 모으기 위해 파일 하단 private 상수 블록에 모으고 각 `// TODO: API 연동` 주석에 대응 엔드포인트를 적는다.
 
@@ -166,7 +178,7 @@ sealed interface GroupSettingSideEffect : UiSideEffect {
 - 엔터 확정을 받으려면 `ImeAction.Done` + `onDone` 콜백이 필요한데 `YGTextFormField`가 그 통로를 안 갖고 있었다 → `keyboardOptions`·`keyboardActions`를 기본값과 함께 뚫는다(위 범위 참고).
 - 화면에서 확정 콜백은 **`onConfirmNickname()` 실행 뒤 `focusManager.clearFocus()`** 순서여야 한다. 뒤집으면 포커스 상실이 먼저 편집을 취소해 입력값이 되돌아가고, 뒤이은 확정이 조건 미달로 아무 일도 하지 않는다.
   > ⚠️ **테스트가 잠그는 범위에 주의.** `confirmNickname_thenLosesFocus_keepsConfirmedNickname`은 VM에 두 Intent를 그 순서로 직접 넣어 **VM이 그 순서를 견딘다**는 것만 확인한다. **화면이 그 순서로 호출하는지는 어떤 테스트도 잠그지 않는다** — 화면에서 순서를 뒤집어도 유닛 테스트 16개는 전부 통과하고 앱만 깨진다. 이 호출 순서는 육안 확인 항목이다.
-- 확정 게이트는 **`nicknameError == null`** 이다(`isConfirmEnabled`가 아니다). 값을 안 바꾸고 엔터를 누르면 확정은 ViewModel 가드가 무시하고 **키보드만 닫힌다** — `isConfirmEnabled`로 잠그면 키보드가 갇힌다. 버튼은 여전히 `isEnabled = isConfirmEnabled`라 변경이 없으면 눌리지 않는다.
+- 화면의 확정 게이트는 **`isNicknameValid`**(= `nicknameError == null`)이고, ViewModel의 `handleConfirmNickname` 가드는 **`isConfirmEnabled`**다. 둘이 다른 것이 의도다 — 값을 안 바꾸고 엔터를 누르면 화면은 통과시키고 VM 가드가 확정만 무시해 **키보드만 닫힌다**. 화면 게이트를 `isConfirmEnabled`로 잠그면 키보드가 갇힌다. 버튼은 `isEnabled = isConfirmEnabled`라 변경이 없으면 눌리지 않는다.
 - **뒤로가기는 화면이 포커스 해제로 번역한다** — `if (isEditing) focusManager.clearFocus() else onClickBack()`. 배경 탭·포커스 상실 경로는 "포커스 해제가 원인 → 편집 취소가 결과"인데 뒤로가기만 결과만 실행하면, `isEditing`은 꺼지는데 키보드·커서가 남아 편집 모드가 아닌 상태에서 엔터로 확정이 일어난다.
   - ViewModel의 `handleClickBack` 편집 분기는 **이중 방어**로 남긴다. 화면이 편집 중에는 `ClickBack` Intent를 아예 쏘지 않으므로 그 분기는 **프로덕션에서 도달하지 않는다**. 그것을 덮는 테스트(`clickBack_whileEditing_…`)도 마찬가지로 앱에서 발생하지 않는 경로를 잠근다 — 커버리지 착시에 주의.
   - **시스템 back 횟수는 미검증이다.** IME가 back을 먼저 소비할 때 키보드는 닫히지만 **포커스는 남으므로**, 두 번째 back에서 편집 취소, 세 번째에서 화면 종료가 될 수 있다. 실기기로 실측해 이 문장을 정정할 것 → 아래 [남은 실기기 확인](#남은-실기기-확인).
@@ -203,7 +215,7 @@ sealed interface GroupSettingSideEffect : UiSideEffect {
 
 소비하지 않으면 하위의 `imePadding()`이 창 바닥 기준 IME 인셋(키보드 + 내비게이션 바)을 통째로 다시 적용해, **확인 버튼이 키보드 위로 내비게이션 바 높이만큼 떠오른다**(실기기에서 확인). 초안은 "`EntryBuilder` 수정 불필요"였으나 그건 배경색만 본 판단이었다.
 
-> ⚠️ 같은 패턴(`padding(innerPadding)` + 하위 `imePadding()`, 소비 없음)이 `GroupInviteCodeRoute`에도 있다. 이번 범위 밖이라 손대지 않았다 → 열린 질문.
+> ⚠️ `GroupInviteCodeRoute`에도 IME 인셋이 두 번 걸린다. **다만 기전은 이 화면과 다르다**(2026-08-13 재대조) — 그쪽 `EntryBuilder`는 `YGScaffold(contentWindowInsets = WindowInsets(0.dp))`라 `innerPadding`이 0이고 인셋을 직접 `statusBarsPadding()` + `navigationBarsAndImePadding()`으로 붙이는데, `GroupInviteCodeRoute`가 거기에 `modifier.imePadding()`을 또 얹는다. 이번 범위 밖이라 손대지 않았다 → 열린 질문.
 
 ## 초대 코드 복사
 
@@ -230,7 +242,7 @@ Figma 컴포넌트셋 `144:5415`는 타입 `1~12` + `+` = 13종인데 코드는 
 
 조치: `NametagChip11`(중복)을 삭제하고 이후 항목을 재번호(`12`→`11`, `13`→`12`)해 **12종 + Plus**로 Figma와 정렬한다. `NametagChip9`의 `textColor`를 `Pudding.Pudding500`으로 정정한다. `YGNametagChipPreviewData`의 목록도 함께 맞춘다.
 
-영향 범위 확인됨 — `YGColorChipType` 실사용처는 `YGNametagChipPreviewData`와 `YGTopBar` 프리뷰(`NametagChip5`, 변경 대상 아님)뿐이고 화면 코드 사용처는 0건이다. 이 수정으로 위키 [[nametag-chip]] "12종"과 코드가 일치하며, [open-questions](../synthesis/open-questions.md)의 12종/14종 불일치 항목이 닫힌다.
+영향 범위 — 화면 코드 사용처는 0건이고, 사용처는 셋이다: `YGNametagChipPreviewData`(목록 동반 수정) · `core:designsystem` `YGTopBar` 프리뷰(`NametagChip5`, 재번호 대상 밖) · **`app-preview` `YGTopBarPreviewScreen.MemberListSample`(`NametagChip12`)**. 세 번째는 초안이 "없다"고 적었던 것이 틀린 것이고(계획서 Task 1의 grep 전제 오류, 구현자가 잡았다), 재번호 뒤에도 **같은 색을 계속 가리키도록** `NametagChip11`로 함께 옮겨 렌더가 변하지 않는다. 이 수정으로 위키 [[nametag-chip]] "12종"과 코드가 일치하며, [open-questions](../../synthesis/open-questions.md)의 12종/14종 불일치 항목이 닫힌다.
 
 ## 컬러칩 배정 규칙
 
@@ -258,7 +270,7 @@ Figma 컴포넌트셋 `144:5415`는 타입 `1~12` + `+` = 13종인데 코드는 
 
 ## 유효성 표시 매핑 — ADR-0016 원안 수렴 (동반 변경)
 
-이 화면을 만들며 VM `when`으로 `@StringRes`를 산출하는 기존 방식을 답습하면 **같은 매핑이 4번째로 복제**된다. [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)이 결정한 원안은 `core:ui`가 매핑을 단일 소유하는 것이고, 그 ADR이 명시적으로 기각한 대안이 "feature마다 매핑 보유"다. 그래서 이번 라운드에 **4개 화면을 동시에 원안으로 수렴**시켰다.
+이 화면을 만들며 VM `when`으로 `@StringRes`를 산출하는 기존 방식을 답습하면 **같은 매핑이 4번째로 복제**된다. [ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md)이 결정한 원안은 `core:ui`가 매핑을 단일 소유하는 것이고, 그 ADR이 명시적으로 기각한 대안이 "feature마다 매핑 보유"다. 그래서 이번 라운드에 **4개 화면을 동시에 원안으로 수렴**시켰다.
 
 신설: `core/ui/.../text/NameValidResultUiText.kt`
 ```kotlin
@@ -281,7 +293,7 @@ fun NameValidResult.Error.toStringResource(fieldType: NameFieldType): String
 
 > ⚠️ **측정 범위**: 실측 대상은 `AccountInfoUiState`(`String` + sealed 2필드)다. `GroupSettingUiState`는 `List<GroupMemberUiModel>` 때문에 **이 전환과 무관하게 이미 unstable**이라 위 결론이 그대로 적용되지 않는다. 다만 `List` unstable은 이 저장소 공통 관례이고(`GroupListUiState`·`TermAgreeUiState` 등 동일, `kotlinx.collections.immutable` 도입 이력 0건) 이번 변경이 만든 회귀가 아니다.
 
-이 변경으로 [open-questions](../synthesis/open-questions.md) `[2026-07-29] 유효성 결과 매핑 as-built가 ADR-0016 원안과 다름`이 ①(원안 수렴)으로 닫힌다.
+이 변경으로 [open-questions](../../synthesis/open-questions.md) `[2026-07-29] 유효성 결과 매핑 as-built가 ADR-0016 원안과 다름`이 ①(원안 수렴)으로 닫힌다.
 
 ## `YGTextFieldImpl` 최소 높이 (동반 변경)
 
@@ -299,7 +311,7 @@ fun NameValidResult.Error.toStringResource(fieldType: NameFieldType): String
 
 ## 검증
 
-- **`GroupSettingViewModel` JVM 유닛 테스트 16개**(`src/test/`) — `parfait.test.unit` + `:core:testing`(`MainDispatcherRule`) + Turbine. 잠그는 규칙: 유효성 5케이스 매핑(연속 공백 포함) · 확정 가드 · 편집 취소 시 입력 원복과 에러 초기화 · 포커스 전이 · 확정 시 그룹원 목록 동기화 · **확정 → 포커스 상실 순서 불변식** · `NavigateBack`/`CopyInviteCode` 방출 · **복사 2초 복귀와 연타 시 타이머 리셋**(가상 시간 제어).
+- **`GroupSettingViewModel` JVM 유닛 테스트 16개**(`src/test/`, 이 스펙 범위. 같은 파일이 [Danger Zone 팝업](2026-08-09-setting-danger-zone-popups.md) 라운드에서 8개 늘어 develop 현재 24개다) — `parfait.test.unit` + `:core:testing`(`MainDispatcherRule`) + Turbine. 잠그는 규칙: 유효성 5케이스 매핑(연속 공백 포함) · 확정 가드 · 편집 취소 시 입력 원복과 에러 초기화 · 포커스 전이 · 확정 시 그룹원 목록 동기화 · **확정 → 포커스 상실 순서 불변식** · `NavigateBack`/`CopyInviteCode` 방출 · **복사 2초 복귀와 연타 시 타이머 리셋**(가상 시간 제어).
   - **유닛 테스트가 못 잡는 것**: `imePadding()`·인셋 동작, 클립보드 실제 복사, 긴 문자열 레이아웃, 스크롤 도달성 → 육안이 유일한 그물이다. 실제로 이번 라운드의 결함 2건(버튼이 내비바만큼 떠오름, 편집 중 마지막 블록이 버튼 뒤에 갇힘)이 **실기기에서만** 드러났다.
   - Compose UI 계측 테스트는 이번 범위 밖(feature 모듈 계측 미배선).
 - 검증선: `:feature:groups:setting:impl:testDebugUnitTest` + 관련 모듈 **컴파일** + **ktlint** + `:app:assembleDebug`(Hilt 그래프, `YGTextFormField` 기존 호출부 회귀, ADR-0016 전환으로 바뀐 테스트 없는 화면 3곳의 회귀).
@@ -330,7 +342,9 @@ fun NameValidResult.Error.toStringResource(fieldType: NameFieldType): String
 - **`core:ui`가 `:domain`을 `implementation`으로 갖는다** — `NameValidResultUiText.kt`의 `toStringResource`는 public이고 리시버가 domain 타입이라 **public API 시그니처에 domain이 노출되는데 의존은 숨어 있다.** 지금은 소비자 4곳이 컨벤션 플러그인으로 `:domain`을 직접 갖고 있어 컴파일되지만, 그 컨벤션에서 `:domain`이 빠지면 원인 불명으로 깨진다.
   - `api` 승격이 의미상 맞으나 **저장소에 `api(...)` 선언이 0건**이고 컨벤션 플러그인 `DependencyHandler`에 `api` 확장 함수 자체가 없다. `0fbddfb1`·`09f49a92`가 `api`를 되돌린 이력도 있어 이번엔 손대지 않았다 — 팀 결정 대상.
 - **확인 버튼 스트립의 탭 흡수 방식** — `pointerInput { detectTapGestures {} }`로 탭을 소비해 루트 `clearFocusOnTap`이 발화하지 않게 한다. `detectTapGestures`의 `awaitFirstDown(requireUnconsumed = true)` 동작에 기대는 방식이라 Compose 버전이 바뀌면 깨질 수 있다. 다만 `clearFocusOnTap` 자체가 같은 패턴이라 저장소 관례와는 일관된다.
-- **서버 그룹 상세 응답에 `groupName`·`memberLimit`가 없다** — `GET /api/parfait-groups/{groupId}`는 `groupId`·`groupNickname`·`inviteCode`·`members`만 준다([api/parfait-group.md](../api/parfait-group.md)). 상단바 제목과 `N명 남음`의 출처가 계약상 없다. 그룹 목록 API에서 이름을 받아 NavKey로 넘기거나 서버에 필드 추가를 요청해야 한다.
+- **서버 그룹 상세 응답에 `groupName`·`memberLimit`가 없다** — `GET /api/parfait-groups/{groupId}`는 `groupId`·`groupNickname`·`inviteCode`·`members`만 준다([api/parfait-group.md](../../api/parfait-group.md)). 상단바 제목과 `N명 남음`의 출처가 계약상 없다. 그룹 목록 API에서 이름을 받아 NavKey로 넘기거나 서버에 필드 추가를 요청해야 한다.
 - **컬러칩 타입 부여 주체 미정** — 서버 응답에 타입이 없어 Mock 인덱스 순환으로 대체.
 - **그룹 나가기·신고 확인 모달 미제공** — 클릭은 stub(로그 + TODO)이다. Danger Zone 동작 자체가 미구현이라는 뜻이다.
+  > ✅ **모달은 붙었다(2026-08-13, PR #225)** — [Danger Zone 팝업 스펙](2026-08-09-setting-danger-zone-popups.md)이 `GroupSettingDialog?` + `YGModalPopup` 2종을 얹었다. 다만 확인 버튼은 여전히 팝업만 닫고 TODO라 **동작 미구현은 그대로**다.
 - **화면 진입 경로 없음** — `NavKeyGroupSetting`으로 `goTo` 하는 호출자가 아직 없어 이번 라운드에서는 프리뷰·수동 진입으로만 확인된다.
+  > ⚠️ **머지 후에도 0건이다(2026-08-13 확인)** — develop 전체에서 `NavKeyGroupSetting` 참조는 선언과 `EntryBuilder` entry뿐이다. 화면 전체가 도달 불가 상태로 머지됐다(C-001 선례) → [open-questions](../../synthesis/open-questions.md) [2026-08-13].

@@ -36,7 +36,11 @@ tags: [adr, parfait, i18n, domain, presentation]
 > `GroupNickNameViewModel`·`GroupCreateViewModel`·`AccountInfoViewModel` **3건**이 됐다. S-002 브랜치는 원안대로
 > `toStringResource()` 확장을 구현해 갖고 있었으나 develop rebase에서 폐기했다 — 원안으로 되돌리려면 이제 3곳을 동시에 고쳐야 한다.
 >
-> ✅ **2026-08-09 — 원안으로 수렴함**(S-101 라운드, 브랜치 `feature/#211-S-101-group-side-menu`, 미머지).
+> ✅ **2026-08-09 — 원안으로 수렴함**(S-101 라운드, 브랜치 `feature/#211-S-101-group-side-menu`).
+> **2026-08-13 PR #223로 develop 머지 완료** — 아래 수렴본이 develop 코드이고, 이 ADR의 "결정"이 다시 정본이다.
+> 전환된 4개 화면의 State 필드도 함께 개명됐다: `AccountInfoUiState.errorMessageResId` → `nicknameError`,
+> `GroupNickNameUiState.errorMessageResId` → `nicknameError`, `GroupCreateUiState.groupNameErrorTextResId` → `groupNameError`,
+> 신규 `GroupSettingUiState.nicknameError`.
 > S-101이 4번째 복제를 만들 자리에서 방향을 뒤집어 **4개 화면을 동시에 전환**했다. as-built 표는 이제 역사이고
 > 아래 "결정"이 다시 정본이다. 원안과 갈리는 부분은 다음 두 가지뿐이다.
 >
@@ -60,7 +64,7 @@ tags: [adr, parfait, i18n, domain, presentation]
 > `<runtime stability> = Uncertain(Error)`이고 `AccountInfoScreen`은 **`restartable skippable`을 유지**한다.
 > `data object` 싱글턴이라 런타임 동일성 비교도 성립한다 — skip 회귀 없음, stability 화이트리스트 불필요.
 >
-> 상세는 [s101-group-side-menu 스펙](../specs/2026-08-07-s101-group-side-menu.md)의 "유효성 표시 매핑" 절.
+> 상세는 [s101-group-side-menu 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md)의 "유효성 표시 매핑" 절.
 
 ## 맥락
 

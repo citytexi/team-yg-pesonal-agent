@@ -78,7 +78,7 @@ data class GroupCreateUiState(
     val groupName: String = "",
     val nickName: String = "",
     val groupNumber: Int? = null,
-    val groupNameErrorTextResId: Int? = null,
+    val groupNameErrorTextResId: Int? = null,   // #223(2026-08-13)에 groupNameError: NameValidResult.Error? 로 교체
     val isConfirmPopupVisible: Boolean = false,   // #224 신설
     val isCreating: Boolean = false,              // #224 신설
 ) : UiState {
@@ -109,7 +109,8 @@ class GroupCreateViewModel @AssistedInject constructor(
 
 ## 동작 / 상태
 
-- **그룹명 입력**(`InputGroupName`): `groupName` 갱신 + `groupNameErrorTextResId = null`(입력 시 에러 즉시 해제).
+- **그룹명 입력**(`InputGroupName`): `groupName` 갱신 + 에러 필드 `null`(입력 시 에러 즉시 해제).
+  > 🔁 **as-built(#223, 2026-08-13)**: 필드가 `groupNameErrorTextResId: Int?` → **`groupNameError: NameValidResult.Error?`**로 바뀌고, VM의 `when` 5분기가 `is NameValidResult.Error` 2분기로 접혔다. 표시 변환은 화면이 `groupNameError?.toStringResource(NameFieldType.GROUP_NAME)`로 한다 — 이 화면이 유일한 `GROUP_NAME` 소비처다([S-101 라운드](2026-08-07-s101-group-side-menu.md)의 ADR-0016 원안 수렴).
 - **인원 선택**(`ClickGroupNumber`): `groupNumber` 갱신(단일 선택, 토글 해제 없음).
 - **확인**(`ClickNextButton`): `CheckNameValidUseCase(groupName)` 실행 → `Success`면 에러를 지우고
   **확인 모달을 연다**(🔁 #224 — 이전엔 곧바로 `NavigateToNext`였다). `Error` 변형이면 대응 `core:ui`
@@ -156,7 +157,7 @@ class GroupCreateViewModel @AssistedInject constructor(
 ## 파일 구성
 
 - `api/NavKeyGroupCreate.kt` — 인자 있는 목적지 키.
-- `impl/groupcreate/GroupCreateViewModel.kt` — MVI + Assisted 주입, `CheckNameValidUseCase` 사용, 에러→리소스 ID 매핑.
+- `impl/groupcreate/GroupCreateViewModel.kt` — MVI + Assisted 주입, `CheckNameValidUseCase` 사용. 검증 결과를 도메인 의미 그대로 State에 담는다(#223 이후 `NameValidResult.Error?`, 그 전에는 `@StringRes` ID).
 - `impl/groupcreate/GroupCreateScreen.kt` — stateless UI + `PreviewParameterProvider`(빈/기본/입력 3상태) `@YGPreview`.
 - `impl/groupcreate/GroupCreateRoute.kt` — VM 배선, back→`onBack`, next stub.
 - `impl/navigation/EntryBuilder.kt#featureGroupCreateEntryBuilder` — `entry<NavKeyGroupCreate>`에서 `hiltViewModel(creationCallback = { factory.create(navKey.nickName) })`로 VM 생성 후 Route 호출.

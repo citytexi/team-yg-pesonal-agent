@@ -47,7 +47,7 @@ sealed interface YGColorChipType {
     val fillColor: Color
     val strokeColor: Color
     val textColor: Color
-    // NametagChip1 ~ NametagChip13, NametagChipPlus
+    // NametagChip1 ~ NametagChip12, NametagChipPlus  (#223에서 13종 → 12종 + Plus로 정정)
 }
 
 @Composable
@@ -106,7 +106,8 @@ fun YGChipColorIndicator(
 | `StyleBold` | `body.b02SB` | `YGAtomicColors.Gray.Gray950` |
 
 ### 타입 매핑
-- `NametagChip1`~`NametagChip13` + `NametagChipPlus` = 14종. 각 변형이 `fillColor`/`strokeColor`/`textColor`를 `YGAtomicColors`(Cherry/Melon/Pudding/Gray 계열)로 고정. 실색 값은 코드(`YGColorChipType.kt`)에서 확인.
+- `NametagChip1`~`NametagChip12` + `NametagChipPlus` = **13종**(색 타입 12 + 집계 표시용 Plus 1). 각 변형이 `fillColor`/`strokeColor`/`textColor`를 `YGAtomicColors`(Cherry/Melon/Pudding/Gray 계열)로 고정. 실색 값은 코드(`YGColorChipType.kt`)에서 확인.
+  > 🔁 **개수 정정(#223 develop 머지, 2026-08-13)** — 구 `NametagChip1~13` + Plus = 14종에서 정렬됐다. 원인 2건: ① `NametagChip11`이 `NametagChip3`과 fill/stroke/text 3색 전부 동일한 **완전 중복**이라 뒤 항목이 한 칸씩 밀려 있었고(코드 12 = Figma 11, 코드 13 = Figma 12), ② `NametagChip9`의 `textColor`가 테두리색과 같은 `Cherry50`이라 Melon 배경에 글자가 묻혔다(Figma는 `Pudding500`). 중복 삭제 + 재번호 + 9번 글자색 정정으로 Figma 컴포넌트셋과 위키 정책 12종에 맞췄다 → [s101 스펙](2026-08-07-s101-group-side-menu.md).
 - `NametagChipPlus` 용도는 #165에서 코드 주석으로 명시됐다 — **멤버 5명 이상일 때의 "+" 칩**(흰 배경 + Gray 테두리/글자).
 
 ## 파일 구성
@@ -120,7 +121,8 @@ fun YGChipColorIndicator(
 
 ## 주의 / 열린 질문
 - ~~**⚠️ 패키지↔폴더 불일치(코드 결함)**~~ — **해소(#165 develop 머지, 2026-07-31)**. 세 파일이 `package …component.ygchip`으로 갈려 있던 문제가 정리돼 폴더·패키지가 `ygcolorchip`으로 일치한다.
-- **⚠️ 타입 개수 정책 드리프트(잔존)**: 코드는 `NametagChip1~13` + `Plus` = **14종**. 위키 정책 [[nametag-chip]]([[S-101-프로필-닉네임-컬러-규칙-v0.3]])은 **Nametag-Chip 12종**으로 기술. 개수·매핑 불일치 → [open-questions](../../synthesis/open-questions.md) + 위키 정책 재확인 필요. #165는 이 부분을 손대지 않았다.
+- ~~**⚠️ 타입 개수 정책 드리프트**~~ — **해소(#223 develop 머지, 2026-08-13)**. 코드가 `NametagChip1~12` + `Plus`로 정렬돼 위키 정책 [[nametag-chip]]([[S-101-프로필-닉네임-컬러-규칙-v0.3]])의 **12종**과 일치한다. Figma 컴포넌트셋이 정본이었고 위키는 수정 불필요였다 → [open-questions](../../synthesis/open-questions.md) [2026-07-18].
+- **사용처는 프리뷰 3곳뿐(#223 시점)**: `YGNametagChipPreviewData`(타입 전수) · `core:designsystem` `YGTopBar` 프리뷰 · `app-preview` `YGTopBarPreviewScreen.MemberListSample`. **첫 화면 소비처는 S-101**이 `GroupMemberList`에서 목록 인덱스 순환으로 배정하며 열었다 — 타입 부여 주체가 미정이라 mock이다(서버 `ParfaitGroupMemberResponse`에 타입 필드 없음).
 - **⚠️ 프리뷰 관용구 회귀**: `YGUserChip`이 `@YGPreview`+`PreviewBox` 표준 대신 `@Preview`+`YGCustomTheme`. #149(YGAlert·YGToast)와 같은 이탈 → [open-questions](../../synthesis/open-questions.md) [2026-07-23].
 - **`YGChipColorIndicator`·`YGUserChip` 사용처·정책 근거 부재**: 두 컴포넌트 모두 `:app-preview` 갤러리 미등록이고 feature 참조 0건. 특히 인디케이터(선택 표시 점)는 대응 정책 문서가 위키에 없다(위키 Chip-Indicator는 C-201 캘린더 소관으로 별개) → [open-questions](../../synthesis/open-questions.md).
 - **`YGChipColorIndicator` 파라미터 순서**: `modifier`가 첫 인자이고 필수 `isChecked`가 뒤 — Compose 관용구(필수 → `modifier` → 선택)와 어긋나 호출 시 named argument가 사실상 강제된다.
