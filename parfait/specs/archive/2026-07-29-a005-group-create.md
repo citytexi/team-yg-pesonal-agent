@@ -4,13 +4,16 @@ title: A-005 그룹 생성 화면 (GroupCreate)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-29
+verified: 2026-08-12
 related_code:
   - NavKeyGroupCreate
   - GroupCreateRoute.kt#GroupCreateRoute
   - GroupCreateScreen.kt#GroupCreateScreen
   - GroupCreateViewModel.kt#GroupCreateViewModel
   - CheckNameValidUseCase.kt#CheckNameValidUseCase
+  - CreateGroupUseCase.kt#CreateGroupUseCase
+  - YGModalPopup.kt#YGModalPopup
+  - Navigator.kt#goToSingleClearTop
   - NameValidResult.kt#NameValidResult
   - GroupCreateConfig.kt#GroupCreateConfig
   - VerticalGridLayout.kt#VerticalGridLayout
@@ -31,6 +34,11 @@ tags: [spec, parfait, groups, group-create, a005]
 >
 > **사후 기록(post-hoc)**: 타 작업자 구현이 선작성 스펙 없이 develop 머지(#179, 2026-07-27)됨.
 > as-built 역기록. 코드가 SoT. 입력 유효성·인원 상한은 위키 정책 [[A-005-그룹명-정책-v0.1]]·[[이름-입력-규칙]]·[[그룹]]과 대조 완료(일치).
+>
+> **as-built 갱신(2026-08-12, #224)**: 확인 버튼이 곧바로 다음 단계로 가지 않고 **생성 확인 모달**을 띄우도록
+> 바뀌었고, 모달 확인이 `CreateGroupUseCase`(mock)를 거쳐 **G-001 그룹 목록으로 복귀**하는 데까지 결선됐다.
+> 스펙이 "제외(구현 TODO)"에 뒀던 다음 화면 네비게이션이 닫히고, 진입 경로는 #222에서 이미 뚫렸다
+> (G-001 그룹 추가 오버레이). **그룹 생성 API는 여전히 미연동** — UseCase가 고정 지연 후 성공만 반환한다.
 
 - **화면 ID**: A-005 (새 그룹 생성 — 그룹명 + 최대 인원수 입력)
 - **대상 모듈**: `feature/groups/enter/impl`(`groupcreate/`) + `feature/groups/enter/api`(NavKey) + `domain`(공용 UseCase·설정) + `core:ui`(공용 레이아웃·에러 문자열)
@@ -43,10 +51,13 @@ tags: [spec, parfait, groups, group-create, a005]
 ## 범위
 
 - 포함: 그룹명 입력(최대 10자)·닉네임 읽기 전용 표시·인원 선택 그리드(1~12)·확인 버튼 활성 조건·확인 시 그룹명 유효성 검사·에러 인라인 노출·입력 시 에러 초기화·뒤로가기.
+  **#224 추가**: 생성 확인 모달·생성 중 재진입 가드·생성 후 그룹 목록 복귀.
 - 제외(구현 TODO):
-  - **그룹 생성 API 연동** — 확인은 side effect `NavigateToNext`만 발신.
-  - **다음 화면 네비게이션** — Route에서 stub(`/* navigate to next */`).
-  - **진입 경로** — `NavKeyGroupCreate`로 `goTo` 하는 호출자가 아직 없다(S-102 `NavigateToNext`가 stub) → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
+  - **그룹 생성 API 연동** — `CreateGroupUseCase`가 고정 지연 후 `Result.success(Unit)`만 반환하는 mock이고,
+    실패 처리는 코드 주석 `Todo`로 남아 **`result.isSuccess`가 아닐 때 아무 일도 일어나지 않는다**(모달이 열린 채 멈춘다).
+  - ~~**다음 화면 네비게이션**~~ — #224에서 `goToSingleClearTop(NavKeyGroupList)`로 결선(아래 "동작 / 상태").
+  - ~~**진입 경로**~~ — #222에서 G-001 그룹 추가 오버레이가 `goTo(NavKeyGroupCreate(nickName))` 호출자가 됐다.
+    다만 넘기는 `nickName`이 mock이고 진입 관계 자체는 미결 → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
 
 ## API / 인터페이스
 
@@ -68,6 +79,8 @@ data class GroupCreateUiState(
     val nickName: String = "",
     val groupNumber: Int? = null,
     val groupNameErrorTextResId: Int? = null,
+    val isConfirmPopupVisible: Boolean = false,   // #224 신설
+    val isCreating: Boolean = false,              // #224 신설
 ) : UiState {
     val isValid: Boolean   // groupName·nickName 비어있지 않고 groupNumber 선택됨
 }
@@ -76,14 +89,21 @@ sealed interface GroupCreateIntent : UiIntent {
     data object ClickNextButton; data object ClickBackButton
     data class InputGroupName(val newGroupName: String)
     data class ClickGroupNumber(val newSelectedNumber: Int)
+    data object ClickConfirmPopupCreate; data object DismissConfirmPopup   // #224 신설
 }
 sealed interface GroupCreateSideEffect : UiSideEffect { data object NavigateToBack; data object NavigateToNext }
+
+// domain — 그룹 생성(#224 신설, 현재 mock)
+class CreateGroupUseCase @Inject constructor() {
+    suspend operator fun invoke(groupName: String, groupNumber: Int): Result<Unit>  // 고정 지연 후 항상 성공
+}
 
 // ViewModel — 닉네임을 NavKey 인자로 받으므로 Assisted 주입(선례: SegmentationViewModel)
 @HiltViewModel(assistedFactory = GroupCreateViewModel.Factory::class)
 class GroupCreateViewModel @AssistedInject constructor(
     @Assisted nickName: String,
     private val checkNameValid: CheckNameValidUseCase,
+    private val createGroup: CreateGroupUseCase,   // #224 신설
 ) : BaseViewModel<…>(initialState = GroupCreateUiState(nickName = nickName))
 ```
 
@@ -91,8 +111,15 @@ class GroupCreateViewModel @AssistedInject constructor(
 
 - **그룹명 입력**(`InputGroupName`): `groupName` 갱신 + `groupNameErrorTextResId = null`(입력 시 에러 즉시 해제).
 - **인원 선택**(`ClickGroupNumber`): `groupNumber` 갱신(단일 선택, 토글 해제 없음).
-- **확인**(`ClickNextButton`): `CheckNameValidUseCase(groupName)` 실행 → `Success`면 에러 클리어 후 `NavigateToNext`,
-  `Error` 변형이면 대응 `core:ui` 문자열 리소스 ID를 state에 반영(화면 잔류).
+- **확인**(`ClickNextButton`): `CheckNameValidUseCase(groupName)` 실행 → `Success`면 에러를 지우고
+  **확인 모달을 연다**(🔁 #224 — 이전엔 곧바로 `NavigateToNext`였다). `Error` 변형이면 대응 `core:ui`
+  문자열 리소스 ID를 state에 반영(화면 잔류).
+- **모달 만들기**(`ClickConfirmPopupCreate`, #224): `groupNumber`가 없거나 이미 `isCreating`이면 무시.
+  `isCreating = true` → `CreateGroupUseCase(groupName, groupNumber)` → `isCreating = false` →
+  **성공이면** 모달을 닫고 `NavigateToNext`. 실패 분기는 비어 있다(`Todo`).
+- **모달 취소·dismiss**(`DismissConfirmPopup`, #224): `isCreating` 중이면 무시(생성 중 닫기 차단), 아니면 모달만 닫는다.
+- **다음 화면**(`NavigateToNext`, #224): `navigator.goToSingleClearTop(NavKeyGroupList)` — 백스택에 이미 있는
+  그룹 목록을 재사용하고 그 위 화면(닉네임·생성 등)을 한 번에 걷어낸다 → [navigation-flow](../../architecture/navigation-flow.md).
 - **뒤로가기**(`ClickBackButton`) → `NavigateToBack` → `navigator.onBack()`.
 - **확인 버튼 활성**: `isValid` — 그룹명·닉네임 비어있지 않고 인원이 선택됨. 상세 규칙은 클릭 시 UseCase가 검사.
 
@@ -118,7 +145,12 @@ class GroupCreateViewModel @AssistedInject constructor(
   1. **그룹명** — `YGTextFormField`(placeholder·`isError`·`errorDescription`·`maxLength`).
   2. **그룹 속 내 닉네임** — `YGTextFormField(enabled = false, onValueChange = no-op)`로 읽기 전용 표시(NavKey 인자값).
   3. **그룹 인원** — `VerticalGridLayout`(`core:ui`) + `YGInputNumber` 셀, 선택 상태는 `groupNumber == 셀 값`. 하단에 `caption.c01R`/`Gray300` 안내 문구("그룹명과 인원수는 추후 변경할 수 없어요").
-- 정적 라벨은 `feature/groups/enter/impl` `res/values/strings.xml`(같은 모듈의 S-102·G-002 화면과 파일 공용), 에러 문자열은 `core:ui` `strings.xml`.
+- 정적 라벨은 `feature/groups/enter/impl` `res/values/strings.xml`(같은 모듈의 S-102·A-004 초대코드 화면과 파일 공용), 에러 문자열은 `core:ui` `strings.xml`.
+- **확인 모달(#224)**: `isConfirmPopupVisible`일 때만 `YGModalPopup` 호출(컴포넌트가 표시 여부를 갖지 않는
+  규약대로 — [ygmodalpopup 스펙](2026-07-15-ygmodalpopup.md)). 제목은 `%1$s`에 `groupName`을 끼운 포맷 문자열,
+  본문은 "추후 변경 불가" 재확인 문구(화면 하단 안내와 같은 취지), 아이콘 `ic_warning_round`,
+  좌 Secondary "취소" / 우 Primary "만들기", `isEnabledButton = isCreating.not()`(**두 버튼 공통** 비활성).
+  프리뷰 파라미터에 모달 노출 케이스가 추가됐으나 Compose `Dialog`는 별도 window라 `@Preview`에 뜨지 않는다.
 - 엔트리는 `YGScaffold(containerColor = Gray.White, contentWindowInsets = WindowInsets(0.dp))` + `statusBarsPadding()`·`navigationBarsAndImePadding()`.
 
 ## 파일 구성
@@ -134,8 +166,12 @@ class GroupCreateViewModel @AssistedInject constructor(
 
 ## 주의 / 열린 질문
 
-- **진입 경로 없음** — `NavKeyGroupCreate`를 `goTo` 하는 호출자가 없어 현재 도달 불가. → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
-- **그룹 생성 API·다음 화면 미구현** — `NavigateToNext`가 stub.
+- ~~**진입 경로 없음**~~ — #222(G-001 그룹 추가 오버레이)로 뚫렸다. 넘어오는 `nickName`이 mock인 것은 잔존 → [open-questions](../../synthesis/open-questions.md) [2026-07-29]·[2026-08-07].
+- **그룹 생성이 mock** — `CreateGroupUseCase`가 서버를 타지 않고 항상 성공한다. 그래서 화면상으로는
+  "생성 완료 → 목록 복귀"가 되는데 **목록에는 새 그룹이 없다**(G-001도 mock 4건 고정) → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
+- **생성 중 표시가 없다** — `isCreating`은 모달 버튼 비활성에만 쓰이고 진행 표시(스피너 등)는 없다. 고정 지연 동안 화면이 멈춘 것처럼 보인다.
+- **복귀 목적지가 위키 정본과 다름** — [[기능정의서-v6]]은 A-005 다음 단계를 **C-001(메인 캔버스)**로 적는데
+  코드는 G-001 그룹 목록으로 돌아간다 → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
 - **`GroupCreateConfig`가 표시 관심사를 포함** — `GROUP_COLUMN_COUNT`(그리드 열 수)는 UI 레이아웃 값인데 `domain`에 있다. → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
 - **`VerticalGridLayout` 프리뷰가 규약 이탈** — `@Preview` + public 프리뷰 함수 + 랜덤 색. `core:ui`는 디자인시스템 프리뷰 규약(`@YGPreview`+`PreviewBox`) 적용 대상이 아니었으나, 공용 UI 컴포넌트가 늘면 규약 범위를 정해야 한다. → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
 - **읽기 전용 필드 관용구** — 닉네임 표시에 `YGTextFormField(enabled = false)` + no-op `onValueChange`를 쓴다. 표시 전용 컴포넌트가 없어 입력 컴포넌트를 비활성으로 전용한 형태.

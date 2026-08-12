@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-12
-related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer
+related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -167,7 +167,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ✅ **A-002도 규약을 따름(2026-08-11, PR #218)** — `feature/login/impl` `strings.xml`이 신설되고 온보딩 설명 3종·카카오 버튼 라벨·`contentDescription`이 전부 `stringResource`로 갔다. 화면 소유 모듈에 둔 배치도 규약대로다. 남은 리터럴은 여전히 ②`InviteCodeResult`·③ 약관 title·미착수 화면(캔버스 등)이다.
   > ✅ **캔버스 화면도 규약을 따름(2026-08-11, PR #199)** — ③이 대표 사례로 들던 `feature/groups/canvas/impl`의 `CanvasImageAddScreen` 리터럴이 사라졌다. 같은 모듈에 `strings.xml`이 신설되고 빈 캔버스 안내·메뉴 라벨 4종·`+N` 포맷이 전부 `stringResource`다. **남은 리터럴은 ②`InviteCodeResult`·③ 약관 title**이고, 미착수 화면 목록에서 캔버스는 빠진다. 다만 같은 화면의 **mock 그룹명**은 ViewModel 코틀린 리터럴로 남았다(문자열 리소스화 대상이 아니라 데이터 미결선 — [2026-08-12] mock 항목).
   > ✅ **갤러리 예외 1건도 해소됨(2026-08-04, PR #191)** — 빈 상태 문구가 `feature/gallery/impl` `strings.xml`로 갔고, 같은 PR이 추가한 헤더·재선택 버튼·가이드 토스트 문구도 전부 리소스다. 다만 **가이드 토스트 문구가 카메라 것과 문자 그대로 같은데 두 모듈에 각각 정의**돼 아래 [중복 정의 항목](#2026-08-04-가이드-토스트-문구가-카메라갤러리-두-모듈에-중복-정의)으로 갈라졌다.
-- **해소 메모**: ① 화면 전용 라벨=feature `strings.xml` / 공유 문구=`core:ui` `strings.xml` / domain 문자열 미보유 규약을 module-structure에 명시(#179가 `NickNameResult`의 domain 문자열을 걷어내 선례 확정). ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, G-002 후속) 시점에 함께 정리 — `InviteCodeResult`는 아직 `errorMessage: String?` 그대로다. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
+  > 📌 **②가 오히려 커졌다(2026-08-12, PR #224)** — `InviteCodeResult`에 `groupName: String`이 추가됐고 그 값도 `CheckInviteCodeValidUseCase` 안 **한국어 리터럴 mock**이다(확인 모달 제목에 들어간다). 즉 domain이 들고 있는 표시성 문자열이 하나 더 늘었다. 화면 정적 라벨은 모달 문구까지 전부 `feature/groups/enter/impl` `strings.xml`이라 규약을 지키는데, domain 경유 문자열만 예외로 남는다 → [a004 스펙](../specs/archive/2026-08-12-a004-group-invite-code.md).
+- **해소 메모**: ① 화면 전용 라벨=feature `strings.xml` / 공유 문구=`core:ui` `strings.xml` / domain 문자열 미보유 규약을 module-structure에 명시(#179가 `NickNameResult`의 domain 문자열을 걷어내 선례 확정). ②는 `CheckInviteCodeValidUseCase` 실검증 구현(현재 stub, A-004 후속) 시점에 함께 정리 — `InviteCodeResult`는 아직 `errorMessage: String?` 그대로다. ③은 [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)의 랜딩 URL TODO와 묶어 처리.
 
 ### [2026-07-27] Toast·Alert 호스트 노출 애니메이션이 동작하지 않음
 - **ID**: OQ-P-020
@@ -216,6 +217,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 결선 후 [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md)의 "다음 네비게이션 미구현" 항목을 함께 정리. 위키 [[기능정의서-v6]] 화면 흐름과 대조 필요.
   > 📌 **진입점 UI는 생겼고 결선만 남음(2026-08-01, PR #173)** — G-001 그룹 추가 오버레이의 "그룹 만들기"가 `GroupListSideEffect.NavigateToCreateGroup`을 발신하지만 Route 소비부가 `// Todo : navigator.goTo(NavKeyGroupCreate)` 주석이다. 같은 오버레이의 "그룹 들어가기"는 `NavKeyGroupInviteCode`로 실제 결선됐다. 남은 것은 `goTo` 한 줄과 `nickName` 인자 출처(A-005가 인자 있는 NavKey)다.
   > ✅ **② 결선됨(2026-08-10, PR #222)** — `GroupListRoute`가 `navigator.goTo(NavKeyGroupCreate(nickName = uiState.nickName))`를 부른다. 다만 **① 진입 관계는 그대로 미결**이고(기획상 참여 플로우 다음이 맞는지), 후보였던 `GroupNickNameRoute.NavigateToNext`는 여전히 stub이라 **A-005 진입점이 G-001 오버레이 하나뿐**이다. 또 넘기는 `nickName`이 `GroupListUiState` 기본값 mock 리터럴이라 **값의 출처는 안 정해졌다**([2026-08-07] mock 항목과 같은 뿌리).
+  > 📌 **①의 후보 흐름이 부정됐다(2026-08-12, PR #224)** — `GroupNickNameRoute.NavigateToNext`가 결선됐는데 목적지가 A-005가 **아니라 그룹 목록**이다. 즉 "참여(S-102) 다음이 생성(A-005)"이라는 당시 가정은 코드로 기각됐고, A-005 진입점은 앞으로도 G-001 오버레이 하나다. 남은 미결은 인자 `nickName`의 출처(여전히 mock)뿐이다. 대신 **복귀 목적지 자체가 위키 정본과 어긋나는** 새 쟁점이 생겼다 → [2026-08-12] 복귀 목적지 항목.
 
 ### [2026-07-29] `GroupCreateConfig`가 표시 관심사를 domain에 보유
 - **ID**: OQ-P-026
@@ -738,6 +740,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 첫 결선 라운드에서 ②를 확정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) 대안 D·[data-layer](../architecture/data-layer.md) "신규 데이터 추가 체크리스트"에 반영한다. 각 도메인이 결선되면 [api/](../api/README.md) 문서의 `android_status`를 `partial`→`done`으로 올린다.
 
   > 📌 **①의 화면 순서만 먼저 코드로 굳었다(2026-08-09, PR #220)** — `Splash → Login → TermAgree → GroupList` 전이가 결선됐다. 데이터 쪽은 **한 줄도 붙지 않았다**(Service 호출 0건 유지) → [2026-08-10] 온보딩 체인 항목.
+  > 📌 **첫 소비처 자리가 mock으로 채워졌다(2026-08-12, PR #224)** — 그룹 생성·참여가 화면에서 결선되면서 `CreateGroupUseCase`·`EnterGroupUseCase`가 생겼는데, `parfait-group` 계열 remote DataSource를 쓰지 않고 **고정 지연 후 성공만 반환하는 stub**이다. 표면이 놀고 있는 채로 그 위에 대체 구현이 하나 더 얹혔다 → [2026-08-12] mock UseCase 항목.
   > 📌 **표면이 14에서 20으로 늘었고 소비처는 그대로 0이다(2026-08-12, PR #230)** — Service 7·remote DataSource 7쌍·DTO 30·domain 37이 됐다. **"덮을 게 남아서 소비를 미룬다"는 사유가 이번 라운드로 사라졌다**([2026-08-11] 7 엔드포인트 공백 항목 해소) — 표면을 더 만들 것이 없으므로 ③("이 상태로 남는 기간을 얼마로 볼지")이 이제 실질적인 질문이다. ②(Repository를 둘지)도 여전히 미정이고, 그 사이 표면만 계속 컴파일된다.
 
 ### [2026-08-06] 스펙이 지시한 근거 주석·KDoc 2건이 코드에 없다
@@ -773,6 +776,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (조회 결선 라운드 종속 — **mock 범위가 늘었다**)
 - **해소 메모**: 조회가 붙는 라운드에서 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "API / 인터페이스"의 `MockToppingGroup` 블록을 실제 모델로 교체한다.
   > 📌 **mock 필드 추가(2026-08-10, PR #222)** — `GroupListUiState.nickName`이 같은 방식으로 기본값 리터럴이 됐고, 그 값이 **화면 밖으로 나간다** — `goTo(NavKeyGroupCreate(nickName))`로 A-005가 받는다([2026-07-29] 항목). 새로고침(`Refresh`)도 조회 없이 고정 지연만 두는 mock이다. 즉 mock이 표시용을 넘어 **다른 화면의 입력**이 됐다.
+  > 📌 **mock이 왕복을 닫았다(2026-08-12, PR #224)** — 생성·참여가 끝나면 `goToSingleClearTop(NavKeyGroupList)`로 이 화면에 **돌아온다**. 엔트리 재사용이라 같은 ViewModel이 살아나고 조회 경로도 없으므로 새 그룹은 절대 나타나지 않는다 — mock 4건 고정이 "방금 만든 그룹이 없다"는 형태로 사용자에게 보이게 됐다. ③(임시 모델 걷어내기)에 **재조회 트리거를 누가 쥐는가**가 추가된다 → [2026-08-12] mock UseCase 항목 ③.
 
 ### [2026-08-07] 토핑이 그려지는데 클릭 경로가 없다 — `ClickTopping` 死경로
 
@@ -822,6 +826,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: PR #220 develop 머지 — `feature/login/impl` `LoginRoute.kt`·`LoginViewModel.kt`, `feature/intro/impl` `termagree/TermAgreeRoute.kt`. `Splash → Login → TermAgree → GroupList`가 이어졌지만 세 구멍이 그대로다. ① 카카오 로그인 성공 토큰은 `LoginState.token`에만 담기고 서버 `POST /api/v1/auth/login`·`/auth/signup` 호출도, `TokenStore` 저장도 없다 — [ADR-0019](../adr/0019-encrypted-token-storage.md)의 저장 경로는 여전히 호출자 0건이다. ② 서버 로그인 응답이 신규/기존 회원을 가르는데(`KakaoLoginResponse`의 `newUser` 판별자, [api/auth.md](../api/auth.md)) 화면은 분기 없이 **누구나 매번 약관 화면**을 지난다. ③ `TermAgreeViewModel`의 동의 저장은 여전히 `// Todo`라 `signup`이 필수로 받는 `agreements[].termsId`를 만들 자리가 없다(약관 목록도 `TERM_CONTENT_LIST` 리터럴).
 - **항목**: ① 서버 인증을 어느 단계에 넣을지 — 카카오 토큰 획득 직후 `login` 호출 후 `newUser`로 약관/그룹목록을 가를지, 아니면 약관 동의까지 받고 `signup` 한 번으로 끝낼지. ② ①이 정해져야 `clearBackStack()` 리셋 지점(현재 약관 → 그룹목록)이 맞는지도 확정된다 — 기존 회원이 약관을 건너뛰면 리셋 지점이 로그인 쪽으로 올라간다. ③ `termsId` 출처를 `GET /api/v1/policies` 연동으로 세우는 건([2026-08-03] 항목)이 이 체인의 선행 조건인지.
 - **상태**: 미해결 (다음 라운드 = 로그인 실연동 — [2026-08-06] "표면 소비처 0건" 항목의 ① 결선 순서와 같은 작업)
+  > 📌 **같은 패턴이 그룹 플로우에서 반복됐다(2026-08-12, PR #224)** — 그룹 생성·참여도 화면 전이만 결선되고 서버 호출은 mock UseCase로 대체됐다. 온보딩 체인과 이 플로우는 **같은 결선 라운드를 기다린다** → [2026-08-12] mock UseCase 항목.
   > 📌 **화면만 더 채워졌다(2026-08-11, PR #218)** — A-002가 일러스트·문구를 실물로 얻었지만 ①②③ 구멍은 그대로다. 게다가 카카오 로그인 실패·취소는 **로그만 남기고 화면 표현이 0**이라, 실연동이 붙으면 에러 표현부터 새로 설계해야 한다 → [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md).
 - **해소 메모**: 해소 시 [navigation-flow](../architecture/navigation-flow.md) "앱 진입 체인"·[intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md)·[ADR-0019](../adr/0019-encrypted-token-storage.md) 검증 절을 함께 갱신한다.
 
@@ -1070,6 +1075,38 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (동작 결함은 아님 — 검증 공백과 문서의 약속이 어긋난 상태)
 - **해소 메모**: 정하면 [data-layer](../architecture/data-layer.md) "응답 매핑"의 테스트 규약 문단에 어느 계층이 무엇을 잠그는지 적는다. ①을 고르면 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "테스트 규약"에도 한 줄이 붙는다.
 
+### [2026-08-12] 그룹 생성·참여가 mock UseCase로 결선됐다 — 서버도, 실패 경로도, 목록 갱신도 없다
+
+- **ID**: OQ-P-134
+- **출처**: `domain/usecase/group/CreateGroupUseCase.kt`·`EnterGroupUseCase.kt`·`CheckInviteCodeValidUseCase.kt`(PR #224 develop 머지) — 셋 다 인자를 받고도 **고정 지연 후 성공만 반환**한다(`Todo : 서버 작업이 연결되면…`). 초대코드 검증은 인자조차 받지 않아 **사용자가 입력한 코드가 어디에도 쓰이지 않고**, 모달에 띄우는 그룹명은 UseCase 안 리터럴이다. 호출부(`GroupCreateViewModel`·`GroupNickNameViewModel`)의 실패 분기는 `if (result.isSuccess)` 하나뿐이라 **실패면 모달이 열린 채, 또는 화면에 머문 채 아무 일도 일어나지 않는다**. 20/20으로 닫힌 API 표면([2026-08-06] 항목) 중 `parfait-group` 계열은 여전히 호출되지 않는다.
+- **항목**: ① 실연동 라운드에서 이 세 UseCase를 remote DataSource에 붙일 때 Repository를 둘지([2026-08-06] ②와 같은 결정), ② 실패 표현을 무엇으로 할지 — 코드 무효·인원 초과(12명)·이미 가입은 위키 [[그룹]]이 요구하는 케이스인데 화면에 표현 자리가 `errorText`(A-004)뿐이고 A-005·S-102에는 없다, ③ 생성·참여 성공 후 목록이 갱신될 경로 — 복귀가 `goToSingleClearTop`이라 목록 엔트리·ViewModel이 그대로 살아나므로, 조회가 붙어도 **재조회를 누가 트리거할지**를 함께 정해야 한다.
+- **상태**: 미해결 (실연동 라운드 종속 — 화면 전이만 결선)
+- **해소 메모**: 붙일 때 [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·[a004 스펙](../specs/archive/2026-08-12-a004-group-invite-code.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md)의 "제외(구현 TODO)"와 [api/parfait-group.md](../api/parfait-group.md) Android 매핑 절을 함께 정리한다. [2026-08-10] 온보딩 체인 항목과 같은 뿌리다 — 화면만 이어지고 데이터가 없다.
+
+### [2026-08-12] 그룹 생성·참여 완료 후 복귀 목적지가 위키 정본과 다르다
+
+- **ID**: OQ-P-135
+- **출처**: `GroupCreateRoute.kt`·`GroupNickNameRoute.kt`의 `goToSingleClearTop(NavKeyGroupList)`(PR #224 develop 머지) — 코드는 생성·참여를 마치면 **G-001 그룹 목록**으로 돌아온다. 위키 정본 [[기능정의서-v6]]은 중간 화면 G-002(그룹 진입)를 삭제하면서 A-004(참여)·A-005(생성)의 다음 단계를 **C-001(메인 캔버스) 직접 진입**으로 재배선했고, 위키 [[그룹]]도 같은 서술이다. 게다가 C-001은 지금 `goTo` 호출자가 0건이라([2026-08-12] C-001 항목) 정본대로였다면 이 라운드가 그 진입도 함께 열었어야 한다.
+- **항목**: ① 코드가 맞다면 위키 흐름을 바꿔야 하는 사안이므로 기획 확인이 필요하다(만든 그룹으로 바로 들어갈지, 목록에서 고르게 할지), ② 정본이 맞다면 `NavKeyCanvasImageAdd`가 그룹 식별자를 인자로 받아야 하는데 현재 `data object`다 — 인자 있는 NavKey 전환이 선행 조건, ③ 어느 쪽이든 새 그룹을 목록에서 어떻게 보여줄지([2026-08-12] mock 항목 ③)와 함께 정해진다.
+- **상태**: 미해결 (코드 ↔ 위키 정책 불일치 — SoT 우선순위상 코드가 앞서지만 기획 의도 확인 대상)
+- **해소 메모**: 확정 시 [navigation-flow](../architecture/navigation-flow.md) "그룹 생성·참여 플로우" 절과 세 화면 스펙의 "복귀 목적지" 서술을 정리하고, 정본이 바뀌면 위키 쪽에 별도 등록한다(여기는 구현 소관만 둔다).
+
+### [2026-08-12] 백스택 리셋 관용구가 둘로 갈렸다 — `clearBackStack()`+`goTo` vs `goToSingleClearTop()`
+
+- **ID**: OQ-P-136
+- **출처**: `core/navigation/Navigator.kt#goToSingleClearTop`(PR #224 신설) × `SplashRoute.kt`·`TermAgreeRoute.kt`의 `clearBackStack()` + `goTo` — 둘 다 "되돌아가면 안 되는 경계"를 표현하는데 전제가 다르다. 앞은 스택을 비우고 새로 쌓아 **대상 화면이 새로 만들어지고**, 뒤는 스택에 이미 있는 엔트리 위만 잘라내 **상태·ViewModel이 살아난다**. 고르는 기준이 문서에도 코드 주석에도 없고, `clearBackStack()`은 단독으로 부르면 백스택이 비어 크래시 위험이 있어 항상 `goTo`가 따라와야 한다는 암묵 규약까지 얹혀 있다.
+- **항목**: ① 두 관용구의 선택 기준을 명문화할지(대상이 스택에 있으면 SingleClearTop, 진입 체인 리셋은 clearBackStack), ② `clearBackStack()`을 목적지 인자를 받는 형태로 합쳐 "비우고 안 쌓는" 상태를 타입에서 지울지, ③ `goToSingleClearTop`이 **엔트리를 재사용**한다는 성질이 목록 재조회 미발생과 직결되므로([2026-08-12] mock 항목) 화면 갱신 규약과 함께 볼지.
+- **상태**: 미해결 (동작 결함은 아님 — 관용구 선택 기준 부재)
+- **해소 메모**: 정하면 [navigation-flow](../architecture/navigation-flow.md) "앱 진입 체인"·"그룹 생성·참여 플로우" 두 절과 신규 목적지 체크리스트에 반영한다.
+
+### [2026-08-12] 확인 모달의 문구·좌우 배치가 정책 소스 없이 코드로 확정됐다
+
+- **ID**: OQ-P-137
+- **출처**: `feature/groups/enter/impl` `strings.xml`(`group_create_confirm_*`·`group_enter_confirm_*`)·`GroupCreateScreen.kt`·`GroupInviteCodeScreen.kt`(PR #224 develop 머지) — ① 위키에 그룹 생성·참여 확인 모달의 **존재도 문구도 정책 문서가 없다**([[기능정의서-v6]]에 팝업 언급 없음). A-002 온보딩 문구와 같은 방식으로 코드가 먼저 확정했다. ② 두 화면은 **취소=좌 Secondary / 실행=우 Primary**인데, 미머지 [Danger Zone 팝업 스펙](../specs/2026-08-09-setting-danger-zone-popups.md)은 피그마 근거로 **파괴적 액션=좌 Secondary / 취소=우 Primary**다 — 같은 컴포넌트에서 "오른쪽이 무엇인가"가 화면마다 뒤집힌다. ③ 참여 모달의 Primary는 "참여하기"인데 실제로는 닉네임 입력 화면으로 **이동만** 하고 합류는 그다음 화면 몫이다(문구가 약속하는 시점과 코드의 시점이 어긋난다). ④ dismiss 가드도 비대칭이다 — A-005는 `isCreating` 중 닫기를 막고 `isEnabledButton`으로 두 버튼을 함께 비활성하지만, A-004는 가드가 없다.
+- **항목**: ① 모달 문구를 디자인·기획 소스로 확정받을지(피그마 프레임 존재 여부부터), ② `YGModalPopup` 좌우 배치 규약을 세울지 — 파괴/비파괴로 가를지, 아니면 "확인은 항상 오른쪽"으로 통일할지(뒤집으면 Danger Zone 스펙이 함께 바뀐다), ③ "참여하기" 문구를 이동 의미로 바꿀지 실제 합류를 이 시점으로 옮길지, ④ 진행 중 dismiss 가드를 두 화면에 통일할지.
+- **상태**: 미해결 (문구·배치 근거 부재)
+- **해소 메모**: ②를 정하면 [design-system](../architecture/design-system.md) `YGModalPopup` 노트와 [ygmodalpopup 스펙](../specs/archive/2026-07-15-ygmodalpopup.md)의 "버튼 의미는 호출자 소관" 서술에 규약 한 줄을 얹는다(현재는 컴포넌트가 의미를 규정하지 않는다는 것만 적혀 있다).
+
 <!--
 항목 추가 형식:
 
@@ -1080,4 +1117,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 134 -->
+<!-- oq-next: 138 -->

@@ -4,13 +4,15 @@ title: S-102 그룹 내 닉네임 입력 화면 (GroupNickName)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-29
+verified: 2026-08-12
 related_code:
   - NavKeyGroupNickName
   - GroupNickNameRoute.kt#GroupNickNameRoute
   - GroupNickNameScreen.kt#GroupNickNameScreen
   - GroupNickNameViewModel.kt#GroupNickNameViewModel
   - CheckNameValidUseCase.kt#CheckNameValidUseCase
+  - EnterGroupUseCase.kt#EnterGroupUseCase
+  - Navigator.kt#goToSingleClearTop
   - NameValidResult.kt#NameValidResult
   - GroupCreateConfig.kt#GroupCreateConfig
   - core/ui/res/values/strings.xml
@@ -41,6 +43,10 @@ tags: [spec, parfait, groups, nickname, s102]
 > UseCase 패키지 `domain.usecase.group` → `domain.usecase`, 길이 상한이 Screen 상수 → `domain` `GroupCreateConfig.NICKNAME_MAX_LENGTH`,
 > UiState `errorMessage: String?` → `errorMessageResId: Int?`(ViewModel이 `core:ui` `strings.xml` 리소스 ID로 매핑).
 > ADR-0016이 설계한 `core:ui` `toStringResource()` 확장은 **머지되지 않았다** → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
+>
+> **as-built 갱신(2026-08-12, #224)**: 확인이 `EnterGroupUseCase`(mock)를 거쳐 **G-001 그룹 목록으로 복귀**하는
+> 데까지 결선됐다. 스펙이 유일한 미구현으로 뒀던 "다음 화면 네비게이션"이 닫혔다 — 다만 목적지는
+> 당시 후보였던 A-005(그룹 생성)가 아니라 그룹 목록이다. **그룹 참여 API는 여전히 미연동.**
 
 - **화면 ID**: S-102 (그룹 참여 시 그룹 내 닉네임)
 - **대상 모듈**: `feature/groups/enter/impl`(`nickname/`) + `feature/groups/enter/api`(NavKey) + `domain`(UseCase/model) + `core/util/jvm`(CharExtension)
@@ -53,7 +59,10 @@ tags: [spec, parfait, groups, nickname, s102]
 ## 범위
 
 - 포함: 닉네임 입력 폼(최대 15자)·확인 시 유효성 검사·에러 메시지 인라인 노출·입력 시 에러 초기화·진입 시 자동 포커스·뒤로가기.
-- 제외(구현 TODO): **다음 화면 네비게이션** — `NavigateToNext` Route에서 stub(`/* navigate to next */`).
+  **#224 추가**: 유효성 통과 후 그룹 참여 호출·참여 중 재진입 가드·참여 후 그룹 목록 복귀.
+- 제외(구현 TODO): **그룹 참여 API 연동** — `EnterGroupUseCase`가 고정 지연 후 `Result.success(Unit)`만
+  반환하는 mock이고, 실패 처리는 코드 주석 `Todo`로 남아 실패 시 아무 일도 일어나지 않는다.
+  ~~다음 화면 네비게이션~~ — #224에서 `goToSingleClearTop(NavKeyGroupList)`로 결선.
 
 ## API / 인터페이스
 
@@ -72,8 +81,17 @@ sealed interface NameValidResult {
     sealed interface Error : NameValidResult { /* EmptyString, SpaceAtEdge, DuplicatedSpace, InvalidCharacter */ }
 }
 
-// impl — MVI (🔁 as-built #179: errorMessage:String? → errorMessageResId:Int?)
-data class GroupNickNameUiState(val nickName: String = "", val errorMessageResId: Int? = null) : UiState
+// domain — 그룹 참여(#224 신설, 현재 mock)
+class EnterGroupUseCase @Inject constructor() {
+    suspend operator fun invoke(nickName: String): Result<Unit>   // 고정 지연 후 항상 성공
+}
+
+// impl — MVI (🔁 as-built #179: errorMessage:String? → errorMessageResId:Int?, #224: isEntering 추가)
+data class GroupNickNameUiState(
+    val nickName: String = "",
+    val errorMessageResId: Int? = null,
+    val isEntering: Boolean = false,
+) : UiState
 sealed interface GroupNickNameIntent {
     data object ClickNextButton; data object ClickBackButton
     data class InputWord(val nickName: String)
@@ -84,7 +102,13 @@ sealed interface GroupNickNameSideEffect { data object NavigateToBack; data obje
 ## 동작 / 상태
 
 - **입력**(`InputWord`): `nickName` 갱신 + `errorMessage = null`(입력 시 에러 즉시 해제).
-- **확인**(`ClickNextButton`): `CheckNameValidUseCase(nickName)` 실행 → `isSuccess`면 에러 클리어 후 `NavigateToNext`, 실패면 `errorMessage` 반영(화면 잔류).
+- **확인**(`ClickNextButton`): 이미 `isEntering`이면 무시(#224). `CheckNameValidUseCase(nickName)` 실행 →
+  통과면 에러를 지우고 `isEntering = true` → `EnterGroupUseCase(nickName)` → `isEntering = false` →
+  **성공이면** `NavigateToNext`(🔁 #224 — 이전엔 검사 통과 즉시 발신). 실패 분기는 비어 있다(`Todo`).
+  유효성 실패면 `errorMessageResId` 반영(화면 잔류).
+- **다음 화면**(`NavigateToNext`, #224): `navigator.goToSingleClearTop(NavKeyGroupList)` — 참여 플로우
+  (초대코드 → 닉네임)를 한 번에 걷어내고 백스택의 그룹 목록을 재사용한다 → [navigation-flow](../../architecture/navigation-flow.md).
+  의존은 규약대로 `:api`만(`feature/groups/enter/impl` → `feature/groups/list/api`, #224에서 추가).
 - **뒤로가기**(`ClickBackButton`) → `NavigateToBack` → `navigator.onBack()`.
 - **자동 포커스**: 화면 진입 시 `FocusRequester.requestFocus()`(`LaunchedEffect(Unit)`).
 - **확인 버튼 활성**: `nickName.isNotEmpty()`(빈 값만 막고, 상세 규칙은 클릭 시 UseCase가 검사).
@@ -110,7 +134,7 @@ sealed interface GroupNickNameSideEffect { data object NavigateToBack; data obje
 
 - 상단 `YGTopBarDetail(title=R.string.group_enter, "그룹 참여하기")`, 제목/부제 텍스트, `YGTextFormField`(placeholder·isError·errorDescription·maxLength), 하단 `YGButton` `Large`.
 - 에러 상태는 `uiState.errorMessage != null` → `isError` + 하단 `errorDescription`.
-- **정적 UI 라벨은 `feature/groups/enter/impl` `res/values/strings.xml` + `stringResource(R.string.*)`**(상단 타이틀·제목·부제·placeholder·확인 버튼, #166). 같은 모듈의 G-002 초대코드 화면과 문자열 파일 공용(`submit`·`group_enter` 공유). 에러 문자열은 별개 경로 — `core:ui` `toStringResource` 매핑(ADR-0016).
+- **정적 UI 라벨은 `feature/groups/enter/impl` `res/values/strings.xml` + `stringResource(R.string.*)`**(상단 타이틀·제목·부제·placeholder·확인 버튼, #166). 같은 모듈의 A-004 초대코드 화면([a004 스펙](2026-08-12-a004-group-invite-code.md))과 문자열 파일 공용(`submit`·`group_enter` 공유). 에러 문자열은 별개 경로 — `core:ui` `toStringResource` 매핑(ADR-0016).
 
 ## 파일 구성
 
@@ -120,12 +144,20 @@ sealed interface GroupNickNameSideEffect { data object NavigateToBack; data obje
 - `core/ui/res/values/strings.xml` — 유효성 에러 문자열(닉네임/그룹명 각각). ViewModel이 리소스 ID로 참조(🔁 #179 신규, S-002·A-005와 공용).
 - `core/util/jvm/extension/CharExtension.kt#isKorean` — 한글 판별 확장(신규).
 - `impl/nickname/GroupNickNameScreen.kt` — stateless UI(길이 상한은 `GroupCreateConfig` 참조).
-- `impl/res/values/strings.xml` — 그룹 참여 플로우(S-102 + G-002 초대코드) 공용 정적 라벨. #166 신설.
+- `impl/res/values/strings.xml` — 그룹 참여 플로우(S-102 + A-004 초대코드) 공용 정적 라벨. #166 신설, #224에서 확인 모달 문구 추가.
 - `impl/nickname/GroupNickNameRoute.kt` — VM 배선, back→onBack, next stub.
 - `impl/nickname/GroupNickNameViewModel.kt` — MVI, `CheckNameValidUseCase` 주입.
 - `impl/navigation/EntryBuilder.kt#featureGroupNickNameEntryBuilder` — `entry<NavKeyGroupNickName> { YGScaffold(contentWindowInsets = WindowInsets(0.dp)) { GroupNickNameRoute(...) } }`(ime 패딩 직접 처리).
 
 ## 주의 / 열린 질문
 
-- **다음 화면 네비게이션 미구현**(`NavigateToNext` stub) — #179로 다음 단계 후보인 A-005 그룹 생성 화면([a005-group-create](2026-07-29-a005-group-create.md))이 들어왔으나 `NavKeyGroupCreate`로의 `goTo`가 아직 없다 → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
+- ~~**다음 화면 네비게이션 미구현**~~ — #224에서 결선됐고, 목적지는 A-005가 **아니라** G-001 그룹 목록이다.
+  즉 "참여 다음이 생성"이라는 당시 후보 흐름은 성립하지 않고, A-005 진입은 목록 오버레이 하나뿐이다
+  → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
+- **참여가 mock** — `EnterGroupUseCase`가 서버를 타지 않는다. 화면은 "참여 완료 → 목록 복귀"로 보이지만
+  목록에 새 그룹이 없다 → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
+- **참여 중 표시가 없다** — `isEntering`은 재진입 가드로만 쓰이고 버튼·진행 표시에 반영되지 않는다(A-005는
+  같은 상태를 모달 버튼 비활성에 쓴다).
+- **복귀 목적지가 위키 정본과 다름** — [[기능정의서-v6]]은 A-004(참여) 다음 단계를 **C-001(메인 캔버스)**로
+  적는다 → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
 - 유효성 규칙(공백·문자 종류)은 UseCase, 길이(15)는 `GroupCreateConfig` 상수로 **검사 위치 이원화** — 정책 [[이름-입력-규칙]] 상한과 정합하고 #179로 상수 소유처는 domain 단일화됐으나 검사 자체는 여전히 입력 컴포넌트 소관.
