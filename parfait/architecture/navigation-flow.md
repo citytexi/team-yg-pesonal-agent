@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-12
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main
 related_adr: ADR-0002, ADR-0006
 related_architecture:
 related_code: core:navigation, Navigator
@@ -18,7 +18,8 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 > 근거는 파일명+심볼명으로만.
 
 ## 구성 요소
-- **Navigator**(`core:navigation`, `@ActivityRetainedScoped`) — 백스택 = `SnapshotStateList<NavKey>`. `goTo()`, `onBack()`, `clearBackStack()`.
+- **Navigator**(`core:navigation`, `@ActivityRetainedScoped`) — 백스택 = `SnapshotStateList<NavKey>`. `goTo()`, `goToSingleClearTop()`, `onBack()`, `clearBackStack()`.
+  - `goToSingleClearTop(destination)`(#224 신설) — 대상이 백스택에 있으면 **그 위를 한 번에 잘라내(`removeRange`) 기존 엔트리를 재사용**하고, 없으면 `goTo`처럼 새로 쌓는다. 한 칸씩 빼면 스냅샷 변경이 그만큼 쌓이므로 범위 삭제로 처리한다. 엔트리 재사용이므로 대상 화면의 상태·ViewModel이 그대로 살아난다(돌아온 화면이 새로 조회하지 않는다).
 - **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasImageAdd`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`, `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
 - **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas의 4개 NavKey(`ImageAdd`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
@@ -51,6 +52,31 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 - 📌 **체인 첫 화면이 실물이 됐다(2026-08-11, PR #218)** — A-002 로그인의 온보딩 자리가 placeholder
   박스에서 일러스트 3장으로 채워졌다. 전이·인증 구조는 그대로다(카카오 토큰은 여전히 `LoginState`
   안에서 끝난다) → [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md).
+
+## 그룹 생성·참여 플로우 (2026-08-12, PR #224)
+
+그룹 목록에서 갈라진 두 갈래가 **목록으로 되돌아오며 닫혔다**. 이전에는 양쪽 끝이 stub이라 들어가면 나올 수 없었다.
+
+```
+NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확인 모달)──┐
+                 └─ 참여 ─▶ NavKeyGroupInviteCode ─(확인 모달)─▶ NavKeyGroupNickName ─┤
+                                                                                       └─▶ NavKeyGroupList
+```
+
+- 복귀는 `clearBackStack()` + `goTo`가 아니라 **`goToSingleClearTop(NavKeyGroupList)`**다 —
+  목록 엔트리가 백스택에 이미 있으므로 그 위만 걷어낸다. 목록에서 뒤로가기는 여전히 no-op이다(백스택 1개).
+  즉 develop에 **백스택 리셋 관용구가 둘**이다: 되돌아갈 화면이 없는 경계는 `clearBackStack()`+`goTo`
+  (Splash·TermAgree), 이미 스택에 있는 화면으로 복귀는 `goToSingleClearTop`(그룹 생성·참여)
+  → [open-questions](../synthesis/open-questions.md) [2026-08-12].
+- **확인 모달이 전이의 게이트**다 — 두 화면 다 확인 버튼이 곧바로 이동하지 않고 `YGModalPopup`을 띄우며,
+  이동은 모달의 Primary 버튼에서 일어난다. 모달 표시 여부는 각 UiState의 `isConfirmPopupVisible`이다
+  ([a005](../specs/archive/2026-07-29-a005-group-create.md)·[a004](../specs/archive/2026-08-12-a004-group-invite-code.md) 스펙).
+- 의존은 규약대로 `:api`만: `feature/groups/enter/impl` → `feature/groups/list/api`(#224에서 추가).
+- ⚠️ **위키 정본과 목적지가 다르다** — [[기능정의서-v6]]은 A-004(참여)·A-005(생성) 다음 단계를
+  **C-001(메인 캔버스)**로 적는데(중간 화면 G-002 삭제 후 재배선) 코드는 그룹 목록으로 돌아온다
+  → [open-questions](../synthesis/open-questions.md) [2026-08-12].
+- ⚠️ **되돌아온 목록이 갱신되지 않는다** — 엔트리 재사용이라 `GroupListViewModel`이 살아 있고, 애초에
+  조회 경로가 없어 mock 4건 고정이다. 생성·참여 UseCase도 mock이라 새 그룹이 목록에 나타날 자리가 없다.
 
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.
