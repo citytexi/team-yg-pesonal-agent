@@ -4,9 +4,11 @@ title: 디자인시스템 캔버스 영역 컴포넌트 신설 (Design System Ca
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-01
+verified: 2026-08-12
 related_code:
   - YGCanvas.kt#YGCanvas
+  - YGCanvas.kt#calculateCanvasLayoutMetrics
+  - YGBackgroundDotGrid.kt#ygBackgroundDotGrid
   - YGCanvasBackground.kt#YGCanvasBackground
   - YGCanvasMenu.kt#YGCanvasMenu
   - YGCanvasMenuAction.kt#YGCanvasMenuAction
@@ -21,6 +23,7 @@ related_adr:
 related_spec:
   - designsystem-button-missing-components
   - app-preview-component-gallery
+  - c001-canvas-main
 related_architecture:
   - design-system
 supersedes:
@@ -72,6 +75,23 @@ tags: [spec, parfait, designsystem, figma-sync, canvas]
 > 다만 **`YGCanvasBackground.Image` 화면 자체의 렌더는 그 라운드의 검증 범위가 아니었으므로 여전히
 > 미검증**이다 — 막고 있던 원인만 사라졌다. 상세는
 > [designsystem-grouptag-topping-components](2026-07-31-designsystem-grouptag-topping-components.md).
+>
+> **⚠️ [2026-08-12 갱신] 첫 소비 화면(C-001, PR #199)이 이 스펙의 세 조항을 바꿨다.**
+> 상세는 [c001-canvas-main](2026-08-12-c001-canvas-main.md), 여기엔 컴포넌트 계약 변화만 적는다.
+> - **`YGCanvas`가 반응형 배치를 흡수** — `fillMaxWidth` + `aspectRatio`만 하던 것이
+>   `BoxWithConstraints` + private `calculateCanvasLayoutMetrics`로 바뀌어 **좌우 패딩·상하 최소
+>   gap·세로 중앙 정렬·세로 부족 시 축소**를 스스로 계산한다(위키 [[캔버스-반응형-레이아웃]]의
+>   "크기·위치 우선순위"가 화면이 아니라 컴포넌트에 들어왔다). 전제가 `fillMaxSize`로 바뀐 셈이라
+>   폭을 제한해 쓰는 사용처가 생기면 계산이 어긋난다.
+> - **`onDimClick` 신설** — 아래 열린 질문의 "Dim 탭 닫기 미규정"이 **컴포넌트 API를 여는 쪽으로**
+>   결론났다. Dim은 소비 전용 `pointerInput`이 아니라 `clickable(indication = null)`이 됐고,
+>   터치 소비는 그대로 유지된다.
+> - **인접 테두리를 겹쳐 접합선을 1dp로** — 아래 "표시·제어 규칙"이 "2dp로 보이는 것을 그대로 둔다"고
+>   적었던 것이 `spacedBy(-1.dp)`(메뉴 버튼 행·확장 스택·Area↔Menu) + 총높이 `-1.dp` 보정으로 뒤집혔다.
+> - **Dot-Grid 제외 판정은 유효하되 자리가 정해졌다** — `YGCanvas` 안쪽 책임이 아니라는 판단은 그대로고,
+>   화면이 쓸 `Modifier.ygBackgroundDotGrid()`가 `core:designsystem` `component/ygbackgrounddotgrid/`에
+>   신설됐다. `border/`·`shape/` 프리미티브와 다른 자리라 소유 기준 미결에 사례가 하나 더 붙었다
+>   → [open-questions](../../synthesis/open-questions.md) [2026-08-01].
 
 ## 목표
 
@@ -97,6 +117,7 @@ C-001 캔버스 화면(`feature/groups/canvas`)이 임시 컴포저블로 버티
     깔리고 캔버스 영역은 배경이 그것을 덮어 가린다. 즉 `YGCanvas` 안쪽 책임이 아니다.
   - **`feature/groups/canvas` 임시 구현 치환** — `CanvasImageAddScreen`의 "카메라로 촬영"·
     "갤러리에서 선택" 임시 버튼을 그대로 둔다(아래 [주의 / 열린 질문](#주의--열린-질문)).
+    → **PR #199에서 치환 완료**([c001-canvas-main](2026-08-12-c001-canvas-main.md)).
   - 신규 ADR — 아키텍처 결정 변화 없음
   - `SizeTokens` 추가 — 쓰는 값(20·44)이 모두 있다
 
@@ -230,6 +251,7 @@ fun YGCanvas(
     modifier: Modifier = Modifier,
     background: YGCanvasBackground = YGCanvasBackground.Solid(YGAtomicColors.Gray.Gray100),
     isDimmed: Boolean = false,
+    onDimClick: () -> Unit = {}, // 2026-08-12 신설(#199)
     isMenuExpanded: Boolean = false,
     isEmpty: Boolean = false,
     isCalendarVisible: Boolean = false,
@@ -314,7 +336,7 @@ pressed와 selected가 겹치면 같은 색이라 분기 순서가 결과를 바
 | `YGMenuItem` | 높이 `Size44` 고정, `fillMaxWidth`, 텍스트 중앙 |
 | `YGCanvasDateSelectButton` | 높이 `Size44` 고정, 폭 `fillMaxWidth`, 좌측 `layout.padding.padding6`, 날짜↔요일 `gap1`, 우측 `YGIconButton`(`SIZE_44`) + `ic_calender` |
 | `YGCanvasMenu` | `fillMaxWidth`. 하단 행 = `YGStrokeButton` 2개 `weight(1f)`. 확장 항목은 위로 스택, 행간 간격 없음 |
-| `YGCanvas` | `fillMaxWidth`. 캔버스 영역 `aspectRatio` 9:16, 그 아래 메뉴가 간격 0으로 붙음 |
+| `YGCanvas` | ~~`fillMaxWidth`. 캔버스 영역 `aspectRatio` 9:16, 그 아래 메뉴가 간격 0으로 붙음~~ → **as-built(#199)**: `fillMaxSize` 전제 + 좌우 `padding7`·상하 최소 `padding5`·세로 중앙, 세로 부족 시 축소. Area만 9:16, 메뉴는 `Size44` 가산, 접합은 `-1.dp` 겹침 |
 
 높이 44는 패딩에서 도출하지 않고 토큰으로 못박는다 — Figma가 높이를 명시(`h-44` + `overflow-clip`)하고,
 세로 패딩 12 + 본문 21로는 45가 되어 도출값이 어긋난다([치수 도출 원칙](2026-07-30-designsystem-button-missing-components.md)의
@@ -326,7 +348,8 @@ pressed와 selected가 겹치면 같은 색이라 분기 순서가 결과를 바
 ## 표시·제어 규칙
 
 - 인접 테두리는 겹쳐 그린다 — `YGCanvasMenu`의 두 버튼과 스택된 `YGMenuItem`은 각자 1dp 테두리를 갖고
-  맞닿으므로 접합선이 2dp로 보인다. Figma도 같은 구조(오프셋 없이 인접)라 그대로 둔다.
+  맞닿으므로 접합선이 2dp로 보인다. ~~Figma도 같은 구조(오프셋 없이 인접)라 그대로 둔다.~~
+  **as-built(#199)**: `spacedBy(-1.dp)`로 겹쳐 1dp로 정리했다(Area↔Menu 접합도 동일, 총높이 `-1.dp` 보정).
 - `YGCanvas`는 저장(내보내기)용 렌더를 제공하지 않는다. 위키 정책의 "저장 시 컷 도형·날짜 라벨 미반영"은
   화면 컴포넌트가 아니라 내보내기 경로의 책임이다.
 - 클릭은 `core:designsystem`의 as-built 관용구를 따른다 — 표준 `clickable(indication = null)` +
@@ -399,6 +422,8 @@ pressed와 selected가 겹치면 같은 색이라 분기 순서가 결과를 바
 - **Empty 배경색의 의미 미확정** — Figma `Status=Empty`의 배경이 `Gray.Gray100`인데, 이것이
   "배경 미지정 기본값"인지 "비어 있을 때만 회색"인지 원본에서 갈리지 않는다. 이번 구현은 전자로 보고
   `background` 기본값으로 뒀다(Empty여도 지정 배경이 있으면 그대로 그린다). → open-questions 등록
+  - **미해결 유지(2026-08-12, PR #199)** — C-001 화면이 `isEmpty = true`를 상수로 넘기고 `background`도
+    기본값이라 "지정 배경 + Empty" 조합이 실화면에 아직 없다. 확인 대상이 그대로 남았다.
 - **컷 도형 다리 17dp의 출처가 Figma 벡터뿐** — 정책 문서는 "비스듬히 잘린 컷"만 서술하고 수치가 없다.
   디자이너가 값을 바꾸면 추적할 근거가 벡터 path밖에 없다. → open-questions 등록
 - **`YGCanvasDateSelectButton`의 클릭 영역이 아이콘 44dp뿐** — 바 전체가 컷 배경·테두리를 공유해
@@ -410,6 +435,9 @@ pressed와 selected가 겹치면 같은 색이라 분기 순서가 결과를 바
 - **Dim 탭으로 닫기(`onDimClick`)가 없다** — 구현에서 Dim이 터치를 **소비하도록** 고쳤지만(위
   "설계에서 달라진 점"), 탭했을 때 `Expanded`·`Calendar`를 닫을지는 규정하지 않았다. Figma가
   다루지 않는 영역이라 화면 라운드의 결정이다. → open-questions 등록
+  - **✅ 해소(2026-08-12, PR #199)** — 화면 라운드가 **컴포넌트 API를 여는 쪽**으로 정했다.
+    `onDimClick: () -> Unit = {}` 신설, 구현은 `clickable(interactionSource = null, indication = null)`
+    이라 터치 소비는 유지된다. C-001은 이걸로 확장 메뉴를 닫는다. `Calendar`는 여전히 미충전.
 - **Coil 3 네트워크 페처가 프로젝트에 없다 — `YGCanvasBackground.Image`가 실제로 로드되지 않는다.**
   Coil 3는 네트워크 페처를 별도 아티팩트로 분리했는데(`coil-network-okhttp`), 이 프로젝트는
   `coil-compose`만 물려 있다(버전 카탈로그·`ComposeConfig`). 기존 `AsyncImage` 사용처가 전부 로컬

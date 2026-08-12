@@ -4,8 +4,8 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-11
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding
+verified: 2026-08-12
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main
 related_adr: ADR-0002, ADR-0006
 related_architecture:
 related_code: core:navigation, Navigator
@@ -65,6 +65,11 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 6. **`goTo` 호출자를 같은 PR에 넣는다** — entry만 등록하고 진입 경로가 없으면 도달 불가 화면이 된다
    (선례: `NavKeyGroupCreate` — 등록 후 **약 2주 뒤**인 #222에서야 G-001 그룹 추가 오버레이가 호출자가 됐다,
    [open-questions](../synthesis/open-questions.md) [2026-07-29]).
+   > 📌 **사례가 하나 더(2026-08-11, PR #199)** — C-001 캔버스 메인이 실물화됐지만 `NavKeyCanvasImageAdd`를
+   > `goTo` 하는 호출자가 develop에 0건이다. 유일한 후보인 G-001 `GroupListSideEffect.NavigateToCanvas`
+   > 분기는 여전히 `// Todo`다. 화면을 채우는 PR과 진입을 여는 PR이 갈리면 **완성된 화면이 도달 불가로
+   > 머지**된다 → [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) ·
+   > [open-questions](../synthesis/open-questions.md) [2026-08-12].
 
 > ⚠️ **이탈 사례(2026-08-01, PR #173)** — G-001 `featureGroupListEntryBuilder`는 엔트리 컨테이너를
 > `YGScaffold`가 아니라 `Box`(전면 배경 이미지)로 두고 `YGScaffold`를 Route 안으로 내렸으며, 그룹 추가
@@ -78,6 +83,10 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 > 둘 다 상단을 주면 인셋이 이중 적용된다. 이로써 develop에 인셋 관용구가 **3형태**(엔트리 `YGScaffold`
 > 기본 / 화면이 직접 `windowInsetsPadding`(C-101) / 컴포넌트 흡수(G-001)) 공존한다 →
 > [open-questions](../synthesis/open-questions.md) [2026-08-07].
+> 📌 **형태 선택이 화면 정책을 깎은 사례(2026-08-11, PR #199)** — C-001은 ①(엔트리 `YGScaffold` 기본)을
+> 골랐는데, 화면 배경 점 격자를 `innerPadding` 안쪽 `Column`에 걸어 위키 [[캔버스-반응형-레이아웃]]이
+> 요구하는 "상단바·하단바 포함 화면 전체 뒤"를 못 지킨다. `YGTopBarCanvas`에는 `windowInsets`가 없어
+> G-001 관용구를 그대로 쓸 수도 없다 → [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md).
 
 > **의도적 예외(2026-08-01, PR #182)** — C-101 카메라 entry는 `YGScaffold`를 쓰되 **`innerPadding`을
 > 화면에 먹이지 않는다**. 카메라 피드가 시스템 바 아래까지 덮어야 하고 인셋은 컨트롤 영역이
