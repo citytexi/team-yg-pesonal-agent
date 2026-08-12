@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-12
-related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main
+related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -580,7 +580,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① Coil 등 OkHttp를 직접 공유하는 신규 경로가 생기면 `Invocation` 태그 부재로 인증 헤더가 붙는지 확인하고 필요 시 별도 처리(잔존). ~~② `:app:assembleRelease`로 실제 release 빌드를 만들어 화이트리스트 엔드포인트가 여전히 헤더 없이 나가는지 확인~~(해소 — 위 참고, `consumerProguardFiles` 등록 후 `:app:assembleDebug`로 Hilt 그래프까지 재확인).
   > ⚠️ **②가 develop에서 되살아났다(2026-08-04, PR #190)** — 위 수정(`consumer-rules.pro` 이관 + 컨벤션 플러그인 `consumerProguardFiles` 등록)은 `feature/sync-api-service` 브랜치 산출물이라 **develop 미머지**였다. 반면 먼저 머지된 PR #190은 keep 규칙을 **`data/proguard-rules.pro`**에 넣었고, 당시 develop의 `AndroidConfig.kt#setConfigAndroidLibrary`는 `consumerProguardFiles`도 `proguardFiles`도 등록하지 않았다 — 즉 keep 규칙이 어디에도 전달되지 않는 상태였다.
   > 📌 **②가 다시 닫혔다(2026-08-06, PR #197 머지)** — 그 브랜치가 머지되며 keep 규칙이 `data/consumer-rules.pro`로 옮겨지고 `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`를 등록했다. develop의 라이브러리 모듈 전부가 이미 `consumer-rules.pro` 파일을 갖고 있어 이 등록이 다른 모듈을 깨지 않는다. 같은 PR로 `@NoAuth` 사용처도 0곳→4곳이 됐다. **다만 `:app:assembleRelease`로 실제 R8 결과를 확인한 기록은 여전히 없다** — 배치가 옳다는 것과 release에서 검증했다는 것은 다르다.
-- **상태**: 부분 해소 (② 해소 — 배치 정상화 확인, release 빌드 실행 검증은 미수행 / ① 잔존 — Coil 등 OkHttp 직접 공유 경로 여전히 없음이 전제)
+- **상태**: 부분 해소 (② 해소 — 배치 정상화 확인, release 빌드 실행 검증은 미수행 / ① 잔존 — 다만 전제가 바뀌었다, 아래 참고)
+  > ⚠️ **①의 "그런 경로는 없다"가 곧 깨진다(2026-08-12, PR #230)** — `ImageService`가 develop에 들어오면서 **S3 presigned PUT이 예정된 경로가 됐다**(아직 앱 코드는 없다). 그 요청은 Retrofit이 아니라 raw OkHttp로 나가므로 `Invocation` 태그가 없어 `skipAuth = false`가 되고, `Authorization`이 실린 presigned URL을 **S3가 서명 불일치로 거절한다.** 즉 ①은 "언젠가 생길 수도 있는 경로"가 아니라 **업로드 라운드의 선행 조건**이고, 업로드 전용 `OkHttpClient` 분리는 성능 선택이 아니라 기능 전제다 → [image-api-service-layer 스펙](../specs/archive/2026-08-10-image-api-service-layer.md), [api/image.md](../api/image.md) "Android 매핑".
 - **해소 메모**: ② 반영처: [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" R8 절·[data-layer](../architecture/data-layer.md) "인증"·[specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "미결" 절을 머지 확정으로 갱신했다. ① 잔존 — 신규 OkHttp 직접 경로가 생기면 이 항목을 다시 연다.
 
 ### [2026-08-02] 카카오 로그인 판별자 JSON 키가 `newUser` — Android 응답 타입에 `@SerialName` 필요
@@ -669,6 +670,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `feature/app/setting/impl` `AccountInfoViewModel#AccountInfoUiState`(PR #192 develop 머지) — `nickname` 초기값이 하드코딩 placeholder고, 입력은 유효성 검사만 거쳐 `updateState`로 끝난다. 저장 UseCase·Repository 호출이 없어 **뒤로가기만 해도 입력이 사라진다.** `AppSettingState.nickname`(S-001 프로필 카드)도 같은 성격의 별도 placeholder라 두 화면의 닉네임이 서로 무관하다.
 - **항목**: ① 프로필 조회/수정 API 연동 시 저장 트리거를 무엇으로 할지(포커스 해제 — `clearFocusOnTap()`이 이미 그 지점을 만들어 뒀다 / IME 완료 / 상단바 확인 버튼 신설), ② 두 화면이 같은 닉네임을 보도록 소유처를 어디에 둘지(공유 상태 vs 각자 조회), ③ 위키 [[닉네임-자동-생성]]의 "계정 생성 시 1회 부여·DB 저장 후 불변" 규칙과 이 화면의 수정 허용이 어떻게 맞물리는지(초기값 출처가 서버여야 한다).
 - **상태**: 미해결 (API 연동 라운드로 이월 — 현재 develop 화면은 동작하지 않는 폼)
+  > 📌 **저장 경로가 표면으로는 생겼다(2026-08-12, PR #230)** — `MemberRemoteDataSource.changeGlobalNickname(GlobalNickname)`·`getMyAccount()`가 develop에 있다. ③의 "초기값 출처가 서버여야 한다"도 `MyAccountVO.nickname`으로 조달 가능해졌다. **화면과의 결선은 그대로 0건**이라 이 항목은 닫히지 않는다 — 표면 부재라는 사유만 사라졌다 → [api/member.md](../api/member.md) "Android 매핑".
 - **해소 메모**: 연동 시 [s002 스펙](../specs/archive/2026-07-22-s002-account-info.md) "주의 / 열린 질문"과 [app-setting-s001 스펙](../specs/archive/2026-07-19-app-setting-s001.md) placeholder 항목을 함께 닫는다. 로그아웃·탈퇴 stub(같은 PR로 UI만 노출됨)도 같은 라운드 대상이다.
 
 ### [2026-08-04] 커스텀 갤러리가 결과 반환을 끊었는데 호출 화면의 `ResultEffect`가 남음
@@ -716,6 +718,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**2026-08-10 실제로 갈렸다** — 아래 참고)
   > 📌 **표면이 더 커졌다(2026-08-06, PR #197)** — `policy.http`가 추가돼 요청 모음이 **14 엔드포인트 전량**을 덮고, `README.md`도 약관 `termsId` 출처·`url` 전문 가능성·성공 코드 2종 같은 계약 서술을 더 얹었다. 이중 관리 면적이 늘었다는 뜻이라 결정을 미룰수록 비싸진다.
   > 📌 **갈라짐 발생(2026-08-10, 서버 `5bb2a3a`)** — image 도메인 2건이 들어와 서버는 16 엔드포인트인데 `http/`는 14에 멈춰 있다. `api/`만 스킬로 갱신되고 `http/`는 손이 닿지 않은 첫 사례다 → 후속 항목 [2026-08-10] `http/` 요청 모음 공백.
+  > 📌 **이중 관리 비용이 처음 실물로 드러났다(2026-08-12, PR #230)** — 공백은 사람이 손으로 메워 20/20이 회복됐지만, 같은 PR이 `http/README.md`만 고치고 `http/auth.http`를 안 고쳐 **`http/` 내부에서도 두 파일이 갈렸다.** 즉 갈라짐은 이제 `api/` ↔ `http/` 사이만이 아니라 `http/` 안에서도 난다 — 계약 서술이 세 곳(도메인 문서·README·요청 파일 주석)에 복제돼 있어서다. ②(README를 실행 방법으로만 축소)의 근거가 이 사례로 한 칸 세졌다.
 - **해소 메모**: 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절과 `sync-teamyg-server-api` 스킬 절차에 반영한다.
 
 ### [2026-08-04] `@NoAuth`를 붙일 서비스 메서드가 develop에 0건 — 인증 스킵 경로가 통째로 死코드
@@ -735,6 +738,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 첫 결선 라운드에서 ②를 확정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) 대안 D·[data-layer](../architecture/data-layer.md) "신규 데이터 추가 체크리스트"에 반영한다. 각 도메인이 결선되면 [api/](../api/README.md) 문서의 `android_status`를 `partial`→`done`으로 올린다.
 
   > 📌 **①의 화면 순서만 먼저 코드로 굳었다(2026-08-09, PR #220)** — `Splash → Login → TermAgree → GroupList` 전이가 결선됐다. 데이터 쪽은 **한 줄도 붙지 않았다**(Service 호출 0건 유지) → [2026-08-10] 온보딩 체인 항목.
+  > 📌 **표면이 14에서 20으로 늘었고 소비처는 그대로 0이다(2026-08-12, PR #230)** — Service 7·remote DataSource 7쌍·DTO 30·domain 37이 됐다. **"덮을 게 남아서 소비를 미룬다"는 사유가 이번 라운드로 사라졌다**([2026-08-11] 7 엔드포인트 공백 항목 해소) — 표면을 더 만들 것이 없으므로 ③("이 상태로 남는 기간을 얼마로 볼지")이 이제 실질적인 질문이다. ②(Repository를 둘지)도 여전히 미정이고, 그 사이 표면만 계속 컴파일된다.
 
 ### [2026-08-06] 스펙이 지시한 근거 주석·KDoc 2건이 코드에 없다
 
@@ -750,6 +754,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `domain/model/`(PR #197 머지 후) — 이번 라운드가 추가한 21선언은 `auth/`·`group/`·`id/`·`policy/` 하위 패키지로 들어갔고, 기존 8선언(`DayWindow`·`GalleryImageGroup`·`GroupCreateConfig`·`InviteCodeResult`·`KakaoLoginResult`·`Logger`·`NameValidResult`·`SegmentationResult`)은 루트에 남았다. 스펙은 "평면 10개에 9개 이상이 더 붙으면 하위 패키지로 나눈다"를 전제했는데 실제로는 신규분만 나뉘었다. `KakaoLoginResult`(루트)와 `KakaoLoginVO`(`auth/`)가 이름은 닮았는데 위치가 다른 것이 대표 사례다.
 - **항목**: ① 기존 8선언도 도메인 하위 패키지로 옮길지(`Logger`처럼 도메인이 애매한 것의 소속을 정해야 한다), ② 아니면 "원격 계약에서 온 모델만 하위 패키지"를 규칙으로 명문화할지. ②를 택하면 근거를 [data-layer](../architecture/data-layer.md) "레이어 배치"에 적는다.
 - **상태**: 미해결 (배치 규약 미정 — 새 모델을 어디 둘지 매번 판단해야 한다)
+  > 📌 **혼재가 더 깊어졌다(2026-08-12, PR #230)** — 하위 패키지가 `image/`·`member/`·`topping/` 셋 늘어 **넷에서 일곱**이 됐고, 루트 평면 8선언은 하나도 안 옮겨졌다. `GalleryImageGroup`(루트, 기기 갤러리)과 `image/`(서버 업로드)가 이제 나란히 있어 `KakaoLoginResult`/`KakaoLoginVO` 사례가 하나 더 늘었다 — 이름이 닮았는데 위치가 다르고, **가리키는 대상도 다르다**([2026-08-10] `image` 이름 선점 항목과 같은 뿌리). 규약 없이 라운드가 반복되면 신규분만 계속 나뉜다.
 - **해소 메모**: 결정 후 [data-layer](../architecture/data-layer.md) "레이어 배치"의 `domain/model/` 서술과 [data-api-service-layer 스펙](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 6번을 정리한다.
 
 ### [2026-08-07] 토핑 변형 타입이 index 순환으로 부여됨 — 정책은 랜덤 재부여
@@ -800,6 +805,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: PR #219 develop 머지([unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)). 유닛 테스트는 배선·통과했지만 세 표면이 실제로 동작하는지는 증명되지 않았다. ① `MainDispatcherRule`은 사용처가 0건이다 — 배선(`@get:Rule` + `runTest(rule.dispatcher)` 컴파일·통과)까지만 확인했고 `Dispatchers.setMain` 적용·복원과 스케줄러 공유가 무엇을 막아주는지는 미검증이다. 이번 범위(`domain`·`data`·`core:util:*`)에 ViewModel이 없어서다. ② 계측 테스트 2건(`YGThemeSmokeTest`·`ContextExtensionTest`)은 CI에서 `assembleDebugAndroidTest` 컴파일까지만 검증돼 런타임 오류가 드러나지 않는다. ③ `core:util:android`는 `parfait-test-unit`이 적용됐지만 unit 테스트가 0개다(내용물이 Compose Modifier·Context/Bitmap 확장이라 대상 없음).
 - **항목**: ① 첫 ViewModel 테스트를 쓸 때 룰 자체를 검증하는 테스트를 함께 추가할지 — 계측 소스셋에서 코루틴을 다루려면 `bundles.test-android`에 `kotlinx-coroutines-test`를 넣어야 하고(현재 없고 `:core:testing`도 계측에 미배선), `runTest`를 인자 없이 부르면 스케줄러가 갈려 `advanceUntilIdle()`이 Main 큐를 비우지 못한다. ② CI에 기기·에뮬레이터를 붙일 시점. ③ Android 비의존 로직이 `core:util:android`에 생기는 시점에 채운다.
 - **상태**: 미해결 (셋 다 트리거 대기 — ViewModel 등장 / CI 기기 도입 / 대상 로직 추가)
+  > 📌 **①이 한 라운드 더 버텼다(2026-08-12, PR #230)** — `data` 유닛 테스트가 3건 늘었는데(`ImageRemoteDataSourceImplTest`·`MemberRemoteDataSourceImplTest`·`ParfaitImageRemoteDataSourceImplTest`) **`MainDispatcherRule` 사용처는 여전히 0건**이다. 셋 다 `runTest`만 쓰고 `Dispatchers.Main`을 건드리지 않는다 — 원인은 그대로 "테스트 대상에 ViewModel이 없다"이고 그 조건은 소비처 결선 라운드까지 안 바뀐다.
 - **해소 메모**: 해소 시 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "주의 / 열린 질문" 절의 대응 항목을 지운다.
 
 ### [2026-08-09] Repository Fake를 어디에 둘지 미결
@@ -833,6 +839,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: TEAMYG-SERVER `main` `5bb2a3a`([api/image.md](../api/image.md)) — `POST /api/v1/images/{imageId}/confirm`. `ConfirmImageUploadController.confirm`이 `@PathVariable imageId`만 받고 `Authentication`을 받지 않는다. `ConfirmImageUploadCommand`에도 memberId가 없고 `ConfirmImageUploadService`는 `imageMetaQueryPort.findById` 결과의 `uploadedByMemberId`를 대조하지 않는다. 화이트리스트 밖이라 토큰은 필요하지만, **유효한 토큰을 가진 아무 회원이나 남의 `imageId`를 `COMPLETED`로 올릴 수 있다.** id가 auto-increment Long이라 값 추측도 쉽다. 발급 API(`POST /api/v1/images`)는 반대로 memberId를 확실히 쓴다(S3 키에 `user<memberId>`가 들어간다).
 - **항목**: ① 서버 이슈로 올려 confirm에도 소유자 대조를 넣을지 — 넣으면 남의 이미지 확정 시 새 에러 코드(403 계열)가 생기고 앱의 에러 매핑이 늘어난다. ② 앱이 붙기 전에 서버가 고칠 것이라 보고 [api/image.md](../api/image.md)에 관측 사실로만 남길지. ③ confirm 재시도로 받는 `IMAGE_ALREADY_CONFIRMED`(409)를 앱이 성공으로 간주할지 — 소유자 검증이 없는 현재 상태에서는 **409가 "내가 이미 했다"인지 "남이 했다"인지 구분되지 않는다**. 검증이 들어오면 이 모호함도 같이 사라진다.
 - **상태**: 미해결 (서버 소관 — 앱 연동 착수 전에 확인 필요)
+  > 📌 **앱 표면이 ③을 코드로 고정했다(2026-08-12, PR #230)** — `ImageRemoteDataSource.confirmUpload`가 `IMAGE_ALREADY_CONFIRMED`를 성공으로 번역하지 **않고** `ApiException.Business`로 흘리며, 그 판단을 테스트가 잠근다. 사유는 이 항목 ③ 그대로다 — 소유자 검증이 없어 409의 뜻이 갈리지 않는다. ①②는 서버 소관이라 잔존.
 - **해소 메모**: 서버가 고치면 [api/image.md](../api/image.md) confirm 절의 ⚠️ 두 개(소유자 미검증·409 해석)와 [api/conventions.md](../api/conventions.md) "인증" 절 말미를 함께 지운다.
 
 ### [2026-08-10] 이미지 업로드 계약의 미사용 필드·정리 경로 부재
@@ -848,14 +855,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-108
 - **출처**: 서버 delta `5bb2a3a`로 엔드포인트가 16개가 됐는데 TJYG-Android 루트 `http/`에는 `images.http`가 없었다(당시 `auth`·`policy`·`parfait-group`·`parfait`·`health` 5개 파일 = 14 엔드포인트). PR #197 시점의 "전량 커버"가 깨졌다. 이는 [2026-08-04] `http/`↔`api/` 이중 관리 항목이 예고한 갈라짐이 **처음 실제로 발생한 사례**다.
 - **항목**: [2026-08-04] 항목의 선택지 ①(스킬이 `http/`도 갱신)·②(`http/`를 실행 방법으로만 축소) 중 무엇을 고를지. 갱신 경로가 둘이라는 구조 자체는 그대로다.
-- **상태**: **부분 해소 → 다시 벌어짐** (공백은 image 2건만 메웠고 **구조는 미해결**)
+- **상태**: **해소됨(공백)** — 2026-08-12 PR #230으로 **20/20 회복**. 다만 **구조는 여전히 미해결**이라 [2026-08-04] 항목이 이어받는다.
   > 📌 **2026-08-11 서버 delta로 7건 공백**(21 엔드포인트 중 14만 덮임) — 애플 로그인 1 · member 2 · parfait-image 2가 새로 비었고, image 2는 `images.http`가 **아직 미머지 브랜치에만** 있다. 손으로 메우는 방식이 서버 delta 한 번에 다시 무너졌다 — [2026-08-04] 항목의 구조 결정을 더 미룰 근거가 없다.
-- **해소 메모**: `image-api-service-layer` 라운드가 `images.http`를 신설해 **16/16 커버를 회복**했고(브랜치 `feature/sync-backend-api-260810`, 미머지) `http/README.md` 5곳·`http-client.env.json`·`_reset.http`도 함께 갱신했다. S3 PUT 요청도 같은 파일에 뒀다 — 서버 계약이 아니라 AWS 계약이지만, `Content-Type` 불일치로 S3가 거절하는 실패는 **서버 로그에 남지 않아** 이 파일이 재현할 유일한 자리라서다. 다만 이번엔 **사람이 손으로 메운 것**이고 [2026-08-04]의 "갱신 경로가 둘"은 그대로라, 다음 서버 delta에서 같은 일이 반복된다. 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절의 ⚠️와 [2026-08-04] 항목을 함께 닫는다.
+  > 📌 **공백 해소(2026-08-12, PR #230)** — `images.http`가 develop에 들어오고 `users.http`·`parfait-image.http`가 신설됐다. 애플 로그인 1건은 Android 미사용 결정이라 대상이 아니므로 **요청 모음이 Android가 쓰는 20 엔드포인트 전량을 덮는다.** `http-client.env.json`에 `image_id`·`image_upload_url`·`parfait_image_id` 3변수, `_reset.http`에 도메인별 비우기 항목 2개(`0-1-2`·`0-1-3`)가 짝으로 붙었다.
+  > ⚠️ **대신 같은 PR이 `http/` 안에 모순을 하나 만들었다** — `http/README.md`의 판별자 키 서술만 `isNewUser`로 정정되고 `http/auth.http` 주석·응답 핸들러는 `newUser` 그대로다 → [2026-08-11] 판별자 키 항목 ④.
+- **해소 메모**: `image-api-service-layer` 라운드가 `images.http`를 신설해 **16/16 커버를 회복**했고(브랜치 `feature/sync-backend-api-260810` — **2026-08-12 PR #230으로 머지**, 같은 PR이 `users.http`·`parfait-image.http`까지 얹어 20/20이 됐다) `http/README.md` 5곳·`http-client.env.json`·`_reset.http`도 함께 갱신했다. S3 PUT 요청도 같은 파일에 뒀다 — 서버 계약이 아니라 AWS 계약이지만, `Content-Type` 불일치로 S3가 거절하는 실패는 **서버 로그에 남지 않아** 이 파일이 재현할 유일한 자리라서다. 다만 이번엔 **사람이 손으로 메운 것**이고 [2026-08-04]의 "갱신 경로가 둘"은 그대로라, 다음 서버 delta에서 같은 일이 반복된다. 결정 후 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절의 ⚠️와 [2026-08-04] 항목을 함께 닫는다.
 
 ### [2026-08-10] presigned `uploadUrl`이 debug 로그로 새어나간다
 
 - **ID**: OQ-P-109
-- **출처**: `data/di/NetworkModule.kt#provideOkHttpClient` × `data/service/ImageService.kt#postImages`(브랜치 `feature/sync-backend-api-260810`, 미머지) — 로깅 인터셉터가 `BuildConfig.DEBUG`에서 `Level.BODY`이고 `redactHeader("Authorization")`은 **헤더만** 가린다. 발급 응답 본문의 `uploadUrl`은 `X-Amz-Signature`를 포함한 **그 자체가 자격증명**이다(만료 전까지 누구나 그 버킷 키에 PUT할 수 있다). 응답 바디 전량이 logcat에 찍힌다. 기존 14 엔드포인트에는 본문에 자격증명을 싣는 응답이 없어 **이번에 처음 생긴 성질**이다.
+- **출처**: `data/di/NetworkModule.kt#provideOkHttpClient` × `data/service/ImageService.kt#postImages`(**2026-08-12 PR #230으로 develop 머지**) — 로깅 인터셉터가 `BuildConfig.DEBUG`에서 `Level.BODY`이고 `redactHeader("Authorization")`은 **헤더만** 가린다. 발급 응답 본문의 `uploadUrl`은 `X-Amz-Signature`를 포함한 **그 자체가 자격증명**이다(만료 전까지 누구나 그 버킷 키에 PUT할 수 있다). 응답 바디 전량이 logcat에 찍힌다. 기존 14 엔드포인트에는 본문에 자격증명을 싣는 응답이 없어 **이번에 처음 생긴 성질**이다.
 - **항목**: ① debug 로그 레벨을 `BODY`로 유지할지, 아니면 이미지 도메인만 응답 본문을 가릴지(OkHttp 로깅 인터셉터에는 바디 redact 기능이 없어 커스텀 인터셉터가 필요하다). ② 아니면 debug 빌드 한정 + `expiresIn` 만료라는 이중 제한으로 충분하다고 볼지.
 - **상태**: 미해결 (debug 빌드 한정이라 즉시 위험은 낮음 — 실연동 라운드에서 판정)
 - **해소 메모**: 결정 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절에 반영한다.
@@ -863,7 +872,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-10] `image`라는 이름이 domain에서 기기 이미지 뜻으로 선점돼 있다
 
 - **ID**: OQ-P-110
-- **출처**: `image-api-service-layer` 라운드 최종 코드리뷰. `data/source/image/`는 `remote`/`local` 하위 구분이 출처를 갈라 문제가 없지만(저장소 규칙이 "폴더=도메인, 하위=출처"), **`domain/`에는 출처 축이 없다.** 그리고 거기서 `image`는 이미 기기 이미지 뜻이다 — `domain/repository/image/`에 `RecentImageRepository`(기기 캐시)·`ImageSegmentationRepository`(누끼 분할), `domain/usecase/image/`에 `DecodeImageUseCase`·`SegmentImageUseCase`·`AddRecentImageUseCase`·`GetRecentCacheImagesUseCase`가 있고 넷 다 기기 측이다. 이번에 `domain/model/image/`(서버 업로드)가 그 옆에 들어왔다. [image-api-service-layer 스펙](../specs/2026-08-10-image-api-service-layer.md)은 `GalleryImageGroup`만 검토했고 이 두 패키지는 짚지 못했다.
+- **출처**: `image-api-service-layer` 라운드 최종 코드리뷰. `data/source/image/`는 `remote`/`local` 하위 구분이 출처를 갈라 문제가 없지만(저장소 규칙이 "폴더=도메인, 하위=출처"), **`domain/`에는 출처 축이 없다.** 그리고 거기서 `image`는 이미 기기 이미지 뜻이다 — `domain/repository/image/`에 `RecentImageRepository`(기기 캐시)·`ImageSegmentationRepository`(누끼 분할), `domain/usecase/image/`에 `DecodeImageUseCase`·`SegmentImageUseCase`·`AddRecentImageUseCase`·`GetRecentCacheImagesUseCase`가 있고 넷 다 기기 측이다. 이번에 `domain/model/image/`(서버 업로드)가 그 옆에 들어왔다. [image-api-service-layer 스펙](../specs/archive/2026-08-10-image-api-service-layer.md)은 `GalleryImageGroup`만 검토했고 이 두 패키지는 짚지 못했다.
 - **항목**: 다음 라운드가 `ImageRepository`·`UploadImageUseCase`를 만들면 **기기 이미지 심볼들과 같은 패키지에 앉는다.** ① 서버 업로드 쪽을 다른 이름으로 가를지(`imageupload`·`upload`), ② 기기 쪽을 `gallery`·`localimage`로 개명할지(카메라·갤러리 feature가 소비 중이라 파급이 크다), ③ 그대로 두고 클래스명으로만 구분할지. **다음 라운드가 이름을 정하기 전에 결정돼야 한다** — 나중에 바꾸면 소비자가 늘어난 뒤다.
 - **상태**: 미해결 (선행 결정 — S3 PUT·Repository 라운드의 첫 단계)
 - **해소 메모**: 기존 `RecentImageLocalDataSource` 이름이 부정확하다는 지적(같은 라운드 스펙 미결)이 이 항목의 부분집합이다. 결정 시 [module-structure](../architecture/module-structure.md)와 [data-layer](../architecture/data-layer.md)에 반영한다.
@@ -871,8 +880,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-10] `ImageUploadUrlVO.expiresIn`이 상대값이라 만료 판정에 쓸 수 없다
 
 - **ID**: OQ-P-111
-- **출처**: `domain/model/image/ImageUploadUrlVO.kt`(브랜치 `feature/sync-backend-api-260810`, 미머지) — 서버가 주는 초 단위 `Long`을 `Duration`으로 바꿔 담는다(`AuthSessionVO.expiresIn` 선례). 그런데 **발급 시각이 어디에도 기록되지 않는다** — 매퍼도 응답 도착 시각을 남기지 않는다. "이 `uploadUrl`이 아직 유효한가"를 물으려면 호출부가 별도로 시각을 잡아야 한다.
-- **항목**: ① VO에 발급 시각(또는 만료 시각 절대값)을 실을지. ② 아니면 재발급을 **만료 판정 없이 실패 시 재시도**로 처리할지(S3가 만료된 URL을 거절하면 발급부터 다시). ②가 단순하지만 실패 한 번을 반드시 치른다. 관련: `contentType`이 발급 요청과 PUT 헤더 **두 곳에 각각 전달**되는데 서명 대상이라 어긋나면 서버 로그에 안 남는 실패가 난다 — 지금 타입으로는 아무것도 강제되지 않는다([스펙 미결](../specs/2026-08-10-image-api-service-layer.md)의 `contentType` 열거형화가 같은 라운드다).
+- **출처**: `domain/model/image/ImageUploadUrlVO.kt`(**2026-08-12 PR #230으로 develop 머지**) — 서버가 주는 초 단위 `Long`을 `Duration`으로 바꿔 담는다(`AuthSessionVO.expiresIn` 선례). 그런데 **발급 시각이 어디에도 기록되지 않는다** — 매퍼도 응답 도착 시각을 남기지 않는다. "이 `uploadUrl`이 아직 유효한가"를 물으려면 호출부가 별도로 시각을 잡아야 한다.
+- **항목**: ① VO에 발급 시각(또는 만료 시각 절대값)을 실을지. ② 아니면 재발급을 **만료 판정 없이 실패 시 재시도**로 처리할지(S3가 만료된 URL을 거절하면 발급부터 다시). ②가 단순하지만 실패 한 번을 반드시 치른다. 관련: `contentType`이 발급 요청과 PUT 헤더 **두 곳에 각각 전달**되는데 서명 대상이라 어긋나면 서버 로그에 안 남는 실패가 난다 — 지금 타입으로는 아무것도 강제되지 않는다([스펙 미결](../specs/archive/2026-08-10-image-api-service-layer.md)의 `contentType` 열거형화가 같은 라운드다).
 - **상태**: 미해결 (소비자 0건이라 현재 무해 — 재발급 흐름 설계 시점에 정한다)
 - **해소 메모**: 결정 시 VO 시그니처가 바뀌므로 [api/image.md](../api/image.md) Android 매핑 절도 함께 갱신한다.
 
@@ -912,8 +921,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-116
 - **출처**: 서버 `KakaoLoginResponse`·`AppleLoginResponse`의 `val isNewUser: Boolean`. 서버 `http` 모듈이 `tools.jackson.module:jackson-module-kotlin`을 의존해 **`is` 접두사가 JSON 키에 남고**, `KakaoLoginControllerTest`·`AppleLoginControllerTest`가 실제 응답 본문에 `jsonPath("$.data.isNewUser")`를 단언한다. 팀 명세도 `isNewUser`로 적었다. **OpenAPI 스키마만 `newUser`**인데, springdoc이 swagger-core 자체 ObjectMapper(Kotlin 모듈 없음)로 모델을 유도하기 때문이다. Android `data/service/model/response/auth/KakaoLoginResponse.kt`는 `@SerialName("newUser")`를 붙이고 있다 → [api/auth.md](../api/auth.md) "판별자 키", [api/conventions.md](../api/conventions.md) "직렬화 규약".
-- **항목**: ① Android의 `@SerialName("newUser")`를 제거하거나 `isNewUser`로 고친다 — 현재 상태로는 키를 못 찾아 `MissingFieldException`이 나고 **카카오 로그인 호출이 통째로 실패**한다(기본값이 없는 필드다). ② 실서버 응답으로 키를 한 번 확인한다 — 근거 3축(서버 코드·컨트롤러 테스트·팀 명세)이 한 방향이고 스키마만 반대지만, 실물 응답을 본 적은 없다. `http/auth.http`로 찍는 것이 가장 싸다. ③ 서버팀에 `@JsonProperty`로 키를 명시 고정할 의향을 확인한다 — Jackson 모듈 구성이 바뀌면 키가 조용히 뒤집힌다.
-- **상태**: 미해결 (①은 앱 코드 수정 대상, ②는 실연동 라운드에서)
+- **항목**: ① Android의 `@SerialName("newUser")`를 제거하거나 `isNewUser`로 고친다 — 현재 상태로는 키를 못 찾아 `MissingFieldException`이 나고 **카카오 로그인 호출이 통째로 실패**한다(기본값이 없는 필드다). ② 실서버 응답으로 키를 한 번 확인한다 — 근거 3축(서버 코드·컨트롤러 테스트·팀 명세)이 한 방향이고 스키마만 반대지만, 실물 응답을 본 적은 없다. `http/auth.http`로 찍는 것이 가장 싸다. ③ 서버팀에 `@JsonProperty`로 키를 명시 고정할 의향을 확인한다 — Jackson 모듈 구성이 바뀌면 키가 조용히 뒤집힌다. ④ **`http/auth.http`를 README와 맞춘다**(아래 참고) — 지금은 같은 폴더의 두 파일이 반대를 가르친다.
+- **상태**: 미해결 (①은 앱 코드 수정 대상, ②는 실연동 라운드에서, ④는 2026-08-12 신설)
+  > ⚠️ **정정이 세 자리 중 한 자리에만 닿았다(2026-08-12, PR #230)** — 그 PR이 `http/README.md`의 판별자 서술을 `isNewUser`로 고쳤는데, **`http/auth.http`의 주석은 여전히 "판별자 필드명은 `newUser`다. `isNewUser`가 아니다"라고 가르치고** 응답 핸들러도 `response.body.data.newUser`를 읽어 분기한다. 앱 `KakaoLoginResponse`의 `@SerialName("newUser")`도 그대로다. `http/`를 처음 쓰는 사람은 같은 디렉토리에서 서로 반대되는 두 문장을 읽고, ②(실서버로 키 확인)를 하려는 사람이 쓰는 도구가 **바로 그 틀렸을 가능성이 있는 키로 분기한다** — 응답이 `isNewUser`로 오면 `auth.http` 1번이 조용히 "기존 회원" 경로를 타므로, 확인하려던 것을 확인하지 못한 채 넘어간다. 세 자리(앱 DTO·`auth.http`·README)를 한 번에 고치는 것이 맞다.
 - **해소 메모**: 이 불일치는 **계약 문서가 만들었다** — 2026-08-02 판본이 스키마 하나를 근거로 키를 `newUser`로 적었고 앱이 성실히 따랐다. 재발 방지로 [api/conventions.md](../api/conventions.md) "OpenAPI"에 "스키마가 틀리는 것: 직렬화 키와 `required`"를 명시하고, 직렬화 키의 근거를 **컨트롤러 테스트의 응답 본문 단언**으로 바꿨다. ①이 끝나면 [api/README.md](../api/README.md) 도메인 표의 `⚠️불일치`와 [api/conventions.md](../api/conventions.md) "Android 불일치" 표를 함께 지운다. 선행 항목은 OQ-P-075.
 
 ### [2026-08-11] 서버가 앱보다 7 엔드포인트 앞섰다 — 애플 로그인·회원·토핑 배치가 통째로 공백
@@ -921,11 +931,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-117
 - **출처**: 서버 `2c5499a` 기준 21 엔드포인트. TJYG-Android develop의 원격 표면은 `AuthService`·`ParfaitGroupService`·`ParfaitService`·`PolicyService` 4개(= 14 엔드포인트)로 그대로다. 공백은 image 2(미머지 브랜치 `feature/sync-backend-api-260810`에 `ImageService`가 있다) · 애플 로그인 1 · member 2 · parfait-image 2 → [api/README.md](../api/README.md), [api/conventions.md](../api/conventions.md) "Android 불일치".
 - **항목**: ① 앱이 어느 순서로 따라갈지 — 화면 결선 순서(온보딩 → 캔버스)와 서버 순서가 다르다. ~~② **애플 로그인은 iOS만의 요구가 아니다** — Android가 붙일지, 붙는다면 `identityToken`·`authorizationCode`를 어디서 얻을지(애플 로그인 SDK가 Android에 없어 웹 플로가 필요하다) 결정한다.~~(해소 — 아래) ③ 토핑 배치(`parfait-image`)는 **목록 조회 API가 없어** 배치만 되고 다시 그릴 수 없다 — 앱 결선은 그 API를 기다려야 한다.
-  > 📌 **② 해소(2026-08-11)** — **Android는 애플 로그인을 쓰지 않는다.** 서버 계약은 그대로 두되 앱 대응 심볼을 만들지 않고 `http/auth.http`에도 요청을 넣지 않는다. [api/README.md](../api/README.md) Android 열에 `해당 없음` 값을 신설해 `미구현`(아직 없음)과 구분했고 — 표면 개수를 셀 때 분모에서 뺀다 — [api/auth.md](../api/auth.md) 엔드포인트 표·Android 매핑 절에 반영했다. 근거는 [member·parfait-image 서비스 레이어 스펙](../specs/2026-08-11-member-parfait-image-api-service-layer.md) "범위". iOS가 붙으면 계약은 그대로 유효하다.
+  > 📌 **② 해소(2026-08-11)** — **Android는 애플 로그인을 쓰지 않는다.** 서버 계약은 그대로 두되 앱 대응 심볼을 만들지 않고 `http/auth.http`에도 요청을 넣지 않는다. [api/README.md](../api/README.md) Android 열에 `해당 없음` 값을 신설해 `미구현`(아직 없음)과 구분했고 — 표면 개수를 셀 때 분모에서 뺀다 — [api/auth.md](../api/auth.md) 엔드포인트 표·Android 매핑 절에 반영했다. 근거는 [member·parfait-image 서비스 레이어 스펙](../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md) "범위". iOS가 붙으면 계약은 그대로 유효하다.
   > 📌 **공백이 곧 0이 된다(진행 중)** — 분모가 21에서 **20**으로 줄고(애플 1 제외), develop 14 + PR #229의 image 2 + 위 스펙의 member 2·parfait-image 2 = **20**이다. 즉 표면 공백 자체는 이 라운드로 닫히고 **①이 말하는 "순서" 문제는 표면이 아니라 소비처 쪽으로 옮겨간다.**
-- **상태**: 부분 해소 (② 해소 — Android 미사용 확정 / ①③ 잔존)
+- **상태**: **해소됨** (2026-08-12, PR #230 develop 머지 — 공백 0)
   > ⚠️ **② 결정과 어긋난 잔여물이 develop에 있다(2026-08-11, PR #218)** — 같은 날 머지된 로그인 PR이 애플 버튼을 넣었다 지우면서 심볼 3종을 남겼다 → 아래 [애플 잔여 심볼 항목](#2026-08-11-애플-로그인-잔여-심볼-3종이-사용처-0으로-develop에-남았다). 결정 자체는 유효하고, 코드에서 걷어내는 것이 남았다.
-- **해소 메모**: 앱 표면이 붙으면 각 도메인 문서의 `android_status`·"Android 매핑" 절은 스킬 `sync-tjyg-develop-baseline`이 갱신한다. 이 항목은 **간극의 존재**만 추적한다.
+- **해소 메모**: 공백 6건(image 2·member 2·parfait-image 2)이 PR #230으로 한 번에 닫혔다 — `ImageService`·`MemberService`·`ParfaitImageService` + remote DataSource 3쌍 + DTO 9 + domain 16. 애플 1건은 ② 결정으로 분모에서 빠져 **20/20**이다. 반영처: [api/README.md](../api/README.md) 도메인 표 Android 열 3행·표면 개수, 세 도메인 문서의 `android_status`·엔드포인트 표·"Android 매핑" 절, [api/conventions.md](../api/conventions.md) 개수 문단, [data-layer](../architecture/data-layer.md) "네트워킹" 반영 범위.
+  **①이 말하던 "따라가는 순서"는 이 항목에서 끝난다** — 표면이 없어서 못 쓰던 상태가 사라졌으므로 남은 것은 소비처 결선 순서이고 그건 [2026-08-06] 소비처 0건 항목이 안고 간다. ③(배치 목록 조회 API 부재로 캔버스를 다시 그릴 수 없다)은 **서버 소관이라 여전히 열려 있고** OQ-P-119가 추적한다.
 
 ### [2026-08-11] 토핑 배치 POST가 남의 배치를 덮어쓰고 소유자를 가져간다
 
@@ -933,6 +944,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: 서버 `PlaceParfaitImageService.place` — `parfaitImageQueryPort.findByParfaitIdAndImageMetaId(parfaitId, imageId)`로 기존 배치를 찾아 있으면 `ParfaitImage.reposition(placedByGroupMemberId = 호출자, …)`을 부른다. **배치자 대조가 없다.** 반면 `UpdateParfaitImageService`는 `groupMember.id != parfaitImage.placedByGroupMemberId`면 `PARFAIT_IMAGE_NOT_OWNED`(403)로 막는다 → [api/parfait-image.md](../api/parfait-image.md).
 - **항목**: ① 같은 그룹 멤버가 남의 토핑을 옮기는 것이 의도인지(협업 캔버스라 허용일 수도 있다). ② 허용이라면 **PATCH의 소유자 검사와 모순**이므로 한쪽을 맞춘다 — 지금은 "PATCH로는 못 옮기지만 POST로는 옮기고 소유권까지 가져간다". ③ POST의 upsert 동작(`imageId` 재사용 시 새 행이 안 생김) 자체를 앱이 알아야 한다 — 같은 이미지를 두 번 배치할 수 없다는 뜻이다.
 - **상태**: 미해결 (서버팀 확인 필요 — 권한 모델 결정)
+  > 📌 **앱은 방어하지 않고 사실만 문서화했다(2026-08-12, PR #230)** — `ParfaitImageRemoteDataSource.placeTopping` KDoc이 upsert·소유자 이전을 적어 두는 데 그친다. 클라이언트가 막을 수 있는 종류가 아니라서다(같은 판단이 image confirm 소유자 미검증에도 적용됐다). ③(같은 이미지를 두 번 배치할 수 없다)은 화면 결선 시 제약으로 나타난다.
 - **해소 메모**: 확인 후 [api/parfait-image.md](../api/parfait-image.md) POST 절의 ⚠️와 "미결"을 갱신한다. 정책 근거는 위키 [[토핑]]·[[토핑-spotlight]](C-202는 타인 토핑 탭을 조회로만 규정한다) 쪽도 함께 본다.
 
 ### [2026-08-11] 토핑 배치 계약의 공백 — 목록 조회·삭제 부재, 테두리 수정 경로 없음, 좌표 검증 없음
@@ -941,6 +953,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: 서버 `http/parfaitimage` 전수 — 컨트롤러는 `PlaceParfaitImageController`(POST)·`UpdateParfaitImageController`(PATCH) 둘뿐이다. `PlaceParfaitImageRequest`·`UpdateParfaitImageRequest`에 검증 애노테이션이 없고 컨트롤러도 `@Valid`를 붙이지 않는다. `UpdateParfaitImageRequest`에 테두리 필드가 없고 두 응답 DTO도 테두리를 돌려주지 않는다 → [api/parfait-image.md](../api/parfait-image.md).
 - **항목**: ① **배치 목록 조회 API**가 언제 나오는지 — 없으면 앱이 캔버스를 다시 그릴 수 없다(현재는 자기가 방금 보낸 값만 안다). ② **배치 삭제 API** 부재 — 토핑을 지울 수 없다. ③ 배치 후 **테두리 변경 경로**를 PATCH에 넣을지, 아니면 같은 `imageId` 재-POST로 가게 둘지(후자는 위 소유권 문제와 얽힌다). ④ `positionX/Y/Z`·`scale`·`rotation` 범위를 서버가 강제할지 앱 책임으로 둘지 — 현재 음수 `scale`도 저장된다.
 - **상태**: 미해결 (전부 서버 소관이나 ①은 앱 화면 결선의 선행 조건)
+  > 📌 **앱 표면이 ③의 부재를 모양으로 드러낸다(2026-08-12, PR #230)** — `PlacedToppingVO`·`UpdatedToppingVO`에 테두리 필드가 없다(서버가 안 돌려줘서 지어내지 않았다). ①(목록 조회 부재)은 `ParfaitImageRemoteDataSource`가 배치·수정만 갖는 이유이고, 이 라운드가 Repository까지 가지 않은 사유이기도 하다 → [api/parfait-image.md](../api/parfait-image.md) "Android 매핑".
 - **해소 메모**: 서버가 채우면 [api/parfait-image.md](../api/parfait-image.md)에 엔드포인트를 추가하고 [api/README.md](../api/README.md) 도메인 표의 개수를 갱신한다.
 
 ### [2026-08-11] 전역 닉네임을 바꿔도 기존 그룹 닉네임이 그대로다
@@ -949,6 +962,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: 서버 `MemberService.change` — `Member.globalNickname` 한 컬럼만 갱신한다(`MemberAdapter.updateGlobalNickname`). 그룹 참여 시점에 복사된 `groupNickname`은 별도 컬럼이고 그룹별 변경 API가 따로 있다([api/parfait-group.md](../api/parfait-group.md)) → [api/member.md](../api/member.md).
 - **항목**: ① 의도된 설계인지 확인 — 그룹마다 다른 이름을 쓰는 것이 기능이라면 맞고, 아니면 전파가 빠진 것이다. ② 앱이 두 값을 어느 화면에서 어떻게 보여줄지 — S-002(앱 닉네임)와 S-101(그룹 프로필)이 서로 다른 값을 보이게 된다. 위키 [[닉네임-자동-생성]]은 "앱↔그룹 값 공유"를 초기값 한정으로 적고 있어 **변경 이후의 동기화는 정책에도 없다**.
 - **상태**: 미해결 (①은 서버팀·기획 확인, ②는 그 결과에 종속)
+  > 📌 **앱 표면이 두 값을 타입으로 갈라 놨다(2026-08-12, PR #230)** — `GlobalNickname`과 `GroupNickname`을 유효성 규칙이 같은데도 합치지 않아, ②(두 화면이 다른 값을 보인다)를 결선할 때 서로 뒤바꾸는 실수가 컴파일에서 막힌다. ①(전파가 빠진 것인지)은 서버·기획 확인이라 그대로다.
 - **해소 메모**: 확인 후 [api/member.md](../api/member.md) "미결"과 위키 [[닉네임-자동-생성]] 쪽 대응 서술을 갱신한다.
 
 ### [2026-08-11] 영속 `LoginProvider.GOOGLE`이 core enum에 없어 계정 조회가 500이 된다
@@ -957,6 +971,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: 서버 `MemberAdapter.toCoreProvider` — 영속 `LoginProvider`는 `KAKAO`·`APPLE`·`GOOGLE` 3종인데 core `LoginProvider`는 2종이라, `GOOGLE` 행에서 `error("GOOGLE login provider is not supported yet")`로 `IllegalStateException`을 던진다. `GlobalExceptionHandler`의 `Exception` 핸들러가 **500 `INTERNAL_SERVER_ERROR`**로 바꾼다 → [api/member.md](../api/member.md) `GET /api/v1/users/me`.
 - **항목**: 구글 로그인을 계약에서 뺄지(영속 enum에서도 제거), 아니면 core에 넣고 로그인 엔드포인트를 만들지 결정한다. 지금은 **구글 회원 행이 하나라도 생기면 그 회원의 계정 조회가 깨진다** — 현재는 구글 로그인 경로 자체가 없어 도달하지 않는다.
 - **상태**: 미해결 (서버팀 확인 필요 — 도달 불가라 급하지 않음)
+  > 📌 **앱은 이 값에서 크래시하지 않는다(2026-08-12, PR #230)** — `LoginProvider`에 `UNKNOWN`을 두고 매퍼가 `enumValueOf`가 아니라 `when` 분기라, 서버가 `GOOGLE`을 core enum에 넣더라도 앱은 조용히 `UNKNOWN`으로 떨어진다. **다만 서버가 500을 던지는 경로는 그대로**라 그 회원은 계정 조회 자체를 못 한다 — 앱 방어는 이 항목을 닫지 않는다 → [api/member.md](../api/member.md) "Android 매핑".
 - **해소 메모**: 확인 후 [api/member.md](../api/member.md) 응답 필드 표의 ⚠️와 "미결"을 갱신한다.
 
 ### [2026-08-11] parfait-image 팀 명세 원문이 `api/spec/`에 없다 — 코드에서 못 읽는 클라이언트 책임이 거기 있다
@@ -1039,6 +1054,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (①은 즉시 고칠 수 있는 코드 수정, ③은 정책 수집 판단)
 - **해소 메모**: ①② 처리 시 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 5번을 지운다. ③은 위키 소관이라 정책 소스 수집 요청이 먼저다. ②는 [2026-08-11] 치수 리터럴 항목과 같은 결정에 묶인다.
 
+### [2026-08-12] `ApiCaller.safeApiCallWithoutData`가 표면 완성과 함께 死코드로 확정됐다
+
+- **ID**: OQ-P-132
+- **출처**: `data/network/ApiCaller.kt`(PR #230 develop 머지 시점 재확인) — 진입점 넷 중 `safeApiCallWithoutData`만 **프로덕션 호출부가 0건**이다. 선언과 `ApiCallerTest`의 자기 테스트뿐이고, 20 엔드포인트 전부가 `safeApiCall(block)`·`safeApiCall(block, transform)`·`safeApiCallNoContent`(`logout` 하나) 셋으로 갈렸다. 2026-08-03 라운드가 "14 전량 구현으로 사실상 死코드"라며 이월했던 minor인데, **표면이 20/20으로 닫히며 "아직 안 쓰였을 뿐"이라는 해석이 없어졌다** — Android가 붙일 엔드포인트가 더 없다.
+- **항목**: ① 지울지 — 지우면 `ApiResponse<Unit>`인데 payload를 안 보는 형태가 서버에 다시 생길 때 되살려야 한다. ② 남긴다면 KDoc에 "현재 사용처 없음, 서버가 `data`를 무의미하게 채우는 응답을 낼 때 쓴다"를 적어 다음 사람이 셋 중 무엇을 고를지 헷갈리지 않게 할지. ③ 테스트도 함께 처리 — 소비자 없는 메서드를 잠그는 테스트가 남는다.
+- **상태**: 미해결 (기능 영향 0 — 정리 시점 문제, [ADR-0017](../adr/0017-remote-network-datasource.md) 진입점 표와 함께 판단)
+- **해소 메모**: 처리 시 [data-layer](../architecture/data-layer.md) "네트워킹 → 응답 계약"의 진입점 표와 [ADR-0017](../adr/0017-remote-network-datasource.md) 대응 절을 넷에서 셋으로 줄인다. 남기기로 하면 그 표에 "사용처 0" 열을 대신 단다.
+
+### [2026-08-12] `ApiException.Business.statusCode`를 KDoc이 약속하는데 테스트는 그 경로를 타지 않는다
+
+- **ID**: OQ-P-133
+- **출처**: `data/source/member/remote/MemberRemoteDataSource.kt` KDoc × `data/source/*/remote/*ImplTest.kt`(PR #230 develop 머지) — KDoc이 "`MEMBER_NOT_FOUND`가 401과 404 둘 다로 오니 소비 측은 `ApiException.Business.statusCode`로 구분하라"고 적었다. 그런데 DataSource 테스트 4건의 실패 케이스는 전부 **서비스가 `ApiResponse(success = false)`를 반환하도록** mocking해 `ApiCaller`의 `success == false` 분기를 타고, 그 분기에서 `statusCode`는 **항상 `null`**이다. 실제 401·404·409는 Retrofit이 `HttpException`을 던져 `toApiException`의 `statusCode = e.code()` 경로로 가는데 그 경로를 잠그는 것은 `ApiCallerTest`뿐이고 도메인 DataSource 테스트에는 없다. 계획서가 "이 라운드가 검증하지 못하는 것"으로 예고했던 축이 그대로 develop에 들어왔다.
+- **항목**: ① 도메인 DataSource 테스트에 `HttpException` 경로 케이스를 더할지 — 더하면 에러 바디 envelope를 실제로 파싱시켜 `statusCode`·`code` 조합을 잠글 수 있다. ② 아니면 그 검증을 `ApiCallerTest` 소관으로 명시하고 DataSource 테스트는 매핑·배선만 본다고 규약에 적을지. ③ 어느 쪽이든 **KDoc이 약속한 구분 방식이 실제로 성립하는지**는 에러 코드를 도메인 예외로 번역하는 라운드가 오기 전에 한 번 확인돼야 한다 — 지금은 "그렇게 하면 된다"고 적혀만 있다.
+- **상태**: 미해결 (동작 결함은 아님 — 검증 공백과 문서의 약속이 어긋난 상태)
+- **해소 메모**: 정하면 [data-layer](../architecture/data-layer.md) "응답 매핑"의 테스트 규약 문단에 어느 계층이 무엇을 잠그는지 적는다. ①을 고르면 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "테스트 규약"에도 한 줄이 붙는다.
+
 <!--
 항목 추가 형식:
 
@@ -1049,4 +1080,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 127 -->
+<!-- oq-next: 134 -->

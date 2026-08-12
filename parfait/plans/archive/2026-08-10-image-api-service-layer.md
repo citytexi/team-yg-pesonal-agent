@@ -4,14 +4,27 @@
 
 **Goal:** 서버 image 도메인 2 엔드포인트(업로드 URL 발급 · 업로드 확인)를 TJYG-Android `:data`의 Retrofit Service와 remote DataSource로 배선하고 대응 domain VO를 만든다.
 
-**Architecture:** `ImageService`(Retrofit·wire DTO) → `ImageRemoteDataSource`(`ApiCaller` + mapper) → `domain VO`. 앞선 라운드([2026-08-03-data-api-service-layer](../specs/archive/2026-08-03-data-api-service-layer.md))가 세운 관용구의 증분이라 계층·이름 규칙·타입 경계를 그대로 따른다. S3 PUT을 수행하는 앱 코드는 범위 밖이다.
+**Architecture:** `ImageService`(Retrofit·wire DTO) → `ImageRemoteDataSource`(`ApiCaller` + mapper) → `domain VO`. 앞선 라운드([2026-08-03-data-api-service-layer](../../specs/archive/2026-08-03-data-api-service-layer.md))가 세운 관용구의 증분이라 계층·이름 규칙·타입 경계를 그대로 따른다. S3 PUT을 수행하는 앱 코드는 범위 밖이다.
 
 **Tech Stack:** Kotlin · Retrofit2 · kotlinx-serialization · Hilt · MockK · kotlinx-coroutines-test · kotlin.test
 
 **작업 저장소:** TJYG-Android (`mash-up-kr/TJYG-Android`). 로컬 절대경로는 private submodule `wiki/personal-private/project-paths.md` 참고.
 **브랜치:** `feature/sync-backend-api-260810` (이미 존재하고 `develop`과 동일한 지점, 커밋 0개)
-**스펙:** [specs/2026-08-10-image-api-service-layer.md](../specs/2026-08-10-image-api-service-layer.md)
-**계약 정본:** [api/image.md](../api/image.md) (서버 기준선 `5bb2a3a`)
+**스펙:** [specs/2026-08-10-image-api-service-layer.md](../../specs/archive/2026-08-10-image-api-service-layer.md)
+**계약 정본:** [api/image.md](../../api/image.md) (서버 기준선 `5bb2a3a`)
+
+> **완료 — PR #230 `develop` 머지(2026-08-12).** Task 1~3 전량 반영. 뒤이은
+> [member·parfait-image 계획](2026-08-11-member-parfait-image-api-service-layer.md)이 같은 브랜치
+> (`feature/sync-backend-api-260810`) 위에 쌓여 **두 라운드가 한 PR로** 나갔고, PR #229는 별도로
+> 머지되지 않았다. 아래 "최종 검증"의 `git log --oneline develop..HEAD` 커밋 3개 항목은 그래서 성립하지
+> 않는다(합쳐진 브랜치의 커밋은 14개다). **산출물 계약의 정본은 스펙**이다 —
+> [specs/archive](../../specs/archive/2026-08-10-image-api-service-layer.md).
+> 계획 본문 체크박스는 실행 기록을 이 블록에 모으는 관례대로 미체크로 둔다.
+>
+> **머지본이 계획과 갈린 곳 1건**: File Structure 표의
+> `data/src/test/.../image/mapper/ImageVOMapperTest.kt`가 develop에 **없다.** 다음 라운드 Task 1이
+> 매퍼 단독 테스트 금지 규약(2026-08-11 개정)에 따라 케이스를 `ImageRemoteDataSourceImplTest`로
+> 옮기고 삭제했다. 브랜치 안에서 생겼다 사라져 머지 diff에는 나타나지 않는다.
 
 ## Global Constraints
 

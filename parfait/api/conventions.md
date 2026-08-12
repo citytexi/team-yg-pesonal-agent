@@ -242,6 +242,13 @@ TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote
 Android가 그대로 따랐다. 정정 근거는 위 [직렬화 규약](#직렬화-규약)
 → [open-questions](../synthesis/open-questions.md).
 
+> ⚠️ **2026-08-12(PR #230): 코드 저장소 안에서 셋이 갈렸다.** 그 PR이 TJYG-Android 루트
+> `http/README.md`의 판별자 서술을 `isNewUser`로 정정했는데, **같은 디렉토리의 `http/auth.http`는
+> 여전히 `newUser`가 맞다고 주석으로 가르치고 응답 핸들러도 `response.body.data.newUser`를 읽는다.**
+> 앱 `KakaoLoginResponse`의 `@SerialName("newUser")`도 그대로다. 즉 정정이 세 자리 중 한 자리에만
+> 닿았고, `http/`를 처음 쓰는 사람은 서로 반대되는 두 문장을 같은 폴더에서 읽는다.
+> 위 표의 행은 그대로 유효하다 — 고쳐야 할 것이 오히려 늘었다.
+
 **2026-08-04 기준 남은 항목 없음.** 오래 걸려 있던 3건(Android `ApiResponse`에 `success`·`errorDetail`
 부재 / `isSuccess`가 `code == "SUCCESS"` 단일 비교 / `TokenProvider`가 항상 null)은
 `network-envelope-token-storage` 라운드가 **PR #190으로 develop에 머지되며 전부 해소**됐다 —
@@ -249,13 +256,14 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 ([ADR-0019](../adr/0019-encrypted-token-storage.md)). 대응 [open-questions](../synthesis/open-questions.md)
 항목도 해소 처리했다.
 
-> **다만 "일치"가 "검증됨"은 아니다.** 14 엔드포인트 Service·DataSource는 2026-08-06 PR #197로
-> develop에 들어왔지만, 이를 **호출하는 Repository·UseCase·화면이 없어** 서버로 나간 요청은 여전히
-> 0건이다(개발 서버 평문 HTTP 차단·`YG_BASE_URL` 부재도 그대로다). 계약 해석의 실동작은 실연동
-> 라운드에서 확인한다 → [open-questions](../synthesis/open-questions.md).
+> **다만 "일치"가 "검증됨"은 아니다.** 14 엔드포인트 Service·DataSource는 2026-08-06 PR #197로,
+> 나머지 6개는 2026-08-12 PR #230으로 develop에 들어왔지만, 이를 **호출하는 Repository·UseCase·화면이
+> 없어** 서버로 나간 요청은 여전히 0건이다(개발 서버 평문 HTTP 차단·`YG_BASE_URL` 부재도 그대로다).
+> 계약 해석의 실동작은 실연동 라운드에서 확인한다 → [open-questions](../synthesis/open-questions.md).
 
-**2026-08-11 기준 서버 엔드포인트는 21개고 Android 표면은 14개다.** 늘어난 7건(image 2 · auth 애플 1 ·
-member 2 · parfait-image 2)은 develop 대응 심볼이 0건이라 **불일치가 아니라 공백**이다(불일치는 심볼이
-있는데 어긋날 때만 쓴다, [README.md](README.md) 규약). 서버가 앞서고 앱이 일곱 칸 뒤에 있다.
+**2026-08-12 기준 서버 엔드포인트는 21개고 Android 표면은 20개다** — 애플 로그인 1건은 Android가 쓰지
+않기로 한 `해당 없음`이라 분모에서 빠지므로 **20/20, 공백 0**이다(PR #230). 2026-08-11까지 "공백 7건"으로
+적혀 있던 자리는 이 라운드로 닫혔고, 남은 것은 **불일치 1건(위 표)** 과 **소비처 0건**이다 — 둘은 다른
+종류의 문제다. 표면이 없어서 못 쓰는 상태는 끝났고, 이제 안 쓰고 있을 뿐이다.
 
 새 간극이 발견되면 이 절에 표를 다시 세운다.

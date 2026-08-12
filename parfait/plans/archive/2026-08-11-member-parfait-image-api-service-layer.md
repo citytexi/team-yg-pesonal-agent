@@ -4,7 +4,7 @@
 
 **Goal:** 서버 member 2 + parfait-image 2 엔드포인트를 TJYG-Android `:data`의 Retrofit Service와 remote DataSource로 배선하고 대응 domain VO를 만든다. 같은 라운드에서 매퍼 단독 테스트 2건을 케이스 이관 후 삭제해 새 테스트 규약을 브랜치에 안착시킨다.
 
-**Architecture:** `Service`(Retrofit·wire DTO) → `RemoteDataSource`(`ApiCaller` + mapper) → `domain VO`. 앞선 라운드들([2026-08-03-data-api-service-layer](../specs/archive/2026-08-03-data-api-service-layer.md)·[2026-08-10-image-api-service-layer](../specs/2026-08-10-image-api-service-layer.md))이 세운 관용구의 증분이다. 관용구가 답하지 않는 지점은 하나 — 배치 요청 필드 3개가 서로 얽혀 있어(`borderType=SOLID`면 색·두께 필수) domain 쪽만 sealed로 묶는다.
+**Architecture:** `Service`(Retrofit·wire DTO) → `RemoteDataSource`(`ApiCaller` + mapper) → `domain VO`. 앞선 라운드들([2026-08-03-data-api-service-layer](../../specs/archive/2026-08-03-data-api-service-layer.md)·[2026-08-10-image-api-service-layer](../../specs/archive/2026-08-10-image-api-service-layer.md))이 세운 관용구의 증분이다. 관용구가 답하지 않는 지점은 하나 — 배치 요청 필드 3개가 서로 얽혀 있어(`borderType=SOLID`면 색·두께 필수) domain 쪽만 sealed로 묶는다.
 
 **Tech Stack:** Kotlin 2.4.0 · Retrofit2 3.0.0 · kotlinx-serialization 1.11.0 · Hilt · MockK 1.14.11 · kotlinx-coroutines-test · kotlin.test
 
@@ -12,9 +12,23 @@
 
 **브랜치:** `feature/sync-backend-api-260810`(PR #229) **위에** 새 브랜치를 판다. 배치 요청이 그 PR의 `ImageId`를 받고 `ServiceModule`·`RemoteDataSourceModule`·`http/` 파일이 겹치기 때문이다.
 
-**스펙:** [specs/2026-08-11-member-parfait-image-api-service-layer.md](../specs/2026-08-11-member-parfait-image-api-service-layer.md)
+**스펙:** [specs/2026-08-11-member-parfait-image-api-service-layer.md](../../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md)
 
-**계약 정본:** [api/member.md](../api/member.md) · [api/parfait-image.md](../api/parfait-image.md) (서버 기준선 `2c5499a`)
+**계약 정본:** [api/member.md](../../api/member.md) · [api/parfait-image.md](../../api/parfait-image.md) (서버 기준선 `2c5499a`)
+
+> **완료 — PR #230 `develop` 머지(2026-08-12).** Task 1~5 전량 반영. 계획이 "PR #229 위에 판다"고 적은
+> 대로 브랜치가 쌓였고, 결말은 **#229가 따로 머지되지 않고 두 라운드가 `feature/sync-backend-api-260810`
+> 하나로 나간 것**이다. 머지본 재대조에서 **계획과 갈린 곳 0건** — Service 4·DTO 6·domain 11·DataSource
+> 2쌍·DI 4줄·`http/` 2파일이 File Structure 표 그대로이고, 최종 검증의
+> `find … -name "*MapperTest.kt"` 기대(출력 없음)도 develop에서 성립한다.
+> **산출물 계약의 정본은 스펙**이다 — [specs/archive](../../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md).
+> 계획 본문 체크박스는 실행 기록을 이 블록에 모으는 관례대로 미체크로 둔다.
+>
+> **Task 5의 `http/README.md` 정정 ①이 develop 안에서 자기모순을 만들었다** — README는 이제 판별자 키를
+> `isNewUser`로 적는데, **같은 디렉토리의 `http/auth.http` 주석은 여전히 `newUser`가 맞다고 가르치고**
+> 응답 핸들러도 `response.body.data.newUser`를 읽는다. 앱 `KakaoLoginResponse`의 `@SerialName("newUser")`도
+> 그대로다(계획 범위 밖이라 정상이지만, 이제 셋 중 하나만 고쳐진 상태다)
+> → [open-questions](../../synthesis/open-questions.md).
 
 ## Global Constraints
 
@@ -22,7 +36,7 @@
 - **ktlint**: `max_line_length = 120`, `ktlint_code_style = android_studio`. 각 Task의 마지막 검증에 `./gradlew ktlintCheck`가 포함된다.
 - **테스트 함수명에 백틱을 쓰지 않는다.** 형식은 `메서드명_조건_기대결과()`. 저장소 관용구다(`PolicyRemoteDataSourceImplTest`·`ImageRemoteDataSourceImplTest`).
 - **Given/When/Then 주석은 한국어**로 단다(같은 관용구).
-- **매퍼 단독 테스트 파일을 만들지 않는다.** 판단이 든 변환은 그 매퍼를 통과시키는 DataSource 테스트의 케이스로 잠근다 — [unit-test-infrastructure](../specs/archive/2026-08-06-unit-test-infrastructure.md) "테스트 규약" 11(2026-08-11 개정)·[architecture/data-layer](../architecture/data-layer.md) "응답 매핑".
+- **매퍼 단독 테스트 파일을 만들지 않는다.** 판단이 든 변환은 그 매퍼를 통과시키는 DataSource 테스트의 케이스로 잠근다 — [unit-test-infrastructure](../../specs/archive/2026-08-06-unit-test-infrastructure.md) "테스트 규약" 11(2026-08-11 개정)·[architecture/data-layer](../../architecture/data-layer.md) "응답 매핑".
 - **DTO에 value class·enum·sealed를 넣지 않는다.** wire 형태는 raw 타입(`Long`·`String`·`Double`·`Int`)만 쓰고, 감싸고 벗기는 일은 mapper가 한다.
 - **`@SerialName`을 전 필드에 명시한다.** 이름이 그대로여도 붙이는 것이 기존 관용구다.
 - **`ToppingTransform` 생성은 항상 named argument로 한다.** `Double` 넷이 연속이라 위치 인자로 만들면 순서를 뒤바꿔도 컴파일이 통과한다 — 이 타입을 도입한 이유가 사라진다.

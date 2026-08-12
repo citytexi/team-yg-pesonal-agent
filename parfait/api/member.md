@@ -4,7 +4,7 @@ title: 회원(내 계정 조회·전역 닉네임 변경)
 server_module: http/member
 server_commit: 2c5499a
 verified: 2026-08-11
-android_status: none
+android_status: partial
 related_spec:
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, member]
@@ -27,8 +27,8 @@ tags: [api, parfait, server-contract, member]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/v1/users/me` | 필요 | 없음 | `MyAccountResponse` | 미구현 |
-| PATCH | `/api/v1/users/me/nickname` | 필요 | `ChangeGlobalNicknameRequest` | `ChangeGlobalNicknameResponse` | 미구현 |
+| GET | `/api/v1/users/me` | 필요 | 없음 | `MyAccountResponse` | 구현됨 |
+| PATCH | `/api/v1/users/me/nickname` | 필요 | `ChangeGlobalNicknameRequest` | `ChangeGlobalNicknameResponse` | 구현됨 |
 
 둘 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. memberId는 요청이 아니라
 토큰에서 나온다(`Authentication.memberId(): Long = name.toLong()`) — 남의 계정을 지정할 경로가 없다.
@@ -124,11 +124,31 @@ tags: [api, parfait, server-contract, member]
 
 ## Android 매핑
 
-**없음.** develop과 origin의 진행 중 브랜치 전수(2026-08-11 기준)에 `MemberService`·`MyAccount`·
-`ChangeGlobalNickname`류 심볼이 0건이다. TJYG-Android 루트의 `http/` 요청 모음에도 `users` 요청 파일이 없다.
+**표면 있음, 소비처 0**(2026-08-12, PR #230 develop 머지).
 
-앱에는 이미 전역 닉네임을 다루는 화면(S-002)이 있으나 **저장 경로 없이 화면 로컬 상태에만 산다**
-→ [open-questions](../synthesis/open-questions.md). 이 API가 그 저장 경로다.
+| 계약 | Android 심볼 |
+|---|---|
+| `GET /api/v1/users/me` | `MemberService.getUsersMe` → `MemberRemoteDataSource.getMyAccount()` |
+| `PATCH /api/v1/users/me/nickname` | `MemberService.patchUsersMeNickname` → `MemberRemoteDataSource.changeGlobalNickname(nickname)` |
+
+wire DTO는 `service/model/{request,response}/member/`, 변환은 `source/member/mapper/VOMapper.kt`,
+domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider`)다. 설계 근거는
+[specs/archive/2026-08-11-member-parfait-image-api-service-layer](../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md).
+
+세 가지가 이 도메인 특유의 결정이다.
+
+- **`GlobalNickname`을 `GroupNickname`과 합치지 않았다.** 서버 유효성 규칙은 문자 그대로 같지만
+  저장 위치와 에러 코드(`INVALID_NICKNAME` vs `INVALID_GROUP_NICKNAME`)가 다르고, 합치면 전역 닉네임을
+  그룹 API에 넘기는 실수가 컴파일을 통과한다.
+- **`LoginProvider`에 `UNKNOWN` 폴백을 뒀다.** 매퍼가 `enumValueOf`가 아니라 `when` 분기라, 영속
+  `GOOGLE`이 core enum에 들어오더라도 앱이 크래시하지 않는다(그 회원 조회가 서버에서 500이 나는 것은
+  별개 문제다 → 아래 "미결").
+- **닉네임 변경 반환은 `Result<GlobalNickname>`이고 VO가 없다** — 응답 필드가 하나뿐이라 감쌀 것이 없다.
+
+**소비처는 0건이다.** S-002(계정 정보)가 전역 닉네임을 다루지만 여전히 **화면 로컬 상태에만 산다** —
+이 API가 그 저장 경로인데 아직 연결되지 않았다 → [open-questions](../synthesis/open-questions.md).
+
+`http/users.http`가 두 요청을 덮는다(선행은 `auth.http`만).
 
 ## 미결
 

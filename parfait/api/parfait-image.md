@@ -4,7 +4,7 @@ title: 토핑 배치(배치 확정·위치/크기/각도 수정)
 server_module: http/parfaitimage
 server_commit: 2c5499a
 verified: 2026-08-11
-android_status: none
+android_status: partial
 related_spec:
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, parfait-image]
@@ -26,8 +26,8 @@ tags: [api, parfait, server-contract, parfait-image]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| POST | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images` | 필요 | `PlaceParfaitImageRequest` | `PlaceParfaitImageResponse` | 미구현 |
-| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}` | 필요 | `UpdateParfaitImageRequest` | `UpdateParfaitImageResponse` | 미구현 |
+| POST | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images` | 필요 | `PlaceParfaitImageRequest` | `PlaceParfaitImageResponse` | 구현됨 |
+| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}` | 필요 | `UpdateParfaitImageRequest` | `UpdateParfaitImageResponse` | 구현됨 |
 
 둘 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. `groupId`·`parfaitId`는
 경로 변수이고 memberId는 토큰에서 나온다.
@@ -184,10 +184,38 @@ tags: [api, parfait, server-contract, parfait-image]
 
 ## Android 매핑
 
-**없음.** develop과 origin의 진행 중 브랜치 전수(2026-08-11 기준)에 `ParfaitImageService`·
-`PlaceParfaitImage`류 심볼이 0건이다. TJYG-Android 루트의 `http/` 요청 모음에도 대응 요청 파일이 없다.
+**표면 있음, 소비처 0**(2026-08-12, PR #230 develop 머지).
 
-앱의 캔버스 토핑 배치(C-106)는 현재 화면 로컬 상태로만 동작한다 — 이 API가 그 저장 경로다.
+| 계약 | Android 심볼 |
+|---|---|
+| `POST .../parfaits/{parfaitId}/images` | `ParfaitImageService.postGroupsByGroupIdParfaitsByParfaitIdImages` → `ParfaitImageRemoteDataSource.placeTopping(groupId, parfaitId, imageId, transform, border)` |
+| `PATCH .../images/{parfaitImageId}` | `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId` → `ParfaitImageRemoteDataSource.updateTopping(groupId, parfaitId, parfaitImageId, positionX, positionY, positionZ, scale, rotation)` |
+
+**이름이 계층마다 갈린다.** `data`는 서버 언어(`ParfaitImageService`·`PlaceParfaitImageRequest`),
+`domain`은 제품 언어(`PlacedToppingVO`·`ToppingTransform`·`ToppingBorder`·`UpdatedToppingVO`) —
+제품 어디에도 "parfait image"라는 말이 없고 위키·기획은 전부 "토핑"이다. `source/parfaitimage/mapper/VOMapper.kt`가
+그 번역 지점이다. 설계 근거는
+[specs/archive/2026-08-11-member-parfait-image-api-service-layer](../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md).
+
+계약의 얽힌 제약 하나를 타입이 강제한다 — **`borderType = SOLID`면 색·두께가 필수**(아니면 400
+`INVALID_BORDER`)라는 규칙을 `sealed interface ToppingBorder { None | Solid(color, width) }`로 모델링해
+그 실패를 표현 불가능한 상태로 만들었다. 매퍼가 평면 3필드(`borderType`·`borderColor`·`borderWidth`)로 편다.
+`ToppingTransform`도 `Double` 넷이 연속이라 순서 뒤바뀜을 막으려고 묶었다. **wire DTO는 계약 문서와 눈으로
+대조돼야 해서 평면을 유지**한다.
+
+**POST와 PATCH의 비대칭은 서버 계약의 비대칭이다** — POST는 `ToppingTransform` 통째를 받고 PATCH는
+nullable 5파라미터다. PATCH 요청 DTO의 5필드가 전부 `= null` 기본값인데 `@RemoteJson`이
+`encodeDefaults = true`라 **안 바꾸는 필드도 `"positionX": null`로 실려 나간다.** 서버 `ParfaitImage.update`가
+`?:` 병합이라 키 부재와 동치이므로 동작은 정확하다.
+
+**응답 VO에 테두리 필드가 없다** — 서버가 저장만 하고 두 응답 어디에도 돌려주지 않아서다(아래 "미결").
+앱은 자기가 보낸 값을 기억해야 하고, 그 사실이 VO 모양에 드러나 있다.
+
+**소비처는 0건이다.** 캔버스 토핑 배치(C-106)는 여전히 화면 로컬 상태로만 동작하고, **배치 목록 조회 API가
+서버에 없어** 결선해도 캔버스를 다시 그릴 수 없다 → 아래 "미결"·[open-questions](../synthesis/open-questions.md).
+
+`http/parfait-image.http`가 두 요청을 덮는다 — **선행이 셋**(`auth.http` → `parfait-group.http` → `images.http`
+발급·PUT·confirm)이고 `parfaitId`는 조회 API가 없어 리터럴을 손으로 바꿔야 한다.
 
 ## 미결
 

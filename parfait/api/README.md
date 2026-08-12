@@ -27,18 +27,19 @@
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨 |
 | [parfait.md](parfait.md) | `http/parfait` | 1 (그룹 캘린더 연도 리스트) | 구현됨 |
-| [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 미구현 |
-| [member.md](member.md) | `http/member` | 2 (내 계정 조회 · 전역 닉네임 변경) | 미구현 |
-| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 2 (토핑 배치 확정 · 위치/크기/각도 수정) | 미구현 |
+| [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
+| [member.md](member.md) | `http/member` | 2 (내 계정 조회 · 전역 닉네임 변경) | 구현됨 |
+| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 2 (토핑 배치 확정 · 위치/크기/각도 수정) | 구현됨 |
 
-**총 21 엔드포인트**(2026-08-11, 서버 `2c5499a`). Android 표면은 14에 멈춰 있다.
+**총 21 엔드포인트**(2026-08-11, 서버 `2c5499a`). **Android 표면은 20/20이다**(2026-08-12, PR #230 develop
+머지 — 분모에서 애플 로그인 1을 뺀 값이 20이고 그 전량을 덮는다). 서버가 앞서던 7칸 공백이 이 라운드로 0이 됐다.
 
 > **`구현됨`은 `:data`에 Service·DataSource 표면이 있고 계약과 일치한다는 뜻**이다(2026-08-06, PR #197
 > develop 머지). 이 표면을 소비하는 Repository·UseCase·화면은 아직 0건이고 실서버 요청도 0건이라
 > 각 문서 `android_status`는 `partial`이다 → [open-questions](../synthesis/open-questions.md).
 >
-> `image.md`(2026-08-10 신설) · `member.md`·`parfait-image.md`(2026-08-11 신설)는 **Android 대응 심볼이
-> 0건**이라 `android_status: none`이다.
+> `image.md`(2026-08-10 신설) · `member.md`·`parfait-image.md`(2026-08-11 신설)도 **2026-08-12 PR #230
+> 머지로 표면을 얻어** `android_status: partial`이 됐다 — 앞의 넷과 같은 뜻이다(표면은 있고 소비처는 없다).
 >
 > ⚠️ **카카오 로그인은 심볼이 있는데 계약과 어긋난다** — 응답 판별자 키가 `isNewUser`인데 Android가
 > `@SerialName("newUser")`를 붙였다([auth.md](auth.md) "판별자 키",
@@ -73,15 +74,18 @@
 ## 계약을 실제로 확인하는 법
 
 TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다 — develop 머지본
-(PR #197) 기준 `auth.http`·`policy.http`·`parfait-group.http`·`parfait.http`·`health.http`·`_reset.http` +
-`http-client.env.json` + 사용법 `README.md`다(`policy.http`가 PR #197로 추가되며 당시 **14 엔드포인트 전량이
-요청 파일로 덮였다** — 회원가입이 쓰는 `termsId` 출처가 그 요청이다). 여기 문서에 적힌 계약을 서버에
-직접 쏴서 확인할 수 있다.
+(PR #230) 기준 `auth.http`·`policy.http`·`parfait-group.http`·`parfait.http`·`images.http`·`users.http`·
+`parfait-image.http`·`health.http`·`_reset.http` + `http-client.env.json` + 사용법 `README.md`다. 여기
+문서에 적힌 계약을 서버에 직접 쏴서 확인할 수 있다.
 
-> ⚠️ **전량 커버는 2026-08-10 서버 delta로 깨졌고 2026-08-11 delta로 더 벌어졌다.** develop 기준
-> **21 중 14만 덮인다** — image 2건(미머지 브랜치에 `images.http`가 있다) + 애플 로그인 1건 +
-> member 2건 + parfait-image 2건이 요청 파일 없이 남아 있다
-> → [open-questions](../synthesis/open-questions.md).
+> **전량 커버가 회복됐다(2026-08-12, PR #230).** 2026-08-10·08-11 서버 delta로 벌어졌던 7칸 중
+> 애플 로그인 1건은 **Android 미사용 결정**이라 대상이 아니고, 나머지 6건(image 2·member 2·
+> parfait-image 2)이 요청 파일을 얻었다 — **20/20**. 다만 메운 방식은 여전히 **사람 손**이라
+> [2026-08-04] "갱신 경로가 둘" 구조 문제는 그대로다 → [open-questions](../synthesis/open-questions.md).
+>
+> ⚠️ **`http/README.md`와 `http/auth.http`가 서로 어긋난다(2026-08-12).** 같은 PR이 README의 판별자 키를
+> `newUser`→`isNewUser`로 정정했는데 `auth.http` 주석·응답 핸들러는 `newUser`를 그대로 쓴다. 앱 DTO도
+> 안 고쳐졌다 → [open-questions](../synthesis/open-questions.md), 아래 [conventions.md](conventions.md) "Android 불일치".
 
 - 로그인 응답에서 토큰을 자동 추출해 다음 요청이 그대로 쓴다 — 스웨거에서 복붙할 필요가 없다
 - 각 요청 주석에 이 문서들의 함정을 옮겨 뒀다(`reissue`에 `Authorization`을 붙이면 재발급이 막히는 건은

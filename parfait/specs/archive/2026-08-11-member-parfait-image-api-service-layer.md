@@ -4,7 +4,7 @@ title: ":data member·parfait-image API Service·remote DataSource 레이어 (4 
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-11
+verified: 2026-08-12
 related_code: MemberService, ParfaitImageService, MemberRemoteDataSource, ParfaitImageRemoteDataSource, ApiCaller, ServiceModule, RemoteDataSourceModule, ImageService, PolicyRemoteDataSourceImpl, GroupNickname
 related_adr: ADR-0017
 related_spec: 2026-08-10-image-api-service-layer, 2026-08-03-data-api-service-layer, 2026-08-06-unit-test-infrastructure
@@ -16,11 +16,28 @@ tags: [spec, parfait, data, network, api, member, parfait-image]
 
 # :data member·parfait-image API Service·remote DataSource 레이어
 
-서버 delta `2c5499a`가 들여온 두 도메인 4 엔드포인트([api/member.md](../api/member.md)·
-[api/parfait-image.md](../api/parfait-image.md))를 `:data`의 Retrofit Service와 remote DataSource로
+서버 delta `2c5499a`가 들여온 두 도메인 4 엔드포인트([api/member.md](../../api/member.md)·
+[api/parfait-image.md](../../api/parfait-image.md))를 `:data`의 Retrofit Service와 remote DataSource로
 구현하고 대응 domain VO를 만든다.
 
-> 🔁 **2026-08-11 구현 완료(미머지·미푸시)** — SDD 5 Task, 브랜치 `feature/member-parfait-image-api-260811`,
+> ✅ **develop 머지 완료(PR #230, 2026-08-12)** — 아래 ⚠️가 예고한 대로 **앞 라운드(PR #229)와 한 PR로 합쳐졌다.**
+> 최종 머지 브랜치는 `feature/sync-backend-api-260810`이고, image 2 + member 2 + parfait-image 2가 함께 develop에 들어갔다.
+> 머지본 재대조에서 **설계와 갈린 곳 0건** — Service 함수명 4건(`patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId` 포함)·
+> DTO 6건 전 프로퍼티 `@SerialName`·domain 타입 11건·DataSource 시그니처(POST는 `ToppingTransform` 통째, PATCH는 nullable 5)·
+> DI 4줄이 본문 그대로다. `*VOMapperTest` 0건도 `find` 기대대로다.
+>
+> **as-built 확정 2건**(본문이 위치를 안 적었던 자리):
+> ① `ToppingPlacerVO`는 자기 파일이 아니라 `domain/model/topping/PlacedToppingVO.kt`에 함께 산다
+> (`PlacedByResponse`가 `PlaceParfaitImageResponse.kt`에 있는 것과 같은 형태 — 본문 배치 표는 그쪽만 병기했다).
+> ② 요청 방향 변환(`ToppingTransform.toPlaceRequest`)도 응답 매퍼와 같은 `source/parfaitimage/mapper/VOMapper.kt`에 있다.
+> sealed → 평면 3필드를 펴는 곳이 여기다.
+>
+> **본문 결정 ③의 기술이 코드에서 정밀해졌다.** 본문은 `null`이 실려 나가는 원인을 `explicitNulls`로 적었는데,
+> `UpdateParfaitImageRequest` KDoc은 **실제 결정 인자가 `encodeDefaults = true`**임을 짚는다 — 5필드가 전부
+> `= null` 기본값이라 `encodeDefaults = false`였다면 `explicitNulls`와 무관하게 통째로 생략됐을 것이다.
+> 결론(키 부재와 명시적 null이 서버에 동치)은 같고 근거만 정확해졌다.
+>
+> 🔁 **2026-08-11 구현 완료(당시 미머지·미푸시)** — SDD 5 Task, 브랜치 `feature/member-parfait-image-api-260811`,
 > 커밋 7개(`40e8e5a6`~`24dd7c11`). **설계에서 뒤집힌 결정 0건** — 본문이 그대로 as-built다.
 > Task 리뷰 5회 중 fix 라운드는 1회뿐(Task 5, README 파일 목록이 두 곳인데 한쪽만 갱신됨).
 > 유닛 테스트 신규 25건(member 10 + parfait-image 15) + 이관 6건, `test`·`ktlintCheck`·`:app:assembleDebug` 통과.
@@ -46,7 +63,7 @@ tags: [spec, parfait, data, network, api, member, parfait-image]
 > 미해결 `{{parfait_image_id}}`를 설정 누락으로 오해하지 않게 하는 것이다.
 
 **앞선 라운드들이 세운 관용구의 증분이다.** 계층·이름 규칙·타입 경계의 정본은
-[2026-08-03-data-api-service-layer](archive/2026-08-03-data-api-service-layer.md)이고,
+[2026-08-03-data-api-service-layer](2026-08-03-data-api-service-layer.md)이고,
 [2026-08-10-image-api-service-layer](2026-08-10-image-api-service-layer.md)가 그 관용구를 한 번 더
 적용했다. 이 스펙은 **규칙이 답하지 않는 지점만** 새로 결정한다 — 그 지점이 이번엔 하나 크다
 (`parfait-image`의 요청 필드 3개가 서로 얽혀 있다).
@@ -57,6 +74,9 @@ tags: [spec, parfait, data, network, api, member, parfait-image]
 
 > ⚠️ **PR #229는 아직 리뷰 중이다.** 이 브랜치는 그 위에 쌓이므로 #229가 리뷰에서 바뀌면 이쪽도
 > 따라온다. develop이 #229보다 18커밋 앞서 있어 **#229의 rebase가 선행**한다.
+>
+> 📌 **결말: 두 브랜치가 합쳐져 PR #230 하나로 머지됐다(2026-08-12).** #229는 별도로 머지되지 않았고
+> 이 라운드의 커밋이 그 위에 얹힌 채 `feature/sync-backend-api-260810`으로 함께 나갔다.
 
 ## 범위
 
@@ -69,7 +89,7 @@ tags: [spec, parfait, data, network, api, member, parfait-image]
 
 **애플 로그인(`POST /api/v1/auth/apple`)은 범위 밖이고 앞으로도 아니다.** Android에서 이 로그인을
 쓰지 않기로 결정했다(2026-08-11). 서버 delta가 함께 들여온 엔드포인트지만 앱 대응 심볼을 만들지
-않으며, [api/README.md](../api/README.md) 도메인 표와 `open-questions` OQ-P-117 ②를 이 결정으로 닫는다.
+않으며, [api/README.md](../../api/README.md) 도메인 표와 `open-questions` OQ-P-117 ②를 이 결정으로 닫는다.
 `http/auth.http`에도 애플 요청을 넣지 않는다.
 
 ## 계층과 배치
@@ -141,7 +161,7 @@ suspend fun changeGlobalNickname(nickname: GlobalNickname): Result<GlobalNicknam
 
 **`LoginProvider`에 `UNKNOWN`을 둔다.** `PolicyType`·`ImageStatus` 선례와 같다. 서버 영속 계층에는
 `GOOGLE`이 있는데 core enum에는 없어 그 회원 조회가 500이 나는 상태다
-([api/member.md](../api/member.md), open-questions OQ-P-121) — 앱이 `enumValueOf`를 쓰면 서버가
+([api/member.md](../../api/member.md), open-questions OQ-P-121) — 앱이 `enumValueOf`를 쓰면 서버가
 provider를 하나 늘리는 순간 크래시한다.
 
 **닉네임 변경 반환은 `Result<GlobalNickname>`이고 VO를 만들지 않는다.** 응답이 필드 하나뿐이라
@@ -167,7 +187,7 @@ data class PlaceParfaitImageRequest(
 ```
 
 sealed 타입은 **domain 쪽에만** 산다. DTO는 서버 JSON의 거울이라 계약 문서와 눈으로 대조돼야 한다.
-전 프로퍼티 `@SerialName` 명시는 기존 규약 그대로다([architecture/data-layer](../architecture/data-layer.md)).
+전 프로퍼티 `@SerialName` 명시는 기존 규약 그대로다([architecture/data-layer](../../architecture/data-layer.md)).
 
 ### domain
 
@@ -235,7 +255,7 @@ suspend fun updateTopping(
 관용구가 답하지 않는다.**
 
 전부를 `PlaceToppingCommand` 하나로 감싸는 안은 기각했다 — data 전용 중간 모델을 만드는 셈이라
-[architecture/data-layer](../architecture/data-layer.md)가 명시적으로 기각한 `model.dto` 복제본에
+[architecture/data-layer](../../architecture/data-layer.md)가 명시적으로 기각한 `model.dto` 복제본에
 가깝다.
 
 `Solid.color`는 **raw `String`이고 앱이 형식을 규정하지 않는다.** 서버 계약이 타입만 정하고 형식을
@@ -266,14 +286,14 @@ image"라는 말이 없다** — 위키 개념도 화면 기획도 전부 "토�
 member 절에서 두 닉네임 타입을 안 합친 결정이 여기서 값을 한다.
 
 **⑤ 응답 VO에 테두리 필드를 두지 않는다.** 서버가 저장은 하는데 `PlaceParfaitImageResponse`·
-`UpdateParfaitImageResponse` 어디에도 돌려주지 않는다([api/parfait-image.md](../api/parfait-image.md),
+`UpdateParfaitImageResponse` 어디에도 돌려주지 않는다([api/parfait-image.md](../../api/parfait-image.md),
 open-questions OQ-P-119 ③). 없는 것을 지어내지 않는다 — 앱은 자기가 보낸 값을 기억해야 하고,
 그 사실이 VO 모양에 드러나야 다음 라운드가 착각하지 않는다.
 
 ## 계약 함정
 
-구현자가 서버를 다시 훑지 않아도 되도록 옮겨 적는다. 근거는 [api/member.md](../api/member.md)·
-[api/parfait-image.md](../api/parfait-image.md).
+구현자가 서버를 다시 훑지 않아도 되도록 옮겨 적는다. 근거는 [api/member.md](../../api/member.md)·
+[api/parfait-image.md](../../api/parfait-image.md).
 
 1. **`GET /users/me`가 `MEMBER_NOT_FOUND`를 401과 404 둘 다로 낸다.** 앞의 것은 전역 `JwtAuthFilter`,
    뒤의 것은 `MemberService`다. `code` 문자열만으로 분기하면 두 상황이 뭉개진다. 이번 범위에서는
@@ -296,7 +316,7 @@ open-questions OQ-P-119 ③). 없는 것을 지어내지 않는다 — 앱은 �
 
 ## 테스트
 
-**매퍼 단독 테스트를 만들지 않는다**([unit-test-infrastructure](archive/2026-08-06-unit-test-infrastructure.md)
+**매퍼 단독 테스트를 만들지 않는다**([unit-test-infrastructure](2026-08-06-unit-test-infrastructure.md)
 "테스트 규약" 11, 2026-08-11 개정). 판단이 든 변환은 그 매퍼를 통과시키는 DataSource 테스트의
 케이스로 잠근다.
 
@@ -343,9 +363,11 @@ open-questions OQ-P-119 ③). 없는 것을 지어내지 않는다 — 앱은 �
   Android가 쓰기로 한 엔드포인트를 전량 덮는다**(서버 21 − 애플 1 = 20; develop 14 + PR #229의
   image 2 + 이번 4). 즉 **"덮을 게 남아서 소비를 미룬다"는 말이 이번 라운드로 끝난다** — 다음
   라운드부터는 표면을 더 만들 것이 없고 소비처를 붙이는 일만 남는다
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../../synthesis/open-questions.md)
+  > 📌 **2026-08-12 확정** — PR #230 머지로 develop 표면이 **20/20**이 됐다(Service 7·remote DataSource 7쌍).
+  > 소비처는 여전히 **0건**이다. 표면 공백이라는 사유가 사라졌으므로 다음 라운드의 대상은 소비처다.
 - 배치 목록 조회·삭제 API 부재로 `parfait-image`는 Repository까지 갈 수 없다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-119
+  → [open-questions](../../synthesis/open-questions.md) OQ-P-119
 - 팀 명세 원문(`parfait-image` PATCH·POST)이 `parfait/api/spec/`에 없다. C-305 자동 보정 같은
   **코드에서 못 읽는 클라이언트 책임**이 거기 있으므로 별도 라운드에서 수집한다
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../../synthesis/open-questions.md)
