@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-11
-related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer
+verified: 2026-08-12
+related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -19,7 +19,7 @@ tags: [architecture, parfait]
 
 ## 레이어 배치
 - **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`InviteCodeResult`, `GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`) + 도메인 예외(sealed `SegmentationException`).
-  - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드(PR #197)가 추가한 VO·value class만 `auth/`·`group/`·`id/`·`policy/`로 들어갔고, 그 이전 선언 8개는 루트에 남았다. 어디에 새 모델을 둘지 규약이 서지 않은 상태 → [open-questions](../synthesis/open-questions.md).
+  - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드가 추가한 VO·value class만 하위 패키지로 들어갔고(PR #197의 `auth/`·`group/`·`id/`·`policy/`에 PR #230이 `image/`·`member/`·`topping/`을 더했다), 그 이전 선언 8개는 루트에 남았다. 하위 패키지가 넷에서 일곱이 되며 **비율은 더 기울었는데 규약은 여전히 없다** — 어디에 새 모델을 둘지 매번 판단해야 하는 상태 → [open-questions](../synthesis/open-questions.md).
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
 ## DataSource 종류
@@ -69,13 +69,16 @@ tags: [architecture, parfait]
 5. 반응형이면 `Flow`로 반환.
 
 ## 네트워킹
-> **develop 반영 범위(2026-08-06 기준)** — 기초 구조(PR #174) + 서버 계약 정합·토큰 저장
-> (`network-envelope-token-storage`, PR #190) + **API 표면 전량**(`data-api-service-layer`,
-> **PR #197 머지 완료**)까지 들어와 있다
+> **develop 반영 범위(2026-08-12 기준)** — 기초 구조(PR #174) + 서버 계약 정합·토큰 저장
+> (`network-envelope-token-storage`, PR #190) + API 표면 14(`data-api-service-layer`, PR #197) +
+> **image·member·parfait-image 6**(`image-api-service-layer`·`member-parfait-image-api-service-layer`,
+> **PR #230 머지 완료**)까지 들어와 있다
 > ([[0017-remote-network-datasource]]·[[0019-encrypted-token-storage]]).
-> 아래 서술은 전부 develop 코드 기준이다 — `ApiCaller` 진입점 넷, Service 4개
-> (`AuthService`·`PolicyService`·`ParfaitGroupService`·`ParfaitService`, 14 엔드포인트),
-> remote DataSource 4쌍, `Temp*` 예시 세트 삭제.
+> 아래 서술은 전부 develop 코드 기준이다 — `ApiCaller` 진입점 넷, **Service 7개**
+> (`AuthService`·`PolicyService`·`ParfaitGroupService`·`ParfaitService`·`ImageService`·`MemberService`·
+> `ParfaitImageService`, **20 엔드포인트**), **remote DataSource 7쌍**, `Temp*` 예시 세트 삭제.
+> 이로써 **Android가 쓰기로 한 서버 엔드포인트 전량을 덮는다**(서버 21 − 애플 로그인 1) →
+> [api/README.md](../api/README.md).
 > **다만 이 표면을 소비하는 Repository·UseCase·화면은 아직 0건**이고 실서버 요청도 0건이다
 > → [open-questions](../synthesis/open-questions.md).
 
@@ -177,6 +180,16 @@ tags: [architecture, parfait]
   검증한다. 판단이 든 변환(문자열→enum 매핑과 미지 값 폴백, nullable 처리, 기본값, 단위 변환, 같은
   타입 필드의 배선)은 **DataSource 테스트의 케이스로** 잠근다. 규약 본문과 개정 경위는
   [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "테스트 규약" 11번.
+  develop의 `data` 유닛 테스트는 `XxxRemoteDataSourceImplTest` 4건 + `ApiCallerTest`·`AuthInterceptorTest`이고
+  **`*VOMapperTest`는 0건**이다(PR #230이 `PolicyVOMapperTest`·`ImageVOMapperTest`를 케이스 이관 후 삭제).
+- **요청 방향 변환도 같은 `VOMapper.kt`에 둔다.** 응답만 매퍼를 거치는 것이 아니다 — domain 타입이
+  wire 형태보다 좁을 때 펴는 일도 매퍼가 한다. 선례는 `source.parfaitimage.mapper`의
+  `ToppingTransform.toPlaceRequest(imageId, border)`로, sealed `ToppingBorder`(`None`/`Solid(color, width)`)를
+  서버가 받는 평면 3필드(`borderType`·`borderColor`·`borderWidth`)로 편다. **DTO에는 sealed·value class·enum을
+  넣지 않는다**는 규약이 그대로라(계약 문서와 눈으로 대조돼야 한다) 좁히는 쪽은 domain, 펴는 쪽은 매퍼다.
+  domain을 좁게 잡는 기준은 **필드 사이에 의존이 있을 때**다 — `borderType = SOLID`면 색·두께가 필수라는
+  서버 제약이 sealed로 표현 불가능한 상태가 되고, `ToppingTransform`은 `Double` 넷 연속의 순서 사고를 막는다
+  ([api/parfait-image.md](../api/parfait-image.md)).
 - **예시 1세트**: 참조 예시는 이제 **실제 도메인**이다(placeholder 아님) — `PolicyService` +
   `PolicyResponse`/`PolicyItemResponse`(요청 DTO 없음, 파라미터 없는 GET) + `domain.model.policy.PolicyVO`
   + `source.policy.mapper`(`VOMapper.kt`) + `source.policy.remote`의 `PolicyRemoteDataSource`(+`Impl`,

@@ -4,7 +4,7 @@ title: :data image API Service·remote DataSource 레이어 (2 엔드포인트)
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-10
+verified: 2026-08-12
 related_code: ImageService, ImageRemoteDataSource, ApiCaller, ServiceModule, RemoteDataSourceModule, PolicyService, PolicyRemoteDataSourceImpl, RecentImageLocalDataSource
 related_adr: ADR-0017
 related_spec: 2026-08-03-data-api-service-layer, 2026-08-02-network-envelope-token-storage
@@ -16,16 +16,23 @@ tags: [spec, parfait, data, network, api, image]
 
 # :data image API Service·remote DataSource 레이어
 
-서버 image 도메인 2 엔드포인트([api/image.md](../api/image.md), 기준선 `5bb2a3a`)를 `:data`의
+서버 image 도메인 2 엔드포인트([api/image.md](../../api/image.md), 기준선 `5bb2a3a`)를 `:data`의
 Retrofit Service와 remote DataSource로 구현하고 대응 domain VO를 만든다.
 
 **앞선 라운드가 세운 관용구를 그대로 따르는 증분이다.** 계층·이름 규칙·타입 경계는
-[2026-08-03-data-api-service-layer](archive/2026-08-03-data-api-service-layer.md)가 정본이고,
+[2026-08-03-data-api-service-layer](2026-08-03-data-api-service-layer.md)가 정본이고,
 이 스펙은 그 규칙을 image 도메인에 적용하며 **규칙이 답하지 않는 지점만** 새로 결정한다.
 
 작업 브랜치는 `feature/sync-backend-api-260810`(develop 기준).
 
-> 🔁 **2026-08-10 구현 완료(미머지·미푸시)** — SDD 3 Task, 커밋 4개(`abd4b99a`·`d1ff627d`·`7a2f9488` + fix `f6f76813`).
+> ✅ **develop 머지 완료(PR #230, 2026-08-12)** — 뒤이은 [member·parfait-image 라운드](2026-08-11-member-parfait-image-api-service-layer.md)가
+> 이 브랜치 위에 쌓여 **두 라운드가 한 PR로** 들어갔다. 머지본 재대조에서 **설계와 갈린 곳 0건** —
+> Service 함수명 2건·DTO 3건·domain 타입 5건·DataSource 시그니처·DI 2줄이 본문 그대로다.
+> **본문 중 한 곳만 뒤 라운드가 덮었다**: 아래 [검증](#유닛-테스트-2건)의 `ImageVOMapperTest`는
+> **머지본에 없다** — 매퍼 단독 테스트 금지 규약(2026-08-11 개정)에 따라 케이스가
+> `ImageRemoteDataSourceImplTest`로 이관된 뒤 삭제됐고, 브랜치 안에서 생겼다 사라져 develop에는 흔적이 없다.
+>
+> 🔁 **2026-08-10 구현 완료(당시 미머지·미푸시)** — SDD 3 Task, 커밋 4개(`abd4b99a`·`d1ff627d`·`7a2f9488` + fix `f6f76813`).
 > **설계에서 뒤집힌 결정 0건** — 본문이 그대로 as-built다. Task별 리뷰 3회 전부 fix 라운드 0으로 통과했고,
 > 유닛 테스트 14개(매퍼 6 + DataSource 8)·`ktlintCheck`·`:app:assembleDebug` 통과.
 >
@@ -34,7 +41,7 @@ Retrofit Service와 remote DataSource로 구현하고 대응 domain VO를 만든
 > 가리키고 ② "Content-Type이 **달라야 하면** 거절한다"로 뜻이 뒤집혀, 이 파일이 잡으라고 만들어진 함정으로
 > 사람을 밀어 넣고 있었다. fix 웨이브 1회로 해소(재검수 전부 ADDRESSED).
 >
-> **다음 라운드로 넘긴 발견 4건**은 [open-questions](../synthesis/open-questions.md)에 등록했다.
+> **다음 라운드로 넘긴 발견 4건**은 [open-questions](../../synthesis/open-questions.md)에 등록했다.
 > 가장 큰 것은 **`AuthInterceptor`가 S3 PUT에 Bearer를 붙인다**는 것 — `@NoAuth` 판정이 Retrofit `Invocation`
 > 태그를 읽는 방식이라 raw OkHttp 요청에는 태그가 없어 `skipAuth = false`가 되고, presigned URL에
 > `Authorization`이 실리면 S3가 거절한다. 즉 **업로드 전용 `OkHttpClient` 분리는 성능 선택이 아니라 기능 전제**이고,
@@ -51,7 +58,7 @@ domain VO 2개·enum 2개·value class 1개 · DI 등록 2줄 · 유닛 테스�
 
 S3 PUT을 뺀 이유는 시간이 아니라 **선행 결정이 미결**이라서다. 업로드 요청은 서버 계약이 아니라 AWS
 계약이라 `ApiCaller`·`ApiResponse` envelope가 통하지 않고, 타임아웃·재시도·전용 클라이언트 분리가
-[open-questions](../synthesis/open-questions.md) `[2026-07-30]`에 걸려 있다. 그 항목의 보류 사유였던
+[open-questions](../../synthesis/open-questions.md) `[2026-07-30]`에 걸려 있다. 그 항목의 보류 사유였던
 "업로드 API 미구현"은 이번 서버 delta로 사라졌으므로 **다음 라운드의 첫 작업이 그 결정이다.**
 
 ## 계층과 배치
@@ -94,7 +101,7 @@ domain/model/id/     ImageId
 | `ImageService.postImagesByImageIdConfirm` | POST | `/api/v1/images/{imageId}/confirm` |
 
 **`@NoAuth`를 붙이지 않는다.** 두 엔드포인트 모두 서버 `SecurityConfig.WHITELIST_PATHS` 밖이라 access
-token이 필요하다([api/conventions.md](../api/conventions.md) "인증"). 현재 `@NoAuth`가 붙은 곳은
+token이 필요하다([api/conventions.md](../../api/conventions.md) "인증"). 현재 `@NoAuth`가 붙은 곳은
 화이트리스트 4경로뿐이고 이번에 늘어나지 않는다.
 
 ## 요청·응답 DTO
@@ -197,7 +204,7 @@ KDoc에 "서버가 현재 쓰지 않는다"를 근거(`api/image.md` 미결)와 
 
 ## 계약이 던지는 함정
 
-기계적 매핑으로 풀리지 않는 다섯 지점. 근거는 [api/image.md](../api/image.md)다.
+기계적 매핑으로 풀리지 않는 다섯 지점. 근거는 [api/image.md](../../api/image.md)다.
 
 ### ① `fileName`은 필수인데 서버가 쓰지 않는다
 
@@ -208,7 +215,7 @@ S3 키는 UUID이고 확장자는 `contentType`에서 유도된다. 위 결정�
 
 서버가 발행한 OpenAPI의 `required`는 `fileName`·`contentType`뿐이다. springdoc이 `required`를 Bean
 Validation 애노테이션에서만 유도하기 때문이고, `imageType`은 Kotlin 비널 타입이라 애노테이션이 없다
-([api/conventions.md](../api/conventions.md) "스키마 `required`는 Bean Validation 애노테이션만 반영한다").
+([api/conventions.md](../../api/conventions.md) "스키마 `required`는 Bean Validation 애노테이션만 반영한다").
 
 **결론: `IssueImageUploadUrlRequest`의 `imageType`은 nullable이 아니다.** 스키마를 근거로 삼으면
 반대로 만들게 되는 자리라 명시한다.
@@ -216,13 +223,13 @@ Validation 애노테이션에서만 유도하기 때문이고, `imageType`은 Ko
 ### ③ 리소스를 만드는 POST인데 200이다
 
 발급은 `@ResponseStatus` 없이 `ApiResponse.ok`를 반환해 **200·`code = "OK"`**다. 같은 저장소의
-`signup`은 201·`"CREATED"`다. 성공 판정이 `success` 필드 기반이라([2026-08-02 라운드](archive/2026-08-02-network-envelope-token-storage.md))
+`signup`은 201·`"CREATED"`다. 성공 판정이 `success` 필드 기반이라([2026-08-02 라운드](2026-08-02-network-envelope-token-storage.md))
 **앱에 추가 작업은 없다.** 코드 문자열로 판정했다면 갈릴 자리였다는 사실만 남긴다.
 
 ### ④ confirm은 소유자를 검증하지 않는다
 
 서버 `ConfirmImageUploadController`가 `Authentication`을 받지 않아 **유효한 토큰이면 남의 `imageId`도
-확정된다**. 서버 소관이고 [open-questions](../synthesis/open-questions.md) `[2026-08-10]`에 등록돼 있다.
+확정된다**. 서버 소관이고 [open-questions](../../synthesis/open-questions.md) `[2026-08-10]`에 등록돼 있다.
 **앱은 이번 범위에서 아무 방어도 하지 않는다** — 클라이언트가 막을 수 있는 종류가 아니다.
 
 ### ⑤ 409는 재시도 안전장치가 아니다
@@ -258,6 +265,13 @@ confirm 재시도 시 첫 호출이 이미 성공했다면 `IMAGE_ALREADY_CONFIR
 
 `ImageType`은 `.name` 직행이라 별도 테스트를 만들지 않는다(분기 없음).
 
+> 📌 **as-built(2026-08-12 머지본)** — `ImageVOMapperTest`는 **develop에 없다.** 위 세 케이스는
+> `ImageRemoteDataSourceImplTest`가 흡수했고(status 폴백·대소문자·`expiresIn` 초 해석·두 URL 배선),
+> 파일은 다음 라운드 Task 1이 삭제했다 → [member·parfait-image 스펙](2026-08-11-member-parfait-image-api-service-layer.md) "테스트".
+> develop의 `data` 유닛 테스트는 `ImageRemoteDataSourceImplTest`·`MemberRemoteDataSourceImplTest`·
+> `ParfaitImageRemoteDataSourceImplTest`·`PolicyRemoteDataSourceImplTest`·`ApiCallerTest`·`AuthInterceptorTest`이고
+> **`*VOMapperTest`는 0건**이다.
+
 ### 컴파일·그래프
 
 `:data`·`:domain` 빌드 + Hilt 그래프 해석(`assembleDebug`).
@@ -265,7 +279,7 @@ confirm 재시도 시 첫 호출이 이미 성공했다면 `IMAGE_ALREADY_CONFIR
 ### `http/images.http`
 
 TJYG-Android 루트 `http/`에 요청 파일을 추가한다. 기존 요청 모음이 14 엔드포인트를 덮고 있었는데
-서버가 16이 되며 깨진 상태다([open-questions](../synthesis/open-questions.md) `[2026-08-10]`).
+서버가 16이 되며 깨진 상태다([open-questions](../../synthesis/open-questions.md) `[2026-08-10]`).
 발급·확인 두 요청과, **발급 응답의 `imageId`를 확인 요청이 쓰도록 변수 추출**을 넣는다.
 
 **`http/README.md`도 함께 고친다** — 파일 목록·디렉토리 트리뿐 아니라 **에러 코드 서술 2곳**이 이번
@@ -281,7 +295,7 @@ AWS 계약이라는 사실을 요청 주석에 명시한다.
 ### 여전히 런타임 검증은 안 된다
 
 개발 서버가 평문 HTTP인데 `usesCleartextTraffic`도 `networkSecurityConfig`도 없고 `local.properties`의
-`YG_BASE_URL`이 비어 있다([api/conventions.md](../api/conventions.md)). 앱에서 이 API를 실제로 호출한
+`YG_BASE_URL`이 비어 있다([api/conventions.md](../../api/conventions.md)). 앱에서 이 API를 실제로 호출한
 적은 이번 라운드 이후에도 0건이다. **조용히 틀리는 종류의 결함은 이번에도 발견되지 않는다** —
 `@SerialName` 오타나 `expiresIn` 단위 오해가 그 부류다. 유닛 테스트가 매퍼까지는 잠그지만 wire 형태와
 서버 실응답의 일치는 `http/` 파일로 사람이 대조하는 것이 유일한 그물이다.
@@ -290,12 +304,12 @@ AWS 계약이라는 사실을 요청 주석에 명시한다.
 
 - **`uploadUrl`·`imageUrl`을 value class로 가를지** — 이번엔 raw `String`(선례 일치). 소비자가 0건이라
   섞일 자리가 없기 때문이고, S3 PUT을 붙이면 둘을 실제로 다루는 코드가 생긴다. 그때 재검토
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../../synthesis/open-questions.md)
 - **`RecentImageLocalDataSource`가 다루는 것은 서버 이미지가 아니라 기기 갤러리다** — 이름이 부정확해
   `data/source/image/`에 성격이 다른 둘이 공존한다. 개명·이동은 카메라·갤러리 feature가 소비 중이라
-  범위 밖 → [open-questions](../synthesis/open-questions.md)
+  범위 밖 → [open-questions](../../synthesis/open-questions.md)
 - **`contentType`을 열거형으로 좁힐지** — 서버는 2종만 받는다. 앱의 MIME 조회 경로가 생기는 S3 PUT
   라운드에서 함께 정한다
 - **다음 라운드의 선행 결정** — 업로드 전용 `OkHttpClient` 분리 여부·`callTimeout` 유무·`expiresIn`
-  만료 시 URL 재발급 흐름. [open-questions](../synthesis/open-questions.md) `[2026-07-30]` 항목이
+  만료 시 URL 재발급 흐름. [open-questions](../../synthesis/open-questions.md) `[2026-07-30]` 항목이
   이번 서버 delta로 보류 사유를 잃었다

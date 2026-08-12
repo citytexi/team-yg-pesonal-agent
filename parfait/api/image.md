@@ -4,7 +4,7 @@ title: 이미지(업로드 URL 발급·업로드 확인)
 server_module: http/image
 server_commit: 2c5499a
 verified: 2026-08-11
-android_status: none
+android_status: partial
 related_spec:
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, image]
@@ -26,8 +26,8 @@ S3에 직접 PUT한 뒤 ③ 서버에 업로드 완료를 알린다. 이미지 �
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| POST | `/api/v1/images` | 필요 | `IssueImageUploadUrlRequest` | `IssueImageUploadUrlResponse` | 미구현 |
-| POST | `/api/v1/images/{imageId}/confirm` | 필요 | 없음 | `ConfirmImageUploadResponse` | 미구현 |
+| POST | `/api/v1/images` | 필요 | `IssueImageUploadUrlRequest` | `IssueImageUploadUrlResponse` | 구현됨 |
+| POST | `/api/v1/images/{imageId}/confirm` | 필요 | 없음 | `ConfirmImageUploadResponse` | 구현됨 |
 
 두 엔드포인트 모두 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**.
 
@@ -158,20 +158,37 @@ S3에 직접 PUT한 뒤 ③ 서버에 업로드 완료를 알린다. 이미지 �
 
 ## Android 매핑
 
-**없음.** develop뿐 아니라 **origin의 진행 중 브랜치 전수(2026-08-10 기준)에도 심볼이 0건**이다 —
-`ImageService`·`ImageRemoteDataSource`·`UploadUrl`류 이름이 어느 브랜치에도 없다.
-`data/source/image/local/RecentImageLocalDataSource`와 `data/source/file/local/FileRecentImageLocalDataSource`는
-**기기 갤러리 조회용 로컬 소스**라 이 API와 무관하다.
+**표면 있음, 소비처 0**(2026-08-12, PR #230 develop 머지).
 
-develop의 원격 표면은 여전히 `AuthService`·`ParfaitGroupService`·`ParfaitService`·`PolicyService`
-4개뿐이다(= 14 엔드포인트). 즉 **서버가 앞서 있고 앱이 두 칸 뒤에 있다.**
+| 계약 | Android 심볼 |
+|---|---|
+| `POST /api/v1/images` | `ImageService.postImages` → `ImageRemoteDataSource.issueUploadUrl(fileName, contentType, imageType)` |
+| `POST /api/v1/images/{imageId}/confirm` | `ImageService.postImagesByImageIdConfirm` → `ImageRemoteDataSource.confirmUpload(imageId)` |
 
-TJYG-Android 루트의 `http/` 요청 모음에도 `images` 요청 파일이 없다 — PR #197로 "14 엔드포인트 전량"을
-덮었던 그 모음이 **이번 서버 delta로 2건 부족해졌다** → [open-questions](../synthesis/open-questions.md).
+wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlRequest`·`IssueImageUploadUrlResponse`·
+`ConfirmImageUploadResponse`), 변환은 `source/image/mapper/VOMapper.kt`, domain은
+`domain/model/image/`(`ImageType`·`ImageStatus`·`ImageUploadUrlVO`·`ConfirmedImageVO`)와
+`domain/model/id/ImageId`다. 설계 근거는
+[specs/archive/2026-08-10-image-api-service-layer](../specs/archive/2026-08-10-image-api-service-layer.md).
 
-앱이 이 API를 붙일 때 딸려오는 결정(업로드 전용 타임아웃·`callTimeout`·재시도)은 이미 등록돼 있다
-→ [open-questions](../synthesis/open-questions.md) `[2026-07-30] 사진 업로드 경로의 타임아웃 정책 미정`.
-그 항목이 "업로드 API 미구현"을 이유로 보류 중이었는데 **이제 전제가 사라졌다.**
+계약 대조에서 갈린 곳은 없다 — 함수명 규칙 2/2, `@NoAuth` 미부착(화이트리스트 밖), 전 프로퍼티 `@SerialName`,
+`imageType`이 스키마 `required` 밖인데도 비널, `expiresIn` 초 → `Duration`, `status` 미지값 → `UNKNOWN` 폴백.
+`ImageType`은 앱이 보내는 값이라 폴백을 두지 않았다.
+
+**`data/source/image/local/RecentImageLocalDataSource`와 `data/source/file/local/FileRecentImageLocalDataSource`는
+여전히 이 API와 무관하다** — 기기 갤러리 조회용 로컬 소스다. 같은 폴더에 성격이 다른 둘이 공존하게 됐고,
+`domain` 쪽은 `image`라는 이름이 이미 기기 이미지 뜻으로 선점돼 있다
+→ [open-questions](../synthesis/open-questions.md).
+
+**소비처는 0건이다.** Repository·UseCase·화면이 이 DataSource를 호출하지 않고 실서버 요청도 0건이라
+`android_status`가 `done`이 아니라 `partial`이다. 특히 **S3 PUT을 수행하는 앱 코드가 통째로 없다** —
+발급받은 `uploadUrl`로 바이트를 올리는 경로가 없으므로 confirm까지의 2단계가 실제로 이어진 적이 없다.
+그 라운드의 선행 결정(업로드 전용 `OkHttpClient` 분리·타임아웃·재시도·`expiresIn` 만료 판정)은
+→ [open-questions](../synthesis/open-questions.md) `[2026-07-30]`·`[2026-08-10]`에 걸려 있다. 그중
+**전용 클라이언트 분리는 성능 선택이 아니라 기능 전제**다 — `AuthInterceptor`의 `@NoAuth` 판정이 Retrofit
+`Invocation` 태그를 읽어서, 태그가 없는 raw OkHttp 요청에는 `Authorization`이 붙고 presigned URL을 S3가 거절한다.
+
+`http/images.http`가 두 요청 + S3 PUT을 덮는다(요청 모음 20/20 회복).
 
 ## 미결
 

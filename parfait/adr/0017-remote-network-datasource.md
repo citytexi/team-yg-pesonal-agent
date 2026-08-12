@@ -7,7 +7,7 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr: ADR-0001, ADR-0003, ADR-0004
-related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer
+related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer
 related_architecture: data-layer
 platforms: android
 tags: [adr, parfait, network, data]
@@ -147,6 +147,17 @@ DataSource 배치 관례를 확립한다.
   > `<method><경로 세그먼트 PascalCase>`(경로 변수는 `By<파라미터명>`) 규칙을 따른다 —
   > 전송 계층이 계약을 그대로 비추고 의미 부여는 DataSource가 맡는다. 배치·규칙 전문은
   > [data-api-service-layer 스펙](../specs/archive/2026-08-03-data-api-service-layer.md).
+  >
+  > 📌 **7세트로 늘었다(2026-08-12, PR #230)** — `ImageService`·`MemberService`·`ParfaitImageService` +
+  > 각 remote DataSource·`VOMapper`가 붙어 Android가 쓰는 20 엔드포인트 전량을 덮는다. 같은 규칙이
+  > 그대로 적용됐고(`postImagesByImageIdConfirm`·`patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId`)
+  > **Service 이름은 계약 문서가 이미 짚어 둔 URL 세그먼트 예외를 따랐다** — `MemberService`는 경로가
+  > `users`인데 서버 도메인 이름을 쓰고, `ParfaitImageService`도 경로(그룹 하위 `images`)가 아니라
+  > 도메인 이름을 쓴다. 최상위 `/api/v1/images`(업로드)와 그룹 하위 `.../images`(배치)가 **다른 도메인**이라
+  > 세그먼트만으로는 갈리지 않기 때문이다 → [api/conventions.md](../api/conventions.md) "URL 규약".
+  > 이 라운드가 더한 규칙 하나: **요청 방향 변환도 같은 `VOMapper.kt`에 둔다**(`ToppingTransform.toPlaceRequest` —
+  > domain sealed를 서버가 받는 평면 필드로 편다). 전문은
+  > [member·parfait-image 스펙](../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md).
 - **응답 → 도메인 매핑 위치**: 원격 DataSource의 **반환 타입은 도메인 모델**이다
   (`TempRemoteDataSource.getTemp(id): Result<TempVO>`). 서버 응답 타입(머지 코드 기준
   `service.model.response`의 `TempResponse` — 요청 타입은 `service.model.request`)은 data 안에서만 살고, `source.<도메인>.mapper`의 확장 함수
@@ -220,10 +231,11 @@ DataSource 배치 관례를 확립한다.
   **as-built: 둘 다 2026-08-04 PR #190으로 develop 머지됐다** — 성공 판정은 `success` 필드로
   (`isSuccess`·`SUCCESS_CODE` 제거), `TokenProvider`는 `TokenStoreTokenProvider`(암호화 저장소 연동,
   [ADR-0019](0019-encrypted-token-storage.md))로 교체됐다. 해당 [open-questions](../synthesis/open-questions.md)
-  항목 3건은 해소 처리했다. 다만 **실서버 요청은 여전히 0건**이다 — 2026-08-06 PR #197로 14 엔드포인트
-  Service·DataSource가 다 들어왔지만 이를 **호출하는 Repository·UseCase·화면이 없고**, 개발 서버 평문
+  항목 3건은 해소 처리했다. 다만 **실서버 요청은 여전히 0건**이다 — 2026-08-06 PR #197로 14 엔드포인트,
+  2026-08-12 PR #230으로 나머지 6(image·member·parfait-image)까지 **Service 7·DataSource 7쌍이 다
+  들어왔지만** 이를 **호출하는 Repository·UseCase·화면이 없고**, 개발 서버 평문
   HTTP 차단·`YG_BASE_URL` 부재로 앱에서 요청을 보낼 수도 없다. 응답 파싱의 실동작은 실연동 라운드까지
-  확인되지 않는다.
+  확인되지 않는다. **표면이 20/20으로 닫힌 지금은 "덮을 게 남아서"라는 사유도 없다.**
 - 도메인 모델 이름이 `TempVO`로 `VO` 접미사를 쓰는데, 기존 `domain.model`은 무접미사
   (`SegmentationResult`·`GalleryImageGroup`·`NameValidResult` 등)다. 접미사 규약이 갈라진 상태 →
   [open-questions](../synthesis/open-questions.md) [2026-07-30]로 추적.

@@ -30,7 +30,7 @@ tags: [api, parfait, server-contract, auth]
 
 [^apple]: **Android는 애플 로그인을 쓰지 않기로 결정했다**(2026-08-11). 서버에는 있으나 앱 대응
 심볼을 만들지 않으며 `http/auth.http`에도 요청을 넣지 않는다 — `미구현`(아직 없음)이 아니라
-닫힌 결정이다. 근거는 [member·parfait-image 서비스 레이어 스펙](../specs/2026-08-11-member-parfait-image-api-service-layer.md)
+닫힌 결정이다. 근거는 [member·parfait-image 서비스 레이어 스펙](../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md)
 "범위". iOS가 붙을 때 이 계약은 그대로 유효하다.
 
 ⚠️ **`logout`만 화이트리스트 밖이라는 비대칭.** `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`
