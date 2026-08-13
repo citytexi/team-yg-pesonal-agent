@@ -4,9 +4,9 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-12
-related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019
+verified: 2026-08-13
+related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
 tags: [meta, parfait]
@@ -1159,6 +1159,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결
 - **해소 메모**: [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md) "창 인셋 처리" 절의 경고와 [navigation-flow](../architecture/navigation-flow.md) 인셋 사례 블록을 함께 정리한다.
 
+### [2026-08-13] MVI 베이스 확장이 과도기를 만든다 — 새 API를 쓰는 화면과 안 쓰는 화면 공존
+
+- **ID**: OQ-P-144
+- **출처**: [ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md) · [mvi-error-infrastructure 스펙](../specs/2026-08-13-mvi-error-infrastructure.md) — `BaseViewModel`에 `launch`·`postError`·`error`를 더하되 기존 19개 ViewModel은 손대지 않기로 했다(하위호환 유지·점진 이관). `Channel` 전환만 호출부 수정 없이 전 화면에 적용된다.
+- **항목**: ① 이관을 각 화면의 API 결선 라운드에 묶는 방식이 유지되는지, 아니면 어느 시점에 일괄 정리 라운드를 두는지. ② 이관 전 화면이 `viewModelScope.launch`를 직접 쓰는 동안 예외 가드가 없는 상태가 남는데 이를 허용 범위로 볼지. ③ `isLoading` 필드명 규약이 인터페이스 강제 없이 실제로 지켜지는지 — 첫 두세 화면 결선 후 재점검.
+- **상태**: 미해결 (설계 시점 예고 — 구현 전)
+- **해소 메모**: 이관이 끝나면 [state-management](../architecture/state-management.md) 체크리스트를 새 API 기준으로 고치고 이 항목을 닫는다.
+
+### [2026-08-13] 이펙트 2중 수집은 어느 primitive로도 조용히 오동작한다
+
+- **ID**: OQ-P-145
+- **출처**: [ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md) "영향 → 위험·방어" — `Channel`은 이벤트를 한 수집자에게만 주고 `SharedFlow`는 모두에게 줘서 내비게이션을 두 번 실행한다. 둘 다 틀린 결과이므로 규약("이펙트 수집은 Route 한 곳")을 동시 구독자 카운트 로그로 감시하기로 했다. 현재 `effect` 수집 지점은 화면당 정확히 하나이고 ViewModel을 자식 컴포저블로 내려주는 곳은 없다.
+- **항목**: ① 로그로 충분한지, 디버그 빌드에서 예외로 올릴지. ② 앱 전역 알림(세션 만료 등) 같은 진짜 멀티캐스트 요구가 생기면 별도 `SharedFlow`를 노출하기로 했는데, 그 자리를 `core:ui`가 공통으로 제공할지 각 ViewModel이 알아서 둘지.
+- **상태**: 미해결 (설계 시점 예고 — 구현 전)
+- **해소 메모**: 실제 위반 사례가 나오면 [state-management](../architecture/state-management.md) 안티패턴 절에 추가한다.
+
 <!--
 항목 추가 형식:
 
@@ -1169,4 +1185,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 144 -->
+<!-- oq-next: 146 -->
