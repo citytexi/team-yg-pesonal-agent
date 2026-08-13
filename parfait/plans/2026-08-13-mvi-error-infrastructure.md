@@ -73,13 +73,12 @@ package com.teamyg.parfait.data.model.error
 
 import com.teamyg.parfait.data.model.exception.ApiException
 import com.teamyg.parfait.domain.model.error.AppError
-import kotlinx.coroutines.CancellationException
-import okhttp3.Protocol
-import okhttp3.Request
-import okhttp3.Response
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import retrofit2.HttpException
+import retrofit2.Response
 import java.io.IOException
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -87,15 +86,10 @@ import kotlin.test.assertIs
 import kotlin.test.assertSame
 
 class AppErrorMapperTest {
+    // `ApiCallerTest` 의 기존 헬퍼와 같은 방식이다
     private fun httpException(statusCode: Int): HttpException {
-        val request = Request.Builder().url("https://example.com/").build()
-        val raw = Response.Builder()
-            .request(request)
-            .protocol(Protocol.HTTP_1_1)
-            .code(statusCode)
-            .message("error")
-            .build()
-        return HttpException(retrofit2.Response.error<Unit>("".toResponseBody(null), raw))
+        val responseBody = "".toResponseBody("application/json".toMediaType())
+        return HttpException(Response.error<Unit>(statusCode, responseBody))
     }
 
     @Test
