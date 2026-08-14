@@ -14,6 +14,10 @@ tags: [adr, parfait]
 ---
 # ADR-0020: MVI 공통 에러·이펙트 인프라 (Channel 이펙트 · AppError · launch 가드)
 
+> ⚠️ **번복 (2026-08-14, 구현 중)** — 아래 **결정 ④(`error` 채널을 `E` 와 분리)가 뒤집혔다.**
+> 나머지 결정(① Channel 이펙트 · ② `AppError` · ③ `launch` 가드 · ⑤ 로딩은 State 소유)은
+> 그대로 유효하다. 무엇이 왜 바뀌었는지는 아래 [번복: 공용 error 채널 철회](#번복-공용-error-채널-철회).
+
 ## 맥락
 
 [[0005-custom-mvi-baseviewmodel]]이 정한 `BaseViewModel`은 `updateState`·`postSideEffect` 둘뿐이다.
@@ -63,7 +67,7 @@ sealed class AppError(message, cause) : Exception(message, cause)
 예외는 `AppError.Unexpected`로 감싸 `onError` 또는 `postError`로 흘리고, `CancellationException`은
 재던진다. `Result.failure`는 값이므로 잡지 않는다.
 
-**④ `error: Flow<AppError>` 채널을 `E`와 분리**
+**④ `error: Flow<AppError>` 채널을 `E`와 분리** — 🔁 **철회됨**(아래 번복 절)
 
 화면 `SideEffect` 타입마다 `ShowError`를 중복 선언하지 않는다. `core:ui`가 수집 컴포저블
 `CollectAppError`를 제공하고, 기본 동작은 **로그 + TODO**다(에러 UX 디자인 미확정).
@@ -102,7 +106,8 @@ sealed class AppError(message, cause) : Exception(message, cause)
 - 이펙트 유실·재발화가 둘 다 닫힌다. 19개 화면이 호출부 수정 없이 수혜를 받는다.
 - 실패 원인 분기가 레이어를 지키면서 가능해진다.
 - 연타 방어·예외 가드가 화면마다의 관행이 아니라 베이스의 계약이 된다.
-- 에러 UX가 정해지면 `CollectAppError` 한 곳만 고치면 전 화면에 적용된다.
+- ~~에러 UX가 정해지면 `CollectAppError` 한 곳만 고치면 전 화면에 적용된다.~~
+  🔁 철회됨 — 아래 번복 절. 이 이득은 실현되지 않았고, 대가만 지불했다.
 
 **트레이드오프**
 - `Channel`은 단일 소비자다. 진짜 멀티캐스트가 필요하면 `effect`를 재활용하지 말고 해당
@@ -114,3 +119,57 @@ sealed class AppError(message, cause) : Exception(message, cause)
 - 이펙트 2중 수집은 어느 primitive로도 조용히 오동작한다. 동시 구독자 카운트 로그로 드러낸다.
 - 새 API를 쓰지 않는 기존 화면과 쓰는 새 화면이 공존한다. 점진 마이그레이션은 각 화면의
   API 결선 라운드에 묶어 진행한다.
+
+## 번복: 공용 error 채널 철회
+
+**2026-08-14, 구현 라운드 중.** 위 결정 ④를 되돌린다. `error`·`postError`·`CollectAppError`를
+삭제하고 실패도 화면의 이펙트 어휘(`E`)로 옮긴다.
+
+### 무엇이 틀렸나
+
+결정 ④가 내세운 이유("화면마다 `ShowError`를 중복 선언하지 않는다")는 **진짜 이유가 아니었다.**
+진짜 이유는 타입 시스템 제약이다 — `BaseViewModel`은 feature의 `E`를 생성할 수 없어서, `launch`
+가드가 잡은 예외를 담을 곳이 없었고 자기가 아는 타입의 채널을 하나 더 팠다. 설계 미덕이 아니라
+우회였고, ADR이 우회를 미덕으로 적었다.
+
+### 무엇을 사지 못했나
+
+구현이 끝난 시점에 세어 보니 `postError` 호출처는 `launch` 가드 **한 곳**, `CollectAppError`
+사용처는 `LoginRoute` **한 곳**이었고, 기본 동작은 로그였다. **채널 하나를 통째로 유지하면서
+하는 일이 로그 한 줄**이었다.
+
+### 무엇을 지불했나
+
+- 이 ADR이 딛고 선 [[0005-custom-mvi-baseviewmodel]]의 **3분할 계약이 4분할이 됐다.**
+  [[state-management]]는 셋이라고 적은 채였다 — 문서와 코드가 갈렸다.
+- **두 채널 사이에 순서 보장이 없다.** "에러를 알리고 뒤로 간다" 같은 흐름을 쓸 수 없다.
+  같은 채널이면 공짜로 되는 것이었다.
+- **실패 경로가 아예 없는 화면까지 빈 채널을 하나씩 달았다.** 화면 다수가 그렇다.
+
+### 대신 무엇을
+
+`launch(onError = …)`가 이미 있었다. 새 API가 필요 없다.
+
+```
+// 실패를 표현하는 화면 — 자기 sealed 에 케이스를 두고 그리로 옮긴다
+launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { … }
+
+// 표현하지 않는 화면 — 아무것도 안 한다. 가드가 로그만 남긴다
+launch(key = …) { … }
+```
+
+`onError`를 넘기지 않았을 때의 결과(로그)는 철회 전 `CollectAppError` 기본 동작과 **같다.**
+잃은 기능이 없다.
+
+### 남는 것
+
+에러 UX가 "전 화면 공통 토스트 하나"로 정해지면 화면마다 케이스 추가가 필요하다 — 그게 이
+번복의 유일한 비용이다. 다만 화면별 표현이 실제로 갈릴 가능성이 크고(토스트/인라인/다이얼로그),
+세션 만료처럼 **진짜 앱 전역**인 관심사는 애초에 VM 채널이 아니라 앱 스코프 버스 소관이다 —
+위 트레이드오프 절이 "진짜 멀티캐스트가 필요하면 별도 `SharedFlow`"라고 적어 둔 그 자리다.
+
+### 배운 것
+
+ADR이 **결정의 진짜 제약을 적지 않고 사후 정당화를 적으면** 다음 사람이 그 정당화를 검증할 수
+없다. ④의 근거가 "베이스가 `E`를 만들 수 없다"라고 쓰여 있었다면 "그럼 `E`를 만들 수 있게
+하거나, 만들 필요가 없게 하면 되지 않나"라는 질문이 설계 시점에 나왔을 것이다.

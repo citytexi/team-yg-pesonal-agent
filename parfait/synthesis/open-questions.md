@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-13
+verified: 2026-08-14
 related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020
 related_architecture: design-system, data-layer, navigation-flow, module-structure
@@ -598,7 +598,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-076
 - **출처**: 개발 서버 base URL이 `https`가 아니라 평문 `http`다(주소는 private submodule `project-paths.md` 참고). TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTraffic`·`networkSecurityConfig`가 **둘 다 없다** → [api/conventions.md](../api/conventions.md) "직렬화 규약".
 - **항목**: Android 9(API 28)부터 평문 HTTP는 기본 차단이라, 실제 연동을 시작하면 **모든 요청이 `CLEARTEXT communication not permitted`로 실패**한다. 서버에 HTTPS를 적용할지(권장), 아니면 debug 빌드 한정으로 `network_security_config.xml`에 해당 호스트만 허용할지 결정한다. 후자는 release 빌드가 HTTPS 전환 전까지 동작하지 않는다는 뜻이므로 서버 일정과 묶인다.
-- **상태**: 미해결 (서버팀 확인 필요)
+- **상태**: ⚠️ **임시 조치됨, 미해결** (2026-08-14 — 뚫었으나 자리가 틀렸다)
+  > 📌 **2026-08-14** — A-002 로그인 실기기 검증을 막고 있어 `app/src/main/AndroidManifest.xml`에
+  > `android:usesCleartextTraffic="true"`를 넣었다(커밋 `e6812909`, 브랜치
+  > `feature/mvi-error-infra-a002-login`). **main 매니페스트라 릴리즈 빌드까지 따라간다** — 앱
+  > 전체의 HTTPS 강제가 꺼진 상태로 배포될 수 있다. 사용자가 이 자리를 알고 선택했다.
+  > 남은 결정은 그대로다: ① 서버 HTTPS 전환(권장, 그러면 이 줄을 지운다) ② 그 전에 릴리즈가
+  > 나가야 하면 `app/src/debug/AndroidManifest.xml` 또는 `network_security_config.xml`로
+  > **개발 서버 도메인만 debug 한정** 허용으로 좁힌다.
 - **해소 메모**: 결정 후 [api/conventions.md](../api/conventions.md)와 앱 매니페스트·`local.properties` 안내를 갱신한다.
 
 ### [2026-08-03] `clickableYGNoRipple` 사용처 0 — 존치 여부
@@ -1164,7 +1171,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-144
 - **출처**: [ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md) · [mvi-error-infrastructure 스펙](../specs/2026-08-13-mvi-error-infrastructure.md) — `BaseViewModel`에 `launch`·`postError`·`error`를 더하되 기존 19개 ViewModel은 손대지 않기로 했다(하위호환 유지·점진 이관). `Channel` 전환만 호출부 수정 없이 전 화면에 적용된다.
 - **항목**: ① 이관을 각 화면의 API 결선 라운드에 묶는 방식이 유지되는지, 아니면 어느 시점에 일괄 정리 라운드를 두는지. ② 이관 전 화면이 `viewModelScope.launch`를 직접 쓰는 동안 예외 가드가 없는 상태가 남는데 이를 허용 범위로 볼지. ③ `isLoading` 필드명 규약이 인터페이스 강제 없이 실제로 지켜지는지 — 첫 두세 화면 결선 후 재점검.
-- **상태**: 미해결 (설계 시점 예고 — 구현 전)
+- **상태**: 미해결 (구현 완료 후에도 유효)
+  > 📌 **2026-08-14 구현 완료** — 19개 ViewModel diff 0줄로 들어갔다. ②의 "이관 전 화면은
+  > 예외 가드가 없다"는 그대로다. ③ `isLoading` 규약은 A-002 한 화면만 따랐다(첫 사례).
+  > `error` 채널이 철회돼(ADR-0020 번복) **이관해야 할 API 표면 자체가 줄었다** — 남은 것은
+  > `launch(key, onError)` 하나다.
 - **해소 메모**: 이관이 끝나면 [state-management](../architecture/state-management.md) 체크리스트를 새 API 기준으로 고치고 이 항목을 닫는다.
 
 ### [2026-08-13] 이펙트 2중 수집은 어느 primitive로도 조용히 오동작한다
@@ -1172,8 +1183,43 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-145
 - **출처**: [ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md) "영향 → 위험·방어" — `Channel`은 이벤트를 한 수집자에게만 주고 `SharedFlow`는 모두에게 줘서 내비게이션을 두 번 실행한다. 둘 다 틀린 결과이므로 규약("이펙트 수집은 Route 한 곳")을 동시 구독자 카운트 로그로 감시하기로 했다. 현재 `effect` 수집 지점은 화면당 정확히 하나이고 ViewModel을 자식 컴포저블로 내려주는 곳은 없다.
 - **항목**: ① 로그로 충분한지, 디버그 빌드에서 예외로 올릴지. ② 앱 전역 알림(세션 만료 등) 같은 진짜 멀티캐스트 요구가 생기면 별도 `SharedFlow`를 노출하기로 했는데, 그 자리를 `core:ui`가 공통으로 제공할지 각 ViewModel이 알아서 둘지.
-- **상태**: 미해결 (설계 시점 예고 — 구현 전)
+- **상태**: 부분 해소 (2026-08-14)
+  > ✅ **②는 결정됐다** — 공용 `error` 채널이 철회되면서(ADR-0020 번복) `core:ui`가 공통 스트림을
+  > 제공하지 않기로 했다. 세션 만료 같은 앱 전역 관심사는 별도 앱 스코프 버스 소관이고 아직 없다.
+  > ①(로그로 충분한가 / debug 예외로 올릴까)은 그대로 미결이다. 동시 구독자 카운트 로그는 들어갔다.
 - **해소 메모**: 실제 위반 사례가 나오면 [state-management](../architecture/state-management.md) 안티패턴 절에 추가한다.
+
+### [2026-08-14] A-002 로그인 실기기 검증 9항목 미수행 — 앱 최초 실서버 호출이 한 번도 안 돌았다
+
+- **ID**: OQ-P-146
+- **출처**: [a002-kakao-login-api 스펙](../specs/2026-08-13-a002-kakao-login-api.md) "실기기 검증" — 구현·유닛 테스트·리뷰는 끝났으나(브랜치 `feature/mvi-error-infra-a002-login`, develop 미머지) 실물 기기·실제 카카오 계정·개발 서버가 필요한 항목은 하나도 돌지 않았다. 컴파일·ktlint·Hilt 어디에도 안 걸리는 종류의 결함이 여기서 처음 드러난다.
+- **항목**: ① 개발 서버에 요청이 나가는가(평문 HTTP 차단이면 즉시 중단 → OQ-P-076) ② 신규 계정 → 약관 화면, 응답 판별자 키가 실제로 `isNewUser`인가(`MissingFieldException`이면 [api/auth.md](../api/auth.md)가 틀린 것) ③ 기존 계정 → 그룹 목록, 백스택 비움 ④ 로그인 → 앱 종료 → 재시작 → 토큰 읽힘, DataStore 파일에 평문 없음(ADR-0019 검증) ⑤ 카카오 창 취소 → 로딩 풀림 ⑥ 버튼 연타 → 카카오 창 1회 ⑦ 비행기 모드 → 로딩 풀림 + `AppError.Network` 로그 ⑧ `TokenStoreTokenProvider`의 `runBlocking` 체감 지연 ⑨ **카카오 창 떠 있는 동안 화면 회전 → 로딩 풀림**(이번 라운드 fix 대상, 유닛 테스트로 못 덮는다)
+- **상태**: 미해결 (실기기 대기)
+- **해소 메모**: ⑥은 버튼이 비활성이어도 시각적으로 동일하므로("눌리는가"로 확인, "비활성으로 보이는가"가 아니다) 주의한다. ⚠️ 디버그 빌드는 `HttpLoggingInterceptor.Level.BODY`라 logcat에 ID 토큰·nonce·발급 토큰이 찍힌다 — 그 로그를 PR·이슈에 붙이지 않는다. 결과에 따라 [api/auth.md](../api/auth.md) 판별자 키 항목과 [ADR-0019](../adr/0019-encrypted-token-storage.md) 검증 절을 갱신한다.
+
+### [2026-08-14] 신규 가입자가 세션 없이 그룹 목록에 도달한다 — signup 라운드까지의 과도기
+
+- **ID**: OQ-P-147
+- **출처**: `feature/intro/impl/termagree/TermAgreeRoute.kt` — `NavKeyTermAgree(registrationToken)`로 토큰은 도착하지만 화면이 **받아 들고만 있고** `POST /api/v1/auth/signup`을 부르지 않는다. "다음"은 여전히 `clearBackStack()` + `goTo(NavKeyGroupList)`다. 즉 신규 계정은 access token 없이 목록 화면에 도달하고 첫 인증 호출이 401이 난다.
+- **항목**: 의도된 과도기이므로 결정할 것은 하나다 — signup 라운드까지 **이 상태를 그대로 두는가**, 아니면 임시로 약관 화면 "다음"을 막아 잘못된 상태 도달 자체를 차단하는가. 후자면 실기기 검증에서 신규 계정 경로를 끝까지 볼 수 없다.
+- **상태**: 미해결 (signup 라운드에서 자연 해소 예정)
+- **해소 메모**: signup 결선 시 이 항목을 닫고 [a002-kakao-login-api 스펙](../specs/2026-08-13-a002-kakao-login-api.md) "주의" 절의 과도기 문단을 지운다.
+
+### [2026-08-14] MVI 인프라 이월 minor 묶음 — 테스트 커버리지·관용구
+
+- **ID**: OQ-P-148
+- **출처**: `feature/mvi-error-infra-a002-login` 두 라운드의 task 리뷰·최종 리뷰가 Minor 로 분류해 이월한 것들. 개별로는 항목을 만들 값이 아니라 하나로 묶는다.
+- **항목**: ① `BaseViewModel`의 `invokeOnCompletion` 정체성 검사(`=== job`)를 실제로 걸어보는 테스트 없음(단일 스레드 `TestDispatcher`로 구성 난이도 높음) ② 이펙트 실패모드 로그 2종(멀티 구독자 경고·버퍼 초과 드롭) 테스트 없음 ③ `toAppError`의 `else` 분기(비 `ApiException` `Throwable`) 미테스트 ④ `AppError` 서브클래스가 매 생성마다 스택트레이스를 채운다 — `AppError.Server`는 401 같은 *예상된* 결과인데 비용을 낸다(`Exception(message, cause, false, false)` 검토) ⑤ `catch (Throwable)`가 `OutOfMemoryError`까지 `AppError.Unexpected`로 바꾼다 ⑥ `core:ui`가 `:domain`을 `implementation`으로 두고 `AppError`를 공개 API에 노출한다 — 지금은 모든 소비자가 `:domain`을 직접 갖고 있어 컴파일되지만 `app-preview`가 `BaseViewModel`을 건드리면 깨진다(`api`로 전환 필요) ⑦ `AuthRepositoryImpl`의 `loginWithKakao` 성공 경로 테스트가 `NewUser`만 덮는다 ⑧ `toKakaoLoginVO`의 분기(`AuthRemoteDataSourceImplTest` 부재)가 어느 테스트에도 안 걸린다 — 다른 6개 도메인은 전부 DataSource 테스트가 있다
+- **상태**: 미해결 (전부 비차단)
+- **해소 메모**: ⑥은 `core/ui/build.gradle.kts` 한 줄이고 `app-preview`가 깨지는 날 강제된다. ⑧은 `signup`·`reissue`·`logout` 결선 라운드에서 `AuthRemoteDataSourceImplTest`를 만들며 함께 닫는 것이 자연스럽다.
+
+### [2026-08-14] `CustomCameraRoute`의 `runCatching`이 취소를 저장 실패로 오분류한다
+
+- **ID**: OQ-P-149
+- **출처**: `feature/camera/impl/route/CustomCameraRoute.kt` — `runCatching { withContext(Dispatchers.IO) { saveViewfinderCapture(...) } }`. `withContext`가 suspend라 촬영 저장 중 화면을 벗어나면 취소가 `Result.failure`가 되고 "저장 실패" 경로로 분기한다. [data-layer](../architecture/data-layer.md) "suspend 를 감싸는 runCatching" 참고.
+- **항목**: `core:util:jvm`의 `runSuspendCatching`으로 교체한다. 같은 부류였던 `EncryptedTokenStore.read`·`AddRecentImageUseCase`는 2026-08-14에 고쳤고 이 건만 남았다 — 카메라 화면이 그 브랜치 범위 밖이라 미뤘다.
+- **상태**: 미해결 (교체 대상 확정, 라운드만 대기)
+- **해소 메모**: 고칠 때 취소가 실패로 오지 않는 회귀 테스트를 함께 붙인다(`EncryptedTokenStoreTest`의 취소 케이스가 본보기다).
 
 <!--
 항목 추가 형식:
@@ -1185,4 +1231,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 146 -->
+<!-- oq-next: 150 -->

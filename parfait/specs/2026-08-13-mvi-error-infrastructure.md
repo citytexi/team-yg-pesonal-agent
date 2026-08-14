@@ -1,11 +1,11 @@
 ---
 id: mvi-error-infrastructure
 title: MVI 공통 에러·이펙트 인프라 (core:ui BaseViewModel 확장 · AppError)
-status: draft
+status: in-progress
 category: behavior-spec
 platforms: android
-verified: 2026-08-13
-related_code: BaseViewModel, MviContract, CollectAppError, AppError, ApiException, ApiCaller, viewModelLogger, screenLogger
+verified: 2026-08-14
+related_code: BaseViewModel, MviContract, AppError, AppErrorMapper, ApiException, ApiCaller, viewModelLogger, runSuspendCatching
 related_adr: ADR-0005, ADR-0009, ADR-0016, ADR-0017, ADR-0020
 related_spec: a002-kakao-login-api, data-api-service-layer, unit-test-infrastructure
 related_architecture: state-management, data-layer
@@ -18,6 +18,12 @@ tags: [spec, parfait, mvi, error]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 
+> ✅ **구현 완료 · develop 미머지** (2026-08-14, 브랜치 `feature/mvi-error-infra-a002-login`,
+> 커밋 `0521e0bc..fd6b913d`). 아래 본문은 as-built 로 정정했다 — **설계에서 뒤집힌 결정이 하나
+> 있다**(공용 `error` 채널 철회, [ADR-0020 번복 절](../adr/0020-mvi-error-effect-infrastructure.md#번복-공용-error-채널-철회)).
+> `status: implemented` 전환과 `archive/` 이동은 develop 머지 후로 미룬다.
+
+
 ## 목표
 
 `BaseViewModel`이 실패 경로를 다룰 수 없는 상태에서 앱 최초의 실서버 호출([a002-kakao-login-api](2026-08-13-a002-kakao-login-api.md))이
@@ -28,9 +34,10 @@ tags: [spec, parfait, mvi, error]
 
 - **포함**
   - `:domain`에 sealed `AppError` 신설, `:data`에 `ApiException → AppError` 매핑.
-  - `BaseViewModel` 이펙트 전달을 `Channel(BUFFERED)`로 교체 + `launch`·`postError`·`error` 추가.
-  - `core:ui`에 `CollectAppError` 수집 컴포저블(기본 동작 = 로그 + TODO).
+  - `BaseViewModel` 이펙트 전달을 `Channel(BUFFERED)`로 교체 + `launch(key, onError, block)` 추가.
   - `core:ui` 단위 테스트 소스셋 신설.
+  - 🔁 **설계 시점에 있었던 `error`·`postError`·`CollectAppError`는 구현 중 철회됐다** —
+    [ADR-0020 번복 절](../adr/0020-mvi-error-effect-infrastructure.md#번복-공용-error-채널-철회).
 - **제외**
   - 기존 19개 ViewModel의 새 API 이관 — **하위호환을 유지하고 각 화면의 API 결선 라운드에 묶는다.**
     `Channel` 전환만은 호출부 수정 없이 전 화면에 즉시 적용된다.
@@ -96,14 +103,13 @@ abstract class BaseViewModel<S : UiState, I : UiIntent, E : UiSideEffect>(
 ) : ViewModel() {
     val state: StateFlow<S>
     val effect: Flow<E>              // Channel(BUFFERED).receiveAsFlow()
-    val error: Flow<AppError>        // Channel(BUFFERED).receiveAsFlow()
 
     abstract fun processIntent(intent: I)
 
     protected fun updateState(reducer: S.() -> S)
     protected fun postSideEffect(effect: E)        // trySend — suspend 아님
-    protected fun postError(error: AppError)
 
+    @MainThread
     protected fun launch(
         key: Any? = null,
         onError: ((AppError) -> Unit)? = null,
@@ -113,28 +119,35 @@ abstract class BaseViewModel<S : UiState, I : UiIntent, E : UiSideEffect>(
 ```
 
 - `postSideEffect`·`updateState`는 **시그니처가 그대로**다. 기존 19개 ViewModel 무수정.
-- `error`를 `E`와 분리한 이유 — 화면마다 `SideEffect`에 `ShowError`를 중복 선언하지 않기 위해서다.
+- **공용 에러 스트림은 두지 않는다.** 실패도 1회성 효과라 이펙트와 성질이 같은데, 스트림을 나누면
+  둘 사이 순서 보장이 사라지고 실패 경로가 아예 없는 화면까지 빈 채널을 하나씩 달게 된다.
+  실패를 어떤 동작으로 옮길지는 화면의 어휘(`E`)가 정한다 — 필요한 화면이 `onError`에서
+  자기 `SideEffect`를 발행한다.
 - `launch` 계약
   - `key != null`이고 같은 key의 job이 살아 있으면 **새 job을 만들지 않고 `null` 반환**.
   - 완료·취소 시 `invokeOnCompletion`으로 내부 맵에서 제거.
-  - 블록이 던지면 `AppError.Unexpected`로 감싸 `onError` → 없으면 `postError`.
+  - 블록이 던지면 `AppError.Unexpected`로 감싸 `onError`로 넘긴다. **`onError`가 없으면 로그만**
+    남는다 — 실패 표현이 필요 없는 화면이 다수다.
+  - `block()` 호출은 `coroutineScope { }`로 감싼다. 안 그러면 블록 안에서 띄운 **자식 코루틴의
+    실패가 이 가드에 잡히지 않고** 부모 취소로 둔갑해 원래 예외가 `viewModelScope`로 새어 앱이 죽는다.
   - `CancellationException`은 재던져 구조적 취소를 보존.
   - **`Result.failure`는 잡지 않는다** — 값이지 예외가 아니므로 호출부가 명시적으로 처리한다.
     `launch`의 가드는 매퍼 버그·NPE 같은 *예상 못 한* 예외용이다.
-- 내부 job 맵은 `viewModelScope`(`Main.immediate`) 단일 스레드에서만 접근한다 — 코드 주석에 명시.
+- 내부 job 맵의 스레드 안전 불변식은 **`launch`가 항상 메인 스레드에서 호출된다는 것**이다
+  (`viewModelScope`가 `Main.immediate`라서가 아니다 — 그건 `block`이 도는 디스패처일 뿐,
+  `runningJobs[key] = job` 줄 자체는 코루틴 밖에서 돈다). `@MainThread`로 표시한다.
+- 완료 핸들러는 `if (runningJobs[key] === job)`로 **자기 것일 때만** 지운다. 무조건 지우면
+  이전 job 완료와 같은 key 재등록 사이에서 새 엔트리를 지워 중복 방어가 뚫린다.
 
-### CollectAppError (`core:ui`)
+### 실패를 화면 어휘로 옮기는 법
 
 ```kotlin
-@Composable
-fun CollectAppError(
-    viewModel: BaseViewModel<*, *, *>,
-    onError: (AppError) -> Unit = { /* TODO(에러 UX 미정): YGToast 노출로 교체 */ },
-)
-```
+// 실패를 표현하는 화면 — 자기 sealed 에 케이스를 두고 그리로 옮긴다
+launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { … }
 
-Route가 한 줄로 수집한다. 기본 동작은 `screenLogger.e` 로그 + TODO 주석이며, 디자인이 확정되면
-이 파일 한 곳을 고쳐 전 화면에 적용한다.
+// 표현하지 않는 화면 — 아무것도 안 한다. 가드가 로그만 남긴다
+launch(key = …) { … }
+```
 
 ## 동작 / 상태
 
@@ -159,7 +172,7 @@ Route가 한 줄로 수집한다. 기본 동작은 `screenLogger.e` 로그 + TOD
 
 - 로딩 필드명은 `isLoading`으로 통일한다(인터페이스 강제 없음).
 - 표시 문자열·리소스 ID는 여전히 State에 담지 않는다([ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)).
-  `AppError`는 도메인 타입이며 문구 매핑은 화면·`CollectAppError` 소관이다.
+  `AppError`는 도메인 타입이며 문구 매핑은 화면 소관이다.
 
 ## 파일 구성
 
@@ -167,8 +180,7 @@ Route가 한 줄로 수집한다. 기본 동작은 `screenLogger.e` 로그 + TOD
 domain/model/error/AppError.kt              신설
 data/model/error/AppErrorMapper.kt          신설 — toAppError · mapErrorToAppError
 data/repository/**/                         Repository 구현이 경계에서 변환
-core/ui/BaseViewModel.kt                    Channel 전환 + launch · postError · error
-core/ui/CollectAppError.kt                  신설
+core/ui/BaseViewModel.kt                    Channel 전환 + launch(key, onError, block)
 core/ui/build.gradle.kts                    parfait.test.unit 플러그인 추가
 core/ui/src/test/                           신설
 ```
@@ -182,8 +194,10 @@ core/ui/src/test/                           신설
 - 같은 key로 `launch` 2회 → 두 번째는 `null` 반환, 블록 미실행.
 - 다른 key면 둘 다 실행.
 - job 완료 후 같은 key 재호출 → 실행됨(맵 정리 확인).
-- 블록이 `IllegalStateException` → `error`에 `AppError.Unexpected` 1건.
-- 블록이 `CancellationException` → `error` 방출 **없음**, 취소 전파.
+- 블록이 `IllegalStateException` → `onError`가 `AppError.Unexpected`를 받는다.
+- 블록이 띄운 **자식 코루틴**이 던져도 `onError`가 받는다(`coroutineScope` 회귀 방지).
+- `onError`를 안 넘기고 블록이 던지면 → 로그만, **이펙트 스트림은 오염되지 않는다**.
+- 블록이 `CancellationException` → `onError`에 **도달하지 않는다**, 취소 전파.
 
 `toAppError` — `ApiException` 5종 전부 + `CancellationException` 재던짐.
 
@@ -197,3 +211,7 @@ Turbine·MockK는 이미 갖춰져 있다 → [unit-test-infrastructure](archive
 - **점진 마이그레이션이 과도기를 만든다.** 새 API를 쓰는 화면과 안 쓰는 화면이 공존한다. 이관은
   각 화면의 API 결선 라운드에 묶는다 → [open-questions](../synthesis/open-questions.md).
 - **에러 UX 부재**가 이 스펙의 의도된 공백이다. 디자인 확정 전까지 실패는 로그로만 남는다.
+  전 화면 공통 토스트로 정해지면 화면마다 `SideEffect` 케이스 + `onError` 추가가 필요하다 —
+  그것이 공용 채널 철회의 유일한 비용이다.
+- **세션 만료처럼 진짜 앱 전역인 실패**는 VM 이펙트가 아니라 앱 스코프 버스 소관이다. 아직 없다
+  → [open-questions](../synthesis/open-questions.md).

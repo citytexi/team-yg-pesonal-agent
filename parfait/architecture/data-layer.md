@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-12
+verified: 2026-08-14
 related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer
-related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019
+related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -37,7 +37,7 @@ tags: [architecture, parfait]
 
 | 모듈 | 제공/바인딩 |
 |------|-------------|
-| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image) |
+| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
 | `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`) |
@@ -51,6 +51,43 @@ tags: [architecture, parfait]
 
 ## 예: 이미지 세그멘테이션(누끼)
 `ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩, 결과 비트맵은 `BitmapWrapper`([[0011-cross-module-bitmap-abstraction]])로 도메인에 전달, subject 이미지는 `cacheDir` PNG 파일로 저장해 경로(`subjectImagePath`) 반환. 실패는 `Result<SegmentationResult>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`.
+
+## 실패는 Repository 경계에서 도메인 타입이 된다
+
+`:data`의 `ApiException`은 `:domain`·feature에서 보이지 않는다(모듈 그래프가 강제한다 — feature
+impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Repository 구현이 경계에서**
+`AppError`(`domain/model/error/AppError.kt`)로 바꿔 넘긴다.
+
+| ApiException | AppError |
+|---|---|
+| `Business` | `Server(code, statusCode, serverMessage)` |
+| `Network` | `Network` |
+| `Http`·`EmptyBody`·`Unknown` | `Unexpected` |
+
+`AppError`는 `Exception` 하위 sealed class다 — `Result.failure`가 `Throwable`을 요구해 기존
+`Result<T>` 관용구를 그대로 쓰기 위한 제약이다. 변환은 `data/model/error/AppErrorMapper.kt`의
+`internal fun Throwable.toAppError()`·`Result<T>.mapErrorToAppError()`이고, `CancellationException`은
+변환하지 않고 **재던진다**. 갈래가 셋인 이유·`code`가 String인 이유는
+[ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md).
+
+서버 에러 코드 문자열은 `:domain`의 `ServerErrorCode`(도메인별 중첩 object)가 소유한다. 코드
+문자열은 도메인 간 유일하지 않으므로(`MEMBER_NOT_FOUND`가 인증 401 / 그룹·이미지·회원 404)
+`statusCode`와 함께 본다. **앱이 실제로 분기에 쓰는 코드만** 둔다.
+
+## suspend 를 감싸는 runCatching 은 `runSuspendCatching`
+
+stdlib `runCatching`은 `CancellationException`까지 잡아 `Result.failure`로 만든다. 블록 안에
+suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 벗어났을 뿐인데 호출부는 "작업 실패"로
+분기한다. `core:util:jvm`의 `coroutines/RunSuspendCatching.kt`가 취소만 걸러 재던진다.
+
+실제로 물었던 자리가 `EncryptedTokenStore.read`다 — DataStore를 기다리다 취소되면 `null`이
+반환돼 호출부(`TokenStoreTokenProvider`)가 **"토큰 없음", 즉 로그아웃 상태로 읽었다.**
+회귀 테스트(`EncryptedTokenStoreTest`)로 잠갔다.
+
+**블록에 suspend 호출이 없으면 stdlib `runCatching`을 쓴다.** 바꾸면 "여기 취소 위험이 있다"는
+거짓 신호만 남는다. `ApiCaller.runCatchingApi`도 제외 — 이미 명시적으로 재던지고 예외를
+타입별로 분류해 `ApiException`을 만들어야 해서, `Result`에 raw `Throwable`을 담는 이 유틸로는
+그 분류가 사라진다.
 
 ## 신규 데이터 추가 체크리스트
 1. **domain**: Repository 인터페이스 + 필요한 도메인 모델 정의.
@@ -79,8 +116,11 @@ tags: [architecture, parfait]
 > `ParfaitImageService`, **20 엔드포인트**), **remote DataSource 7쌍**, `Temp*` 예시 세트 삭제.
 > 이로써 **Android가 쓰기로 한 서버 엔드포인트 전량을 덮는다**(서버 21 − 애플 로그인 1) →
 > [api/README.md](../api/README.md).
-> **다만 이 표면을 소비하는 Repository·UseCase·화면은 아직 0건**이고 실서버 요청도 0건이다
-> → [open-questions](../synthesis/open-questions.md).
+> **2026-08-14 갱신 — 첫 소비처가 생겼다**(브랜치 `feature/mvi-error-infra-a002-login`, develop
+> 미머지). `AuthRepository`/`AuthRepositoryImpl` + `LoginWithKakaoUseCase`가 A-002 카카오 로그인을
+> 결선했다 → [a002-kakao-login-api](../specs/2026-08-13-a002-kakao-login-api.md).
+> 나머지 6 도메인은 여전히 Repository·UseCase 0건이다. **실서버 요청은 아직 0건**(실기기 검증
+> 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
 매핑 지점도 확정(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.
