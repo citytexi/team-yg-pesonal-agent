@@ -3,13 +3,17 @@
 > 세션 시작·작업 전 **이 파일부터** 읽어라. 여기서 "무엇을 찾으면 어디를 보라"로 라우팅한 뒤, 필요한 문서만 펼친다 (전체를 읽지 말 것).
 
 ## 지금 상태 (1줄)
-Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록(#222로 실패 화면·pull-to-refresh·A-005 이동까지)·C-101 카메라 플로우·C-001 캔버스 메인(#199 — 반응형 배치·Dot Grid 배경·토핑 추가 메뉴, **진입 경로 0건**)까지 들어왔고 전부 **데이터·후속 화면 미결선** 상태다. 앱 진입 체인은 Splash→Login→TermAgree→GroupList로 이어졌고(#220), 그 첫 화면 A-002 로그인이 온보딩 일러스트 3장으로 실물화됐다(#218 — 인증은 여전히 미결선). 그룹 생성(A-005)·참여(A-004→S-102) 두 갈래도 확인 모달을 거쳐 **목록으로 되돌아오며 닫혔다**(#224, `goToSingleClearTop`) — 다만 생성·참여·코드검증 UseCase가 전부 mock이라 목록에 새 그룹이 생기지 않고, 위키 정본은 이 자리를 C-001 직접 진입으로 적는다. 디자인시스템은 Figma 바 3종(Top Bar Canvas·List-Date·Floating Bar)과 배경 블러(Haze, ADR-0018)까지 머지됐다(#188).
+Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록(#222로 실패 화면·pull-to-refresh·A-005 이동까지)·C-101 카메라 플로우·C-001 캔버스 메인(#199 — 반응형 배치·Dot Grid 배경·토핑 추가 메뉴, **진입 경로 0건**)까지 들어왔고 전부 **데이터·후속 화면 미결선** 상태다. 앱 진입 체인은 Splash→Login→TermAgree→GroupList로 이어졌고(#220), 그 첫 화면 A-002 로그인이 온보딩 일러스트 3장으로 실물화됐고(#218) **인증까지 결선됐다**(2026-08-14, 미머지). 그룹 생성(A-005)·참여(A-004→S-102) 두 갈래도 확인 모달을 거쳐 **목록으로 되돌아오며 닫혔다**(#224, `goToSingleClearTop`) — 다만 생성·참여·코드검증 UseCase가 전부 mock이라 목록에 새 그룹이 생기지 않고, 위키 정본은 이 자리를 C-001 직접 진입으로 적는다. 디자인시스템은 Figma 바 3종(Top Bar Canvas·List-Date·Floating Bar)과 배경 블러(Haze, ADR-0018)까지 머지됐다(#188).
 서버 계약은 `api/`에 스냅샷돼 있다(도메인 7건·엔드포인트 21개). **Android 표면은 20/20으로 닫혔다**
 (#230 — image 2·member 2·parfait-image 2가 들어와 Service 7·remote DataSource 7쌍. 애플 로그인 1건은
-Android 미사용 결정이라 분모에서 뺀다). 다만 **이 표면을 소비하는 Repository·UseCase·화면은 0건**이고
-어느 표면도 실서버 요청 경험이 없다 — 다음 라운드의 대상은 표면이 아니라 소비처다.
-**카카오 로그인 응답 판별자 키가 계약과 어긋난다**(`@SerialName("newUser")` vs 실제 `isNewUser`) —
-앱 수정 대상이고, #230이 `http/README.md`만 정정해 `http/auth.http`와도 갈렸다([api/auth.md](api/auth.md)).
+Android 미사용 결정이라 분모에서 뺀다). **2026-08-14 — 첫 소비처가 생겼다**(브랜치 `feature/mvi-error-infra-a002-login`,
+develop 미머지). A-002 카카오 로그인이 SDK `idToken`+`nonce` 취득부터 `AuthRepository`·
+`LoginWithKakaoUseCase`·신규/기존 분기·세션 저장까지 이어졌고, 그 아래에 MVI 공통 에러 인프라
+(`AppError`·`Channel` 이펙트·`launch(key, onError)`)를 깔았다([ADR-0020](adr/0020-mvi-error-effect-infrastructure.md)).
+**카카오 로그인 판별자 키 불일치는 해소됐다** — `@SerialName("isNewUser")`로 정정하고 실제 JSON을
+디코딩하는 와이어 계약 테스트로 잠갔다. 나머지 6 도메인은 여전히 소비처 0건이고,
+**어느 경로도 실서버 요청을 해 본 적이 없다** — 실기기 9항목이 대기 중이다
+([OQ-P-146](synthesis/open-questions.md)).
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |
@@ -19,6 +23,7 @@ Android 미사용 결정이라 분모에서 뺀다). 다만 **이 표면을 소�
 | 빌드 세팅(컨벤션 플러그인·버전 카탈로그) | [ADR-0003](adr/0003-convention-plugins-version-catalog.md) |
 | DI·Hilt·스코프 | [ADR-0004](adr/0004-hilt-ksp-di.md) + [data-layer](architecture/data-layer.md) |
 | 화면 상태관리(MVI)·신규 화면 추가 | [ADR-0005](adr/0005-custom-mvi-baseviewmodel.md) + [state-management](architecture/state-management.md) |
+| 공통 에러 처리·이펙트 전달·중복 실행 방어 | [ADR-0020](adr/0020-mvi-error-effect-infrastructure.md) + [mvi-error-infrastructure 스펙](specs/2026-08-13-mvi-error-infrastructure.md) |
 | 내비게이션·신규 목적지 등록 | [ADR-0006](adr/0006-navigation3-custom-navigator.md) + [navigation-flow](architecture/navigation-flow.md) |
 | UI·Compose·디자인 토큰·테마·컴포넌트 작성 | [ADR-0010](adr/0010-custom-compositionlocal-theme.md) + [design-system](architecture/design-system.md) (전신 [ADR-0007](adr/0007-compose-material3-design-tokens.md), superseded) |
 | 로컬 영속화(DataStore) | [ADR-0008](adr/0008-datastore-local-persistence.md) + [data-layer](architecture/data-layer.md) |

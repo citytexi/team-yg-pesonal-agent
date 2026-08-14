@@ -3,9 +3,9 @@ id: auth
 title: 인증(카카오·애플 로그인·회원가입·토큰 재발급·로그아웃)
 server_module: http/auth
 server_commit: 2c5499a
-verified: 2026-08-11
+verified: 2026-08-14
 android_status: partial
-related_spec:
+related_spec: a002-kakao-login-api
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, auth]
 ---
@@ -19,14 +19,18 @@ tags: [api, parfait, server-contract, auth]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| POST | `/api/v1/auth/kakao` | 불필요(화이트리스트) | `KakaoLoginRequest` | `KakaoLoginResponse` | ⚠️불일치[^newuser] |
+| POST | `/api/v1/auth/kakao` | 불필요(화이트리스트) | `KakaoLoginRequest` | `KakaoLoginResponse` | **결선됨**[^newuser] |
 | POST | `/api/v1/auth/apple` | 불필요(화이트리스트) | `AppleLoginRequest` | `AppleLoginResponse` | 해당 없음[^apple] |
 | POST | `/api/v1/auth/signup` | 불필요(화이트리스트) | `SignupRequest` | `SignupResponse` | 구현됨 |
 | POST | `/api/v1/auth/reissue` | 불필요(화이트리스트) | `ReissueRequest` | `ReissueResponse` | 구현됨 |
 | POST | `/api/v1/auth/logout` | **필요**(화이트리스트 밖) | `LogoutRequest` | 없음(204, envelope 없음) | 구현됨 |
 
-[^newuser]: Android `KakaoLoginResponse.isNewUser`에 붙은 `@SerialName("newUser")`가 실제 응답 키
-(`isNewUser`)와 어긋난다 — 아래 [판별자 키](#판별자-키는-isnewuser다) 참고.
+[^newuser]: **2026-08-14 해소** — `@SerialName("isNewUser")`로 정정하고 실제 JSON 본문을 디코딩하는
+와이어 계약 테스트(`KakaoLoginResponseSerializationTest`)를 붙였다. 되돌리면 그 테스트가
+`MissingFieldException`으로 깨진다. 같은 라운드가 Repository·UseCase·화면까지 결선했다
+(브랜치 `feature/mvi-error-infra-a002-login`, develop 미머지)
+→ [a002-kakao-login-api 스펙](../specs/2026-08-13-a002-kakao-login-api.md).
+**단 실서버 응답으로는 아직 확인하지 못했다** — 아래 [판별자 키](#판별자-키는-isnewuser다).
 
 [^apple]: **Android는 애플 로그인을 쓰지 않기로 결정했다**(2026-08-11). 서버에는 있으나 앱 대응
 심볼을 만들지 않으며 `http/auth.http`에도 요청을 넣지 않는다 — `미구현`(아직 없음)이 아니라
@@ -58,11 +62,13 @@ tags: [api, parfait, server-contract, auth]
 직렬화 키는 코드가 답하지 못한다고 봤던 것이 이전 판단의 출발점이었는데, **컨트롤러 테스트가 답한다** —
 MockMvc 본문 단언은 실제 직렬화 결과다.
 
-**Android 영향**: `data/service/model/response/auth/KakaoLoginResponse.kt`가
-`@SerialName("newUser")`를 붙이고 있어 **응답의 `isNewUser` 키를 못 찾는다.** 이 필드는 기본값이 없으므로
-kotlinx-serialization이 `MissingFieldException`을 던지고, `ApiCaller` 가드에 잡혀 `ApiException.Unknown`이
-된다 — **로그인이 통째로 실패한다**(조용한 오분기가 아니라 예외다). 어노테이션을 떼거나
-`@SerialName("isNewUser")`로 고쳐야 한다 → [open-questions](../synthesis/open-questions.md).
+**Android 영향**: ✅ **2026-08-14 정정됨.** `data/service/model/response/auth/KakaoLoginResponse.kt`가
+`@SerialName("newUser")`를 붙이고 있어 응답 키를 못 찾고 `MissingFieldException` → `ApiException.Unknown`으로
+**로그인이 통째로 실패**하는 상태였다. `@SerialName("isNewUser")`로 고쳤다.
+
+이 결함은 컴파일·ktlint·Hilt 그래프 어디에도 걸리지 않는 종류였고, **DataSource 테스트로도 못
+잡는다** — 서비스를 MockK로 대체해 JSON을 지나지 않기 때문이다. 실제 본문을 디코딩하는
+`KakaoLoginResponseSerializationTest`가 유일한 그물이라 그 형태로 붙였다.
 
 ## 엔드포인트 상세
 
@@ -355,10 +361,14 @@ kotlinx-serialization이 `MissingFieldException`을 던지고, `ApiCaller` 가�
 **2026-08-06 PR #197로 develop 머지 완료**다. 이 표면이 딛고 선 공용 인프라(`ApiCaller` 4진입점·
 `ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로 먼저 들어왔고, 아래
 Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
-**⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — 카카오 로그인·회원가입·재발급·
-로그아웃 화면 결선은 이후 라운드다. 지금 확인할 수 있는 것은 `:data`가 계약대로 요청을 만들고 응답을
-파싱할 수 있다는 것뿐이고, 실제 서버 호출로 검증되지도 않았다(개발 서버 평문 HTTP 차단 —
-[open-questions](../synthesis/open-questions.md)).
+**2026-08-14 — `kakao` 하나가 결선됐다**(브랜치 `feature/mvi-error-infra-a002-login`, develop 미머지).
+`AuthRepository`/`AuthRepositoryImpl`(`loginWithKakao`·`saveSession`)와 `LoginWithKakaoUseCase`가
+생겼고 A-002 화면까지 이어졌다 → [a002-kakao-login-api 스펙](../specs/2026-08-13-a002-kakao-login-api.md).
+**`signup`·`reissue`·`logout`은 여전히 Repository·UseCase 0건**이고 이후 라운드다.
+
+**실제 서버 호출로는 아직 한 번도 검증되지 않았다** — 실기기 검증이 남아 있다. 개발 서버 평문 HTTP
+차단은 `usesCleartextTraffic`으로 뚫었으나 그 설정 자체가 미결이다
+→ [open-questions](../synthesis/open-questions.md).
 
 **애플 로그인은 Android가 쓰지 않기로 했다**(2026-08-11 결정, 위 각주). 대응 심볼 0건이 공백이 아니라
 결론이므로 이 표에서 "앞으로 채울 자리"로 세지 않는다.
@@ -397,10 +407,11 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 
 ## 미결
 
-- Android `KakaoLoginResponse`의 `@SerialName("newUser")`가 실제 응답 키(`isNewUser`)와 어긋난다 —
-  어노테이션 제거 또는 `isNewUser`로 정정 필요 → [open-questions](../synthesis/open-questions.md)
-- 위 판별자 키를 **실서버 응답으로 한 번도 확인하지 못했다.** 근거는 서버 코드·컨트롤러 테스트·팀 명세
-  3축이고 OpenAPI 스키마만 반대다. 앱이 첫 실연동을 할 때 `http/auth.http`로 실물 응답을 찍어 확정한다
+- ✅ **해소(2026-08-14)** — Android `KakaoLoginResponse`의 `@SerialName`을 `isNewUser`로 정정하고
+  와이어 계약 테스트로 잠갔다(위 [Android 매핑](#android-매핑) 참고)
+- 위 판별자 키를 **실서버 응답으로는 여전히 확인하지 못했다.** 근거는 서버 코드·컨트롤러 테스트·팀 명세
+  3축이고 OpenAPI 스키마만 반대다. A-002 로그인이 결선됐으므로 **실기기 검증에서 로그로 실물 응답을
+  찍어 확정한다** — `MissingFieldException`이 나면 서버가 `newUser`를 쓰는 것이고 이 문서가 틀린 것이다
   → [open-questions](../synthesis/open-questions.md)
 - 애플 로그인은 서버만 있고 앱 대응 심볼이 0건이다 → [open-questions](../synthesis/open-questions.md)
 
