@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **작업 저장소는 `TJYG-Android`**(이 문서가 있는 repo가 아니다). 브랜치는 `develop`에서 딴다.
-- **커밋은 사용자가 요청할 때만 한다.** 각 Task의 커밋 스텝은 사용자가 커밋을 지시한 경우에만 실행한다. 지시가 없으면 커밋하지 않고 다음 Task로 간다.
+- **Task별 로컬 커밋은 승인됐다**(2026-08-15). 각 Task의 마지막 커밋 스텝을 실행한다. SDD가 `BASE..HEAD` diff로 리뷰 패키지를 만들기 때문에 커밋이 없으면 리뷰 게이트가 돌지 않는다. **`push`와 PR 생성은 별도 승인 사항**이며 이 계획에 포함되지 않는다.
 - 모든 신규 Kotlin 파일은 기존 패키지 관례를 따른다 — `data`는 `com.teamyg.parfait.data.*`, `domain`은 `com.teamyg.parfait.domain.*`.
 - **`:domain`은 Android·OkHttp를 참조하지 않는다**(ADR-0001·0011). 세션 이벤트 인터페이스만 `:domain`, 구현은 `:data`.
 - 실패는 Repository 경계에서 `AppError`로 바꾼다(ADR-0020). `TokenAuthenticator`는 Repository가 아니므로 `ApiException`을 직접 본다.
