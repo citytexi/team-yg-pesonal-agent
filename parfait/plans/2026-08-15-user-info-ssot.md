@@ -608,6 +608,14 @@ class ObserveMyAccountUseCase @Inject constructor(
 > 위 테스트는 `clearMyAccount()`만 단언하고 토큰 정리는 단언하지 않는다. 구현자는 스펙 본문의
 > 부트스트랩 절을 읽고 **실패 종류에 따라 정리 범위가 갈리는지**를 확정한 뒤, 확정한 규칙을
 > 테스트로 고정하고 report에 적는다. 판단이 서지 않으면 BLOCKED로 보고한다.
+>
+> ✅ **확정됨(2026-08-15, 구현 중)** — 세션을 파기하는 것은 **인증 거절(HTTP 401 ·
+> `MEMBER_NOT_FOUND`)뿐**이다. 네트워크 실패·5xx·로컬 저장 실패는 아무것도 지우지 않고
+> `ToLogin` 라우팅만 한다. 처음엔 "네트워크 실패만 예외"로 좁혔다가, 최종 리뷰에서 5xx가
+> `AppError.Unexpected`로 떨어져 **서버 배포 중에 전 사용자가 로그아웃**되고 서버가 200을 준 뒤
+> 로컬 쓰기가 실패해도 멀쩡한 세션이 죽는다는 것이 드러나 인증 거절로 더 좁혔다. 그래서
+> 이 Task의 테스트는 3건이 아니라 4건이다(인증 거절 / 네트워크 / 5xx·예상 밖 / 토큰 없음).
+> 스펙 본문의 부트스트랩 절이 이 규칙으로 갱신됐다.
 
 - [ ] **Step 2: 실패 확인**
 - [ ] **Step 3: 구현한다** — `AuthRepositoryImpl.hasSession()`은 `tokenStore.getRefreshToken() != null`
@@ -637,6 +645,8 @@ class ObserveMyAccountUseCase @Inject constructor(
 - [ ] **Step 5: 커밋** (지시가 있을 때만) — `feat(splash): 자동로그인 라우팅`
 
 **주의** — `SplashInitialUseCase`(mock `delay(1000)`)를 지울지 남길지 정한다. 스플래시 최소 노출 시간이 필요하면 남기고, 아니면 지운다. 정한 이유를 report에 적는다.
+
+✅ **확정됨(2026-08-15, 구현 중)** — `SplashInitialUseCase`는 **삭제**했다. 최소 노출 시간 요구가 스펙에 없어 자리채움 mock을 남길 이유가 없다. 부트스트랩 진입은 `SplashIntent.Init` 하나이고 `init`이 그것을 보낸다 — 처음엔 `bootstrap()`을 `internal`로 열어 테스트가 중복 실행 가드를 두 번 트리거하게 했으나, 그 화면만 MVI 관용구 밖으로 나가는 대가라 의도를 채우는 쪽으로 되돌렸다(`SplashIntent`는 비어 있었고 `processIntent`는 `= Unit`이었다).
 
 ---
 
@@ -695,6 +705,10 @@ class ObserveMyAccountUseCase @Inject constructor(
 `LoginProvider` 표시 매핑은 `core:ui`가 소유한다(ADR-0016) — `UNKNOWN`도 문구를 가져야 한다.
 
 S-002 닉네임 변경은 기존 `CheckNameValidUseCase`로 먼저 거르고(형식), 서버 실패는 별도 갈래로 표시한다. `session-token-refresh-infra`의 `GroupNickNameError` 형태를 참고하되 **전역 닉네임용 에러 타입을 새로 만들지, 기존 것을 재사용할지 정하고 report에 적는다.**
+
+✅ **확정됨(2026-08-15, 구현 중)** — feature 로컬 `GlobalNicknameError`를 **새로 만들었다.** `GroupNickNameError`는 `feature/groups/enter/impl` 안에 있어 재사용하려면 leaf 모듈 사이에 없던 의존을 새로 만들어야 하고, 서버 에러 어휘도 다르다(전역 닉네임엔 `ALREADY_USED`가 없다). 소비처가 하나면 feature 로컬이 맞다는 [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md) 애드덤을 따랐다. 문구가 모듈마다 겹치기 시작한 것은 [OQ-P-167](../synthesis/open-questions.md)이 이미 추적 중이다.
+
+**추가 확정(2026-08-15, 디자인 대조 후)** — 이 화면은 **읽기가 기본이고 편집은 세션**이다. 확인 버튼은 포커스 중에만 하단(`imePadding`)에 뜨고, 활성 조건은 서버 값과 다를 것이다. 그래서 상태가 `savedNickname`(SSoT)과 `nickname`(입력 버퍼)을 나눠 갖는다 — 최종 리뷰가 후속으로 미뤄 뒀던 분리가 dirty 판정 때문에 여기서 필요해졌다. 뒤로가기는 고친 게 있을 때만 `YGModalPopup`으로 확인을 묻는다(`그만두기`=버리고 나가기 / `취소하기`=닫고 계속). 로딩은 자리를 바꾸지 않고 입력 필드를 비활성으로만 둔다. 형제 화면 S-102(`GroupSettingScreen`)가 버튼 스트립 관용구의 선례다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다** — SSoT 값이 상태로 흐르는지, `null`이면 로딩인지, 변경 성공이 SSoT를 통해 되돌아오는지, 변경 중 버튼 비활성·연타 1회
 - [ ] **Step 2: 실패 확인**
