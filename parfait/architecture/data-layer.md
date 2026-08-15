@@ -4,7 +4,7 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-14
+verified: 2026-08-15
 related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020
 related_architecture: state-management
@@ -18,7 +18,7 @@ tags: [architecture, parfait]
 > 근거는 파일명+심볼명으로만.
 
 ## 레이어 배치
-- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`InviteCodeResult`, `GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`) + 도메인 예외(sealed `SegmentationException` — `ImageNotFound`·`ClientInit`·`ModuleNotReady`·`Process`).
+- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`·`MyParfaitGroupVO`) + 도메인 예외(sealed `SegmentationException` — `ImageNotFound`·`ClientInit`·`ModuleNotReady`·`Process` / `SignUpException.RequiredPolicyNotAgreed`).
   - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드가 추가한 VO·value class만 하위 패키지로 들어갔고(PR #197의 `auth/`·`group/`·`id/`·`policy/`에 PR #230이 `image/`·`member/`·`topping/`을 더했다), 그 이전 선언 8개는 루트에 남았다. 하위 패키지가 넷에서 일곱이 되며 **비율은 더 기울었는데 규약은 여전히 없다** — 어디에 새 모델을 둘지 매번 판단해야 하는 상태 → [open-questions](../synthesis/open-questions.md).
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
@@ -30,6 +30,12 @@ tags: [architecture, parfait]
 > **표시 포맷은 data가 만들지 않는다**(2026-08-04, PR #191) — `GalleryImageGroup.date`가 문자열에서
 > `LocalDate`로 바뀌고 `GalleryMediaProvider`의 날짜 포맷이 삭제됐다. 포맷은 화면이
 > `core:util:jvm` `DateTextFormat`으로 만든다. 날짜 그룹 키의 하루 경계는 `DayWindow`(도메인 모델) 소관.
+>
+> 📌 **같은 원칙이 원격 시각에도 적용됐다(2026-08-15, PR #248)** — `MyParfaitGroupVO.recentImageUploadedAt`이
+> `kotlinx.datetime.LocalDateTime`(벽시계)에서 **`kotlin.time.Instant`(절대 시점)**로 바뀌었고, 상대시간
+> 문구는 화면(`GroupTimestamp`)이 만든다. 벽시계 숫자로 들고 있으면 기기 타임존에 따라 다른 시점이 된다는 것이 근거다.
+> ⚠️ **다만 매퍼가 `Instant::parse`를 쓰는데 서버는 오프셋 없는 문자열을 내려준다**
+> ([api/parfait-group.md](../api/parfait-group.md) 직렬화 포맷) → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 
 ## DI 모듈 (data, `@InstallIn(SingletonComponent::class)`)
 `di/` **평면 배치, 역할당 파일 1개**(하위 패키지 없음). 도메인이 늘면 해당 역할 파일에 바인딩을
@@ -37,7 +43,7 @@ tags: [architecture, parfait]
 
 | 모듈 | 제공/바인딩 |
 |------|-------------|
-| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·parfaitGroup) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
+| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
 | `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`) |
@@ -98,22 +104,28 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 적으면 안 쓰는 상수가 계약 변경 때 방치돼 거짓말이 된다.
 
 중첩 object는 서버 enum 구조를 그대로 따른다 — `Auth`(서버 `AuthErrorCode`) · `ParfaitGroup`
-(`ParfaitGroupApiErrorCode`) · `Common`(`CommonErrorCode`). **실제 분기에 쓰이는 것은 `Auth` 3종뿐**
-이고 `ParfaitGroup` 8종·`Common` 1종은 그룹 화면 결선을 앞두고 미리 들어왔다(소비처 0)
-→ [open-questions](../synthesis/open-questions.md).
+(`ParfaitGroupApiErrorCode`) · `Common`(`CommonErrorCode`). **2026-08-15 그룹 결선 라운드로 선언된 코드가
+전부 소비된다** — `Auth` 3종은 A-002, `ParfaitGroup` 8종은 A-004(초대코드·이미 참여·정원)·S-102(닉네임 중복·
+규칙)·A-005(그룹명·닉네임·정원·회원 없음), `Common.INVALID_REQUEST`는 A-005가 쓴다. "분기에 쓰는 코드만
+둔다"는 자기 KDoc 규칙이 다시 지켜지는 상태다.
 
-### 원격 Repository 인벤토리 (2026-08-15)
+### 원격 Repository 인벤토리 (2026-08-15, 그룹·약관 결선 라운드 반영)
 
 | Repository | 메서드 | 소비 |
 |---|---|---|
-| `AuthRepository` | `loginWithKakao(idToken, nonce)` · `saveSession(session)` | `LoginWithKakaoUseCase` → A-002 |
-| `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | **없음** |
+| `AuthRepository` | `loginWithKakao(idToken, nonce)` · `signUp(registrationToken, agreements)` · `saveSession(session)` | `LoginWithKakaoUseCase` → A-002 · `SignUpUseCase` → 온보딩 약관 |
+| `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
+| `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | 순서대로 `GetMyGroupsUseCase`(G-001) · `GetGroupJoinPreviewUseCase`·`JoinGroupUseCase`(A-004) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102) |
 
-`ParfaitGroupRepository`는 화면이 요구하기 전에 **경계만 먼저** 들어왔다 — 그룹 화면 브랜치
-셋(#233·#239·#240)이 각자 같은 4파일을 만들고 있어 두 번째가 머지되는 순간 충돌하기 때문이다.
-그래서 인터페이스·구현·DI·테스트만 develop에 두고 UseCase·ViewModel은 각 feature 브랜치가 갖는다.
-DataSource가 가진 나머지 호출(그룹 상세·나가기·신고)은 **화면이 요구할 때까지 인터페이스에
-올리지 않는다.**
+`ParfaitGroupRepository`는 2026-08-15 로그인 라운드에서 화면보다 먼저 경계만 들어왔었고(브랜치
+셋이 같은 4파일을 만들어 충돌하기 때문), **같은 날 그룹 화면 세 라운드(#243·#244·#248)가 5 메서드를
+전부 소비하며 그 선반영이 닫혔다.** DataSource가 가진 나머지 호출(그룹 상세·나가기·신고)은
+**화면이 요구할 때까지 인터페이스에 올리지 않는다**는 방침 그대로다.
+
+UseCase는 대개 Repository 위임 한 줄이고, 규칙을 더 얹는 것은 둘이다 — `CreateGroupUseCase`가
+응답 `groupId > 0`을 성공 조건으로 못 박고, `SignUpUseCase`가 필수 약관 미동의를 도메인 예외
+(`SignUpException.RequiredPolicyNotAgreed`)로 되돌린 뒤 성공 시 **세션 저장까지** 한다
+(`LoginWithKakaoUseCase`와 같은 이유 — 저장 전에 이동하면 다음 화면 첫 요청이 토큰 없이 나간다).
 
 두 구현 다 하는 일은 DataSource 위임 + `mapErrorToAppError()`뿐이다. 위임만 하는 층처럼 보여도
 이 변환 때문에 필요하다 — 없으면 `ApiException`이 domain·feature까지 새어 나간다.
@@ -163,9 +175,11 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > **2026-08-15 갱신 — 첫 소비처가 develop에 들어왔다**(PR #241 `80895eb1`).
 > `AuthRepository`/`AuthRepositoryImpl` + `LoginWithKakaoUseCase`가 A-002 카카오 로그인을
 > 결선했다 → [a002-kakao-login-api](../specs/archive/2026-08-13-a002-kakao-login-api.md).
-> 같은 PR이 `ParfaitGroupRepository`/`Impl`(5 메서드)도 심었으나 **그쪽은 UseCase·ViewModel이
-> 없어 소비처가 0**이다(아래 "Repository 경계"). 나머지 5 도메인은 여전히 Repository 0건이다.
-> **실서버 요청은 아직 0건**(실기기 검증 미수행) → [open-questions](../synthesis/open-questions.md).
+> **같은 날 네 라운드가 더 붙어 소비처가 넓어졌다**(PR #242·#243·#244·#248) — 약관 조회·회원가입
+> (`PolicyRepository` 신설 + `AuthRepository.signUp`)과 그룹 목록·생성·참여·닉네임 변경이 화면까지 이어졌다.
+> 이로써 **auth·policy·parfait-group 세 도메인이 화면 소비처를 가진다**. 나머지 4 도메인
+> (parfait·image·member·parfait-image)은 여전히 Repository 0건이다.
+> **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
 매핑 지점도 확정(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.

@@ -368,7 +368,13 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 생겼고 A-002 화면까지 이어졌다 → [a002-kakao-login-api 스펙](../specs/archive/2026-08-13-a002-kakao-login-api.md).
 같은 PR이 `ServerErrorCode.Auth`(`INVALID_ID_TOKEN`·`KAKAO_JWKS_FETCH_FAILED`·
 `KAKAO_SERVER_UNAVAILABLE`)를 `:domain`에 두어 아래 에러 코드 표의 세 값이 앱 코드에 실체로 있다.
-**`signup`·`reissue`·`logout`은 여전히 Repository·UseCase 0건**이고 이후 라운드다.
+**2026-08-15 — `signup`도 화면까지 결선됐다**(PR #242). `AuthRepository.signUp(registrationToken, agreements)` +
+`SignUpUseCase`가 붙어 온보딩 약관 동의 화면이 호출하고, 성공 응답(`AuthSessionVO`)을 **UseCase가 그 자리에서
+저장**한다(`saveSession`) → [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md).
+`agreements[]`는 화면에 노출한 약관 **전체**(미동의는 `agreed = false`)이고 그 목록 출처는 [policy.md](policy.md)다.
+필수 약관 미동의는 요청 전에 도메인이 막는다(`SignUpException.RequiredPolicyNotAgreed`) — 서버
+`REQUIRED_TERMS_NOT_AGREED` 400은 화면 가드가 뚫렸을 때만 도달한다.
+**`reissue`·`logout`은 여전히 Repository·UseCase 0건**이고 이후 라운드다.
 
 **실제 서버 호출로는 아직 한 번도 검증되지 않았다** — 실기기 검증이 남아 있다. 개발 서버 평문 HTTP
 차단은 `usesCleartextTraffic`으로 뚫었으나 그 설정 자체가 미결이다

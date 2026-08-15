@@ -13,8 +13,12 @@ related_code:
   - InviteCodeInputField.kt#InviteCodeInputField
   - InviteCodeInputFieldElement.kt#InviteCodeInputFieldElement
   - InviteCodePasteBar.kt#InviteCodePasteBar
-  - CheckInviteCodeValidUseCase.kt#CheckInviteCodeValidUseCase
-  - InviteCodeResult.kt#InviteCodeResult
+  - InviteCodeError.kt#InviteCodeError
+  - GetGroupJoinPreviewUseCase.kt#GetGroupJoinPreviewUseCase
+  - JoinGroupUseCase.kt#JoinGroupUseCase
+  - ParfaitGroupRepository.kt#previewJoin
+  - ParfaitGroupRepository.kt#joinGroup
+  - ServerErrorCode.kt#ParfaitGroup
   - InviteCode.kt#InviteCode
   - ClipDescription.kt#isSensitive
   - YGModalPopup.kt#YGModalPopup
@@ -43,6 +47,13 @@ tags: [spec, parfait, groups, invite-code, a004]
 > **화면 ID 정정** — parfait 문서가 이 화면을 그동안 "G-002 초대코드 화면"이라 불렀는데,
 > 위키 정본 [[기능정의서-v6]]에서 **G-002(그룹 진입)는 삭제된 별개 화면**이고 초대 코드 입력은
 > **A-004(그룹 참여)**다([[그룹]] "생성 / 참여"). 이 스펙부터 A-004로 쓴다.
+>
+> ⚠️ **as-built 갱신(2026-08-15, #244 develop 머지)**: **코드 검증도 참여도 실서버를 탄다.**
+> mock이던 `CheckInviteCodeValidUseCase`와 `InviteCodeResult`가 **삭제**되고
+> `GetGroupJoinPreviewUseCase`(GET `join-preview`)·`JoinGroupUseCase`(POST `join`) 둘로 갈라졌다.
+> **합류 시점이 이 화면으로 앞당겨졌다** — 모달의 "참여하기"가 실제로 그룹에 합류하고, 그 응답의
+> `groupId`를 다음 화면(S-102)에 인자로 넘긴다. 실패 사유는 `InviteCodeError` enum + 화면 매핑이라
+> **domain이 표시 문자열을 들던 마지막 자리도 사라졌다**(ADR-0016 이탈 해소).
 
 - **화면 ID**: A-004 (그룹 참여 — 초대 코드 입력)
 - **대상 모듈**: `feature/groups/enter/impl`(`invitecode/`) + `feature/groups/enter/api`(NavKey) + `domain`(UseCase·model) + `core:designsystem`(`YGModalPopup`·`YGTopBarDetail`·`YGButton`)
@@ -57,10 +68,12 @@ tags: [spec, parfait, groups, invite-code, a004]
 - 포함: 코드 칸 입력·칸 이동/수정 모드·진입 자동 포커스·키보드 동기화·확인 시 코드 검증·에러 인라인 노출·
   참여 확인 모달·다음 화면 이동·뒤로가기.
 - 제외(구현 TODO):
-  - **코드 검증 실체** — `CheckInviteCodeValidUseCase`가 인자를 받지 않고 고정 지연 후 **항상 성공**을 반환하는 stub이다(코드 주석 `Todo : 검증 및 에러처리도 추후 추가 예정`). 입력한 코드는 서버로 나가지 않는다.
-  - **그룹명 실값** — 모달에 쓰는 `groupName`이 UseCase 안 리터럴 mock이다(주석에 서버 수신 예정 명시).
-  - **실제 참여 처리** — 모달의 "참여하기"는 그룹 합류가 아니라 화면 이동만 한다. 합류 호출은 S-102가 부르는 `EnterGroupUseCase`(그 역시 mock)다.
+  - ~~**코드 검증 실체**~~ — ✅ **해소(#244)**. 입력한 코드로 `GET /api/parfait-groups/join-preview`를 부른다.
+  - ~~**그룹명 실값**~~ — ✅ **해소(#244)**. 미리보기 응답의 `GroupName`을 모달 제목에 쓴다.
+  - ~~**실제 참여 처리**~~ — ✅ **해소(#244)**. 모달 "참여하기"가 `POST /api/parfait-groups/join`을 호출한다.
+    **합류가 S-102가 아니라 이 화면 몫이 됐다** — 문구가 약속하는 시점과 코드의 시점이 맞아떨어졌다.
   - ~~**클립보드 자동 붙여넣기** — Route에 `Todo` 주석만 있다.~~ → **2라운드(#237)에서 해소**, 아래 참고.
+  - **실패 후 재시도 안내 없음** — 사유 문구는 입력 자리 아래 한 줄로 나가지만 재시도 버튼·안내는 없다(입력을 고치면 문구가 지워진다).
 
 ## 2라운드 — 클립보드 붙여넣기 (PR #237, 2026-08-14 머지)
 
@@ -104,28 +117,33 @@ tags: [spec, parfait, groups, invite-code, a004]
 // api
 @Serializable data object NavKeyGroupInviteCode : NavKey
 
-// domain — ADR-0009(@Inject + operator invoke). 현재 stub
-class CheckInviteCodeValidUseCase @Inject constructor() {
-    suspend operator fun invoke(): InviteCodeResult   // 인자 없음 — 입력 코드를 받지 않는다
+// domain — ADR-0009(@Inject + operator invoke). 🔁 #244에서 mock 2종이 삭제되고 둘로 갈라짐
+class GetGroupJoinPreviewUseCase @Inject constructor(private val parfaitGroupRepository: ParfaitGroupRepository) {
+    suspend operator fun invoke(inviteCode: InviteCode): Result<GroupName>   // GET join-preview
 }
-data class InviteCodeResult(
-    val isSuccess: Boolean,
-    val errorMessage: String?,   // ⚠️ domain이 표시 문자열 보유(ADR-0016 이탈, open-questions [2026-07-26] ②)
-    val groupName: String,       // #224 신설 — 확인 모달 제목에 들어감(현재 mock 리터럴)
-)
+class JoinGroupUseCase @Inject constructor(private val parfaitGroupRepository: ParfaitGroupRepository) {
+    suspend operator fun invoke(inviteCode: InviteCode): Result<JoinedGroupVO>  // POST join
+}
+// ❌ 삭제(#244): CheckInviteCodeValidUseCase · InviteCodeResult(표시 문자열 보유 — ADR-0016 이탈이었다)
 
 // impl — MVI
 data class GroupInviteCodeUiState(
     val text: String = "",
     val focusedIndex: Int? = null,
     val inputMode: InputMode = InputMode.ADD,
-    val errorText: String? = null,
+    val inviteCodeError: InviteCodeError? = null,   // 🔁 #244 — errorText: String? 에서 교체
     val groupName: String = "",              // #224 신설
     val isConfirmPopupVisible: Boolean = false,  // #224 신설
+    val isSubmitting: Boolean = false,       // #244 신설 — 조회·참여 공용 진행 플래그
+    val clipboardInviteCode: String? = null, // #237
 ) : UiState {
-    val codeLength = 6
+    val codeLength = InviteCode.LENGTH       // #237에서 domain 상수로 이관
 }
 enum class InputMode { ADD, EDIT }
+
+// 실패 사유는 feature 로컬 enum + 화면 매핑(ADR-0016 형태, 소유처는 core:ui가 아니라 이 모듈)
+enum class InviteCodeError { INVALID_CODE, ALREADY_JOINED, MEMBER_LIMIT_REACHED, NETWORK, UNKNOWN }
+@Composable internal fun InviteCodeError.toStringResource(): String
 
 sealed interface GroupInviteCodeIntent : UiIntent {
     data object ClickNextButton; data object ClickBackButton
@@ -133,8 +151,12 @@ sealed interface GroupInviteCodeIntent : UiIntent {
     data class SelectedTextFieldElement(val index: Int)
     data object HideKeyboard; data object FocusedFirstIndex
     data object ClickConfirmPopupEnter; data object DismissConfirmPopup   // #224 신설
+    data class ClipboardCodeDetected(val code: String); data object ClickPasteInviteCode  // #237
 }
-sealed interface GroupInviteCodeSideEffect : UiSideEffect { data object NavigateToBack; data object NavigateToNext }
+sealed interface GroupInviteCodeSideEffect : UiSideEffect {
+    data object NavigateToBack
+    data class NavigateToNext(val groupId: Long)   // 🔁 #244 — 참여한 그룹 ID를 S-102로 넘긴다
+}
 ```
 
 ## 동작 / 상태
@@ -147,22 +169,33 @@ sealed interface GroupInviteCodeSideEffect : UiSideEffect { data object Navigate
 - **진입 자동 포커스**: Route가 `FocusedFirstIndex`를 한 번 보내 첫 칸을 잡는다.
 - **키보드 동기화**: `focusedIndex`가 `null`이면 키보드를 내리고 아니면 올린다. 반대로 IME가 사라지면
   Route가 `HideKeyboard`를 보내 `focusedIndex`를 비운다(양방향).
-- **확인**(`ClickNextButton`): `CheckInviteCodeValidUseCase()` 실행 →
-  - 성공: `groupName` 반영 + `isConfirmPopupVisible = true`(**화면 이동은 여기서 하지 않는다**).
-  - 실패: 상태를 **새 `GroupInviteCodeUiState(errorText = …)`로 통째 교체**(입력한 코드·포커스가 함께 초기화된다).
-- **모달 참여**(`ClickConfirmPopupEnter`): 모달만 닫고 `NavigateToNext` → `navigator.goTo(NavKeyGroupNickName)`.
-- **모달 취소·바깥 탭·뒤로가기**(`DismissConfirmPopup`): `isConfirmPopupVisible = false`. 진행 중 가드 없음
-  (A-005는 `isCreating` 가드가 있다 — [a005 스펙](2026-07-29-a005-group-create.md)).
+- **확인**(`ClickNextButton`, 🔁 #244): 입력이 `codeLength`가 아니면 조회하지 않고 로그만 남긴다.
+  통과하면 `GetGroupJoinPreviewUseCase(InviteCode(text))` →
+  - 성공: `groupName` 반영 + `isConfirmPopupVisible = true`(**화면 이동도 합류도 여기서 하지 않는다**).
+  - 실패: `inviteCodeError` 반영(입력값·포커스는 남는다 — #237의 `copy` 정정).
+  - **미리보기를 먼저 부르는 이유**: 참여 상태를 바꾸지 않는 호출이라 잘못된 코드를 모달까지 간 뒤 되돌리는
+    것보다 여기서 거르는 편이 낫다는 코드 주석.
+- **모달 참여**(`ClickConfirmPopupEnter`, 🔁 #244): `JoinGroupUseCase(InviteCode(text))` 실행.
+  성공하면 모달을 닫고 `NavigateToNext(groupId = joinedGroup.groupId.value)`.
+  실패하면 **모달을 닫고** 사유를 입력 자리에 붙인다(사유가 나갈 자리가 모달에 없다).
+- **진행 플래그**(`isSubmitting`, #244): 조회·참여 둘 다 켜고 `finally`에서 끈다. 확인 버튼 활성 조건에
+  들어가고(`text.length == codeLength && isSubmitting.not()`), 모달 dismiss도 이 값이면 막는다
+  (🔁 #244 — A-005의 `isCreating` 가드와 형태가 맞춰졌다).
+- **실패 매핑**(#244): `AppError.Network` → `NETWORK` / `AppError.Server`의
+  `INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·`GROUP_MEMBER_LIMIT_REACHED` → 각 사유 / 그 외 `UNKNOWN`.
+  ViewModel은 enum만 들고 문구는 화면이 `toStringResource()`로 붙인다 — 안드로이드 리소스를 보지 않아야
+  테스트에서 그대로 검증된다는 KDoc.
+- **모달 취소·바깥 탭·뒤로가기**(`DismissConfirmPopup`): 진행 중이면 무시, 아니면 `isConfirmPopupVisible = false`.
 - **뒤로가기**(`ClickBackButton`) → `NavigateToBack` → `navigator.onBack()`.
-- **확인 버튼 활성**: `text.length == codeLength`.
 
 ## 표시·제어 규칙
 
 - 상단 `YGTopBarDetail(title = R.string.group_enter)`, 본문 `LazyColumn`(좌우 `padding7`·상하 `padding10`),
   제목 `title.t02B`/`Gray900` + 설명 `body.b02R`/`Gray500`, 하단 고정 `YGButton(Large)`.
 - 코드 입력은 `InviteCodeInputField` + 칸마다 `InviteCodeInputFieldElement`(`weight(1f)`·`aspectRatio(7/8)`,
-  칸 간격 `gap3`). 포커스 칸은 `index == focusedIndex`, 에러는 `errorText != null`로 전 칸에 함께 걸린다.
-- 에러 문구는 입력 필드 아래 `caption.c01R`/`Cherry600`.
+  칸 간격 `gap3`). 포커스 칸은 `index == focusedIndex`, 에러는 `inviteCodeError != null`로 전 칸에 함께 걸린다.
+- 에러 문구는 입력 필드 아래 `caption.c01R`/`Cherry600`. 문구는 `feature/groups/enter/impl` `strings.xml`
+  (`invite_code_error_*` 5종, #244) — 프리뷰 파라미터도 이제 리터럴이 아니라 `InviteCodeError` 값을 넘긴다.
 - **확인 모달**은 `uiState.isConfirmPopupVisible`일 때만 `YGModalPopup`을 호출한다(컴포넌트가 표시 여부를
   갖지 않는 규약대로 — [ygmodalpopup 스펙](2026-07-15-ygmodalpopup.md)). 제목은 `%1$s`에 `groupName`을 끼운
   포맷 문자열, 아이콘 `ic_warning_round`(`core:designsystem`), 좌 Secondary "취소" / 우 Primary "참여하기".
@@ -182,31 +215,37 @@ sealed interface GroupInviteCodeSideEffect : UiSideEffect { data object Navigate
 - `domain/model/group/InviteCode.kt` — `LENGTH`·`parseOrNull`(#237). `core:util:android` `extension/ClipDescription.kt`.
 - `core/ui` `strings.xml#group_invite_message` — S-101 복사와 공유하는 초대 메시지 템플릿(#237).
 - `impl/navigation/EntryBuilder.kt#featureGroupInviteCodeEntryBuilder` · `NavigationModule.kt` — entry 등록·`@IntoSet`.
-- `domain/usecase/group/CheckInviteCodeValidUseCase.kt` · `domain/model/InviteCodeResult.kt`.
+- `impl/invitecode/InviteCodeError.kt` — 실패 사유 enum + `toStringResource()`(#244 신설).
+- `domain/usecase/group/GetGroupJoinPreviewUseCase.kt` · `JoinGroupUseCase.kt`(#244 신설).
+  삭제: `CheckInviteCodeValidUseCase.kt` · `domain/model/InviteCodeResult.kt`.
+- 테스트(#244): `GroupInviteCodeViewModelTest`에 조회·참여·실패 매핑 케이스가 붙었다(기존 붙여넣기 케이스 유지).
 
 ## 정책 대조 (위키)
 
 | 위키 정책 | 코드 | 판정 |
 |---|---|---|
-| [[그룹]] "참여(A-004): 초대 코드 입력 → 그룹 합류" | 코드 입력 화면 존재, 합류는 후속 화면 | 방향 일치(합류 자체는 mock) |
+| [[그룹]] "참여(A-004): 초대 코드 입력 → 그룹 합류" | 모달 확인이 `POST join`으로 **실제 합류**(#244) | ✅ 일치 |
 | [[기능정의서-v6]] A-004 다음 단계 = **C-001(메인 캔버스)** | 확인 모달 → S-102 → **G-001 그룹 목록** | ⚠️ **불일치** → [open-questions](../../synthesis/open-questions.md) [2026-08-12] |
-| [[그룹]] 최대 12명 — 인원 초과·이미 가입 에러 케이스 | 검증이 stub이라 어떤 에러도 발생하지 않음 | 미이행 |
-| 초대 코드 자릿수 | `codeLength = 6`(UiState 내부 상수) | **정책 문서 없음** — 코드가 먼저 확정 |
+| [[그룹]] 최대 12명 — 인원 초과·이미 가입 에러 케이스 | 서버 코드 `GROUP_MEMBER_LIMIT_REACHED`·`GROUP_ALREADY_JOINED`를 각각 문구로 매핑(#244) | ✅ 일치 |
+| 초대 코드 자릿수 | `InviteCode.LENGTH`(domain 상수) | **정책 문서 없음** — 코드가 먼저 확정 |
+| 실패 문구 | `strings.xml` 5종(#244) | **정책 문서 없음** — 코드가 먼저 확정 |
 
 ## 주의 / 열린 질문
 
-- **검증·그룹명이 전부 mock** — 코드 유효성도 그룹명도 서버를 타지 않는다. 실패 분기(`errorText`)는
-  현재 도달 불가라 프리뷰에서만 보인다 → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
-- **"참여하기"가 참여하지 않는다** — 모달 확인은 닉네임 입력 화면으로의 이동일 뿐이고 실제 합류는 S-102
-  단계다. 모달 문구가 사용자에게 약속하는 시점과 코드의 시점이 어긋난다.
-- ~~**실패 시 상태 통째 교체**~~ → **#237에서 `copy`로 정정**(입력값·포커스가 살아남는다). 검증 자체는
-  여전히 stub이라 이 경로는 프리뷰에서만 보인다.
+- ~~**검증·그룹명이 전부 mock**~~ — ✅ **해소(#244)**. 둘 다 서버 응답이고 실패 분기도 실제로 도달한다.
+- ~~**"참여하기"가 참여하지 않는다**~~ — ✅ **해소(#244)**. 모달 확인이 곧 합류다.
+  대신 **합류와 닉네임 설정이 두 요청으로 갈렸다** — 참여는 여기서 끝나고 S-102는 이미 들어간 그룹의
+  닉네임을 바꾸는 화면이다. **닉네임 화면에서 뒤로 가거나 앱을 닫아도 그룹에는 이미 들어가 있고**,
+  그 그룹의 닉네임은 서버 초기값으로 남는다 → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
+- ~~**실패 시 상태 통째 교체**~~ → **#237에서 `copy`로 정정**(입력값·포커스가 살아남는다).
 - **코드 자릿수 6의 근거는 여전히 코드다** — #237이 `codeLength`를 `InviteCode.LENGTH`로 끌어올려
   domain에 상수 하나로 모았지만, 정책 문서는 아직 없다.
 - **`parseOrNull`이 초대 메시지 문구에 묶여 있다** — 템플릿(`core:ui` `group_invite_message`)이 바뀌면
   붙여넣기 감지도 함께 바뀐다. 템플릿을 못 찾으면 "텍스트 전체가 코드"만 인정하므로, 문구가 바뀐 구버전
   메시지를 붙여넣으면 감지되지 않는다.
-- **`errorText`가 domain에서 온다** — `InviteCodeResult.errorMessage`(표시 문자열) 그대로다.
-  ADR-0016이 걷어낸 패턴이 이 화면에만 남아 있다 → [open-questions](../../synthesis/open-questions.md) [2026-07-26] ②.
-- **프리뷰 에러 문구가 코틀린 리터럴** — 화면 문자열은 리소스인데 프리뷰 파라미터의 에러 문구는
-  하드코딩이다(문구 자체가 domain 소관이라 리소스에 없다).
+- ~~**`errorText`가 domain에서 온다**~~ — ✅ **해소(#244)**. `InviteCodeResult`가 삭제되며 domain의
+  표시 문자열이 사라졌고, 매핑은 `InviteCodeError.toStringResource()`가 한다.
+  다만 소유처는 `core:ui`가 아니라 **feature 로컬**이다 — 단일 소비처라 ADR-0016 결정(공유 규칙엔 공유 매핑)과
+  어긋나지 않지만, 같은 형태의 enum이 S-102에도 따로 생겨 **문구·갈래가 두 벌**이다(`NETWORK`·`UNKNOWN` 문구 동일)
+  → [ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md) as-built.
+- ~~**프리뷰 에러 문구가 코틀린 리터럴**~~ — ✅ **해소(#244)**. 프리뷰도 enum 값을 넘긴다.

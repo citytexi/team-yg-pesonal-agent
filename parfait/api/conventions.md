@@ -253,7 +253,17 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
 
-✅ **2026-08-15 기준 0건.** 오래 걸려 있던 로그인 판별자 키 불일치(응답 키가 `isNewUser`인데 Android가
+⚠️ **2026-08-15 기준 1건.**
+
+| 항목 | 계약(서버) | Android | 영향 |
+|---|---|---|---|
+| `MyParfaitGroupResponse.recentImageUploadedAt` 파싱 | `LocalDateTime` — 오프셋 없는 `yyyy-MM-ddTHH:mm:ss`(컨트롤러 테스트가 검증) | `data/source/group/mapper/VOMapper.kt`가 `kotlin.time.Instant::parse`(오프셋 필수) | 최근 이미지가 있는 그룹이 하나라도 있으면 매퍼가 던져 **G-001 목록 조회 전체가 실패**(→ `AppError.Unexpected`) → [open-questions](../synthesis/open-questions.md) [2026-08-15] |
+
+앱 쪽 변경 의도는 "벽시계가 아니라 절대 시점으로 든다"이고 방향은 타당하다 — 어긋난 것은 **서버가 아직
+오프셋을 싣지 않는다는 점**이다. 어느 쪽을 고칠지(서버가 오프셋 포함 포맷으로 바꾸거나, 앱이
+`LocalDateTime` + 고정 타임존으로 읽거나)는 미결이다.
+
+✅ 오래 걸려 있던 로그인 판별자 키 불일치(응답 키가 `isNewUser`인데 Android가
 `@SerialName("newUser")`를 붙였던 건)는 **PR #241로 정정됐고 와이어 계약 테스트가 잠갔다**
 ([auth.md](auth.md) 각주). 계약 해석의 근거는 위 [직렬화 규약](#직렬화-규약)이다.
 
@@ -269,9 +279,10 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 항목도 해소 처리했다.
 
 > **다만 "일치"가 "검증됨"은 아니다.** 14 엔드포인트 Service·DataSource는 2026-08-06 PR #197로,
-> 나머지 6개는 2026-08-12 PR #230으로 develop에 들어왔고, 2026-08-15 PR #241이 카카오 로그인 하나를
-> 실제 소비처까지 이었다. 그 한 경로마저 **실서버 요청은 아직 0건**이다(실기기 검증 대기)
-> → [open-questions](../synthesis/open-questions.md).
+> 나머지 6개는 2026-08-12 PR #230으로 develop에 들어왔고, **2026-08-15에 다섯 라운드**(PR #241·#242·
+> #243·#244·#248)가 카카오 로그인·약관 조회·회원가입·그룹 목록/생성/참여/닉네임 변경 **8 엔드포인트를
+> 화면까지** 이었다. 그럼에도 **실서버 요청 검증은 여전히 0건**이다(실기기 미수행) — 위 표의 시각 파싱
+> 불일치도 그래서 아직 코드 대조로만 드러난 상태다 → [open-questions](../synthesis/open-questions.md).
 
 **2026-08-15 기준 서버 엔드포인트는 26개(+테스트 전용 1)고 Android 표면은 20개다.** 분모에서 빠지는 것은
 애플 로그인 1건(`해당 없음`)과 테스트 전용 회전 1건이라 **20/25, 공백 5**다 — 파르페 오늘 조회·과거 목록,

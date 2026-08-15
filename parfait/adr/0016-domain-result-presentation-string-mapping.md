@@ -66,6 +66,19 @@ tags: [adr, parfait, i18n, domain, presentation]
 >
 > 상세는 [s101-group-side-menu 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md)의 "유효성 표시 매핑" 절.
 
+> 📌 **as-built 확장(2026-08-15, PR #244) — 같은 형태가 서버 실패 사유로 번졌다.** 그룹 결선 라운드가
+> **domain의 마지막 표시 문자열 보유자였던 `InviteCodeResult.errorMessage`를 삭제**했다(모델 자체가 사라짐).
+> 그 자리를 대신하는 것은 feature 로컬 enum + `@Composable toStringResource()`다 —
+> `InviteCodeError`(A-004)·`GroupNickNameError`(S-102). ViewModel은 `AppError.Server.code`를 enum으로 접고
+> 문구는 화면이 붙인다.
+>
+> - **원안과 어긋나지 않는다** — "domain은 의미만, 표시는 프레젠테이션 소관"이 그대로다. 다만 **매핑 소유가
+>   `core:ui`가 아니라 각 feature**다. 근거는 소비처가 하나라는 것(공유 규칙엔 공유 매핑 — 여기는 공유가 아니다).
+> - ⚠️ **문구는 이미 겹친다** — 두 enum의 `NETWORK`·`UNKNOWN` 문구가 같고 리소스만 모듈별로 따로 있다.
+>   세 번째 화면이 같은 갈래를 복제하면 #179~#223과 같은 경로를 밟는다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+> - 이 매핑은 `NameValidResult`(입력 형식)와 **별개 축**이다 — S-102는 둘을 동시에 들고
+>   형식 오류를 우선 표시한다(`nicknameError ?: submitError`).
+
 ## 맥락
 
 `CheckNameValidUseCase`(domain)가 반환하던 `NicknameResult`는 실패 사유를 **한국어 문자열**로

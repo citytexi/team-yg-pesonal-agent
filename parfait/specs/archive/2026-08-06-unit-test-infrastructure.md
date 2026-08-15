@@ -150,9 +150,14 @@ Main looper가 있어 쓸 일이 없다. `test-android` 번들에 coroutines-tes
 
 | 플러그인 | 적용 모듈 |
 |---|---|
-| `parfait-test-unit` | `domain`, `data`, `core:util:jvm`, `core:util:android` |
+| `parfait-test-unit` | (스펙 시점) `domain`, `data`, `core:util:jvm`, `core:util:android` |
 | `parfait-test-android` | `core:util:android`, `core:designsystem` (둘 다 스모크) |
 | `parfait-test-compose` | `core:designsystem` (스모크) |
+
+> 📌 **`parfait-test-unit`은 이후 라운드에서 feature·core 모듈로 퍼졌다** — `core:ui`·`core:testing`과
+> 화면 결선 라운드마다 그 feature `impl`(로그인·설정·그룹 설정·그룹 참여·인트로·그룹 목록)이 차례로 붙였다.
+> **현재 적용 목록은 코드가 SoT**다(`grep -rl "parfait.test.unit" --include=build.gradle.kts .`) — 여기 표는
+> 스펙 시점 기준으로 남긴다. 아래 두 플러그인은 여전히 스모크 적용 그대로다.
 
 `core:designsystem`은 `parfait-test-android`와 `parfait-test-compose`를 **함께** 적용한다.
 `parfait-test-compose`는 Compose 테스트 의존만 추가하고 계측 러너·`testOptions`는 여전히
@@ -254,7 +259,7 @@ fun current(
 
 | 모듈 | 대상 | 검증 내용 |
 |---|---|---|
-| `core:util:jvm` | `CharExtension#isKorean` | 한글·영문·숫자·기호·공백 경계 |
+| `core:util:jvm` | `CharExtension#isKorean` | 한글·영문·숫자·기호·공백 경계 (🔁 **2026-08-15 PR #243에서 확장·테스트 모두 삭제** — 이름 유효성이 서버 문자 집합을 직접 쓰게 되며 사용처가 사라졌다) |
 | `core:util:jvm` | `DateFormat` · `DateTextFormat` | 포맷 변환 |
 | `domain` | `CheckNameValidUseCase` | 검증 규칙 4종 각각 + 규칙 적용 우선순위 |
 | `domain` | `DayWindow` | 03시 경계 직전·직후, `contains`의 반열림 구간 |
@@ -354,6 +359,10 @@ host-test 컴포넌트를 끄는 방식으로 막는다(모듈을 일일이 나�
 - 번들 2종(`test-unit`·`test-compose` 없음), `DayWindow.current(timeZone, clock)` 파라미터
 - 시범 테스트 대상 전량(순수 로직 · 매퍼 · DataSource · HTTP 계층) + 계측 스모크 2건
   (`YGThemeSmokeTest`·`ContextExtensionTest`)
+  > ⚠️ **2026-08-15 — 규약이 한 번 깨졌다(PR #248)**: `MyParfaitGroupVOMapperTest`가 신설돼 develop에
+  > `*VOMapperTest`가 다시 생겼다(업로드 시각 파싱 3케이스). 대응 `ParfaitGroupRemoteDataSourceImplTest`가
+  > 이미 있으므로 케이스를 그쪽으로 옮기는 것이 규약이다 → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
+  >
   > 🔁 **2026-08-11 — 매퍼 항목은 규약 개정으로 폐기됐다.** `PolicyVOMapperTest`는 develop에
   > 있으나 **삭제 대상**이고, 그 케이스는 `PolicyRemoteDataSourceImplTest`로 옮긴다. 삭제는
   > 다음 API 서비스 레이어 구현 PR(member·parfait-image)에 함께 묶기로 했다 — 규약 변경과 정리가
