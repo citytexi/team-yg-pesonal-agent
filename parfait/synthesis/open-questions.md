@@ -1468,6 +1468,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (정책 공백 — 코드는 서버를 따른다)
 - **해소 메모**: 정해지면 [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md) 유효성 절을 맞추고, 정책이 바뀌면 위키 쪽에 별도 등록한다.
 
+### [2026-08-15] 닉네임 편집을 버리는 뒤로가기 동작이 S-002와 S-102로 갈렸다
+
+- **ID**: OQ-P-172
+- **출처**: `feature/app/setting/impl` `AccountInfoScreen`·`AccountInfoViewModel`(S-002)과 `feature/groups/setting/impl` `GroupSettingScreen`(S-102) — 디자인은 두 화면 모두 편집 중 뒤로가기에 `닉네임 수정을 취소할까요?` 확인을 두는데, S-002만 이번에 확인 모달을 붙였다(`isDiscardDialogVisible`, 서버 값과 다를 때만). S-102는 `handleBack`이 `isEditing`이면 포커스만 내리고 두 번째 뒤로가기에 그대로 나가 **고치던 값이 조용히 사라진다.** 두 화면이 같은 컴포넌트(`YGModalPopup`)를 쓸 수 있는데도 동작이 다르다.
+- **항목**: ① S-102도 같은 확인 모달을 붙일지(붙이면 저장값·입력 버퍼 분리가 S-102에도 필요하다 — S-102는 `myNickname`·`nicknameInput`으로 이미 갖고 있어 비용이 작다). ② `그만두기`=나가기 / `취소하기`=닫기 매핑을 두 화면이 공유할지 — 같은 모듈의 탈퇴 확인에서는 `그만두기`가 반대로 닫기를 뜻해 단어가 화면마다 다른 일을 한다.
+- **상태**: 미해결 (S-002만 적용)
+- **해소 메모**: S-102에 붙이면 [user-info-ssot 스펙](../specs/2026-08-15-user-info-ssot.md)의 「S-002 편집 세션」 절을 공용 규칙으로 올리고 이 항목을 닫는다.
+
 <!--
 항목 추가 형식:
 
