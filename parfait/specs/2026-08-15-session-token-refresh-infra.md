@@ -47,15 +47,31 @@ access token이 만료되면 화면이 알아채지 못한 채 재발급되고 �
 // data/network/TokenAuthenticator.kt
 class TokenAuthenticator @Inject constructor(
     private val tokenStore: TokenStore,
-    private val authService: Provider<AuthService>,
+    @AuthClient private val authService: AuthService,
+    private val apiCaller: ApiCaller,
     private val sessionEventBus: SessionEventBus,
 ) : Authenticator {
     override fun authenticate(route: Route?, response: Response): Request?
 }
 ```
 
-`Provider<AuthService>`인 이유 — `Retrofit`이 `OkHttpClient`를 요구하고 `OkHttpClient`가 이
-`Authenticator`를 요구한다. 직접 주입하면 Dagger 순환이므로 지연 주입으로 끊는다.
+**재발급은 전용 `OkHttpClient`로 나간다**(`@AuthClient` 한정자). 그 클라이언트는 자기
+`Dispatcher`를 갖고, 인증기도 `AuthInterceptor`도 달지 않는다.
+
+이유가 둘이고 둘 다 데드락이다.
+
+- **디스패처 고갈** — `authenticate()`는 그 호출이 아직 `Dispatcher` 슬롯을 점유한 채
+  `runBlocking`으로 블록된 상태에서 실행된다. 재발급이 같은 클라이언트를 타면 같은 디스패처·같은
+  호스트로 enqueue되는데, OkHttp 기본 `maxRequestsPerHost`는 5다. **같은 호스트 요청 5건이 동시에
+  401을 맞으면** 전부 슬롯을 점유한 채 블록되고 재발급은 큐에서 영원히 promote되지 않는다.
+  `callTimeout`이 없어 풀리지도 않는다 — 앱의 모든 네트워크가 프로세스 재시작까지 정지한다.
+  ⚠️ `okHttpClient.newBuilder()`로 파생하면 **부모의 `Dispatcher` 인스턴스를 물려받아** 이
+  교착이 살아남는다. 반드시 독립 생성한다.
+- **재진입** — 재발급 요청 자신이 401을 받으면 인증기가 자기 자신을 다시 타고 `Mutex`에 걸린다.
+  아래 0단계 `@NoAuth` 가드가 막지만, 클라이언트 분리로 구조적으로도 불가능해진다.
+
+부수 효과로 `Retrofit`↔`OkHttpClient`↔`Authenticator` Dagger 순환이 사라져 `Provider` 지연
+주입이 필요 없다.
 
 ```kotlin
 // domain/model/session/SessionEvent.kt
@@ -95,8 +111,14 @@ class LogoutUseCase @Inject constructor(private val authRepository: AuthReposito
 
 `authenticate()`는 아래 순서로 판단한다. 각 단계는 앞 단계가 통과했을 때만 실행된다.
 
-1. **루프 가드** — `response.priorResponse` 체인을 세어 2 이상이면 `null`. 서버가 새 토큰에도
-   401을 주는 경우 무한 재시도를 끊는다
+0. **`@NoAuth` 가드** — 요청이 인증 불필요 엔드포인트로 나간 것이면 즉시 `null`. `AuthInterceptor`와
+   같은 Retrofit `Invocation` 태그 판정을 쓴다. 클라이언트 분리(위)로 재진입은 이미 구조적으로
+   막혔지만, 이 가드는 그 위의 방어층으로 남긴다
+1. **루프 가드** — `response.priorResponse` 체인에서 **401인 것만** 세어 2 이상이면 `null`. 서버가
+   새 토큰에도 401을 주는 경우 무한 재시도를 끊는다.
+   ⚠️ 체인 전체를 세면 안 된다 — 리다이렉트 같은 follow-up이 섞여 있어, LB가 301을 한 번만
+   끼워도 첫 401이 이미 2회차로 보이고 **재발급을 한 번도 시도하지 못한 채** 모든 인증 API가
+   영구 실패한다
 2. **`Mutex` 획득** — 재발급 호출을 직렬화한다. 401이 동시에 여러 건 나도 재발급은 하나씩
 3. **선점 확인** — 실패한 요청이 들고 갔던 `Authorization` 헤더 값과 지금 `TokenStore`의 access
    token을 비교한다. 다르면 앞선 요청이 이미 갱신을 끝낸 것이므로 **재발급을 건너뛰고** 새
@@ -114,10 +136,17 @@ class LogoutUseCase @Inject constructor(private val authRepository: AuthReposito
 
 | 상황 | 판단 | 토큰 | 이벤트 | 반환 |
 |---|---|---|---|---|
-| 재발급 401 (`INVALID_TOKEN`·`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN`) | refresh token이 죽었다 | `clear()` | `ForcedLogout` | `null` |
+| 재발급 **401** (status 만으로 충분) | refresh token이 죽었다 | `clear()` | `ForcedLogout` | `null` |
+| 재발급 실패 + 본문 `code`가 거절 코드 (`INVALID_TOKEN`·`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN`) | 같음 | `clear()` | `ForcedLogout` | `null` |
+| 재발급 **403**이나 본문 `code`가 없음 | 프록시·WAF가 낸 것이다 | **유지** | 없음 | `null` |
 | 재발급 네트워크 실패·타임아웃 | 세션은 살아있을 수 있다 | **유지** | 없음 | `null` |
 | 재발급 5xx | 서버 장애 | **유지** | 없음 | `null` |
 | refresh token 부재 | 로그인한 적 없다 | 그대로(지울 것 없음) | 없음 | `null` |
+
+**status 코드만으로 세션을 끝내는 것은 401뿐이다.** 서버 계약상 재발급이 403을 내지 않는다
+(403 `FORBIDDEN_REFRESH_TOKEN`은 logout 엔드포인트 소속이다). 반면 WAF·사내 프록시·CDN은 HTML
+본문과 함께 403을 낸다 — 그것을 세션 종료로 보면 **로그인 상태를 유지했어야 할 사용자가 조용히
+로그아웃된다.** 그래서 403은 본문 `code`가 거절 코드일 때만 인정한다.
 
 네트워크 실패를 강제 로그아웃으로 보지 않는 이유 — 연결이 끊긴 것과 자격증명이 죽은 것은 다른
 사건이다. 지하철·엘리베이터에서 앱을 켠 것만으로 재로그인을 요구하게 된다. `null`을 반환하면
@@ -149,7 +178,17 @@ ClickLogout → LogoutUseCase → AuthRemoteDataSource.logout(refreshToken) → 
 
 `POST /api/v1/auth/logout`은 인증 도메인에서 유일하게 화이트리스트 밖이라 **access token과
 refresh token이 둘 다 필요하다**(`api/auth.md`). 즉 access token이 만료된 상태의 로그아웃은
-`TokenAuthenticator`를 한 번 타고 나간다.
+`TokenAuthenticator`를 한 번 타고 나가는데, **그대로 두면 반드시 실패한다.**
+
+refresh token이 **요청 본문**에 실려 나가기 때문이다. 401 → 재발급이 일어나면 서버가 refresh
+token을 **회전시키고 구 토큰을 폐기한다**(`api/auth.md`). 인증기는 `Authorization` 헤더만 갈아
+끼우고 본문은 그대로 재전송하므로, 재시도는 이미 죽은 refresh token을 들고 간다. 결과는
+**로컬만 정리되고 새로 발급된 서버 세션은 refresh token 수명(2주)까지 살아남는 것** — 사용자는
+로그아웃했다고 믿는데 세션이 유효하다.
+
+그래서 `logout()`은 호출이 실패하면 `TokenStore`에서 refresh token을 **다시 읽고**, 값이 바뀌었으면
+(= 인증기가 비행 중에 회전시켰으면) **정확히 1회** 재전송한다. 그 뒤 로컬을 정리하고 성공을
+반환하는 계약은 그대로다.
 
 ## 표시·제어 규칙
 
@@ -166,7 +205,8 @@ refresh token이 둘 다 필요하다**(`api/auth.md`). 즉 access token이 만�
 | `domain/model/session/SessionEvent.kt` | `ForcedLogout`. 신규 |
 | `domain/repository/session/SessionEventSource.kt` | 구독 인터페이스. 신규 |
 | `domain/usecase/auth/LogoutUseCase.kt` | 신규 |
-| `data/di/NetworkModule.kt` | `OkHttpClient`에 `authenticator(...)` 결합 |
+| `data/di/NetworkModule.kt` | 메인 `OkHttpClient`에 `authenticator(...)` 결합 + **재발급 전용 클라이언트·Retrofit·AuthService**(독립 `Dispatcher`) |
+| `data/model/qualifier/AuthClient.kt` | 재발급 전용 클라이언트 한정자. 신규 |
 | `domain/model/error/ServerErrorCode.kt` | `Auth`에 `INVALID_TOKEN`·`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN` 추가 |
 | `data/repository/auth/AuthRepositoryImpl.kt` | `logout()` 추가 |
 | `domain/repository/auth/AuthRepository.kt` | `logout()` 추가 |
@@ -184,17 +224,29 @@ refresh token이 둘 다 필요하다**(`api/auth.md`). 즉 access token이 만�
   실제 동시 실행 대신 순차로 검증한다 — 스레드를 띄우면 결과가 스케줄러에 좌우돼 회귀 감지선이
   흐려진다. 막으려는 것은 "대기하다 깨어난 요청이 또 재발급하는 것"이고 그건 순차로 재현된다
 - 서버가 계속 401 → 재시도 2회에서 중단(루프 가드)
+- **401 아닌 선행 응답(301 등)이 있어도 재발급은 시도된다** — 루프 가드가 401만 세는지 고정
+- 재발급 403 + HTML 본문 → **토큰 유지**, 이벤트 0건. 403 + 거절 `code` → 세션 종료
+- envelope 실패(HTTP 200 + `success:false`, `statusCode` null) → 세션 종료. `code` 분기를 격리한다
+- `@NoAuth` 엔드포인트가 401 → 재발급 시도 0건(재진입 가드). 요청은 Retrofit `Invocation` 태그를
+  실제로 갖고 있어야 한다 — 태그 없는 raw 요청으로 만들면 가드가 타지 않아 테스트가 의미를 잃는다
 - refresh token 부재 → 이벤트 0건, `clear()` 없음
+
+**`NetworkModule`** — 재발급 전용 클라이언트의 구조적 성질(인증기 미부착, 메인과 다른 `Dispatcher`
+인스턴스). 데드락 자체를 재현하는 테스트는 만들지 않는다 — 회귀 시 실패가 아니라 무한 대기로
+나타나 CI가 걸린다.
 
 **`AuthRepositoryImpl.logout()`** — 기존 `AuthRepositoryImplTest`에 추가
 
 - 서버 성공 → 로컬 clear
 - 서버 실패 → **로컬 clear 수행**, 실패는 전파하지 않고 로그만
+- **회전 경로** — 1차 실패 후 저장소의 refresh token이 바뀌어 있으면 새 값으로 1회 재전송
+- 회전하지 않았으면 재전송하지 않는다
 
 **`AppSettingViewModel`**
 
 - 로그아웃 클릭 → `LogoutUseCase` 1회 + `NavigateToLogin`
 - 연타 → 1회만
+- 요청 중 `isLoggingOut`이 서 있고, 끝나면 `finally`로 내려간다
 
 앱 루트의 이벤트 구독은 Compose 테스트 비용 대비 이득이 적어 수동 확인으로 둔다. 대신 발행
 측(`TokenAuthenticator`)을 위처럼 조인다.
@@ -202,10 +254,17 @@ refresh token이 둘 다 필요하다**(`api/auth.md`). 즉 access token이 만�
 ## 주의 / 열린 질문
 
 - **`runBlocking`이 OkHttp 디스패처 스레드를 잡는다.** `Authenticator` 계약이 동기라 피할 수
-  없다. 재발급이 타임아웃(15초)까지 늘어지면 그 스레드가 묶인다 — 실측 전이다
+  없다. 클라이언트 분리로 재발급이 남의 슬롯을 굶기지는 않게 됐지만, 오프라인에서 401 N건이
+  각자 최대 15초(read timeout)씩 직렬로 재발급을 시도하는 지연은 남는다. **재발급 실패에 쿨다운이
+  없다** — 실패 결과를 짧게 공유해 같은 웨이브의 대기자들이 재시도하지 않게 하는 것이 후속 과제다
+- **재발급 성공 후 원요청이 다시 401이면** 루프 가드에 걸려 실패한다. **세션은 유지한다**(결정됨) —
+  서버가 access token은 인정하는데 리소스 권한이 없는 경우와 구분되지 않으므로, 판정 불가일 때
+  세션을 버리지 않는 쪽을 택했다
 - **`ForcedLogout` 수집 지점이 앱 루트 한 곳이라는 것은 규약일 뿐 기계 검사가 없다.**
   `BaseViewModel.effect`가 구독자 수를 세어 로그를 남기는 것과 같은 방어를 둘지 미정
-- **재발급 성공 후 원요청이 다시 401이면** 루프 가드에 걸려 그냥 실패한다. 이때 세션을 버릴지
-  유지할지 정하지 않았다 — 서버가 access token은 인정하는데 리소스 권한이 없는 경우와
-  구분되지 않는다
+- **`TokenAuthenticator`가 한정된(`@AuthClient`) `AuthService`를 받는다는 사실에 그물이 없다.**
+  생성자에서 한정자만 지우면 모든 테스트가 통과하면서 디스패처 데드락이 되살아난다
+- **Activity 재생성 중 `ForcedLogout` 유실 창.** `Channel(CONFLATED)`에 `onUndeliveredElement`가
+  없어, 값을 꺼낸 직후 수집 코루틴이 취소되면 이벤트가 조용히 사라진다. 토큰은 이미 지워진
+  뒤라 이후 401은 "refresh token 부재" 경로로 조용히 끝나고 두 번째 이벤트가 오지 않는다
 - 회원 탈퇴는 서버 계약 신설 후 별건. `AppSettingViewModel.handleConfirmWithdraw` stub 유지

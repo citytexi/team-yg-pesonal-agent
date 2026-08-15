@@ -32,21 +32,33 @@ tags: [adr, parfait, auth, network, session]
 **OkHttp `Authenticator`가 401을 가로채 재발급 후 원요청을 재시도하고, 재발급이 서버에 거절당하면
 `:domain`에 둔 단일 이벤트 스트림으로 강제 로그아웃을 알린다.**
 
-- **`TokenAuthenticator`**(`data/network`) — `authenticate()`가 루프 가드 → `Mutex` → 선점 확인 →
-  재발급 순으로 판단한다. `Authenticator` 계약이 동기라 `runBlocking`을 쓴다(`TokenStoreTokenProvider`
-  선례와 동일). `Retrofit`↔`OkHttpClient`↔`Authenticator` Dagger 순환은 `Provider<AuthService>`
-  지연 주입으로 끊는다.
-- **동시성 방어는 세 겹이고 하나라도 빠지면 뚫린다.** `Mutex`는 재발급을 직렬화할 뿐, 대기하던
-  요청들이 깨어나 차례로 각자 재발급을 쏘는 것을 막지 못한다. 그래서 `Mutex` 획득 직후 **실패한
-  요청이 들고 갔던 `Authorization` 값과 현재 저장 토큰을 비교**해, 다르면 재발급 없이 새 토큰으로
-  재시도만 한다. `priorResponse` 체인 길이 가드는 새 토큰에도 401이 오는 경우의 무한 재시도를 끊는다.
-- **실패를 두 부류로 가른다.** 서버가 refresh token을 거절한 경우(401)만 세션을 버리고,
-  네트워크 실패·5xx는 **토큰을 유지한 채** `null`을 반환해 원요청 401이 화면에 도달하게 한다.
-  refresh token이 아예 없는 경우도 조용히 `null`이다.
+- **`TokenAuthenticator`**(`data/network`) — `authenticate()`가 `@NoAuth` 가드 → 루프 가드 →
+  `Mutex` → 선점 확인 → 재발급 순으로 판단한다. `Authenticator` 계약이 동기라 `runBlocking`을
+  쓴다(`TokenStoreTokenProvider` 선례와 동일).
+- **재발급은 전용 `OkHttpClient`로 나간다**(`@AuthClient`, 독립 `Dispatcher`, 인증기·`AuthInterceptor`
+  없음). 같은 클라이언트를 쓰면 **디스패처가 고갈돼 앱 전체가 정지한다** — `authenticate()`는 자기
+  호출이 슬롯을 점유한 채 블록된 상태로 실행되는데, 재발급이 같은 디스패처·같은 호스트로 enqueue
+  되고 기본 `maxRequestsPerHost`는 5다. 동시 401이 5건이면 재발급이 영원히 promote되지 않고
+  `callTimeout`도 없어 풀리지 않는다. `newBuilder()` 파생은 부모의 `Dispatcher`를 물려받아 무효다.
+  부수 효과로 `Retrofit`↔`OkHttpClient`↔`Authenticator` Dagger 순환이 사라져 `Provider` 지연 주입이
+  필요 없어졌다.
+- **방어는 네 겹이고 하나라도 빠지면 뚫린다.** `@NoAuth` 가드가 재발급 요청 자신의 재진입을 막고,
+  `Mutex`가 직렬화하며, **실패한 요청이 들고 갔던 `Authorization` 값과 현재 저장 토큰을 비교**하는
+  선점 확인이 대기하다 깨어난 요청의 중복 재발급을 막고, `priorResponse` 가드가 무한 재시도를
+  끊는다. `Mutex`만으로는 부족하다 — 직렬화될 뿐 대기자들이 차례로 각자 재발급을 쏜다.
+  루프 가드는 **401인 선행 응답만** 센다. 체인 전체를 세면 리다이렉트 한 번에 첫 401이 2회차로
+  보여 재발급을 아예 시도하지 못한다.
+- **실패를 두 부류로 가른다.** 서버가 refresh token을 거절한 경우만 세션을 버리고, 네트워크
+  실패·5xx는 **토큰을 유지한 채** `null`을 반환해 원요청 401이 화면에 도달하게 한다. refresh
+  token이 아예 없는 경우도 조용히 `null`이다. **status만으로 세션을 끝내는 것은 401뿐이다** —
+  재발급은 계약상 403을 내지 않는 반면 WAF·프록시는 HTML과 함께 403을 내므로, 403은 본문 `code`가
+  거절 코드일 때만 인정한다. 그러지 않으면 로그인 상태를 유지했어야 할 사용자가 조용히 로그아웃된다.
 - **`SessionEvent.ForcedLogout`은 `:domain`에 둔다.** feature 모듈은 `:data`를 보지 않으므로
   (ADR-0001) 인터페이스 `SessionEventSource`가 `:domain`에 있고, 구현 `SessionEventBus`
-  (`@Singleton`, `MutableSharedFlow`)가 `:data`에서 발행과 구독을 겸한다. 수집은 **앱 루트 한 곳**
-  — 화면마다 구독하면 한 이벤트로 여러 번 이동한다.
+  (`@Singleton`, `Channel(CONFLATED)` + `receiveAsFlow()`)가 `:data`에서 발행과 구독을 겸한다.
+  `SharedFlow`가 아닌 이유는 ADR-0020이 이펙트에서 정리한 것과 같다 — 구독 전 발행이 버퍼에
+  남아야 하고 소비한 이벤트가 재구독으로 다시 오면 안 된다. `CONFLATED`는 401이 여러 건 터져도
+  이동을 한 번으로 접는다. 수집은 **앱 루트 한 곳** — 화면마다 구독하면 한 이벤트로 여러 번 이동한다.
 - **사용자 로그아웃은 서버 실패와 무관하게 로컬을 정리한다.** 눌렀으면 이 기기에서는 나가는 것이
   기대 동작이고, 서버 세션 정리 실패는 로그로만 남긴다.
 
@@ -82,15 +94,23 @@ tags: [adr, parfait, auth, network, session]
 **트레이드오프**
 
 - `runBlocking`이 OkHttp 디스패처 스레드를 점유한다. `Authenticator` 계약이 동기라 피할 수 없고,
-  재발급이 타임아웃까지 늘어지면 그 스레드가 묶인다
-- `Provider<AuthService>` 지연 주입은 순환을 감추는 것이기도 하다 — 초기화 순서 문제가 런타임에
-  드러날 수 있다
+  재발급이 타임아웃까지 늘어지면 그 스레드가 묶인다. 클라이언트 분리로 남의 슬롯을 굶기지는
+  않게 됐지만, **재발급 실패에 쿨다운이 없어** 오프라인에서 401 N건이 각자 최대 15초씩 직렬로
+  재시도하는 지연은 남는다
+- 클라이언트가 둘이 됐다 — 소켓·`ConnectionPool`이 하나 더 뜨고, 네트워크 설정을 바꿀 때 두 곳을
+  맞춰야 한다
 - 수집 지점이 하나여야 한다는 것이 규약일 뿐 기계 검사가 없다
 
 **위험·방어**
 
-- 동시성 세 겹(직렬화·선점 확인·루프 가드)을 각각 MockWebServer 테스트로 고정한다. 특히 **동시
-  401 2건에 재발급 1회**가 선점 확인의 회귀 감지선이다
+- 방어 네 겹(재진입 가드·직렬화·선점 확인·루프 가드)을 각각 MockWebServer 테스트로 고정한다.
+  특히 **앞선 401이 갱신을 끝낸 뒤 뒤따라온 401에 재발급 0회**가 선점 확인의 회귀 감지선이다
 - 네트워크 실패 시 **토큰이 남아 있는지**를 테스트가 직접 단언한다 — 이 분기가 무너지면 오프라인
   진입이 곧 로그아웃이 된다
+- 403 + HTML 본문이 세션을 끝내지 않는지 단언한다 — 프록시가 낸 403에 로그아웃되는 것을 막는다
+- 루프 가드가 401만 세는지는 **401 아닌 선행 응답이 있어도 재발급이 시도되는지**로 고정한다
 - refresh token 부재 경로는 이벤트 0건으로 단언한다 — 로그인 화면 자기순환 방어
+- **디스패처 데드락 자체는 테스트로 재현하지 않는다.** 회귀가 실패가 아니라 무한 대기로 나타나
+  CI가 걸린다. 대신 전용 클라이언트의 구조적 성질(인증기 미부착, 별도 `Dispatcher` 인스턴스)을
+  고정한다. 남은 구멍: **`TokenAuthenticator`가 한정된 `AuthService`를 받는다는 사실에는 그물이
+  없다** — 생성자에서 `@AuthClient`만 지우면 모든 테스트가 통과하면서 데드락이 되살아난다
