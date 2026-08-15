@@ -71,7 +71,13 @@ interface SessionEventSource {
 ```
 
 feature 모듈은 `:data`를 보지 않으므로(ADR-0001) 인터페이스는 `:domain`에 두고 구현체
-`SessionEventBus`(`data/session`, `@Singleton`, `MutableSharedFlow`)가 발행과 구독을 겸한다.
+`SessionEventBus`(`data/session`, `@Singleton`)가 발행과 구독을 겸한다.
+
+**`Channel(CONFLATED)` + `receiveAsFlow()`를 쓴다.** `SharedFlow`가 아닌 이유는 ADR-0020이
+이펙트에서 정리한 것과 같다 — 구독자가 없는 순간 발행해도 버퍼에 남아야 하고, 이미 소비한
+이벤트가 재구독으로 다시 오면 안 된다. 소비자가 앱 루트 하나뿐이라는 것도 `Channel`의 단일
+소비자 성질과 맞는다. `CONFLATED`인 이유는 401이 여러 건 터져 `ForcedLogout`이 연달아
+발행돼도 이동은 한 번이어야 하기 때문이다.
 
 ```kotlin
 // domain/repository/auth/AuthRepository.kt — 추가
@@ -135,6 +141,9 @@ ForcedLogout 수신 → navigator.clearBackStack() → NavKeyLogin
 ClickLogout → LogoutUseCase → AuthRemoteDataSource.logout(refreshToken) → TokenStore.clear() → NavigateToLogin
 ```
 
+`AuthRemoteDataSource.logout(refreshToken)`은 **이미 구현돼 있다**(`AuthService.postAuthLogout` +
+`ApiCaller.safeApiCallNoContent`). 없는 것은 그 위의 `AuthRepository.logout()`과 호출부다.
+
 **서버 호출이 실패해도 로컬 토큰은 지운다.** 사용자가 로그아웃을 눌렀으면 이 기기에서는 나가는
 것이 기대 동작이고, 서버 세션 정리 실패는 로그로만 남긴다. 연타는 `launch(key)` 가드로 막는다.
 
@@ -158,7 +167,7 @@ refresh token이 둘 다 필요하다**(`api/auth.md`). 즉 access token이 만�
 | `domain/repository/session/SessionEventSource.kt` | 구독 인터페이스. 신규 |
 | `domain/usecase/auth/LogoutUseCase.kt` | 신규 |
 | `data/di/NetworkModule.kt` | `OkHttpClient`에 `authenticator(...)` 결합 |
-| `data/source/auth/remote/AuthRemoteDataSource(Impl).kt` | `logout(refreshToken)` 추가 |
+| `domain/model/error/ServerErrorCode.kt` | `Auth`에 `INVALID_TOKEN`·`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN` 추가 |
 | `data/repository/auth/AuthRepositoryImpl.kt` | `logout()` 추가 |
 | `domain/repository/auth/AuthRepository.kt` | `logout()` 추가 |
 | `feature/app/setting/.../AppSettingViewModel.kt` | 로그아웃 stub 제거 + `NavigateToLogin` |
@@ -171,7 +180,9 @@ refresh token이 둘 다 필요하다**(`api/auth.md`). 즉 access token이 만�
 - 401 → 재발급 200 → 원요청 재시도 성공, 새 토큰이 헤더에 실림
 - 401 → 재발급 401 → `TokenStore.clear()` + `ForcedLogout` 1건 + 원요청 실패
 - 401 → 재발급 네트워크 실패 → **토큰 유지**, 이벤트 0건
-- 동시 401 2건 → 재발급 **1회만**(선점 확인)
+- 앞선 401이 갱신을 끝낸 뒤 뒤따라온 401 → **재발급 없이** 새 토큰으로 재시도(선점 확인).
+  실제 동시 실행 대신 순차로 검증한다 — 스레드를 띄우면 결과가 스케줄러에 좌우돼 회귀 감지선이
+  흐려진다. 막으려는 것은 "대기하다 깨어난 요청이 또 재발급하는 것"이고 그건 순차로 재현된다
 - 서버가 계속 401 → 재시도 2회에서 중단(루프 가드)
 - refresh token 부재 → 이벤트 0건, `clear()` 없음
 
