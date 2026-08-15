@@ -1,7 +1,7 @@
 ---
 id: user-info-ssot
 title: S-001 유저 정보 — users/me 로컬 SSoT · 자동로그인 부트스트랩 (User Info SSoT)
-status: draft
+status: in-progress
 category: behavior-spec
 platforms: android
 verified: 2026-08-15
@@ -138,20 +138,32 @@ class BootstrapSessionUseCase { suspend operator fun invoke(): SessionBootstrap 
 ### 부트스트랩
 
 ```
-토큰 없음                    → ToLogin
-토큰 있음 + users/me 성공     → ToGroupList   (SSoT 채워진 상태로 도착)
-토큰 있음 + users/me 실패     → 토큰·userInfo clear → ToLogin
+토큰 없음                         → ToLogin (서버 호출 없음)
+토큰 있음 + users/me 성공          → ToGroupList   (SSoT 채워진 상태로 도착)
+토큰 있음 + 인증 거절              → 토큰·userInfo clear → ToLogin
+토큰 있음 + 그 외 실패             → 아무것도 지우지 않고 ToLogin
 ```
 
+**목적지는 실패 종류와 무관하게 `ToLogin` 하나다. 갈리는 것은 정리 범위뿐이다.**
+세션을 파기하는 것은 **세션이 죽었다고 서버가 말한 경우**뿐이다 — HTTP 401 또는
+`MEMBER_NOT_FOUND`. 그 외(네트워크 실패·5xx·로컬 저장 실패를 포함한 예상 밖 실패)는
+토큰도 userInfo도 건드리지 않는다.
+
 만료된 access token은 `TokenAuthenticator`가 재발급하므로 부트스트랩이 401을 직접 다루지 않는다.
-재발급까지 실패하면 그쪽이 이미 토큰을 지우고 `ForcedLogout`을 쏘므로, 여기 도달하는 "실패"는
-**세션이 확실히 죽었거나 서버·네트워크가 응답하지 않는 경우**다.
+재발급까지 실패하면 그쪽이 이미 토큰을 지우고 `ForcedLogout`을 쏜다.
 
 > ⚠️ **네트워크 실패도 `ToLogin`으로 보낸다.** 오프라인에서 앱을 켜면 로그인 화면으로 간다는
 > 뜻이다. `TokenAuthenticator`가 네트워크 실패에 토큰을 유지하기로 한 결정과 방향이 어긋나
 > 보이지만, 여기서는 **토큰을 지우지 않고** 라우팅만 로그인으로 보낸다 — 연결이 돌아온 뒤
 > 다시 켜면 자동로그인이 성립한다. 오프라인 진입에 그룹 목록을 캐시로 그릴 수단이 아직
 > 없어서 내린 선택이고, 캐시가 생기면 재검토한다 → [미결](#주의--열린-질문)
+
+> **정리 범위를 인증 거절로 좁힌 근거**(2026-08-15, 구현 중 확정). 초안은 "실패 = 토큰·userInfo
+> clear"였으나 두 경로가 깨진다. (1) 서버 5xx는 `AppError.Unexpected`로 떨어져 **서버 배포·장애
+> 중에 앱을 켠 모든 복귀 사용자가 로그아웃**된다. (2) 서버가 200을 준 뒤 로컬 저장이 실패해도
+> 같은 실패 채널로 나와 **멀쩡한 세션이 파기된다.** 둘 다 세션 사망의 증거가 아닌데 처분만
+> 가혹하다. 목적지는 어차피 `ToLogin`으로 같으므로 사용자가 보는 화면은 바뀌지 않고,
+> 잘못된 파기만 사라진다.
 
 ### 세션 정리
 
@@ -165,6 +177,10 @@ userInfo는 토큰과 **같은 수명**이다. 지우는 자리가 둘이다.
 강제 로그아웃 쪽을 `:data` 안에서 끝내는 이유 — 앱 루트가 이벤트를 받아 정리하게 하면, 그
 이벤트가 유실되는 순간(재생성 창, `session-token-refresh-infra`의 열린 질문) **토큰은 지워졌는데
 userInfo는 남는** 상태가 생긴다. 지우는 주체를 하나로 두면 둘이 갈라지지 않는다.
+
+`TokenAuthenticator`는 **`ForcedLogout`을 먼저 쏘고 그다음에 두 저장소를 지운다.** 이벤트는
+"세션이 죽었다"는 통지이지 "정리가 끝났다"는 통지가 아니고, `clear()`가 던지면(DataStore IO
+실패) 이벤트가 영영 안 나가 토큰만 지워진 채 앱이 그 사실을 모르게 된다.
 
 ### 화면 결선
 
@@ -225,7 +241,9 @@ S-002의 닉네임 변경은 **낙관적 갱신을 하지 않는다.** 서버 �
 **`BootstrapSessionUseCase`** (`domain/src/test/`)
 - 토큰 없음 → `ToLogin`, 서버 호출 0건
 - 토큰 있음 + 성공 → `ToGroupList`
-- 토큰 있음 + 실패 → `ToLogin` + 토큰·userInfo clear 각 1회
+- 토큰 있음 + 인증 거절(401 / `MEMBER_NOT_FOUND`) → `ToLogin` + 토큰·userInfo clear 각 1회
+- 토큰 있음 + 네트워크 실패 → `ToLogin` + clear 0건
+- 토큰 있음 + 5xx·예상 밖 실패 → `ToLogin` + clear 0건
 
 **`LogoutUseCase`** — 토큰 clear와 userInfo clear가 **둘 다** 불린다
 
