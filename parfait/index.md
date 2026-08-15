@@ -7,8 +7,10 @@ Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data
 서버 계약은 `api/`에 스냅샷돼 있다(도메인 7건·**엔드포인트 26개 + 테스트 전용 1**, 서버 `e4ff23f`).
 같은 날 2차 서버 delta는 엔드포인트 증감 없이 규칙만 바꿨다 — 초대코드 6자·닉네임 자모 허용·
 그룹 내 닉네임 중복 허용(`GROUP_NICKNAME_ALREADY_USED` 삭제).
-**Android 표면은 20/25로 공백 5가 다시 벌어졌다**(2026-08-15 서버 delta — 파르페 오늘·과거 조회,
-토핑 테두리 수정·삭제, 회원 탈퇴. 애플 로그인 1건과 테스트 전용 회전 1건은 분모에서 뺀다).
+**Android 표면은 25/25, 공백 0이다**(2026-08-15 PR #250이 파르페 오늘·과거 조회, 토핑 테두리 수정·삭제,
+회원 탈퇴 다섯을 한 라운드에 닫았다. 애플 로그인 1건과 테스트 전용 회전 1건은 분모에서 뺀다).
+같은 PR이 2차 서버 delta도 반영했다 — `CheckNameValidUseCase`가 자모를 허용하고
+`GROUP_NICKNAME_ALREADY_USED` 분기는 걷혔다. **다만 그 다섯 표면은 Repository조차 없다.**
 **2026-08-15 — 하루 만에 8 엔드포인트가 화면까지 결선됐다**(#241·#242·#243·#244·#248).
 A-002 카카오 로그인(#241)에 이어 온보딩 약관이 목록 조회·회원가입·세션 저장까지 가고(#242),
 그룹 생성(#243)·참여 미리보기/참여/닉네임 변경(#244)·목록 조회(#248)가 붙어 **mock UseCase 3종,
@@ -16,7 +18,8 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
 `ServerErrorCode` 12종도 이 라운드에서 모두 소비된다. 그 아래는 MVI 공통 에러 인프라
 (`AppError`·`Channel` 이펙트·`launch(key, onError)`)다([ADR-0020](adr/0020-mvi-error-effect-infrastructure.md)).
 남은 mock은 G-001의 `nickName` 하나인데, **그 값이 그룹 생성 요청으로 서버에 나간다.**
-파르페·이미지·회원·토핑 4 도메인은 여전히 Repository조차 없다.
+파르페·이미지·회원·토핑 4 도메인은 표면은 전량 있는데 여전히 Repository조차 없다 —
+`GET .../parfaits/today`가 배치 전량을 주므로 **C-001 캔버스 결선의 서버 측 선행 조건은 사라졌다**.
 ⚠️ **그룹 목록은 코드 대조만으로 실패가 예상된다** — 업로드 시각을 오프셋 필수 파서로 읽는데 서버는
 오프셋을 안 싣는다([OQ-P-165](synthesis/open-questions.md)). 그리고 **어느 경로도 실서버 요청을 해 본 적이 없다**
 ([OQ-P-146](synthesis/open-questions.md)).
@@ -62,7 +65,7 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `bf72292a`(2026-08-15, #231 C-301 캔버스 배경 편집 신설까지).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `60df07a4`(2026-08-15, #250 API 표면 25/25 회복까지).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md

@@ -258,7 +258,8 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   순서로 실행하고, 값이 바뀐 경우에만 저장한다.
 
   🔁 **2026-08-15 — `GROUP_NICKNAME_ALREADY_USED`(409)가 사라졌다.** 같은 그룹의 다른 멤버와 같은 닉네임으로
-  바꿔도 성공한다(위 join-preview 절 참고). 앱은 아직 이 코드로 분기한다 → [Android 매핑](#android-매핑).
+  바꿔도 성공한다(위 join-preview 절 참고). 앱 분기·상수·문구는 PR #250에서 걷혔다 →
+  [Android 매핑](#android-매핑).
 
 ### DELETE /api/parfait-groups/{groupId}/members/me
 
@@ -393,17 +394,17 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 
 앱 동작 메모(코드 대조):
 
-- **에러 코드 8종이 실제 분기에 쓰인다** — `INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·
-  `GROUP_MEMBER_LIMIT_REACHED`(A-004 문구) · `GROUP_NICKNAME_ALREADY_USED`·`INVALID_GROUP_NICKNAME`(S-102 문구) ·
+- **에러 코드 7종이 실제 분기에 쓰인다** — `INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·
+  `GROUP_MEMBER_LIMIT_REACHED`(A-004 문구) · `INVALID_GROUP_NICKNAME`(S-102 문구) ·
   `INVALID_GROUP_NAME`·`INVALID_GROUP_MEMBER_LIMIT`·`MEMBER_NOT_FOUND`(A-005는 로그만).
-  ⚠️ **그중 `GROUP_NICKNAME_ALREADY_USED`는 2026-08-15 서버 delta로 死코드가 됐다** — 서버가 그 코드를 더는
-  내지 않으므로 `GroupNickNameViewModel`의 `ALREADY_USED` 분기와 그것을 검증하는 유닛 테스트, 상수
-  `ServerErrorCode.ParfaitGroup.GROUP_NICKNAME_ALREADY_USED`가 모두 도달 불가다
-  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
-- ⚠️ **닉네임 허용 문자가 앱이 더 좁다** — 서버가 자모 단독을 허용하도록 넓혔는데
-  `CheckNameValidUseCase`는 완성형 한글만 통과시킨다(서버 구 정규식을 그대로 옮긴 것). 서버가 받는 입력을
-  앱이 먼저 막는 방향이라 요청 실패는 아니지만 입력 가능 집합이 갈렸다
-  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+  ✅ **`GROUP_NICKNAME_ALREADY_USED` 死코드는 걷혔다**(2026-08-15, PR #250) — 상수·
+  `GroupNickNameError.ALREADY_USED`·문구·매핑 분기가 함께 제거됐고, 그 코드를 검증하던 두 테스트는
+  `INVALID_GROUP_NICKNAME`(400)으로 바뀌어 살았다. **남은 것은 정책 쪽이다** — 같은 그룹에 같은 표시
+  이름이 여럿일 때의 구분 수단이 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- ✅ **닉네임 허용 문자가 다시 맞았다**(2026-08-15, PR #250) — `CheckNameValidUseCase`에
+  `'ㄱ'..'ㅎ'`·`'ㅏ'..'ㅣ'`가 더해져 서버 정규식과 같은 집합이다. 앱이 서버보다 **좁아도 안 된다**는
+  기준이 KDoc에 명시됐다(좁으면 서버가 받는 이름을 앱이 먼저 막는다). 정책 문서에는 여전히 자모 항목이
+  없다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 - ✅ **초대코드 자릿수가 맞아떨어졌다** — 앱 `InviteCode.LENGTH`·A-004 입력 칸은 처음부터 6이었고 서버가
   이번에 8 → 6으로 내려왔다. 그전까지는 **앱이 보낸 코드가 서버 형식 검증을 통과할 수 없었다**(문서에
   서버 자릿수가 적혀 있지 않아 드러나지 않던 불일치다). 다만 앱은 대문자 정규화를 하지 않는다 —

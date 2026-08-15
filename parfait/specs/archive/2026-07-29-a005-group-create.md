@@ -163,8 +163,15 @@ class GroupCreateViewModel @AssistedInject constructor(
 > 지금은 `' '` · `가..힣` · `A..Z` · `a..z` · `0..9`만 통과하며, 코드가 서버 정규식
 > `^[가-힣A-Za-z0-9]+(?: [가-힣A-Za-z0-9]+)*$`와 같은 집합으로 유지한다고 KDoc에 적는다.
 > 쓰이지 않게 된 `core:util:jvm`의 `Char.isKorean()`은 같은 PR에서 **삭제**됐다(테스트 포함).
-> 위키 [[이름-입력-규칙]]은 허용 문자를 "한글·영문·숫자·공백"이라고만 적어 **자모 단독 입력의 허용 여부가
-> 문서에 없다** → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
+>
+> 🔁 **재개정(#250, 2026-08-15) — 자모 범위가 다시 들어왔다.** 서버가 같은 날 정규식에 자모를 넣어
+> (`^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+(?: [가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+)*$`) **이번엔 앱이 더 좁아졌기** 때문이다.
+> 허용 집합은 `' '` · `가..힣` · **`ㄱ..ㅎ` · `ㅏ..ㅣ`** · `A..Z` · `a..z` · `0..9`이고, KDoc이
+> **"서버보다 느슨하면 안 되고 좁아도 안 된다"**로 양방향 기준을 명시한다(좁으면 서버가 받는 이름을 앱이
+> 먼저 막는다). `Char.isKorean()`은 되살리지 않았다 — 여전히 일본어·아랍 숫자·non-breaking space까지
+> 받기 때문이다. `CheckNameValidUseCaseTest`의 자모 케이스는 `Success` 기대로 뒤집혔다.
+> **위키 [[이름-입력-규칙]]은 그대로 "한글·영문·숫자·공백"이라 자모 단독의 허용 여부가 문서에 없다** —
+> 지금 근거는 서버 커밋 메시지뿐이다 → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
 
 | 반환 Error | 표시 문자열(그룹명 화면) |
 |---|---|
@@ -201,7 +208,7 @@ class GroupCreateViewModel @AssistedInject constructor(
 - `impl/navigation/NavigationModule.kt` — 빌더 `@IntoSet` 제공.
 - `core/ui/VerticalGridLayout.kt` — 열 수·행/열 간격을 받는 공용 그리드(Column+Row+`IntrinsicSize.Max`, 빈 칸은 `Spacer(weight)`). 스크롤 컨테이너 안에서 쓰려고 `LazyVerticalGrid` 대신 비지연 레이아웃 채택.
 - `domain/model/GroupCreateConfig.kt`·`domain/model/NameValidResult.kt`·`domain/usecase/CheckNameValidUseCase.kt` — 공용 도메인(S-102와 공유).
-- 테스트(#243): `GroupCreateViewModelTest`(생성 성공·실패 분기·중복 요청 가드) · `CreateGroupUseCaseTest`(`groupId` 유효성 가드 포함) · `CheckNameValidUseCaseTest`(좁힌 문자 집합).
+- 테스트(#243): `GroupCreateViewModelTest`(생성 성공·실패 분기·중복 요청 가드) · `CreateGroupUseCaseTest`(`groupId` 유효성 가드 포함) · `CheckNameValidUseCaseTest`(좁힌 문자 집합 — #250에서 자모 허용으로 케이스 개정).
 
 ## 주의 / 열린 질문
 

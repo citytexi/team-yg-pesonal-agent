@@ -1,11 +1,11 @@
 ---
 id: parfait-canvas-topping-member-api-service-layer
 title: ":data 캔버스 조회·토핑 테두리/삭제·회원 탈퇴 API Service·remote DataSource 레이어 (5 엔드포인트)"
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-08-15
-related_code: ParfaitService, ParfaitImageService, MemberService, ParfaitRemoteDataSource, ParfaitImageRemoteDataSource, MemberRemoteDataSource, ApiCaller, ToppingBorder, ToppingTransform, GroupNickname
+related_code: ParfaitService, ParfaitImageService, MemberService, ParfaitRemoteDataSource, ParfaitImageRemoteDataSource, MemberRemoteDataSource, ApiCaller, ToppingBorder, ToppingTransform, GroupNickname, CheckNameValidUseCase, ServerErrorCode, GroupNickNameError
 related_adr: ADR-0017
 related_spec: 2026-08-11-member-parfait-image-api-service-layer, 2026-08-10-image-api-service-layer, 2026-08-03-data-api-service-layer, 2026-08-06-unit-test-infrastructure
 related_architecture: data-layer, module-structure
@@ -16,9 +16,52 @@ tags: [spec, parfait, data, network, api, canvas, topping, member]
 
 # :data 캔버스 조회·토핑 테두리/삭제·회원 탈퇴 API Service·remote DataSource 레이어
 
+> ✅ **develop 머지 완료(PR #250, 2026-08-15)** — 브랜치 `feature/canvas-topping-member-api-260815`.
+> 머지본 재대조에서 **설계와 갈린 곳 0건**이다: Service 5함수의 이름·시그니처·`@Query` 기본값,
+> wire DTO 9(전 프로퍼티 `@SerialName`), domain VO 7, DataSource 5함수, 매퍼의 네 폴백
+> (`images` null → 빈 목록 · 미지 배경 type → `null` · 미지 status → `UNKNOWN` · `SOLID` 불완전 → `None`),
+> 결정 ⑧의 진입점 갈림(탈퇴 `safeApiCallNoContent` / 토핑 삭제 `safeApiCallWithoutData`)이 본문 그대로다.
+> 예고대로 **DI 등록 줄은 한 줄도 늘지 않았다**.
+>
+> **이로써 Android가 쓰기로 한 서버 엔드포인트 전량에 `:data` 표면이 있다**(서버 26 − 애플 로그인 1 −
+> 테스트 전용 회전 1). 다만 **소비처(Repository·UseCase·화면)는 여전히 0건**이다
+> → [open-questions](../../synthesis/open-questions.md).
+>
+> **as-built 확정 2건**(본문이 형태를 안 적었던 자리):
+> ① 테두리 평탄화가 `toPlaceRequest`와 `toUpdateBorderRequest` 두 곳에서 필요해져
+> `private fun ToppingBorder.flatten(): Triple<String, String?, Double?>`로 뽑혔다 — 배치 쪽의 기존
+> `as? ToppingBorder.Solid` 캐스팅은 사라졌다. 본문은 "같은 매퍼 파일에 둔다"까지만 적었다.
+> ② `http/` 보강에 `http-client.env.json`·`_reset.http`의 `parfait_id` 변수 등재가 함께 갔다
+> (본문은 `today` 응답이 `parfaitId`를 준다는 것까지만 적었다) — 형제 변수가 전부 등재돼 있는 관행을 따른다.
+>
+> **범위 밖 동반 변경 2건**(같은 PR, 커밋 `1a6a5577`) — 같은 날 2차 서버 delta(`e4ff23f`)가 바꾼 규칙을
+> 앱에 반영했다. 아래 "서버 규칙 delta 반영" 절에 적는다.
+
+## 서버 규칙 delta 반영 (범위 밖 동반 변경)
+
+이 스펙이 겨냥한 delta는 `36ecd1c`(엔드포인트 5건 신설)인데, 같은 PR이 그 뒤 서버 `e4ff23f`의 **규칙
+변경 2건**까지 함께 반영했다. 엔드포인트 증감은 없다.
+
+**① 자모 단독 허용 — 앱이 좁던 쪽을 넓혔다.** 서버 닉네임·그룹명 정규식이 자모 범위를 얻었으므로
+`CheckNameValidUseCase`의 `CheckValidCharacter`에 `'ㄱ'..'ㅎ'`·`'ㅏ'..'ㅣ'`를 더했다. 그대로 뒀다면
+**서버가 받는 이름을 앱이 먼저 막는다.** KDoc의 "서버보다 느슨하면 안 된다"에 "좁아도 안 된다"가
+나란히 붙었고, `CheckNameValidUseCaseTest`의 자모 케이스가 `InvalidCharacter` 기대에서 `Success`
+기대로 뒤집히며 모음 단독·완성형 혼용 단언이 붙었다.
+
+**② 그룹 내 닉네임 중복 허용 — 死코드 제거.** 서버가 `GROUP_NICKNAME_ALREADY_USED`를 통째로 지워
+앱의 대응 경로가 전부 도달 불가가 됐다. 제거 대상은 넷이다 — `ServerErrorCode.ParfaitGroup` 상수,
+`GroupNickNameError.ALREADY_USED`(+`toStringResource` 분기), `feature/groups/enter/impl` `strings.xml`
+문구 1건, `GroupNickNameViewModel`의 매핑 분기. `GroupNickNameViewModelTest`·
+`ParfaitGroupRepositoryImplTest`의 해당 케이스와 화면 프리뷰 provider의 에러 케이스는 삭제가 아니라
+`INVALID_GROUP_NICKNAME`(400)으로 **바꿔 살렸다**. `ServerErrorCode.ParfaitGroup.INVALID_GROUP_NAME`의
+KDoc 정규식도 자모 포함본으로 정정됐다.
+
+> ⚠️ **둘 다 정책 근거가 서버 커밋 메시지뿐이다.** 위키 [[이름-입력-규칙]]·[[그룹]]에는 자모 허용도
+> 그룹 내 닉네임 중복 허용도 항목이 없다 → [open-questions](../../synthesis/open-questions.md).
+
 서버 기준선 `36ecd1c`가 들여온 5 엔드포인트를 `:data`의 Retrofit Service와 remote DataSource로
-구현하고 대응 domain VO를 만든다. 계약 정본은 [api/parfait.md](../api/parfait.md)·
-[api/parfait-image.md](../api/parfait-image.md)·[api/member.md](../api/member.md).
+구현하고 대응 domain VO를 만든다. 계약 정본은 [api/parfait.md](../../api/parfait.md)·
+[api/parfait-image.md](../../api/parfait-image.md)·[api/member.md](../../api/member.md).
 
 | 엔드포인트 | 도메인 |
 |---|---|
@@ -29,8 +72,8 @@ tags: [spec, parfait, data, network, api, canvas, topping, member]
 | `DELETE /api/v1/users/me` | member |
 
 **앞선 라운드들이 세운 관용구의 증분이다.** 계층·이름 규칙·타입 경계의 정본은
-[2026-08-03-data-api-service-layer](archive/2026-08-03-data-api-service-layer.md)이고,
-[2026-08-11-member-parfait-image-api-service-layer](archive/2026-08-11-member-parfait-image-api-service-layer.md)가
+[2026-08-03-data-api-service-layer](2026-08-03-data-api-service-layer.md)이고,
+[2026-08-11-member-parfait-image-api-service-layer](2026-08-11-member-parfait-image-api-service-layer.md)가
 직전 적용례다. 이 스펙은 **규칙이 답하지 않는 지점만** 새로 결정한다 — 이번엔 `today` 응답이다.
 한 응답 안에 캔버스 상태·멤버 목록·배경·배치된 토핑 전량이 3층으로 중첩돼 있고, 지금까지의
 응답은 전부 평면이었다.
@@ -51,7 +94,7 @@ tags: [spec, parfait, data, network, api, canvas, topping, member]
 
 **테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 범위 밖이고 앞으로도
 아니다.** 서버가 컨트롤러와 화이트리스트 양쪽에 프로덕션 오픈 전 제거 TODO를 달아 둔 임시 경로다
-([api/parfait.md](../api/parfait.md), OQ-P-159). 앱 대응 심볼도 `http/` 요청도 만들지 않는다.
+([api/parfait.md](../../api/parfait.md), OQ-P-159). 앱 대응 심볼도 `http/` 요청도 만들지 않는다.
 
 ## 계층과 배치
 
@@ -189,7 +232,7 @@ nullable을 유지한다. 서버가 나중에 빈 배열로 바꿔도 이 매핑
 언어**이고, 그 경계는 직전 라운드가 이미 그은 것이다(`ParfaitImageId` × `PlacedToppingVO`).
 
 **⑤ 과거 목록의 `thumbnailUrl`을 그대로 노출한다.** 서버가 항상 `null`을 넣는다
-([api/parfait.md](../api/parfait.md), OQ-P-161). 필드를 빼면 서버가 채우기 시작할 때 계약이 갈리고,
+([api/parfait.md](../../api/parfait.md), OQ-P-161). 필드를 빼면 서버가 채우기 시작할 때 계약이 갈리고,
 가짜 값을 넣으면 없는 것을 지어내는 것이다. **서버 응답 필드 이름 `imageCount`는 domain에서
 `toppingCount`로 바꾼다** — ④의 이름 축을 따른다.
 
@@ -290,8 +333,8 @@ suspend fun withdraw(): Result<Unit>
 
 ## 계약 함정
 
-구현자가 서버를 다시 훑지 않아도 되도록 옮겨 적는다. 근거는 [api/parfait.md](../api/parfait.md)·
-[api/parfait-image.md](../api/parfait-image.md)·[api/member.md](../api/member.md).
+구현자가 서버를 다시 훑지 않아도 되도록 옮겨 적는다. 근거는 [api/parfait.md](../../api/parfait.md)·
+[api/parfait-image.md](../../api/parfait-image.md)·[api/member.md](../../api/member.md).
 
 1. **`GET .../today`는 조회인데 캔버스 행을 만든다.** 해당 날짜 파르페가 없으면 서버가 생성해 저장한다
    (`EnsureActiveCanvasUseCase`). 화면이 이 GET을 남발하면 빈 캔버스가 양산되고 연도·과거 목록에도
@@ -319,7 +362,7 @@ suspend fun withdraw(): Result<Unit>
 
 ## 테스트
 
-**매퍼 단독 테스트를 만들지 않는다**([unit-test-infrastructure](archive/2026-08-06-unit-test-infrastructure.md)
+**매퍼 단독 테스트를 만들지 않는다**([unit-test-infrastructure](2026-08-06-unit-test-infrastructure.md)
 "테스트 규약" 11). 판단이 든 변환은 그 매퍼를 통과시키는 DataSource 테스트의 케이스로 잠근다.
 
 | 파일 | 잠그는 것 |
@@ -330,6 +373,12 @@ suspend fun withdraw(): Result<Unit>
 
 **`safeApiCallWithoutData`의 첫 소비처가 생기므로 그 경로를 도메인 테스트가 한 번 잠근다** —
 지금까지는 `ApiCallerTest`만 그 진입점을 통과시켰다.
+
+> **as-built** — 위 표대로 머지됐고 `*VOMapperTest`는 이 라운드에서 하나도 생기지 않았다. 이로써
+> develop의 `XxxRemoteDataSourceImplTest`는 image·member·parfait·parfaitimage·policy 다섯이다.
+> ⚠️ **`ParfaitGroupRemoteDataSourceImplTest`는 여전히 없다** — 그룹 도메인만 Repository 테스트로
+> 대신하고 있어, "매퍼 테스트 케이스를 DataSource 테스트로 옮긴다"는 규약의 이행 대상 파일이
+> 그 도메인에는 존재하지 않는다 → [open-questions](../../synthesis/open-questions.md).
 
 ## http/ 요청 모음
 
@@ -353,11 +402,11 @@ suspend fun withdraw(): Result<Unit>
 
 - 이 표면을 소비하는 Repository·UseCase·화면이 여전히 0건이다. **다만 이번 라운드로 C-001 캔버스
   결선의 서버 측 선행 조건이 사라진다** — `today`가 배치 전량을 주므로 "다시 그릴 수 없다"는 사유가
-  없어진다 → [open-questions](../synthesis/open-questions.md) OQ-P-158
+  없어진다 → [open-questions](../../synthesis/open-questions.md) OQ-P-158
 - **마감된 캔버스의 편집 차단 규칙이 없다.** 서버가 막지 않으므로 앱이 `status`로 잠가야 하는데,
-  어느 조작을 어디까지 잠글지 정책 소스가 없다 → [open-questions](../synthesis/open-questions.md) OQ-P-160
+  어느 조작을 어디까지 잠글지 정책 소스가 없다 → [open-questions](../../synthesis/open-questions.md) OQ-P-160
 - **`placedBy`가 `members`에 없는 케이스의 표시 정책이 없다**(탈퇴자 `(알수없음)`). 네임태그 칩이
   닉네임 첫 글자로 색을 정하는데 그 값의 첫 글자는 괄호다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-163
+  → [open-questions](../../synthesis/open-questions.md) OQ-P-163
 - 팀 명세 원문(`parfait` 조회·`parfait-image` 테두리/삭제·member 탈퇴)이 `parfait/api/spec/`에 없다.
-  코드에서 못 읽는 클라이언트 책임이 거기 있을 수 있다 → [open-questions](../synthesis/open-questions.md)
+  코드에서 못 읽는 클라이언트 책임이 거기 있을 수 있다 → [open-questions](../../synthesis/open-questions.md)
