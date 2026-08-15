@@ -4,7 +4,7 @@ title: 카카오 로그인 / 회원가입
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#48"
-server_commit: 36ecd1c
+server_commit: e4ff23f
 verified: 2026-08-15
 related_api: auth.md
 tags: [api, parfait, spec, auth]
@@ -89,7 +89,7 @@ tags: [api, parfait, spec, auth]
 
 ## 코드 대조
 
-서버 `main` `36ecd1c` 기준(2026-08-15 재실행 — 카카오 로그인 계약 불변).
+서버 `main` `e4ff23f` 기준(2026-08-15 재실행 — 카카오 로그인 계약 불변).
 
 ### 일치
 
