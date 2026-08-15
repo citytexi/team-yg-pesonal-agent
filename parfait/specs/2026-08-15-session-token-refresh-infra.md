@@ -161,8 +161,13 @@ refresh token 부재를 따로 가르는 이유 — 로그인 전 화면이 인�
 같은 이벤트로 여러 번 이동한다.
 
 ```
-ForcedLogout 수신 → navigator.clearBackStack() → NavKeyLogin
+ForcedLogout 수신 → navigator.replaceAll(NavKeyLogin)
 ```
+
+`replaceAll`은 이 라운드에서 `Navigator`에 신설했다. 원래는 `clearBackStack()` + `goTo()` 두 줄을
+쓰는 자리였는데, 호출부 5곳이 **전부 그 쌍**이고 단독 사용이 없었다. 따로 노출돼 있으면 그 사이에
+백스택이 빈 상태가 생기고 채우는 것은 규약일 뿐이라, 하나로 묶어 빈 상태를 만들 수 있는 API 자체를
+없앴다(`clearBackStack()`은 제거). 빈 백스택은 `Navigator.onBack()`이 이미 방어하고 있는 크래시 원인이다.
 
 ### 사용자 로그아웃
 
@@ -194,7 +199,10 @@ token을 **회전시키고 구 토큰을 폐기한다**(`api/auth.md`). 인증�
 
 - 재발급 성공 경로에서 화면은 아무것도 보지 못한다. 로딩·에러 표시가 생기지 않는다
 - `ForcedLogout` 이동은 백스택을 비운다 — 뒤로가기로 인증이 필요한 화면에 돌아갈 수 없다
-- 로그아웃 버튼은 요청 중 비활성
+- 로그아웃 버튼은 요청 중 비활성 — 다만 **클릭만 막히고 색은 바뀌지 않는다.** `YGActionItem`에
+  비활성 색이 디자인시스템에 정의돼 있지 않아 컴포넌트가 임의로 정하지 않았다
+  ([ygactionitem 스펙](archive/2026-07-12-ygactionitem.md)의 as-built 노트 참고). 사용자는 클릭이
+  안 먹는 이유를 알 수 없는 상태이고, 비활성 색이 확정되면 채운다
 
 ## 파일 구성
 
@@ -210,7 +218,10 @@ token을 **회전시키고 구 토큰을 폐기한다**(`api/auth.md`). 인증�
 | `domain/model/error/ServerErrorCode.kt` | `Auth`에 `INVALID_TOKEN`·`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN` 추가 |
 | `data/repository/auth/AuthRepositoryImpl.kt` | `logout()` 추가 |
 | `domain/repository/auth/AuthRepository.kt` | `logout()` 추가 |
-| `feature/app/setting/.../AppSettingViewModel.kt` | 로그아웃 stub 제거 + `NavigateToLogin` |
+| `feature/app/setting/.../AppSettingViewModel.kt` | 로그아웃 stub 제거 + `NavigateToLogin` + `isLoggingOut` |
+| `feature/app/setting/.../AppSettingScreen.kt` | 요청 중 로그아웃 항목 비활성 |
+| `core/designsystem/.../ygactionitem/YGActionItem.kt` | `enabled` 파라미터 추가(클릭 차단만, 색 불변) |
+| `core/navigation/.../Navigator.kt` | `replaceAll(destination)` 추가·`clearBackStack()` 제거 |
 | 앱 루트 Composable | `SessionEventSource` 단일 구독 |
 
 ## 테스트

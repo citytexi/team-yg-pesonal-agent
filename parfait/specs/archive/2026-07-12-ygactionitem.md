@@ -16,6 +16,18 @@ tags: [spec, parfait, designsystem]
 
 # Spec: YGActionItem
 
+> ⚠️ **as-built 이탈(2026-08-15, 세션 인프라 라운드)** — 아래 "제외"가 `disabled 상태`를 명시적으로
+> 빼 뒀으나, 로그아웃 요청 중 같은 동작이 다시 실행되는 것을 막으려고 **`enabled: Boolean = true`
+> 파라미터가 추가됐다.** 기본값이라 기존 호출부는 영향받지 않는다.
+>
+> **색은 바뀌지 않는다.** `enabled = false`는 `clickable(enabled = ...)`로 클릭만 차단하고
+> `contentColor`는 `isPressed` 두 갈래 그대로다. 처음 구현에서 비활성 색을 `Gray300`으로 정했다가
+> 되돌렸다 — **비활성 색이 디자인시스템에 정의돼 있지 않아 컴포넌트가 임의로 결정할 값이
+> 아니다**(아래 "주의"의 `disabled 미지원` 항목이 가리키던 바로 그 후속 확장 지점이다).
+>
+> 결과적으로 **요청 중 항목이 시각적으로 변하지 않는다** — 클릭은 안 먹지만 사용자는 그 이유를
+> 알 수 없다. 비활성 색이 디자인에서 확정되면 그때 채운다.
+
 - 대상: `core:designsystem` — `component/ygactionitem/`
 - 관련: [ADR-0010](../../adr/0010-custom-compositionlocal-theme.md)(자체 테마) · [design-system](../../architecture/design-system.md)(컴포넌트 작성 규약)
 
