@@ -8,7 +8,7 @@
 > 추적 브랜치는 서버 **`main`** — 기준 커밋과 갱신 절차는 [server-baseline.md](server-baseline.md).
 
 ## 전역 계약
-- [conventions.md](conventions.md) — 응답 envelope·성공/에러 코드 체계·인증·URL 규약·직렬화 규약·**Android 불일치**(2026-08-11 기준 1건 — 로그인 판별자 키)
+- [conventions.md](conventions.md) — 응답 envelope(**204 예외 2건**)·성공/에러 코드 체계·인증·URL 규약·직렬화 규약·**Android 불일치**(2026-08-15 기준 0건)
 
 ## 팀 명세 원문
 - [spec/](spec/README.md) — 서버팀이 작성한 **API 명세**를 텍스트로 옮긴 것. 이 디렉토리의 도메인 문서가
@@ -23,16 +23,17 @@
 ## 도메인 계약
 | 문서 | 서버 위치 | 엔드포인트 | Android |
 |---|---|---|---|
-| [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | 부분(애플 해당 없음 · 카카오 ⚠️불일치) |
+| [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | 부분(애플 해당 없음, 나머지 구현됨) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨 |
-| [parfait.md](parfait.md) | `http/parfait` | 1 (그룹 캘린더 연도 리스트) | 구현됨 |
+| [parfait.md](parfait.md) | `http/parfait` | 3 + 테스트 전용 1 (연도 리스트 · **오늘의 캔버스** · **과거 목록** / 테스트 회전) | 부분(연도만 · 신규 2 미구현 · 회전 해당 없음) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
-| [member.md](member.md) | `http/member` | 2 (내 계정 조회 · 전역 닉네임 변경) | 구현됨 |
-| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 2 (토핑 배치 확정 · 위치/크기/각도 수정) | 구현됨 |
+| [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 부분(탈퇴 미구현) |
+| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 부분(신규 2 미구현) |
 
-**총 21 엔드포인트**(2026-08-11, 서버 `2c5499a`). **Android 표면은 20/20이다**(2026-08-12, PR #230 develop
-머지 — 분모에서 애플 로그인 1을 뺀 값이 20이고 그 전량을 덮는다). 서버가 앞서던 7칸 공백이 이 라운드로 0이 됐다.
+**총 26 엔드포인트 + 테스트 전용 1**(2026-08-15, 서버 `36ecd1c`). **Android 표면은 20/25다** — 분모에서
+애플 로그인 1(`해당 없음`)과 테스트 전용 회전 1을 뺀 값이 25이고 **공백 5**다(파르페 오늘·과거,
+토핑 테두리·삭제, 회원 탈퇴). 2026-08-12에 닫혔던 공백이 서버 delta로 **세 번째** 다시 벌어졌다.
 
 > **`구현됨`은 `:data`에 Service·DataSource 표면이 있고 계약과 일치한다는 뜻**이다(2026-08-06, PR #197
 > develop 머지). 이 표면을 소비하는 Repository·UseCase·화면은 아직 0건이고 실서버 요청도 0건이라
@@ -41,9 +42,14 @@
 > `image.md`(2026-08-10 신설) · `member.md`·`parfait-image.md`(2026-08-11 신설)도 **2026-08-12 PR #230
 > 머지로 표면을 얻어** `android_status: partial`이 됐다 — 앞의 넷과 같은 뜻이다(표면은 있고 소비처는 없다).
 >
-> ⚠️ **카카오 로그인은 심볼이 있는데 계약과 어긋난다** — 응답 판별자 키가 `isNewUser`인데 Android가
-> `@SerialName("newUser")`를 붙였다([auth.md](auth.md) "판별자 키",
-> [conventions.md](conventions.md) "Android 불일치").
+> ✅ **카카오 로그인 판별자 키 불일치는 해소됐다**(2026-08-15, PR #241) — `@SerialName("isNewUser")` 정정 +
+> 와이어 계약 테스트([auth.md](auth.md) "판별자 키"). 같은 라운드가 이 엔드포인트를 **소비처까지** 이었다.
+>
+> ⚠️ **2026-08-15 서버 delta로 신규 5건은 표면 0**이다 — 해당 도메인 문서의 Android 열은 `미구현`이다.
+
+테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
+마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만
+**총계에서 분리해 센다**(앱이 붙을 대상이 아니다).
 
 `auth.md`와 `policy.md`는 서버 모듈이 같고(`http/auth`, OpenAPI 태그도 둘 다 `Auth`) URL 세그먼트가
 다르다(`/api/v1/auth/*` vs `/api/v1/policies`). 파일명 규약이 서버 패키지가 아니라 경로 기준이라
@@ -73,19 +79,17 @@
 
 ## 계약을 실제로 확인하는 법
 
-TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다 — develop 머지본
-(PR #230) 기준 `auth.http`·`policy.http`·`parfait-group.http`·`parfait.http`·`images.http`·`users.http`·
+TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다 — develop 기준
+`auth.http`·`policy.http`·`parfait-group.http`·`parfait.http`·`images.http`·`users.http`·
 `parfait-image.http`·`health.http`·`_reset.http` + `http-client.env.json` + 사용법 `README.md`다. 여기
 문서에 적힌 계약을 서버에 직접 쏴서 확인할 수 있다.
 
-> **전량 커버가 회복됐다(2026-08-12, PR #230).** 2026-08-10·08-11 서버 delta로 벌어졌던 7칸 중
-> 애플 로그인 1건은 **Android 미사용 결정**이라 대상이 아니고, 나머지 6건(image 2·member 2·
-> parfait-image 2)이 요청 파일을 얻었다 — **20/20**. 다만 메운 방식은 여전히 **사람 손**이라
-> [2026-08-04] "갱신 경로가 둘" 구조 문제는 그대로다 → [open-questions](../synthesis/open-questions.md).
+> ⚠️ **커버가 다시 깨졌다(2026-08-15 서버 delta).** 2026-08-12 PR #230으로 회복했던 20/20이 **20/25**가
+> 됐다 — 파르페 오늘·과거, 토핑 테두리·삭제, 회원 탈퇴 5건에 요청이 없다. 손으로 메우는 방식이 서버
+> delta마다 무너지는 것이 **세 번째**다 → [open-questions](../synthesis/open-questions.md).
 >
-> ⚠️ **`http/README.md`와 `http/auth.http`가 서로 어긋난다(2026-08-12).** 같은 PR이 README의 판별자 키를
-> `newUser`→`isNewUser`로 정정했는데 `auth.http` 주석·응답 핸들러는 `newUser`를 그대로 쓴다. 앱 DTO도
-> 안 고쳐졌다 → [open-questions](../synthesis/open-questions.md), 아래 [conventions.md](conventions.md) "Android 불일치".
+> ⚠️ **`http/auth.http`가 아직 `newUser`로 분기한다.** 앱 DTO와 `http/README.md`는 `isNewUser`로
+> 정정됐는데(PR #241·#230) 이 파일만 남았다 → [open-questions](../synthesis/open-questions.md).
 
 - 로그인 응답에서 토큰을 자동 추출해 다음 요청이 그대로 쓴다 — 스웨거에서 복붙할 필요가 없다
 - 각 요청 주석에 이 문서들의 함정을 옮겨 뒀다(`reissue`에 `Authorization`을 붙이면 재발급이 막히는 건은

@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: 2c5499a
-verified: 2026-08-11
+server_commit: 36ecd1c
+verified: 2026-08-15
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -30,6 +30,16 @@ tags: [api, parfait, server-contract, conventions]
 **성공 코드가 2종**이라는 점이 중요하다. 클라이언트가 성공을 단일 상수 비교로 판정하면 `CREATED` 응답을
 실패로 분류한다.
 
+### envelope를 쓰지 않는 응답이 둘 있다
+
+`POST /api/v1/auth/logout`과 `DELETE /api/v1/users/me`(2026-08-15 신설)는 **204 No Content에 본문이 없다**
+(`@ResponseStatus(HttpStatus.NO_CONTENT)` + 반환 타입 `Unit`). 나머지 전 엔드포인트는 성공이든 실패든
+`ApiResponse`를 준다. **envelope를 무조건 파싱하는 클라이언트는 이 둘에서 깨진다**
+([auth.md](auth.md)·[member.md](member.md)).
+
+같은 delta의 토핑 삭제(`DELETE .../images/{parfaitImageId}`)는 반대로 **200 + `data: null`**이다
+([parfait-image.md](parfait-image.md)) — **두 DELETE가 성공 표현을 달리한다.**
+
 ### `errorDetail`은 계약에만 있고 채워지지 않는다
 
 `GlobalExceptionHandler`의 네 핸들러(`BusinessException`·`ParfaitGroupException`·bad-request 4종·`Exception`)가
@@ -49,6 +59,7 @@ tags: [api, parfait, server-contract, conventions]
 | `ImageErrorCode` | `core/image/exception` | 4 |
 | `MemberErrorCode` | `core/member/exception` | 2 |
 | `ParfaitImageErrorCode` | `core/parfaitimage/exception` | 5 |
+| `ParfaitErrorCode` | `core/parfait/exception` | 2 (2026-08-15 신설) |
 
 ### `CommonErrorCode`
 
@@ -90,8 +101,13 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 - `/api/v1/auth/signup`
 - `/api/v1/auth/reissue`
 - `/api/v1/policies`
+- `/api/v1/test/parfait-canvas/rotate` ⚠️ **테스트 전용**
 
 인증 실패는 `AuthErrorCode.UNAUTHORIZED`(401)로 나간다.
+
+⚠️ **화이트리스트에 테스트 전용 경로가 들어왔다(2026-08-15).** `/api/v1/test/parfait-canvas/rotate`는
+**인증 없이 전체 그룹의 캔버스를 즉시 마감·재생성**한다([parfait.md](parfait.md)). 서버 코드가 컨트롤러와
+이 등록 양쪽에 "프로덕션 오픈 전 함께 제거" TODO를 달아 두었다 → [open-questions](../synthesis/open-questions.md).
 
 `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`(`6f5bffc`)이 기존 `/api/v1/auth/**` 와일드카드를
 위 auth 경로 개별 등록으로 좁혔다. **`/api/v1/auth/logout`은 화이트리스트에 없어 인증 대상**이다 — 인증 도메인
@@ -103,6 +119,9 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 **2026-08-10 image 도메인 2건이 들어왔지만 화이트리스트는 그대로다** — `/api/v1/images`와
 `/api/v1/images/{imageId}/confirm`은 **인증 대상**이다(상세는 [image.md](image.md)). 단 confirm은
 토큰 유효성만 보고 **이미지 소유자를 대조하지 않는다** → [open-questions](../synthesis/open-questions.md).
+
+**2026-08-15 delta의 신규 5건**(파르페 오늘·과거 목록 · 토핑 테두리 수정·삭제 · 회원 탈퇴)**도 전부
+화이트리스트 밖이라 인증 대상**이다. 위 테스트 전용 회전 1건만 예외다.
 
 **2026-08-11 member 2건·parfait-image 2건도 화이트리스트 밖이라 전부 인증 대상**이다
 ([member.md](member.md)·[parfait-image.md](parfait-image.md)). 네 엔드포인트 모두 대상 회원을 요청이 아니라
@@ -121,7 +140,8 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 | `/api/v1/<도메인>` | `/api/v1/auth/kakao` · `/api/v1/auth/apple` · `/api/v1/auth/signup` · `/api/v1/auth/reissue` · `/api/v1/auth/logout` · `/api/v1/policies` · `/api/v1/images` |
 | `/api/v1/<도메인>/{id}/<동작>` | `/api/v1/images/{imageId}/confirm` |
 | `/api/v1/<도메인>/me/<하위>` | `/api/v1/users/me` · `/api/v1/users/me/nickname` |
-| `/api/v1/groups/{groupId}/<하위>` | `/api/v1/groups/{groupId}/parfaits/year` · `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}` |
+| `/api/v1/groups/{groupId}/<하위>` | `/api/v1/groups/{groupId}/parfaits` · `.../parfaits/year` · `.../parfaits/today` · `.../parfaits/{parfaitId}/images/{parfaitImageId}/border` |
+| `/api/v1/test/<도메인>/<동작>` | `/api/v1/test/parfait-canvas/rotate` (테스트 전용) |
 | `/api/<도메인>` (버전 없음) | `/api/parfait-groups` |
 
 버전 프리픽스 유무가 갈리고, **그룹을 가리키는 경로가 `groups`와 `parfait-groups` 둘**이다.
@@ -216,10 +236,11 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 
 | 요청 DTO | 스키마 `required`(예측) | 실제 비널 필드 |
 |---|---|---|
-| `AppleLoginRequest` | `identityToken`·`nonce`·`authorizationCode` | 같음(셋 다 `@NotBlank`) |
+| `AppleLoginRequest` | `identityToken`·`nonce` | 같음(둘 다 `@NotBlank`) — 2026-08-15에 `authorizationCode`가 빠졌다 |
 | `ChangeGlobalNicknameRequest` | `nickname` | 같음 |
 | `PlaceParfaitImageRequest` | (없음) | `imageId`·`positionX`·`positionY`·`positionZ`·`scale`·`rotation`·`borderType` |
 | `UpdateParfaitImageRequest` | (없음) | (없음 — 전 필드가 널 허용, 빈 바디도 유효) |
+| `UpdateParfaitImageBorderRequest` | (없음) | `borderType` (2026-08-15 신설) |
 
 빠진 필드도 **누락하면 400이다** — jackson-module-kotlin이 비널 파라미터 부재에서 실패하고
 `GlobalExceptionHandler`의 bad-request 핸들러가 `INVALID_REQUEST`로 바꾼다.
@@ -232,22 +253,13 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
 
-⚠️ **2026-08-11 기준 1건.**
+✅ **2026-08-15 기준 0건.** 오래 걸려 있던 로그인 판별자 키 불일치(응답 키가 `isNewUser`인데 Android가
+`@SerialName("newUser")`를 붙였던 건)는 **PR #241로 정정됐고 와이어 계약 테스트가 잠갔다**
+([auth.md](auth.md) 각주). 계약 해석의 근거는 위 [직렬화 규약](#직렬화-규약)이다.
 
-| 항목 | 계약 | Android | 영향 |
-|---|---|---|---|
-| 로그인 판별자 키 | 응답 키는 `isNewUser` | `KakaoLoginResponse.isNewUser`에 `@SerialName("newUser")` | 키를 못 찾아 `MissingFieldException` → **카카오 로그인 호출이 통째로 실패** |
-
-이 불일치는 **이 문서가 만들었다** — 2026-08-02 판본이 OpenAPI 스키마만 근거로 키를 `newUser`로 기술했고,
-Android가 그대로 따랐다. 정정 근거는 위 [직렬화 규약](#직렬화-규약)
-→ [open-questions](../synthesis/open-questions.md).
-
-> ⚠️ **2026-08-12(PR #230): 코드 저장소 안에서 셋이 갈렸다.** 그 PR이 TJYG-Android 루트
-> `http/README.md`의 판별자 서술을 `isNewUser`로 정정했는데, **같은 디렉토리의 `http/auth.http`는
-> 여전히 `newUser`가 맞다고 주석으로 가르치고 응답 핸들러도 `response.body.data.newUser`를 읽는다.**
-> 앱 `KakaoLoginResponse`의 `@SerialName("newUser")`도 그대로다. 즉 정정이 세 자리 중 한 자리에만
-> 닿았고, `http/`를 처음 쓰는 사람은 서로 반대되는 두 문장을 같은 폴더에서 읽는다.
-> 위 표의 행은 그대로 유효하다 — 고쳐야 할 것이 오히려 늘었다.
+> ⚠️ **다만 `http/auth.http`는 아직 `newUser`를 가르친다** — 정정이 앱 DTO와 `http/README.md`에는
+> 닿았고 요청 모음 파일 하나에 안 닿았다. 계약 표에 남길 불일치는 아니지만 그 파일로 실서버 응답을
+> 확인하려는 사람이 조용히 잘못된 분기를 탄다 → [open-questions](../synthesis/open-questions.md).
 
 **2026-08-04 기준 남은 항목 없음.** 오래 걸려 있던 3건(Android `ApiResponse`에 `success`·`errorDetail`
 부재 / `isSuccess`가 `code == "SUCCESS"` 단일 비교 / `TokenProvider`가 항상 null)은
@@ -257,13 +269,13 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 항목도 해소 처리했다.
 
 > **다만 "일치"가 "검증됨"은 아니다.** 14 엔드포인트 Service·DataSource는 2026-08-06 PR #197로,
-> 나머지 6개는 2026-08-12 PR #230으로 develop에 들어왔지만, 이를 **호출하는 Repository·UseCase·화면이
-> 없어** 서버로 나간 요청은 여전히 0건이다(개발 서버 평문 HTTP 차단·`YG_BASE_URL` 부재도 그대로다).
-> 계약 해석의 실동작은 실연동 라운드에서 확인한다 → [open-questions](../synthesis/open-questions.md).
+> 나머지 6개는 2026-08-12 PR #230으로 develop에 들어왔고, 2026-08-15 PR #241이 카카오 로그인 하나를
+> 실제 소비처까지 이었다. 그 한 경로마저 **실서버 요청은 아직 0건**이다(실기기 검증 대기)
+> → [open-questions](../synthesis/open-questions.md).
 
-**2026-08-12 기준 서버 엔드포인트는 21개고 Android 표면은 20개다** — 애플 로그인 1건은 Android가 쓰지
-않기로 한 `해당 없음`이라 분모에서 빠지므로 **20/20, 공백 0**이다(PR #230). 2026-08-11까지 "공백 7건"으로
-적혀 있던 자리는 이 라운드로 닫혔고, 남은 것은 **불일치 1건(위 표)** 과 **소비처 0건**이다 — 둘은 다른
-종류의 문제다. 표면이 없어서 못 쓰는 상태는 끝났고, 이제 안 쓰고 있을 뿐이다.
+**2026-08-15 기준 서버 엔드포인트는 26개(+테스트 전용 1)고 Android 표면은 20개다.** 분모에서 빠지는 것은
+애플 로그인 1건(`해당 없음`)과 테스트 전용 회전 1건이라 **20/25, 공백 5**다 — 파르페 오늘 조회·과거 목록,
+토핑 테두리 수정·삭제, 회원 탈퇴. 2026-08-12에 닫혔던 공백이 **서버 delta 한 번에 다시 벌어졌다**
+(2026-08-10·08-11에 이어 세 번째다) → [open-questions](../synthesis/open-questions.md).
 
 새 간극이 발견되면 이 절에 표를 다시 세운다.

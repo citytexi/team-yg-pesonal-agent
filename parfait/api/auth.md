@@ -2,8 +2,8 @@
 id: auth
 title: 인증(카카오·애플 로그인·회원가입·토큰 재발급·로그아웃)
 server_module: http/auth
-server_commit: 2c5499a
-verified: 2026-08-14
+server_commit: 36ecd1c
+verified: 2026-08-15
 android_status: partial
 related_spec: a002-kakao-login-api
 related_adr: ADR-0017
@@ -117,8 +117,14 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
 
 ### POST /api/v1/auth/apple
 
-`[Feat/#50] 애플 로그인 API 구현 (#76)`(`96affd0`)으로 신설됐다. 카카오와 **응답 구조가 같고 요청 필드가
-하나 더 많다**(`authorizationCode`).
+`[Feat/#50] 애플 로그인 API 구현 (#76)`(`96affd0`)으로 신설됐다. **카카오와 요청·응답 구조가 같다.**
+
+> 🔁 **2026-08-15 계약 축소.** `refactor: 애플 로그인 authorizationCode 교환 로직 제거 (#89)`가
+> 요청 필드 `authorizationCode`와 애플 토큰 서버 교환·client secret 생성·애플 refresh token 저장을
+> **통째로 걷어냈다**. 서버 커밋 메시지가 사유를 밝힌다 — 교환이 `invalid_client`로 계속 실패해 로그인
+> 자체가 막혀 있었고, 그 refresh token은 탈퇴 시 애플 revoke 용도였을 뿐 ID 토큰 검증(실제 인증)과는
+> 무관했다. 마이그레이션 `V10__drop_apple_refresh_token_from_member.sql`이 컬럼도 지웠다.
+> **이 문서의 2026-08-11~08-14 판본이 적은 3필드 요청·refresh token 저장 서술은 더 이상 사실이 아니다.**
 
 - **인증**: 불필요(화이트리스트 — `SecurityConfig.WHITELIST_PATHS`에 `/api/v1/auth/apple` 개별 등록)
 - **성공**: HTTP 200 · envelope `code` = `"OK"`(`ApiResponse.ok`)
@@ -128,17 +134,14 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
 |---|---|---|---|
 | `identityToken` | String | 필수(`@NotBlank`) | 애플 ID 토큰(JWT) |
 | `nonce` | String | 필수(`@NotBlank`) | **앱이 생성한 원문 그대로** 보낸다 — 아래 참고 |
-| `authorizationCode` | String | 필수(`@NotBlank`) | 애플 refresh token 교환용. 카카오에는 없는 필드다 |
 
   ⚠️ **`nonce`는 해시하지 않고 원문을 보낸다.** `AppleIdTokenVerifyAdapter`가 받은 값을 **서버에서
   SHA-256 hex로 변환한 뒤** ID 토큰의 `nonce` 클레임과 비교한다. 애플 SDK에는 해시를 넘기고 이 API에는
   원문을 넘겨야 한다는 뜻이다 — 앱이 이미 해시한 값을 보내면 이중 해시가 돼 `INVALID_ID_TOKEN`이 난다.
   카카오는 서버가 해시하지 않으므로 **두 로그인의 `nonce` 취급이 다르다.**
 
-  **`authorizationCode`는 즉시 소비된다.** `AppleAuthorizationCodeExchangeAdapter`가 애플 토큰
-  엔드포인트에 `grant_type=authorization_code`로 교환해 **애플 refresh token**을 받아온다(클라이언트
-  시크릿은 `AppleClientSecretGenerator`가 서버에서 만든다). 이 값은 나중에 회원 탈퇴 시 애플 연동
-  해제(revoke)에 쓰려고 보관하는 것이며, **로그인 판정 자체에는 쓰이지 않는다.**
+  **요청 필드가 카카오와 같은 2개다**(카카오는 `idToken`·`nonce`, 애플은 `identityToken`·`nonce` —
+  이름만 다르다). 서버가 애플 토큰 서버를 호출하는 경로는 이제 **JWKS 조회 하나뿐**이다.
 
 - **응답 필드** — 카카오와 필드 집합·분기 규칙이 같다.
 
@@ -149,25 +152,23 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
 | `expiresIn` | Long? | 예 | 단위 초. `isNewUser=false`일 때만 값 있음 |
 | `registrationToken` | String? | 예 | `isNewUser=true`일 때만 값 있음 |
 
-  **기존 회원이면 애플 refresh token을 갱신한다.** `AppleLoginService`가 회원을 찾으면
-  `MemberAppleRefreshTokenSavePort.saveRefreshToken`으로 `Member.appleRefreshToken` 컬럼을 덮어쓴 뒤
-  세션을 만든다(마이그레이션 `V9__add_apple_refresh_token_to_member.sql`).
-  **신규면 registration token 안에 애플 refresh token을 실어 보낸다** — `TokenIssuePort.createRegistrationToken`이
-  이 값을 클레임으로 받고, `signup`이 회원 행을 만든 뒤 꺼내 저장한다(아래 `signup` 참고).
+  **분기 처리가 카카오와 완전히 같아졌다.** `AppleLoginService`가 ID 토큰에서 얻은 `sub`로 회원을 찾아
+  있으면 세션(access·refresh)을 만들고, 없으면 `createRegistrationToken(provider, providerUserId)`만
+  내려준다. **provider 전용 저장 데이터가 더는 없다** — registration token 클레임도
+  `RegistrationTokenClaims(provider, providerUserId)` 둘뿐이다.
 
 - **에러 코드**
 
 | HTTP | code | 의미 |
 |---|---|---|
 | 400 | `INVALID_REQUEST` | 세 필드 중 하나가 공백(`@NotBlank` → `CommonErrorCode`) |
-| 401 | `INVALID_ID_TOKEN` | ID 토큰 서명·`iss`·`aud`·`nonce`·`exp`·`sub` 검증 실패, **또는 애플이 `authorizationCode`를 4xx로 거부** |
-| 502 | `APPLE_SERVER_ERROR` | 애플 JWKS/토큰 서버 응답 오류·파싱 실패·응답에 `refresh_token` 없음 |
-| 503 | `APPLE_SERVER_UNAVAILABLE` | 애플 서버 연결 실패(JWKS 조회 `IOException` · 토큰 교환 `ResourceAccessException`) |
+| 401 | `INVALID_ID_TOKEN` | ID 토큰 서명·`iss`·`aud`·`nonce`·`exp`·`sub` 검증 실패 |
+| 502 | `APPLE_SERVER_ERROR` | 애플 JWKS 응답 오류·파싱 실패 |
+| 503 | `APPLE_SERVER_UNAVAILABLE` | 애플 JWKS 조회 연결 실패(`IOException`) |
 
-  ⚠️ **`INVALID_ID_TOKEN`이 두 원인을 덮는다.** 하나는 ID 토큰 검증 실패
-  (`AppleIdTokenVerifyAdapter`), 다른 하나는 **`authorizationCode` 교환 거부**
-  (`AppleAuthorizationCodeExchangeAdapter`의 `HttpClientErrorException` 분기)다. 앱은 401 하나로
-  "다시 로그인"밖에 안내할 수 없다.
+  🔁 **2026-08-15 원인 축소.** 이전 판본이 적은 "`authorizationCode` 교환 거부"·"응답에 `refresh_token`
+  없음"·"토큰 교환 `ResourceAccessException`" 경로는 교환 로직과 함께 사라졌다. 세 코드의 원인이 전부
+  **ID 토큰 검증 한 갈래**(`AppleIdTokenVerifyAdapter`)로 좁혀졌다.
   근거: `AppleLoginControllerTest`가 성공 2케이스 + 400·401·502·503을 직접 검증한다.
 
 - **명세 델타** — 팀 명세에 애플 로그인 전용 문서가 아직 없다(`spec/`에 카카오·회원가입·재발급·로그아웃
@@ -198,16 +199,16 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
   회원가입 실패 시 회원 데이터가 남지 않도록 `SignupService.signup` 전체가 하나의 트랜잭션이다(#63에서
   `MemberRegistrar.register` 단독 트랜잭션 범위를 확장).
 
-  **provider별 후처리가 갈린다**(`handleProviderSpecificRegistration`, #76에서 채워짐). `KAKAO`는
-  빈 분기다. `APPLE`은 registration token 클레임의 `appleRefreshToken`을 꺼내
-  `MemberAppleRefreshTokenSavePort.saveRefreshToken`으로 저장하고, **클레임이 비어 있으면 401
-  `INVALID_TOKEN`을 던진다** — 애플 신규 가입에서 `signup`이 401을 낼 경로가 하나 더 있다는 뜻이다.
+  🔁 **2026-08-15 — provider별 후처리가 사라졌다.** 이전 판본이 적은
+  `handleProviderSpecificRegistration`(애플 refresh token 저장, 클레임 부재 시 401)은 #89가 통째로
+  제거했다. **가입 경로는 이제 provider와 무관하게 하나**다 — 약관 검증 → 닉네임 자동 생성 → 회원 등록 →
+  세션 발급.
 
 - **에러 코드**
 
 | HTTP | code | 의미 |
 |---|---|---|
-| 401 | `INVALID_TOKEN` | 유효하지 않은 토큰입니다(`registrationToken` 검증 실패, **또는 애플 가입인데 클레임에 `appleRefreshToken`이 없음**) |
+| 401 | `INVALID_TOKEN` | 유효하지 않은 토큰입니다(`registrationToken` 검증 실패) |
 | 401 | `EXPIRED_TOKEN` | 만료된 토큰입니다(`registrationToken` 만료) |
 | 409 | `ALREADY_REGISTERED` | 이미 가입된 회원입니다 |
 | 400 | `DUPLICATE_TERMS_ID` | 중복된 약관 ID입니다 |
@@ -223,8 +224,8 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
   **닉네임을 자동 생성**한다(앱은 보내지도 받지도 않는다 — 응답에 닉네임 필드가 없다. 이 값을 나중에
   바꾸는 경로가 [member.md](member.md)다), ② 애플 분기가 애플 refresh token 저장으로 채워지면서
   `INVALID_TOKEN`을 던지는 경로가 하나 늘었다(위 흐름 메모) — 명세에는 없다.
-  **2026-08-11 해소**: `[Feat/#50] 애플 로그인 API 구현 (#76)` 이전 판본이 적었던 "애플 분기는 TODO(#50)
-  자리만 있다"는 더 이상 사실이 아니다.
+  **2026-08-15 정정**: ②(애플 분기가 `INVALID_TOKEN` 경로를 하나 늘렸다)는 #89로 되돌아갔다 —
+  provider 분기 자체가 없어졌으므로 명세와 코드의 이 항목 차이도 사라졌다.
 
 ### POST /api/v1/auth/reissue
 
@@ -335,19 +336,20 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
 | `INVALID_TOKEN` | 401 | 유효하지 않은 토큰입니다 | `signup`(registrationToken 검증 실패·애플 클레임 부재) · `reissue`·`logout`(refreshToken, 근거는 각기 다름) |
 | `EXPIRED_TOKEN` | 401 | 만료된 토큰입니다 | `signup`(registrationToken) · `reissue`·`logout`(refreshToken) |
 | `MEMBER_NOT_FOUND` | 401 | 존재하지 않는 회원입니다 | `reissue`(`ReissueService`) · `logout`(전역 `JwtAuthFilter`, access token 검증 단계) |
-| `INVALID_ID_TOKEN` | 401 | 유효하지 않은 ID 토큰입니다 | `kakao` · `apple`(ID 토큰 검증 + `authorizationCode` 교환 거부) |
+| `INVALID_ID_TOKEN` | 401 | 유효하지 않은 ID 토큰입니다 | `kakao` · `apple`(ID 토큰 검증) |
 | `KAKAO_JWKS_FETCH_FAILED` | 502 | 카카오 공개키 조회에 실패했습니다 | `kakao` |
 | `KAKAO_SERVER_UNAVAILABLE` | 503 | 카카오 서버에 연결할 수 없습니다 | `kakao` |
-| `APPLE_SERVER_ERROR` | 502 | 애플 서버 응답 오류입니다 | `apple`(JWKS 비정상·토큰 교환 5xx·파싱 실패·`refresh_token` 부재) |
-| `APPLE_SERVER_UNAVAILABLE` | 503 | 애플 서버에 연결할 수 없습니다 | `apple`(JWKS 연결 실패·토큰 서버 연결 실패) |
+| `APPLE_SERVER_ERROR` | 502 | 애플 서버 응답 오류입니다 | `apple`(JWKS 비정상·파싱 실패) |
+| `APPLE_SERVER_UNAVAILABLE` | 503 | 애플 서버에 연결할 수 없습니다 | `apple`(JWKS 연결 실패) |
 | `ALREADY_REGISTERED` | 409 | 이미 가입된 회원입니다 | `signup` |
 | `DUPLICATE_TERMS_ID` | 400 | 중복된 약관 ID입니다 | `signup` |
 | `TERMS_NOT_FOUND` | 400 | 존재하지 않는 약관입니다 | `signup` |
 | `REQUIRED_TERMS_NOT_AGREED` | 400 | 필수 약관에 모두 동의해야 합니다 | `signup` |
 | `FORBIDDEN_REFRESH_TOKEN` | 403 | 다른 회원의 Refresh Token입니다 | `logout`(`LogoutService`) |
 
-**카카오·애플의 대응 코드가 대칭이 아니다.** 카카오는 JWKS 실패를 `KAKAO_JWKS_FETCH_FAILED`(502)로
-따로 갖는데, 애플은 JWKS 실패와 토큰 교환 실패를 `APPLE_SERVER_ERROR`(502) 하나로 묶는다.
+**카카오·애플의 대응 코드가 대칭이 아니다.** 두 로그인이 하는 일이 같아진 지금도 카카오만
+`KAKAO_JWKS_FETCH_FAILED`(502)라는 전용 이름을 갖고, 애플은 같은 실패를 `APPLE_SERVER_ERROR`(502)로 낸다 —
+이름만 다른 같은 상황이다.
 
 ⚠️ **`MEMBER_NOT_FOUND`는 코드 문자열이 유일하지 않다.** `ParfaitGroupApiErrorCode`·`ImageErrorCode`·
 `MemberErrorCode`에도 같은 문자열이 존재하지만 값은 전부 **404**로 다르다
@@ -416,6 +418,8 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
   찍어 확정한다** — `MissingFieldException`이 나면 서버가 `newUser`를 쓰는 것이고 이 문서가 틀린 것이다
   → [open-questions](../synthesis/open-questions.md)
 - 애플 로그인은 서버만 있고 앱 대응 심볼이 0건이다 → [open-questions](../synthesis/open-questions.md)
+- `authorizationCode` 제거로 **애플 연동 해제(revoke) 수단이 서버에 없어졌다** — 탈퇴 API가 같은 delta에
+  들어왔는데 애플 쪽은 끊지 못한다([member.md](member.md)) → [open-questions](../synthesis/open-questions.md)
 
 그 외 5 엔드포인트의 요청·응답·에러 계약은 core·http·external 서버 코드와 컨트롤러/서비스 테스트로
 확인했다.

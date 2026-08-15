@@ -4,8 +4,8 @@ title: 회원가입 완료 (약관동의)
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#49"
-server_commit: 2c5499a
-verified: 2026-08-11
+server_commit: 36ecd1c
+verified: 2026-08-15
 related_api: auth.md
 tags: [api, parfait, spec, auth]
 ---
@@ -99,12 +99,12 @@ tags: [api, parfait, spec, auth]
   만들어 `MemberRegistrar.register`에 넘긴다. **앱은 닉네임을 보내지 않고, 받지도 않는다** — 이 응답에
   닉네임 필드가 없다. 명세에 언급이 없다.
 - **전체가 하나의 트랜잭션**이다(`@Transactional`). 가입 실패 시 회원 데이터가 남지 않는다.
-- **애플 분기가 채워졌다(2026-08-11 정정).** `[Feat/#50] 애플 로그인 API 구현 (#76)` 이전 판본은 이 자리에
-  "빈 분기 + TODO(#50)"를 적었다 — 지금은 `handleProviderSpecificRegistration`이 `LoginProvider.APPLE`에서
-  `RegistrationTokenClaims.appleRefreshToken`을 꺼내 `MemberAppleRefreshTokenSavePort.saveRefreshToken`으로
-  저장한다(마이그레이션 `V9__add_apple_refresh_token_to_member.sql`). 클레임이 비어 있으면 **401
-  `INVALID_TOKEN`**을 던진다 — 명세에 없는 실패 경로다. `/auth/apple`은 이제 실재한다
-  ([../auth.md](../auth.md)).
+- 🔁 **애플 분기가 사라졌다(2026-08-15 정정).** 2026-08-11 판본은 이 자리에
+  "`handleProviderSpecificRegistration`이 애플 refresh token을 저장하고, 클레임이 비면 401 `INVALID_TOKEN`"을
+  적었다. `refactor: 애플 로그인 authorizationCode 교환 로직 제거 (#89)`가 그 분기를 **통째로 제거**했고
+  마이그레이션 `V10__drop_apple_refresh_token_from_member.sql`이 컬럼도 지웠다. **가입 경로는 이제 provider와
+  무관하게 하나**이고, 명세에 없던 그 실패 경로도 함께 없어졌다 — 즉 **이 항목은 "코드에만 있음"에서 빠지고
+  코드가 명세 쪽으로 돌아왔다**([../auth.md](../auth.md)). `/auth/apple` 엔드포인트 자체는 그대로 있다.
 - envelope 5필드 — 명세의 JSON 예시는 `data` 안쪽만 보여준다 → [conventions.md](../conventions.md)
 - **`termsId`의 출처가 되는 약관 목록 조회 API가 생겼다.** `GET /api/v1/policies`
   (`69654bc`, [../policy.md](../policy.md))가 `termsId`·`type`·`title`·`url`·`required`를 내려준다.

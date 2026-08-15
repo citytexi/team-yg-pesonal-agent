@@ -2,8 +2,8 @@
 id: image
 title: 이미지(업로드 URL 발급·업로드 확인)
 server_module: http/image
-server_commit: 2c5499a
-verified: 2026-08-11
+server_commit: 36ecd1c
+verified: 2026-08-15
 android_status: partial
 related_spec:
 related_adr: ADR-0017
@@ -130,8 +130,14 @@ S3에 직접 PUT한 뒤 ③ 서버에 업로드 완료를 알린다. 이미지 �
   한다(`ImageMeta.confirm`). 앱이 PUT을 건너뛰고 confirm만 불러도 `COMPLETED` 행이 남고, 그 `imageUrl`은
   404를 뱉는 주소다. **업로드 성공을 보증하는 것은 앱의 PUT 응답 확인뿐이다.**
 
-  **`referenceCount`는 도메인·엔티티에 있으나 증감 경로가 없다.** 두 API 어디도 이 값을 건드리지
-  않고 응답에도 나오지 않는다 — 토핑/캔버스가 이미지를 참조하기 시작할 때 쓰일 자리로 보인다.
+  🔁 **2026-08-15 — `referenceCount`에 증감 경로가 생겼다.** 이 도메인의 두 API는 여전히 건드리지 않고
+  응답에도 내보내지 않지만, [parfait-image.md](parfait-image.md)의 **토핑 배치(POST)가 +1**,
+  **토핑 삭제(DELETE)가 -1**을 한다. 그리고 **0이 되는 순간 S3 객체가 지워진다**(`ImageDeleteAdapter`).
+  이전 판본의 "쓰일 자리로 보인다"는 이 라운드로 채워졌다.
+
+  ⚠️ **`image_meta` 행은 그때도 남는다** — 카운트가 0이어도 상태는 `COMPLETED` 그대로이고 행은 삭제되지
+  않는다. 즉 **S3 객체 없이 `COMPLETED`인 메타**가 생길 수 있고, 그 `imageId`는 배치 API의 상태 검사를
+  통과한다(`IMAGE_NOT_CONFIRMED`가 나지 않는다) → [미결](#미결).
 
 - **에러 코드**
 
@@ -196,6 +202,9 @@ wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlReques
   → [open-questions](../synthesis/open-questions.md)
 - confirm에 소유자 검증이 없어 임의 회원이 남의 `imageId`를 확정할 수 있다
   → [open-questions](../synthesis/open-questions.md)
-- 확정되지 않은 `PENDING` 이미지·업로드되지 않은 S3 키를 정리하는 경로가 서버에 없다(스케줄러 0건,
-  `ImageMetaRepository`는 `JpaRepository` 기본 메서드뿐) → [open-questions](../synthesis/open-questions.md)
+- 확정되지 않은 `PENDING` 이미지·업로드되지 않은 S3 키를 정리하는 경로가 여전히 없다. 2026-08-15에
+  스케줄러가 서버에 처음 들어왔지만(캔버스 회전, [parfait.md](parfait.md)) **이미지 정리는 그 대상이
+  아니다** → [open-questions](../synthesis/open-questions.md)
+- `referenceCount`가 0이 되면 S3 객체만 지워지고 `COMPLETED` 메타 행은 남는다 — 그 `imageId` 재배치가
+  깨진 이미지를 만든다 → [open-questions](../synthesis/open-questions.md)
 - confirm 재시도 시의 409를 앱이 성공으로 볼지 → 위 open-questions 항목에 함께 적는다

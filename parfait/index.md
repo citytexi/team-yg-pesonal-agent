@@ -4,9 +4,9 @@
 
 ## 지금 상태 (1줄)
 Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록(#222로 실패 화면·pull-to-refresh·A-005 이동까지)·C-101 카메라 플로우·C-001 캔버스 메인(#199 — 반응형 배치·Dot Grid 배경·토핑 추가 메뉴, **진입 경로 0건**)까지 들어왔고 전부 **데이터·후속 화면 미결선** 상태다. **토핑 생성 경로는 이어졌다**(#221) — C-101-confirm "다음"이 C-103 누끼 추출로 결선되고 확인(C-103)·수동 편집(C-104)·테두리 편집(C-105)이 한 라운드에 들어와 캔버스 배치(C-106) 직전까지 닿는다. 다만 네 화면의 닫기가 전부 빈 람다라 **플로우를 나갈 출구가 없다**. 앱 진입 체인은 Splash→Login→TermAgree→GroupList로 이어졌고(#220), 그 첫 화면 A-002 로그인이 온보딩 일러스트 3장으로 실물화됐고(#218) **인증까지 결선됐다**(#241). 그룹 생성(A-005)·참여(A-004→S-102) 두 갈래도 확인 모달을 거쳐 **목록으로 되돌아오며 닫혔다**(#224, `goToSingleClearTop`) — 다만 생성·참여·코드검증 UseCase가 전부 mock이라 목록에 새 그룹이 생기지 않고, 위키 정본은 이 자리를 C-001 직접 진입으로 적는다. 디자인시스템은 Figma 바 3종(Top Bar Canvas·List-Date·Floating Bar)과 배경 블러(Haze, ADR-0018)까지 머지됐다(#188).
-서버 계약은 `api/`에 스냅샷돼 있다(도메인 7건·엔드포인트 21개). **Android 표면은 20/20으로 닫혔다**
-(#230 — image 2·member 2·parfait-image 2가 들어와 Service 7·remote DataSource 7쌍. 애플 로그인 1건은
-Android 미사용 결정이라 분모에서 뺀다). **2026-08-15 — 첫 소비처가 develop에 들어왔다**(#241).
+서버 계약은 `api/`에 스냅샷돼 있다(도메인 7건·**엔드포인트 26개 + 테스트 전용 1**, 서버 `36ecd1c`).
+**Android 표면은 20/25로 공백 5가 다시 벌어졌다**(2026-08-15 서버 delta — 파르페 오늘·과거 조회,
+토핑 테두리 수정·삭제, 회원 탈퇴. 애플 로그인 1건과 테스트 전용 회전 1건은 분모에서 뺀다). **2026-08-15 — 첫 소비처가 develop에 들어왔다**(#241).
 A-002 카카오 로그인이 SDK `idToken`+`nonce` 취득부터 `AuthRepository`·
 `LoginWithKakaoUseCase`·신규/기존 분기·세션 저장까지 이어졌고, 그 아래에 MVI 공통 에러 인프라
 (`AppError`·`Channel` 이펙트·`launch(key, onError)`)를 깔았다([ADR-0020](adr/0020-mvi-error-effect-infrastructure.md)).
