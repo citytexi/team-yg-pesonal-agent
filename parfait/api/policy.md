@@ -2,8 +2,8 @@
 id: policy
 title: 약관(현재 유효 약관 목록 조회)
 server_module: http/auth
-server_commit: 2c5499a
-verified: 2026-08-11
+server_commit: 36ecd1c
+verified: 2026-08-15
 android_status: partial
 related_spec:
 related_adr: ADR-0017

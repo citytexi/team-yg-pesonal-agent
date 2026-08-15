@@ -1,22 +1,23 @@
 ---
 id: member
-title: 회원(내 계정 조회·전역 닉네임 변경)
+title: 회원(내 계정 조회·전역 닉네임 변경·탈퇴)
 server_module: http/member
-server_commit: 2c5499a
-verified: 2026-08-11
+server_commit: 36ecd1c
+verified: 2026-08-15
 android_status: partial
 related_spec:
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, member]
 ---
 
-# 회원(내 계정 조회·전역 닉네임 변경) API 계약
+# 회원(내 계정 조회·전역 닉네임 변경·탈퇴) API 계약
 
 > 정본은 서버 코드(`mash-up-kr/TEAMYG-SERVER` `main`). 이 문서는 미러다 — 어긋나면 서버가 옳다.
 > 전역 계약(envelope·에러 체계·인증)은 [conventions.md](conventions.md).
 
-`[Feat/#66] 전역 닉네임 변경 API (#77)`와 `[Feat/#67] 내 계정 정보 조회 API (#84)`로 신설됐다.
-두 엔드포인트가 `MemberController` 하나에 있고 클래스 레벨 매핑이 `/api/v1/users/me`다 —
+`[Feat/#66] 전역 닉네임 변경 API (#77)`·`[Feat/#67] 내 계정 정보 조회 API (#84)`로 신설됐고
+`feat: 회원 탈퇴(DELETE /api/v1/users/me) API 구현 (#90)`으로 **2 → 3**이 됐다.
+셋이 `MemberController` 하나에 있고 클래스 레벨 매핑이 `/api/v1/users/me`다 —
 **URL 세그먼트는 `users`인데 서버 패키지·도메인 이름은 `member`다.**
 
 **"전역 닉네임"은 계정 1개당 1개**이고, 그룹 안에서 쓰는 닉네임([parfait-group.md](parfait-group.md)의
@@ -29,8 +30,9 @@ tags: [api, parfait, server-contract, member]
 |---|---|---|---|---|---|
 | GET | `/api/v1/users/me` | 필요 | 없음 | `MyAccountResponse` | 구현됨 |
 | PATCH | `/api/v1/users/me/nickname` | 필요 | `ChangeGlobalNicknameRequest` | `ChangeGlobalNicknameResponse` | 구현됨 |
+| DELETE | `/api/v1/users/me` | 필요 | 없음 | **본문 없음(204)** | 미구현 |
 
-둘 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. memberId는 요청이 아니라
+셋 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. memberId는 요청이 아니라
 토큰에서 나온다(`Authentication.memberId(): Long = name.toLong()`) — 남의 계정을 지정할 경로가 없다.
 
 ## 엔드포인트 상세
@@ -65,7 +67,8 @@ tags: [api, parfait, server-contract, member]
   ⚠️ **같은 엔드포인트에서 `MEMBER_NOT_FOUND`가 401과 404 둘 다로 나갈 수 있다.** 앞의 것은
   `JwtAuthFilter.authenticate`가 `MemberQueryPort.existsById`로 컨트롤러 도달 **전에** 던지고, 뒤의 것은
   `MemberService`가 `findAccountById`가 `null`일 때 던진다. **실무상 401이 항상 먼저 걸리므로 404 분기는
-  두 검사 사이에 회원이 사라진 경우에만 도달한다**(회원 삭제 API는 현재 없다). 소비 측이 `code` 문자열로만
+  두 검사 사이에 회원이 사라진 경우에만 도달한다** — 2026-08-15 탈퇴 API가 생기면서 그 "사라짐"이 실제로
+  가능해졌다(다른 세션이 탈퇴를 마친 직후). 소비 측이 `code` 문자열로만
   분기하면 두 상황이 한 브랜치로 뭉개진다 → [conventions.md](conventions.md) "코드 문자열은 enum 간
   유일하지 않다". 근거: `MemberControllerTest`가 404 케이스를 직접 검증하고, 401 케이스는
   `SecurityConfigIntegrationTest`가 전역으로 검증한다.
@@ -110,6 +113,57 @@ tags: [api, parfait, server-contract, member]
   `"연속  공백"`은 애노테이션을 통과한 뒤 `GlobalNickname.of`에서 `INVALID_NICKNAME`이 된다.
   근거: `MemberControllerTest`가 네 케이스(정상·빈 문자열·필드 부재·형식 위반)를 직접 검증한다.
 
+### DELETE /api/v1/users/me
+
+`feat: 회원 탈퇴(DELETE /api/v1/users/me) API 구현 (#90)`으로 신설됐다.
+
+- **인증**: 필요.
+- **성공**: HTTP **204 No Content** · **본문 없음**(`@ResponseStatus(HttpStatus.NO_CONTENT)`, 반환 타입 `Unit`).
+
+  ⚠️ **서버 전체에서 envelope를 쓰지 않는 유일한 성공 응답이다.** 다른 모든 엔드포인트는
+  `ApiResponse<T>`를 감싸 `success`·`code`·`message`·`data`를 준다([conventions.md](conventions.md)).
+  같은 delta의 토핑 삭제(`DELETE .../images/{parfaitImageId}`)조차 200 + `data: null`인데
+  ([parfait-image.md](parfait-image.md)) 이쪽만 본문이 통째로 없다. **envelope를 무조건 파싱하는 클라이언트는
+  이 응답에서 깨진다** → [미결](#미결).
+
+- **요청 필드**: 없음(경로 변수·쿼리·바디 전부 없음)
+- **응답 필드**: 없음
+
+  **처리 순서**(`MemberService.withdraw`, `@Transactional`):
+  ① 회원이 없으면 **아무것도 하지 않고 그대로 성공**(`existsById`가 false면 조기 반환) —
+  즉 **멱등이고 404를 내지 않는다**. ② 회원 행 삭제. ③ 참여 중인 그룹 멤버십 전부를 `leave()` 처리.
+  ④ **커밋 이후**(`TransactionSynchronization.afterCommit`) refresh token 전량 삭제
+  (`TokenDeletePort.deleteAllByMemberId` — Redis). ④가 실패하면 로그 경고만 남기고 탈퇴는 유지된다.
+
+  **④를 `afterCommit`에 둔 이유가 코드 주석에 있다** — 메서드 본문에서 지우면 이후 커밋이 실패했을 때
+  DB는 롤백됐는데 Redis만 비는 상태가 되기 때문이다. 같은 delta의 토핑 삭제는 이 방어 없이 트랜잭션
+  안에서 S3를 지운다([parfait-image.md](parfait-image.md)) — **한 저장소 안에서 판단이 갈렸다.**
+
+  ⚠️ **회원 행은 하드 삭제다.** `MemberAdapter.deleteById`가 `providerUserId`를 `withdrawn_<memberId>`로
+  덮어 저장한 뒤 `delete`한다(같은 트랜잭션이라 실제로 남는 것은 삭제 결과뿐이다 — 유니크 제약을 비우려는
+  의도로 읽히나 코드에 설명이 없다). 회원 이력은 남지 않는다.
+
+  ⚠️ **탈퇴해도 올려 둔 토핑은 남는다.** 그룹 멤버십은 `leftAt`이 찍히고 `groupNickname`이
+  `GroupNickname.unknown()`(`(알수없음)`)으로 바뀌지만, 그 멤버가 배치한 `parfait_image` 행은 그대로다.
+  `GET .../parfaits/today`의 `placedBy.nickname`이 `(알수없음)`으로 내려오고, 그 `groupMemberId`는
+  `groupMembers` 목록에 없다([parfait.md](parfait.md)) → [미결](#미결).
+  `GroupNickname.of`가 이 센티널 값만 검증을 건너뛰도록 특례가 붙은 것이 그 때문이다
+  (`fix: 탈퇴 멤버 닉네임 재구성 시 GroupNickname 검증 실패 수정`).
+
+- **에러 코드**
+
+| HTTP | code | 의미 |
+|---|---|---|
+| 401 | `UNAUTHORIZED` · `INVALID_TOKEN` · `EXPIRED_TOKEN` · `MEMBER_NOT_FOUND` | 전역 인증(`AuthErrorCode`) |
+
+  **도메인 에러가 없다.** 회원 부재도 성공(204)이라 404 경로가 없다. 근거: `MemberControllerTest`
+  ("탈퇴는 인증 회원 id를 그대로 유스케이스에 전달하고 204를 반환한다").
+
+  ⚠️ **애플 연동 해제(revoke)는 하지 않는다.** 같은 delta의
+  `refactor: 애플 로그인 authorizationCode 교환 로직 제거 (#89)`가 애플 refresh token 보관을 통째로
+  걷어냈고([auth.md](auth.md)), 탈퇴 로직에도 애플 API 호출이 없다. 애플 계정으로 가입한 회원이 탈퇴해도
+  **애플 쪽 연동은 끊기지 않는다** → [미결](#미결).
+
 ## 도메인 에러 코드 전수
 
 `MemberErrorCode`(`core/member/exception`) 2종 전부.
@@ -130,6 +184,13 @@ tags: [api, parfait, server-contract, member]
 |---|---|
 | `GET /api/v1/users/me` | `MemberService.getUsersMe` → `MemberRemoteDataSource.getMyAccount()` |
 | `PATCH /api/v1/users/me/nickname` | `MemberService.patchUsersMeNickname` → `MemberRemoteDataSource.changeGlobalNickname(nickname)` |
+| `DELETE /api/v1/users/me` | — (미구현) |
+
+**탈퇴는 표면이 없다**(2026-08-15 서버 delta) — 앱 `MemberService`에는 `@GET`·`@PATCH` 둘뿐이다.
+S-101 Danger Zone이 되돌릴 수 없는 동작을 담을 자리 없이 머지돼 있는 상태와 맞물린다
+→ [open-questions](../synthesis/open-questions.md).
+**본문 없는 204라 표면을 붙일 때 반환 타입이 다른 엔드포인트와 다르다** — 앱 `ApiCaller`는
+envelope 파싱을 전제하므로 `Response<Unit>` 계열 진입점이 필요한지부터 정해야 한다.
 
 wire DTO는 `service/model/{request,response}/member/`, 변환은 `source/member/mapper/VOMapper.kt`,
 domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider`)다. 설계 근거는
@@ -156,3 +217,8 @@ domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider
   core enum에 넣을지 → [open-questions](../synthesis/open-questions.md)
 - 전역 닉네임을 바꿔도 기존 그룹의 `groupNickname`이 그대로인 것이 의도인지(앱은 두 값을 다른 화면에
   보여줘야 한다) → [open-questions](../synthesis/open-questions.md)
+- 탈퇴 응답만 envelope 없는 204다 — 서버가 맞출지, 클라이언트가 예외 분기를 둘지
+  → [open-questions](../synthesis/open-questions.md)
+- 탈퇴 회원이 남긴 토핑의 `placedBy`가 `(알수없음)`으로 캔버스에 계속 보인다 — 표시 정책이 없다
+  → [open-questions](../synthesis/open-questions.md)
+- 애플 계정 탈퇴 시 애플 연동 해제(revoke)를 하지 않는다 → [open-questions](../synthesis/open-questions.md)

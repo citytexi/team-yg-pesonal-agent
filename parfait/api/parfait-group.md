@@ -2,8 +2,8 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: 2c5499a
-verified: 2026-08-11
+server_commit: 36ecd1c
+verified: 2026-08-15
 android_status: partial
 related_spec:
 related_adr: ADR-0017
@@ -264,6 +264,10 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   `findMembership`(→ `GROUP_NOT_JOINED`) → `ParfaitGroupMemberLeavePort.leave` 순서로 실행한다. 탈퇴 시
   `groupNickname`은 `GroupNickname.unknown()`("(알수없음)")으로 대체되고 `leftAt`이 기록된다(`ParfaitGroupMember.leave`).
 
+  **2026-08-15 — 같은 전이를 부르는 두 번째 경로가 생겼다.** 회원 탈퇴(`DELETE /api/v1/users/me`,
+  [member.md](member.md))가 그 회원의 **모든 그룹 멤버십에 같은 `leave()`를 적용**한다. 즉 이 그룹 API를
+  거치지 않고도 멤버가 목록에서 사라질 수 있다.
+
 ### POST /api/parfait-groups/{groupId}/reports
 
 - **인증**: 필요
@@ -400,8 +404,15 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 **정상 경로에서는 통과한다** — 우려했던 "본인 입력과 무관한 `INVALID_GROUP_NICKNAME`"은 발생하지 않는다.
 
 > ⚠️ 예외 하나. `GroupNickname.unknown()`이 만드는 `(알수없음)`은 괄호를 포함해 **자기 패턴을 통과하지
-> 못하는 값**이다(private 생성자를 직접 호출해 만든다). 이 값이 전역 닉네임 자리에 흘러들면 검증이 깨지는데,
-> 그런 경로는 현재 코드에 없다.
+> 못하는 값**이다.
+>
+> 🔁 **2026-08-15 — 그 경로가 실제로 생겼고 서버가 특례로 막았다.** 회원 탈퇴가 멤버십을 `leave()`로
+> 바꾸면서 `(알수없음)` 행이 DB에 남고, 그 행을 도메인으로 재구성할 때 `GroupNickname.of`가 걸려 터졌다
+> (`fix: 탈퇴 멤버 닉네임 재구성 시 GroupNickname 검증 실패 수정`). 지금 `of`는 **입력이 정확히
+> `(알수없음)`이면 검증을 건너뛰고 통과시킨다.** 그런데 `of`는 **사용자 입력에도 그대로 쓰인다** —
+> 그룹 생성(`ParfaitGroupService.create`)과 닉네임 변경(`ParfaitGroupMember.changeNickname`) 양쪽이다.
+> 즉 사용자가 `(알수없음)`을 입력하면 괄호 금지 규칙을 우회해 **탈퇴자와 같은 표시 이름**을 가질 수 있다
+> → [open-questions](../synthesis/open-questions.md).
 
 전역 닉네임을 바꾸는 API는 [member.md](member.md)에 있다.
 
