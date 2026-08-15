@@ -116,7 +116,7 @@ data class GroupNickNameUiState(
 ) : UiState
 
 // 서버 실패 사유 — feature 로컬 enum + 화면 매핑(A-004의 InviteCodeError와 같은 형태)
-enum class GroupNickNameError { ALREADY_USED, INVALID, NETWORK, UNKNOWN }
+enum class GroupNickNameError { INVALID, NETWORK, UNKNOWN }   // 🔁 #250에서 ALREADY_USED 제거
 @Composable internal fun GroupNickNameError.toStringResource(): String
 
 sealed interface GroupNickNameIntent {
@@ -144,9 +144,13 @@ class GroupNickNameViewModel @AssistedInject constructor(
   표시하고 요청하지 않는다. 통과하면 `launch(key = KEY_CHANGE_NICKNAME)`에서 두 에러를 지우고 `isEntering = true` →
   `ChangeGroupNicknameUseCase(groupId, GroupNickname(nickName))` → 해제는 `finally`(버튼이 영구 비활성으로
   남지 않는다) → **성공이면** `NavigateToNext`. 중복 요청은 job 키 가드가 막는다(🔁 #224의 `isEntering` 조기 return 대체).
-- **서버 실패 매핑**(#244): `AppError.Network` → `NETWORK` / `AppError.Server`의
-  `GROUP_NICKNAME_ALREADY_USED` → `ALREADY_USED`, `INVALID_GROUP_NICKNAME` → `INVALID`(앱 검증과 서버 규칙이
-  어긋났다는 신호) / 그 외 `UNKNOWN`. 결과는 `submitError`에 담기고 입력 필드 아래 한 줄로 나간다.
+- **서버 실패 매핑**(#244, 🔁 #250 축소): `AppError.Network` → `NETWORK` / `AppError.Server`의
+  `INVALID_GROUP_NICKNAME` → `INVALID`(앱 검증과 서버 규칙이 어긋났다는 신호) / 그 외 `UNKNOWN`.
+  결과는 `submitError`에 담기고 입력 필드 아래 한 줄로 나간다.
+  🔁 **`ALREADY_USED` 갈래는 사라졌다(#250)** — 서버가 그룹 내 닉네임 중복 검사를 없애 그 코드를 더는
+  내지 않으므로 enum 상수·`toStringResource` 분기·`strings.xml` 문구·매핑 분기·`ServerErrorCode` 상수가
+  함께 걷혔다. 그 갈래를 검증하던 유닛 테스트와 화면 프리뷰 에러 케이스는 삭제가 아니라
+  **`INVALID_GROUP_NICKNAME`(400)으로 바꿔 살렸다**.
 - **다음 화면**(`NavigateToNext`, #224): `navigator.goToSingleClearTop(NavKeyGroupList)` — 참여 플로우
   (초대코드 → 닉네임)를 한 번에 걷어내고 백스택의 그룹 목록을 재사용한다 → [navigation-flow](../../architecture/navigation-flow.md).
   의존은 규약대로 `:api`만(`feature/groups/enter/impl` → `feature/groups/list/api`, #224에서 추가).
@@ -173,9 +177,16 @@ class GroupNickNameViewModel @AssistedInject constructor(
 - 🔁 **문자 집합이 서버 정규식에 맞춰 좁혀졌다(#244 라운드의 #243 커밋)** — 구 검사는 `isLetter`·`isDigit`·
   `isWhitespace` + `Char.isKorean()`이라 자모·타 언어·non-breaking space까지 통과했고 서버에서만 400이 났다.
   지금은 `' '`·`가..힣`·`A..Z`·`a..z`·`0..9`뿐이며 `Char.isKorean()`은 **삭제**됐다(`core:util:jvm`).
-  상세·정책 공백은 [a005 스펙](2026-07-29-a005-group-create.md) 유효성 절.
-- **중복 닉네임은 서버가 막는다**(#244) — 같은 그룹에서 이미 쓰이는 닉네임이면 409(`GROUP_NICKNAME_ALREADY_USED`).
-  위키 [[이름-입력-규칙]]이 미결로 둔 "그룹 내 닉네임 중복 처리"에 **서버 계약이 먼저 답을 냈다**(불가·409).
+  🔁 **#250에서 자모 범위가 다시 들어왔다** — 서버 정규식이 `ㄱ-ㅎ`·`ㅏ-ㅣ`를 얻어 **이번엔 앱이 더 좁아졌기**
+  때문이다. 허용 집합은 `' '`·`가..힣`·**`ㄱ..ㅎ`·`ㅏ..ㅣ`**·`A..Z`·`a..z`·`0..9`이고, KDoc이 "서버보다
+  느슨해도 좁아도 안 된다"로 양방향 기준을 명시한다. 상세·정책 공백은
+  [a005 스펙](2026-07-29-a005-group-create.md) 유효성 절.
+- 🔁 **중복 닉네임은 이제 막지 않는다**(#250) — 서버가 `existsByGroupIdAndNickname` 검사와
+  `GROUP_NICKNAME_ALREADY_USED`를 포트·어댑터·에러 코드까지 통째로 삭제해 **같은 그룹 안 닉네임 중복이
+  허용**된다(사유: "정책상 허용"). #244 시점의 "서버 계약이 먼저 답을 냈다(불가·409)"는 **뒤집혔고**,
+  위키 [[이름-입력-규칙]]의 "그룹 내 닉네임 중복 처리" 미결은 근거가 서버 커밋 메시지뿐인 채로 남는다.
+  같은 그룹에 같은 표시 이름이 여럿일 때의 구분 수단도 정해지지 않았다
+  → [open-questions](../../synthesis/open-questions.md).
 
 ## 표시·제어 규칙
 

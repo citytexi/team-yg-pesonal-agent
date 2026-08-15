@@ -19,7 +19,7 @@ tags: [architecture, parfait]
 
 ## 레이어 배치
 - **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`·`MyParfaitGroupVO`) + 도메인 예외(sealed `SegmentationException` — `ImageNotFound`·`ClientInit`·`ModuleNotReady`·`Process` / `SignUpException.RequiredPolicyNotAgreed`).
-  - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드가 추가한 VO·value class만 하위 패키지로 들어갔고(PR #197의 `auth/`·`group/`·`id/`·`policy/`에 PR #230이 `image/`·`member/`·`topping/`을 더했다), 그 이전 선언 8개는 루트에 남았다. 하위 패키지가 넷에서 일곱이 되며 **비율은 더 기울었는데 규약은 여전히 없다** — 어디에 새 모델을 둘지 매번 판단해야 하는 상태 → [open-questions](../synthesis/open-questions.md).
+  - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드가 추가한 VO·value class만 하위 패키지로 들어갔고(PR #197의 `auth/`·`group/`·`id/`·`policy/`에 PR #230이 `image/`·`member/`·`topping/`을, PR #250이 `canvas/`를 더했다), 그 이전 선언 8개는 루트에 남았다. 하위 패키지가 넷에서 여덟이 되며 **비율은 더 기울었는데 규약은 여전히 없다** — 어디에 새 모델을 둘지 매번 판단해야 하는 상태 → [open-questions](../synthesis/open-questions.md).
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
 ## DataSource 종류
@@ -105,9 +105,14 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 
 중첩 object는 서버 enum 구조를 그대로 따른다 — `Auth`(서버 `AuthErrorCode`) · `ParfaitGroup`
 (`ParfaitGroupApiErrorCode`) · `Common`(`CommonErrorCode`). **2026-08-15 그룹 결선 라운드로 선언된 코드가
-전부 소비된다** — `Auth` 3종은 A-002, `ParfaitGroup` 8종은 A-004(초대코드·이미 참여·정원)·S-102(닉네임 중복·
+전부 소비된다** — `Auth` 3종은 A-002, `ParfaitGroup` 7종은 A-004(초대코드·이미 참여·정원)·S-102(닉네임
 규칙)·A-005(그룹명·닉네임·정원·회원 없음), `Common.INVALID_REQUEST`는 A-005가 쓴다. "분기에 쓰는 코드만
 둔다"는 자기 KDoc 규칙이 다시 지켜지는 상태다.
+
+> 📌 **`GROUP_NICKNAME_ALREADY_USED`가 빠져 8종 → 7종이 됐다**(2026-08-15, PR #250). 서버가 그룹 내
+> 닉네임 중복 검사를 없애 그 코드를 더는 내지 않으므로, 상수와 `GroupNickNameError.ALREADY_USED`·문구·
+> 매핑 분기를 함께 걷었다 — **"분기에 쓰는 코드만 둔다"를 유지하는 방향의 첫 삭제 사례**다
+> ([api/parfait-group.md](../api/parfait-group.md)).
 
 ### 원격 Repository 인벤토리 (2026-08-15, 그룹·약관 결선 라운드 반영)
 
@@ -162,23 +167,27 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 5. 반응형이면 `Flow`로 반환.
 
 ## 네트워킹
-> **develop 반영 범위(2026-08-12 기준)** — 기초 구조(PR #174) + 서버 계약 정합·토큰 저장
+> **develop 반영 범위(2026-08-15 갱신)** — 기초 구조(PR #174) + 서버 계약 정합·토큰 저장
 > (`network-envelope-token-storage`, PR #190) + API 표면 14(`data-api-service-layer`, PR #197) +
 > **image·member·parfait-image 6**(`image-api-service-layer`·`member-parfait-image-api-service-layer`,
 > **PR #230 머지 완료**)까지 들어와 있다
 > ([[0017-remote-network-datasource]]·[[0019-encrypted-token-storage]]).
 > 아래 서술은 전부 develop 코드 기준이다 — `ApiCaller` 진입점 넷, **Service 7개**
 > (`AuthService`·`PolicyService`·`ParfaitGroupService`·`ParfaitService`·`ImageService`·`MemberService`·
-> `ParfaitImageService`, **20 엔드포인트**), **remote DataSource 7쌍**, `Temp*` 예시 세트 삭제.
-> 이로써 **Android가 쓰기로 한 서버 엔드포인트 전량을 덮는다**(서버 21 − 애플 로그인 1) →
-> [api/README.md](../api/README.md).
+> `ParfaitImageService`), **remote DataSource 7쌍**, `Temp*` 예시 세트 삭제.
+> **2026-08-15 PR #250으로 표면이 25 엔드포인트가 됐다** — 서버 delta가 벌린 5건(파르페 오늘·과거 조회,
+> 토핑 테두리 수정·삭제, 회원 탈퇴)이 들어오며 **Android가 쓰기로 한 서버 엔드포인트 전량을 다시 덮는다**
+> (서버 26 − 애플 로그인 1 − 테스트 전용 회전 1) → [api/README.md](../api/README.md).
+> 이 라운드는 **Service·DataSource가 하나도 안 늘고 함수만 늘어 DI 바인딩이 한 줄도 안 붙은 첫 사례**다
+> ([spec](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)).
 > **2026-08-15 갱신 — 첫 소비처가 develop에 들어왔다**(PR #241 `80895eb1`).
 > `AuthRepository`/`AuthRepositoryImpl` + `LoginWithKakaoUseCase`가 A-002 카카오 로그인을
 > 결선했다 → [a002-kakao-login-api](../specs/archive/2026-08-13-a002-kakao-login-api.md).
 > **같은 날 네 라운드가 더 붙어 소비처가 넓어졌다**(PR #242·#243·#244·#248) — 약관 조회·회원가입
 > (`PolicyRepository` 신설 + `AuthRepository.signUp`)과 그룹 목록·생성·참여·닉네임 변경이 화면까지 이어졌다.
 > 이로써 **auth·policy·parfait-group 세 도메인이 화면 소비처를 가진다**. 나머지 4 도메인
-> (parfait·image·member·parfait-image)은 여전히 Repository 0건이다.
+> (parfait·image·member·parfait-image)은 **표면은 전량 있는데 Repository가 0건**이다 — PR #250이 표면을
+> 채웠어도 그 위층은 그대로다.
 > **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
@@ -204,8 +213,14 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   |---|---|---|
   | `safeApiCall(block)` | envelope + `data` 필요 | payload를 그대로(도메인 모델 변환 없이) 쓰는 조회·생성 API |
   | `safeApiCall(block, transform)` | envelope + `data` 필요 + 도메인 모델로 매핑 | payload가 있고 VO로 변환해야 하는 API — 지금 있는 매핑 호출부 전부가 이 오버로드를 쓴다 |
-  | `safeApiCallWithoutData` | envelope, `data` 안 봄 | 본문은 `ApiResponse<Unit>`이지만 payload가 의미 없는 API |
-  | `safeApiCallNoContent` | 본문 자체가 없음(204) | 서비스 메서드가 `Unit` 반환(예: `logout`) |
+  | `safeApiCallWithoutData` | envelope, `data` 안 봄 | 본문은 `ApiResponse<Unit>`이지만 payload가 의미 없는 API — **토핑 삭제**(200 + `data: null`) |
+  | `safeApiCallNoContent` | 본문 자체가 없음(204) | 서비스 메서드가 `Unit` 반환 — `logout` · **회원 탈퇴** |
+
+  **네 진입점이 2026-08-15(PR #250)에 전부 소비처를 얻었다.** 그전까지 `safeApiCallWithoutData`만
+  프로덕션 호출부가 0건이라 死코드로 지적돼 있었는데, 같은 delta에 들어온 **두 DELETE가 서버 쪽 성공
+  표현이 갈려** 각각 다른 진입점으로 붙었다 — 토핑 삭제는 envelope가 오고(200 + `data: null`) 회원
+  탈퇴는 본문이 없다(204). 같은 메서드·같은 "삭제"인데 진입점이 다른 이유가 이것이다
+  ([api/parfait-image.md](../api/parfait-image.md)·[api/member.md](../api/member.md)).
 
   네 메서드 모두 `HttpException`을 잡아 에러 envelope 파싱을 시도한다(`toApiException`) — 실패는
   sealed `ApiException`(`Business`/`EmptyBody`/`Http`/`Network`/`Unknown`, `model/exception` 패키지)으로
@@ -225,7 +240,13 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   모듈 전역 타입은 `model/`(`exception/`·`qualifier/`). 토큰 저장소는 `source/token/local/`
   (`TokenStore`·`EncryptedTokenStore`), 암복호화는 `security/`(`CryptoManager`).
   **선언당 파일 하나**가 DTO·도메인 값 객체(VO/value class) 전반의 표준 규약이다 — 파일명은 선언명과
-  동일(`KakaoLoginRequest`→`KakaoLoginRequest.kt`). 도메인별로 여러 선언을 한 파일에 묶어두면(예:
+  동일(`KakaoLoginRequest`→`KakaoLoginRequest.kt`). **예외는 중첩 응답 DTO 하나**다: 상위 응답 안에만
+  나타나는 객체는 상위 응답 파일에 함께 둔다(`PlaceParfaitImageResponse.kt`의 `PlacedByResponse`,
+  `GetTodayParfaitResponse.kt`의 멤버·배경·토핑·배치자, `PastParfaitsResponse.kt`의 원소). 근거는
+  **서버가 한 파일에 담은 것을 앱도 한 파일에 담아야 계약 문서와 눈으로 대조된다**는 것이고, 그래서
+  `PlacedByResponse`라는 같은 이름이 `response/parfait`·`response/parfaitimage` 두 패키지에 각각 산다
+  (서버가 그렇다 — wire DTO는 서버의 거울이라 이름을 바꾸지 않는다). domain VO에는 이 예외가 없다.
+  도메인별로 여러 선언을 한 파일에 묶어두면(예:
   구 `AuthResponses.kt`) ktlint `standard:filename`이 걸리지 않는다 — 이 규칙은 **단일 top-level 선언
   파일에만** 강제되므로, 묶어두는 순간 파일명 검사를 조용히 피해간다. 새 DTO·VO를 추가할 때 기존
   그룹 파일에 얹지 말고 새 파일을 만든다.
@@ -279,12 +300,17 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   검증한다. 판단이 든 변환(문자열→enum 매핑과 미지 값 폴백, nullable 처리, 기본값, 단위 변환, 같은
   타입 필드의 배선)은 **DataSource 테스트의 케이스로** 잠근다. 규약 본문과 개정 경위는
   [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "테스트 규약" 11번.
-  develop의 `data` 유닛 테스트는 `XxxRemoteDataSourceImplTest` 4건 + `ApiCallerTest`·`AuthInterceptorTest`이고
-  **`*VOMapperTest`는 0건**이다(PR #230이 `PolicyVOMapperTest`·`ImageVOMapperTest`를 케이스 이관 후 삭제).
+  develop의 `XxxRemoteDataSourceImplTest`는 **image·member·parfait·parfaitimage·policy 다섯**이다
+  (PR #250이 parfait를 신설하고 member·parfaitimage를 보강). ⚠️ **`ParfaitGroupRemoteDataSourceImplTest`는
+  없다** — 그 도메인만 Repository 테스트로 대신하고 있어, 유일하게 남은 `MyParfaitGroupVOMapperTest`의
+  케이스를 "DataSource 테스트로 옮긴다"는 규약의 이행 대상 파일이 존재하지 않는다
+  → [open-questions](../synthesis/open-questions.md).
 - **요청 방향 변환도 같은 `VOMapper.kt`에 둔다.** 응답만 매퍼를 거치는 것이 아니다 — domain 타입이
   wire 형태보다 좁을 때 펴는 일도 매퍼가 한다. 선례는 `source.parfaitimage.mapper`의
   `ToppingTransform.toPlaceRequest(imageId, border)`로, sealed `ToppingBorder`(`None`/`Solid(color, width)`)를
-  서버가 받는 평면 3필드(`borderType`·`borderColor`·`borderWidth`)로 편다. **DTO에는 sealed·value class·enum을
+  서버가 받는 평면 3필드(`borderType`·`borderColor`·`borderWidth`)로 편다. 2026-08-15에 테두리 수정
+  요청(`ToppingBorder.toUpdateBorderRequest()`)이 붙으며 그 평탄화가 두 곳에서 필요해져
+  `private fun ToppingBorder.flatten()`으로 뽑혔다 — **펴는 규칙은 한 자리에 둔다**. **DTO에는 sealed·value class·enum을
   넣지 않는다**는 규약이 그대로라(계약 문서와 눈으로 대조돼야 한다) 좁히는 쪽은 domain, 펴는 쪽은 매퍼다.
   domain을 좁게 잡는 기준은 **필드 사이에 의존이 있을 때**다 — `borderType = SOLID`면 색·두께가 필수라는
   서버 제약이 sealed로 표현 불가능한 상태가 되고, `ToppingTransform`은 `Double` 넷 연속의 순서 사고를 막는다

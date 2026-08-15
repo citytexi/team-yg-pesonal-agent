@@ -1,5 +1,16 @@
 # 캔버스 조회·토핑 테두리/삭제·회원 탈퇴 API Service·remote DataSource 구현 계획
 
+> ✅ **완료 — develop 머지(PR #250, 2026-08-15).** 브랜치 `feature/canvas-topping-member-api-260815`.
+> Task 0~6 전 Step 완료. 머지본 재대조에서 **설계와 갈린 곳 0건**이고, 계획이 예고한 대로 DI 줄은
+> 한 줄도 늘지 않았다.
+>
+> **계획 밖 동반 변경 2건**(같은 PR, 커밋 `1a6a5577`) — 같은 날 2차 서버 delta(`e4ff23f`)의 규칙 변경을
+> 앱에 반영했다: ① `CheckNameValidUseCase` 문자 집합에 자모 범위 추가, ② `GROUP_NICKNAME_ALREADY_USED`
+> 계열(상수·`GroupNickNameError.ALREADY_USED`·문구·매핑 분기) 제거. 상세는
+> [스펙](../../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md) 머지 블록.
+>
+> 마지막 Step("위키 repo 문서 갱신은 develop 머지 후로 미룬다")은 이 문서를 아카이브하는 이 라운드에서 수행했다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 서버 기준선 `36ecd1c`가 들여온 5 엔드포인트(캔버스 오늘 조회·과거 목록, 토핑 테두리 수정·삭제, 회원 탈퇴)를 TJYG-Android `:data`의 Retrofit Service와 remote DataSource로 배선하고 대응 domain VO를 만든다.
@@ -8,9 +19,9 @@
 
 **Tech Stack:** Kotlin · Retrofit2 · kotlinx-serialization · kotlinx-datetime · Hilt · MockK · kotlin-test · kotlinx-coroutines-test
 
-**Spec:** [`parfait/specs/2026-08-15-parfait-canvas-topping-member-api-service-layer.md`](../specs/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)
+**Spec:** [`parfait/specs/2026-08-15-parfait-canvas-topping-member-api-service-layer.md`](../../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)
 
-**계약 정본:** [`parfait/api/parfait.md`](../api/parfait.md) · [`parfait/api/parfait-image.md`](../api/parfait-image.md) · [`parfait/api/member.md`](../api/member.md)
+**계약 정본:** [`parfait/api/parfait.md`](../../api/parfait.md) · [`parfait/api/parfait-image.md`](../../api/parfait-image.md) · [`parfait/api/member.md`](../../api/member.md)
 
 ## Global Constraints
 
@@ -74,7 +85,7 @@
 - Consumes: 없음
 - Produces: 작업 브랜치 `feature/canvas-topping-member-api-260815`
 
-- [ ] **Step 1: develop 최신화 후 브랜치 생성**
+- [x] **Step 1: develop 최신화 후 브랜치 생성**
 
 ```bash
 cd <TJYG-Android 로컬 경로>
@@ -85,7 +96,7 @@ git log --oneline -1
 
 Expected: `80895eb1 Merge pull request #241 ...` 또는 그 이후 develop HEAD.
 
-- [ ] **Step 2: 기준 빌드가 깨지지 않았는지 확인**
+- [x] **Step 2: 기준 빌드가 깨지지 않았는지 확인**
 
 Run: `./gradlew test`
 Expected: BUILD SUCCESSFUL. 여기서 실패하면 이 계획의 문제가 아니므로 **멈추고 보고한다**(직전 라운드에서 다른 브랜치 빌드 잔재로 Hilt 컴파일이 깨진 선례가 있다 — 그때는 `./gradlew clean`으로 풀렸다).
@@ -109,7 +120,7 @@ Expected: BUILD SUCCESSFUL. 여기서 실패하면 이 계획의 문제가 아�
 
 > 이 Task에는 테스트가 없다. **데이터 홀더뿐이고 로직이 0줄**이라 잠글 동작이 없다 — 이 모델들의 계약은 Task 3·4의 DataSource 테스트가 매핑을 통해 잠근다. 컴파일이 게이트다.
 
-- [ ] **Step 1: `CanvasStatus` 작성**
+- [x] **Step 1: `CanvasStatus` 작성**
 
 ```kotlin
 package com.teamyg.parfait.domain.model.canvas
@@ -131,7 +142,7 @@ enum class CanvasStatus {
 }
 ```
 
-- [ ] **Step 2: `CanvasBackground` 작성**
+- [x] **Step 2: `CanvasBackground` 작성**
 
 ```kotlin
 package com.teamyg.parfait.domain.model.canvas
@@ -154,7 +165,7 @@ sealed interface CanvasBackground {
 }
 ```
 
-- [ ] **Step 3: `CanvasMemberVO` 작성**
+- [x] **Step 3: `CanvasMemberVO` 작성**
 
 ```kotlin
 package com.teamyg.parfait.domain.model.canvas
@@ -175,7 +186,7 @@ data class CanvasMemberVO(
 )
 ```
 
-- [ ] **Step 4: `CanvasToppingVO` 작성**
+- [x] **Step 4: `CanvasToppingVO` 작성**
 
 ```kotlin
 package com.teamyg.parfait.domain.model.canvas
@@ -208,7 +219,7 @@ data class CanvasToppingVO(
 )
 ```
 
-- [ ] **Step 5: `TodayCanvasVO` 작성**
+- [x] **Step 5: `TodayCanvasVO` 작성**
 
 ```kotlin
 package com.teamyg.parfait.domain.model.canvas
@@ -240,7 +251,7 @@ data class TodayCanvasVO(
 )
 ```
 
-- [ ] **Step 6: `PastCanvasVO` 작성**
+- [x] **Step 6: `PastCanvasVO` 작성**
 
 ```kotlin
 package com.teamyg.parfait.domain.model.canvas
@@ -264,7 +275,7 @@ data class PastCanvasVO(
 )
 ```
 
-- [ ] **Step 7: `UpdatedToppingBorderVO` 작성**
+- [x] **Step 7: `UpdatedToppingBorderVO` 작성**
 
 ```kotlin
 package com.teamyg.parfait.domain.model.topping
@@ -283,12 +294,12 @@ data class UpdatedToppingBorderVO(
 )
 ```
 
-- [ ] **Step 8: 컴파일 확인**
+- [x] **Step 8: 컴파일 확인**
 
 Run: `./gradlew :domain:compileDebugKotlin ktlintCheck`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 9: 커밋**
+- [x] **Step 9: 커밋**
 
 ```bash
 git add domain/src/main/java/com/teamyg/parfait/domain/model/canvas domain/src/main/java/com/teamyg/parfait/domain/model/topping/UpdatedToppingBorderVO.kt
@@ -313,7 +324,7 @@ git commit -m "feat(domain): 캔버스 조회·테두리 수정 도메인 모델
   - `internal fun GetTodayParfaitResponse.toTodayCanvasVO(): TodayCanvasVO`
   - `internal fun PastParfaitsResponse.toPastCanvasVOList(): List<PastCanvasVO>`
 
-- [ ] **Step 1: today 응답 DTO 작성**
+- [x] **Step 1: today 응답 DTO 작성**
 
 ```kotlin
 package com.teamyg.parfait.data.service.model.response.parfait
@@ -413,7 +424,7 @@ data class PlacedByResponse(
 )
 ```
 
-- [ ] **Step 2: 과거 목록 응답 DTO 작성**
+- [x] **Step 2: 과거 목록 응답 DTO 작성**
 
 ```kotlin
 package com.teamyg.parfait.data.service.model.response.parfait
@@ -446,7 +457,7 @@ data class PastParfaitResponse(
 )
 ```
 
-- [ ] **Step 3: `ParfaitService`에 함수 2개 추가**
+- [x] **Step 3: `ParfaitService`에 함수 2개 추가**
 
 파일 전체를 아래로 바꾼다.
 
@@ -486,7 +497,7 @@ interface ParfaitService {
 }
 ```
 
-- [ ] **Step 4: parfait 매퍼 작성**
+- [x] **Step 4: parfait 매퍼 작성**
 
 ```kotlin
 package com.teamyg.parfait.data.source.parfait.mapper
@@ -592,12 +603,12 @@ private fun PlacedByResponse.toToppingPlacerVO(): ToppingPlacerVO = ToppingPlace
 )
 ```
 
-- [ ] **Step 5: 컴파일·린트 확인**
+- [x] **Step 5: 컴파일·린트 확인**
 
 Run: `./gradlew :data:compileDebugKotlin ktlintCheck`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/service/ParfaitService.kt \
@@ -621,7 +632,7 @@ git commit -m "feat(data): 캔버스 조회 2건 Service·DTO·매퍼 추가"
   - `ParfaitRemoteDataSource.getTodayCanvas(groupId: GroupId): Result<TodayCanvasVO>`
   - `ParfaitRemoteDataSource.getPastCanvases(groupId: GroupId, from: LocalDate? = null, to: LocalDate? = null): Result<List<PastCanvasVO>>`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `data/src/test/java/com/teamyg/parfait/data/source/parfait/remote/ParfaitRemoteDataSourceImplTest.kt`를 새로 만든다.
 
@@ -934,12 +945,12 @@ class ParfaitRemoteDataSourceImplTest {
 }
 ```
 
-- [ ] **Step 2: 테스트가 실패하는지 확인**
+- [x] **Step 2: 테스트가 실패하는지 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*ParfaitRemoteDataSourceImplTest*"`
 Expected: **컴파일 실패** — `getTodayCanvas`/`getPastCanvases`가 `ParfaitRemoteDataSourceImpl`에 없다(`Unresolved reference`).
 
-- [ ] **Step 3: 인터페이스에 함수 2개 추가**
+- [x] **Step 3: 인터페이스에 함수 2개 추가**
 
 `ParfaitRemoteDataSource.kt` 전체를 아래로 바꾼다.
 
@@ -979,7 +990,7 @@ interface ParfaitRemoteDataSource {
 }
 ```
 
-- [ ] **Step 4: 구현체에 함수 2개 추가**
+- [x] **Step 4: 구현체에 함수 2개 추가**
 
 `ParfaitRemoteDataSourceImpl.kt` 전체를 아래로 바꾼다.
 
@@ -1028,12 +1039,12 @@ class ParfaitRemoteDataSourceImpl @Inject constructor(
 }
 ```
 
-- [ ] **Step 5: 테스트 통과 확인**
+- [x] **Step 5: 테스트 통과 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*ParfaitRemoteDataSourceImplTest*"`
 Expected: PASS (14케이스)
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/source/parfait/remote \
@@ -1063,7 +1074,7 @@ git commit -m "feat(data): 캔버스 조회 remote DataSource 추가"
   - `ParfaitImageRemoteDataSource.updateToppingBorder(groupId: GroupId, parfaitId: ParfaitId, parfaitImageId: ParfaitImageId, border: ToppingBorder): Result<UpdatedToppingBorderVO>`
   - `ParfaitImageRemoteDataSource.deleteTopping(groupId: GroupId, parfaitId: ParfaitId, parfaitImageId: ParfaitImageId): Result<Unit>`
 
-- [ ] **Step 1: 실패하는 테스트를 기존 파일 끝에 추가**
+- [x] **Step 1: 실패하는 테스트를 기존 파일 끝에 추가**
 
 `ParfaitImageRemoteDataSourceImplTest.kt`의 클래스 본문 끝(마지막 `}` 바로 위)에 아래 테스트 6개를 붙인다.
 **추가할 import는 정확히 둘**이다(나머지 — `slot`·`coEvery`·`assertEquals`·`assertIs`·`assertNull`·`assertTrue` —
@@ -1268,12 +1279,12 @@ import com.teamyg.parfait.data.service.model.response.parfaitimage.UpdateParfait
     }
 ```
 
-- [ ] **Step 2: 테스트가 실패하는지 확인**
+- [x] **Step 2: 테스트가 실패하는지 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*ParfaitImageRemoteDataSourceImplTest*"`
 Expected: **컴파일 실패** — `UpdateParfaitImageBorderRequest`·`updateToppingBorder`·`deleteTopping`이 없다.
 
-- [ ] **Step 3: 요청·응답 DTO 작성**
+- [x] **Step 3: 요청·응답 DTO 작성**
 
 `UpdateParfaitImageBorderRequest.kt`:
 
@@ -1325,7 +1336,7 @@ data class UpdateParfaitImageBorderResponse(
 )
 ```
 
-- [ ] **Step 4: `ParfaitImageService`에 함수 2개 추가**
+- [x] **Step 4: `ParfaitImageService`에 함수 2개 추가**
 
 기존 두 함수는 그대로 두고 인터페이스 본문 끝에 아래를 더한다. import에 `UpdateParfaitImageBorderRequest`·`UpdateParfaitImageBorderResponse`·`retrofit2.http.DELETE`를 추가한다.
 
@@ -1350,7 +1361,7 @@ data class UpdateParfaitImageBorderResponse(
     ): ApiResponse<Unit>
 ```
 
-- [ ] **Step 5: 매퍼 2개 추가**
+- [x] **Step 5: 매퍼 2개 추가**
 
 `data/source/parfaitimage/mapper/VOMapper.kt` 끝에 아래를 더한다. import에 `UpdateParfaitImageBorderRequest`·`UpdateParfaitImageBorderResponse`·`UpdatedToppingBorderVO`를 추가한다.
 
@@ -1384,7 +1395,7 @@ private fun UpdateParfaitImageBorderResponse.toToppingBorder(): ToppingBorder {
 }
 ```
 
-- [ ] **Step 6: DataSource 인터페이스에 함수 2개 추가**
+- [x] **Step 6: DataSource 인터페이스에 함수 2개 추가**
 
 `ParfaitImageRemoteDataSource.kt`의 인터페이스 본문 끝에 아래를 더한다. import에 `UpdatedToppingBorderVO`를 추가한다.
 
@@ -1418,7 +1429,7 @@ private fun UpdateParfaitImageBorderResponse.toToppingBorder(): ToppingBorder {
     ): Result<Unit>
 ```
 
-- [ ] **Step 7: 구현체에 함수 2개 추가**
+- [x] **Step 7: 구현체에 함수 2개 추가**
 
 `ParfaitImageRemoteDataSourceImpl.kt`의 클래스 본문 끝에 아래를 더한다. import에 `toUpdateBorderRequest`·`toUpdatedToppingBorderVO`·`UpdatedToppingBorderVO`를 추가한다.
 
@@ -1456,12 +1467,12 @@ private fun UpdateParfaitImageBorderResponse.toToppingBorder(): ToppingBorder {
 > `safeApiCallWithoutData`는 여기가 **첫 프로덕션 소비처**다. 성공 응답에 `data`가 없으므로
 > `safeApiCall`을 쓰면 `ApiException.EmptyBody`로 실패 처리된다 — 진입점을 바꾸면 안 된다.
 
-- [ ] **Step 8: 테스트 통과 확인**
+- [x] **Step 8: 테스트 통과 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*ParfaitImageRemoteDataSourceImplTest*"`
 Expected: PASS (기존 케이스 + 신규 6케이스)
 
-- [ ] **Step 9: 커밋**
+- [x] **Step 9: 커밋**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/service/ParfaitImageService.kt \
@@ -1487,7 +1498,7 @@ git commit -m "feat(data): 토핑 테두리 수정·삭제 API 배선"
   - `MemberService.deleteUsersMe()` — 반환 타입 없음(`Unit`)
   - `MemberRemoteDataSource.withdraw(): Result<Unit>`
 
-- [ ] **Step 1: 실패하는 테스트를 기존 파일 끝에 추가**
+- [x] **Step 1: 실패하는 테스트를 기존 파일 끝에 추가**
 
 `MemberRemoteDataSourceImplTest.kt`의 클래스 본문 끝에 아래를 붙인다. import에 `io.mockk.coJustRun`·`retrofit2.HttpException`·`retrofit2.Response`·`okhttp3.ResponseBody.Companion.toResponseBody`가 없으면 추가한다.
 
@@ -1521,12 +1532,12 @@ git commit -m "feat(data): 토핑 테두리 수정·삭제 API 배선"
     }
 ```
 
-- [ ] **Step 2: 테스트가 실패하는지 확인**
+- [x] **Step 2: 테스트가 실패하는지 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*MemberRemoteDataSourceImplTest*"`
 Expected: **컴파일 실패** — `deleteUsersMe`·`withdraw`가 없다.
 
-- [ ] **Step 3: `MemberService`에 함수 추가**
+- [x] **Step 3: `MemberService`에 함수 추가**
 
 인터페이스 본문 끝에 아래를 더한다. import에 `retrofit2.http.DELETE`를 추가한다.
 
@@ -1539,7 +1550,7 @@ Expected: **컴파일 실패** — `deleteUsersMe`·`withdraw`가 없다.
     suspend fun deleteUsersMe()
 ```
 
-- [ ] **Step 4: DataSource 인터페이스에 함수 추가**
+- [x] **Step 4: DataSource 인터페이스에 함수 추가**
 
 `MemberRemoteDataSource.kt`의 인터페이스 본문 끝에 아래를 더한다.
 
@@ -1556,7 +1567,7 @@ Expected: **컴파일 실패** — `deleteUsersMe`·`withdraw`가 없다.
     suspend fun withdraw(): Result<Unit>
 ```
 
-- [ ] **Step 5: 구현체에 함수 추가**
+- [x] **Step 5: 구현체에 함수 추가**
 
 `MemberRemoteDataSourceImpl.kt`의 클래스 본문 끝에 아래를 더한다.
 
@@ -1566,17 +1577,17 @@ Expected: **컴파일 실패** — `deleteUsersMe`·`withdraw`가 없다.
     }
 ```
 
-- [ ] **Step 6: 테스트 통과 확인**
+- [x] **Step 6: 테스트 통과 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*MemberRemoteDataSourceImplTest*"`
 Expected: PASS (기존 케이스 + 신규 2케이스)
 
-- [ ] **Step 7: 전체 검증**
+- [x] **Step 7: 전체 검증**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 Expected: BUILD SUCCESSFUL. 실패하면 **먼저 `./gradlew clean`을 한 번 시도**한다(직전 라운드에서 다른 브랜치 빌드 잔재로 Hilt 컴파일이 깨진 선례가 있다).
 
-- [ ] **Step 8: 커밋**
+- [x] **Step 8: 커밋**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/service/MemberService.kt \
@@ -1603,7 +1614,7 @@ git commit -m "feat(data): 회원 탈퇴 API 배선"
 > 이 Task는 코드가 아니라 사람이 서버에 직접 쏘는 요청 모음이다. 자동 테스트가 없고
 > **검증은 파일 내 변수명이 `http-client.env.json`에 실재하는지 대조**로 한다.
 
-- [ ] **Step 1: `http/parfait.http`에 요청 2개 추가**
+- [x] **Step 1: `http/parfait.http`에 요청 2개 추가**
 
 파일 끝에 아래를 붙인다.
 
@@ -1655,7 +1666,7 @@ Authorization: Bearer {{access_token}}
 %}
 ```
 
-- [ ] **Step 2: `http/parfait-image.http`에 요청 2개 추가**
+- [x] **Step 2: `http/parfait-image.http`에 요청 2개 추가**
 
 파일 끝에 아래를 붙인다.
 
@@ -1699,7 +1710,7 @@ Authorization: Bearer {{access_token}}
 %}
 ```
 
-- [ ] **Step 3: `http/parfait-image.http` 머리말과 기존 요청의 `parfaitId` 리터럴 교체**
+- [x] **Step 3: `http/parfait-image.http` 머리말과 기존 요청의 `parfaitId` 리터럴 교체**
 
 파일 상단 주석의 아래 두 줄을
 
@@ -1721,7 +1732,7 @@ Authorization: Bearer {{access_token}}
 Run: `grep -n "parfaits/1/" http/parfait-image.http`
 Expected: 교체 후 결과 0줄.
 
-- [ ] **Step 4: `http/users.http`에 탈퇴 요청 추가**
+- [x] **Step 4: `http/users.http`에 탈퇴 요청 추가**
 
 파일 끝에 아래를 붙인다.
 
@@ -1743,7 +1754,7 @@ Authorization: Bearer {{access_token}}
 %}
 ```
 
-- [ ] **Step 5: `http/http-client.env.json`에 `parfait_id` 등재**
+- [x] **Step 5: `http/http-client.env.json`에 `parfait_id` 등재**
 
 `parfait_image_id` 옆에 빈 값으로 더한다. 런타임에 스크립트가 채우는 값이지만 **형제 변수
 (`group_id`·`image_*`·`parfait_image_id`)가 전부 같은 이유로 등재돼 있다** — 처음 쓰는 사람이
@@ -1757,7 +1768,7 @@ Authorization: Bearer {{access_token}}
 `_reset.http`의 도메인별 비우기 항목에도 `parfait_id`를 짝으로 더한다(파일에서 `parfait_image_id`를
 비우는 항목을 찾아 같은 자리에 넣는다).
 
-- [ ] **Step 6: `http/README.md` 세 줄 갱신**
+- [x] **Step 6: `http/README.md` 세 줄 갱신**
 
 ① 파일 목록 표의 세 줄을 아래로 바꾼다.
 
@@ -1776,13 +1787,13 @@ Authorization: Bearer {{access_token}}
 ③ 변수 구조 블록(`parfait_image_id`가 있는 JSON)과 그 아래 "손으로 채우는 값이 아니다" 문장의
 변수 열거에 `parfait_id`를 더한다.
 
-- [ ] **Step 7: 변수 실재 확인**
+- [x] **Step 7: 변수 실재 확인**
 
 Run: `grep -oh "{{[a-z_]*}}" http/*.http | sort -u`
 Expected: 출력된 변수 전부가 `http/http-client.env.json`에 있어야 한다. 특히 `{{parfait_id}}`가
 Step 5로 등재됐는지 확인한다.
 
-- [ ] **Step 8: 커밋**
+- [x] **Step 8: 커밋**
 
 ```bash
 git add http/
@@ -1793,16 +1804,16 @@ git commit -m "docs(http): 캔버스 조회·토핑 테두리/삭제·탈퇴 요
 
 ## 완료 후
 
-- [ ] **전체 검증 재실행**
+- [x] **전체 검증 재실행**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **보고**
+- [x] **보고**
 
 `git log --oneline origin/develop..HEAD`로 커밋 목록을 보고한다. **push·PR은 하지 않는다** — 사용자 확인 대상이다.
 
-- [ ] **위키 repo 문서 갱신은 develop 머지 후로 미룬다**
+- [x] **위키 repo 문서 갱신은 develop 머지 후로 미룬다**
 
 스펙의 `status: draft` → `implemented` 전환, `specs/archive/` 이동, `api/README.md`의 Android 열·표면 개수(20/25 → 25/25), `parfait/index.md` "지금 상태", open-questions OQ-P-108·OQ-P-132·OQ-P-158 갱신은 **develop 머지 후**에 한다.
 

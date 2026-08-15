@@ -772,6 +772,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
   > 📌 **①의 화면 순서만 먼저 코드로 굳었다(2026-08-09, PR #220)** — `Splash → Login → TermAgree → GroupList` 전이가 결선됐다. 데이터 쪽은 **한 줄도 붙지 않았다**(Service 호출 0건 유지) → [2026-08-10] 온보딩 체인 항목.
   > 📌 **첫 소비처 자리가 mock으로 채워졌다(2026-08-12, PR #224)** — 그룹 생성·참여가 화면에서 결선되면서 `CreateGroupUseCase`·`EnterGroupUseCase`가 생겼는데, `parfait-group` 계열 remote DataSource를 쓰지 않고 **고정 지연 후 성공만 반환하는 stub**이다. 표면이 놀고 있는 채로 그 위에 대체 구현이 하나 더 얹혔다 → [2026-08-12] mock UseCase 항목.
+  > 📌 **표면이 20에서 25로 늘었고 그 다섯도 소비처 0이다(2026-08-15, PR #250)** — 파르페 오늘·과거 조회,
+  > 토핑 테두리 수정·삭제, 회원 탈퇴가 Service·DataSource·domain VO까지 들어왔다(OQ-P-158 해소). **표면 쪽
+  > 공백은 이제 없다** — Android가 쓰기로 한 25 엔드포인트 전량에 심볼이 있다. 그래서 ③("이 상태로 남는
+  > 기간")이 네 도메인(parfait·image·member·parfait-image)에 대해 **유일하게 남은 질문**이 됐고, 그중
+  > 캔버스 조회는 C-001 결선의 선행이라 순서상 가장 앞이다.
   > 📌 **표면이 14에서 20으로 늘었고 소비처는 그대로 0이다(2026-08-12, PR #230)** — Service 7·remote DataSource 7쌍·DTO 30·domain 37이 됐다. **"덮을 게 남아서 소비를 미룬다"는 사유가 이번 라운드로 사라졌다**([2026-08-11] 7 엔드포인트 공백 항목 해소) — 표면을 더 만들 것이 없으므로 ③("이 상태로 남는 기간을 얼마로 볼지")이 이제 실질적인 질문이다. ②(Repository를 둘지)도 여전히 미정이고, 그 사이 표면만 계속 컴파일된다.
 
 ### [2026-08-06] 스펙이 지시한 근거 주석·KDoc 2건이 코드에 없다
@@ -788,6 +793,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `domain/model/`(PR #197 머지 후) — 이번 라운드가 추가한 21선언은 `auth/`·`group/`·`id/`·`policy/` 하위 패키지로 들어갔고, 기존 8선언(`DayWindow`·`GalleryImageGroup`·`GroupCreateConfig`·`InviteCodeResult`·`KakaoLoginResult`·`Logger`·`NameValidResult`·`SegmentationResult`)은 루트에 남았다. 스펙은 "평면 10개에 9개 이상이 더 붙으면 하위 패키지로 나눈다"를 전제했는데 실제로는 신규분만 나뉘었다. `KakaoLoginResult`(루트)와 `KakaoLoginVO`(`auth/`)가 이름은 닮았는데 위치가 다른 것이 대표 사례다.
 - **항목**: ① 기존 8선언도 도메인 하위 패키지로 옮길지(`Logger`처럼 도메인이 애매한 것의 소속을 정해야 한다), ② 아니면 "원격 계약에서 온 모델만 하위 패키지"를 규칙으로 명문화할지. ②를 택하면 근거를 [data-layer](../architecture/data-layer.md) "레이어 배치"에 적는다.
 - **상태**: 미해결 (배치 규약 미정 — 새 모델을 어디 둘지 매번 판단해야 한다)
+  > 📌 **여덟 번째 하위 패키지(2026-08-15, PR #250)** — `canvas/`가 여섯 선언(`TodayCanvasVO`·`PastCanvasVO`·
+  > `CanvasStatus`·`CanvasBackground`·`CanvasMemberVO`·`CanvasToppingVO`)과 함께 들어왔고 루트 평면 8선언은
+  > 이번에도 그대로다. **신규분만 계속 나뉜다는 ②의 패턴이 네 라운드째 반복됐다** — 규약 없이 관행만 굳는
+  > 상태다.
   > 📌 **혼재가 더 깊어졌다(2026-08-12, PR #230)** — 하위 패키지가 `image/`·`member/`·`topping/` 셋 늘어 **넷에서 일곱**이 됐고, 루트 평면 8선언은 하나도 안 옮겨졌다. `GalleryImageGroup`(루트, 기기 갤러리)과 `image/`(서버 업로드)가 이제 나란히 있어 `KakaoLoginResult`/`KakaoLoginVO` 사례가 하나 더 늘었다 — 이름이 닮았는데 위치가 다르고, **가리키는 대상도 다르다**([2026-08-10] `image` 이름 선점 항목과 같은 뿌리). 규약 없이 라운드가 반복되면 신규분만 계속 나뉜다.
 - **해소 메모**: 결정 후 [data-layer](../architecture/data-layer.md) "레이어 배치"의 `domain/model/` 서술과 [data-api-service-layer 스펙](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 6번을 정리한다.
 
@@ -915,7 +924,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-108
 - **출처**: 서버 delta `5bb2a3a`로 엔드포인트가 16개가 됐는데 TJYG-Android 루트 `http/`에는 `images.http`가 없었다(당시 `auth`·`policy`·`parfait-group`·`parfait`·`health` 5개 파일 = 14 엔드포인트). PR #197 시점의 "전량 커버"가 깨졌다. 이는 [2026-08-04] `http/`↔`api/` 이중 관리 항목이 예고한 갈라짐이 **처음 실제로 발생한 사례**다.
 - **항목**: [2026-08-04] 항목의 선택지 ①(스킬이 `http/`도 갱신)·②(`http/`를 실행 방법으로만 축소) 중 무엇을 고를지. 갱신 경로가 둘이라는 구조 자체는 그대로다.
-- **상태**: **다시 미해결(공백 5건)** — 2026-08-15 서버 delta로 **20/25**가 됐다. 2026-08-12에 회복했던 20/20이 서버 delta 한 번에 또 무너졌다(세 번째다).
+- **상태**: 미해결 (커버는 **25/25로 회복**했으나 갱신 경로가 둘이라는 구조 결정은 그대로 — 네 번째 왕복)
+  > ✅ **공백 해소(2026-08-15, PR #250)** — 같은 라운드가 다섯 요청을 채웠다: `parfait.http`에 오늘의 캔버스·
+  > 과거 목록, `parfait-image.http`에 테두리 수정·삭제, `users.http`에 탈퇴. `http-client.env.json`·
+  > `_reset.http`에 `parfait_id`가 등재돼 **`parfait-image.http`가 `parfaitId` 리터럴을 손으로 바꾸던 단계가
+  > 사라졌고**(오늘 조회 응답 핸들러가 채운다) 선행이 셋에서 넷이 됐다. `README.md`에는 두 DELETE의 성공
+  > 표현이 다르다는 함정과 **파일을 통째로 순서 실행하면 계정·데이터가 지워진다**는 경고가 붙었다.
+  > **다만 이번에도 사람이 손으로 메웠다** — 벌어졌다 닫히는 왕복이 네 번째이고 [2026-08-04] "갱신 경로가
+  > 둘" 항목은 그대로 열려 있다.
   > 📌 **재발(2026-08-15, 서버 `36ecd1c`)** — 파르페 오늘 조회·과거 목록 · 토핑 테두리 수정·삭제 · 회원 탈퇴 5건에 요청이 없다. 테스트 전용 회전 1건은 앱 대상이 아니라 세지 않는다. **이 반복 자체가 [2026-08-04] "갱신 경로가 둘" 항목의 결정 근거다** — 세 번 연속 사람 손으로 메웠고 세 번 다 다음 delta에서 깨졌다.
   > 📌 **2026-08-11 서버 delta로 7건 공백**(21 엔드포인트 중 14만 덮임) — 애플 로그인 1 · member 2 · parfait-image 2가 새로 비었고, image 2는 `images.http`가 **아직 미머지 브랜치에만** 있다. 손으로 메우는 방식이 서버 delta 한 번에 다시 무너졌다 — [2026-08-04] 항목의 구조 결정을 더 미룰 근거가 없다.
   > 📌 **공백 해소(2026-08-12, PR #230)** — `images.http`가 develop에 들어오고 `users.http`·`parfait-image.http`가 신설됐다. 애플 로그인 1건은 Android 미사용 결정이라 대상이 아니므로 **요청 모음이 Android가 쓰는 20 엔드포인트 전량을 덮는다.** `http-client.env.json`에 `image_id`·`image_upload_url`·`parfait_image_id` 3변수, `_reset.http`에 도메인별 비우기 항목 2개(`0-1-2`·`0-1-3`)가 짝으로 붙었다.
@@ -1137,8 +1153,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-132
 - **출처**: `data/network/ApiCaller.kt`(PR #230 develop 머지 시점 재확인) — 진입점 넷 중 `safeApiCallWithoutData`만 **프로덕션 호출부가 0건**이다. 선언과 `ApiCallerTest`의 자기 테스트뿐이고, 20 엔드포인트 전부가 `safeApiCall(block)`·`safeApiCall(block, transform)`·`safeApiCallNoContent`(`logout` 하나) 셋으로 갈렸다. 2026-08-03 라운드가 "14 전량 구현으로 사실상 死코드"라며 이월했던 minor인데, **표면이 20/20으로 닫히며 "아직 안 쓰였을 뿐"이라는 해석이 없어졌다** — Android가 붙일 엔드포인트가 더 없다.
 - **항목**: ① 지울지 — 지우면 `ApiResponse<Unit>`인데 payload를 안 보는 형태가 서버에 다시 생길 때 되살려야 한다. ② 남긴다면 KDoc에 "현재 사용처 없음, 서버가 `data`를 무의미하게 채우는 응답을 낼 때 쓴다"를 적어 다음 사람이 셋 중 무엇을 고를지 헷갈리지 않게 할지. ③ 테스트도 함께 처리 — 소비자 없는 메서드를 잠그는 테스트가 남는다.
-- **상태**: 미해결 (기능 영향 0 — 정리 시점 문제, [ADR-0017](../adr/0017-remote-network-datasource.md) 진입점 표와 함께 판단)
-- **해소 메모**: 처리 시 [data-layer](../architecture/data-layer.md) "네트워킹 → 응답 계약"의 진입점 표와 [ADR-0017](../adr/0017-remote-network-datasource.md) 대응 절을 넷에서 셋으로 줄인다. 남기기로 하면 그 표에 "사용처 0" 열을 대신 단다.
+- **상태**: **해소됨** (2026-08-15, PR #250 — 첫 프로덕션 소비처가 생겼다)
+- **해소 메모**: **"Android가 붙일 엔드포인트가 더 없다"는 전제가 서버 delta로 뒤집혔다.** 토핑 삭제
+  (`DELETE .../images/{parfaitImageId}`)가 **200 + `data: null`**이라 envelope는 오는데 payload가 의미
+  없어 `safeApiCallWithoutData`가 정확히 그 자리다 — `ParfaitImageRemoteDataSourceImpl#deleteTopping`이
+  첫 호출부다. 같은 delta의 회원 탈퇴는 204·본문 없음이라 `safeApiCallNoContent`로 갈렸다(`logout`에 이어
+  두 번째). **이로써 진입점 넷이 전부 프로덕션 소비처를 갖는다.** 지우자는 선택지 ①은 소멸했고 ②(KDoc에
+  "사용처 없음" 명시)·③(테스트 처리)도 대상이 없어졌다. [data-layer](../architecture/data-layer.md)
+  진입점 표에 두 소비처를 명시했다.
 
 ### [2026-08-12] `ApiException.Business.statusCode`를 KDoc이 약속하는데 테스트는 그 경로를 타지 않는다
 
@@ -1373,8 +1395,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-158
 - **출처**: 서버 `36ecd1c` 기준 26 엔드포인트(+테스트 전용 1). TJYG-Android develop의 원격 표면은 PR #230 이후 그대로 20이다(`ParfaitService`는 `@GET .../parfaits/year` 하나, `MemberService`는 `@GET`·`@PATCH` 둘, `ParfaitImageService`는 `@POST`·`@PATCH` 둘) → [api/README.md](../api/README.md), [api/conventions.md](../api/conventions.md) "Android 불일치".
 - **항목**: ① 어느 것부터 붙일지 — **`GET .../parfaits/today`가 C-001 캔버스 결선의 선행**이라 우선순위가 가장 높다(배치 목록 부재라는 오래된 장애물이 이것으로 사라졌다, OQ-P-119). ② **회원 탈퇴는 응답이 본문 없는 204**라 앱 `ApiCaller`의 envelope 전제와 맞지 않는다 — `Response<Unit>` 계열 진입점을 새로 둘지, 서버에 envelope 통일을 요청할지 정해야 표면을 붙일 수 있다(OQ-P-162). ③ 토핑 삭제·테두리 수정은 C-105·C-106 편집 플로우와 짝이라 그 화면 결선 라운드에 함께 간다.
-- **상태**: 미해결 (표면 공백 — 2026-08-12에 0이 됐다가 서버 delta로 재발)
-- **해소 메모**: 표면이 붙으면 [api/README.md](../api/README.md) 도메인 표 Android 열·표면 개수, 해당 도메인 문서의 "Android 매핑" 절, [data-layer](../architecture/data-layer.md) "네트워킹" 반영 범위를 함께 갱신한다. 선행 항목은 OQ-P-117(같은 성격의 공백이 세 번째다).
+- **상태**: **해소됨** (2026-08-15, PR #250 — 다섯 표면이 한 라운드에 들어왔다)
+- **해소 메모**: 선작성 스펙·플랜 한 쌍이 그대로 이행됐다
+  ([spec](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)) — 설계와 갈린 곳
+  0건이고 **DI 바인딩은 한 줄도 늘지 않았다**(세 Service·세 DataSource가 이미 등록돼 있었다).
+  ①의 우선순위 판단(`today`가 C-001 결선의 선행)은 유효한 채로 다음 라운드에 넘어간다 — 표면은 생겼고
+  Repository·UseCase·화면이 남았다(OQ-P-094 ③). ②의 204 문제는 **새 진입점 없이** 기존
+  `safeApiCallNoContent`로 풀렸고, 짝인 토핑 삭제가 `safeApiCallWithoutData`를 살려 OQ-P-132까지 닫았다.
+  ③(토핑 삭제·테두리는 C-105·C-106 결선 라운드와 함께)은 표면만 앞서 간 상태다.
+  [api/README.md](../api/README.md) 도메인 표·개수, 세 도메인 문서의 "Android 매핑",
+  [api/conventions.md](../api/conventions.md) 개수 문단, [data-layer](../architecture/data-layer.md)
+  "네트워킹" 반영 범위를 함께 갱신했다.
 
 ### [2026-08-15] 테스트 전용 캔버스 회전 엔드포인트가 인증 없이 전 그룹 캔버스를 마감한다
 
@@ -1390,6 +1421,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: 서버 `GetTodayParfaitService.get` → `EnsureActiveCanvasUseCase.ensure`(`ParfaitService.ensure`, `@Transactional`) — 오늘 날짜 파르페가 없으면 `Parfait.createToday`로 **새로 만들어 저장한다.** GET 한 번이 행을 만들고, 그 행은 연도 목록·과거 목록에도 즉시 나타난다. 또 `ensure`는 상태가 아니라 **날짜로** 찾으므로(`findByGroupIdAndDate`), 오늘 날짜 캔버스가 이미 `CLOSED`·`EMPTY`면 **마감된 캔버스를 "오늘"로 돌려준다** → [api/parfait.md](../api/parfait.md).
 - **항목**: ① 부작용 있는 GET이 의도인지 — 회전 배치가 이미 다음 날 캔버스를 만들어 두므로 이 생성은 **배치가 돌지 않았을 때의 폴백**으로 읽힌다. 앱이 캔버스 목록을 미리 당겨오는 화면(캘린더)에서 GET을 부르면 **빈 캔버스 행이 양산**될 수 있다. ② 마감된 오늘 캔버스를 받았을 때 앱이 무엇을 보여줄지 — **서버는 막지 않는다.** 토핑 배치·수정·테두리·삭제 네 엔드포인트 어디도 `parfait.status`를 보지 않아(`PlaceParfaitImageService`는 `existsByIdAndGroupId`만 본다) **마감된 캔버스에도 토핑이 올라간다.** 마감 이후 편집을 막는 것이 지금은 앱 책임이라는 뜻이고, 그 규칙이 어디에도 적혀 있지 않다 → [api/parfait-image.md](../api/parfait-image.md). ③ 03시 경계에서 앱이 열려 있으면 같은 화면이 어제 캔버스를 들고 있게 된다 — 재조회 트리거를 앱이 어떻게 잡을지.
 - **상태**: 미해결 (①은 서버팀 확인, ②③은 C-001 결선 시 앱 결정)
+  > 📌 **앱 표면이 생겼는데 방어는 KDoc뿐이다(2026-08-15, PR #250)** — `ParfaitRemoteDataSource.getTodayCanvas`가
+  > 들어오면서 경고("반복 호출하면 빈 캔버스가 양산된다", "잠그는 것은 화면 책임")가 Service·DataSource
+  > 양쪽 KDoc에 적혔지만 **호출을 억제하거나 `status`로 편집을 잠그는 코드는 한 줄도 없다.** 소비처가
+  > 0건이라 지금은 영향이 없고, ②③은 C-001 결선 라운드에서 처음 실물로 결정된다 —
+  > `CanvasStatus`(`ACTIVE`·`CLOSED`·`EMPTY`·`UNKNOWN`)라는 판단 재료는 domain에 준비됐다.
 - **해소 메모**: 확인 후 [api/parfait.md](../api/parfait.md) `today` 절의 ⚠️ 둘과 "미결"을 갱신한다. ②는 위키 [[캔버스-마감-스케줄]] 정책과도 대조가 필요하다.
 
 ### [2026-08-15] 과거 파르페 목록의 `thumbnailUrl`이 항상 null이고 페이지네이션이 없다
@@ -1405,7 +1441,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-162
 - **출처**: 서버 `MemberController.withdraw`(`@ResponseStatus(NO_CONTENT)` + `Unit` → **204, 본문 없음**) vs `DeleteParfaitImageController.delete`(**200 + `data: null`**) vs 나머지 전부(`ApiResponse` envelope). 같은 delta에 들어온 두 DELETE가 서로 다르다 → [api/member.md](../api/member.md), [api/parfait-image.md](../api/parfait-image.md), [api/conventions.md](../api/conventions.md).
 - **항목**: ① 서버가 통일할지(`logout`도 같은 204라 선례가 둘이다) — 통일한다면 어느 쪽으로인지. ② 앱 `ApiCaller`는 envelope 파싱을 전제하므로 **204를 받는 진입점이 따로 필요하다**(`safeApiCallWithoutData`가 死코드로 남아 있다는 지적이 OQ-P-132에 있다 — 이 엔드포인트가 그 자리의 첫 소비처가 될 수 있다). ③ 탈퇴는 **회원이 없어도 204**(멱등)이고 도메인 에러가 없다 — 앱이 "이미 탈퇴됨"을 구분할 방법이 없다는 뜻인데, 구분이 필요한지 판단한다.
-- **상태**: 미해결 (①은 서버팀, ②③은 탈퇴 표면을 붙일 때 앱 결정)
+- **상태**: 부분 해소 (②는 닫혔다 — ①은 서버팀, ③은 소비처가 생길 때 결정)
+  > ✅ **②가 새 진입점 없이 풀렸다(2026-08-15, PR #250)** — `MemberService.deleteUsersMe`가 `ApiResponse`가
+  > 아니라 `Unit`을 반환하고 DataSource가 기존 `safeApiCallNoContent`로 호출한다(`logout` 선례). 짝인
+  > 토핑 삭제는 200 + `data: null`이라 `safeApiCallWithoutData`로 갈렸고, 그 진입점이 死코드에서 벗어났다
+  > (OQ-P-132 해소). **서버 안에서 성공 표현이 셋으로 갈린 것 자체(①)는 그대로**이고, 앱은 그 갈림을
+  > 진입점 두 개로 그대로 받아냈다.
+  > 📌 **③은 소비처가 없어 아직 물음이 서지 않는다** — 탈퇴를 부르는 화면이 0건이라 "이미 탈퇴됨"을
+  > 구분할 필요가 생기는 자리가 없다.
 - **해소 메모**: 결정 시 [api/conventions.md](../api/conventions.md) "envelope를 쓰지 않는 응답" 절과 [api/member.md](../api/member.md) 미결을 갱신한다.
 
 ### [2026-08-15] 탈퇴 회원이 남긴 토핑이 `(알수없음)`으로 캔버스에 계속 보인다
@@ -1453,7 +1496,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-168
 - **출처**: `data/src/test/.../group/mapper/MyParfaitGroupVOMapperTest.kt`(PR #248 develop 머지) — `*VOMapperTest`는 만들지 않고 케이스를 DataSource 테스트로 옮긴다는 규약([unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md))에 따라 `PolicyVOMapperTest`·`ImageVOMapperTest`가 삭제돼 develop `*VOMapperTest`가 0건이었는데, 이번 라운드가 새로 하나를 넣었다. 대응 `ParfaitGroupRemoteDataSourceImplTest`는 이미 있다.
 - **항목**: ① 케이스(오프셋 표기 2종·null)를 DataSource 테스트로 옮기고 파일을 지울지, ② 아니면 규약을 "판단이 있는 변환은 매퍼 테스트 허용"으로 개정할지 — 이번 건은 시각 파싱이라 판단이 있는 쪽에 가깝다(그리고 그 판단이 OQ-P-165로 틀렸을 가능성이 있다).
-- **상태**: 미해결 (규약 위반 1건)
+- **상태**: 미해결 (규약 위반 1건 — **①의 이행 대상 파일이 없다는 사실이 드러났다**)
+  > ⚠️ **출처 서술 정정(2026-08-15)** — 위의 "대응 `ParfaitGroupRemoteDataSourceImplTest`는 이미 있다"는
+  > **사실이 아니다.** develop의 `XxxRemoteDataSourceImplTest`는 image·member·parfait·parfaitimage·policy
+  > 다섯이고 **group은 없다** — 그 도메인만 `ParfaitGroupRepositoryImplTest`로 대신하고 있다. 즉 ①(케이스를
+  > DataSource 테스트로 옮기고 파일을 지운다)을 고르면 **옮길 파일부터 새로 만들어야 한다**.
+  > 📌 **규약이 지켜진 대조 사례(2026-08-15, PR #250)** — 캔버스 조회 라운드는 판단이 든 변환 넷
+  > (`images` null → 빈 목록 · 미지 배경 type → null · 미지 status → `UNKNOWN` · `SOLID` 불완전 → `None`)을
+  > 전부 `ParfaitRemoteDataSourceImplTest`로 잠갔고 `*VOMapperTest`를 하나도 만들지 않았다. 규약 자체는
+  > 작동하고, 어긋난 것은 group 도메인 하나다.
 - **해소 메모**: 어느 쪽이든 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)의 매퍼 항목 서술을 정본으로 맞춘다.
 
 ### [2026-08-15] 생성·참여 후 그룹 목록이 스스로 갱신되지 않는다
@@ -1477,7 +1528,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-171
 - **출처**: `domain/usecase/CheckNameValidUseCase.kt`(PR #243) — 허용 문자가 `' '`·`가..힣`·`A..Z`·`a..z`·`0..9`로 좁혀지고 `Char.isKorean()`(자모 포함)이 삭제됐다. 근거는 서버 정규식 `^[가-힣A-Za-z0-9]+(?: [가-힣A-Za-z0-9]+)*$`이고, 좁히지 않으면 앱을 통과한 이름이 서버에서만 400으로 튕긴다는 것이라 방향은 타당하다. 다만 위키 [[이름-입력-규칙]]은 허용 문자를 "한글·영문·숫자·공백"이라고만 적어 **자모 단독(`ㅋㅋ`·`ㅠㅠ`)의 허용 여부가 정책에 없다** — 사용자 체감으로는 되던 입력이 안 되게 바뀐 변경이다.
 - **항목**: ① 정책에 자모 허용 여부를 명시할지(허용이면 서버 정규식부터 바꿔야 한다). ② 위키 [[이름-입력-규칙]]의 "한글" 정의를 완성형으로 못박을지 — 정책 문서 개정은 위키 쪽 소관이라 여기서는 구현 상태만 추적한다.
-- **상태**: 미해결 — **전제가 뒤집혔다**(2026-08-15 서버 delta `e4ff23f`)
+- **상태**: 부분 해소 — **구현 불일치는 닫혔고 정책 공백만 남았다**(2026-08-15, PR #250)
+  > ✅ **앱이 서버 집합으로 다시 넓혀졌다(PR #250)** — `CheckNameValidUseCase.CheckValidCharacter`에
+  > `'ㄱ'..'ㅎ'`·`'ㅏ'..'ㅣ'`가 더해져 `ㅋㅋ`·`ㅠㅠ`·`파르페ㅎㅎ`가 통과한다. KDoc이 **"서버보다 느슨하면
+  > 안 되고 좁아도 안 된다"**로 양방향 기준을 명시했고, `CheckNameValidUseCaseTest`의 자모 케이스가
+  > `Success` 기대로 뒤집혔다. `ServerErrorCode.ParfaitGroup.INVALID_GROUP_NAME` KDoc의 정규식도
+  > 자모 포함본으로 정정됐다.
+  > ⚠️ **①②(정책 명시)는 그대로 열려 있다** — 위키 [[이름-입력-규칙]]은 여전히 "한글"의 범위를 정하지
+  > 않고, 지금 근거는 **서버 커밋 메시지 하나**뿐이다. 정책 개정은 위키 소관이라 여기서는 구현 상태만
+  > 추적한다. [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·
+  > [s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md) 유효성 절과
+  > [api/member.md](../api/member.md)·[api/parfait-group.md](../api/parfait-group.md)는 갱신했다.
 - **해소 메모**: 서버가 먼저 움직였다. `fix: 그룹/전역 닉네임 자음 모음 단독 입력 허용`이 `GroupNickname`·`GlobalNickname` 정규식에 자모 범위(`ㄱ-ㅎ`·`ㅏ-ㅣ`)를 넣어 **서버는 이제 자모 단독을 받는다**(사유는 iOS 클라이언트가 통과시키던 값이 서버에서만 400이던 것). 따라서 ①의 "허용이면 서버 정규식부터 바꿔야 한다"는 이미 이뤄졌고, 지금은 **앱이 서버보다 좁다** — `CheckNameValidUseCase`가 완성형만 통과시켜 서버가 받는 입력을 앱이 먼저 막는다. 남은 결정은 앱을 서버 집합으로 다시 넓힐지와 위키 [[이름-입력-규칙]]에 자모 허용을 명시할지다. 넓히면 [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md) 유효성 절과 [api/member.md](../api/member.md)·[api/parfait-group.md](../api/parfait-group.md) 정규식 서술을 함께 맞춘다.
 
 ### [2026-08-15] 닉네임 편집을 버리는 뒤로가기 동작이 S-002와 S-102로 갈렸다
@@ -1493,7 +1554,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-173
 - **출처**: `feature/groups/canvas/impl` `CanvasBGEditViewModel#handleOnClickConfirm`·`CanvasBGEditRoute`(PR #231) — 확인이 `YGCanvasBackground`(`Image`/`Solid`)를 만들어 `ConfirmBackground` 이펙트에 싣지만 Route가 그 값을 쓰지 않고 `// TODO: 선택한 배경을 서버에 업로드/저장하는 연동 필요` 주석과 함께 `onBack()`만 한다. C-001은 `YGCanvas`에 `background`를 넘기지 않아 기본값 `Solid(Gray100)` 그대로다. 브랜치 안에 "이미지 선택 완료 후 메인 캔버스에 반영" 커밋이 있었다가 되돌려졌다(커밋 `10e70809`). 저장 경로가 없으니 재진입하면 기본값부터 다시 고른다.
 - **항목**: ① 배경을 어디에 저장할지 — 서버 캔버스 계약에 배경 필드가 있는지부터 확인해야 한다([api/parfait-group.md](../api/parfait-group.md)·[api/README.md](../api/README.md)에 캔버스 조회 계약 자체가 아직 공백). ② 서버 전까지 C-001로 값을 되돌릴지(`ResultEventBus` 왕복 vs 공유 상태), ③ 되돌린 배경을 C-001이 `YGCanvas.background`로 그릴지.
-- **상태**: 미해결 (화면이 왕복만 하고 결과를 버린다)
+- **상태**: 미해결 (화면이 왕복만 하고 결과를 버린다 — **①의 답이 "서버에 쓰기 경로가 없다"로 확정됐다**)
+  > ⚠️ **①이 서버 쪽에서 막혀 있음이 확인됐다(2026-08-15)** — 캔버스 조회 계약이 공백이라던 전제가
+  > [api/parfait.md](../api/parfait.md)로 채워졌고, 거기서 **읽기 필드(`background.type`·`value`)는 있는데
+  > 쓰는 API가 서버 어디에도 없다**는 것이 드러났다(`parfait` 테이블 컬럼과 응답 필드만 있고 채우는 코드가
+  > 없어 현재는 항상 `null`이다). 앱 쪽 `CanvasBackground` 도메인 모델과 조회 표면은 PR #250으로 들어왔으니
+  > **읽는 절반은 준비됐고 쓰는 절반이 서버에 없다.** 즉 ②(서버 전까지 C-001로 값을 되돌릴지)가 임시가
+  > 아니라 **당분간 유일한 선택지**다 — 서버에 배경 설정 API를 요청하는 것이 ①의 실질 내용이 됐다.
 - **해소 메모**: ①이 서버 계약 대기라면 ②를 임시로라도 열어야 화면이 의미를 갖는다. 결정되면 [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md) 드리프트 1·[c001 스펙](../specs/archive/2026-08-12-c001-canvas-main.md)을 함께 갱신한다.
 
 ### [2026-08-15] 배경 편집 미리보기가 `YGCanvas`를 재사용하지 않는다 — 편집 화면과 실제 캔버스가 다르다
@@ -1541,7 +1608,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-179
 - **출처**: 서버 `e4ff23f`(`fix: 그룹 내 닉네임 중복 검사 제거`) × `feature/groups/enter/impl` `GroupNickNameViewModel`·`GroupNickNameViewModelTest`·`domain/model/error/ServerErrorCode.kt`·`data/repository/group/ParfaitGroupRepositoryImplTest` — 서버가 참여·닉네임 변경 양쪽의 `existsByGroupIdAndNickname` 검사와 `GROUP_NICKNAME_ALREADY_USED`를 **포트·어댑터·리포지토리 메서드·에러 코드까지 통째로 삭제**했다(사유: "정책상 같은 그룹 안 닉네임 중복 허용"). 앱에는 그 코드를 `GroupNickNameError.ALREADY_USED`로 매핑하는 분기, 그 분기를 검증하는 유닛 테스트 2건, `ServerErrorCode.ParfaitGroup` 상수가 그대로 남아 **어느 것도 도달하지 않는다**. S-102는 이제 중복 닉네임을 조용히 성공시킨다.
 - **항목**: ① 앱에서 분기·상수·테스트를 걷어낼지(서버 결정을 확정으로 볼 때). ② 그룹 안 닉네임 중복 허용을 정책 문서에 명시할지 — 지금 근거는 서버 커밋 메시지뿐이고 위키에는 항목이 없다. ③ 같은 그룹에 같은 표시 이름이 여럿일 때 G-001·S-101 그룹원 목록·토핑 작성자 표시를 무엇으로 구분할지(현재 구분자는 닉네임뿐이다).
-- **상태**: 미해결 (서버 선행, 앱 미반영)
+- **상태**: 부분 해소 — **①은 처리됐고 ②③은 열려 있다**(2026-08-15, PR #250)
+  > ✅ **앱에서 死코드가 걷혔다(PR #250)** — `ServerErrorCode.ParfaitGroup.GROUP_NICKNAME_ALREADY_USED`,
+  > `GroupNickNameError.ALREADY_USED`(+`toStringResource` 분기), `strings.xml` 문구 1건,
+  > `GroupNickNameViewModel`의 매핑 분기가 함께 사라졌다. 그 코드를 검증하던 두 테스트
+  > (`GroupNickNameViewModelTest`·`ParfaitGroupRepositoryImplTest`)와 화면 프리뷰 에러 케이스는 삭제가
+  > 아니라 **`INVALID_GROUP_NICKNAME`(400)으로 바꿔 살렸다** — 서버 실패를 화면 문구로 잇는 경로 자체는
+  > 계속 잠긴다. `ServerErrorCode.ParfaitGroup`은 8종 → 7종이 됐고 "분기에 쓰는 코드만 둔다"는 자기
+  > KDoc 규칙이 유지된다.
+  > ⚠️ **②③은 그대로다** — 그룹 안 닉네임 중복 허용의 근거가 여전히 서버 커밋 메시지뿐이고, 같은 그룹에
+  > 같은 표시 이름이 여럿일 때 G-001·S-101 그룹원 목록·토핑 작성자를 무엇으로 구분할지는 미정이다
+  > (현재 구분자는 닉네임뿐인데 이제 유일하지 않다).
 - **해소 메모**: ①은 [s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md) 에러 매핑 절과 함께 정리한다. ③은 표시 정책이라 위키 [[nametag-chip]]·[[그룹]] 쪽 결정이 필요하다. 계약 쪽 기술은 [api/parfait-group.md](../api/parfait-group.md)에 이미 반영했다.
 
 ### [2026-08-15] 초대코드 자릿수가 서버 8 → 6으로 내려와 앱과 맞았다 — 정책 문서는 여전히 없다
@@ -1551,6 +1628,39 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 자릿수 6과 문자 집합을 정책 문서에 올릴지 — 서버 생성 알파벳은 혼동 문자(`I`·`O`·`0`·`1`)를 뺀 32자인데 검증은 영숫자 전부를 받고, 앱은 대문자 정규화를 하지 않는다(서버가 `uppercase()`). 세 규칙 중 어느 것도 위키에 없다. ② 계약 문서에 값 형식(길이·문자 집합)을 적는 것을 규약으로 올릴지 — 이번 불일치가 **형식을 안 적어서** 숨었다.
 - **상태**: 부분 해소 (자릿수는 맞음, 정책·규약 공백 잔존)
 - **해소 메모**: ②는 [api/template.md](../api/template.md)에 "요청 필드 표에 값 형식을 적는다"를 넣는 것이 최소 조치다. ①은 [a004 스펙](../specs/archive/2026-08-12-a004-group-invite-code.md)이 이미 "코드 자릿수 6은 정책 문서 없이 코드가 확정"이라 적어 둔 것과 같은 자리다.
+
+### [2026-08-15] 캔버스 매퍼의 조용한 폴백 3종에 관측 수단이 없다
+
+- **ID**: OQ-P-181
+- **출처**: `data/source/parfait/mapper/VOMapper.kt`(PR #250) — 서버 값이 앱이 모르는 것일 때 세 자리가
+  **조용히 접힌다**: `status`가 미지값이면 `CanvasStatus.UNKNOWN`, `background.type`이 미지값이면
+  **`null`**(= 미설정과 같은 값), 토핑이 `borderType = SOLID`인데 색·두께가 비면 `ToppingBorder.None`.
+  셋 다 크래시를 막는다는 근거가 분명하고 KDoc에도 적혀 있다. 다만 **어디에도 로그가 없다** — 앱에
+  `Logger` 추상화가 있는데([ADR-0014](../adr/0014-logging-abstraction-kermit.md)) 매퍼는 쓰지 않는다.
+  특히 배경의 미지 type은 "미설정"과 **같은 값으로 접혀** 두 경우를 구분할 근거가 결과에 남지 않는다.
+- **항목**: ① 폴백이 발동한 사실을 로그로 남길지 — 남긴다면 매퍼가 `Logger`를 갖는 첫 사례가 되고,
+  `internal` 확장 함수 모음이라 주입 경로부터 정해야 한다(DataSource가 로그를 찍는 편이 구조상 쉽다).
+  ② 아니면 서버 enum 확장은 계약 변경이므로 계약 대조(이 문서·`api/`)로만 잡는다고 확정할지.
+  ③ 배경의 미지 type과 미설정을 화면이 구분해야 할 일이 생기는지 — 지금 결론("화면 처리가 같다")은
+  배경 편집(C-301)이 결선되기 전의 판단이다.
+- **상태**: 미해결 (소비처 0건이라 현재 영향 없음 — C-001 결선 라운드에서 판정)
+- **해소 메모**: ①을 택하면 [data-layer](../architecture/data-layer.md) "응답 매핑" 절에 규약으로 적는다.
+  ③은 OQ-P-173(배경 저장 경로 부재)과 같은 라운드에서 답이 정해진다.
+
+### [2026-08-15] `http/`의 파괴적 요청이 파일 순서 실행 한 번에 계정·데이터를 지운다
+
+- **ID**: OQ-P-182
+- **출처**: `http/users.http`(마지막 요청이 회원 탈퇴)·`http/parfait-image.http`(마지막 요청이 토핑 삭제,
+  PR #250) — 두 파일 모두 "위에서부터 순서대로 실행"이 권장 사용법인데 그 끝에 되돌릴 수 없는 요청이
+  붙었다. 탈퇴는 회원 행을 지우고 모든 그룹 멤버십을 정리하며, 토핑 삭제는 참조 카운트가 0이 되면
+  **S3 객체까지** 지운다. 현재 방어는 `http/README.md`의 ⚠️ 문장 하나뿐이다 — IntelliJ HTTP Client에는
+  요청 단위 확인 절차가 없다.
+- **항목**: ① 파괴적 요청을 별도 파일(예: `_danger.http`)로 분리할지 — 분리하면 "도메인별 한 파일"
+  규칙이 깨진다. ② 요청 본문을 주석 처리해 두고 쓸 때만 풀게 할지. ③ 아니면 문서 경고로 충분하다고
+  볼지(개발 서버 전용이고 계정을 다시 만들 수 있다는 전제).
+- **상태**: 미해결 (실서버 요청이 0건이라 아직 사고는 없었다)
+- **해소 메모**: 정하면 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절과
+  `http/README.md`를 함께 맞춘다. [2026-08-04] `http/`↔`api/` 이중 관리 항목과 같은 자리에서 본다.
 
 <!--
 항목 추가 형식:
@@ -1562,4 +1672,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 172 -->
+<!-- oq-next: 183 -->

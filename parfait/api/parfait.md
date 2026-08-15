@@ -5,7 +5,7 @@ server_module: http/parfait
 server_commit: e4ff23f
 verified: 2026-08-15
 android_status: partial
-related_spec:
+related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, canvas]
 ---
@@ -25,8 +25,8 @@ tags: [api, parfait, server-contract, canvas]
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
 | GET | `/api/v1/groups/{groupId}/parfaits/year` | 필요 | path `groupId` Long | `ParfaitYearsResponse` | 구현됨 |
-| GET | `/api/v1/groups/{groupId}/parfaits/today` | 필요 | path `groupId` Long | `GetTodayParfaitResponse` | 미구현 |
-| GET | `/api/v1/groups/{groupId}/parfaits` | 필요 | query `from`·`to`(선택) | `PastParfaitsResponse` | 미구현 |
+| GET | `/api/v1/groups/{groupId}/parfaits/today` | 필요 | path `groupId` Long | `GetTodayParfaitResponse` | 구현됨 |
+| GET | `/api/v1/groups/{groupId}/parfaits` | 필요 | query `from`·`to`(선택) | `PastParfaitsResponse` | 구현됨 |
 | POST | `/api/v1/test/parfait-canvas/rotate` | **불필요(화이트리스트)** | 없음 | `RotateParfaitCanvasesResponse` | 해당 없음[^test] |
 
 [^test]: **테스트 전용 엔드포인트다.** 서버 컨트롤러(`ParfaitCanvasRotationTestController`)와
@@ -127,7 +127,9 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   실려 오므로([conventions.md](conventions.md)), 소비 측은 **키 존재가 아니라 값이 `null`인지**로 갈라야 한다.
 
   **배경을 설정하는 API는 아직 없다.** 컬럼(`background_type`·`background_value`)과 응답 필드만 있고
-  쓰기 경로가 서버 어디에도 없어 현재는 항상 `null`이다.
+  쓰기 경로가 서버 어디에도 없어 현재는 항상 `null`이다. ⚠️ **C-301 캔버스 배경 편집 화면이 이미
+  develop에 있다**(PR #231) — 고른 배경이 아무 데도 반영되지 않는 이유의 절반이 여기다(나머지 절반은
+  화면 쪽 확인 이펙트 TODO) → [open-questions](../synthesis/open-questions.md).
 
   **`groupMembers`는 탈퇴하지 않은 멤버만**이다(`findAllByGroupIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc` —
   참여 순). ⚠️ **그런데 `placedBy` 조회에는 그 필터가 없다**(`findAllByIdIn`). 탈퇴한 멤버가 남긴 토핑은
@@ -240,28 +242,45 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 
 ## Android 매핑
 
-**연도 조회 1건만 표면이 있고, 이번 delta로 들어온 3건은 표면 0건이다**(TJYG-Android `develop` 기준 —
-`ParfaitService`에 `@GET("api/v1/groups/{groupId}/parfaits/year")` 하나뿐).
+**앱이 쓰는 세 엔드포인트 전부 표면이 있다**(2026-08-15, PR #250 develop 머지). 테스트 전용 회전은
+대상이 아니다. **소비처(Repository·UseCase·화면)는 0건이다.**
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|
 | GET `/api/v1/groups/{groupId}/parfaits/year` | `ParfaitService#getGroupsByGroupIdParfaitsYear` | `ParfaitRemoteDataSource#getYears` |
-| GET `.../parfaits/today` | — (미구현) | — (미구현) |
-| GET `.../parfaits` | — (미구현) | — (미구현) |
+| GET `.../parfaits/today` | `ParfaitService#getGroupsByGroupIdParfaitsToday` | `ParfaitRemoteDataSource#getTodayCanvas(groupId)` |
+| GET `.../parfaits` | `ParfaitService#getGroupsByGroupIdParfaits` | `ParfaitRemoteDataSource#getPastCanvases(groupId, from, to)` |
 | POST `/api/v1/test/parfait-canvas/rotate` | — (해당 없음) | — (해당 없음) |
 
-- **응답 DTO**: `ParfaitYearsResponse`(`years: List<Int>`) —
-  `data/service/model/response/parfait/ParfaitYearsResponse.kt`. 요청 DTO 없음(path 변수만 받는 GET).
-  이 저장소는 DTO·도메인 모델을 선언당 파일 하나로 두는 규약이라 파일명이 선언명과 그대로 같다 —
-  다른 이름이 붙을 이유가 없는 평범한 경우다.
-- **VO 없음** — 응답이 `years` 한 필드뿐이라 mapper가 `List<Int>`를 그대로 반환한다
-  (`ParfaitRemoteDataSourceImpl#getYears`의 `transform = { it.years }`). `GroupId` value class는
-  `domain/model/id/GroupId.kt`에 있다.
-- **Mapper 파일 없음** — 변환이 필드 하나짜리라 별도 mapper 함수를 두지 않는다.
+- **응답 DTO**: `ParfaitYearsResponse`(`years: List<Int>`) · `GetTodayParfaitResponse`(중첩
+  `GroupMemberResponse`·`BackgroundResponse`·`TodayParfaitImageResponse`·`PlacedByResponse`) ·
+  `PastParfaitsResponse`(중첩 `PastParfaitResponse`) — 전부
+  `data/service/model/response/parfait/`. 요청 DTO는 없다(전부 GET).
+  ⚠️ **중첩 응답은 상위 응답 파일 안에 함께 둔다** — `:data`의 "선언당 파일 하나" 규약의 명시적 예외이고
+  근거는 "서버가 한 파일에 담은 것을 앱도 한 파일에 담아야 계약 문서와 눈으로 대조된다"이다
+  ([data-layer](../architecture/data-layer.md)). `PlacedByResponse`라는 이름이
+  `response/parfait`·`response/parfaitimage` **두 패키지에 각각 존재**하는 것도 같은 이유다(서버가 그렇다).
+- **domain VO**: `domain/model/canvas/`에 여섯(`TodayCanvasVO`·`PastCanvasVO`·`CanvasStatus`·
+  `CanvasBackground`·`CanvasMemberVO`·`CanvasToppingVO`). 이름은 제품 언어라 서버 `parfait`가 `Canvas`,
+  응답 필드 `imageCount`가 `toppingCount`다 — 다만 **id 타입은 서버 언어 유지**(`ParfaitId`).
+  연도 조회만 VO가 없다(응답이 `years` 한 필드라 `transform = { it.years }`).
+- **Mapper**: `source/parfait/mapper/VOMapper.kt`(이 도메인 첫 매퍼 — 연도 조회뿐이던 시절엔 없었다).
+  계약의 "널이 세 가지를 뜻한다"를 여기서 가른다 — `images` `null`은 **빈 목록으로 접고**,
+  `background`(미설정)·`lastClosedDate`(마감 이력 없음)의 `null`은 **그대로 둔다**.
+- **미지 값 폴백 두 갈래**: `status`가 모르는 값이면 `CanvasStatus.UNKNOWN`(값 자체가 상태라 버릴 수 없다),
+  `background.type`이 모르는 값이면 **`null`로 접는다**(미지와 미설정은 화면 처리가 같다).
+  토핑 테두리도 `SOLID`인데 색·두께가 비면 `ToppingBorder.None`으로 떨어뜨린다 — 서버가 저장 시점에
+  막지만 이미 저장된 행이 있을 수 있어서다.
+- **범위 파라미터는 `null` 그대로 보낸다** — `from`·`to`가 `null`이면 Retrofit이 쿼리를 URL에서 빼므로
+  서버 기본값(오늘 − 30일 ~ 오늘)이 산다. 문자열 변환(`LocalDate.toString()`)은 DataSource가 한다.
 
-**`today` 조회가 C-001 캔버스 결선의 선행이다.** 지금까지 "배치 목록 조회 API가 없어 캔버스를 다시 그릴 수
-없다"고 적혀 있던 자리가 이 엔드포인트로 닫힌다([parfait-image.md](parfait-image.md) 참고) — 다만 앱 표면이
-아직 없어 **미구현**이다. `http/parfait.http`도 연도 조회만 덮는다 → [open-questions](../synthesis/open-questions.md).
+설계 근거는 [specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md).
+
+**`today` 조회가 C-001 캔버스 결선의 선행이다.** "배치 목록 조회 API가 없어 캔버스를 다시 그릴 수 없다"던
+자리가 이 엔드포인트로 닫혔고([parfait-image.md](parfait-image.md) 참고) 이제 **앱 표면까지 있다** —
+남은 것은 Repository·UseCase·화면이다. ⚠️ **부작용 있는 GET을 억제하는 코드 수단은 없다** — 경고가
+Service·DataSource KDoc에만 있고 호출 지점 관리는 화면 책임이다
+→ [open-questions](../synthesis/open-questions.md).
 
 ## 미결
 

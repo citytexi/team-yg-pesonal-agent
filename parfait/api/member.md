@@ -5,7 +5,7 @@ server_module: http/member
 server_commit: e4ff23f
 verified: 2026-08-15
 android_status: partial
-related_spec:
+related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, member]
 ---
@@ -30,7 +30,7 @@ tags: [api, parfait, server-contract, member]
 |---|---|---|---|---|---|
 | GET | `/api/v1/users/me` | 필요 | 없음 | `MyAccountResponse` | 구현됨 |
 | PATCH | `/api/v1/users/me/nickname` | 필요 | `ChangeGlobalNicknameRequest` | `ChangeGlobalNicknameResponse` | 구현됨 |
-| DELETE | `/api/v1/users/me` | 필요 | 없음 | **본문 없음(204)** | 미구현 |
+| DELETE | `/api/v1/users/me` | 필요 | 없음 | **본문 없음(204)** | 구현됨 |
 
 셋 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. memberId는 요청이 아니라
 토큰에서 나온다(`Authentication.memberId(): Long = name.toLong()`) — 남의 계정을 지정할 경로가 없다.
@@ -186,19 +186,23 @@ tags: [api, parfait, server-contract, member]
 
 ## Android 매핑
 
-**표면 있음, 소비처 0**(2026-08-12, PR #230 develop 머지).
+**세 엔드포인트 전부 표면 있음, 소비처 0**(2026-08-12 PR #230 두 건 + **2026-08-15 PR #250 탈퇴**).
 
 | 계약 | Android 심볼 |
 |---|---|
 | `GET /api/v1/users/me` | `MemberService.getUsersMe` → `MemberRemoteDataSource.getMyAccount()` |
 | `PATCH /api/v1/users/me/nickname` | `MemberService.patchUsersMeNickname` → `MemberRemoteDataSource.changeGlobalNickname(nickname)` |
-| `DELETE /api/v1/users/me` | — (미구현) |
+| `DELETE /api/v1/users/me` | `MemberService.deleteUsersMe` → `MemberRemoteDataSource.withdraw()` |
 
-**탈퇴는 표면이 없다**(2026-08-15 서버 delta) — 앱 `MemberService`에는 `@GET`·`@PATCH` 둘뿐이다.
-S-101 Danger Zone이 되돌릴 수 없는 동작을 담을 자리 없이 머지돼 있는 상태와 맞물린다
+**204 문제는 새 진입점 없이 풀렸다.** `deleteUsersMe`는 `ApiResponse`가 아니라 `Unit`을 반환하고
+DataSource가 `ApiCaller.safeApiCallNoContent`로 호출한다 — `logout`에 이어 **두 번째 소비처**다.
+같은 delta의 토핑 삭제(200 + `data: null`)가 `safeApiCallWithoutData`로 갈린 것과 짝이다
+([parfait-image.md](parfait-image.md)). 설계 근거는
+[specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md).
+
+⚠️ **소비처는 여전히 없다** — S-101·S-001 Danger Zone의 탈퇴 확인 팝업은 그대로 TODO 로그만 남긴다.
+회원이 없어도 204라 멱등이고 도메인 에러가 없어, 앱이 "이미 탈퇴됨"을 구분할 수단도 없다
 → [open-questions](../synthesis/open-questions.md).
-**본문 없는 204라 표면을 붙일 때 반환 타입이 다른 엔드포인트와 다르다** — 앱 `ApiCaller`는
-envelope 파싱을 전제하므로 `Response<Unit>` 계열 진입점이 필요한지부터 정해야 한다.
 
 wire DTO는 `service/model/{request,response}/member/`, 변환은 `source/member/mapper/VOMapper.kt`,
 domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider`)다. 설계 근거는
@@ -217,7 +221,8 @@ domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider
 **소비처는 0건이다.** S-002(계정 정보)가 전역 닉네임을 다루지만 여전히 **화면 로컬 상태에만 산다** —
 이 API가 그 저장 경로인데 아직 연결되지 않았다 → [open-questions](../synthesis/open-questions.md).
 
-`http/users.http`가 두 요청을 덮는다(선행은 `auth.http`만).
+`http/users.http`가 세 요청을 덮는다(선행은 `auth.http`만). ⚠️ **마지막 요청이 탈퇴라 파일을 위에서부터
+통째로 돌리면 계정이 지워진다** — `http/README.md`가 이 경고를 담는다.
 
 ## 미결
 
@@ -230,5 +235,7 @@ domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider
 - 탈퇴 회원이 남긴 토핑의 `placedBy`가 `(알수없음)`으로 캔버스에 계속 보인다 — 표시 정책이 없다
   → [open-questions](../synthesis/open-questions.md)
 - 애플 계정 탈퇴 시 애플 연동 해제(revoke)를 하지 않는다 → [open-questions](../synthesis/open-questions.md)
-- 서버가 자모 단독 닉네임을 허용하도록 넓혔는데 앱 `CheckNameValidUseCase`는 완성형만 통과시킨다 —
-  어느 쪽에 맞출지(정책 근거는 위키 [[이름-입력-규칙]]에 없다) → [open-questions](../synthesis/open-questions.md)
+- ✅ **자모 단독 허용 불일치는 해소됐다**(2026-08-15, PR #250) — `CheckNameValidUseCase`의 허용 문자에
+  `'ㄱ'..'ㅎ'`·`'ㅏ'..'ㅣ'`가 더해져 앱과 서버 집합이 다시 같다. **다만 정책 근거는 여전히 서버 커밋
+  메시지뿐이고** 위키 [[이름-입력-규칙]]은 "한글"의 범위를 정하지 않는다
+  → [open-questions](../synthesis/open-questions.md)

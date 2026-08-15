@@ -26,14 +26,14 @@
 | [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | 부분(애플 해당 없음, 나머지 구현됨) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨(목록 1건 ⚠️불일치) |
-| [parfait.md](parfait.md) | `http/parfait` | 3 + 테스트 전용 1 (연도 리스트 · **오늘의 캔버스** · **과거 목록** / 테스트 회전) | 부분(연도만 · 신규 2 미구현 · 회전 해당 없음) |
+| [parfait.md](parfait.md) | `http/parfait` | 3 + 테스트 전용 1 (연도 리스트 · **오늘의 캔버스** · **과거 목록** / 테스트 회전) | 구현됨(회전 해당 없음) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
-| [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 부분(탈퇴 미구현) |
-| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 부분(신규 2 미구현) |
+| [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 구현됨 |
+| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨 |
 
-**총 26 엔드포인트 + 테스트 전용 1**(2026-08-15, 서버 `e4ff23f`). **Android 표면은 20/25다** — 분모에서
-애플 로그인 1(`해당 없음`)과 테스트 전용 회전 1을 뺀 값이 25이고 **공백 5**다(파르페 오늘·과거,
-토핑 테두리·삭제, 회원 탈퇴). 2026-08-12에 닫혔던 공백이 서버 delta로 **세 번째** 다시 벌어졌다.
+**총 26 엔드포인트 + 테스트 전용 1**(2026-08-15, 서버 `e4ff23f`). **Android 표면은 25/25로 공백 0이다**
+(2026-08-15, PR #250) — 분모에서 애플 로그인 1(`해당 없음`)과 테스트 전용 회전 1을 뺀 값이 25다.
+같은 날 서버 delta가 벌린 공백 5(파르페 오늘·과거, 토핑 테두리·삭제, 회원 탈퇴)를 한 라운드가 닫았다.
 
 > **`구현됨`은 `:data`에 Service·DataSource 표면이 있고 계약과 일치한다는 뜻**이다(2026-08-06, PR #197
 > develop 머지).
@@ -51,16 +51,22 @@
 > ✅ **카카오 로그인 판별자 키 불일치는 해소됐다**(2026-08-15, PR #241) — `@SerialName("isNewUser")` 정정 +
 > 와이어 계약 테스트([auth.md](auth.md) "판별자 키"). 같은 라운드가 이 엔드포인트를 **소비처까지** 이었다.
 >
-> ⚠️ **2026-08-15 서버 delta로 신규 5건은 표면 0**이다 — 해당 도메인 문서의 Android 열은 `미구현`이다.
+> ✅ **2026-08-15(PR #250) — 표면 공백이 다시 0이 됐다.** 서버 delta가 벌린 신규 5건(파르페 오늘·과거,
+> 토핑 테두리·삭제, 회원 탈퇴)이 Service·remote DataSource·domain VO까지 한 라운드에 들어왔다
+> ([spec](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)).
+> `parfait`·`member`·`parfait-image` 세 도메인의 Android 열이 전부 `구현됨`이 됐고, `android_status`는
+> 셋 다 `partial` 그대로다 — **소비처가 0건**이기 때문이다(`done`은 화면까지 이어졌을 때 쓴다).
 >
 > ⚠️ **새 불일치 1건**(2026-08-15) — 그룹 목록의 `recentImageUploadedAt`을 앱이 오프셋 필수 파서로 읽는데
 > 서버는 오프셋 없이 내려준다. 대응 심볼이 있는데 계약과 어긋나므로 `parfait-group.md`의 GET
 > `/api/parfait-groups` 행이 **`⚠️불일치`**다([conventions.md](conventions.md) "Android 불일치").
 >
 > 🔁 **2026-08-15 2차 서버 delta(`e4ff23f`) — 엔드포인트 증감 0, 규칙 변경 3건.** 초대코드 자릿수 8 → 6
-> (앱은 처음부터 6이라 **드러나지 않던 불일치가 서버 쪽에서 닫혔다**), 닉네임 정규식에 자모 허용 추가
-> (이번엔 **앱이 더 좁다**), 그룹 내 닉네임 중복 검사 제거로 `GROUP_NICKNAME_ALREADY_USED` 삭제
-> (앱 S-102 분기가 死코드). 셋 다 요청/응답 형태는 그대로라 Android 열 값은 바뀌지 않는다
+> (앱은 처음부터 6이라 **드러나지 않던 불일치가 서버 쪽에서 닫혔다**), 닉네임 정규식에 자모 허용 추가,
+> 그룹 내 닉네임 중복 검사 제거로 `GROUP_NICKNAME_ALREADY_USED` 삭제. 셋 다 요청/응답 형태는 그대로라
+> Android 열 값은 바뀌지 않는다.
+> ✅ **뒤의 둘은 같은 날 PR #250이 앱에 반영했다** — `CheckNameValidUseCase`가 자모 범위를 얻어 집합이
+> 다시 같아졌고, `ALREADY_USED` 계열(상수·enum·문구·분기)은 걷혔다. **남은 것은 정책 문서 공백**이다
 > → [open-questions](../synthesis/open-questions.md).
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
@@ -100,9 +106,14 @@ TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요�
 `parfait-image.http`·`health.http`·`_reset.http` + `http-client.env.json` + 사용법 `README.md`다. 여기
 문서에 적힌 계약을 서버에 직접 쏴서 확인할 수 있다.
 
-> ⚠️ **커버가 다시 깨졌다(2026-08-15 서버 delta).** 2026-08-12 PR #230으로 회복했던 20/20이 **20/25**가
-> 됐다 — 파르페 오늘·과거, 토핑 테두리·삭제, 회원 탈퇴 5건에 요청이 없다. 손으로 메우는 방식이 서버
-> delta마다 무너지는 것이 **세 번째**다 → [open-questions](../synthesis/open-questions.md).
+> ✅ **커버가 다시 전량이다(2026-08-15, PR #250).** 서버 delta로 20/25가 됐던 것이 같은 라운드의 `http/`
+> 보강으로 **25/25**가 됐다 — `parfait.http`에 오늘·과거 조회, `parfait-image.http`에 테두리 수정·삭제,
+> `users.http`에 탈퇴가 붙었고 `http-client.env.json`·`_reset.http`에 `parfait_id`가 등재됐다.
+> **손으로 메우는 방식이 서버 delta마다 무너졌다 복구되는 것이 네 번째**다 — 갱신 경로가 둘이라는 구조는
+> 그대로다 → [open-questions](../synthesis/open-questions.md).
+>
+> ⚠️ **파괴적 요청이 두 파일의 마지막에 있다** — `users.http`의 탈퇴, `parfait-image.http`의 토핑 삭제.
+> 파일을 위에서부터 통째로 돌리면 계정·데이터가 지워진다(`http/README.md`가 이 경고를 담는다).
 >
 > ⚠️ **`http/auth.http`가 아직 `newUser`로 분기한다.** 앱 DTO와 `http/README.md`는 `isNewUser`로
 > 정정됐는데(PR #241·#230) 이 파일만 남았다 → [open-questions](../synthesis/open-questions.md).

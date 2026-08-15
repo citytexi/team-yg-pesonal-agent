@@ -5,7 +5,7 @@ server_module: http/parfaitimage
 server_commit: e4ff23f
 verified: 2026-08-15
 android_status: partial
-related_spec:
+related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, parfait-image]
 ---
@@ -32,8 +32,8 @@ tags: [api, parfait, server-contract, parfait-image]
 |---|---|---|---|---|---|
 | POST | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images` | 필요 | `PlaceParfaitImageRequest` | `PlaceParfaitImageResponse` | 구현됨 |
 | PATCH | `.../images/{parfaitImageId}` | 필요 | `UpdateParfaitImageRequest` | `UpdateParfaitImageResponse` | 구현됨 |
-| PATCH | `.../images/{parfaitImageId}/border` | 필요 | `UpdateParfaitImageBorderRequest` | `UpdateParfaitImageBorderResponse` | 미구현 |
-| DELETE | `.../images/{parfaitImageId}` | 필요 | 없음 | `null`(data 없음) | 미구현 |
+| PATCH | `.../images/{parfaitImageId}/border` | 필요 | `UpdateParfaitImageBorderRequest` | `UpdateParfaitImageBorderResponse` | 구현됨 |
+| DELETE | `.../images/{parfaitImageId}` | 필요 | 없음 | `null`(data 없음) | 구현됨 |
 
 넷 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. `groupId`·`parfaitId`는
 경로 변수이고 memberId는 토큰에서 나온다. 클래스 레벨 매핑
@@ -293,17 +293,25 @@ tags: [api, parfait, server-contract, parfait-image]
 
 ## Android 매핑
 
-**표면 있음, 소비처 0**(2026-08-12, PR #230 develop 머지).
+**네 엔드포인트 전부 표면 있음, 소비처 0**(2026-08-12 PR #230 두 건 + **2026-08-15 PR #250 두 건**).
 
 | 계약 | Android 심볼 |
 |---|---|
 | `POST .../parfaits/{parfaitId}/images` | `ParfaitImageService.postGroupsByGroupIdParfaitsByParfaitIdImages` → `ParfaitImageRemoteDataSource.placeTopping(groupId, parfaitId, imageId, transform, border)` |
 | `PATCH .../images/{parfaitImageId}` | `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId` → `ParfaitImageRemoteDataSource.updateTopping(groupId, parfaitId, parfaitImageId, positionX, positionY, positionZ, scale, rotation)` |
-| `PATCH .../images/{parfaitImageId}/border` | — (미구현) |
-| `DELETE .../images/{parfaitImageId}` | — (미구현) |
+| `PATCH .../images/{parfaitImageId}/border` | `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageIdBorder` → `ParfaitImageRemoteDataSource.updateToppingBorder(groupId, parfaitId, parfaitImageId, border)` |
+| `DELETE .../images/{parfaitImageId}` | `ParfaitImageService.deleteGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId` → `ParfaitImageRemoteDataSource.deleteTopping(groupId, parfaitId, parfaitImageId)` |
 
-**2026-08-15 서버 delta로 2건이 다시 비었다.** 테두리 수정·삭제에는 대응 심볼이 없다 —
-`ParfaitImageService`는 여전히 `@POST`·`@PATCH` 둘뿐이다 → [open-questions](../synthesis/open-questions.md).
+**테두리 수정은 nullable 파라미터가 아니라 `ToppingBorder` 하나를 받는다.** 서버가 세 필드를 통째로
+덮기 때문이다(위치 수정의 부분 병합과 다르다). sealed를 그대로 받으므로 `SOLID`인데 색·두께가 빠지는
+조합을 만들 수 없고, **400 `INVALID_BORDER`는 앱에서 도달 불가**다. 응답 쪽에는 반대 방향 폴백이 있다 —
+`SOLID`인데 색·두께가 비면 `ToppingBorder.None`으로 떨어뜨린다(이미 저장된 행 대비).
+
+**두 DELETE가 `ApiCaller` 진입점을 달리 쓴다.** 토핑 삭제는 200 + `data: null`이라
+`safeApiCallWithoutData`, 회원 탈퇴는 204·본문 없음이라 `safeApiCallNoContent`다
+([member.md](member.md)). 死코드로 지적돼 있던 `safeApiCallWithoutData`가 **첫 프로덕션 소비처**를
+얻었다. 설계 근거는
+[specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md).
 
 **이름이 계층마다 갈린다.** `data`는 서버 언어(`ParfaitImageService`·`PlaceParfaitImageRequest`),
 `domain`은 제품 언어(`PlacedToppingVO`·`ToppingTransform`·`ToppingBorder`·`UpdatedToppingVO`) —
@@ -322,17 +330,20 @@ nullable 5파라미터다. PATCH 요청 DTO의 5필드가 전부 `= null` 기본
 `encodeDefaults = true`라 **안 바꾸는 필드도 `"positionX": null`로 실려 나간다.** 서버 `ParfaitImage.update`가
 `?:` 병합이라 키 부재와 동치이므로 동작은 정확하다.
 
-**응답 VO에 테두리 필드가 없다** — POST·위치 PATCH 두 응답이 테두리를 돌려주지 않아서다. 그 상태 자체는
-그대로지만, 이제 **되읽을 두 자리**가 생겼다(테두리 PATCH 응답 · `parfaits/today`의 `images[]`).
-VO 모양을 다시 볼 시점은 결선 라운드다.
+**POST·위치 PATCH 응답 VO에는 여전히 테두리 필드가 없다** — 두 응답이 테두리를 돌려주지 않아서다.
+대신 **되읽을 두 자리가 실제로 생겼다**: 테두리 PATCH 응답(`UpdatedToppingBorderVO` —
+`domain/model/topping/`, 앱이 테두리를 되받는 첫 자리)과 `parfaits/today`의 `images[]`
+(`CanvasToppingVO`). `CanvasToppingVO`를 `PlacedToppingVO`와 합치지 않은 것도 같은 이유다 —
+POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"를 뭉개게 된다.
 
 **소비처는 0건이다.** 캔버스 토핑 배치(C-106)는 여전히 화면 로컬 상태로만 동작한다. 다만 **"다시 그릴 수
-없다"는 사유는 사라졌다** — `GET .../parfaits/today`가 배치 전량을 내려준다([parfait.md](parfait.md)).
-남은 것은 앱 표면과 결선이다 → [open-questions](../synthesis/open-questions.md).
+없다"는 사유도, 앱 표면 공백도 사라졌다** — `GET .../parfaits/today`가 배치 전량을 내려주고
+([parfait.md](parfait.md)) 네 엔드포인트 전부 DataSource까지 와 있다. 남은 것은 Repository·UseCase·화면
+결선이다 → [open-questions](../synthesis/open-questions.md).
 
-`http/parfait-image.http`가 **먼저 있던 두 요청만** 덮는다 — 테두리 PATCH·DELETE는 없다. **선행이 셋**
-(`auth.http` → `parfait-group.http` → `images.http` 발급·PUT·confirm)이고 `parfaitId`는 리터럴을 손으로
-바꿔야 한다(이제 `parfait.http`에 `today` 요청을 넣으면 조회로 얻을 수 있으나 그 요청도 아직 없다).
+`http/parfait-image.http`가 **네 요청을 전부** 덮는다(2026-08-15). **선행이 넷**이 됐다 —
+`auth.http` → `parfait-group.http` → `images.http`(발급·PUT·confirm) → `parfait.http`(오늘의 캔버스
+조회가 `parfait_id`를 채운다). `parfaitId` 리터럴을 손으로 바꾸던 단계는 사라졌다.
 
 ## 미결
 
