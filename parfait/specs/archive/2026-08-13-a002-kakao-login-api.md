@@ -1,10 +1,10 @@
 ---
 id: a002-kakao-login-api
 title: A-002 카카오 로그인 API 결선 (SDK idToken·nonce → POST /auth/kakao → 신규/기존 분기)
-status: in-progress
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-14
+verified: 2026-08-15
 related_code: LoginRoute, LoginScreen, LoginViewModel, KakaoLoginHelper, KakaoLoginResult, KakaoLoginVO, KakaoLoginResponse, AuthRepository, AuthRepositoryImpl, AuthRemoteDataSource, LoginWithKakaoUseCase, NonceGenerator, SecureRandomNonceGenerator, ServerErrorCode, TokenStore, EncryptedTokenStore, NavKeyLogin, NavKeyTermAgree, NavKeyGroupList, TermAgreeRoute, RepositoryModule, runSuspendCatching
 related_adr: ADR-0005, ADR-0009, ADR-0017, ADR-0019, ADR-0020
 related_spec: mvi-error-infrastructure, a002-login-onboarding, data-api-service-layer, network-envelope-token-storage, intro-term-agree
@@ -21,16 +21,14 @@ tags: [spec, parfait, login, a002, auth]
 > 이 스펙은 [mvi-error-infrastructure](2026-08-13-mvi-error-infrastructure.md) 위에 올라간다.
 > 그쪽이 먼저 들어와야 한다.
 
-> ✅ **구현 완료 · develop 미머지 · 실기기 미검증** (2026-08-14, 브랜치
-> `feature/mvi-error-infra-a002-login`, 커밋 `fd6b913d..e03b784c`). 본문은 as-built 로 정정했다.
-> **실기기 8항목이 남아 있다** — 아래 "실기기 검증". `status: implemented` 전환과 `archive/`
-> 이동은 develop 머지 후로 미룬다.
+> ✅ **develop 머지 완료 · 실기기 미검증** (2026-08-15, PR #241 `80895eb1`). 본문은 as-built 다.
+> **실기기 9항목이 남아 있다** — 아래 "실기기 검증", [OQ-P-146](../../synthesis/open-questions.md).
 
 ## 목표
 
 A-002 화면과 카카오 SDK는 이미 있고 `:data`의 인증 API 표면도 있으나, **둘을 잇는 것이 아무것도
 없다.** 카카오 SDK 토큰은 `LoginState`에만 담기고 서버 호출·토큰 저장·신규/기존 분기가 전부 0건이다
-([a002-login-onboarding](archive/2026-08-11-a002-login-onboarding.md) "범위 → 제외").
+([a002-login-onboarding](2026-08-11-a002-login-onboarding.md) "범위 → 제외").
 이 라운드가 Repository·UseCase를 신설해 앱 최초의 실서버 호출을 붙인다.
 
 ## 범위
@@ -45,7 +43,7 @@ A-002 화면과 카카오 SDK는 이미 있고 `:data`의 인증 API 표면도 �
   - `POST /auth/signup` 호출과 약관 목록 조회(`GET /policies`) — 다음 라운드. 약관 화면은
     `registrationToken`을 **받아 들고만 있고 쓰지 않는다.**
   - 스플래시 자동 로그인(`reissue`)·로그아웃 — 세션 전 주기는 별도 라운드.
-  - 애플 로그인 — Android 미사용 결정(2026-08-11) → [api/auth.md](../api/auth.md).
+  - 애플 로그인 — Android 미사용 결정(2026-08-11) → [api/auth.md](../../api/auth.md).
   - 에러 UX(토스트·재시도) — 디자인 미확정, 로그 + TODO만.
 
 ## API / 인터페이스
@@ -64,11 +62,11 @@ sealed interface KakaoLoginResult {
 
 - `Success(token: String)`(카카오 access token)에서 바뀐다. 서버가 요구하는 것은 ID 토큰이다.
 - **`nonce`를 `Success`에 함께 싣는 이유** — 서버가 ID 토큰의 `nonce` 클레임과 요청 본문 `nonce`를
-  대조해 재생 공격을 검증한다([api/auth.md](../api/auth.md)). 두 값이 반드시 같아야 하므로 생성
+  대조해 재생 공격을 검증한다([api/auth.md](../../api/auth.md)). 두 값이 반드시 같아야 하므로 생성
   지점과 SDK 호출 지점을 붙여 두고 결과에 실어 보낸다. 화면이 따로 만들어 넘기면 두 자리가
   조용히 갈릴 수 있다.
 - `KakaoLoginVO`(서버 응답)와 이름이 닮았으므로 **양쪽 KDoc에 상호 참조**를 넣는다 —
-  [data-api-service-layer](archive/2026-08-03-data-api-service-layer.md)가 예고했으나 누락된 항목.
+  [data-api-service-layer](2026-08-03-data-api-service-layer.md)가 예고했으나 누락된 항목.
 
 ```kotlin
 // domain/util/NonceGenerator.kt  (신설, 인터페이스)
@@ -118,11 +116,12 @@ IO 실패를 전파한다). `runSuspendCatching`으로 감싸 실패를 `Result`
 다음 화면의 첫 API 호출이 토큰 없이 나간다.
 
 **DI** — `RepositoryModule`에 `@Binds` 1줄, `NonceGenerator` 바인딩 1줄. 새 모듈 파일을 만들지
-않는다([data-layer](../architecture/data-layer.md) "DI 모듈").
+않는다([data-layer](../../architecture/data-layer.md) "DI 모듈"). `NonceGenerator`도 `RepositoryModule`에
+들어간다(`@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule`은 못 받는다).
 
 **DTO 정정** — `KakaoLoginResponse`의 `@SerialName("newUser")`를 `@SerialName("isNewUser")`로 고친다.
 현재 값이면 응답 키를 찾지 못해 `MissingFieldException`이 나고 **로그인이 통째로 실패한다**
-→ [api/auth.md](../api/auth.md) "판별자 키는 `isNewUser`다", [open-questions](../synthesis/open-questions.md).
+→ [api/auth.md](../../api/auth.md) "판별자 키는 `isNewUser`다", [open-questions](../../synthesis/open-questions.md).
 
 ### 화면 계층
 
@@ -198,6 +197,12 @@ Route가 `catch (CancellationException)`로 취소 인텐트를 보낸 뒤 **재
 **앱이 실제로 분기에 쓰는 코드만 둔다** — 서버 enum 14종을 미리 옮겨 적으면 안 쓰는 상수가
 계약 변경 때 방치돼 거짓말이 된다.
 
+> 📌 **as-built(머지 직전 확장)** — 같은 PR의 마지막 커밋이 `ParfaitGroup` 8종(서버
+> `ParfaitGroupApiErrorCode` 대응)과 `Common` 1종(`INVALID_REQUEST`)을 더했다. 그룹 Repository
+> 경계를 먼저 심는 커밋([data-layer](../../architecture/data-layer.md) "Repository 경계")이
+> 함께 넣은 것이고 **이 스펙 범위 밖**이다. `Auth` 3종만 실제 분기에 쓰이고 나머지 9종은
+> 아직 소비처가 없다 → [open-questions](../../synthesis/open-questions.md).
+
 | 케이스 | 판정 타입 | 로그 |
 |---|---|---|
 | 사용자 취소 | `KakaoLoginResult.Cancel` | `d` (에러 아님) |
@@ -209,7 +214,7 @@ Route가 `catch (CancellationException)`로 취소 인텐트를 보낸 뒤 **재
 | 네트워크 단절 | `AppError.Network` | `e` + TODO (재시도 안내 자리) |
 | 매퍼 `requireNotNull` 실패 등 | `AppError.Unexpected` | `e` + TODO |
 
-에러 코드 근거는 [api/auth.md](../api/auth.md) "POST /api/v1/auth/kakao".
+에러 코드 근거는 [api/auth.md](../../api/auth.md) "POST /api/v1/auth/kakao".
 `when`으로 전부 열거해 둔다 — UX가 정해지면 로그 자리를 문구로 바꾸면 되고 분기를 다시 발굴할
 필요가 없다.
 
@@ -222,16 +227,16 @@ domain/
   util/NonceGenerator.kt               신설
   repository/auth/AuthRepository.kt    신설
   usecase/auth/LoginWithKakaoUseCase.kt 신설
+  model/error/ServerErrorCode.kt       신설 — 서버 에러 코드 문자열(도메인별 중첩 object)
 data/
   util/SecureRandomNonceGenerator.kt   신설
   repository/auth/AuthRepositoryImpl.kt 신설
   service/model/response/auth/KakaoLoginResponse.kt  변경 — @SerialName 정정
-  di/RepositoryModule.kt               @Binds 추가
-  di/SingletonInjectModule.kt          NonceGenerator 바인딩 추가
+  di/RepositoryModule.kt               @Binds 2줄(AuthRepository·NonceGenerator)
 feature/login/impl/
   util/KakaoLoginHelper.kt             변경 — nonce 전달·idToken 취득
-  viewmodel/LoginViewModel.kt          변경 — 분기·로딩·에러
-  route/LoginRoute.kt                  변경 — 두 목적지·CollectAppError
+  viewmodel/LoginViewModel.kt          변경 — 분기·로딩·실패 8케이스 로그
+  route/LoginRoute.kt                  변경 — 두 목적지·SDK 단계 취소 처리
   build.gradle.kts                     groups.list.api 의존 추가
 feature/intro/
   api/NavKeyTermAgree.kt               변경 — data class(registrationToken)
@@ -254,12 +259,12 @@ feature/intro/
 이 라운드가 앱 최초의 실서버 호출이다. 오래 이월된 미결이 여기서 닫힌다:
 
 - **`isNewUser` 실제 응답 키 확인** — 지금 근거는 서버 코드·컨트롤러 테스트·팀 명세 3축뿐이고
-  OpenAPI 스키마만 반대다. 실물 응답으로 확정한다 → [api/auth.md](../api/auth.md).
+  OpenAPI 스키마만 반대다. 실물 응답으로 확정한다 → [api/auth.md](../../api/auth.md).
 - **토큰 저장 왕복** — 저장 → 앱 종료 → 재시작 → 읽기, DataStore 파일에 평문 없음 확인
-  → [ADR-0019](../adr/0019-encrypted-token-storage.md).
+  → [ADR-0019](../../adr/0019-encrypted-token-storage.md).
 - **`TokenStoreTokenProvider`의 `runBlocking` 실지연 관측** — 지금까지 이 경로가 런타임에 돈 적이 없다.
 - **`:data` 표면의 미검증 결함** — 컴파일·lint·Hilt 어디에도 안 걸리는 종류의 오류(`@SerialName`
-  키 오타 등)가 여기서 처음 드러난다 → [open-questions](../synthesis/open-questions.md).
+  키 오타 등)가 여기서 처음 드러난다 → [open-questions](../../synthesis/open-questions.md).
 - **카카오 로그인 창이 떠 있는 동안 화면 회전** — 로딩이 풀리는가(위 취소 처리 확인).
   유닛 테스트로 못 덮는다(컴포지션 파괴가 필요해 계측 테스트 영역).
 
@@ -270,7 +275,7 @@ feature/intro/
 
 - ⚠️ **개발 서버 평문 HTTP** — `app/src/main/AndroidManifest.xml`에 `usesCleartextTraffic="true"`를
   넣어 뚫었다. **main 매니페스트라 릴리즈 빌드까지 따라간다.** 서버가 HTTPS로 올라가면 지우고,
-  그 전에 릴리즈가 나가야 하면 debug 한정으로 좁힌다 → [open-questions](../synthesis/open-questions.md).
+  그 전에 릴리즈가 나가야 하면 debug 한정으로 좁힌다 → [open-questions](../../synthesis/open-questions.md).
 - **콘솔 OpenID Connect 활성화가 선행 조건**이다. 꺼져 있으면 `idToken`이 null이라 로그인이 성립하지
   않는다. 활성 상태는 확인됐다(2026-08-13).
 - **약관 화면이 토큰을 받아 쓰지 않는 과도기**가 이 라운드의 산출물이다. signup 라운드까지
@@ -278,4 +283,4 @@ feature/intro/
   누르면 세션 없이 그룹 목록에 도달하고 첫 인증 호출이 401이 난다** — 의도된 과도기이지 회귀가
   아니다.
 - `TERM_CONTENT_LIST` 하드코딩과 `GET /policies` 결선은 이 스펙 범위 밖으로 남는다
-  → [open-questions](../synthesis/open-questions.md).
+  → [open-questions](../../synthesis/open-questions.md).

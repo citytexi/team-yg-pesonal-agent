@@ -343,8 +343,22 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 **2026-08-06 PR #197로 develop 머지 완료**다. 이 표면이 딛고 선 공용 인프라(`ApiCaller` 4진입점·
 `ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로 먼저 들어왔고, 아래
 Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
-**⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다** — 그룹 목록·생성·참여·닉네임
-변경·탈퇴·신고 화면 결선은 이후 라운드다.
+**2026-08-15 — Repository 경계가 먼저 들어왔다**(PR #241 `80895eb1`). `ParfaitGroupRepository`/
+`ParfaitGroupRepositoryImpl`이 DataSource 8개 중 **5개**를 도메인에 올린다 —
+`getMyGroups`·`previewJoin`·`joinGroup`·`createGroup`·`changeMyNickname`. 그룹 상세·탈퇴·신고는
+**화면이 요구할 때까지 인터페이스에 올리지 않는다.** 화면 브랜치 셋(#233·#239·#240)이 각자 같은
+4파일을 만들고 있어 충돌을 먼저 막은 것이고, `ServerErrorCode.ParfaitGroup` 8종도 같은 커밋이다.
+
+**⚠️ UseCase·화면은 여전히 0건이다** — Repository까지만 있고 그 위를 부르는 코드가 없다
+→ [open-questions](../synthesis/open-questions.md).
+
+| Repository 함수 | 반환 | 대응 엔드포인트 |
+|---|---|---|
+| `getMyGroups()` | `Result<List<MyParfaitGroupVO>>` | GET `/api/parfait-groups` |
+| `previewJoin(inviteCode)` | `Result<GroupName>` | GET `/api/parfait-groups/join-preview` |
+| `joinGroup(inviteCode)` | `Result<JoinedGroupVO>` | POST `/api/parfait-groups/join` |
+| `createGroup(groupName, groupNickname, memberLimit)` | `Result<CreatedGroupVO>` | POST `/api/parfait-groups` |
+| `changeMyNickname(groupId, groupNickname)` | `Result<GroupNicknameVO>` | PATCH `/api/parfait-groups/{groupId}/nickname` |
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|

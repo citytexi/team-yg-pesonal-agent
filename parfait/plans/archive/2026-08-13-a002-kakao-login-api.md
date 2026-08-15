@@ -1,20 +1,27 @@
 ---
 id: a002-kakao-login-api
 title: A-002 카카오 로그인 API 결선 구현 계획
-status: draft
+status: done
 type: work-order
 created: 2026-08-13
-updated: 2026-08-13
+updated: 2026-08-15
 platforms: android
 owner: Android
 related_adr: ADR-0005, ADR-0009, ADR-0017, ADR-0019, ADR-0020
 related_spec: a002-kakao-login-api, mvi-error-infrastructure
-related_code: KakaoLoginHelper, KakaoLoginResult, NonceGenerator, SecureRandomNonceGenerator, AuthRepository, AuthRepositoryImpl, LoginWithKakaoUseCase, LoginViewModel, LoginRoute, LoginScreen, KakaoSignInButton, KakaoLoginResponse, NavKeyTermAgree, NavKeyGroupList, TermAgreeRoute, RepositoryModule, SingletonInjectModule
-archived_reason:
+related_code: KakaoLoginHelper, KakaoLoginResult, NonceGenerator, SecureRandomNonceGenerator, AuthRepository, AuthRepositoryImpl, LoginWithKakaoUseCase, LoginViewModel, LoginRoute, LoginScreen, KakaoSignInButton, KakaoLoginResponse, NavKeyTermAgree, NavKeyGroupList, TermAgreeRoute, RepositoryModule, ServerErrorCode, runSuspendCatching
+archived_reason: PR #241 develop 머지 완료(2026-08-15, `80895eb1`). Step 6 실기기 검증만 이월 → OQ-P-146
 tags: [plan, parfait, login, a002, auth]
 ---
 
 # A-002 카카오 로그인 API 결선 Implementation Plan
+
+> ✅ **완료 · develop 머지**(2026-08-15, PR #241 `80895eb1`). SDD 8 Task(5·6 통합 디스패치),
+> fix 라운드 0. **Step 6(실기기 검증)만 미수행 상태로 머지됐다** — 아래 체크박스가 유일하게
+> 비어 있는 자리이고 이월분은 [OQ-P-146](../../synthesis/open-questions.md)이 추적한다.
+> 계획 이후 추가된 것: `ServerErrorCode`(서버 코드 문자열을 도메인으로) · `KEY_KAKAO_LOGIN`을
+> companion 으로 · `runSuspendCatching` 도입. `NonceGenerator` 바인딩 위치는 계획의
+> `SingletonInjectModule`이 아니라 `RepositoryModule`이다(`@Binds`는 `interface` 모듈에만 된다).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development(권장) 또는 superpowers:executing-plans로 task 단위 구현. 단계는 체크박스(`- [ ]`)로 추적.
 
@@ -24,7 +31,7 @@ tags: [plan, parfait, login, a002, auth]
 
 **Tech Stack:** Kotlin, Kakao SDK v2-user 2.23.2(OpenID Connect), Retrofit + kotlinx-serialization, Hilt, Navigation3, JUnit4 + kotlin.test + Turbine + MockK
 
-**Spec:** [`parfait/specs/2026-08-13-a002-kakao-login-api.md`](../specs/2026-08-13-a002-kakao-login-api.md) · 서버 계약 [api/auth.md](../api/auth.md)
+**Spec:** [`parfait/specs/2026-08-13-a002-kakao-login-api.md`](../../specs/archive/2026-08-13-a002-kakao-login-api.md) · 서버 계약 [api/auth.md](../../api/auth.md)
 
 **작업 대상 저장소:** `TJYG-Android`(별도 repo). 경로는 그 repo 루트 기준이다.
 
@@ -78,7 +85,7 @@ tags: [plan, parfait, login, a002, auth]
 **Interfaces:**
 - Produces: `fun interface NonceGenerator { fun generate(): String }`, `class SecureRandomNonceGenerator @Inject constructor() : NonceGenerator`
 
-- [ ] **Step 1: 실패 테스트 작성**
+- [x] **Step 1: 실패 테스트 작성**
 
 `data/src/test/java/com/teamyg/parfait/data/util/SecureRandomNonceGeneratorTest.kt`
 
@@ -126,12 +133,12 @@ class SecureRandomNonceGeneratorTest {
 }
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*SecureRandomNonceGeneratorTest*"`
 Expected: FAIL — `Unresolved reference: SecureRandomNonceGenerator`
 
-- [ ] **Step 3: 인터페이스와 구현 작성**
+- [x] **Step 3: 인터페이스와 구현 작성**
 
 `domain/src/main/java/com/teamyg/parfait/domain/util/NonceGenerator.kt`
 
@@ -174,7 +181,7 @@ class SecureRandomNonceGenerator @Inject constructor() : NonceGenerator {
 }
 ```
 
-- [ ] **Step 4: DI 바인딩 추가**
+- [x] **Step 4: DI 바인딩 추가**
 
 `@Binds`는 `interface`/`abstract class` 모듈에만 쓸 수 있다. `SingletonInjectModule`은 `object`(=`@Provides` 전용)이므로 **이미 `interface`인 `RepositoryModule`에 넣는다** — 새 모듈 파일을 만들지 않는다는 규약을 지키면서 `@Binds`가 가능한 자리다.
 
@@ -193,12 +200,12 @@ import com.teamyg.parfait.data.util.SecureRandomNonceGenerator
 import com.teamyg.parfait.domain.util.NonceGenerator
 ```
 
-- [ ] **Step 5: 통과 확인**
+- [x] **Step 5: 통과 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*SecureRandomNonceGeneratorTest*"`
 Expected: PASS (3 tests)
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add domain/src/main/java/com/teamyg/parfait/domain/util/NonceGenerator.kt \
@@ -223,7 +230,7 @@ git commit -m "feat(data): 로그인 nonce 생성기 추가"
 > MockK로 대체해 JSON을 지나지 않으므로 `@SerialName` 오류를 절대 못 잡는다. 실제 문자열을
 > 디코딩하는 이 테스트만이 잡는다.
 
-- [ ] **Step 1: 실패 테스트 작성**
+- [x] **Step 1: 실패 테스트 작성**
 
 `data/src/test/java/com/teamyg/parfait/data/service/model/response/auth/KakaoLoginResponseSerializationTest.kt`
 
@@ -302,12 +309,12 @@ class KakaoLoginResponseSerializationTest {
 }
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*KakaoLoginResponseSerializationTest*"`
 Expected: FAIL — `MissingFieldException: Field 'newUser' is required`. **이것이 실서버에서 로그인이 통째로 실패하는 바로 그 예외다.**
 
-- [ ] **Step 3: 키 정정**
+- [x] **Step 3: 키 정정**
 
 `KakaoLoginResponse.kt`의 첫 `@SerialName`만 바꾼다.
 
@@ -327,12 +334,12 @@ data class KakaoLoginResponse(
 )
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*KakaoLoginResponseSerializationTest*"`
 Expected: PASS (2 tests)
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/service/model/response/auth/KakaoLoginResponse.kt \
@@ -354,7 +361,7 @@ git commit -m "fix(data): 카카오 로그인 응답 판별자 키를 isNewUser 
 - Consumes: 기존 `AuthRemoteDataSource#loginWithKakao(idToken, nonce): Result<KakaoLoginVO>`, 기존 `TokenStore#save(accessToken, refreshToken)`, 인프라 계획의 `Result<T>.mapErrorToAppError()`
 - Produces: `AuthRepository#loginWithKakao(idToken: String, nonce: String): Result<KakaoLoginVO>`, `AuthRepository#saveSession(session: AuthSessionVO)`
 
-- [ ] **Step 1: 실패 테스트 작성**
+- [x] **Step 1: 실패 테스트 작성**
 
 `data/src/test/java/com/teamyg/parfait/data/repository/auth/AuthRepositoryImplTest.kt`
 
@@ -455,12 +462,12 @@ class AuthRepositoryImplTest {
 }
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*AuthRepositoryImplTest*"`
 Expected: FAIL — `Unresolved reference: AuthRepositoryImpl`
 
-- [ ] **Step 3: 인터페이스 작성**
+- [x] **Step 3: 인터페이스 작성**
 
 `domain/src/main/java/com/teamyg/parfait/domain/repository/auth/AuthRepository.kt`
 
@@ -485,7 +492,7 @@ interface AuthRepository {
 }
 ```
 
-- [ ] **Step 4: 구현 작성**
+- [x] **Step 4: 구현 작성**
 
 `data/src/main/java/com/teamyg/parfait/data/repository/auth/AuthRepositoryImpl.kt`
 
@@ -526,7 +533,7 @@ class AuthRepositoryImpl @Inject constructor(
 }
 ```
 
-- [ ] **Step 5: DI 바인딩 추가**
+- [x] **Step 5: DI 바인딩 추가**
 
 `RepositoryModule.kt`에 추가:
 
@@ -543,12 +550,12 @@ import com.teamyg.parfait.data.repository.auth.AuthRepositoryImpl
 import com.teamyg.parfait.domain.repository.auth.AuthRepository
 ```
 
-- [ ] **Step 6: 통과 확인**
+- [x] **Step 6: 통과 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*AuthRepositoryImplTest*"`
 Expected: PASS (4 tests)
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add domain/src/main/java/com/teamyg/parfait/domain/repository/auth/AuthRepository.kt \
@@ -570,7 +577,7 @@ git commit -m "feat(data): AuthRepository 추가 — 카카오 로그인 호출�
 - Consumes: Task 3의 `AuthRepository`
 - Produces: `class LoginWithKakaoUseCase @Inject constructor(authRepository: AuthRepository)` with `suspend operator fun invoke(idToken: String, nonce: String): Result<KakaoLoginVO>`
 
-- [ ] **Step 1: 실패 테스트 작성**
+- [x] **Step 1: 실패 테스트 작성**
 
 `domain/src/test/java/com/teamyg/parfait/domain/usecase/auth/LoginWithKakaoUseCaseTest.kt`
 
@@ -645,12 +652,12 @@ class LoginWithKakaoUseCaseTest {
 }
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `./gradlew :domain:test --tests "*LoginWithKakaoUseCaseTest*"`
 Expected: FAIL — `Unresolved reference: LoginWithKakaoUseCase`
 
-- [ ] **Step 3: UseCase 작성**
+- [x] **Step 3: UseCase 작성**
 
 `domain/src/main/java/com/teamyg/parfait/domain/usecase/auth/LoginWithKakaoUseCase.kt`
 
@@ -683,12 +690,12 @@ class LoginWithKakaoUseCase @Inject constructor(
 }
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `./gradlew :domain:test --tests "*LoginWithKakaoUseCaseTest*"`
 Expected: PASS (3 tests)
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add domain/src/main/java/com/teamyg/parfait/domain/usecase/auth/LoginWithKakaoUseCase.kt \
@@ -712,7 +719,7 @@ git commit -m "feat(domain): LoginWithKakaoUseCase 추가 — 기존 회원 세�
 > 이 Task는 자동 테스트가 없다. `Activity`와 카카오 SDK 정적 클라이언트에 묶여 있어 JVM
 > 유닛 테스트로 덮을 수 없다. 검증은 컴파일 + Task 8의 실기기 확인이다.
 
-- [ ] **Step 1: KakaoLoginResult 교체**
+- [x] **Step 1: KakaoLoginResult 교체**
 
 `domain/src/main/java/com/teamyg/parfait/domain/model/KakaoLoginResult.kt`
 
@@ -741,7 +748,7 @@ sealed interface KakaoLoginResult {
 }
 ```
 
-- [ ] **Step 2: KakaoLoginVO 에 상호 참조 KDoc 추가**
+- [x] **Step 2: KakaoLoginVO 에 상호 참조 KDoc 추가**
 
 `domain/src/main/java/com/teamyg/parfait/domain/model/auth/KakaoLoginVO.kt`
 
@@ -761,7 +768,7 @@ sealed interface KakaoLoginVO {
 }
 ```
 
-- [ ] **Step 3: KakaoLoginHelper 교체**
+- [x] **Step 3: KakaoLoginHelper 교체**
 
 `feature/login/impl/src/main/java/com/teamyg/parfait/feature/login/impl/util/KakaoLoginHelper.kt`
 
@@ -861,12 +868,12 @@ constructor(
 }
 ```
 
-- [ ] **Step 4: 컴파일 확인**
+- [x] **Step 4: 컴파일 확인**
 
 Run: `./gradlew :feature:login:impl:compileDebugKotlin`
 Expected: FAIL — `LoginViewModel`/`LoginRoute`가 아직 `KakaoLoginResult.Success(token)`을 쓰고 있어 깨진다. **이 실패는 예상된 것이며 Task 6·8에서 닫힌다.** 오류가 그 두 파일에서만 나는지 확인한다.
 
-- [ ] **Step 5: 커밋하지 않는다**
+- [x] **Step 5: 커밋하지 않는다**
 
 Task 5는 단독으로 컴파일되지 않는다. Task 6과 함께 커밋한다.
 
@@ -883,7 +890,7 @@ Task 5는 단독으로 컴파일되지 않는다. Task 6과 함께 커밋한다.
 - Consumes: Task 4의 `LoginWithKakaoUseCase`, Task 5의 `KakaoLoginResult`, 인프라 계획의 `BaseViewModel.launch`
 - Produces: `LoginState(isLoading)`, `LoginIntent.LoginWithKakaoSuccess(idToken, nonce)`, `LoginSideEffect.NavigateToTermAgree(registrationToken)`·`NavigateToGroupList`·`RequestLoginWithKakao`
 
-- [ ] **Step 1: 모듈에 테스트 플러그인 추가**
+- [x] **Step 1: 모듈에 테스트 플러그인 추가**
 
 `feature/login/impl/build.gradle.kts`
 
@@ -905,7 +912,7 @@ dependencies {
 }
 ```
 
-- [ ] **Step 2: 실패 테스트 작성**
+- [x] **Step 2: 실패 테스트 작성**
 
 `feature/login/impl/src/test/java/com/teamyg/parfait/feature/login/impl/viewmodel/LoginViewModelTest.kt`
 
@@ -1092,12 +1099,12 @@ class LoginViewModelTest {
 }
 ```
 
-- [ ] **Step 3: 실패 확인**
+- [x] **Step 3: 실패 확인**
 
 Run: `./gradlew :feature:login:impl:testDebugUnitTest --tests "*LoginViewModelTest*"`
 Expected: FAIL — `LoginViewModel` 생성자 인자 없음 / `NavigateToGroupList` 미정의
 
-- [ ] **Step 4: LoginViewModel 교체**
+- [x] **Step 4: LoginViewModel 교체**
 
 `feature/login/impl/src/main/java/com/teamyg/parfait/feature/login/impl/viewmodel/LoginViewModel.kt`
 
@@ -1256,12 +1263,12 @@ constructor(
 }
 ```
 
-- [ ] **Step 5: 통과 확인**
+- [x] **Step 5: 통과 확인**
 
 Run: `./gradlew :feature:login:impl:testDebugUnitTest --tests "*LoginViewModelTest*"`
 Expected: PASS (8 tests). `LoginRoute`는 아직 깨져 있으므로 `compileDebugKotlin`은 실패할 수 있다 — Task 8에서 닫는다.
 
-- [ ] **Step 6: 커밋(Task 5 포함)**
+- [x] **Step 6: 커밋(Task 5 포함)**
 
 ```bash
 git add domain/src/main/java/com/teamyg/parfait/domain/model/KakaoLoginResult.kt \
@@ -1285,7 +1292,7 @@ git commit -m "feat(login): 카카오 SDK idToken·nonce 취득과 신규/기존
 **Interfaces:**
 - Produces: `NavKeyTermAgree(registrationToken: String)`, `TermAgreeRoute(navigator, registrationToken, modifier, viewModel)`
 
-- [ ] **Step 1: NavKey 를 data class 로**
+- [x] **Step 1: NavKey 를 data class 로**
 
 `feature/intro/api/src/main/java/com/teamyg/parfait/feature/intro/api/NavKeyTermAgree.kt`
 
@@ -1303,7 +1310,7 @@ import kotlinx.serialization.Serializable
 data class NavKeyTermAgree(val registrationToken: String) : NavKey
 ```
 
-- [ ] **Step 2: EntryBuilder 에서 값 꺼내 전달**
+- [x] **Step 2: EntryBuilder 에서 값 꺼내 전달**
 
 `feature/intro/impl/src/main/java/com/teamyg/parfait/feature/intro/impl/EntryBuilder.kt`의 `featureTermAgreeEntryBuilder`만 바꾼다.
 
@@ -1324,7 +1331,7 @@ fun EntryProviderScope<NavKey>.featureTermAgreeEntryBuilder(navigator: Navigator
 }
 ```
 
-- [ ] **Step 3: TermAgreeRoute 가 값을 받는다**
+- [x] **Step 3: TermAgreeRoute 가 값을 받는다**
 
 `TermAgreeRoute.kt`의 시그니처만 바꾼다. **이번 라운드에서는 쓰지 않는다.**
 
@@ -1342,12 +1349,12 @@ fun TermAgreeRoute(
 
 본문(나머지)은 그대로 둔다.
 
-- [ ] **Step 4: 컴파일 확인**
+- [x] **Step 4: 컴파일 확인**
 
 Run: `./gradlew :feature:intro:impl:compileDebugKotlin`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add feature/intro/api/src/main/java/com/teamyg/parfait/feature/intro/api/NavKeyTermAgree.kt \
@@ -1368,7 +1375,7 @@ git commit -m "feat(intro): 약관 화면 NavKey 에 registrationToken 전달"
 - Consumes: Task 6의 `LoginSideEffect` 3종·`LoginState.isLoading`, Task 7의 `NavKeyTermAgree(registrationToken)`, 인프라 계획의 `CollectAppError`
 - Produces: 없음(최종 배선)
 
-- [ ] **Step 1: LoginScreen 이 로딩을 받는다**
+- [x] **Step 1: LoginScreen 이 로딩을 받는다**
 
 `LoginScreen.kt` — 시그니처에 `isLoading`을 더하고 버튼에 넘긴다.
 
@@ -1405,7 +1412,7 @@ internal fun LoginScreen(
     )
 ```
 
-- [ ] **Step 2: LoginRoute 배선**
+- [x] **Step 2: LoginRoute 배선**
 
 `LoginRoute.kt` — 상태 수집·에러 수집·두 목적지·SDK 결과 전달을 고친다.
 
@@ -1479,17 +1486,17 @@ import com.teamyg.parfait.feature.groups.list.api.NavKeyGroupList
     )
 ```
 
-- [ ] **Step 3: 컴파일·테스트**
+- [x] **Step 3: 컴파일·테스트**
 
 Run: `./gradlew ktlintCheck :feature:login:impl:testDebugUnitTest :app:assembleDebug`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 4: 전체 검증**
+- [x] **Step 4: 전체 검증**
 
 Run: `./gradlew ktlintCheck test :app:assembleDebug`
 Expected: BUILD SUCCESSFUL — 이 계획의 신규 테스트 20건 + 인프라 계획 15건 + 기존 테스트 전부 통과
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add feature/login/impl/src/main/java/com/teamyg/parfait/feature/login/impl/route/LoginRoute.kt \
@@ -1514,10 +1521,10 @@ git commit -m "feat(login): 로그인 결과에 따른 목적지 분기와 로�
 
 ## 완료 조건
 
-- [ ] `./gradlew ktlintCheck test :app:assembleDebug` 통과
-- [ ] 신규 테스트 20건 통과(nonce 3 · 직렬화 2 · Repository 4 · UseCase 3 · ViewModel 8)
+- [x] `./gradlew ktlintCheck test :app:assembleDebug` 통과
+- [x] 신규 테스트 20건 통과(nonce 3 · 직렬화 2 · Repository 4 · UseCase 3 · ViewModel 8)
 - [ ] 실기기 8항목 결과 보고(막힌 항목은 사유와 함께)
-- [ ] push·PR 없음(로컬 커밋 6개)
+- [x] push·PR 없음(로컬 커밋 6개)
 
 ## 함정
 

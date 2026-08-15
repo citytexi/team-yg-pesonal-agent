@@ -1,20 +1,27 @@
 ---
 id: mvi-error-infrastructure
 title: MVI 공통 에러·이펙트 인프라 구현 계획
-status: draft
+status: done
 type: work-order
 created: 2026-08-13
-updated: 2026-08-13
+updated: 2026-08-15
 platforms: android
 owner: Android
 related_adr: ADR-0005, ADR-0020
 related_spec: mvi-error-infrastructure
-related_code: BaseViewModel, MviContract, CollectAppError, AppError, ApiException, viewModelLogger, screenLogger, MainDispatcherRule
-archived_reason:
+related_code: BaseViewModel, MviContract, AppError, AppErrorMapper, ApiException, viewModelLogger, screenLogger, MainDispatcherRule
+archived_reason: PR #241 develop 머지 완료(2026-08-15, `80895eb1`)
 tags: [plan, parfait, mvi, error]
 ---
 
 # MVI 공통 에러·이펙트 인프라 Implementation Plan
+
+> ✅ **완료 · develop 머지**(2026-08-15, PR #241 `80895eb1`). SDD 4 Task, fix 라운드 0.
+> **계획 대비 가장 큰 이탈은 Task 4의 산출물이 통째로 철회된 것이다** — 공용 `error` 채널·
+> `postError`·`CollectAppError`가 최종 리뷰 뒤 사용자 판정으로 걷혔다
+> ([ADR-0020 번복 절](../../adr/0020-mvi-error-effect-infrastructure.md#번복-공용-error-채널-철회)).
+> 아래 Task 4 본문은 **당시 계획 그대로** 두고 고치지 않는다 — 무엇을 지었다가 왜 되돌렸는지가
+> 기록이다. 실제 develop 코드는 [스펙](../../specs/archive/2026-08-13-mvi-error-infrastructure.md)이 정본.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development(권장) 또는 superpowers:executing-plans로 task 단위 구현. 단계는 체크박스(`- [ ]`)로 추적.
 
@@ -24,7 +31,7 @@ tags: [plan, parfait, mvi, error]
 
 **Tech Stack:** Kotlin, kotlinx-coroutines(`Channel`·`StateFlow`), Hilt, JUnit4 + kotlin.test + Turbine + MockK, `parfait.test.unit` 컨벤션 플러그인
 
-**Spec:** [`parfait/specs/2026-08-13-mvi-error-infrastructure.md`](../specs/2026-08-13-mvi-error-infrastructure.md) · 결정 근거 [ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md)
+**Spec:** [`parfait/specs/2026-08-13-mvi-error-infrastructure.md`](../../specs/archive/2026-08-13-mvi-error-infrastructure.md) · 결정 근거 [ADR-0020](../../adr/0020-mvi-error-effect-infrastructure.md)
 
 **작업 대상 저장소:** `TJYG-Android`(별도 repo). 경로는 그 repo 루트 기준이다.
 
@@ -64,7 +71,7 @@ tags: [plan, parfait, mvi, error]
 - Consumes: `com.teamyg.parfait.data.model.exception.ApiException`(기존 sealed 5종 — `Business(code, serverMessage, statusCode, errorDetail)`·`EmptyBody(code, serverMessage)`·`Http(statusCode, cause)`·`Network(cause)`·`Unknown(cause)`)
 - Produces: `AppError.Network(cause)`·`AppError.Server(code, statusCode, serverMessage)`·`AppError.Unexpected(cause)`, `internal fun Throwable.toAppError(): AppError`, `internal fun <T> Result<T>.mapErrorToAppError(): Result<T>`
 
-- [ ] **Step 1: 실패 테스트 작성**
+- [x] **Step 1: 실패 테스트 작성**
 
 `data/src/test/java/com/teamyg/parfait/data/model/error/AppErrorMapperTest.kt`
 
@@ -183,12 +190,12 @@ class AppErrorMapperTest {
 }
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*AppErrorMapperTest*"`
 Expected: FAIL — `Unresolved reference: AppError` / `Unresolved reference: toAppError`
 
-- [ ] **Step 3: AppError 작성**
+- [x] **Step 3: AppError 작성**
 
 `domain/src/main/java/com/teamyg/parfait/domain/model/error/AppError.kt`
 
@@ -230,7 +237,7 @@ sealed class AppError(
 }
 ```
 
-- [ ] **Step 4: 매퍼 작성**
+- [x] **Step 4: 매퍼 작성**
 
 `data/src/main/java/com/teamyg/parfait/data/model/error/AppErrorMapper.kt`
 
@@ -270,12 +277,12 @@ internal fun <T> Result<T>.mapErrorToAppError(): Result<T> = fold(
 )
 ```
 
-- [ ] **Step 5: 통과 확인**
+- [x] **Step 5: 통과 확인**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*AppErrorMapperTest*"`
 Expected: PASS (6 tests)
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add domain/src/main/java/com/teamyg/parfait/domain/model/error/AppError.kt \
@@ -297,7 +304,7 @@ git commit -m "feat(domain): AppError 도메인 에러 타입과 ApiException �
 - Consumes: Task 1의 `AppError`(이 Task에서는 아직 쓰지 않는다), 기존 `UiState`·`UiIntent`·`UiSideEffect`, `viewModelLogger`
 - Produces: `val effect: Flow<E>`(구독자 카운트 포함), `postSideEffect(effect: E)`(시그니처 불변, 내부 `trySend`)
 
-- [ ] **Step 1: 테스트 플러그인 추가**
+- [x] **Step 1: 테스트 플러그인 추가**
 
 `core/ui/build.gradle.kts`의 `plugins` 블록에 한 줄 더한다.
 
@@ -310,7 +317,7 @@ plugins {
 }
 ```
 
-- [ ] **Step 2: 실패 테스트 작성**
+- [x] **Step 2: 실패 테스트 작성**
 
 `core/ui/src/test/java/com/teamyg/parfait/core/ui/BaseViewModelTest.kt`
 
@@ -404,12 +411,12 @@ class BaseViewModelTest {
 }
 ```
 
-- [ ] **Step 3: 실패 확인**
+- [x] **Step 3: 실패 확인**
 
 Run: `./gradlew :core:ui:testDebugUnitTest --tests "*BaseViewModelTest*"`
 Expected: FAIL — `postSideEffect_noCollectorAtEmission_stillDeliveredOnLaterCollection`이 타임아웃/유실로 실패한다(현재 `MutableSharedFlow`는 구독자가 없으면 `emit`이 대기하고 값을 보관하지 않는다)
 
-- [ ] **Step 4: BaseViewModel 이펙트 전달 교체**
+- [x] **Step 4: BaseViewModel 이펙트 전달 교체**
 
 `core/ui/src/main/java/com/teamyg/parfait/core/ui/BaseViewModel.kt` — `_effect`·`effect`·`postSideEffect`만 바꾼다.
 
@@ -467,17 +474,17 @@ abstract class BaseViewModel<S : UiState, I : UiIntent, E : UiSideEffect>(initia
 }
 ```
 
-- [ ] **Step 5: 통과 확인**
+- [x] **Step 5: 통과 확인**
 
 Run: `./gradlew :core:ui:testDebugUnitTest --tests "*BaseViewModelTest*"`
 Expected: PASS (3 tests)
 
-- [ ] **Step 6: 기존 화면 회귀 확인**
+- [x] **Step 6: 기존 화면 회귀 확인**
 
 Run: `./gradlew :app:assembleDebug :feature:groups:setting:impl:testDebugUnitTest`
 Expected: BUILD SUCCESSFUL — `postSideEffect` 시그니처가 그대로라 19개 ViewModel과 21개 수집 지점이 무수정으로 컴파일된다. `GroupSettingViewModelTest`의 `viewModel.effect.test { }` 3건도 통과한다.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add core/ui/build.gradle.kts \
@@ -498,7 +505,7 @@ git commit -m "fix(core-ui): 이펙트 전달을 Channel 로 바꿔 유실·재�
 - Consumes: Task 1의 `com.teamyg.parfait.domain.model.error.AppError`, Task 2의 `BaseViewModel`
 - Produces: `val error: Flow<AppError>`, `protected fun postError(error: AppError)`, `protected fun launch(key: Any? = null, onError: ((AppError) -> Unit)? = null, block: suspend CoroutineScope.() -> Unit): Job?`
 
-- [ ] **Step 1: 실패 테스트 추가**
+- [x] **Step 1: 실패 테스트 추가**
 
 `BaseViewModelTest.kt`의 `TestViewModel`에 헬퍼를 더하고 테스트 6개를 추가한다.
 
@@ -637,12 +644,12 @@ import kotlin.test.assertNull
     }
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `./gradlew :core:ui:testDebugUnitTest --tests "*BaseViewModelTest*"`
 Expected: FAIL — `Unresolved reference: launch` / `Unresolved reference: error`
 
-- [ ] **Step 3: BaseViewModel 확장**
+- [x] **Step 3: BaseViewModel 확장**
 
 `BaseViewModel.kt`에 아래를 더한다(Task 2 내용은 유지).
 
@@ -715,12 +722,12 @@ import kotlinx.coroutines.launch
     }
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `./gradlew :core:ui:testDebugUnitTest --tests "*BaseViewModelTest*"`
 Expected: PASS (9 tests)
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add core/ui/src/main/java/com/teamyg/parfait/core/ui/BaseViewModel.kt \
@@ -739,7 +746,7 @@ git commit -m "feat(core-ui): BaseViewModel 에 launch 중복 가드·공통 에
 - Consumes: Task 3의 `BaseViewModel.error`
 - Produces: `@Composable fun CollectAppError(viewModel: BaseViewModel<*, *, *>, onError: (AppError) -> Unit = …)`
 
-- [ ] **Step 1: 컴포저블 작성**
+- [x] **Step 1: 컴포저블 작성**
 
 `core/ui/src/main/java/com/teamyg/parfait/core/ui/CollectAppError.kt`
 
@@ -772,17 +779,17 @@ private val defaultAppErrorHandler: (AppError) -> Unit = { error ->
 }
 ```
 
-- [ ] **Step 2: 컴파일 확인**
+- [x] **Step 2: 컴파일 확인**
 
 Run: `./gradlew :core:ui:assembleDebug`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 3: 전체 검증**
+- [x] **Step 3: 전체 검증**
 
 Run: `./gradlew ktlintCheck :core:ui:testDebugUnitTest :data:testDebugUnitTest :domain:test :app:assembleDebug`
 Expected: BUILD SUCCESSFUL — 신규 15 테스트 통과, 기존 테스트 회귀 0
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add core/ui/src/main/java/com/teamyg/parfait/core/ui/CollectAppError.kt
@@ -793,10 +800,10 @@ git commit -m "feat(core-ui): 공통 에러 수집 컴포저블 CollectAppError 
 
 ## 완료 조건
 
-- [ ] `./gradlew ktlintCheck` 통과
-- [ ] `:core:ui:testDebugUnitTest` 9건, `:data:testDebugUnitTest` 신규 6건 포함 전체 통과
-- [ ] `:app:assembleDebug` 통과 — **기존 19개 ViewModel 파일 diff 0줄**임을 `git diff --stat`으로 확인
-- [ ] push·PR 없음(로컬 커밋 4개)
+- [x] `./gradlew ktlintCheck` 통과
+- [x] `:core:ui:testDebugUnitTest` 9건, `:data:testDebugUnitTest` 신규 6건 포함 전체 통과
+- [x] `:app:assembleDebug` 통과 — **기존 19개 ViewModel 파일 diff 0줄**임을 `git diff --stat`으로 확인
+- [x] push·PR 없음(로컬 커밋 4개)
 
 ## 함정
 

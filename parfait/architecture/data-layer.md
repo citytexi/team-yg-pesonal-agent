@@ -37,7 +37,7 @@ tags: [architecture, parfait]
 
 | 모듈 | 제공/바인딩 |
 |------|-------------|
-| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
+| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·parfaitGroup) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
 | `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`) |
@@ -94,7 +94,29 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 
 서버 에러 코드 문자열은 `:domain`의 `ServerErrorCode`(도메인별 중첩 object)가 소유한다. 코드
 문자열은 도메인 간 유일하지 않으므로(`MEMBER_NOT_FOUND`가 인증 401 / 그룹·이미지·회원 404)
-`statusCode`와 함께 본다. **앱이 실제로 분기에 쓰는 코드만** 둔다.
+`statusCode`와 함께 본다. **앱이 실제로 분기에 쓰는 코드만** 둔다 — 서버 enum 전체를 미리 옮겨
+적으면 안 쓰는 상수가 계약 변경 때 방치돼 거짓말이 된다.
+
+중첩 object는 서버 enum 구조를 그대로 따른다 — `Auth`(서버 `AuthErrorCode`) · `ParfaitGroup`
+(`ParfaitGroupApiErrorCode`) · `Common`(`CommonErrorCode`). **실제 분기에 쓰이는 것은 `Auth` 3종뿐**
+이고 `ParfaitGroup` 8종·`Common` 1종은 그룹 화면 결선을 앞두고 미리 들어왔다(소비처 0)
+→ [open-questions](../synthesis/open-questions.md).
+
+### 원격 Repository 인벤토리 (2026-08-15)
+
+| Repository | 메서드 | 소비 |
+|---|---|---|
+| `AuthRepository` | `loginWithKakao(idToken, nonce)` · `saveSession(session)` | `LoginWithKakaoUseCase` → A-002 |
+| `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | **없음** |
+
+`ParfaitGroupRepository`는 화면이 요구하기 전에 **경계만 먼저** 들어왔다 — 그룹 화면 브랜치
+셋(#233·#239·#240)이 각자 같은 4파일을 만들고 있어 두 번째가 머지되는 순간 충돌하기 때문이다.
+그래서 인터페이스·구현·DI·테스트만 develop에 두고 UseCase·ViewModel은 각 feature 브랜치가 갖는다.
+DataSource가 가진 나머지 호출(그룹 상세·나가기·신고)은 **화면이 요구할 때까지 인터페이스에
+올리지 않는다.**
+
+두 구현 다 하는 일은 DataSource 위임 + `mapErrorToAppError()`뿐이다. 위임만 하는 층처럼 보여도
+이 변환 때문에 필요하다 — 없으면 `ApiException`이 domain·feature까지 새어 나간다.
 
 ## suspend 를 감싸는 runCatching 은 `runSuspendCatching`
 
@@ -138,11 +160,12 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > `ParfaitImageService`, **20 엔드포인트**), **remote DataSource 7쌍**, `Temp*` 예시 세트 삭제.
 > 이로써 **Android가 쓰기로 한 서버 엔드포인트 전량을 덮는다**(서버 21 − 애플 로그인 1) →
 > [api/README.md](../api/README.md).
-> **2026-08-14 갱신 — 첫 소비처가 생겼다**(브랜치 `feature/mvi-error-infra-a002-login`, develop
-> 미머지). `AuthRepository`/`AuthRepositoryImpl` + `LoginWithKakaoUseCase`가 A-002 카카오 로그인을
-> 결선했다 → [a002-kakao-login-api](../specs/2026-08-13-a002-kakao-login-api.md).
-> 나머지 6 도메인은 여전히 Repository·UseCase 0건이다. **실서버 요청은 아직 0건**(실기기 검증
-> 미수행) → [open-questions](../synthesis/open-questions.md).
+> **2026-08-15 갱신 — 첫 소비처가 develop에 들어왔다**(PR #241 `80895eb1`).
+> `AuthRepository`/`AuthRepositoryImpl` + `LoginWithKakaoUseCase`가 A-002 카카오 로그인을
+> 결선했다 → [a002-kakao-login-api](../specs/archive/2026-08-13-a002-kakao-login-api.md).
+> 같은 PR이 `ParfaitGroupRepository`/`Impl`(5 메서드)도 심었으나 **그쪽은 UseCase·ViewModel이
+> 없어 소비처가 0**이다(아래 "Repository 경계"). 나머지 5 도메인은 여전히 Repository 0건이다.
+> **실서버 요청은 아직 0건**(실기기 검증 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
 매핑 지점도 확정(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.

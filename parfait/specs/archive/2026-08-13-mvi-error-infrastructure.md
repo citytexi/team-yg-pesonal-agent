@@ -1,10 +1,10 @@
 ---
 id: mvi-error-infrastructure
 title: MVI 공통 에러·이펙트 인프라 (core:ui BaseViewModel 확장 · AppError)
-status: in-progress
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-14
+verified: 2026-08-15
 related_code: BaseViewModel, MviContract, AppError, AppErrorMapper, ApiException, ApiCaller, viewModelLogger, runSuspendCatching
 related_adr: ADR-0005, ADR-0009, ADR-0016, ADR-0017, ADR-0020
 related_spec: a002-kakao-login-api, data-api-service-layer, unit-test-infrastructure
@@ -18,17 +18,16 @@ tags: [spec, parfait, mvi, error]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 
-> ✅ **구현 완료 · develop 미머지** (2026-08-14, 브랜치 `feature/mvi-error-infra-a002-login`,
-> 커밋 `0521e0bc..fd6b913d`). 아래 본문은 as-built 로 정정했다 — **설계에서 뒤집힌 결정이 하나
-> 있다**(공용 `error` 채널 철회, [ADR-0020 번복 절](../adr/0020-mvi-error-effect-infrastructure.md#번복-공용-error-채널-철회)).
-> `status: implemented` 전환과 `archive/` 이동은 develop 머지 후로 미룬다.
+> ✅ **develop 머지 완료** (2026-08-15, PR #241 `80895eb1`). 본문은 as-built 다 —
+> **설계에서 뒤집힌 결정이 하나 있다**(공용 `error` 채널 철회,
+> [ADR-0020 번복 절](../../adr/0020-mvi-error-effect-infrastructure.md#번복-공용-error-채널-철회)).
 
 
 ## 목표
 
 `BaseViewModel`이 실패 경로를 다룰 수 없는 상태에서 앱 최초의 실서버 호출([a002-kakao-login-api](2026-08-13-a002-kakao-login-api.md))이
 붙는다. 그 전에 **에러 타입·이펙트 전달·예외 가드·중복 방어·공통 실패 표현**을 베이스에 넣는다.
-결정 근거와 기각 대안은 [ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md).
+결정 근거와 기각 대안은 [ADR-0020](../../adr/0020-mvi-error-effect-infrastructure.md).
 
 ## 범위
 
@@ -37,7 +36,7 @@ tags: [spec, parfait, mvi, error]
   - `BaseViewModel` 이펙트 전달을 `Channel(BUFFERED)`로 교체 + `launch(key, onError, block)` 추가.
   - `core:ui` 단위 테스트 소스셋 신설.
   - 🔁 **설계 시점에 있었던 `error`·`postError`·`CollectAppError`는 구현 중 철회됐다** —
-    [ADR-0020 번복 절](../adr/0020-mvi-error-effect-infrastructure.md#번복-공용-error-채널-철회).
+    [ADR-0020 번복 절](../../adr/0020-mvi-error-effect-infrastructure.md#번복-공용-error-채널-철회).
 - **제외**
   - 기존 19개 ViewModel의 새 API 이관 — **하위호환을 유지하고 각 화면의 API 결선 라운드에 묶는다.**
     `Channel` 전환만은 호출부 수정 없이 전 화면에 즉시 적용된다.
@@ -72,7 +71,7 @@ sealed class AppError(message: String?, cause: Throwable?) : Exception(message, 
   `EmptyBody`·`Http`가 도메인까지 새어 나온다.
 - **`code`가 enum이 아니라 String인 이유** — 서버가 코드를 추가할 때마다 앱이 깨지지 않아야 한다.
   서버 에러 코드 문자열은 도메인 간 유일하지 않아(`MEMBER_NOT_FOUND`가 401·404 양쪽에 존재)
-  `statusCode`를 함께 들고 간다 → [api/conventions.md](../api/conventions.md).
+  `statusCode`를 함께 들고 간다 → [api/conventions.md](../../api/conventions.md).
 
 ### AppError 매핑 (`:data`)
 
@@ -171,7 +170,7 @@ launch(key = …) { … }
 ## 표시·제어 규칙
 
 - 로딩 필드명은 `isLoading`으로 통일한다(인터페이스 강제 없음).
-- 표시 문자열·리소스 ID는 여전히 State에 담지 않는다([ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)).
+- 표시 문자열·리소스 ID는 여전히 State에 담지 않는다([ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md)).
   `AppError`는 도메인 타입이며 문구 매핑은 화면 소관이다.
 
 ## 파일 구성
@@ -201,7 +200,7 @@ core/ui/src/test/                           신설
 
 `toAppError` — `ApiException` 5종 전부 + `CancellationException` 재던짐.
 
-Turbine·MockK는 이미 갖춰져 있다 → [unit-test-infrastructure](archive/2026-08-06-unit-test-infrastructure.md).
+Turbine·MockK는 이미 갖춰져 있다 → [unit-test-infrastructure](2026-08-06-unit-test-infrastructure.md).
 
 ## 주의 / 열린 질문
 
@@ -209,9 +208,9 @@ Turbine·MockK는 이미 갖춰져 있다 → [unit-test-infrastructure](archive
   컴포저블로 내려주는 곳은 없음을 확인했다. 진짜 멀티캐스트가 필요해지면 `effect`를 재활용하지
   말고 해당 ViewModel이 별도 `SharedFlow`를 노출한다.
 - **점진 마이그레이션이 과도기를 만든다.** 새 API를 쓰는 화면과 안 쓰는 화면이 공존한다. 이관은
-  각 화면의 API 결선 라운드에 묶는다 → [open-questions](../synthesis/open-questions.md).
+  각 화면의 API 결선 라운드에 묶는다 → [open-questions](../../synthesis/open-questions.md).
 - **에러 UX 부재**가 이 스펙의 의도된 공백이다. 디자인 확정 전까지 실패는 로그로만 남는다.
   전 화면 공통 토스트로 정해지면 화면마다 `SideEffect` 케이스 + `onError` 추가가 필요하다 —
   그것이 공용 채널 철회의 유일한 비용이다.
 - **세션 만료처럼 진짜 앱 전역인 실패**는 VM 이펙트가 아니라 앱 스코프 버스 소관이다. 아직 없다
-  → [open-questions](../synthesis/open-questions.md).
+  → [open-questions](../../synthesis/open-questions.md).
