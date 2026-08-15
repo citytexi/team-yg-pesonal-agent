@@ -1,0 +1,247 @@
+---
+id: user-info-ssot
+title: S-001 유저 정보 — users/me 로컬 SSoT · 자동로그인 부트스트랩 (User Info SSoT)
+status: draft
+category: behavior-spec
+platforms: android
+verified: 2026-08-15
+related_code: MemberRepository, UserInfoLocalDataSource, MemberRemoteDataSource, MyAccountVO, GlobalNickname, LoginProvider, CryptoManager, SplashViewModel, AppSettingViewModel, AccountInfoViewModel, LogoutUseCase, TokenAuthenticator
+related_adr: ADR-0022, ADR-0019, ADR-0021, ADR-0008, ADR-0009
+related_spec: session-token-refresh-infra, s002-account-info, app-setting-s001
+related_architecture: data-layer, state-management
+supersedes:
+superseded_by:
+tags: [spec, parfait, member, session, datastore]
+---
+
+# Spec: 유저 정보 로컬 SSoT · 자동로그인 부트스트랩
+
+> 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+
+## 목표
+
+`GET /api/v1/users/me`가 주는 계정 정보를 **로컬에 한 벌만 두고** 여러 화면이 그것을 구독한다.
+닉네임을 바꾸면 그 자리에서 모든 화면이 갱신되고, 앱을 껐다 켜도 서버 응답을 기다리지 않고
+첫 프레임부터 값이 보인다.
+
+지금은 화면마다 mock 문자열이 박혀 있다 — `AppSettingState.nickname = "아니야나그런데기니야"`,
+`AccountInfoUiState.nickname = "대충지은랜덤닉네임"`. `MemberRemoteDataSource.getMyAccount()`는
+구현돼 있으나 호출부가 0건이다.
+
+같이 스플래시가 세션을 복원한다. 지금은 `SplashInitialUseCase`가 `delay(1000)` mock이고
+`SplashRoute`가 **무조건 로그인 화면으로 보낸다** — 토큰이 있어도 매번 다시 로그인해야 한다.
+
+## 범위
+
+- **포함**
+  - `UserInfoLocalDataSource` — DataStore 영속, 암호화, `Flow` 노출
+  - `MemberRepository` + UseCase 3종(관찰·갱신·닉네임 변경)
+  - 로그인·회원가입 성공 직후 1회 갱신
+  - 스플래시 부트스트랩 + 자동로그인 라우팅
+  - S-001 앱 설정·S-002 계정 정보 결선(mock 제거)
+  - 로그아웃·강제 로그아웃 시 userInfo clear
+- **제외**
+  - **G-001 그룹 목록·A-005 그룹 생성** — `GroupListUiState.nickName` mock은 그대로 둔다.
+    이번 라운드 밖이고, SSoT가 생기면 언제든 붙일 수 있다
+  - 회원 탈퇴 — 서버 계약 없음
+  - 프로필 이미지 — 서버 응답에 없다
+
+## 선행
+
+**[session-token-refresh-infra](2026-08-15-session-token-refresh-infra.md)가 먼저 머지돼야 한다.**
+이 스펙은 그 라운드가 만든 것 셋에 의존한다.
+
+- `LogoutUseCase` — 여기에 `clearMyAccount()`를 더한다
+- `TokenAuthenticator` — 만료된 access token을 알아서 재발급하므로 부트스트랩이 만료를 다루지 않는다
+- `SessionEventBus` / `ForcedLogout` — 세션이 끝나는 두 번째 경로
+
+## API / 인터페이스
+
+```kotlin
+// data/source/member/local/UserInfoLocalDataSource.kt
+interface UserInfoLocalDataSource {
+    /** 저장된 계정 정보. 없거나 복호화에 실패하면 `null` */
+    val myAccount: Flow<MyAccountVO?>
+
+    suspend fun save(account: MyAccountVO)
+
+    suspend fun clear()
+}
+```
+
+```kotlin
+// domain/repository/member/MemberRepository.kt
+interface MemberRepository {
+    /** 로컬 SSoT 읽기. 화면은 이것만 구독한다 */
+    val myAccount: Flow<MyAccountVO?>
+
+    /** 서버에서 당겨 로컬을 덮어쓴다 */
+    suspend fun refreshMyAccount(): Result<MyAccountVO>
+
+    /** 성공하면 로컬 닉네임도 함께 갱신한다 */
+    suspend fun changeGlobalNickname(nickname: GlobalNickname): Result<GlobalNickname>
+
+    suspend fun clearMyAccount()
+}
+```
+
+```kotlin
+// domain/usecase/member/
+class ObserveMyAccountUseCase   { operator fun invoke(): Flow<MyAccountVO?> }
+class RefreshMyAccountUseCase   { suspend operator fun invoke(): Result<MyAccountVO> }
+class ChangeGlobalNicknameUseCase { suspend operator fun invoke(nickname: GlobalNickname): Result<GlobalNickname> }
+```
+
+```kotlin
+// domain/model/session/SessionBootstrap.kt
+sealed interface SessionBootstrap {
+    data object ToGroupList : SessionBootstrap
+    data object ToLogin : SessionBootstrap
+}
+
+// domain/usecase/session/BootstrapSessionUseCase.kt
+class BootstrapSessionUseCase { suspend operator fun invoke(): SessionBootstrap }
+```
+
+부트스트랩이 목적지를 **도메인 타입으로** 돌려주는 이유 — 스플래시 화면이 "토큰이 있나",
+"조회가 됐나"를 알 필요가 없다. 판단은 도메인이 하고 화면은 결과를 내비게이션으로 옮기기만 한다.
+
+### 저장 형태
+
+`MyAccountVO`는 값 클래스 둘(`MemberId`·`GlobalNickname`)과 enum 하나(`LoginProvider`)를 품어
+그대로 직렬화할 수 없다. `:data`에 저장 전용 `@Serializable` 모델과 매퍼를 두고, 직렬화한
+문자열 전체를 `CryptoManager.encrypt()`로 감싸 단일 `parfait_preferences` DataStore에 키 하나로
+넣는다. `RecentImageLocalDataSourceImpl`(`@LocalJson Json` + DataStore)과 `EncryptedTokenStore`
+(`CryptoManager`)의 선례를 각각 따른다.
+
+**닉네임과 `memberId`는 식별 가능한 개인정보**라 평문으로 두지 않는다. 복호화에 실패하면
+(키 회전·백업 복원) 저장분을 버리고 `null`을 돌려 다음 갱신이 채우게 한다 —
+`EncryptedTokenStore.read()`와 같은 처리다.
+
+`LoginProvider`는 `UNKNOWN` 폴백이 있는 enum이라, 저장분을 읽을 때 알 수 없는 값이면
+`UNKNOWN`으로 떨어진다. 서버가 provider를 늘려도 저장분 때문에 크래시하지 않는다.
+
+## 동작 / 상태
+
+### 갱신 시점
+
+| 시점 | 동작 |
+|---|---|
+| 로그인·회원가입 성공 직후 | `refreshMyAccount()` 1회. 실패해도 로그인은 진행한다 |
+| 앱 진입(스플래시) | 토큰이 있으면 `refreshMyAccount()` 1회 |
+| 닉네임 변경 성공 | 응답 값으로 로컬 갱신(재조회 안 함) |
+| 그 외 화면 진입 | **없음.** 화면은 구독만 한다 |
+
+로그인 직후 실패를 무시하는 이유 — 그 시점에 화면을 되돌릴 곳이 없다. 사용자는 이미 인증됐고,
+값은 다음 진입에서 채워진다. 실패는 로그로 남긴다.
+
+### 부트스트랩
+
+```
+토큰 없음                    → ToLogin
+토큰 있음 + users/me 성공     → ToGroupList   (SSoT 채워진 상태로 도착)
+토큰 있음 + users/me 실패     → 토큰·userInfo clear → ToLogin
+```
+
+만료된 access token은 `TokenAuthenticator`가 재발급하므로 부트스트랩이 401을 직접 다루지 않는다.
+재발급까지 실패하면 그쪽이 이미 토큰을 지우고 `ForcedLogout`을 쏘므로, 여기 도달하는 "실패"는
+**세션이 확실히 죽었거나 서버·네트워크가 응답하지 않는 경우**다.
+
+> ⚠️ **네트워크 실패도 `ToLogin`으로 보낸다.** 오프라인에서 앱을 켜면 로그인 화면으로 간다는
+> 뜻이다. `TokenAuthenticator`가 네트워크 실패에 토큰을 유지하기로 한 결정과 방향이 어긋나
+> 보이지만, 여기서는 **토큰을 지우지 않고** 라우팅만 로그인으로 보낸다 — 연결이 돌아온 뒤
+> 다시 켜면 자동로그인이 성립한다. 오프라인 진입에 그룹 목록을 캐시로 그릴 수단이 아직
+> 없어서 내린 선택이고, 캐시가 생기면 재검토한다 → [미결](#주의--열린-질문)
+
+### 세션 정리
+
+userInfo는 토큰과 **같은 수명**이다. 지우는 자리가 둘이다.
+
+| 경로 | 지우는 주체 |
+|---|---|
+| 사용자 로그아웃 | `LogoutUseCase`가 `authRepository.logout()` + `memberRepository.clearMyAccount()` |
+| 강제 로그아웃 | `TokenAuthenticator`가 토큰을 지우는 그 자리에서 userInfo도 지운다 |
+
+강제 로그아웃 쪽을 `:data` 안에서 끝내는 이유 — 앱 루트가 이벤트를 받아 정리하게 하면, 그
+이벤트가 유실되는 순간(재생성 창, `session-token-refresh-infra`의 열린 질문) **토큰은 지워졌는데
+userInfo는 남는** 상태가 생긴다. 지우는 주체를 하나로 두면 둘이 갈라지지 않는다.
+
+### 화면 결선
+
+| 화면 | 지금 | 바뀐 뒤 |
+|---|---|---|
+| S-001 앱 설정 | `nickname`·`loginProvider` mock 문자열 | `ObserveMyAccountUseCase` 구독 |
+| S-002 계정 정보 | `nickname` mock 문자열 | 구독 + 변경은 `ChangeGlobalNicknameUseCase` |
+
+`LoginProvider`는 enum이라 표시 문구 매핑이 필요하다(`KAKAO` → "카카오"). ADR-0016 결정대로
+**domain은 의미만 돌려주고 표시 매핑은 프레젠테이션이 소유한다** — `core:ui`에
+`LoginProvider.toStringResource()`(@Composable)를 두고 문자열은 `core:ui`의 `strings.xml`에 넣는다.
+`UNKNOWN`도 문구를 가져야 한다(빈 화면보다 낫다).
+
+S-002의 닉네임 변경은 **낙관적 갱신을 하지 않는다.** 서버 응답을 받고 로컬을 갱신한다 —
+실패했는데 다른 화면에 새 닉네임이 보이는 것이 되돌리는 것보다 나쁘다.
+
+## 표시·제어 규칙
+
+- SSoT가 비어 있는 동안(최초 로그인 전 또는 복호화 실패 후) 화면은 **빈 문자열이 아니라 로딩
+  상태**를 보여야 한다. mock을 지우면 기본값이 없어지므로 각 화면이 `null`을 다룬다
+- 닉네임 변경 요청 중에는 확인 버튼 비활성
+- 스플래시는 부트스트랩이 끝날 때까지 현재 로딩 화면을 유지한다
+
+## 파일 구성
+
+| 파일 | 역할 |
+|---|---|
+| `data/source/member/local/UserInfoLocalDataSource(.kt/Impl.kt)` | DataStore 영속·암호화·`Flow`. 신규 |
+| `data/model/local/UserInfoEntity.kt` | `@Serializable` 저장 모델 + 매퍼. 신규 |
+| `data/repository/member/MemberRepositoryImpl.kt` | remote↔local 조율. 신규 |
+| `domain/repository/member/MemberRepository.kt` | 신규 |
+| `domain/usecase/member/*.kt` | UseCase 3종. 신규 |
+| `domain/model/session/SessionBootstrap.kt` | 신규 |
+| `domain/usecase/session/BootstrapSessionUseCase.kt` | 신규 |
+| `domain/repository/auth/AuthRepository.kt` | `hasSession()` 추가(토큰 존재 여부) |
+| `domain/usecase/auth/LogoutUseCase.kt` | `clearMyAccount()` 추가 |
+| `data/network/TokenAuthenticator.kt` | 세션 폐기 시 userInfo도 clear |
+| `domain/usecase/auth/LoginWithKakaoUseCase.kt`·`SignUpUseCase.kt` | 성공 직후 refresh |
+| `core/ui/.../text/LoginProviderUiText.kt` | `toStringResource()`. 신규 |
+| `feature/intro/impl/.../splash/SplashViewModel.kt`·`SplashRoute.kt` | 부트스트랩 분기 |
+| `feature/app/setting/impl/.../AppSettingViewModel.kt` | mock 제거·구독 |
+| `feature/app/setting/impl/.../AccountInfoViewModel.kt` | mock 제거·구독·변경 결선 |
+
+## 테스트
+
+**`UserInfoLocalDataSourceImpl`** (`data/src/test/`)
+- 저장 후 읽으면 같은 값이 나온다(값 클래스·enum 왕복)
+- 저장분이 없으면 `null`
+- 복호화 실패 → `null` + 저장분 폐기
+- 저장분의 provider가 알 수 없는 값 → `UNKNOWN`
+
+**`MemberRepositoryImpl`** (`data/src/test/`)
+- `refreshMyAccount` 성공 → local 저장 + 반환값 일치
+- `refreshMyAccount` 실패 → **local 유지**(낡은 값이라도 지우지 않는다)
+- `changeGlobalNickname` 성공 → local 닉네임만 갱신, `memberId`·provider 불변
+- `changeGlobalNickname` 실패 → local 불변
+
+**`BootstrapSessionUseCase`** (`domain/src/test/`)
+- 토큰 없음 → `ToLogin`, 서버 호출 0건
+- 토큰 있음 + 성공 → `ToGroupList`
+- 토큰 있음 + 실패 → `ToLogin` + 토큰·userInfo clear 각 1회
+
+**`LogoutUseCase`** — 토큰 clear와 userInfo clear가 **둘 다** 불린다
+
+**`AppSettingViewModel`·`AccountInfoViewModel`**
+- SSoT가 값을 내보내면 상태에 반영된다
+- SSoT가 `null`이면 로딩 상태
+- 닉네임 변경 성공 → SSoT 갱신이 상태로 되돌아온다
+- 변경 요청 중 버튼 비활성, 연타 1회
+
+## 주의 / 열린 질문
+
+- **오프라인 진입이 로그인 화면으로 간다.** 위 부트스트랩 표의 ⚠️ 참고. 그룹 목록을 캐시로
+  그릴 수단이 생기면 "토큰이 있고 네트워크만 실패한 경우"를 `ToGroupList`로 돌리는 것을 재검토
+- **`GroupListUiState.nickName` mock은 남는다.** 이번 범위 밖이라 의도적이다 — SSoT가 생긴 뒤에도
+  한 화면이 계속 mock을 들고 있다는 사실이 다음 라운드까지 눈에 보여야 한다
+- **`refreshMyAccount` 실패 시 낡은 값을 계속 보여준다.** 사용자에게 "이 값이 낡았다"를 알릴
+  수단이 없다. 화면에 표시할지 미정
+- 서버 `LoginProvider`에 `GOOGLE`이 있는데 core enum에 없다(`api/member.md`). 구글 로그인 경로가
+  생기면 `UNKNOWN`으로 떨어진다 — 표시 문구가 그 상황에 적절한지 확인 필요
