@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-15
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit
 related_adr: ADR-0002, ADR-0006
 related_architecture:
 related_code: core:navigation, Navigator
@@ -23,8 +23,8 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
   - `goToAndPopCurrent(destination)`(#221 신설) — 지금 화면을 대상으로 **치환**한다(마지막 칸에 덮어쓰기).
     백스택 깊이가 늘지 않고 뒤로 가면 지금 화면을 건너뛴다. 스택이 비어 있으면 그냥 쌓는다.
     확인·경유 화면처럼 되돌아올 이유가 없는 자리에 쓴다(첫 사용처: C-101-confirm → C-103).
-- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasImageAdd`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`, `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
-- **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas의 4개 NavKey(`ImageAdd`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
+- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasImageAdd`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`·`NavKeyCanvasBGEdit`(#231), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
+- **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`ImageAdd`·`BGEdit`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
   - `rememberSaveableStateHolderNavEntryDecorator` — 엔트리별 상태 보존.
   - `rememberViewModelStoreNavEntryDecorator` — 엔트리별 ViewModel 수명.
@@ -124,6 +124,34 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 - 엔트리 3개는 규약 기본형(`YGScaffold { innerPadding -> …padding(innerPadding) }`)이고
   빌더 하나(`featureSegmentationEntryBuilder`)가 세 entry를 등록한다.
 
+## 캔버스 배경 편집 플로우 (2026-08-15, PR #231)
+
+C-001 캔버스 메인의 편집 버튼이 C-301 배경 편집(`NavKeyCanvasBGEdit`)으로 결선되고, 그 화면이
+**촬영·갤러리·확인 세 화면을 토핑 생성 플로우와 공유**한다. 상세는
+[c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md).
+
+```
+NavKeyCanvasImageAdd ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnResultOnly=true) ─┐
+                                            └─▶ NavKeyCustomGalleryPicker(동일 인자) ───────────────────────────┤
+                                                                                                                 ▼
+                                                        NavKeyPictureConfirm(uri, source, returnResultOnly=true)
+                                                             │ sendResult(PictureConfirmResult) + onBack ×2
+                                                             ▼
+                                                        NavKeyCanvasBGEdit (ResultEffect<PictureConfirmResult>)
+```
+
+- **분기의 주체가 NavKey 인자다** — 같은 확인 화면이 `returnResultOnly`가 false면 종전대로
+  `goToAndPopCurrent(NavKeySegmentation)`으로 전진하고, true면 결과를 돌려주고 물러난다.
+  `showGuideToast`도 같은 부류로, 카메라·갤러리 가이드 토스트를 토핑 생성 경로에서만 띄운다.
+  즉 **화면이 그릴 값이 아니라 호출자가 고르는 동작 플래그가 백스택 키에 실린 첫 사례**다.
+- **복귀가 `onBack()` 2회 하드코딩**이다(확인 화면 → 카메라/갤러리). 스택 깊이를 가정하므로 중간에
+  화면이 하나 끼면 어긋난다 — `goToSingleClearTop`·`goToAndPopCurrent` 같은 명시적 관용구를 쓰지 않았다.
+- 카메라 실패·취소 경로는 여전히 `sendResult(uri: String?)`라 `ResultEffect<PictureConfirmResult>`인
+  배경 편집 화면은 **실패를 받지 못한다**(C-001의 死 `ResultEffect`와 같은 부류)
+  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- ⚠️ **플로우 전체가 도달 불가다** — 진입 화면 C-001(`NavKeyCanvasImageAdd`)을 `goTo` 하는 호출자가
+  develop에 여전히 0건이다 → [open-questions](../synthesis/open-questions.md) [2026-08-12].
+
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.
 2. `feature/xxx/impl`에 `featureXxxEntryBuilder()` 작성: `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(modifier = Modifier.padding(innerPadding)) } }`. **엔트리(nav) 레벨 컨테이너는 `YGScaffold`**(`core:designsystem` `screen/`, Material3 `Scaffold` 래퍼, 기본 배경 흰색·`contentWindowInsets` 노출). 화면 최외곽 컨테이너 `YGScreen`과 역할 분리 → [design-system](design-system.md) "화면 컨테이너".
@@ -137,6 +165,11 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
    > 📌 **반대로 되살아난 사례(2026-08-14, PR #221)** — 토핑 편집 화면이 `sendResult` +
    > `ResultEffect` 왕복으로 결과를 돌려준다. NavKey가 담지 못하는 **나올 때의 값**을 넘겨야 해서
    > 이 관용구를 다시 골랐다. 즉 "전진하며 `goTo`"와 "결과 반환"이 develop에 공존한다.
+   > 📌 **같은 화면이 둘 다 하는 사례(2026-08-15, PR #231)** — C-101-confirm이 `NavKeyPictureConfirm`
+   > 인자 `returnResultOnly`로 갈린다: false면 전진(`goToAndPopCurrent`), true면
+   > `sendResult(PictureConfirmResult)` + 물러남. 반환 타입이 `String?`(카메라 실패 경로)과
+   > `PictureConfirmResult`(확인 성공)로 **한 플로우 안에서 둘**이라, 받는 쪽이 타입을 하나만 구독하면
+   > 나머지는 조용히 버려진다.
 6. **`goTo` 호출자를 같은 PR에 넣는다** — entry만 등록하고 진입 경로가 없으면 도달 불가 화면이 된다
    (선례: `NavKeyGroupCreate` — 등록 후 **약 2주 뒤**인 #222에서야 G-001 그룹 추가 오버레이가 호출자가 됐다,
    [open-questions](../synthesis/open-questions.md) [2026-07-29]).
@@ -187,7 +220,12 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 
 목적지가 값을 받으면 `data object`가 아니라 `@Serializable data class NavKeyXxx(val …)`로 정의한다
 (`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupCreate`·
-`NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`).
+`NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
+`NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)).
+**인자가 표시 값이 아니라 동작 플래그인 형태가 #231에서 처음 나왔다** — `showGuideToast`·
+`returnResultOnly`는 화면이 그릴 데이터가 아니라 호출자가 고르는 분기이고, 기본값이 있어 기존
+호출부는 `NavKeyCameraCustom()`처럼 생성자 호출만 바꾸면 됐다. 재사용 화면의 동작 차이를 NavKey에
+싣는 방식이 관용구인지는 미결이다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 **서버 응답 값이 다음 화면의 인자가 되는 형태가 develop에 자리 잡았다**(2026-08-15) — 로그인 응답의
 가입 토큰이 `NavKeyTermAgree(registrationToken)`으로, 참여 응답의 그룹 ID가 `NavKeyGroupNickName(groupId)`로
 간다. 두 값 다 원시 타입으로 넘기고 **받는 쪽에서 value class로 감싼다**(`RegistrationToken`·`GroupId`) —

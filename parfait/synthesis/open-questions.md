@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-15
-related_spec: c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
+related_spec: c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -706,12 +706,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
   > 📌 **다른 死 `ResultEffect` 하나는 걷혔다(2026-08-09, PR #220)** — 로그인 화면의 `ResultEffect<String>` Toast가 짝(`GroupHomeRoute`)과 함께 삭제됐다. 여기 남은 `CanvasImageAddRoute` 건은 그대로다 → [2026-08-10] 데코레이터 존치 항목.
 
+  > 📌 **같은 화면 트리에 두 번째 수신부가 생겼다(2026-08-15, PR #231)** — C-301 배경 편집이 `ResultEffect<PictureConfirmResult>`로 확인 화면 결과를 받는다(이쪽은 실제로 발동한다). `CanvasImageAddRoute`의 `ResultEffect<String>`는 여전히 死경로이고, 카메라 실패·취소가 보내는 `String?` 결과는 **새 수신부도 타입이 달라 못 받는다** → [2026-08-15] 재사용 진입 플래그 항목.
+
 ### [2026-08-04] 갤러리 그리드 셀이 `clickableYG` 대신 표준 `clickable` 사용
 - **ID**: OQ-P-088
 - **출처**: `feature/gallery/impl/.../component/GalleryImageGridComponent.kt#GalleryImageCell`(PR #191 develop 머지) — 셀 클릭이 `Modifier.clickable`이라 `core:util:android`의 leading-throttle(`clickableYG`)을 타지 않는다. 이 클릭은 `navigator.goTo`로 이어지므로 연타 시 확인 화면이 백스택에 중복으로 쌓일 수 있다. 같은 규약 이탈이 [2026-07-18 `YGDateButton` 항목](#2026-07-18-ygdatebutton-clickableyg-미사용--스로틀-규약-이탈)으로 이미 등록돼 있다.
 - **항목**: ① 화면(feature) 쪽 클릭에도 `clickableYG`를 규약으로 적용할지 — 지금까지 이 규약은 디자인시스템 컴포넌트 기준으로만 서술됐다, ② 적용한다면 리플 변형(그리드 셀은 이미지 위라 dim/scale 중 무엇인지) 선택.
 - **상태**: 미해결 (코드 수정 대상)
 - **해소 메모**: ①이 정해지면 [design-system](../architecture/design-system.md) clickable 규약의 적용 범위를 "디자인시스템 컴포넌트"에서 "네비게이션을 유발하는 모든 클릭"으로 넓히는 서술이 필요하다. [2026-07-18 항목](#2026-07-18-ygdatebutton-clickableyg-미사용--스로틀-규약-이탈)과 함께 처리.
+
+  > 📌 **사례 추가(2026-08-15, PR #231)** — C-301 배경 편집의 팔레트 원 3종(갤러리·카메라·색)이 전부 `Modifier.clickable`이다. 갤러리·카메라 원은 `goTo`로 이어져 그리드 셀과 같은 중복 진입 위험이 있다.
 
 ### [2026-08-04] 갤러리 死코드 2건 — 부분 접근 배너·전체 조회 UseCase
 - **ID**: OQ-P-089
@@ -879,6 +883,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 결과 반환 관용구를 계속 쓸지 — 커스텀 갤러리·카메라는 이미 `goTo` 전진으로 갈아탔고 남은 소비처가 死경로뿐이라, 데코레이터째 걷어낼지 아니면 재사용처를 확정할지. ② 걷어낸다면 `Navigator.onBack()`의 `size <= 1` 가드 주석("`ResultEffect` 발동 상황에서 사이즈가 1인 경우 크래시")이 가리키는 전제도 같이 정리한다.
 - **상태**: 부분 해소 (① **PR #221 develop 머지, 2026-08-14** — 실사용 왕복이 하나 되살아났다. 토핑 편집 화면이 `sendResult(TOPPING_EDIT_RESULT_KEY, ToppingEditResult)` + `onBack()`으로 결과를 돌려주고 `SegmentationConfirmRoute`가 `ResultEffect<ToppingEditResult>`로 받는다. **NavKey가 담지 못하는 "나올 때의 값"이라 이 관용구를 다시 고른 것**이므로 데코레이터째 걷어내는 선택지는 사실상 닫혔다. / ② 가드는 여전히 필요하다 — 그룹 목록에서 백스택이 1개다. / [2026-08-04]의 死 `ResultEffect` 1건은 그대로다)
 - **해소 메모**: ①이 닫혔으니 남은 것은 死 수신부 정리([2026-08-04] 항목)뿐이다. [navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번에 "되살아난 사례" 마커를 넣었고 "토핑 생성 플로우" 절에 왕복 경로를 적었다.
+
+  > 📌 **두 번째 실사용 왕복(2026-08-15, PR #231)** — C-101-confirm이 `returnResultOnly`일 때 `PictureConfirmResult`를 돌려주고 C-301이 받는다. 같은 화면이 전진(`goToAndPopCurrent`)과 반환을 **인자 하나로 겸하는** 형태라, 데코레이터 존치는 확정으로 봐도 된다.
 
 ### [2026-08-10] 이미지 업로드 확인 API에 소유자 검증이 없다
 
@@ -1108,6 +1114,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결
 - **해소 메모**: ①을 열 때 `NavKeyCanvasImageAdd`에 `groupId` 인자를 붙일지 함께 정한다([navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지"). 체크리스트 6번 사례 목록도 그때 정리한다. 상세는 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 3·6번.
 
+  > 📌 **②의 셋 중 캔버스 편집만 결선됐다(2026-08-15, PR #231)** — `onClickEditCanvasBG`가 `NavKeyCanvasBGEdit`(C-301 배경 편집)으로 간다. 날짜 선택·상단 메뉴는 그대로 빈 람다다. **①은 그대로라 새로 생긴 화면까지 도달 불가 범위에 들어왔다** → [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md).
+
 ### [2026-08-12] C-001이 mock을 ViewModel 로직에 박고 `isEmpty`를 상수로 넘긴다
 
 - **ID**: OQ-P-130
@@ -1164,6 +1172,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (동작 결함은 아님 — 관용구 선택 기준 부재)
 - **해소 메모**: 정하면 [navigation-flow](../architecture/navigation-flow.md) "앱 진입 체인"·"그룹 생성·참여 플로우" 두 절과 신규 목적지 체크리스트에 반영한다.
 
+  > 📌 **세 번째 형태(2026-08-15, PR #231)** — C-301 배경 편집으로 돌아오는 경로는 `navigator.onBack()`을 **두 번 연달아** 부른다(확인 화면·카메라/갤러리를 각각 걷는다). 명시적 관용구가 아니라 **스택 깊이 가정**이라, 중간에 화면이 하나 끼면 조용히 어긋난다.
+
 ### [2026-08-12] 확인 모달의 문구·좌우 배치가 정책 소스 없이 코드로 확정됐다
 
 - **ID**: OQ-P-137
@@ -1171,6 +1181,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 모달 문구를 디자인·기획 소스로 확정받을지(피그마 프레임 존재 여부부터), ② `YGModalPopup` 좌우 배치 규약을 세울지 — 파괴/비파괴로 가를지, 아니면 "확인은 항상 오른쪽"으로 통일할지(뒤집으면 Danger Zone 스펙이 함께 바뀐다), ③ "참여하기" 문구를 이동 의미로 바꿀지 실제 합류를 이 시점으로 옮길지, ④ 진행 중 dismiss 가드를 두 화면에 통일할지.
 - **상태**: 미해결 (문구·배치 근거 부재)
 - **해소 메모**: ②를 정하면 [design-system](../architecture/design-system.md) `YGModalPopup` 노트와 [ygmodalpopup 스펙](../specs/archive/2026-07-15-ygmodalpopup.md)의 "버튼 의미는 호출자 소관" 서술에 규약 한 줄을 얹는다(현재는 컴포넌트가 의미를 규정하지 않는다는 것만 적혀 있다).
+
+  > 📌 **7번째 소비처가 파괴적=좌 쪽에 붙었다(2026-08-15, PR #231)** — C-301 배경 편집의 그만두기 확인이 `그만두기`=좌 Secondary / `계속 편집하기`=우 Primary다. 여섯 곳이 반으로 갈려 있던 상태에서 파괴적=좌 진영이 하나 앞섰고, 문구도 같은 모듈 탈퇴 확인과 `그만두기`를 **반대 의미로** 쓴다(거기서는 닫기).
   > 📌 **②가 가정에서 사실이 됐다(2026-08-13, PR #225)** — Danger Zone 확인 팝업 3종(서비스 탈퇴·그룹 나가기·그룹 신고)이 **파괴적 액션=좌 Secondary / 취소=우 Primary**로 머지돼, `YGModalPopup` 호출자 6곳의 좌우 의미가 정확히 반으로 갈렸다(#224 3화면=실행이 우 / #225 3팝업=취소가 우). 어느 쪽도 코드 결함이 아니라 규약이 없는 것이며, 네 인자가 전부 같은 타입이고 `Dialog`가 프리뷰에 안 떠서 **뒤바꿈을 잡는 자동 검증은 여전히 0건**이다.
 
 
@@ -1475,6 +1487,54 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① S-102도 같은 확인 모달을 붙일지(붙이면 저장값·입력 버퍼 분리가 S-102에도 필요하다 — S-102는 `myNickname`·`nicknameInput`으로 이미 갖고 있어 비용이 작다). ② `그만두기`=나가기 / `취소하기`=닫기 매핑을 두 화면이 공유할지 — 같은 모듈의 탈퇴 확인에서는 `그만두기`가 반대로 닫기를 뜻해 단어가 화면마다 다른 일을 한다.
 - **상태**: 미해결 (S-002만 적용)
 - **해소 메모**: S-102에 붙이면 [user-info-ssot 스펙](../specs/2026-08-15-user-info-ssot.md)의 「S-002 편집 세션」 절을 공용 규칙으로 올리고 이 항목을 닫는다.
+
+### [2026-08-15] C-301 배경 편집 결과가 아무 데도 반영되지 않는다
+
+- **ID**: OQ-P-173
+- **출처**: `feature/groups/canvas/impl` `CanvasBGEditViewModel#handleOnClickConfirm`·`CanvasBGEditRoute`(PR #231) — 확인이 `YGCanvasBackground`(`Image`/`Solid`)를 만들어 `ConfirmBackground` 이펙트에 싣지만 Route가 그 값을 쓰지 않고 `// TODO: 선택한 배경을 서버에 업로드/저장하는 연동 필요` 주석과 함께 `onBack()`만 한다. C-001은 `YGCanvas`에 `background`를 넘기지 않아 기본값 `Solid(Gray100)` 그대로다. 브랜치 안에 "이미지 선택 완료 후 메인 캔버스에 반영" 커밋이 있었다가 되돌려졌다(커밋 `10e70809`). 저장 경로가 없으니 재진입하면 기본값부터 다시 고른다.
+- **항목**: ① 배경을 어디에 저장할지 — 서버 캔버스 계약에 배경 필드가 있는지부터 확인해야 한다([api/parfait-group.md](../api/parfait-group.md)·[api/README.md](../api/README.md)에 캔버스 조회 계약 자체가 아직 공백). ② 서버 전까지 C-001로 값을 되돌릴지(`ResultEventBus` 왕복 vs 공유 상태), ③ 되돌린 배경을 C-001이 `YGCanvas.background`로 그릴지.
+- **상태**: 미해결 (화면이 왕복만 하고 결과를 버린다)
+- **해소 메모**: ①이 서버 계약 대기라면 ②를 임시로라도 열어야 화면이 의미를 갖는다. 결정되면 [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md) 드리프트 1·[c001 스펙](../specs/archive/2026-08-12-c001-canvas-main.md)을 함께 갱신한다.
+
+### [2026-08-15] 배경 편집 미리보기가 `YGCanvas`를 재사용하지 않는다 — 편집 화면과 실제 캔버스가 다르다
+
+- **ID**: OQ-P-174
+- **출처**: `feature/groups/canvas/impl` `CanvasBGEditScreen`(PR #231) — 미리보기가 `Box` + `aspectRatio(CANVAS_ASPECT_RATIO)` + `border`로 직접 그려진다. 그래서 좌상단 컷 도형(`canvasCutCornerShape`)·날짜 라벨·Dot Grid·메뉴가 없고, 좌우 여백이 C-001의 `padding7`(20)이 아니라 **21dp 리터럴**이다(코드 주석 "21.dp 공통에 없음"이 토큰 부재를 자인한다). 위키 [[캔버스-반응형-레이아웃]]의 좌우 20·컷 도형 규정과 어긋나는 화면이 하나 더 생긴 셈이다.
+- **항목**: ① 미리보기를 `YGCanvas`(또는 그 축소 변형)로 바꿀지 — 지금 `YGCanvas`는 `fillMaxSize` 전제로 자기 배치를 계산해서 그대로 끼우면 어긋난다([c001 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 7과 같은 뿌리). ② 아니면 편집 미리보기는 "실물 축소"가 아니라는 것을 정책으로 확정할지. ③ 21dp를 토큰으로 올릴지 20으로 맞출지.
+- **상태**: 미해결
+- **해소 메모**: ①을 고르면 `YGCanvas`의 배치 계산을 파라미터로 분리하는 일이 선행한다. 정해지면 [design-system](../architecture/design-system.md) 캔버스 절과 [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md) 드리프트 2를 정리한다.
+
+### [2026-08-15] C-301의 "토핑" 탭이 비어 있다 — 편집 모드의 절반이 미구현
+
+- **ID**: OQ-P-175
+- **출처**: `feature/groups/canvas/impl` `CanvasBGEditScreen`·`CanvasEditTab`(PR #231) — 탭이 배경/토핑 2종인데 `selectedTab` 상태만 바뀌고 본문·팔레트는 그대로다. 위키 [[기능정의서-v3]]은 C-301을 "파르페 편집 모드 진입"(배경 변경 + 누끼 사진 편집 통합 진입점)으로 정의하므로, 통합 진입점의 한쪽이 빈 채로 머지됐다. 화면·심볼 이름도 배경만 가리킨다(`CanvasBGEdit*`·`NavKeyCanvasBGEdit`).
+- **항목**: ① 토핑 탭에서 무엇을 편집할지 확정(위키 표의 C-305 토핑 편집·C-306 테두리 편집과의 관계 — 이미 `feature/segmentation`에 `NavKeyToppingEdit` 두 탭이 있다), ② 탭 선택이 화면 안 전환인지 다른 목적지로의 이동인지, ③ 심볼 이름을 C-301 전체를 가리키게 고칠지.
+- **상태**: 미해결 (탭은 있고 내용이 없다)
+- **해소 메모**: ①은 위키의 "에딧 모드 삭제 비고 vs C-301~C-306 잔존" 미결과 맞물린다(정책 소관은 위키 [[open-questions]]). 정해지면 [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md) 범위·정책 대조 표를 갱신한다.
+
+### [2026-08-15] C-301의 State·Effect가 UI 타입을 들고 팔레트 색이 코드 hex로 확정됐다
+
+- **ID**: OQ-P-176
+- **출처**: `feature/groups/canvas/impl` `CanvasBGEditViewModel`(PR #231) — `CanvasBGEditUiState.selectedColor`가 Compose `Color`, `CanvasBGEditEffect.ConfirmBackground`가 디자인시스템 `YGCanvasBackground`다. 팔레트 `CanvasBackgroundPaletteColors`는 ViewModel 파일의 public 상수이고 8종 중 3종만 `YGAtomicColors`(White·Black·Cherry200), **나머지 5종은 hex 리터럴**이다. [state-management](../architecture/state-management.md)는 "State는 도메인 의미를 들고 표시 변환은 화면이 한다"고 적는다.
+- **항목**: ① 배경 선택값을 도메인 표현(예: 팔레트 인덱스·색 코드 문자열)으로 바꿀지 — 서버 저장 계약이 정해지면 그쪽이 답을 준다([2026-08-15] 반영 항목과 묶인다). ② 팔레트 색 5종을 디자인 토큰(`YGAtomicColors`)으로 승격할지 — 승격하려면 디자인 소스에서 이름을 받아야 한다. ③ 팔레트 목록의 소유를 ViewModel 파일이 아닌 곳으로 옮길지.
+- **상태**: 미해결
+- **해소 메모**: ②는 [design-system](../architecture/design-system.md) 원자 색 확산 논의와 같은 자리다. 정해지면 [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md) 드리프트 4를 정리한다.
+
+### [2026-08-15] 캔버스 비율 상수가 `domain`과 `core:designsystem`에 이중으로 존재한다
+
+- **ID**: OQ-P-177
+- **출처**: `domain/model/CanvasConst.kt#CANVAS_ASPECT_RATIO`(PR #231 신설) × `core/designsystem/.../ygcanvas/YGCanvas.kt#CANVAS_AREA_ASPECT_RATIO`(private) — 값이 같고 뜻도 같은데 모듈이 다르다. 캔버스 비율은 도메인 규칙이 아니라 표시 규격이라 `domain` 배치가 [module-structure](../architecture/module-structure.md) 레이어 의도와 어긋난다(Android 의존이 없어 "순수 Kotlin" 규칙 자체를 어기지는 않는다). 한쪽만 바뀌면 편집 미리보기와 실제 캔버스의 비율이 조용히 갈린다.
+- **항목**: ① 소유를 `core:designsystem`으로 모으고 public으로 올릴지, ② 아니면 `domain` 상수를 정본으로 삼고 `YGCanvas`가 참조할지(디자인시스템 → domain 의존이 생긴다), ③ 화면 규격 상수 전반의 소유 규칙을 세울지.
+- **상태**: 미해결 (동작 결함은 아님 — 이중 정의)
+- **해소 메모**: ①이 의존 방향상 자연스럽다. 정하면 [module-structure](../architecture/module-structure.md) 규칙 항목과 [design-system](../architecture/design-system.md) 캔버스 절을 정리한다.
+
+### [2026-08-15] 재사용 진입을 NavKey 동작 플래그로 가르고 복귀는 `onBack()` 2회에 기댄다
+
+- **ID**: OQ-P-178
+- **출처**: `feature/camera/api` `NavKeyCameraCustom`·`NavKeyPictureConfirm`, `feature/gallery/api` `NavKeyCustomGalleryPicker`, `feature/camera/impl` `PictureConfirmRoute`(PR #231) — `showGuideToast`·`returnResultOnly`는 화면이 그릴 데이터가 아니라 **호출자가 고르는 동작 분기**인데 `@Serializable` 백스택 키에 실린다. 확인 화면은 `returnResultOnly`면 `sendResult(PictureConfirmResult)` 후 `navigator.onBack()`을 두 번 부른다(어느 화면을 걷는지 주석으로만 표시). 또 카메라 실패·취소는 여전히 `sendResult(uri: String?)`라 **반환 타입이 한 플로우에 둘**이고, `ResultEffect<PictureConfirmResult>`만 구독하는 C-301은 실패를 못 받아 아무 표시 없이 돌아온다.
+- **항목**: ① 재사용 화면의 동작 차이를 NavKey 인자로 싣는 것을 관용구로 확정할지, 아니면 목적지를 나눌지(`NavKeyPictureConfirmForBackground` 등). ② 복귀를 `onBack()` 2회 대신 명시적 수단(`goToSingleClearTop`·`popUpTo` 계열)으로 바꿀지. ③ 실패 반환 타입을 결과 타입 하나로 합칠지(`PictureConfirmResult`에 실패 표현 추가).
+- **상태**: 미해결
+- **해소 메모**: ②는 [2026-08-12] 백스택 리셋 관용구 항목과 같은 자리에서 정한다. 정해지면 [navigation-flow](../architecture/navigation-flow.md) "캔버스 배경 편집 플로우" 절과 [c301](../specs/archive/2026-08-15-c301-canvas-background-edit.md)·[c101](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) 스펙을 갱신한다.
 
 <!--
 항목 추가 형식:

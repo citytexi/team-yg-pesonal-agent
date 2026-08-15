@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-15
-related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure
+related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
 related_code:
@@ -68,6 +68,11 @@ app / app-preview
   않으므로 `bundles.test-unit`과 짝일 때만 성립한다([spec](../specs/archive/2026-08-06-unit-test-infrastructure.md)).
   **`parfait.test.unit`은 화면 결선 라운드마다 그 feature `impl`에 붙는다**(2026-08-15 기준 인트로·로그인·
   그룹 목록·그룹 참여·그룹 설정·앱 설정). 적용 목록의 SoT는 각 `build.gradle.kts`다.
+- ⚠️ **표시 규격이 `domain`에 들어온 사례**(2026-08-15, PR #231) — `domain` `model/CanvasConst.kt`의
+  `CANVAS_ASPECT_RATIO`는 캔버스 화면 비율이라 도메인 규칙이 아니라 표시 규격이고, 같은 값이
+  `core:designsystem` `YGCanvas`의 private `CANVAS_AREA_ASPECT_RATIO`로 이미 있다. Android 의존은
+  없어 위 "순수 Kotlin 유지" 규칙은 어기지 않지만 **레이어 소유가 갈렸다**
+  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 - **`core:util:jvm`의 `Char.isKorean()`은 삭제됐다**(2026-08-15, PR #243) — 이름 유효성 검사가 서버 정규식과
   같은 문자 집합(`가-힣A-Za-z0-9` + 스페이스)을 직접 쓰게 되며 유일한 사용처가 사라졌다.
 - **여러 feature가 공유하는 화면**은 특정 도메인 feature 밑이 아니라 `feature/common/*`에 둔다([[0015-feature-common-shared-layer]]). 단, **2개 이상 소비처가 확정된 경우에만**(단일 소비면 소유 feature 유지).

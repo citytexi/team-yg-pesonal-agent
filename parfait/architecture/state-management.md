@@ -81,6 +81,12 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
 - **표시 문자열·리소스 ID를 State에 담지 않는다.** State는 도메인 의미를 들고, 표시 변환은 화면이 렌더 시점에 한다. 유효성 결과가 대표 사례다 — `NameValidResult.Error?`를 담고 화면이 `core:ui`의 `toStringResource(fieldType)` 확장으로 문자열을 얻는다([ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md), 원안 수렴 — #223 develop 머지 2026-08-13). ViewModel이 `@StringRes Int`를 산출해 담던 과도기 형태는 같은 매핑을 feature마다 복제해 폐기됐다.
 - **도메인 VO 보유는 허용**하되 강제는 아니다. S-101(`GroupSettingUiState`, #223 develop 머지)이 `GroupName`·`GroupNickname`·`InviteCode`를 State에 들인 첫 사례다. 단 **편집 중 입력값처럼 유효성이 보장되지 않는 값은 원시 타입으로 둔다** — VO로 감싸면 "타입은 맞는데 유효하지 않다"는 모순이 생긴다.
 - 표시 규칙에 따른 분기(문구 선택·상태 enum 산출)는 화면의 private 헬퍼가 갖는다. State가 계산 프로퍼티로 들 이유가 없다.
+- ⚠️ **UI 타입 보유 사례(2026-08-15, PR #231)** — C-301 배경 편집의 `CanvasBGEditUiState`가 Compose
+  `Color`를, `CanvasBGEditEffect.ConfirmBackground`가 디자인시스템 타입 `YGCanvasBackground`를 든다.
+  선택 팔레트(`CanvasBackgroundPaletteColors`)도 ViewModel 파일의 public 상수다. 위 "표시 문자열을
+  담지 않는다"의 같은 결에서 보면 이탈이지만, 배경색은 **도메인 의미가 아직 없는 값**(저장·서버 계약이
+  없다)이라 대체 표현도 정해져 있지 않다 → [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md) ·
+  [open-questions](../synthesis/open-questions.md) [2026-08-15].
 
 ## 안티패턴 (금지)
 - `launch` 블록의 **마지막 줄**에서 로딩 플래그를 되돌리기 → 던지거나 취소되면 도달하지 못해
