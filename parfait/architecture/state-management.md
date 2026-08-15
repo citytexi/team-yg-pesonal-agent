@@ -65,7 +65,7 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
 ```
 
 **SDK 다이얼로그처럼 `launch` 바깥에서 뜨는 조작**은 `launch(key)` 가드가 못 막는다. State의
-`isLoading` 가드를 한 겹 더 둔다 → [a002-kakao-login-api](../specs/2026-08-13-a002-kakao-login-api.md).
+`isLoading` 가드를 한 겹 더 둔다 → [a002-kakao-login-api](../specs/archive/2026-08-13-a002-kakao-login-api.md).
 
 ## 신규 화면 추가 체크리스트
 1. **api 모듈**: `NavKeyXxx`(@Serializable) 정의([[navigation-flow]]).

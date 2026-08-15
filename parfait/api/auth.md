@@ -28,8 +28,8 @@ tags: [api, parfait, server-contract, auth]
 [^newuser]: **2026-08-14 해소** — `@SerialName("isNewUser")`로 정정하고 실제 JSON 본문을 디코딩하는
 와이어 계약 테스트(`KakaoLoginResponseSerializationTest`)를 붙였다. 되돌리면 그 테스트가
 `MissingFieldException`으로 깨진다. 같은 라운드가 Repository·UseCase·화면까지 결선했다
-(브랜치 `feature/mvi-error-infra-a002-login`, develop 미머지)
-→ [a002-kakao-login-api 스펙](../specs/2026-08-13-a002-kakao-login-api.md).
+(PR #241 `80895eb1`, 2026-08-15 develop 머지)
+→ [a002-kakao-login-api 스펙](../specs/archive/2026-08-13-a002-kakao-login-api.md).
 **단 실서버 응답으로는 아직 확인하지 못했다** — 아래 [판별자 키](#판별자-키는-isnewuser다).
 
 [^apple]: **Android는 애플 로그인을 쓰지 않기로 결정했다**(2026-08-11). 서버에는 있으나 앱 대응
@@ -361,9 +361,11 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
 **2026-08-06 PR #197로 develop 머지 완료**다. 이 표면이 딛고 선 공용 인프라(`ApiCaller` 4진입점·
 `ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로 먼저 들어왔고, 아래
 Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
-**2026-08-14 — `kakao` 하나가 결선됐다**(브랜치 `feature/mvi-error-infra-a002-login`, develop 미머지).
+**2026-08-15 — `kakao` 하나가 develop에 결선됐다**(PR #241 `80895eb1`).
 `AuthRepository`/`AuthRepositoryImpl`(`loginWithKakao`·`saveSession`)와 `LoginWithKakaoUseCase`가
-생겼고 A-002 화면까지 이어졌다 → [a002-kakao-login-api 스펙](../specs/2026-08-13-a002-kakao-login-api.md).
+생겼고 A-002 화면까지 이어졌다 → [a002-kakao-login-api 스펙](../specs/archive/2026-08-13-a002-kakao-login-api.md).
+같은 PR이 `ServerErrorCode.Auth`(`INVALID_ID_TOKEN`·`KAKAO_JWKS_FETCH_FAILED`·
+`KAKAO_SERVER_UNAVAILABLE`)를 `:domain`에 두어 아래 에러 코드 표의 세 값이 앱 코드에 실체로 있다.
 **`signup`·`reissue`·`logout`은 여전히 Repository·UseCase 0건**이고 이후 라운드다.
 
 **실제 서버 호출로는 아직 한 번도 검증되지 않았다** — 실기기 검증이 남아 있다. 개발 서버 평문 HTTP
