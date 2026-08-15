@@ -2,7 +2,7 @@
 id: member
 title: 회원(내 계정 조회·전역 닉네임 변경·탈퇴)
 server_module: http/member
-server_commit: 36ecd1c
+server_commit: e4ff23f
 verified: 2026-08-15
 android_status: partial
 related_spec:
@@ -83,12 +83,20 @@ tags: [api, parfait, server-contract, member]
 |---|---|---|---|
 | `nickname` | String | 필수(`@NotBlank`) | 바꿀 전역 닉네임. 규칙은 아래 |
 
-  **유효성은 `GlobalNickname.of`가 판정한다** — 1~15자, 패턴 `^[가-힣A-Za-z0-9]+(?: [가-힣A-Za-z0-9]+)*$`
-  (한글·영문·숫자, 단어 사이 한 칸 공백 허용, 앞뒤·연속 공백 불가). 위반은 400 `INVALID_NICKNAME`이다.
+  **유효성은 `GlobalNickname.of`가 판정한다** — 1~15자, 패턴
+  `^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+(?: [가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+)*$`
+  (완성형 한글·**자모 단독**·영문·숫자, 단어 사이 한 칸 공백 허용, 앞뒤·연속 공백 불가).
+  위반은 400 `INVALID_NICKNAME`이다.
+
+  🔁 **2026-08-15 — 자모 범위가 추가됐다**(`fix: 그룹/전역 닉네임 자음 모음 단독 입력 허용`). `ㅋㅋ`·`ㅠㅠ`가
+  이제 통과한다. 사유는 iOS 클라이언트가 통과시키는 값이 서버에서만 400으로 튕기던 것이다. **앱은 반대로
+  완성형만 허용하도록 좁혀 둔 상태**(`CheckNameValidUseCase`)라 지금은 앱이 서버보다 좁다
+  → [미결](#미결).
 
   📌 **그룹 닉네임 규칙과 문자 그대로 같다.** `core/parfaitgroup/domain/GroupNickname`도 `MAX_LENGTH = 15`에
-  같은 정규식을 쓴다 — 다른 것은 던지는 에러 코드(`INVALID_GROUP_NICKNAME`)와 `GroupNickname.unknown()`
-  센티널 값의 존재뿐이다. 이 대조가 [parfait-group.md](parfait-group.md)에 오래 걸려 있던 미결을 닫는다.
+  같은 정규식을 쓰고 자모 추가도 같은 커밋에서 함께 이뤄졌다 — 다른 것은 던지는 에러 코드
+  (`INVALID_GROUP_NICKNAME`)와 `GroupNickname.unknown()` 센티널 값의 존재뿐이다. 이 대조가
+  [parfait-group.md](parfait-group.md)에 오래 걸려 있던 미결을 닫는다.
 
 - **응답 필드**
 
@@ -222,3 +230,5 @@ domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider
 - 탈퇴 회원이 남긴 토핑의 `placedBy`가 `(알수없음)`으로 캔버스에 계속 보인다 — 표시 정책이 없다
   → [open-questions](../synthesis/open-questions.md)
 - 애플 계정 탈퇴 시 애플 연동 해제(revoke)를 하지 않는다 → [open-questions](../synthesis/open-questions.md)
+- 서버가 자모 단독 닉네임을 허용하도록 넓혔는데 앱 `CheckNameValidUseCase`는 완성형만 통과시킨다 —
+  어느 쪽에 맞출지(정책 근거는 위키 [[이름-입력-규칙]]에 없다) → [open-questions](../synthesis/open-questions.md)

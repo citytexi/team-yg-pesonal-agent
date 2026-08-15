@@ -2,7 +2,7 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: 36ecd1c
+server_commit: e4ff23f
 verified: 2026-08-15
 android_status: partial
 related_spec:
@@ -119,7 +119,7 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 | 필드 | 타입 | 필수 | 비고 |
 |---|---|---|---|
-| `inviteCode` | String | 필수(query, `@RequestParam` 기본값이 required) | |
+| `inviteCode` | String | 필수(query, `@RequestParam` 기본값이 required) | 6자 영숫자(ASCII). 아래 초대코드 형식 참고 |
 
 - **응답 필드**
 
@@ -135,13 +135,12 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | 409 | `GROUP_ALREADY_JOINED` | 이미 참여한 그룹입니다 |
 | 409 | `GROUP_MEMBER_LIMIT_REACHED` | 그룹의 최대 인원이 모두 참여했습니다 |
 | 404 | `MEMBER_NOT_FOUND` | 존재하지 않는 회원입니다 |
-| 409 | `GROUP_NICKNAME_ALREADY_USED` | 그룹에서 이미 사용 중인 닉네임입니다 |
 | 400 | `INVALID_GROUP_NICKNAME` | 그룹 닉네임이 올바르지 않습니다(아래 참고) |
 
   근거: `ParfaitGroupService.preview`가 `findGroup`(→ `INVALID_INVITE_CODE`) 후 `validateJoin`을 호출한다.
   `validateJoin`은 `ParfaitGroup.validateJoin`(→ `GROUP_ALREADY_JOINED`·`GROUP_MEMBER_LIMIT_REACHED`)과
-  `requireMemberNickname`(→ `MEMBER_NOT_FOUND`), `GroupNickname.of`(→ `INVALID_GROUP_NICKNAME`),
-  중복 닉네임 검사(→ `GROUP_NICKNAME_ALREADY_USED`)를 순서대로 실행한다 — `join`과 완전히 같은 private 함수를
+  `requireMemberNickname`(→ `MEMBER_NOT_FOUND`), `GroupNickname.of`(→ `INVALID_GROUP_NICKNAME`)를
+  순서대로 실행한다 — `join`과 완전히 같은 private 함수를
   공유한다. `INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·`GROUP_MEMBER_LIMIT_REACHED`는
   `ParfaitGroupServiceTest`가 preview 경로로 직접 검증(`ParfaitGroupControllerTest`도 `GROUP_MEMBER_LIMIT_REACHED`
   409 응답을 확인). `MEMBER_NOT_FOUND`·`INVALID_GROUP_NICKNAME`은 preview 전용 테스트는 없지만 `validateJoin`
@@ -149,6 +148,12 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
   `INVALID_GROUP_NICKNAME`은 요청 바디가 아니라 **회원의 전역 닉네임**에 `GroupNickname.of`를 적용한 결과다
   (`requireMemberNickname`이 반환한 값을 그대로 검증) — 아래 [미결](#미결) 참고.
+
+  🔁 **2026-08-15 — 그룹 내 닉네임 중복 검사가 사라졌다**(`fix: 그룹 내 닉네임 중복 검사 제거`).
+  참여·닉네임 변경 양쪽에서 `existsByGroupIdAndNickname` 호출과 그 결과로 던지던
+  `GROUP_NICKNAME_ALREADY_USED`가 제거됐고(포트·어댑터·리포지토리 메서드·에러 코드까지 함께 삭제),
+  **같은 그룹 안에서 닉네임이 겹쳐도 허용**된다. 서버 설명은 "정책상 허용해야 한다"이나 대응 정책 문서는
+  아직 없다 → [미결](#미결).
 
 ### POST /api/parfait-groups/join
 
@@ -158,7 +163,7 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 | 필드 | 타입 | 필수 | 비고 |
 |---|---|---|---|
-| `inviteCode` | String | 필수(non-null 타입) | |
+| `inviteCode` | String | 필수(non-null 타입) | 6자 영숫자(ASCII). 아래 초대코드 형식 참고 |
 
 - **응답 필드**
 
@@ -167,11 +172,23 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | `groupId` | Long | 아니오 | |
 | `groupName` | String | 아니오 | |
 
-- **에러 코드**: join-preview와 동일 6종(`INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·
-  `GROUP_MEMBER_LIMIT_REACHED`·`MEMBER_NOT_FOUND`·`GROUP_NICKNAME_ALREADY_USED`·`INVALID_GROUP_NICKNAME`) —
+- **에러 코드**: join-preview와 동일 5종(`INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·
+  `GROUP_MEMBER_LIMIT_REACHED`·`MEMBER_NOT_FOUND`·`INVALID_GROUP_NICKNAME`) —
   `ParfaitGroupService.join`이 같은 `findGroup`·`validateJoin`을 호출한 뒤 멤버십을 저장한다. 코드 표는 위
-  join-preview 절 참고(중복 서술 생략). `GROUP_NICKNAME_ALREADY_USED`는 `ParfaitGroupServiceTest`가 join 경로로
-  직접 검증한다("같은 그룹에서 이미 사용 중인 전역 닉네임이면 참여를 거부한다").
+  join-preview 절 참고(중복 서술 생략). 2026-08-15 이전에 있던 `GROUP_NICKNAME_ALREADY_USED`는
+  중복 검사와 함께 삭제됐다(위 join-preview 절 참고).
+
+#### 초대코드 형식
+
+`InviteCode`(`core/parfaitgroup/domain/InviteCode.kt`) 값 객체가 판정한다.
+
+- **길이 6**(`InviteCode.LENGTH`, 2026-08-15에 8에서 줄었다 — `refactor: 그룹 참여 코드 자릿수 8자에서 6자로 변경`,
+  DB 컬럼도 마이그레이션 V13으로 같이 줄었다).
+- 문자는 **ASCII 영숫자만**(`isLetterOrDigit` + `code > 127` 배제) — 한글·특수문자·공백 불가.
+- 입력은 **대문자로 정규화**해 조회한다(`InviteCode.of`가 `uppercase()`) → 소문자 입력도 통한다.
+- 위반은 값 객체 단계에서 404 `INVALID_INVITE_CODE`다(형식 오류와 "없는 코드"가 **같은 코드로 나간다**).
+- 서버 생성 코드는 `InviteCodeGenerator`가 `SecureRandom`으로 뽑고 **알파벳에서 `I`·`O`·`0`·`1`을 뺐다**
+  (혼동 방지). 즉 서버가 만드는 코드에는 그 넷이 없지만 **검증은 그것들도 받는다**.
 
 ### POST /api/parfait-groups
 
@@ -235,12 +252,13 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | 404 | `GROUP_NOT_FOUND` | 존재하지 않는 그룹입니다 |
 | 403 | `GROUP_NOT_JOINED` | 참여하지 않은 그룹입니다 |
 | 400 | `INVALID_GROUP_NICKNAME` | 그룹 닉네임이 올바르지 않습니다 |
-| 409 | `GROUP_NICKNAME_ALREADY_USED` | 그룹에서 이미 사용 중인 닉네임입니다 |
 
   근거: `ParfaitGroupService.change`가 `findGroupByIdForUpdate`(→ `GROUP_NOT_FOUND`) → `findMembership`(→
-  `GROUP_NOT_JOINED`) → `membership.changeNickname`(내부 `GroupNickname.of`, → `INVALID_GROUP_NICKNAME`) →
-  중복 검사(→ `GROUP_NICKNAME_ALREADY_USED`, 값이 바뀔 때만) 순서로 실행한다. `GROUP_NICKNAME_ALREADY_USED`는
-  `ParfaitGroupServiceTest`("이미 사용 중인 그룹 닉네임으로 변경할 수 없다")로 직접 검증.
+  `GROUP_NOT_JOINED`) → `membership.changeNickname`(내부 `GroupNickname.of`, → `INVALID_GROUP_NICKNAME`)
+  순서로 실행하고, 값이 바뀐 경우에만 저장한다.
+
+  🔁 **2026-08-15 — `GROUP_NICKNAME_ALREADY_USED`(409)가 사라졌다.** 같은 그룹의 다른 멤버와 같은 닉네임으로
+  바꿔도 성공한다(위 join-preview 절 참고). 앱은 아직 이 코드로 분기한다 → [Android 매핑](#android-매핑).
 
 ### DELETE /api/parfait-groups/{groupId}/members/me
 
@@ -306,19 +324,19 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   성공은 항상 탈퇴를 동반한다. 근거: `ParfaitGroupServiceTest`("그룹 신고는 신고를 저장한 뒤 같은 트랜잭션에서
   탈퇴 이력을 남긴다"·"비어 있는 신고 사유는 신고나 탈퇴 없이 거부한다").
 
-## 도메인 에러 코드 전수 — `ParfaitGroupApiErrorCode`(11종)
+## 도메인 에러 코드 전수 — `ParfaitGroupApiErrorCode`(10종)
 
 `ParfaitGroupApiErrorCode`는 core `ParfaitGroupError`와 이름이 1:1이다(`from(error) = valueOf(error.name)`,
 [conventions.md](conventions.md)). 8개 엔드포인트 서비스 코드(`ParfaitGroupService`)와 도메인 값 객체
 (`ParfaitGroup`·`ParfaitGroupMember`·`ParfaitGroupReport`·`GroupName`·`GroupNickname`·`GroupMemberLimit`)를 직독해
-11종 전부의 귀속처를 확인했다 — "귀속 미대조"로 남길 항목은 없다.
+10종 전부의 귀속처를 확인했다 — "귀속 미대조"로 남길 항목은 없다.
+**2026-08-15에 `GROUP_NICKNAME_ALREADY_USED`가 두 enum에서 함께 삭제돼 11 → 10이 됐다.**
 
 | code | HTTP | 의미 | 귀속 |
 |---|---|---|---|
-| `INVALID_INVITE_CODE` | 404 | 유효하지 않은 초대코드입니다 | join-preview · join |
+| `INVALID_INVITE_CODE` | 404 | 유효하지 않은 초대코드입니다 | join-preview · join(형식 위반·없는 코드 공용) |
 | `GROUP_ALREADY_JOINED` | 409 | 이미 참여한 그룹입니다 | join-preview · join |
 | `GROUP_MEMBER_LIMIT_REACHED` | 409 | 그룹의 최대 인원이 모두 참여했습니다 | join-preview · join |
-| `GROUP_NICKNAME_ALREADY_USED` | 409 | 그룹에서 이미 사용 중인 닉네임입니다 | join-preview · join · 닉네임 변경 |
 | `INVALID_GROUP_NAME` | 400 | 그룹명이 올바르지 않습니다 | 생성 |
 | `INVALID_GROUP_NICKNAME` | 400 | 그룹 닉네임이 올바르지 않습니다 | 생성 · 닉네임 변경 · join-preview · join(전역 닉네임 경유, 근거는 각 절 참고) |
 | `INVALID_GROUP_MEMBER_LIMIT` | 400 | 그룹 최대 인원은 1명 이상 12명 이하여야 합니다 | 생성 |
@@ -339,9 +357,13 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 - **`groupName` 1~10자**(`GroupName.MAX_LENGTH`, `GroupName.kt`)는 위키 정책 "그룹명 1~10자"와 일치한다.
 - **`groupNickname` 1~15자**(`GroupNickname.MAX_LENGTH`, `GroupNickname.kt`)는 위키 정책 "닉네임 1~15자"와
   일치한다.
-- 두 값 객체가 공유하는 문자 규칙: 정규식 `^[가-힣A-Za-z0-9]+(?: [가-힣A-Za-z0-9]+)*$` — 한글·영문·숫자만
-  허용하고 단어 사이 단일 스페이스만 허용한다(선행·후행 공백, 연속 공백, 그 외 특수문자 불가). 이 문자 규칙
-  자체는 위키에 대응 항목이 없어 대조 대상이 아니다.
+- 두 값 객체가 공유하는 문자 규칙: 정규식 `^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+(?: [가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+)*$` —
+  완성형 한글·**자모 단독**·영문·숫자를 허용하고 단어 사이 단일 스페이스만 허용한다(선행·후행 공백, 연속 공백,
+  그 외 특수문자 불가). 🔁 **2026-08-15에 자모 범위가 추가됐다**(`fix: 그룹/전역 닉네임 자음 모음 단독 입력 허용`,
+  사유는 iOS 클라이언트가 통과시키는 `ㅋㅋ`류가 서버에서만 400이 되던 것). 위키 [[이름-입력-규칙]]은 "한글"의
+  범위를 정하지 않아 여전히 대조 근거가 없다 → [미결](#미결).
+- **초대코드 자릿수 6**은 위키에 대응 정책 문서가 없다(앱 A-004도 코드로만 6을 확정했다) → [미결](#미결).
+- **그룹 내 닉네임 중복 허용**(2026-08-15 서버 변경)도 위키 정책에 근거 항목이 없다 → [미결](#미결).
 - `INVALID_GROUP_MEMBER_LIMIT`의 메시지("1명 이상 12명 이하")가 곧 규칙 본문이라 http 계층 어디에도 별도
   문서화가 없어도 서버 코드만으로 확정된다 — 브리프가 우려한 "규칙 본문이 http 계층에 없다"는 core 값
   객체(`GroupName`·`GroupNickname`·`GroupMemberLimit`)에서 전부 찾았다.
@@ -374,6 +396,18 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 - **에러 코드 8종이 실제 분기에 쓰인다** — `INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·
   `GROUP_MEMBER_LIMIT_REACHED`(A-004 문구) · `GROUP_NICKNAME_ALREADY_USED`·`INVALID_GROUP_NICKNAME`(S-102 문구) ·
   `INVALID_GROUP_NAME`·`INVALID_GROUP_MEMBER_LIMIT`·`MEMBER_NOT_FOUND`(A-005는 로그만).
+  ⚠️ **그중 `GROUP_NICKNAME_ALREADY_USED`는 2026-08-15 서버 delta로 死코드가 됐다** — 서버가 그 코드를 더는
+  내지 않으므로 `GroupNickNameViewModel`의 `ALREADY_USED` 분기와 그것을 검증하는 유닛 테스트, 상수
+  `ServerErrorCode.ParfaitGroup.GROUP_NICKNAME_ALREADY_USED`가 모두 도달 불가다
+  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- ⚠️ **닉네임 허용 문자가 앱이 더 좁다** — 서버가 자모 단독을 허용하도록 넓혔는데
+  `CheckNameValidUseCase`는 완성형 한글만 통과시킨다(서버 구 정규식을 그대로 옮긴 것). 서버가 받는 입력을
+  앱이 먼저 막는 방향이라 요청 실패는 아니지만 입력 가능 집합이 갈렸다
+  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- ✅ **초대코드 자릿수가 맞아떨어졌다** — 앱 `InviteCode.LENGTH`·A-004 입력 칸은 처음부터 6이었고 서버가
+  이번에 8 → 6으로 내려왔다. 그전까지는 **앱이 보낸 코드가 서버 형식 검증을 통과할 수 없었다**(문서에
+  서버 자릿수가 적혀 있지 않아 드러나지 않던 불일치다). 다만 앱은 대문자 정규화를 하지 않는다 —
+  서버가 `uppercase()` 하므로 동작은 같다.
 - **생성 응답을 한 번 더 검사한다** — `CreateGroupUseCase`가 `groupId > 0`이 아니면 계약 위반으로 보고 실패로 되돌린다.
 - **참여 → 닉네임이 두 요청이다** — 합류(POST join)는 A-004에서 끝나고 닉네임(PATCH)은 다음 화면 몫이라,
   중간에 이탈하면 그룹에는 들어간 채 닉네임만 서버 초기값으로 남는다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
@@ -419,7 +453,8 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 
 ✅ **회원 전역 닉네임과 그룹 닉네임 규칙 대조 — 2026-08-11 해소.** 두 값 객체가 **문자 그대로 같은
 규칙**이다: `core/member/domain/GlobalNickname`과 `core/parfaitgroup/domain/GroupNickname` 모두
-`MAX_LENGTH = 15`, 패턴 `^[가-힣A-Za-z0-9]+(?: [가-힣A-Za-z0-9]+)*$`, 길이 검사 `1..MAX_LENGTH`.
+`MAX_LENGTH = 15`, 패턴 `^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+(?: [가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+)*$`(2026-08-15 자모 추가도
+**두 객체 동시**였다), 길이 검사 `1..MAX_LENGTH`.
 다른 것은 위반 시 던지는 코드(`INVALID_NICKNAME` vs `INVALID_GROUP_NICKNAME`)와 `GroupNickname.unknown()`
 센티널의 존재뿐이다. 따라서 join-preview·join이 회원의 전역 닉네임에 `GroupNickname.of`를 적용해도
 **정상 경로에서는 통과한다** — 우려했던 "본인 입력과 무관한 `INVALID_GROUP_NICKNAME`"은 발생하지 않는다.
@@ -437,4 +472,11 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 
 전역 닉네임을 바꾸는 API는 [member.md](member.md)에 있다.
 
-미결 없음.
+2026-08-15 서버 delta로 새로 열린 것 셋:
+
+- 같은 그룹 안 닉네임 중복이 허용됐는데 **정책 문서에 근거가 없다** — 서버 커밋 메시지의 "정책상 허용"만
+  근거다. 앱 S-102는 아직 중복 에러 문구를 갖고 있다 → [open-questions](../synthesis/open-questions.md)
+- 닉네임 허용 문자에 자모가 들어왔는데 위키 [[이름-입력-규칙]]은 "한글"의 범위를 정하지 않는다.
+  앱은 완성형만 통과시켜 **서버보다 좁다** → [open-questions](../synthesis/open-questions.md)
+- 초대코드 자릿수 6이 서버·앱 코드 양쪽에만 있고 정책 문서에 없다 →
+  [open-questions](../synthesis/open-questions.md)

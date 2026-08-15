@@ -2,7 +2,7 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: 36ecd1c
+server_commit: e4ff23f
 verified: 2026-08-15
 tags: [api, parfait, server-contract, conventions]
 ---
@@ -55,7 +55,7 @@ tags: [api, parfait, server-contract, conventions]
 |---|---|---|
 | `CommonErrorCode` | `common/error` | 2 |
 | `AuthErrorCode` | `core/auth/exception` | 14 |
-| `ParfaitGroupApiErrorCode` | `http/parfaitgroup` | 11 |
+| `ParfaitGroupApiErrorCode` | `http/parfaitgroup` | 10 (2026-08-15 `GROUP_NICKNAME_ALREADY_USED` 삭제로 11 → 10) |
 | `ImageErrorCode` | `core/image/exception` | 4 |
 | `MemberErrorCode` | `core/member/exception` | 2 |
 | `ParfaitImageErrorCode` | `core/parfaitimage/exception` | 5 |

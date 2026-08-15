@@ -2,7 +2,7 @@
 id: parfait
 title: 파르페(캔버스) 조회·회전
 server_module: http/parfait
-server_commit: 36ecd1c
+server_commit: e4ff23f
 verified: 2026-08-15
 android_status: partial
 related_spec:
