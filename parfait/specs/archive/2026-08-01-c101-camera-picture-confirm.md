@@ -5,9 +5,9 @@ status: implemented
 category: ui-spec
 platforms: android
 verified: 2026-08-15
-related_code: CameraFeedLayer, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, PictureConfirmSource, GalleryPermissionRequestComponent, DateTextFormat
+related_code: PictureConfirmResult, CameraFeedLayer, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, PictureConfirmSource, GalleryPermissionRequestComponent, DateTextFormat
 related_adr: ADR-0018, ADR-0006
-related_spec: designsystem-button-missing-components, g001-group-list, c102-custom-gallery-picker, c103-segmentation-topping-edit
+related_spec: designsystem-button-missing-components, g001-group-list, c102-custom-gallery-picker, c103-segmentation-topping-edit, c301-canvas-background-edit
 related_architecture: navigation-flow, design-system, module-structure
 supersedes:
 superseded_by:
@@ -97,6 +97,21 @@ tags: [spec, parfait, camera, c101]
 - 갤러리 쪽 잔존 지적 2건이 이 PR로 정리됐다 — 빈 상태 그래픽이 `isEmpty` 분기 **안으로** 들어갔고
   빈 상태 문구가 `strings.xml`로 갔다(그래픽 자체는 벡터 → 밀도별 PNG로 교체). **로딩 인디케이터가
   흰 배경 위 흰색인 것은 그대로다.**
+
+### 확인 화면 as-built 갱신 (2026-08-15, PR #231)
+배경 편집 라운드가 카메라·확인 화면을 **두 플로우 공용**으로 바꿨다 →
+[c301 스펙](2026-08-15-c301-canvas-background-edit.md).
+- `NavKeyCameraCustom`이 `data object` → `data class(showGuideToast, returnResultOnly)`로 승격되고
+  `NavKeyPictureConfirm`에 `returnResultOnly`가 붙었다. 둘 다 기본값이 있어 기존 호출부는 생성자
+  호출로만 바뀌었다(동작 불변).
+- `showGuideToast = false`면 진입 가이드 토스트를 띄우지 않는다(`hasShownGuideToast` 게이트 앞에 조건 추가).
+- 확인 버튼이 갈린다 — `returnResultOnly`면 신설 `PictureConfirmResult(uri, source)`를
+  `LocalResultEventBus`로 보내고 `onBack()`을 **두 번**(확인 화면 → 카메라) 부르고, 아니면 종전대로
+  `goToAndPopCurrent(NavKeySegmentation)`으로 전진한다.
+- 실패·취소 경로는 그대로 `sendResult(uri: String?)`다. 즉 이 화면이 돌려주는 값의 타입이 둘로
+  갈렸고, `PictureConfirmResult`만 구독하는 호출자는 실패를 받지 못한다
+  → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
+- 좌측 버튼 문구 분기(`PictureConfirmSource`)·닫기 빈 람다 TODO는 변하지 않았다.
 
 ### 상태(MVI)
 `CustomCameraState`: `isInit` · `hasPermission` · `permanentlyDenied` · `lensFacing` · `zoomRatio` ·

@@ -7,7 +7,7 @@ platforms: android
 verified: 2026-08-04
 related_code: CustomGalleryPickerScreen, CustomGalleryPickerViewModel, CustomGalleryPickerRoute, GalleryImageGridComponent, GalleryPermissionRequestComponent, GalleryPartialAccessBanner, GalleryPermissionManager, GalleryRepository, GalleryMediaProvider, LoadFilterYGGalleryImageGroupsUseCase, LoadAllGalleryImageGroupsUseCase, GetRecentCacheImagesUseCase, GalleryImageGroup, DayWindow, DateTextFormat, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, PictureConfirmSource
 related_adr: ADR-0002, ADR-0006, ADR-0016
-related_spec: c101-camera-picture-confirm
+related_spec: c101-camera-picture-confirm, c301-canvas-background-edit
 related_architecture: navigation-flow, module-structure, data-layer
 supersedes:
 superseded_by:
@@ -79,6 +79,14 @@ tags: [spec, parfait, gallery, c102]
   [module-structure](../../architecture/module-structure.md) 규칙 준수).
 - 부작용: 호출 화면 `CanvasImageAddRoute`의 `ResultEffect<String>`는 커스텀 갤러리로부터 결과를
   받지 못한다 → [open-questions](../../synthesis/open-questions.md) [2026-08-04].
+
+> 📌 **두 번째 호출자와 반환 경로 부활(2026-08-15, PR #231)** — `NavKeyCustomGalleryPicker`가
+> `data object` → `data class(showGuideToast, returnResultOnly)`로 승격됐다(기본값 유지 → 기존
+> 동작 불변). C-301 배경 편집이 두 인자를 `false`/`true`로 주고 들어오면 **가이드 토스트가 꺼지고**,
+> 확인 화면이 세그멘테이션으로 전진하는 대신 `PictureConfirmResult`를 `ResultEventBus`로 돌려준다
+> (복귀는 확인 화면·갤러리를 걷는 `onBack()` 2회). 즉 이 화면이 결과 반환 플로우에 다시 참여하지만
+> **결과를 만드는 주체는 확인 화면**이고 갤러리 자신의 `NavigateToConfirm` 경로는 그대로다
+> → [c301 스펙](2026-08-15-c301-canvas-background-edit.md).
 
 ### 상태(MVI)
 `CustomGalleryPickerState`: `isLoading` · `access` · `groups` · `recentImages`(+ 파생 `isEmpty`).
