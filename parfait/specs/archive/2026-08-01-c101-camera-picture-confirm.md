@@ -4,10 +4,10 @@ title: C-101 커스텀 카메라 · C-101-confirm 사진 확인 화면 (Custom C
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-04
+verified: 2026-08-15
 related_code: CameraFeedLayer, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, PictureConfirmSource, GalleryPermissionRequestComponent, DateTextFormat
 related_adr: ADR-0018, ADR-0006
-related_spec: designsystem-button-missing-components, g001-group-list, c102-custom-gallery-picker
+related_spec: designsystem-button-missing-components, g001-group-list, c102-custom-gallery-picker, c103-segmentation-topping-edit
 related_architecture: navigation-flow, design-system, module-structure
 supersedes:
 superseded_by:
@@ -42,7 +42,10 @@ tags: [spec, parfait, camera, c101]
   - 카메라·갤러리 `strings.xml` 신설, 갤러리 빈 상태 그래픽(`image_gallery_empty`)·플래시 아이콘 추가.
   - 공용 날짜 포맷 `core:util:jvm` `model/DateTextFormat`(요일·월일 축약) → 상단 `YGDate` 표시.
 - **제외**(이번 라운드에서 안 함):
-  - 확인 화면 이후 경로 — "다음"(C-103 로딩)·닫기(C-001 캔버스)가 TODO 주석 상태.
+  - ~~확인 화면 이후 경로~~ — **"다음"은 #221(2026-08-14)에서 결선됐다**: `navigator.goToAndPopCurrent(NavKeySegmentation(sourceImageUri = uri))`.
+    `goTo`가 아니라 `goToAndPopCurrent`라 확인 화면은 백스택에서 걷히고, 세그멘테이션에서 뒤로 가면 촬영/갤러리로 돌아간다.
+    `feature/camera/impl` → `feature/segmentation/api` 의존이 함께 추가됐다(규약대로 `:api`만).
+    **닫기(C-001 캔버스)는 여전히 `onClickClose = {}` TODO다.**
   - 줌 UI — 상태·인텐트는 살아 있으나 화면에 노출되는 컨트롤이 없다(아래 "잔존").
   - 시스템 카메라 화면(`SystemCameraScreen`)의 디자인 정합 — 맨 Material3 위젯 그대로.
 
@@ -152,7 +155,8 @@ tags: [spec, parfait, camera, c101]
   테두리를 덮는다([ygtext-date-label 스펙](2026-07-18-ygtext-date-label.md)의 as-built와 어긋남).
 
 ## 주의 / 열린 질문
-- **다음 경로 미결선**: `PictureConfirmRoute`의 "다음"·닫기가 빈 람다 + TODO(C-103 로딩, C-001 캔버스).
+- **다음 경로**: "다음"은 #221에서 C-103(`NavKeySegmentation`)으로 결선됐고 → [c103 스펙](2026-08-15-c103-segmentation-topping-edit.md).
+  **닫기는 여전히 빈 람다 + TODO**(C-001 캔버스)이고, 세그멘테이션 3화면의 닫기도 같은 상태라 토핑 생성 경로에는 아직 출구가 없다.
   현재 확인 화면에서 앞으로 나갈 수 없다. **#191로 갤러리 경로가 같은 화면에 합류해 영향 범위가
   두 진입점으로 늘었다**(갤러리는 결과 반환도 끊겨 이 화면이 유일한 출구다).
 - **줌 死코드**: `CameraZoomIndicatorComponent`·`controls/ZoomLevelRow`가 참조 0건이고,

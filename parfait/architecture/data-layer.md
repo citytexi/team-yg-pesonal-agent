@@ -18,7 +18,7 @@ tags: [architecture, parfait]
 > 근거는 파일명+심볼명으로만.
 
 ## 레이어 배치
-- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`InviteCodeResult`, `GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`) + 도메인 예외(sealed `SegmentationException`).
+- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`InviteCodeResult`, `GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`) + 도메인 예외(sealed `SegmentationException` — `ImageNotFound`·`ClientInit`·`ModuleNotReady`·`Process`).
   - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드가 추가한 VO·value class만 하위 패키지로 들어갔고(PR #197의 `auth/`·`group/`·`id/`·`policy/`에 PR #230이 `image/`·`member/`·`topping/`을 더했다), 그 이전 선언 8개는 루트에 남았다. 하위 패키지가 넷에서 일곱이 되며 **비율은 더 기울었는데 규약은 여전히 없다** — 어디에 새 모델을 둘지 매번 판단해야 하는 상태 → [open-questions](../synthesis/open-questions.md).
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
@@ -50,7 +50,29 @@ tags: [architecture, parfait]
 `RecentImageRepositoryImpl`이 `RecentImageLocalDataSource`(DataStore, URI 메타)와 `FileRecentImageLocalDataSource`(파일 저장)를 조합. 파일 last-modified로 캐시 축출, `DayWindow`로 날짜 윈도잉.
 
 ## 예: 이미지 세그멘테이션(누끼)
-`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩, 결과 비트맵은 `BitmapWrapper`([[0011-cross-module-bitmap-abstraction]])로 도메인에 전달, subject 이미지는 `cacheDir` PNG 파일로 저장해 경로(`subjectImagePath`) 반환. 실패는 `Result<SegmentationResult>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`.
+`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]]), subject 이미지는 `cacheDir` PNG 파일로 저장해 경로를 반환. 실패는 `Result<SegmentationResult>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`SaveEditedImageUseCase`.
+
+**결과 모델 재편(2026-08-14, PR #221)** — `SegmentationResult`가 `BitmapWrapper`를 더 이상 담지 않는다.
+`subjectImagePath`(파일 경로) + `subjectBounds: SegmentationBounds?`(원본 픽셀 좌표계 바운딩 박스,
+`right`/`bottom`은 exclusive) 두 값뿐이고, 감지 픽셀이 0이면 `subjectBounds`가 null이다.
+**결과 전달이 "메모리 비트맵 + 파일 경로" 이원에서 경로 단일로 정리됐다** — 비트맵이 도메인 모델을
+타고 화면까지 실려 가지 않는다(대신 화면이 경로를 다시 디코드한다).
+
+**메서드 3개**로 늘었다 — `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
+`saveEditedImage(bitmapWrapper)`(손편집 결과를 캐시에 PNG로 떨구고 절대 경로 반환).
+`saveEditedImage`는 **넘겨받은 비트맵을 recycle하지 않는다**(수명은 넘겨준 쪽 몫, 코드 주석에 명시).
+
+**ML Kit optional module을 사용 직전에 확인한다** — 매니페스트의 `com.google.mlkit.vision.DEPENDENCIES`는
+설치 시점 다운로드 힌트일 뿐 보장이 없어서, `ModuleInstall.areModulesAvailable`로 확인하고 없으면
+`installModules` 후 재확인한다. 실패는 `SegmentationException.ModuleNotReady`(일시적, 재시도 가능) /
+`Process`(그 외)로 가른다 — `Tasks.await`가 원인을 `ExecutionException`으로 감싸므로 한 겹 벗겨
+`MlKitException.UNAVAILABLE`을 판정한다.
+
+> ⚠️ **캐시 파일이 쌓인다** — `parfait_<timestamp>.png`가 추출 1장 + 편집 완료마다 최대 2장 늘고
+> 정리 경로가 없다 → [open-questions](../synthesis/open-questions.md) [2026-07-12].
+
+> ⚠️ **`foregroundConfidenceMask == null`은 여전히 raw `error()`다** — `Result`로 감싸이지 않아
+> 호출부(effect→Toast)가 못 잡는다 → [open-questions](../synthesis/open-questions.md) [2026-07-12].
 
 ## 실패는 Repository 경계에서 도메인 타입이 된다
 

@@ -7,8 +7,8 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr:
-related_spec:
-related_architecture:
+related_spec: c103-segmentation-topping-edit
+related_architecture: module-structure, data-layer
 platforms: android
 tags: [adr, parfait]
 ---
@@ -45,3 +45,20 @@ tags: [adr, parfait]
 **위험·방어**
 - 다운캐스트 실패는 `Result.failure(SegmentationException.ImageNotFound)`로 처리.
 - 필요한 비트맵 연산이 정해지면 `BitmapWrapper`에 메서드를 정의해 다운캐스트 의존을 줄인다 → [open-questions 2026-07-12 BitmapWrapper stub](../../wiki/synthesis/open-questions.md).
+
+## As-built 갱신 (2026-08-14, PR #221)
+
+결정은 유지되고 **적용 범위가 줄었다**.
+
+- **`SegmentationResult`가 `BitmapWrapper`를 더 이상 담지 않는다** — 결과가 `subjectImagePath` +
+  `subjectBounds`로 재편되며 도메인 **모델**에서 비트맵 추상이 빠졌다. 남은 사용처는 Repository
+  **시그니처** 3개다: `decodeImage(uri): BitmapWrapper` · `segmentImage(bitmapWrapper)` ·
+  `saveEditedImage(bitmapWrapper)`(신설).
+- `saveEditedImage`도 같은 `as? AndroidBitmap` 다운캐스트 + `ImageNotFound` 방어를 반복한다 —
+  다운캐스트 지점이 하나 늘었고, `BitmapWrapper`는 여전히 멤버 0인 stub이다
+  → [open-questions](../synthesis/open-questions.md) [2026-07-12].
+- ⚠️ **화면 경계에서는 추상이 벗겨진다** — `SegmentationViewModel`·`ToppingEditViewModel`이
+  `(wrapper as? AndroidBitmap)?.getRawData()`로 raw `android.graphics.Bitmap`을 꺼내 **UiState에
+  직접 담는다**. 이 ADR이 규정하는 것은 domain 경계뿐이라 규약 위반은 아니지만, 다운캐스트가
+  data 레이어 밖으로 나온 첫 사례다 →
+  [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 드리프트 9.
