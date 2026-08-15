@@ -4,7 +4,7 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-10
+verified: 2026-08-15
 related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
@@ -66,6 +66,10 @@ app / app-preview
 - **`core:testing`은 프로덕션 코드에서 참조 금지.** 배선은 `setConfigTestUnit()`이 `testImplementation`으로
   넣어주고, 계측 소스셋에는 붙지 않는다. 이 모듈은 junit4·coroutines-test를 `api`로 재노출하지
   않으므로 `bundles.test-unit`과 짝일 때만 성립한다([spec](../specs/archive/2026-08-06-unit-test-infrastructure.md)).
+  **`parfait.test.unit`은 화면 결선 라운드마다 그 feature `impl`에 붙는다**(2026-08-15 기준 인트로·로그인·
+  그룹 목록·그룹 참여·그룹 설정·앱 설정). 적용 목록의 SoT는 각 `build.gradle.kts`다.
+- **`core:util:jvm`의 `Char.isKorean()`은 삭제됐다**(2026-08-15, PR #243) — 이름 유효성 검사가 서버 정규식과
+  같은 문자 집합(`가-힣A-Za-z0-9` + 스페이스)을 직접 쓰게 되며 유일한 사용처가 사라졌다.
 - **여러 feature가 공유하는 화면**은 특정 도메인 feature 밑이 아니라 `feature/common/*`에 둔다([[0015-feature-common-shared-layer]]). 단, **2개 이상 소비처가 확정된 경우에만**(단일 소비면 소유 feature 유지).
 - **표시 문자열은 `strings.xml` + `stringResource`**(코틀린 리터럴 금지). 화면 전용 정적 라벨은 그 화면의 `feature/*/impl` `res/values/strings.xml`
   (같은 모듈의 여러 화면이 한 파일 공용), **여러 feature가 공유하는 문구**(유효성 에러 등)는 `core:ui` `res/values/strings.xml`([[0016-domain-result-presentation-string-mapping]]).

@@ -4,8 +4,8 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-12
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main
+verified: 2026-08-15
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api
 related_adr: ADR-0002, ADR-0006
 related_architecture:
 related_code: core:navigation, Navigator
@@ -50,8 +50,13 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
   결과적으로 그룹 목록에서는 백스택이 1개라 뒤로가기가 no-op이다.
 - 의존 방향은 규약대로 `:api`만: `feature/login/impl` → `feature/intro/api`,
   `feature/intro/impl` → `feature/groups/list/api`.
-- **화면 전이만 결선됐다** — 서버 인증(`/auth/login`·`/auth/signup`)·토큰 저장·약관 동의 저장은
-  붙지 않았고 신규/기존 회원 분기도 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-10].
+- ~~**화면 전이만 결선됐다**~~ → ✅ **데이터까지 이어졌다(2026-08-15, PR #241·#242)**. 로그인이
+  카카오 `idToken`으로 서버 인증을 하고 `isNewUser`로 갈라(기존 회원은 목록, 신규는 약관) 약관 화면이
+  `POST /auth/signup`으로 동의를 보내고 **세션을 저장한 뒤** 목록으로 넘어간다. 즉 이 체인의 세 구멍
+  (인증·회원 분기·동의 저장)이 닫혔다 → [open-questions](../synthesis/open-questions.md) [2026-08-10].
+  **기존 회원은 약관 화면을 거치지 않으므로 백스택 리셋 지점이 두 곳**이다 — `LoginRoute`가 기존 회원이면
+  `clearBackStack()` + `goTo(NavKeyGroupList)`, 신규면 리셋 없이 `goTo(NavKeyTermAgree(registrationToken))`이라
+  약관 화면에서 뒤로 가면 로그인으로 돌아간다. 리셋은 그 뒤 `TermAgreeRoute`가 한다.
 - 📌 **체인 첫 화면이 실물이 됐다(2026-08-11, PR #218)** — A-002 로그인의 온보딩 자리가 placeholder
   박스에서 일러스트 3장으로 채워졌다. 전이·인증 구조는 그대로다(카카오 토큰은 여전히 `LoginState`
   안에서 끝난다) → [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md).
@@ -61,10 +66,15 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 그룹 목록에서 갈라진 두 갈래가 **목록으로 되돌아오며 닫혔다**. 이전에는 양쪽 끝이 stub이라 들어가면 나올 수 없었다.
 
 ```
-NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확인 모달)──┐
-                 └─ 참여 ─▶ NavKeyGroupInviteCode ─(확인 모달)─▶ NavKeyGroupNickName ─┤
-                                                                                       └─▶ NavKeyGroupList
+NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확인 모달 = POST 생성)──┐
+                 └─ 참여 ─▶ NavKeyGroupInviteCode ─(확인 모달 = POST 참여)─▶ NavKeyGroupNickName(groupId) ─┤
+                                                                                                            └─▶ NavKeyGroupList
 ```
+
+> 📌 **실서버 결선(2026-08-15, PR #243·#244)** — 두 갈래의 mock UseCase가 전부 걷혔다. 특히 **합류 시점이
+> 앞당겨졌다**: A-004 확인 모달이 `POST /api/parfait-groups/join`으로 실제 합류하고 그 응답의 `groupId`를
+> `NavKeyGroupNickName(groupId)` 인자로 넘긴다. 그래서 S-102는 "참여"가 아니라 **이미 들어간 그룹의 닉네임
+> 변경**(PATCH) 화면이고, 거기서 이탈해도 참여는 유지된다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 
 - 복귀는 `clearBackStack()` + `goTo`가 아니라 **`goToSingleClearTop(NavKeyGroupList)`**다 —
   목록 엔트리가 백스택에 이미 있으므로 그 위만 걷어낸다. 목록에서 뒤로가기는 여전히 no-op이다(백스택 1개).
@@ -78,8 +88,9 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
 - ⚠️ **위키 정본과 목적지가 다르다** — [[기능정의서-v6]]은 A-004(참여)·A-005(생성) 다음 단계를
   **C-001(메인 캔버스)**로 적는데(중간 화면 G-002 삭제 후 재배선) 코드는 그룹 목록으로 돌아온다
   → [open-questions](../synthesis/open-questions.md) [2026-08-12].
-- ⚠️ **되돌아온 목록이 갱신되지 않는다** — 엔트리 재사용이라 `GroupListViewModel`이 살아 있고, 애초에
-  조회 경로가 없어 mock 4건 고정이다. 생성·참여 UseCase도 mock이라 새 그룹이 목록에 나타날 자리가 없다.
+- ⚠️ **되돌아온 목록이 갱신되지 않는다** — 엔트리 재사용이라 `GroupListViewModel`이 살아 있고 조회는
+  `init`과 pull-to-refresh에만 걸려 있다. 목록 조회가 붙은 뒤(#248)에도 **생성·참여 직후 새 그룹이 바로
+  보이지 않고 당겨야 나타난다** → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 
 ## 토핑 생성 플로우 (2026-08-14, PR #221)
 
@@ -176,7 +187,11 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 
 목적지가 값을 받으면 `data object`가 아니라 `@Serializable data class NavKeyXxx(val …)`로 정의한다
 (`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupCreate`·
-`NavKeyPictureConfirm`).
+`NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`).
+**서버 응답 값이 다음 화면의 인자가 되는 형태가 develop에 자리 잡았다**(2026-08-15) — 로그인 응답의
+가입 토큰이 `NavKeyTermAgree(registrationToken)`으로, 참여 응답의 그룹 ID가 `NavKeyGroupNickName(groupId)`로
+간다. 두 값 다 원시 타입으로 넘기고 **받는 쪽에서 value class로 감싼다**(`RegistrationToken`·`GroupId`) —
+NavKey는 `@Serializable`이라 도메인 타입을 직접 싣지 않는다.
 **ViewModel이 없는 화면이면 엔트리 빌더가 `navKey.…` 값을 Route 파라미터로 그냥 넘긴다**
 (`NavKeyPictureConfirm(uri, source)` → `PictureConfirmRoute(uri = …, source = …)`, #182·#191).
 **여러 진입점이 한 화면을 공유하면 출처를 NavKey 인자(`@Serializable` enum)로 넘긴다** — 확인 화면은
@@ -184,7 +199,10 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 feature의 `:api`만 참조한다(`feature/gallery/impl` → `feature/camera/api`).
 **인자 값의 출처는 호출 화면의 상태다** — G-001이 `goTo(NavKeyGroupCreate(nickName = uiState.nickName))`로
 A-005를 연다(#222). 현재 그 `nickName`은 `GroupListUiState` 기본값 mock이라, 인자 결선과 값의 진위는
-별개 문제로 남아 있다 → [open-questions](../synthesis/open-questions.md) [2026-08-07].
+별개 문제로 남아 있다 — **#243부터는 그 값이 실서버 그룹 생성 요청으로 나간다**
+→ [open-questions](../synthesis/open-questions.md) [2026-08-07]·[2026-07-29].
 그 값을 ViewModel 초기 상태로 넘길 때는 **Assisted 주입**을 쓴다 — `@HiltViewModel(assistedFactory = …)` + `@AssistedInject` +
 `@Assisted` 파라미터, 엔트리 빌더에서 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.…) })`로 생성해 Route에 넘긴다
-(`GroupCreateViewModel`·`SegmentationViewModel`).
+(`GroupCreateViewModel`·`SegmentationViewModel`·`GroupNickNameViewModel`(#244)·`TermAgreeViewModel`(#242)).
+**생성 위치는 두 형태가 공존한다** — 엔트리 빌더에서 만들어 Route 파라미터로 넘기거나(`GroupNickName`),
+Route의 기본 인자에서 만들거나(`TermAgree`). 후자는 Route가 인자 값을 받아 팩토리에 넘긴다.

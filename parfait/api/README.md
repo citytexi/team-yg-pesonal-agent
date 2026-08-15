@@ -8,7 +8,7 @@
 > 추적 브랜치는 서버 **`main`** — 기준 커밋과 갱신 절차는 [server-baseline.md](server-baseline.md).
 
 ## 전역 계약
-- [conventions.md](conventions.md) — 응답 envelope(**204 예외 2건**)·성공/에러 코드 체계·인증·URL 규약·직렬화 규약·**Android 불일치**(2026-08-15 기준 0건)
+- [conventions.md](conventions.md) — 응답 envelope(**204 예외 2건**)·성공/에러 코드 체계·인증·URL 규약·직렬화 규약·**Android 불일치**(2026-08-15 기준 1건 — 그룹 목록 업로드 시각 파싱)
 
 ## 팀 명세 원문
 - [spec/](spec/README.md) — 서버팀이 작성한 **API 명세**를 텍스트로 옮긴 것. 이 디렉토리의 도메인 문서가
@@ -25,7 +25,7 @@
 |---|---|---|---|
 | [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | 부분(애플 해당 없음, 나머지 구현됨) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
-| [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨 |
+| [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨(목록 1건 ⚠️불일치) |
 | [parfait.md](parfait.md) | `http/parfait` | 3 + 테스트 전용 1 (연도 리스트 · **오늘의 캔버스** · **과거 목록** / 테스트 회전) | 부분(연도만 · 신규 2 미구현 · 회전 해당 없음) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 부분(탈퇴 미구현) |
@@ -36,8 +36,14 @@
 토핑 테두리·삭제, 회원 탈퇴). 2026-08-12에 닫혔던 공백이 서버 delta로 **세 번째** 다시 벌어졌다.
 
 > **`구현됨`은 `:data`에 Service·DataSource 표면이 있고 계약과 일치한다는 뜻**이다(2026-08-06, PR #197
-> develop 머지). 이 표면을 소비하는 Repository·UseCase·화면은 아직 0건이고 실서버 요청도 0건이라
-> 각 문서 `android_status`는 `partial`이다 → [open-questions](../synthesis/open-questions.md).
+> develop 머지).
+>
+> ✅ **2026-08-15 — 소비처가 생겼다.** 다섯 라운드(PR #241·#242·#243·#244·#248)가 **8 엔드포인트를
+> 화면까지** 이었다 — 카카오 로그인·회원가입(auth), 약관 목록(policy), 그룹 목록·생성·참여 미리보기·참여·
+> 닉네임 변경(parfait-group). `policy.md`는 유일한 엔드포인트가 전부 소비돼 **`android_status: done`**이고,
+> `auth.md`(reissue·logout 미소비)·`parfait-group.md`(상세·탈퇴·신고 미소비)는 `partial`이다. 나머지 넷
+> (parfait·image·member·parfait-image)은 여전히 표면만 있고 소비처가 0이다.
+> **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 >
 > `image.md`(2026-08-10 신설) · `member.md`·`parfait-image.md`(2026-08-11 신설)도 **2026-08-12 PR #230
 > 머지로 표면을 얻어** `android_status: partial`이 됐다 — 앞의 넷과 같은 뜻이다(표면은 있고 소비처는 없다).
@@ -46,6 +52,10 @@
 > 와이어 계약 테스트([auth.md](auth.md) "판별자 키"). 같은 라운드가 이 엔드포인트를 **소비처까지** 이었다.
 >
 > ⚠️ **2026-08-15 서버 delta로 신규 5건은 표면 0**이다 — 해당 도메인 문서의 Android 열은 `미구현`이다.
+>
+> ⚠️ **새 불일치 1건**(2026-08-15) — 그룹 목록의 `recentImageUploadedAt`을 앱이 오프셋 필수 파서로 읽는데
+> 서버는 오프셋 없이 내려준다. 대응 심볼이 있는데 계약과 어긋나므로 `parfait-group.md`의 GET
+> `/api/parfait-groups` 행이 **`⚠️불일치`**다([conventions.md](conventions.md) "Android 불일치").
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만

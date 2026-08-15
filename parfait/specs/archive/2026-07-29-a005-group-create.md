@@ -4,14 +4,18 @@ title: A-005 그룹 생성 화면 (GroupCreate)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-12
+verified: 2026-08-15
 related_code:
   - NavKeyGroupCreate
   - GroupCreateRoute.kt#GroupCreateRoute
   - GroupCreateScreen.kt#GroupCreateScreen
   - GroupCreateViewModel.kt#GroupCreateViewModel
+  - GroupCreateViewModelTest
   - CheckNameValidUseCase.kt#CheckNameValidUseCase
   - CreateGroupUseCase.kt#CreateGroupUseCase
+  - CreateGroupUseCaseTest
+  - ParfaitGroupRepository.kt#createGroup
+  - ServerErrorCode.kt#ParfaitGroup
   - YGModalPopup.kt#YGModalPopup
   - Navigator.kt#goToSingleClearTop
   - NameValidResult.kt#NameValidResult
@@ -39,6 +43,13 @@ tags: [spec, parfait, groups, group-create, a005]
 > 바뀌었고, 모달 확인이 `CreateGroupUseCase`(mock)를 거쳐 **G-001 그룹 목록으로 복귀**하는 데까지 결선됐다.
 > 스펙이 "제외(구현 TODO)"에 뒀던 다음 화면 네비게이션이 닫히고, 진입 경로는 #222에서 이미 뚫렸다
 > (G-001 그룹 추가 오버레이). **그룹 생성 API는 여전히 미연동** — UseCase가 고정 지연 후 성공만 반환한다.
+>
+> ⚠️ **as-built 갱신(2026-08-15, #243 develop 머지)**: **그룹 생성이 실서버를 탄다.**
+> `CreateGroupUseCase`가 `ParfaitGroupRepository.createGroup`을 호출하고(`POST /api/parfait-groups`),
+> 인자가 `(groupName: String, groupNumber: Int)` → **`(GroupName, GroupNickname, memberLimit)`** 도메인
+> 타입으로 바뀌었으며 응답은 `CreatedGroupVO`다. 실패 갈래는 `ServerErrorCode.ParfaitGroup` 코드별로
+> 갈라 로그를 남기고 **팝업은 닫지 않는다**. 같은 라운드가 유효성 문자 집합을 **서버 정규식에 맞춰 좁혔다**
+> (아래 "유효성 규칙" 절).
 
 - **화면 ID**: A-005 (새 그룹 생성 — 그룹명 + 최대 인원수 입력)
 - **대상 모듈**: `feature/groups/enter/impl`(`groupcreate/`) + `feature/groups/enter/api`(NavKey) + `domain`(공용 UseCase·설정) + `core:ui`(공용 레이아웃·에러 문자열)
@@ -53,8 +64,9 @@ tags: [spec, parfait, groups, group-create, a005]
 - 포함: 그룹명 입력(최대 10자)·닉네임 읽기 전용 표시·인원 선택 그리드(1~12)·확인 버튼 활성 조건·확인 시 그룹명 유효성 검사·에러 인라인 노출·입력 시 에러 초기화·뒤로가기.
   **#224 추가**: 생성 확인 모달·생성 중 재진입 가드·생성 후 그룹 목록 복귀.
 - 제외(구현 TODO):
-  - **그룹 생성 API 연동** — `CreateGroupUseCase`가 고정 지연 후 `Result.success(Unit)`만 반환하는 mock이고,
-    실패 처리는 코드 주석 `Todo`로 남아 **`result.isSuccess`가 아닐 때 아무 일도 일어나지 않는다**(모달이 열린 채 멈춘다).
+  - ~~**그룹 생성 API 연동**~~ — ✅ **해소(#243)**. `POST /api/parfait-groups` 호출 + 코드별 실패 분기.
+    다만 **실패 표현은 여전히 로그뿐**이다(모달이 열린 채 남는다 — 안내 없이 닫으면 아무 일도 없던 것처럼
+    보인다는 코드 주석). 실패 토스트가 한 번 들어왔다가 **정책이 없다는 이유로 같은 PR 안에서 걷혔다**.
   - ~~**다음 화면 네비게이션**~~ — #224에서 `goToSingleClearTop(NavKeyGroupList)`로 결선(아래 "동작 / 상태").
   - ~~**진입 경로**~~ — #222에서 G-001 그룹 추가 오버레이가 `goTo(NavKeyGroupCreate(nickName))` 호출자가 됐다.
     다만 넘기는 `nickName`이 mock이고 진입 관계 자체는 미결 → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
@@ -93,9 +105,17 @@ sealed interface GroupCreateIntent : UiIntent {
 }
 sealed interface GroupCreateSideEffect : UiSideEffect { data object NavigateToBack; data object NavigateToNext }
 
-// domain — 그룹 생성(#224 신설, 현재 mock)
-class CreateGroupUseCase @Inject constructor() {
-    suspend operator fun invoke(groupName: String, groupNumber: Int): Result<Unit>  // 고정 지연 후 항상 성공
+// domain — 그룹 생성(#224 신설, 🔁 #243에서 실서버 연동)
+class CreateGroupUseCase @Inject constructor(
+    private val parfaitGroupRepository: ParfaitGroupRepository,
+) {
+    suspend operator fun invoke(
+        groupName: GroupName,
+        groupNickname: GroupNickname,
+        memberLimit: Int,
+    ): Result<CreatedGroupVO>
+    // envelope 가 성공이어도 groupId <= 0 이면 계약 위반으로 보고 AppError.Unexpected 로 되돌린다 —
+    // 화면마다 다시 검사하면 한 곳만 빠져도 0 인 ID 로 다음 요청이 나간다
 }
 
 // ViewModel — 닉네임을 NavKey 인자로 받으므로 Assisted 주입(선례: SegmentationViewModel)
@@ -115,9 +135,17 @@ class GroupCreateViewModel @AssistedInject constructor(
 - **확인**(`ClickNextButton`): `CheckNameValidUseCase(groupName)` 실행 → `Success`면 에러를 지우고
   **확인 모달을 연다**(🔁 #224 — 이전엔 곧바로 `NavigateToNext`였다). `Error` 변형이면 대응 `core:ui`
   문자열 리소스 ID를 state에 반영(화면 잔류).
-- **모달 만들기**(`ClickConfirmPopupCreate`, #224): `groupNumber`가 없거나 이미 `isCreating`이면 무시.
-  `isCreating = true` → `CreateGroupUseCase(groupName, groupNumber)` → `isCreating = false` →
-  **성공이면** 모달을 닫고 `NavigateToNext`. 실패 분기는 비어 있다(`Todo`).
+- **모달 만들기**(`ClickConfirmPopupCreate`, #224 / 🔁 #243): `groupNumber`가 없거나 이미 `isCreating`이면 무시.
+  `isCreating = true` → `CreateGroupUseCase(GroupName, GroupNickname, memberLimit)` → 해제는 `finally`
+  (어느 경로로 빠져나가도 팝업 버튼이 영구 비활성으로 남지 않는다) → **성공이면** 모달을 닫고 `NavigateToNext`.
+  실행은 `launch(key = KEY_CREATE_GROUP, onError = ::onCreateGroupFailed)` — `onError`는 `Result.failure`가
+  아니라 **던져진 예외**를 받으므로 두 실패 경로가 한 핸들러로 모인다.
+- **실패 처리**(#243): `AppError.Network` / `AppError.Server`(코드별) / 그 외로 갈라 **로그만** 남기고
+  모달을 유지한다. 서버 코드 분기는 `INVALID_GROUP_NAME`·`INVALID_GROUP_NICKNAME`·`INVALID_GROUP_MEMBER_LIMIT`
+  (셋 다 클라 검증·선택 UI가 이미 막으므로 여기 오면 규칙이 어긋난 것) · `MEMBER_NOT_FOUND`(재로그인 필요,
+  동선 미확정 `TODO`) · `Common.INVALID_REQUEST`(앱 버그).
+  **`groupNickname`은 NavKey로 받은 값 그대로** 나간다 — 그 출처가 G-001 `GroupListUiState`의 mock 닉네임이다
+  (아래 "주의").
 - **모달 취소·dismiss**(`DismissConfirmPopup`, #224): `isCreating` 중이면 무시(생성 중 닫기 차단), 아니면 모달만 닫는다.
 - **다음 화면**(`NavigateToNext`, #224): `navigator.goToSingleClearTop(NavKeyGroupList)` — 백스택에 이미 있는
   그룹 목록을 재사용하고 그 위 화면(닉네임·생성 등)을 한 번에 걷어낸다 → [navigation-flow](../../architecture/navigation-flow.md).
@@ -128,6 +156,15 @@ class GroupCreateViewModel @AssistedInject constructor(
 
 닉네임과 **같은 UseCase**를 그룹명에도 적용한다. 위키 [[이름-입력-규칙]]이 그룹명·닉네임 공통 규칙이므로 정합.
 표시 문자열만 그룹명용 리소스로 분기한다(`core:ui` `strings.xml`에 닉네임용/그룹명용 항목이 별도로 존재).
+
+> 🔁 **as-built(#243, 2026-08-15) — 허용 문자 집합이 서버 정규식에 맞춰 좁혀졌다.** 기존 검사는
+> `isLetter()`·`isDigit()`·`isWhitespace()` + `Char.isKorean()` 조합이라 **유니코드 전체**를 받았다 —
+> 자모(`ㄱ`·`ㅏ`)·일본어·아랍 숫자·non-breaking space가 통과한 뒤 서버에서만 400으로 튕겼다.
+> 지금은 `' '` · `가..힣` · `A..Z` · `a..z` · `0..9`만 통과하며, 코드가 서버 정규식
+> `^[가-힣A-Za-z0-9]+(?: [가-힣A-Za-z0-9]+)*$`와 같은 집합으로 유지한다고 KDoc에 적는다.
+> 쓰이지 않게 된 `core:util:jvm`의 `Char.isKorean()`은 같은 PR에서 **삭제**됐다(테스트 포함).
+> 위키 [[이름-입력-규칙]]은 허용 문자를 "한글·영문·숫자·공백"이라고만 적어 **자모 단독 입력의 허용 여부가
+> 문서에 없다** → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
 
 | 반환 Error | 표시 문자열(그룹명 화면) |
 |---|---|
@@ -164,13 +201,20 @@ class GroupCreateViewModel @AssistedInject constructor(
 - `impl/navigation/NavigationModule.kt` — 빌더 `@IntoSet` 제공.
 - `core/ui/VerticalGridLayout.kt` — 열 수·행/열 간격을 받는 공용 그리드(Column+Row+`IntrinsicSize.Max`, 빈 칸은 `Spacer(weight)`). 스크롤 컨테이너 안에서 쓰려고 `LazyVerticalGrid` 대신 비지연 레이아웃 채택.
 - `domain/model/GroupCreateConfig.kt`·`domain/model/NameValidResult.kt`·`domain/usecase/CheckNameValidUseCase.kt` — 공용 도메인(S-102와 공유).
+- 테스트(#243): `GroupCreateViewModelTest`(생성 성공·실패 분기·중복 요청 가드) · `CreateGroupUseCaseTest`(`groupId` 유효성 가드 포함) · `CheckNameValidUseCaseTest`(좁힌 문자 집합).
 
 ## 주의 / 열린 질문
 
 - ~~**진입 경로 없음**~~ — #222(G-001 그룹 추가 오버레이)로 뚫렸다. 넘어오는 `nickName`이 mock인 것은 잔존 → [open-questions](../../synthesis/open-questions.md) [2026-07-29]·[2026-08-07].
-- **그룹 생성이 mock** — `CreateGroupUseCase`가 서버를 타지 않고 항상 성공한다. 그래서 화면상으로는
-  "생성 완료 → 목록 복귀"가 되는데 **목록에는 새 그룹이 없다**(G-001도 mock 4건 고정) → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
-- **생성 중 표시가 없다** — `isCreating`은 모달 버튼 비활성에만 쓰이고 진행 표시(스피너 등)는 없다. 고정 지연 동안 화면이 멈춘 것처럼 보인다.
+- ~~**그룹 생성이 mock**~~ — ✅ **해소(#243)**. 실서버를 타고, G-001도 같은 라운드(#248)에서 조회가 붙어
+  **복귀한 목록에 새 그룹이 뜰 자리는 생겼다**. 다만 복귀가 `goToSingleClearTop`이라 목록 엔트리·ViewModel이
+  살아나 **재조회가 돌지 않는다** → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
+- ⚠️ **서버로 나가는 닉네임이 mock이다** — `groupNickname`은 NavKey 인자를 그대로 쓰고, 그 값은 G-001
+  `GroupListUiState.nickName` 기본값 리터럴이다. 즉 **실제로 만들어지는 그룹의 내 닉네임이 실사용자 값이 아니다**
+  → [open-questions](../../synthesis/open-questions.md) [2026-07-29]·[2026-08-15].
+- **실패가 로그뿐이다** — 갈래는 전부 열거됐지만 화면 표현이 없어 모달이 열린 채 멈춘다. 실패 토스트가
+  같은 PR에서 들어왔다 걷힌 이유는 "문구 정책이 없다"이다 → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
+- **생성 중 표시가 없다** — `isCreating`은 모달 버튼 비활성에만 쓰이고 진행 표시(스피너 등)는 없다. 요청이 도는 동안 화면이 멈춘 것처럼 보인다.
 - **복귀 목적지가 위키 정본과 다름** — [[기능정의서-v6]]은 A-005 다음 단계를 **C-001(메인 캔버스)**로 적는데
   코드는 G-001 그룹 목록으로 돌아간다 → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
 - **`GroupCreateConfig`가 표시 관심사를 포함** — `GROUP_COLUMN_COUNT`(그리드 열 수)는 UI 레이아웃 값인데 `domain`에 있다. → [open-questions](../../synthesis/open-questions.md) [2026-07-29].

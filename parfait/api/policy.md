@@ -4,8 +4,8 @@ title: 약관(현재 유효 약관 목록 조회)
 server_module: http/auth
 server_commit: 36ecd1c
 verified: 2026-08-15
-android_status: partial
-related_spec:
+android_status: done
+related_spec: intro-term-agree
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, policy]
 ---
@@ -89,10 +89,19 @@ tags: [api, parfait, server-contract, policy]
 **2026-08-06 PR #197로 develop 머지 완료**다. 이 표면이 딛고 선 공용 인프라(`ApiCaller` 4진입점·
 `ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로 먼저 들어왔고, 아래
 Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
-**⚠️ Repository·UseCase·화면 어느 것도 아직 이 표면을 소비하지 않는다.** 온보딩 약관 동의 화면
-(`feature/intro/impl`)은 여전히 `TermContent.kt#TERM_CONTENT_LIST`에 약관 항목을 코틀린 리터럴로 갖고
-있고 랜딩 URL도 TODO로 남아 있다 — 이 API가 그 자리를 채우는 결선은 이후 라운드다
-→ [open-questions](../synthesis/open-questions.md).
+**✅ 2026-08-15(PR #242) — 화면까지 결선됐다.** `PolicyRepository`/`PolicyRepositoryImpl`(신설)과
+`GetPoliciesUseCase`가 붙고 온보딩 약관 동의 화면(`feature/intro/impl` `TermAgreeViewModel`)이 진입 시
+이 API를 호출한다. 코틀린 리터럴이던 `TERM_CONTENT_LIST`(+`TermContent`)는 **삭제**됐고 제목·필수 여부·
+랜딩 URL이 전부 응답 값이다 → [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md).
+응답의 `termsId`는 그대로 `POST /api/v1/auth/signup`의 `agreements[].termsId`로 나간다([auth.md](auth.md)).
+
+앱 동작 메모(코드 대조):
+
+- **정렬은 서버 순서 그대로** 화면 순서다(앱이 재정렬하지 않는다 — 위 "정렬은 서버가 고정한다"에 의존).
+- **빈 배열을 실패로 보지 않는다** — 화면은 조회 성공으로 처리하고 목록이 비면 확인 버튼이 비활성이라
+  signup까지 가지 않는다. 다만 **조회 실패와 화면 표현이 다르다**(실패는 재시도 문구, 빈 배열은 그냥 빈 목록).
+- **미동의 약관도 함께 보낸다** — `SignUpUseCase`가 화면에 노출한 목록 전체를 `agreed` 플래그와 묶는다.
+- 실패는 Repository 경계에서 `AppError`로 바뀌어 올라온다(`mapErrorToAppError`).
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|

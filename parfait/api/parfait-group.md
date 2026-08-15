@@ -22,7 +22,7 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | 구현됨 |
+| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | ⚠️불일치[^uploadedat] |
 | GET | `/api/parfait-groups/{groupId}` | 필요 | path `groupId` Long | `MyParfaitGroupDetailResponse` | 구현됨 |
 | GET | `/api/parfait-groups/join-preview` | 필요 | query `inviteCode` String | `PreviewParfaitGroupJoinResponse` | 구현됨 |
 | POST | `/api/parfait-groups/join` | 필요 | `JoinParfaitGroupRequest` | `JoinParfaitGroupResponse` | 구현됨 |
@@ -30,6 +30,11 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | PATCH | `/api/parfait-groups/{groupId}/nickname` | 필요 | `ChangeMyParfaitGroupNicknameRequest` | `ChangeMyParfaitGroupNicknameResponse` | 구현됨 |
 | DELETE | `/api/parfait-groups/{groupId}/members/me` | 필요 | path `groupId` Long | `LeaveParfaitGroupResponse` | 구현됨 |
 | POST | `/api/parfait-groups/{groupId}/reports` | 필요 | `ReportParfaitGroupRequest` | `ReportParfaitGroupResponse` | 구현됨 |
+
+[^uploadedat]: **2026-08-15** — Service·DataSource·DTO는 계약과 맞지만 매퍼가 `recentImageUploadedAt`을
+    `kotlin.time.Instant::parse`(오프셋 필수)로 읽는다. 이 응답의 값은 오프셋 없는 로컬 날짜시간이라
+    최근 이미지가 있는 그룹이 있으면 목록 조회가 통째로 실패한다 →
+    [conventions.md](conventions.md) "Android 불일치" · [open-questions](../synthesis/open-questions.md) [2026-08-15].
 
 요청 DTO(`ParfaitGroupRequest.kt`)에는 Bean Validation 애노테이션이 없다 — auth 도메인과 달리 `@NotBlank`/`@Valid`가
 없다. 필드는 Kotlin non-null 타입이라 요청 바디에 없거나 `null`이면 Jackson이 파싱 단계에서 거부한다(결과적으로
@@ -353,16 +358,30 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 **화면이 요구할 때까지 인터페이스에 올리지 않는다.** 화면 브랜치 셋(#233·#239·#240)이 각자 같은
 4파일을 만들고 있어 충돌을 먼저 막은 것이고, `ServerErrorCode.ParfaitGroup` 8종도 같은 커밋이다.
 
-**⚠️ UseCase·화면은 여전히 0건이다** — Repository까지만 있고 그 위를 부르는 코드가 없다
-→ [open-questions](../synthesis/open-questions.md).
+**✅ 2026-08-15 — 다섯 함수 전부 화면까지 결선됐다**(PR #243·#244·#248). 선반영이던 Repository 경계가
+같은 날 UseCase·ViewModel을 얻었다.
 
-| Repository 함수 | 반환 | 대응 엔드포인트 |
-|---|---|---|
-| `getMyGroups()` | `Result<List<MyParfaitGroupVO>>` | GET `/api/parfait-groups` |
-| `previewJoin(inviteCode)` | `Result<GroupName>` | GET `/api/parfait-groups/join-preview` |
-| `joinGroup(inviteCode)` | `Result<JoinedGroupVO>` | POST `/api/parfait-groups/join` |
-| `createGroup(groupName, groupNickname, memberLimit)` | `Result<CreatedGroupVO>` | POST `/api/parfait-groups` |
-| `changeMyNickname(groupId, groupNickname)` | `Result<GroupNicknameVO>` | PATCH `/api/parfait-groups/{groupId}/nickname` |
+| Repository 함수 | 반환 | 대응 엔드포인트 | UseCase → 화면 |
+|---|---|---|---|
+| `getMyGroups()` | `Result<List<MyParfaitGroupVO>>` | GET `/api/parfait-groups` | `GetMyGroupsUseCase` → G-001(진입·당김 재조회) |
+| `previewJoin(inviteCode)` | `Result<GroupName>` | GET `/api/parfait-groups/join-preview` | `GetGroupJoinPreviewUseCase` → A-004(확인 모달 전) |
+| `joinGroup(inviteCode)` | `Result<JoinedGroupVO>` | POST `/api/parfait-groups/join` | `JoinGroupUseCase` → A-004(모달 확인) |
+| `createGroup(groupName, groupNickname, memberLimit)` | `Result<CreatedGroupVO>` | POST `/api/parfait-groups` | `CreateGroupUseCase` → A-005(모달 확인) |
+| `changeMyNickname(groupId, groupNickname)` | `Result<GroupNicknameVO>` | PATCH `/api/parfait-groups/{groupId}/nickname` | `ChangeGroupNicknameUseCase` → S-102 |
+
+앱 동작 메모(코드 대조):
+
+- **에러 코드 8종이 실제 분기에 쓰인다** — `INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·
+  `GROUP_MEMBER_LIMIT_REACHED`(A-004 문구) · `GROUP_NICKNAME_ALREADY_USED`·`INVALID_GROUP_NICKNAME`(S-102 문구) ·
+  `INVALID_GROUP_NAME`·`INVALID_GROUP_MEMBER_LIMIT`·`MEMBER_NOT_FOUND`(A-005는 로그만).
+- **생성 응답을 한 번 더 검사한다** — `CreateGroupUseCase`가 `groupId > 0`이 아니면 계약 위반으로 보고 실패로 되돌린다.
+- **참여 → 닉네임이 두 요청이다** — 합류(POST join)는 A-004에서 끝나고 닉네임(PATCH)은 다음 화면 몫이라,
+  중간에 이탈하면 그룹에는 들어간 채 닉네임만 서버 초기값으로 남는다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- **A-005가 보내는 `groupNickname`이 아직 mock**이다(G-001 UiState 기본값 리터럴).
+- ⚠️ **`recentImageUploadedAt` 파싱이 이 문서의 직렬화 포맷과 어긋난다** — 앱 매퍼가
+  `kotlin.time.Instant::parse`(오프셋 필수)를 쓰는데 서버는 오프셋 없는 로컬 날짜시간을 내려준다
+  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- 그룹 상세·탈퇴·신고는 여전히 Repository 인터페이스에 없다(화면이 요구할 때 올린다).
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|
@@ -390,9 +409,11 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 - **Mapper**: `data/source/group/mapper/VOMapper.kt`(응답별 `toMyParfaitGroupVO`·
   `toParfaitGroupDetailVO`·`toParfaitGroupMemberVO`·`toJoinedGroupVO`·`toCreatedGroupVO`·
   `toGroupNicknameVO`·`toReportedGroupVO`·`toGroupName`·`toGroupId`). `recentImageUploadedAt`은
-  이 mapper가 `kotlinx.datetime.LocalDateTime.parse()`로 변환한다(Asia/Seoul 벽시계 전제, 위 직렬화
-  포맷 절 참고). **코드에 그 전제를 밝히는 주석은 없다** — 오프셋 없는 문자열이라 읽는 쪽이 UTC로
-  오인할 여지가 남는다 → [open-questions](../synthesis/open-questions.md).
+  이 mapper가 변환한다. 🔁 **2026-08-15(PR #248)에 `kotlinx.datetime.LocalDateTime.parse()` →
+  `kotlin.time.Instant::parse`로 바뀌었고**(VO 타입도 `Instant?`), "오프셋(`Z`)째로 읽는다"는 주석이 붙었다 —
+  Asia/Seoul 벽시계 전제를 없애려는 변경이다. **그런데 이 문서의 직렬화 포맷 절이 근거로 삼는 서버
+  컨트롤러 테스트의 기대값은 오프셋 없는 `2026-08-01T12:00:00`이라, 그 문자열은 `Instant.parse`가 받지
+  못한다** → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 
 ## 미결
 

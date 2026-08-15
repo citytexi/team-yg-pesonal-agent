@@ -28,7 +28,7 @@ class GetRecentCacheImagesUseCase @Inject constructor(
 
 - 생성자에 `@Inject`, 의존은 Repository 인터페이스.
 - 반응형 결과는 `Flow`로 반환(예: `Flow<List<String>>`).
-- 예: `GetRecentCacheImagesUseCase`, `SplashInitialUseCase`, `CheckInviteCodeValidUseCase`.
+- 예: `GetRecentCacheImagesUseCase`, `SplashInitialUseCase`, `GetMyGroupsUseCase`(2026-08-15 결선 라운드에서 `CheckInviteCodeValidUseCase` 등 mock UseCase 3종은 삭제됐다).
 
 UseCase는 `domain`에, Repository 인터페이스도 `domain`, 구현은 `data`([[data-layer]]).
 
