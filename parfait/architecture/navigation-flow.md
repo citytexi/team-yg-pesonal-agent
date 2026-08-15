@@ -18,8 +18,11 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 > 근거는 파일명+심볼명으로만.
 
 ## 구성 요소
-- **Navigator**(`core:navigation`, `@ActivityRetainedScoped`) — 백스택 = `SnapshotStateList<NavKey>`. `goTo()`, `goToSingleClearTop()`, `onBack()`, `clearBackStack()`.
+- **Navigator**(`core:navigation`, `@ActivityRetainedScoped`) — 백스택 = `SnapshotStateList<NavKey>`. `goTo()`, `goToSingleClearTop()`, `goToAndPopCurrent()`, `onBack()`, `clearBackStack()`.
   - `goToSingleClearTop(destination)`(#224 신설) — 대상이 백스택에 있으면 **그 위를 한 번에 잘라내(`removeRange`) 기존 엔트리를 재사용**하고, 없으면 `goTo`처럼 새로 쌓는다. 한 칸씩 빼면 스냅샷 변경이 그만큼 쌓이므로 범위 삭제로 처리한다. 엔트리 재사용이므로 대상 화면의 상태·ViewModel이 그대로 살아난다(돌아온 화면이 새로 조회하지 않는다).
+  - `goToAndPopCurrent(destination)`(#221 신설) — 지금 화면을 대상으로 **치환**한다(마지막 칸에 덮어쓰기).
+    백스택 깊이가 늘지 않고 뒤로 가면 지금 화면을 건너뛴다. 스택이 비어 있으면 그냥 쌓는다.
+    확인·경유 화면처럼 되돌아올 이유가 없는 자리에 쓴다(첫 사용처: C-101-confirm → C-103).
 - **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasImageAdd`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`, `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
 - **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas의 4개 NavKey(`ImageAdd`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
@@ -78,6 +81,38 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
 - ⚠️ **되돌아온 목록이 갱신되지 않는다** — 엔트리 재사용이라 `GroupListViewModel`이 살아 있고, 애초에
   조회 경로가 없어 mock 4건 고정이다. 생성·참여 UseCase도 mock이라 새 그룹이 목록에 나타날 자리가 없다.
 
+## 토핑 생성 플로우 (2026-08-14, PR #221)
+
+촬영·갤러리에서 시작해 캔버스 배치 직전까지가 이어졌다. 상세는
+[c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md).
+
+```
+NavKeyCameraCustom ─┐
+                    ├─▶ NavKeyPictureConfirm(uri, source) ══▶ NavKeySegmentation(sourceImageUri)
+NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다)          │
+                                                                              ▼
+                                             NavKeySegmentationConfirm(sourceImageUri, subjectImagePath)
+                                                    │  ▲ ToppingEditResult(ResultEventBus)  │
+                                                    ▼  │                                    ▼
+                                    NavKeyToppingEdit(source, segmentation, borderLayers)   NavKeyCanvasMove(imageUri)
+```
+
+- 확인 화면(C-101-confirm) → C-103은 **`goToAndPopCurrent`**다. 확인 화면이 걷히므로 세그멘테이션에서
+  뒤로 가면 촬영/갤러리로 바로 돌아간다.
+- C-103 안의 두 화면(`Segmentation` → `SegmentationConfirm`)은 평범한 `goTo`다 — 뒤로 가면 인식이
+  끝난 화면으로 돌아온다(재추출하지 않는다).
+- **편집 결과는 `ResultEventBus` 왕복이다** — `NavKeyToppingEdit`는 `@Serializable` NavKey라
+  *들어갈 때의 인자*만 담고, 나올 때는 `sendResult(TOPPING_EDIT_RESULT_KEY, ToppingEditResult)` +
+  `onBack()`으로 돌려준다. 확인 화면이 `ResultEffect<ToppingEditResult>`로 받아 `rememberSaveable`에 쌓는다.
+  **데코레이터 존치 여부를 묻던 항목이 실사용 소비처를 되찾았다** →
+  [open-questions](../synthesis/open-questions.md) [2026-08-10].
+- 재편집을 위해 확인 화면이 **최종본과 "테두리 전 알맹이"를 따로** 들고 있다가 알맹이 쪽을 마스크로
+  넘긴다. 최종본을 넘기면 테두리 색이 원본 픽셀로 덮여 사라진다.
+- ⚠️ **플로우를 나가는 경로가 없다** — 세 화면 + C-101-confirm의 `onClickClose`가 전부 빈 람다다.
+  뒤로가기 말고는 출구가 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- 엔트리 3개는 규약 기본형(`YGScaffold { innerPadding -> …padding(innerPadding) }`)이고
+  빌더 하나(`featureSegmentationEntryBuilder`)가 세 entry를 등록한다.
+
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.
 2. `feature/xxx/impl`에 `featureXxxEntryBuilder()` 작성: `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(modifier = Modifier.padding(innerPadding)) } }`. **엔트리(nav) 레벨 컨테이너는 `YGScaffold`**(`core:designsystem` `screen/`, Material3 `Scaffold` 래퍼, 기본 배경 흰색·`contentWindowInsets` 노출). 화면 최외곽 컨테이너 `YGScreen`과 역할 분리 → [design-system](design-system.md) "화면 컨테이너".
@@ -88,6 +123,9 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
    > 갤러리가 `sendResult` 대신 확인 화면으로 `goTo` 하도록 바뀌었는데, 호출 화면
    > `CanvasImageAddRoute`의 `ResultEffect<String>`는 그대로 남아 아무것도 받지 못한다
    > → [open-questions](../synthesis/open-questions.md) [2026-08-04].
+   > 📌 **반대로 되살아난 사례(2026-08-14, PR #221)** — 토핑 편집 화면이 `sendResult` +
+   > `ResultEffect` 왕복으로 결과를 돌려준다. NavKey가 담지 못하는 **나올 때의 값**을 넘겨야 해서
+   > 이 관용구를 다시 골랐다. 즉 "전진하며 `goTo`"와 "결과 반환"이 develop에 공존한다.
 6. **`goTo` 호출자를 같은 PR에 넣는다** — entry만 등록하고 진입 경로가 없으면 도달 불가 화면이 된다
    (선례: `NavKeyGroupCreate` — 등록 후 **약 2주 뒤**인 #222에서야 G-001 그룹 추가 오버레이가 호출자가 됐다,
    [open-questions](../synthesis/open-questions.md) [2026-07-29]).
@@ -123,6 +161,11 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
 > `statusBarsPadding()` + `navigationBarsAndImePadding()`을 직접 붙이는 **또 다른 형태**이며, 그중
 > `GroupInviteCodeRoute`는 거기에 `imePadding()`을 한 번 더 얹어 IME가 이중 적용된다
 > → [open-questions](../synthesis/open-questions.md) [2026-08-07]·[2026-08-13].
+>
+> 📌 **이중 적용은 걷혔다(2026-08-14, PR #237)** — `GroupInviteCodeRoute`의 `imePadding()`이 제거되고
+> entry 단독으로 정리됐다. 같은 PR이 매니페스트에 **`android:windowSoftInputMode="adjustResize"`**를
+> 붙였는데, `MainActivity` 단일 액티비티라 **앱 전 화면에 걸리는 변경**이다(창이 줄어드는 방식이 바뀌므로
+> 다른 입력 화면의 인셋 체감도 함께 달라진다 — 실기기 확인 기록은 없다).
 
 > **의도적 예외(2026-08-01, PR #182)** — C-101 카메라 entry는 `YGScaffold`를 쓰되 **`innerPadding`을
 > 화면에 먹이지 않는다**. 카메라 피드가 시스템 바 아래까지 덮어야 하고 인셋은 컨트롤 영역이

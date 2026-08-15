@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-14
-related_spec: intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
+verified: 2026-08-15
+related_spec: c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -46,14 +46,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `gradle/libs.versions.toml`의 `mlkitSubjectSegmentation`(beta), `feature/segmentation/impl`의 `AndroidManifest` install-time 모델. [ADR-0012](../adr/0012-mlkit-subject-segmentation.md).
 - **항목**: ① beta 승급·API 변동 추적, ② GMS 미탑재 기기 대응, ③ subject PNG 캐시 파일(`cacheDir`) 정리 정책, ④ [[누끼-따기]] "온디바이스 vs 서버" 미결의 온디바이스 잠정 확정 여부.
 - **상태**: 보류 (온디바이스로 잠정 채택, beta 추적 중)
-- **해소 메모**: 정식(GA) 승급 시 버전 고정·문서 갱신. 캐시 정리 정책 정하면 [data-layer](../architecture/data-layer.md) 갱신.
+  > 📌 **②는 방어가 붙고 ③은 커졌다(2026-08-14, PR #221)** — 매니페스트 meta-data가 보장이 아니라는 전제 아래
+  > `ModuleInstall.areModulesAvailable`/`installModules`로 사용 직전 확인·설치를 넣고, 실패를
+  > `SegmentationException.ModuleNotReady`(일시적)와 `Process`로 갈랐다. **다만 앱에는 재시도 경로가 없다** —
+  > 에러 화면이 닫기(빈 람다)뿐이라 "잠시 후 다시"라고 안내만 하고 다시 시도할 수단을 주지 않는다.
+  > ③은 반대로 악화됐다 — 편집을 마칠 때마다 `parfait_<timestamp>.png`가 최대 2장 더 늘고(알맹이 + 최종본)
+  > 삭제 경로는 여전히 없다.
+- **해소 메모**: 정식(GA) 승급 시 버전 고정·문서 갱신. 캐시 정리 정책 정하면 [data-layer](../architecture/data-layer.md)·[ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절 갱신.
 
 ### [2026-07-12] 세그멘테이션 예외 처리 불일치
 - **ID**: OQ-P-004
 - **출처**: `data`의 `ImageSegmentationRepositoryImpl.segmentImage` — `Result<SegmentationResult>`/`SegmentationException` 패턴을 쓰면서도 `foregroundConfidenceMask`가 null이면 `error("...")`(raw `IllegalStateException`)로 throw. Result로 감싸지 않아 호출부(effect→Toast)가 못 잡을 수 있음.
-- **항목**: null 마스크·`Tasks.await` 예외를 `SegmentationException`(예: 신규 케이스)으로 통합해 `Result.failure`로 반환할지.
-- **상태**: 미해결
-- **해소 메모**: 코드 수정 대상(문서 아님). 처리 방식 확정 시 [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) "위험·방어"와 정합 확인.
+- **항목**: ① `Tasks.await` 예외를 `SegmentationException`으로 통합할지, ② null 마스크를 `Result.failure`로 바꿀지.
+- **상태**: 부분 해소 (① **PR #221 develop 머지, 2026-08-14** — `toSegmentationException()`이 `ExecutionException`을 한 겹 벗겨 `MlKitException.UNAVAILABLE`이면 `ModuleNotReady`, 그 외는 `Process`로 매핑하고 `Result.failure`로 반환한다. / ② **잔존** — `foregroundConfidenceMask == null`은 여전히 `error("…")` raw throw이고, 위치가 `try` 밖 `withContext(Dispatchers.Default)` 블록이라 매핑도 타지 않는다)
+- **해소 메모**: ②만 남았다(한 줄). 처리 시 [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절과 [data-layer](../architecture/data-layer.md) 경고를 함께 지운다.
 
 ### [2026-07-12] 디자인시스템 컴포넌트 컨벤션 분기
 - **ID**: OQ-P-005
@@ -439,7 +445,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-055
 - **출처**: `feature/camera/impl/.../route/PictureConfirmRoute.kt`(PR #182 develop 머지) — "다음"이 `onClickConfirm = { }`(TODO "c103-로딩페이지로 넘어가야함"), 닫기가 `onClickClose = {}`(TODO "c001-캔버스메인으로 넘어가야함")다. 뒤로(다시 찍기)만 동작한다. [navigation-flow](../architecture/navigation-flow.md) 체크리스트 6번(진입 경로를 같은 PR에)의 반대편 사례 — 나가는 경로가 없다.
 - **항목**: ① C-103(누끼 로딩) 진입 NavKey·인자 계약 확정, ② 닫기가 캔버스(C-001)로 가는지 촬영 호출자에게 결과를 돌려주는지(`LocalResultEventBus` 경로가 이미 있다) 확정.
-- **상태**: 미해결 (후속 화면 미구현 종속)
+- **상태**: 부분 해소 (① **PR #221 develop 머지, 2026-08-14** — `navigator.goToAndPopCurrent(NavKeySegmentation(sourceImageUri = uri))`. 인자는 원본 uri 하나이고, `goTo`가 아니라 **치환**이라 확인 화면은 백스택에서 걷힌다. `feature/camera/impl` → `feature/segmentation/api` 의존 추가. / ② **잔존** — `onClickClose = {}` TODO 그대로다. 게다가 뒤이은 세그멘테이션 3화면의 닫기도 전부 빈 람다라 **토핑 생성 경로 전체에 출구가 없다** → [2026-08-15] 항목)
   > 📌 **영향 확대(2026-08-04, PR #191)** — 갤러리 선택도 이 화면으로 합류한다(`PictureConfirmSource.GALLERY`). 갤러리는 결과 반환까지 없애서 **두 진입점 모두 이 화면이 유일한 출구**인데 그 출구가 TODO다. ②의 "결과 반환" 선택지는 갤러리 쪽에서 이미 폐기된 셈이라 결정이 한쪽으로 기울었다.
 - **해소 메모**: 결선 시 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)과 세그멘테이션 쪽 문서를 함께 갱신한다.
 
@@ -642,8 +648,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-081
 - **출처**: `component/ygfloatingbar/YGFloatingBar.kt`(PR #188 develop 머지) — 4변형이 전부 갤러리에서만 렌더되고 feature 참조가 0건이다. 컴포넌트는 폭을 정하지 않고(`modifier` 몫) 상단 패딩만 갖는데, Figma도 화면 어디에 떠 있는지(상단 고정/하단/오버레이)를 주지 않았다. `YGFloatingBarEdit`의 중앙 문구도 Figma가 `Text` placeholder만 둬서 편집 대상 이름인지 모드 라벨인지 미확정이다.
 - **항목**: ① 캔버스·편집 화면 라운드에서 배치(위치·폭·safe area)를 어떻게 정할지, ② `Edit`의 중앙 문구가 무엇인지, ③ `EditTab`의 탭 문자열("영역"/"테두리")이 화면 소유인지 컴포넌트 기본값이어야 하는지.
-- **상태**: 미해결 (의도된 선행 구현 — 소비 화면 미착수)
-- **해소 메모**: 첫 소비 화면 스펙에서 확정하고 [bar-listdate 스펙](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) 열린 질문 2·3을 닫는다.
+- **상태**: 부분 해소 (①③ **PR #221 develop 머지, 2026-08-14** / ② **잔존** — `Edit` 변형만 여전히 사용처 0건)
+- **해소 메모**: ① 배치가 확정됐다 — C-103~C-105 4화면이 전부 세로 `Column`의 맨 위/맨 아래에 `fillMaxWidth()`로 붙이는 형태이고 오버레이가 아니다(`BackClose` 추출·확인, `Close` 로딩·에러, `EditTab` 편집). safe area는 엔트리 `YGScaffold` 기본 `innerPadding`이 처리한다. ③ 탭 문자열은 **화면 소유**로 확정 — `ToppingEditTab` enum이 `@StringRes label`을 들고 화면이 `stringResource`로 풀어 넘긴다(feature `strings.xml`). ②는 `Edit` 변형에 첫 소비처가 생길 때 닫는다. [design-system](../architecture/design-system.md) 인벤토리 노트와 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md)에 반영했고, [bar-listdate 스펙](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) 열린 질문 3은 닫힌다.
 
 ### [2026-08-04] Top Bar 날짜 표기가 영문 고정 — 로케일·포맷 규칙 미정
 - **ID**: OQ-P-082
@@ -844,8 +850,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-105
 - **출처**: PR #220 develop 머지 — `feature/groups/home/{api,impl}` 모듈 삭제(`NavKeyGroupHome`·`GroupHomeRoute`·`EntryBuilder`·`NavigationModule`)와 `LoginRoute`의 `ResultEffect<String>` Toast 제거. 둘은 짝이었다(홈이 `sendResult` + `onBack`, 로그인이 `ResultEffect`로 수신). `MainRoute`의 `rememberResultEventBusNavEntryDecorator`는 그대로 남고, 남은 실사용은 카메라·시스템 갤러리의 `sendResult` 3곳 + `CanvasImageAddRoute`의 `ResultEffect` 1곳인데 그 수신부는 이미 死경로로 등록돼 있다([2026-08-04] 항목).
 - **항목**: ① 결과 반환 관용구를 계속 쓸지 — 커스텀 갤러리·카메라는 이미 `goTo` 전진으로 갈아탔고 남은 소비처가 死경로뿐이라, 데코레이터째 걷어낼지 아니면 재사용처를 확정할지. ② 걷어낸다면 `Navigator.onBack()`의 `size <= 1` 가드 주석("`ResultEffect` 발동 상황에서 사이즈가 1인 경우 크래시")이 가리키는 전제도 같이 정리한다.
-- **상태**: 미해결 (② 가드 자체는 현재 앱 진입 체인에서도 필요하다 — 그룹 목록에서 백스택이 1개다)
-- **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번과 [2026-08-04] 항목을 함께 닫는다.
+- **상태**: 부분 해소 (① **PR #221 develop 머지, 2026-08-14** — 실사용 왕복이 하나 되살아났다. 토핑 편집 화면이 `sendResult(TOPPING_EDIT_RESULT_KEY, ToppingEditResult)` + `onBack()`으로 결과를 돌려주고 `SegmentationConfirmRoute`가 `ResultEffect<ToppingEditResult>`로 받는다. **NavKey가 담지 못하는 "나올 때의 값"이라 이 관용구를 다시 고른 것**이므로 데코레이터째 걷어내는 선택지는 사실상 닫혔다. / ② 가드는 여전히 필요하다 — 그룹 목록에서 백스택이 1개다. / [2026-08-04]의 死 `ResultEffect` 1건은 그대로다)
+- **해소 메모**: ①이 닫혔으니 남은 것은 死 수신부 정리([2026-08-04] 항목)뿐이다. [navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번에 "되살아난 사례" 마커를 넣었고 "토핑 생성 플로우" 절에 왕복 경로를 적었다.
 
 ### [2026-08-10] 이미지 업로드 확인 API에 소유자 검증이 없다
 
@@ -1163,8 +1169,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-143
 - **출처**: `feature/groups/enter/impl/navigation/EntryBuilder.kt#featureGroupInviteCodeEntryBuilder`(`navigationBarsAndImePadding()`) × `invitecode/GroupInviteCodeRoute.kt`(`modifier.imePadding()`) — entry가 이미 IME 인셋을 붙이는데 Route가 같은 인셋을 한 번 더 얹는다. S-101 라운드가 자기 화면의 같은 증상(확인 버튼이 내비게이션 바 높이만큼 떠오름)을 `consumeWindowInsets`로 고치며 지목한 항목인데, **기전은 다르다** — S-101은 `YGScaffold` `innerPadding` 미소비였고 이쪽은 `contentWindowInsets = WindowInsets(0.dp)`라 `innerPadding`이 0이고 수동 인셋끼리 겹친다. 같은 파일의 `GroupNickName`·`GroupCreate` entry는 Route가 `imePadding()`을 안 써서 무사하다.
 - **항목**: ① Route의 `imePadding()`을 제거할지 entry의 `navigationBarsAndImePadding()`을 제거할지, ② 세 entry가 공유하는 인셋 관용구(`contentWindowInsets = WindowInsets(0.dp)` + 수동 패딩)를 유지할지 S-101 형태로 통일할지([2026-08-07] 인셋 관용구 항목과 같은 결정), ③ 실기기에서 실제로 키보드 위 여백이 두 배인지 확인 — 코드 대조만 했다.
-- **상태**: 미해결
-- **해소 메모**: [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md) "창 인셋 처리" 절의 경고와 [navigation-flow](../architecture/navigation-flow.md) 인셋 사례 블록을 함께 정리한다.
+- **상태**: 해소됨 (① **PR #237 develop 머지, 2026-08-14** — Route의 `imePadding()` 제거, entry 단독. ②는 [2026-08-07] 관용구 항목으로 넘어가고 ③은 대상 소멸)
+- **해소 메모**: 같은 PR이 매니페스트에 `android:windowSoftInputMode="adjustResize"`를 붙였다 — `MainActivity` 단일 액티비티라 **앱 전 화면에 걸리는 변경**인데 실기기 확인 기록이 없다(다른 입력 화면의 인셋 체감이 함께 달라질 수 있다). [navigation-flow](../architecture/navigation-flow.md) 인셋 사례 블록과 [a004 스펙](../specs/archive/2026-08-12-a004-group-invite-code.md)에 반영했다. 관용구 통일(②) 자체는 여전히 [2026-08-07] 항목 소관이다.
 
 ### [2026-08-13] MVI 베이스 확장이 과도기를 만든다 — 새 API를 쓰는 화면과 안 쓰는 화면 공존
 
@@ -1221,6 +1227,62 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (교체 대상 확정, 라운드만 대기)
 - **해소 메모**: 고칠 때 취소가 실패로 오지 않는 회귀 테스트를 함께 붙인다(`EncryptedTokenStoreTest`의 취소 케이스가 본보기다).
 
+### [2026-08-15] 누끼 캔버스 Safe Margin +20%가 미이행 — 원본 전체 크기가 끝까지 실려 간다
+
+- **ID**: OQ-P-150
+- **출처**: `feature/segmentation/impl` `editor/ToppingEditMask.kt#buildCutoutBitmap`(결과가 언제나 `originBitmap` 크기) · `data` `ImageSegmentationRepositoryImpl.segmentImage`(subject 비트맵도 `image.width`×`image.height`)(PR #221 develop 머지) — 위키 [[누끼-따기]]의 C-103-Selected 규격은 **객체 바운딩 박스 + 상하좌우 20% Safe Margin**으로 잘라낸 캔버스를 만들어 C-103~C-105에 같은 스케일로 넘기라고 한다(여백만큼 사진이 없으면 투명 픽셀로 강제 확장). 코드는 `subjectBounds`를 계산해 두고도 **하이라이트 표시에만** 쓰고 크롭에는 쓰지 않아, 원본 해상도 그대로가 편집·저장·캔버스 배치까지 실려 간다.
+- **항목**: ① 정책대로 Safe Margin 캔버스를 만들지 — 만들면 편집·테두리 좌표계가 전부 그 캔버스 기준으로 바뀌고 원본 밖으로 번지는 테두리가 잘리지 않게 된다(현재는 원본 경계에서 잘린다), ② 안 만들 거면 정책을 개정할지 — 원본 유지는 "지운 자리를 원본에서 되살리는" 편집 방식과 잘 맞는 선택이기도 하다, ③ 캔버스 배치(C-106)가 받는 이미지 크기 계약을 어디에 적을지.
+- **상태**: 미해결 (정책 vs 코드 — 어느 쪽이 옳은지부터 결정 필요)
+- **해소 메모**: 결정 후 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) "정책 대조" 표와 위키 [[누끼-따기]] C-103-Selected 절을 한쪽으로 맞춘다. 메모리도 함께 본다 — 원본 해상도 비트맵 2장이 `UiState`에 상주하고 저장 시 2장을 더 만든다.
+
+### [2026-08-15] 브러시·테두리 굵기 단위가 정책 px와 코드 dp로 갈린다
+
+- **ID**: OQ-P-151
+- **출처**: `feature/segmentation/impl` `viewmodel/ToppingEditViewModel.kt`(`MIN_BRUSH_WIDTH_DP`·`MAX_BRUSH_WIDTH_DP`·`MIN_BORDER_WIDTH_DP`·`MAX_BORDER_WIDTH_DP`)(PR #221 develop 머지) — 위키 [[누끼-편집]]은 브러시·테두리 모두 **2~50px**인데 코드는 **2~50dp**다. 값은 같고 단위만 다르다. 코드 주석이 근거를 남겼다 — "사진 해상도나 기기 밀도가 달라도 체감 굵기가 같도록". 원본 좌표 환산은 `originPxPerDp`(미리보기 배율의 역수)로 저장 시점에 한다.
+- **항목**: ① 정책의 "px"가 화면 px인지 원본 이미지 px인지 확정 — 원본 px이면 같은 굵기가 사진 해상도에 따라 전혀 다르게 보인다, ② 코드 판단(dp)을 정책으로 승격할지, ③ 상한 3배 확대(`MAX_ZOOM`)처럼 정책 문서에 없는 값이 함께 확정된 것도 같이 적을지.
+- **상태**: 미해결 (코드가 근거를 적고 먼저 확정한 사례 — 정책 추인 대기)
+- **해소 메모**: 정하면 위키 [[누끼-편집]] "브러시 / 테두리 크기" 절과 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 정책 대조 표를 맞춘다.
+
+### [2026-08-15] 토핑 편집 플로우에 출구가 없다 — 닫기 4곳이 전부 빈 람다
+
+- **ID**: OQ-P-152
+- **출처**: `feature/segmentation/impl` `route/SegmentationRoute.kt`·`route/SegmentationConfirmRoute.kt`(둘 다 `onClickClose = { }` + TODO "편집 플로우 종료 후 이동할 화면 연결 필요") · `feature/camera/impl` `route/PictureConfirmRoute.kt`(`onClickClose = {}` TODO "c001-캔버스메인으로")(PR #221 develop 머지) — 화면마다 `YGFloatingBar`의 닫기 버튼이 그려지는데 눌러도 아무 일이 없다. 편집 화면(`ToppingEditRoute`)만 닫기가 `onBack()`이다. 즉 촬영·갤러리에서 들어오면 **뒤로가기로 한 칸씩 물러나는 것 말고는 나갈 길이 없다.**
+- **항목**: ① 종료 목적지를 C-001 캔버스 메인으로 확정할지 — C-001 자체가 아직 도달 불가 화면이라([2026-08-12] 항목) 목적지를 정해도 진입 경로가 없다, ② 종료가 `goToSingleClearTop`인지 `clearBackStack()`+`goTo`인지([2026-08-12] 백스택 관용구 항목과 같은 결정), ③ 종료 시 편집 중이던 결과·캐시 파일을 어떻게 할지.
+- **상태**: 미해결 (후속 화면 결선 종속 — [2026-08-01] C-101-confirm ②의 확대판)
+- **해소 메모**: 결선 시 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md)·[c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)·[navigation-flow](../architecture/navigation-flow.md) "토핑 생성 플로우" 절을 함께 갱신하고 [2026-08-01] 항목을 닫는다.
+
+### [2026-08-15] C-103 다중 검출 선택과 실패 재시도가 통째로 빠졌다
+
+- **ID**: OQ-P-153
+- **출처**: `feature/segmentation/impl` `screen/SegmentationScreen.kt`(로딩/에러/본문 3분기, 본문은 `subjectBounds` 하나만 하이라이트) · `screen/SegmentationErrorScreen.kt`(닫기 버튼 하나)(PR #221 develop 머지) — 위키 [[누끼-따기]]는 [[기능정의서-v5]] 기준으로 **C-103-loading이 다중 검출 시 C-103-select로 분기**하고 **실패 시 재시도 또는 원본 사용 옵션**을 주라고 한다. 코드는 ML Kit `foregroundConfidenceMask`(단일 전경 마스크)만 쓰므로 대상이 애초에 하나이고, 에러 화면에는 재시도·원본 사용이 없다(닫기마저 빈 람다 → [2026-08-15] 출구 항목). `ModuleNotReady`는 코드가 "잠시 후 재시도하면 해결"이라 적어 둔 **일시적** 실패인데도 재시도할 수단이 없다.
+- **항목**: ① 다중 피사체 선택을 지원할지 — 지원하려면 `SubjectSegmenter`의 `subjects`(개별 피사체 목록)로 갈아타야 하고 결과 모델이 `SegmentationBounds` 단수에서 복수로 바뀐다, ② 안 할 거면 위키의 C-103-select를 폐기 표기할지, ③ 에러 화면에 재시도 버튼을 둘지(최소한 `ModuleNotReady`에는 필요), ④ "원본 사용" 옵션을 살릴지.
+- **상태**: 미해결 (①은 라이브러리 API 선택까지 걸리는 결정)
+- **해소 메모**: ①②는 위키 [[누끼-따기]] "버전별 보강" 절과 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 화면 ID 대응 표를 함께 정리한다. ③④는 [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절의 실패 처리 서술과 정합을 본다.
+
+### [2026-08-15] C-105 테두리 색 팔레트 9종이 정책 소스 없이 코드로 확정됐다
+
+- **ID**: OQ-P-154
+- **출처**: `feature/segmentation/impl` `editor/ToppingBorderColors.kt#TOPPING_BORDER_COLORS`(PR #221 develop 머지) — 9종 중 4종만 `YGAtomicColors`(투명·`Gray.White`·`Gray.Black`·`Cherry.Cherry200`)이고 나머지 5종은 `Color(0xFF……)` 리터럴이다. 위키에 C-105 테두리 색 정책 문서가 없어 대조 대상 자체가 없다. 맨 앞 투명 칩은 색이 아니라 "두르지 않음"이라는 **의미**를 갖는데 그 규약도 코드에만 있다.
+- **항목**: ① 팔레트가 Figma에 있는지 확인하고 있으면 원자 색 토큰으로 승격할지, ② 없으면 디자인에 요청할지, ③ "투명 = 두르지 않음"을 정책으로 못박을지 — 되돌리기 스택에는 이력이 남고 두른 겹만 비는 동작까지 포함해서.
+- **상태**: 미해결 (정책 소스 부재 — A-002 온보딩 문구·확인 모달 문구와 같은 유형)
+- **해소 메모**: 색이 토큰으로 올라가면 [design-system](../architecture/design-system.md) 원자 색 목록에 반영하고, 정책이 생기면 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 정책 대조 표의 "정책 문서 없음" 행을 채운다.
+
+### [2026-08-15] 편집 로직이 유닛 테스트 없이 머지됐다 — 모듈에 테스트 플러그인이 없다
+
+- **ID**: OQ-P-155
+- **출처**: `feature/segmentation/impl/build.gradle.kts`(`parfait.test.unit` 미적용) vs 같은 PR이 추가한 `core/util/jvm` 테스트 2파일(`ArgbExtensionTest`·`FloatArrayExtensionTest`)(PR #221 develop 머지) — 픽셀 유틸은 `core:util:jvm`으로 승격되며 테스트가 붙었는데, **정작 판단이 몰려 있는 곳**(마스크 합성 `buildCutoutBitmap`의 3단계 알파 규칙, 거리장 밴드 환산 `toBorderBands`, `UndoRedoStack`의 undo/redo/`replaceLast`, `BitmapViewMapping.fitCenter`·`clampPan`)은 검증이 없다. `UndoRedoStack`·`BitmapViewMapping`은 Android 타입에 의존하지 않아 **지금도 JVM 테스트가 가능하다**(비트맵 합성 2건만 계측 또는 Robolectric이 필요하다).
+- **항목**: ① `feature/segmentation/impl`에 `parfait.test.unit`을 붙이고 순수 로직 2종부터 덮을지, ② 비트맵 합성 검증을 어디서 돌릴지(계측 / Robolectric / 안 함), ③ 편집 화면이 들고 있는 상태(그리는 도중 획·zoom/pan)가 화면 로컬이라 ViewModel 테스트로 안 잡히는 것을 감수할지.
+- **상태**: 미해결 (테스트 기반 구조는 이미 있다 — 적용만 안 됐다)
+- **해소 메모**: ①을 하면 [2026-08-09] "검증 안 된 표면" 항목의 `MainDispatcherRule` 사용처와도 겹친다. 붙일 때 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "적용 대상" 표에 모듈을 추가한다.
+
+### [2026-08-15] 세그멘테이션 화면이 raw `Bitmap`을 UiState에 담고 死코드 2건이 함께 머지됐다
+
+- **ID**: OQ-P-156
+- **출처**: `feature/segmentation/impl` `viewmodel/SegmentationViewModel.kt#SegmentationState.originBitmap` · `viewmodel/ToppingEditViewModel.kt#ToppingEditState`(`originBitmap`·`segmentationBitmap`) · `screen/BitmapUtils.kt#mapViewToBitmap`·`#mapBitmapToViewFloat`(둘 다 참조 0건)(PR #221 develop 머지) — ViewModel이 `(wrapper as? AndroidBitmap)?.getRawData()`로 `BitmapWrapper` 추상을 벗겨 `android.graphics.Bitmap`을 상태에 직접 담는다. [ADR-0011](../adr/0011-cross-module-bitmap-abstraction.md)이 규정하는 것은 domain 경계뿐이라 규약 위반은 아니지만 다운캐스트가 data 레이어 밖으로 나온 첫 사례이고, **원본 해상도 비트맵이 상태 수명 동안 상주**한다(`ToppingEditState`는 2장). 스냅샷 상태에 담긴 비트맵이라 Compose stability 관점에서도 unstable 파라미터다.
+- **항목**: ① 비트맵을 상태가 아니라 `remember`/`produceState`로 화면이 들지, ② `BitmapWrapper`에 필요한 연산을 정의해 다운캐스트를 data로 되돌릴지([2026-07-12] BitmapWrapper stub 항목과 같은 결정), ③ 死코드 2건(`mapViewToBitmap`·`mapBitmapToViewFloat`)을 걷어낼지 — 좌표 변환 4종 중 2종만 쓰인다.
+- **상태**: 미해결 (③은 즉시 처리 가능)
+- **해소 메모**: ②가 정해지면 [ADR-0011](../adr/0011-cross-module-bitmap-abstraction.md) As-built 절과 [module-structure](../architecture/module-structure.md) 규칙 서술을 함께 손본다. ①은 실기기에서 큰 사진으로 OOM 여부를 본 뒤 판단한다.
+
 <!--
 항목 추가 형식:
 
@@ -1231,4 +1293,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 150 -->
+<!-- oq-next: 157 -->

@@ -7,8 +7,8 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr:
-related_spec:
-related_architecture:
+related_spec: c103-segmentation-topping-edit
+related_architecture: data-layer
 platforms: android
 tags: [adr, parfait]
 ---
@@ -48,3 +48,23 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 **위험·방어**
 - 실패는 `Result<SegmentationResult>` + sealed `SegmentationException`(`ClientInit`·`ImageNotFound`)로 표현, ViewModel이 effect로 받아 Toast + back 처리.
 - beta 승급·API 변동 추적 필요 → [open-questions 2026-07-12 ML Kit beta](../../wiki/synthesis/open-questions.md).
+
+## As-built 갱신 (2026-08-14, PR #221)
+
+결정 자체는 유지되고 실행 세부가 바뀌었다. 위 "결정" 절과 갈리는 지점만 적는다.
+
+| 원안 서술 | develop 현재 |
+|---|---|
+| 매니페스트 meta-data로 install-time 모델 다운로드 | meta-data는 **힌트일 뿐 보장이 없어서**, 사용 직전에 `ModuleInstall.areModulesAvailable` → 없으면 `installModules` → 재확인한다 |
+| `foregroundConfidenceMask`(임계 0.5f)로 **overlay/subject 비트맵** 생성 | overlay 비트맵이 없다. 같은 루프에서 subject 픽셀과 **바운딩 박스**를 함께 모은다 |
+| `SegmentationResult.bitmap`(`BitmapWrapper`) + `subjectImagePath` | `bitmap` 제거 — `subjectImagePath` + `subjectBounds: SegmentationBounds?` 2필드([[0011-cross-module-bitmap-abstraction]] 영향 절 참고) |
+| sealed `SegmentationException`(`ClientInit`·`ImageNotFound`) | `ModuleNotReady`·`Process` 2종 추가. `Tasks.await`의 `ExecutionException`을 한 겹 벗겨 `MlKitException.UNAVAILABLE`이면 `ModuleNotReady` |
+| (없음) | `saveEditedImage(BitmapWrapper): Result<String>` 신설 — 손편집 결과를 `cacheDir` PNG로 떨구고 경로 반환 |
+
+- "결과 전달이 메모리 비트맵 + 파일경로로 **이원**"이라던 트레이드오프는 **경로 단일로 정리됐다**.
+  대신 화면이 경로를 다시 디코드하므로 디코드 비용이 화면 쪽으로 옮겨졌다.
+- **캐시 파일 정리 정책은 더 급해졌다** — 추출 1장에 더해 편집을 마칠 때마다 최대 2장이 늘고
+  삭제 경로가 없다 → [open-questions](../synthesis/open-questions.md) [2026-07-12].
+- 실패 표현은 여전히 완전하지 않다 — `foregroundConfidenceMask == null`은 `Result`를 타지 않고
+  raw `error()`로 던진다(같은 항목).
+- 소비 화면은 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md).
