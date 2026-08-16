@@ -48,7 +48,7 @@ related_code:
   - FloatArrayExtension.kt#fillWithSquaredDistance
   - feature/segmentation/impl/res/values/strings.xml
 related_adr: ADR-0002, ADR-0005, ADR-0006, ADR-0009, ADR-0011, ADR-0012
-related_spec: c101-camera-picture-confirm, c102-custom-gallery-picker, c001-canvas-main, designsystem-bar-listdate-components, designsystem-button-missing-components
+related_spec: c101-camera-picture-confirm, c102-custom-gallery-picker, c001-canvas-main, c301-topping-edit-tab, designsystem-bar-listdate-components, designsystem-button-missing-components
 related_architecture: navigation-flow, module-structure, data-layer, design-system
 supersedes:
 superseded_by:
@@ -146,6 +146,12 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
 
 - `ToppingEditViewModel`은 Assisted 3인자(`sourceImageUri`·`segmentationImageUri`·`borderLayers`)를 받아
   두 비트맵을 디코드한다. 하나라도 실패하면 `LoadFailed` → Toast + `onBack()`.
+  > 🔁 **as-built(PR #264, 2026-08-16)** — Assisted가 **4인자**가 됐다(`borderOnly` 추가).
+  > `true`면 초기 탭이 `BORDER`이고 `ToppingEditState.isBorderOnly`가 켜져, 화면이
+  > `YGFloatingBarEditTab` 대신 **`YGFloatingBarEdit`(제목 "테두리 편집")**을 그려 탭 전환 자체를
+  > 없앤다 — 캔버스에 이미 놓인 토핑은 잘라내기 영역을 다시 못 건드린다는 규칙이 UI 부재로
+  > 강제된다. 호출자는 C-301 토핑 탭이다 →
+  > [c301-topping-edit-tab 스펙](2026-08-16-c301-topping-edit-tab.md).
 - **되돌리기 스택이 탭마다 따로다**(`areaHistory`·`borderHistory`). 영역에서 지운 획이 테두리 탭의
   되돌리기로 살아나면 안 되기 때문이다.
 - 마스크 합성(`buildCutoutBitmap`)은 알파 채널 3단계다 — ① segmentation 결과를 그려 시작 마스크,
@@ -181,6 +187,7 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
     val sourceImageUri: String,
     val segmentationImageUri: String,
     val borderLayers: List<ToppingBorderLayer> = emptyList(),
+    val borderOnly: Boolean = false,        // as-built #264 — true면 테두리 편집만 연다
 ) : NavKey
 
 data class ToppingEditResult(               // @Serializable 아님 — 버스로만 오간다

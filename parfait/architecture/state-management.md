@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-16
-related_spec: c201-canvas-calendar, session-token-refresh-infra, user-info-ssot
+related_spec: c201-canvas-calendar, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab
 related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022
 related_architecture: data-layer, navigation-flow
 related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase

@@ -7,7 +7,7 @@ platforms: android
 verified: 2026-08-15
 related_code: CanvasBGEditRoute, CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasEditTab, CanvasBackgroundPaletteColors, NavKeyCanvasBGEdit, PictureConfirmResult, NavKeyCameraCustom, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, CANVAS_ASPECT_RATIO, YGFloatingBarEditTab, YGModalPopup, YGCanvasBackground
 related_adr: ADR-0002, ADR-0005, ADR-0006, ADR-0007
-related_spec: c001-canvas-main, c101-camera-picture-confirm, c102-custom-gallery-picker, designsystem-canvas-components, designsystem-bar-listdate-components
+related_spec: c001-canvas-main, c101-camera-picture-confirm, c102-custom-gallery-picker, c301-topping-edit-tab, designsystem-canvas-components, designsystem-bar-listdate-components
 related_architecture: navigation-flow, design-system, state-management, module-structure
 supersedes:
 superseded_by:
@@ -51,7 +51,8 @@ C-001 캔버스 메인에서 캔버스 편집 버튼으로 들어와, 캔버스 
 - **제외**(이번 라운드에서 안 함)
   - **선택한 배경의 저장·반영** — 확인 이펙트가 `// TODO` 주석과 함께 `onBack()`만 한다.
     브랜치 중간에 "메인 캔버스에 반영"이 들어왔다가 되돌려졌다(커밋 `10e70809`).
-  - **토핑 탭의 내용** — 탭 전환은 상태만 바뀌고 본문은 배경 편집 그대로다.
+  - **토핑 탭의 내용** — 탭 전환은 상태만 바뀌고 본문은 배경 편집 그대로다
+    (→ 다음 라운드 PR #264에서 채워졌다, [c301-topping-edit-tab](2026-08-16-c301-topping-edit-tab.md)).
   - 저장된 기존 배경 불러오기(코드 TODO), 서버 연동, 유닛 테스트.
 
 ## 동작 / 구조
@@ -116,8 +117,10 @@ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnR
    그린다. 그래서 좌상단 컷 도형·Dot Grid·메뉴가 없고, 좌우 여백이 C-001의 `padding7`(20)이 아니라
    **21dp 리터럴**이다(코드 주석이 토큰 부재를 자인). 편집 중 보는 캔버스와 실제 캔버스가 다르다
    → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
-3. **"토핑" 탭이 아무 일도 안 한다** — `selectedTab`만 바뀌고 본문·팔레트가 그대로다. 위키 C-301은
-   배경 변경과 토핑 편집의 통합 진입점이라 절반이 비어 있는 상태다
+3. ~~**"토핑" 탭이 아무 일도 안 한다**~~ — ✅ **해소(PR #264, 2026-08-16)**. 탭이 선택·이동·크기·
+   회전·삭제와 테두리 재편집 왕복으로 채워졌다. 그 라운드의 설계·드리프트는
+   [c301-topping-edit-tab 스펙](2026-08-16-c301-topping-edit-tab.md)이 갖는다. 심볼 이름이
+   여전히 `CanvasBGEdit*`인 것과 탭 라벨·enum 소유는 그대로다
    → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
 4. **State·Effect가 UI 타입을 든다** — `selectedColor`가 Compose `Color`이고 `ConfirmBackground`가
    디자인시스템 타입 `YGCanvasBackground`를 싣는다. 팔레트 `CanvasBackgroundPaletteColors`도
@@ -143,7 +146,7 @@ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnR
 
 | 정책 항목 | 코드 | 판정 |
 |---|---|---|
-| C-301 = 파르페 편집 모드 진입(배경 변경 + 토핑 편집 통합, [[기능정의서-v3]]) | 배경/토핑 탭 화면 | 방향 일치, **토핑 탭 미구현** |
+| C-301 = 파르페 편집 모드 진입(배경 변경 + 토핑 편집 통합, [[기능정의서-v3]]) | 배경/토핑 탭 화면 | 방향 일치, 토핑 탭은 #264로 채워짐 |
 | 캔버스 Area 비율 9:16([[캔버스-반응형-레이아웃]]) | `aspectRatio(CANVAS_ASPECT_RATIO)` | 일치 |
 | 캔버스 좌우 여백 20([[캔버스-반응형-레이아웃]]) | 미리보기 좌우 21dp 리터럴 | **불일치**(드리프트 2) |
 | 캔버스 좌상단 컷 도형 + 날짜 라벨 | 미리보기에 없음 | **불일치**(미리보기가 캔버스 재현 아님) |

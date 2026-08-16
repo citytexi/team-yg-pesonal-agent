@@ -1,0 +1,225 @@
+---
+id: c301-topping-edit-tab
+title: C-301 토핑 편집 탭 (선택·이동·크기·회전·삭제 + 테두리 재편집 왕복)
+status: implemented
+category: ui-spec
+platforms: android
+verified: 2026-08-16
+related_code:
+  - CanvasBGEditScreen.kt#CanvasBGEditScreen
+  - CanvasBGEditScreen.kt#CanvasToppingImage
+  - CanvasBGEditScreen.kt#ToppingCornerButtons
+  - CanvasBGEditScreen.kt#ToppingSelectionStroke
+  - CanvasBGEditScreen.kt#ToppingDragHandleButton
+  - CanvasBGEditScreen.kt#rememberToppingBaseSize
+  - CanvasBGEditViewModel.kt#CanvasToppingItem
+  - CanvasBGEditViewModel.kt#CanvasBGEditViewModel
+  - CanvasBGEditRoute.kt#CanvasBGEditRoute
+  - ToppingGeometry.kt#computeToppingStrokeCorners
+  - ToppingGeometry.kt#computeToppingButtonPoints
+  - ToppingGeometry.kt#toppingStrokeSize
+  - ToppingGeometry.kt#resizeOutwardDirection
+  - Modifier.kt#centeredAt
+  - Modifier.kt#dragBy
+  - NavKeyToppingEdit
+  - ToppingEditResult
+  - TOPPING_EDIT_RESULT_KEY
+  - ToppingEditViewModel.kt#ToppingEditViewModel
+  - ToppingEditState.kt#isBorderOnly
+  - YGCircleButton
+  - YGFloatingBarEdit
+  - YGModalPopup
+  - feature/groups/canvas/impl/res/values/strings.xml
+  - feature/segmentation/impl/res/values/strings.xml
+related_adr: ADR-0002, ADR-0005, ADR-0006, ADR-0007
+related_spec: c301-canvas-background-edit, c103-segmentation-topping-edit, c001-canvas-main, designsystem-canvas-components, designsystem-button-missing-components
+related_architecture: navigation-flow, design-system, state-management, module-structure
+supersedes:
+superseded_by:
+tags: [spec, parfait, canvas, topping, c301, c305, c306]
+---
+
+# Spec: C-301 토핑 편집 탭
+
+> 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+
+> ⚠️ **사후 스펙(as-built)** — 선작성 스펙 없이 PR #264(`feature/canvas-topping-screen`)가
+> develop에 머지됐다(2026-08-16). 아래는 머지 코드를 역기록한 것이며, 설계 대조가 아니라
+> **규약(parfait)·정책(위키) 대조**로 드리프트를 표기한다.
+
+> **자리** — [c301 배경 편집 스펙](2026-08-15-c301-canvas-background-edit.md)이 "토핑 탭이
+> 아무 일도 안 한다"(드리프트 3)고 적어 둔 그 절반이 이번에 채워졌다. 같은 화면·같은 세 파일이지만
+> 다루는 축이 다르고(배경 선택 vs 토핑 조작) 규모가 커서 스펙을 나눠 적는다.
+
+## 목표
+C-301 편집 모드의 **토핑 탭**에서, 캔버스에 이미 놓인 **내 토핑**을 골라 옮기고(드래그)
+크기·회전을 바꾸고 삭제하고, 테두리만 다시 손볼 수 있게 한다.
+
+## 범위
+- **포함**
+  - 토핑 모델 `CanvasToppingItem` 신설(`parfaitImageId`·`isMine`·`imageResId`·`offsetX/Y`·
+    `sourceImageUri`·`segmentationImageUri`·`scale`·`rotationDegrees`·`borderLayers`·`editedImagePath`).
+  - 토핑 탭 본문 — 남의 토핑 → 딤 → 내 토핑 → 선택 오버레이의 **4층 스택**.
+  - 선택/해제(내 토핑 탭 토글, 딤·남의 토핑 탭 = 해제), 드래그 이동, 모서리 4버튼
+    (삭제·크기조절·편집·회전), 회전 따라 도는 점선 스트로크.
+  - 삭제 확인 모달(`YGModalPopup`) + `strings.xml` 8줄(버튼 접근성 4 + 모달 문구 4).
+  - **테두리 전용 재편집 왕복** — `NavKeyToppingEdit(borderOnly = true)`로 C-104/C-105 편집 화면을
+    열되 영역 탭 없이 테두리만 열고, `ToppingEditResult`를 `ResultEffect`로 되받아 그 토핑에 반영.
+  - `core:util:android` `extension/`에 `Modifier.centeredAt(DpOffset)`·`Modifier.dragBy(key, onDrag)` 신설
+    (화면에서 뽑아 올린 것). `feature/groups/canvas/impl`이 `core:util:android`에 의존하기 시작.
+  - 기하 계산 `util/ToppingGeometry.kt` 신설(회전 사각형 꼭짓점·스트로크 여백·버튼 밀어내기·
+    크기조절 바깥 방향).
+  - `core:designsystem` 아이콘 2종 신설(`ic_edit`·`ic_scale`).
+  - 인텐트·이펙트 무인자 선언이 `class`에서 `data object`로 정리됐다(직전 스펙이 적어 둔 형태 교정).
+- **제외**(이번 라운드에서 안 함)
+  - **토핑 목록 조회** — `loadMockToppings()`가 템플릿 이미지 4개·좌표 하드코딩으로 만든 mock이고
+    코드에 `TODO`가 달려 있다. 서버에 이미 있는 조회·수정·삭제 표면을 쓰지 않는다.
+  - **편집 결과 저장** — 이동·크기·회전·삭제가 전부 `UiState` 안에서만 일어나고 확인 버튼은
+    여전히 배경만 싣는다(`ConfirmBackground`). 화면을 나가면 사라진다.
+  - **토핑 추가**(C-106 신규 배치) — 이 탭에는 추가 경로가 없다. 목록에 있는 것만 고친다.
+  - z-index 조작, 다중 선택, 스냅·정렬 보조, 유닛 테스트(테스트 파일 변경 0건).
+
+## 동작 / 구조
+
+### 탭에 따라 화면이 갈린다
+- `selectedTab == TOPPING`이면 팔레트 행이 통째로 사라지고, 미리보기 `Box`의 상하 패딩이
+  `padding4`에서 **60dp/14dp 리터럴**로 바뀐다(코드 주석이 "공통에 없음"이라고 자인).
+- 토핑은 미리보기 `Box`(`aspectRatio` + `clipToBounds`) **안쪽**에 그려지므로, 캔버스 밖으로 밀어낸
+  픽셀은 잘린다.
+
+### 4층 스택과 선택 규칙
+```
+[3] 선택 오버레이 — 점선 스트로크 + 모서리 4버튼   (selectedToppingId 있을 때만)
+[2] 내 토핑들 (isMine)                            — 탭=선택 토글, 선택된 것만 드래그
+[1] 딤 (Transparency.Black25, 전면)               — 탭=선택 해제
+[0] 남의 토핑들 (!isMine)                          — 딤 아래라 어둡게 보인다, 탭=선택 해제
+```
+- 딤이 **한 장으로 캔버스 전체**를 덮고 그 위에 내 토핑을 다시 그린다. 그래서 "내 것만 밝다"가
+  레이어 순서로 표현되고, 선택 여부와 무관하게 토핑 탭에 들어서면 곧바로 갈린다.
+- `OnClickTopping`은 **`isMine`이 아니면 즉시 반환**한다. 남의 토핑 탭은 [0]층의 클릭이 아니라
+  그 위 딤이 먼저 받으므로 결과적으로 선택 해제다.
+- 같은 토핑을 다시 탭하면 `selectedToppingId`가 `null`이 된다(토글).
+
+### 조작 3종
+| 조작 | 인텐트 | 환산 |
+|---|---|---|
+| 이동 | `OnToppingMoveDrag(DpOffset)` | 화면이 px→dp로 바꿔 올리고 `offsetX/Y`에 그대로 더한다 |
+| 크기 | `OnToppingResizeDrag(Offset)` | 드래그 벡터를 **회전된 바깥 방향 단위벡터에 투영**해 배율 증분, 0.5~2.5로 클램프 |
+| 회전 | `OnToppingRotateDrag(Offset)` | **가로 성분만** 각도로 환산, 상·하한 없음 |
+
+- 크기조절 핸들이 우측 상단에 고정이라, 토핑이 돌아 있으면 "바깥"도 같이 돌아야 한다.
+  `resizeOutwardDirection(rotationDegrees)`가 우상단 대각선 단위벡터를 같은 각만큼 돌려 주고,
+  드래그 벡터와의 내적이 곧 증감이다. 그래서 **거꾸로 선 토핑도 핸들을 바깥으로 끌면 커진다.**
+- 세 조작 모두 `applyToppingTransform`을 지나며, 주석이 밝히듯 **경계 되돌림(clamp)을 하지 않는다** —
+  캔버스 밖은 클리핑으로 안 보일 뿐 좌표는 그대로 나간다.
+
+### 선택 표시의 기하
+- 토핑 자신은 `graphicsLayer(scaleX/scaleY/rotationZ)`로 돌고 커지지만, **스트로크와 버튼은
+  같이 회전시키지 않는다** — 버튼이 뒤집히면 아이콘이 거꾸로 보이기 때문이다.
+- 그래서 좌표를 따로 계산한다. `ToppingGeometry`가 토핑 크기(배율 적용 후)에 여백
+  (가로 `SizeTokens.Size8`·세로 `Size10`)을 두른 사각형의 회전 꼭짓점을 내고,
+  버튼은 그 꼭짓점에서 **대각선 방향으로 (버튼 반지름 + 간격)만큼 더 밀어낸** 지점에 놓인다.
+  밀어내는 양을 축별로 나눌 때 대각선 길이 비율을 쓰므로 종횡비가 달라도 간격이 고르다.
+- 스트로크만은 `graphicsLayer(rotationZ)`로 돌린다(사각형이라 뒤집혀도 같다).
+- 버튼 배치는 `Modifier.centeredAt(point)` — `layout`으로 자기 크기의 절반을 빼서 **중심을 점에 맞춘다**.
+- 토핑의 기본 크기는 `painter.intrinsicSize`를 dp로 읽은 값이고, 아직 모를 때는 60dp 정사각을 임시로
+  쓴다(`rememberToppingBaseSize`).
+
+### 모서리 4버튼
+좌상 삭제(`ic_close`) · 우상 크기조절(`ic_scale`, 핸들) · 좌하 편집(`ic_edit`) · 우하 회전(`ic_rotate`, 핸들).
+- 넷 다 `YGCircleButton(YGCircleButtonType.Small)`이고, 핸들 둘은 **`onClick = {}` 빈 람다에
+  `Modifier.dragBy`를 덧대는 방식**이다(누르는 버튼이 아니라 잡는 손잡이).
+- 삭제는 곧바로 지우지 않고 `showDeleteToppingDialog`로 확인 모달을 띄운다. 확인 시 목록에서 제거 +
+  선택 해제. 배치는 **파괴적 액션=좌 Secondary(`삭제하기`) / 취소=우 Primary(`그만두기`)**로,
+  같은 화면의 그만두기 모달과 같은 진영이다.
+
+### 테두리 재편집 왕복
+```
+NavKeyCanvasBGEdit ─(편집 버튼)─▶ NavKeyToppingEdit(source, segmentation, borderLayers, borderOnly = true)
+        ▲                                                   │ sendResult(TOPPING_EDIT_RESULT_KEY) + onBack
+        └───────────────────────────────────────────────────┘
+```
+- `borderOnly = true`면 `ToppingEditViewModel`이 초기 탭을 `BORDER`로 세우고 `isBorderOnly`를 켠다.
+  화면은 `YGFloatingBarEditTab`(영역|테두리) 대신 **`YGFloatingBarEdit`(제목 "테두리 편집")**을 그려
+  탭 전환 자체를 없앤다. 이미 캔버스에 놓인 토핑의 잘라내기 영역은 다시 건드릴 수 없다는 규칙이
+  UI 부재로 강제된다.
+- 편집을 시작한 토핑 id는 **Route의 `rememberSaveable`**(`editingToppingId`)이 들고 있다가
+  결과가 오면 인텐트에 실어 준다. ViewModel은 어느 토핑을 편집하러 갔는지 모른다.
+- 결과 반영은 세 필드다 — `segmentationImageUri`를 **방금 구운 알맹이(`cutoutImagePath`)로 교체**하고
+  (다시 열 때 지운/되살린 영역이 유지된다), `borderLayers`·`editedImagePath`를 갈아 끼운다.
+  `editedImagePath`가 있으면 그리기도 그쪽 파일을 쓴다.
+- 같은 목적지를 **세 번째 호출자**가 쓰기 시작했다(C-103 확인 화면 → C-301). 인자 하나로 두 모드를
+  겸하는 방식은 배경 편집이 만든 `returnResultOnly` 관용구와 같은 부류다.
+
+## 정책 대조 (위키)
+
+| 정책 항목 | 코드 | 판정 |
+|---|---|---|
+| 본인 토핑 탭 → C-305 토핑 편집([[C-202-토핑-편집자-확인-규칙-v0.1]]) | 본인 토핑 탭 = 선택(스트로크+4버튼), 편집 버튼이 따로 있다 | **방식 다름** — 탭이 곧 편집 진입이 아니다 |
+| 타인 토핑 탭 → Spotlight + 작성자 Toast | 딤이 먼저 받아 **선택 해제**, 작성자 표시 없음 | **미구현**(C-202는 캔버스 상세 대상이라 화면이 다르다 — 편집 모드 규칙은 정책 부재) |
+| C-106 초기 크기 = 더 긴 쪽이 캔버스 가로 40% | 이미지 `intrinsicSize` 그대로(배율 1) | **불일치** — 다만 이 탭에는 신규 배치 경로가 없다 |
+| C-106 초기 위치 = 정중앙 | mock 하드코딩 좌표 | **대조 불가**(신규 배치 없음) |
+| C-106 최소 터치 방어(짧은 쪽 48px) | 없음 | **미구현** |
+| C-106 이탈 허용 + 캔버스 클리핑 | clamp 없음 + `clipToBounds()` | **일치** |
+| C-306 테두리 편집(위키 표 잔존) | `borderOnly` 모드로 성립 | 일치(화면은 C-104/C-105와 공유) |
+| 토핑 삭제 확인 문구 | 위키에 대응 소스 없음 | **대조 대상 부재** — 코드가 확정 |
+
+## 규약 대조 (parfait)
+- **MVI**: 3분할 유지, 이펙트 수집은 Route 한 곳. 무인자 인텐트·이펙트가 `data object`로 정리돼
+  [state-management](../../architecture/state-management.md) 관용구에 맞았다. 다만 편집 대상 id를
+  Route가 들고 있어 **화면 상태의 일부가 ViewModel 밖**에 산다.
+- **State가 UI 타입을 든다**: `CanvasToppingItem`이 `@DrawableRes Int`·`Dp`·Compose `Offset` 계열을
+  들고 화면 목록이 곧 도메인 목록이다(배경 팔레트가 `Color`를 든 것과 같은 부류).
+- **클릭 규약 이탈**: 토핑·딤이 `clickable(indication = null)`을 직접 쓴다(`clickableYG` 미사용).
+- **그리기 프리미티브**: 점선 스트로크를 `core:designsystem`의 `dashedBorder()`가 아니라 화면이
+  `drawBehind` + `dashPathEffect`로 직접 그린다. 같은 층위가 또 한 곳 늘었다
+  → [design-system](../../architecture/design-system.md).
+- **치수 리터럴**: 60·14dp(탭별 패딩)·2dp(스트로크 굵기)·7.5/9dp(점선 간격)·14dp(버튼 시각 반지름)·
+  7dp(모서리 간격)가 토큰 밖이다. 스트로크 여백만 `SizeTokens`를 쓴다.
+- **모듈 경계**: 제스처·배치 확장 2종을 화면에 두지 않고 `core:util:android`로 올린 것은 규약대로다
+  (`clearFocusOnTap` 선례). 반면 기하 계산은 feature `util/`에 남았다 — 캔버스 전용이라 타당하다.
+
+## 드리프트 / 잔존
+
+1. **고칠 대상이 mock이다** — `loadMockToppings()`가 템플릿 이미지 4개를 하드코딩 좌표에 깔고,
+   `sourceImageUri`·`segmentationImageUri`는 그 drawable을 가리키는 `android.resource://` uri다.
+   서버에는 이미 파르페 상세 조회·토핑 테두리 수정·삭제 표면이 있는데 소비처가 0이다
+   → [open-questions](../../synthesis/open-questions.md) [2026-08-16].
+2. **편집 결과가 어디에도 남지 않는다** — 이동·크기·회전·삭제·테두리 재편집이 전부 `UiState`에서
+   끝나고, 확인 버튼은 배경만 싣는다. 배경이 겪던 것과 같은 왕복 미완이 토핑에서 반복된다
+   → [open-questions](../../synthesis/open-questions.md) [2026-08-16].
+3. **C-106 배치 규격이 코드에 없다** — 40%·정중앙·48px 방어가 전부 빠졌다. 신규 배치 경로가 없어
+   당장 어긋나지는 않지만, 추가 경로가 붙을 때 이 규격이 어디에 살지 정해져 있지 않다
+   → [open-questions](../../synthesis/open-questions.md) [2026-08-16].
+4. **회전에 상·하한이 없다** — 크기는 0.5~2.5로 클램프하는데 각도는 무한히 누적된다.
+   `rotationDegrees`가 커져도 렌더는 같지만 저장 계약이 생기면 정규화 주체가 필요하다.
+5. **선택 상태가 목록 변화를 견디지 못한다** — `selectedToppingId`가 목록에서 사라진 id를 가리켜도
+   화면은 조용히 아무것도 그리지 않는다(삭제 경로에서는 함께 비우지만, 목록이 서버에서 갱신되기
+   시작하면 그 보장이 사라진다).
+6. **접근성 표시가 아이콘 라벨뿐이다** — 핸들 2종은 `onClick = {}`이라 스크린리더가 "버튼"으로 읽고
+   눌러도 아무 일이 없다. 드래그 조작의 대체 수단이 없다.
+
+## 파일 구성
+
+```
+build-logic/convention/
+  buildlogic/AndroidConfig.kt          release 빌드 타입에 release signingConfig 결선(이번 delta 동승)
+core/designsystem/
+  res/drawable/ic_edit.xml             신설
+  res/drawable/ic_scale.xml            신설
+core/util/android/
+  extension/Modifier.kt                centeredAt·dragBy 추가
+feature/groups/canvas/impl/
+  build.gradle.kts                     core:util:android 의존 추가
+  route/CanvasBGEditRoute.kt           ToppingEditResult 수신 + editingToppingId + 토핑 콜백 결선
+  screen/CanvasBGEditScreen.kt         토핑 4층 스택·모서리 버튼·스트로크·삭제 모달
+  viewmodel/CanvasBGEditViewModel.kt   CanvasToppingItem + mock 로드 + 조작 인텐트 8종
+  util/ToppingGeometry.kt              신설 — 회전 사각형 기하
+  res/values/strings.xml               8줄 추가
+feature/segmentation/
+  api/NavKeyToppingEdit.kt             borderOnly 인자 추가
+  impl/route/ToppingEditRoute.kt       borderOnly 전달
+  impl/screen/ToppingEditScreen.kt     borderOnly면 YGFloatingBarEdit로 교체
+  impl/viewmodel/ToppingEditViewModel.kt  Assisted 4인자 + isBorderOnly 초기 상태
+  impl/res/values/strings.xml          1줄 추가
+```
