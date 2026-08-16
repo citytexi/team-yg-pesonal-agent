@@ -130,7 +130,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 |---|---|---|
 | `AuthRepository` | `loginWithKakao(idToken, nonce)` · `signUp(registrationToken, agreements)` · `saveSession(session)` · **`logout()`**(#260) | `LoginWithKakaoUseCase` → A-002 · `SignUpUseCase` → 온보딩 약관 · `LogoutUseCase` → S-001 앱 설정 |
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
-| `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | 순서대로 `GetMyGroupsUseCase`(G-001) · `GetGroupJoinPreviewUseCase`·`JoinGroupUseCase`(A-004) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102) |
+| `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | 순서대로 `GetMyGroupsUseCase`(G-001) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102) |
 | `MemberRepository`(#263) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` |
 
 **`MemberRepository`는 지금까지와 다른 모양이다 — 원격과 로컬을 조율한다.** 다른 원격 Repository가

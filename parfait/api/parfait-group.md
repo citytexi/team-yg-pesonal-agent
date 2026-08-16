@@ -387,16 +387,19 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 | Repository 함수 | 반환 | 대응 엔드포인트 | UseCase → 화면 |
 |---|---|---|---|
 | `getMyGroups()` | `Result<List<MyParfaitGroupVO>>` | GET `/api/parfait-groups` | `GetMyGroupsUseCase` → G-001(진입·당김 재조회) |
-| `previewJoin(inviteCode)` | `Result<GroupName>` | GET `/api/parfait-groups/join-preview` | `GetGroupJoinPreviewUseCase` → A-004(확인 모달 전) |
-| `joinGroup(inviteCode)` | `Result<JoinedGroupVO>` | POST `/api/parfait-groups/join` | `JoinGroupUseCase` → A-004(모달 확인) |
+| `previewJoin(inviteCode)` | `Result<GroupName>` | GET `/api/parfait-groups/join-preview` | `GetGroupJoinPreviewUseCase` → A-004(확인 버튼, 통과하면 S-102로 이동) |
+| `joinGroup(inviteCode)` | `Result<JoinedGroupVO>` | POST `/api/parfait-groups/join` | `JoinGroupUseCase` → **S-102(모달 확인)** — #261에서 A-004에서 이관 |
 | `createGroup(groupName, groupNickname, memberLimit)` | `Result<CreatedGroupVO>` | POST `/api/parfait-groups` | `CreateGroupUseCase` → A-005(모달 확인) |
 | `changeMyNickname(groupId, groupNickname)` | `Result<GroupNicknameVO>` | PATCH `/api/parfait-groups/{groupId}/nickname` | `ChangeGroupNicknameUseCase` → S-102 |
 
 앱 동작 메모(코드 대조):
 
 - **에러 코드 7종이 실제 분기에 쓰인다** — `INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·
-  `GROUP_MEMBER_LIMIT_REACHED`(A-004 문구) · `INVALID_GROUP_NICKNAME`(S-102 문구) ·
-  `INVALID_GROUP_NAME`·`INVALID_GROUP_MEMBER_LIMIT`·`MEMBER_NOT_FOUND`(A-005는 로그만).
+  `GROUP_MEMBER_LIMIT_REACHED`(🔁 #261 — **A-004 미리보기와 S-102 참여 양쪽**이 같은 문구로 매핑한다.
+  미리보기를 통과한 뒤 상태가 바뀐 경우가 S-102 쪽이다) ·
+  `INVALID_GROUP_NAME`·`INVALID_GROUP_MEMBER_LIMIT`·`MEMBER_NOT_FOUND`(A-005는 로그만) ·
+  `INVALID_GROUP_NICKNAME`(🔁 #261 — S-102 분기가 사라져 **A-005 그룹 생성에서만** 쓰인다.
+  S-102의 닉네임 PATCH 실패는 화면에 표시되지 않고 로그만 남는다).
   ✅ **`GROUP_NICKNAME_ALREADY_USED` 死코드는 걷혔다**(2026-08-15, PR #250) — 상수·
   `GroupNickNameError.ALREADY_USED`·문구·매핑 분기가 함께 제거됐고, 그 코드를 검증하던 두 테스트는
   `INVALID_GROUP_NICKNAME`(400)으로 바뀌어 살았다. **남은 것은 정책 쪽이다** — 같은 그룹에 같은 표시
@@ -410,8 +413,10 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
   서버 자릿수가 적혀 있지 않아 드러나지 않던 불일치다). 다만 앱은 대문자 정규화를 하지 않는다 —
   서버가 `uppercase()` 하므로 동작은 같다.
 - **생성 응답을 한 번 더 검사한다** — `CreateGroupUseCase`가 `groupId > 0`이 아니면 계약 위반으로 보고 실패로 되돌린다.
-- **참여 → 닉네임이 두 요청이다** — 합류(POST join)는 A-004에서 끝나고 닉네임(PATCH)은 다음 화면 몫이라,
-  중간에 이탈하면 그룹에는 들어간 채 닉네임만 서버 초기값으로 남는다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- **참여 → 닉네임이 두 요청이다** — ✅ **이탈 문제는 해소됐다**(2026-08-16, PR #261): 둘 다 S-102 확인 모달
+  뒤에서 연달아 나가므로 중간 이탈로 "닉네임 없는 참여"가 남지 않는다. 다만 원자적이지는 않다 —
+  **POST join이 성공하고 PATCH만 실패하면 참여는 유지되고 닉네임은 서버 초기값**이며 화면에 표시가 없다
+  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 - **A-005가 보내는 `groupNickname`이 아직 mock**이다(G-001 UiState 기본값 리터럴).
 - ⚠️ **`recentImageUploadedAt` 파싱이 이 문서의 직렬화 포맷과 어긋난다** — 앱 매퍼가
   `kotlin.time.Instant::parse`(오프셋 필수)를 쓰는데 서버는 오프셋 없는 로컬 날짜시간을 내려준다

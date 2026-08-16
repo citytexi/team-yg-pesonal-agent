@@ -105,23 +105,28 @@ TokenAuthenticator(재발급 거절) → SessionEventBus.postForcedLogout()
 
 ```
 NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확인 모달 = POST 생성)──┐
-                 └─ 참여 ─▶ NavKeyGroupInviteCode ─(확인 모달 = POST 참여)─▶ NavKeyGroupNickName(groupId) ─┤
-                                                                                                            └─▶ NavKeyGroupList
+                 └─ 참여 ─▶ NavKeyGroupInviteCode ─(GET 미리보기)─▶ NavKeyGroupNickName(inviteCode, groupName) ─(확인 모달 = POST 참여 + PATCH 닉네임)─┤
+                                                                                                                                                        └─▶ NavKeyGroupList
 ```
 
-> 📌 **실서버 결선(2026-08-15, PR #243·#244)** — 두 갈래의 mock UseCase가 전부 걷혔다. 특히 **합류 시점이
-> 앞당겨졌다**: A-004 확인 모달이 `POST /api/parfait-groups/join`으로 실제 합류하고 그 응답의 `groupId`를
-> `NavKeyGroupNickName(groupId)` 인자로 넘긴다. 그래서 S-102는 "참여"가 아니라 **이미 들어간 그룹의 닉네임
-> 변경**(PATCH) 화면이고, 거기서 이탈해도 참여는 유지된다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+> 📌 **실서버 결선(2026-08-15, PR #243·#244)** — 두 갈래의 mock UseCase가 전부 걷혔다. 그때는 **합류 시점이
+> 앞당겨져** A-004 확인 모달이 `POST /api/parfait-groups/join`으로 합류하고 그 `groupId`를 다음 화면에 넘겼다.
+> 🔁 **되돌아왔다(2026-08-16, PR #261)** — 확인 모달이 통째로 S-102로 옮겨가 **참여와 닉네임 적용이 한 확인
+> 뒤에 연달아** 일어난다. A-004는 미리보기까지만 하고 **초대코드·그룹명**을 NavKey 인자로 넘기므로,
+> 닉네임 화면에서 이탈하면 참여 자체가 없다(OQ-P-166 해소). 참여 성공 뒤 닉네임 PATCH가 실패해도 흐름은
+> 멈추지 않는다 — 전역 닉네임을 쓴 채 목록으로 간다.
 
 - 복귀는 `clearBackStack()` + `goTo`가 아니라 **`goToSingleClearTop(NavKeyGroupList)`**다 —
   목록 엔트리가 백스택에 이미 있으므로 그 위만 걷어낸다. 목록에서 뒤로가기는 여전히 no-op이다(백스택 1개).
   즉 develop에 **백스택 리셋 관용구가 둘**이다: 되돌아갈 화면이 없는 경계는 `replaceAll`
   (Splash·TermAgree·Login·강제 로그아웃), 이미 스택에 있는 화면으로 복귀는 `goToSingleClearTop`
   (그룹 생성·참여) → [open-questions](../synthesis/open-questions.md) [2026-08-12].
-- **확인 모달이 전이의 게이트**다 — 두 화면 다 확인 버튼이 곧바로 이동하지 않고 `YGModalPopup`을 띄우며,
-  이동은 모달의 Primary 버튼에서 일어난다. 모달 표시 여부는 각 UiState의 `isConfirmPopupVisible`이다
-  ([a005](../specs/archive/2026-07-29-a005-group-create.md)·[a004](../specs/archive/2026-08-12-a004-group-invite-code.md) 스펙).
+- **확인 모달이 전이의 게이트**다 — 각 갈래의 **마지막 입력 화면**(생성은 A-005, 참여는 S-102)에서 확인 버튼이
+  곧바로 이동하지 않고 `YGModalPopup`을 띄우며, 서버 요청과 이동은 모달의 Primary 버튼에서 일어난다.
+  모달 표시 여부는 각 UiState의 `isConfirmPopupVisible`이다
+  ([a005](../specs/archive/2026-07-29-a005-group-create.md)·[s102](../specs/archive/2026-07-22-s102-group-nickname.md) 스펙).
+  🔁 **#261 전에는 참여 갈래의 모달이 A-004에 있었다** — 중간 화면이 게이트를 쥐면서 이후 화면 이탈이
+  참여를 되돌리지 못했기 때문에 마지막 화면으로 내려왔다.
 - 의존은 규약대로 `:api`만: `feature/groups/enter/impl` → `feature/groups/list/api`(#224에서 추가).
 - ⚠️ **위키 정본과 목적지가 다르다** — [[기능정의서-v6]]은 A-004(참여)·A-005(생성) 다음 단계를
   **C-001(메인 캔버스)**로 적는데(중간 화면 G-002 삭제 후 재배선) 코드는 그룹 목록으로 돌아온다
