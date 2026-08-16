@@ -218,8 +218,9 @@ fun YGScaffold(/* … */)
 | `core/designsystem/.../component/ygloading/YGLoadingOverlay.kt` | 신설 | Dim + 인디케이터 + 터치 삼킴 (**임시**) |
 | `core/designsystem/.../component/ygtoast/YGToastPolicy.kt` | 수정 | `showError` 확장 추가 |
 | `core/designsystem/.../screen/YGScaffold.kt` | 수정 | `@Deprecated` 부착 |
-| `core/designsystem/src/main/res/values/strings.xml` | 수정 | 로딩 `contentDescription` 문자열 |
-| `core/designsystem/src/androidTest/.../screen/YGScaffoldV2Test.kt` | 신설 | 계측 테스트 4건 |
+| `core/designsystem/src/main/res/values/strings.xml` | **신설** | 로딩 `contentDescription` 문자열. 이 모듈에 `values/`가 아직 없다 |
+| `core/designsystem/src/androidTest/.../component/ygloading/YGLoadingOverlayTest.kt` | 신설 | 계측 테스트 2건(표시·터치 삼킴) |
+| `core/designsystem/src/androidTest/.../screen/YGScaffoldV2Test.kt` | 신설 | 계측 테스트 3건(로딩 on·off·에러 토스트) |
 
 `YGLoadingOverlay`를 V2 안에 인라인하지 않고 파일을 나누는 이유 둘: 로띠 등으로 교체될 때
 고칠 곳이 한 곳이고, 스캐폴드 없이 로딩만 필요한 화면이 이미 존재한다.
@@ -241,18 +242,31 @@ fun YGScaffold(/* … */)
 `core:designsystem`은 `parfait.test.compose`(계측 `ui-test-junit4` + `ui-test-manifest`)를 이미
 적용했고 `androidTest`에 `YGThemeSmokeTest` 선례가 있다. 새 인프라는 필요 없다.
 
-| 케이스 | 검증 |
-|---|---|
-| `isLoading = true` | 오버레이가 보인다 |
-| `isLoading = true` + content 버튼 클릭 | **콜백이 불리지 않는다** |
-| `isLoading = false` | 오버레이가 없다 |
-| `showError("…")` (로딩 켠 상태 포함) | 그 문구가 보인다 |
+| 파일 | 케이스 | 검증 |
+|---|---|---|
+| `YGLoadingOverlayTest` | 컴포지션 | 오버레이가 보인다 |
+| `YGLoadingOverlayTest` | 가려진 클릭 가능 컨텐츠를 클릭 | **콜백이 불리지 않는다** |
+| `YGScaffoldV2Test` | `isLoading = true` | 오버레이가 보인다 |
+| `YGScaffoldV2Test` | `isLoading = false` | 오버레이가 없다 |
+| `YGScaffoldV2Test` | `showError("…")`, 로딩 켠 상태 | 그 문구가 오버레이 위로 보인다 |
 
-두 번째가 이 컴포넌트의 유일한 비자명 동작이다. 토스트 2초 자동 소멸은 검증하지 않는다 —
-`YGToastPolicy`가 소유한 동작이라 여기서 다시 잠그면 같은 것을 두 곳에서 잠근다.
+터치 삼킴이 이 컴포넌트의 유일한 비자명 동작이고, 오버레이 자체의 책임이라 오버레이
+테스트가 잠근다. 토스트 2초 자동 소멸은 검증하지 않는다 — `YGToastPolicy`가 소유한 동작이라
+여기서 다시 잠그면 같은 것을 두 곳에서 잠근다.
 
-오버레이 식별은 `testTag`가 아니라 **`contentDescription`**으로 한다. 테스트 훅과 접근성이
-메커니즘 하나로 해결되고, TalkBack이 로딩 상태를 읽어준다.
+**테스트의 노드 식별은 `testTag`**(프로덕션 `const`)로 한다. 텍스트·`contentDescription`
+파인더는 문구가 바뀌면 같이 깨진다. 별개로 오버레이는 **접근성용 `contentDescription`을
+가진다** — 터치를 통째로 삼키는 것이 TalkBack에 아무것도 아닌 것으로 보이면 스크린리더
+사용자는 화면이 멈춘 이유를 알 수 없다. 둘은 목적이 다른 별개 장치다.
+
+이 문자열 때문에 `core:designsystem`에 **모듈 최초의 `strings.xml`이 생긴다**(현재
+`res/`에는 `drawable*/`·`font/`만 있다). 디자인시스템이 사용자 노출 문자열을 소유하는 첫
+사례이고, 접근성 문구라는 성질이 그 값을 한다고 본다.
+
+**테스트 클럭 함정** — `YGToastHost`는 토스트마다 `delay(2000)`로 자동 소멸시킨다. Compose
+테스트 룰은 기본이 `mainClock.autoAdvance = true`라 `assertIsDisplayed()`가 부르는
+`waitForIdle()`이 가상 시간을 진행시켜 **단언 전에 토스트가 사라질 수 있다.** 토스트 테스트는
+`autoAdvance`를 끄고 진입 애니메이션만큼만 손으로 진행시킨다.
 
 ## 주의 / 열린 질문
 
