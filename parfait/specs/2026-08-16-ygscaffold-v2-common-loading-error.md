@@ -1,7 +1,7 @@
 ---
 id: ygscaffold-v2-common-loading-error
 title: YGScaffoldV2 — 공통 로딩 오버레이·에러 토스트 (common loading & error scaffold)
-status: draft
+status: in-progress
 category: ui-spec
 platforms: android
 verified: 2026-08-16
@@ -40,7 +40,7 @@ Screen까지 파라미터로 내린 뒤 `YGToastHost`를 자기 레이아웃에 
   - `YGLoadingOverlay` 신설 — Dim + 인디케이터 + 터치 삼킴 (**임시 구현**, 디자인 미확정)
   - `YGToastPolicy.showError(text)` 확장 — 에러 토스트는 `YGToastType.Fail` 고정
   - `YGScaffold`(V1)에 `@Deprecated` + `ReplaceWith` 부착
-  - 계측 테스트 4건
+  - 계측 테스트 5건(as-built 9건 — 접근성 차단 2건과 로딩 대조 2건이 리뷰 라운드에서 추가됨)
 - **제외**
   - **기존 사용처 11곳 일괄 이관** — 화면별 API 결선 라운드에 묶어 점진 진행(ADR-0020이 쓴 것과
     같은 전략). 이 스펙은 V1을 삭제하지 않는다.
@@ -191,10 +191,13 @@ ViewModel이 Route 안에 있는 한 EntryBuilder는 로딩을 영원히 모른�
 
 ```kotlin
 @Deprecated(
-    message = "공통 로딩·에러 토스트 처리가 없는 구판이다. YGScaffoldV2 로 이관한다.",
+    message = "공통 로딩·에러 토스트 처리가 없는 구판이다. 이관은 이름 교체가 아니다 — " +
+        "스캐폴드를 EntryBuilder 에서 Route 안으로 내리고 isLoading·toastPolicy 를 넘겨야 " +
+        "실제로 로딩·실패 표현을 얻는다.",
     replaceWith = ReplaceWith(
         "YGScaffoldV2(modifier = modifier, containerColor = containerColor, " +
             "contentWindowInsets = contentWindowInsets, content = content)",
+        "com.teamyg.parfait.core.designsystem.screen.YGScaffoldV2",
     ),
     level = DeprecationLevel.WARNING,
 )
@@ -206,9 +209,16 @@ fun YGScaffold(/* … */)
 전부 컴파일 에러가 된다. `build-logic`·`gradle.properties`에 `allWarningsAsErrors` 설정이
 없으므로 경고가 빌드를 깨지 않는다.
 
-**승급 조건**: V1 호출처가 0이 되면 `DeprecationLevel.ERROR`로 올리고, 그다음 라운드에 파일을
-삭제한다. 이 두 단계를 한 번에 하지 않는 이유는 삭제가 되돌리기 어렵고 `ERROR` 한 단계가
-"남은 호출처가 정말 없는가"를 컴파일러로 확인해 주기 때문이다.
+**승급 조건**: **모든 화면이 Route에서 스캐폴드를 소유하고 로딩·실패를 배선했을 때**
+`DeprecationLevel.ERROR`로 올리고, 그다음 라운드에 파일을 삭제한다. 두 단계를 한 번에 하지
+않는 이유는 삭제가 되돌리기 어렵고 `ERROR` 한 단계가 "남은 호출처가 정말 없는가"를 컴파일러로
+확인해 주기 때문이다.
+
+> **기준을 "V1 호출처 0"으로 쓰면 안 된다**(2026-08-16 최종 리뷰 지적으로 정정). IDE의
+> "Replace all usages"로 23곳을 한 번에 치환하면 **어느 화면도 공통 로딩·에러를 얻지 못한 채**
+> 호출처가 0이 된다. 치환된 자리는 V1과 동작이 같고(로딩 없음 + 빈 토스트 호스트) 겉으로만
+> 이관된 것처럼 보인다. 그래서 기준이 세는 대상은 호출처가 아니라 **배선된 화면**이다.
+> `@Deprecated` message 도 이 오해를 막는 문구로 쓴다 — 아래 as-built 참고.
 
 ## 파일 구성
 
@@ -268,6 +278,44 @@ fun YGScaffold(/* … */)
 `waitForIdle()`이 가상 시간을 진행시켜 **단언 전에 토스트가 사라질 수 있다.** 토스트 테스트는
 `autoAdvance`를 끄고 진입 애니메이션만큼만 손으로 진행시킨다.
 
+## as-built (2026-08-16 구현, 미머지)
+
+브랜치 `feature/common-error-loading-scaffold`, 커밋 4개(`46b2d4df` 오버레이 · `7de8cf7f` 스캐폴드 ·
+`542b9563` Deprecated · `0a2975ee` 최종 리뷰 픽스). 실기기(SM-A356N) 계측 9/9 통과, ktlint 0,
+`:app:assembleDebug` 통과(구판 호출 23곳은 경고만).
+
+설계에서 **뒤집힌 결정 0건.** 위 본문이 그대로 as-built다. 구현·리뷰가 더한 것은 다음 4건이다.
+
+**① 로딩 오버레이는 접근성 순회도 막는다** — 본문의 "터치 삼킴"만으로는 부족했다. 오버레이와
+`content`는 형제라 오버레이가 아래 시맨틱을 가리지 못하고, **TalkBack의 더블탭은 포인터 이벤트가
+아니라 `SemanticsActions.OnClick`을 직접 호출**해 `pointerInput` 소비를 통과한다. 즉 로딩 중에도
+스크린리더 사용자는 뒤 버튼을 누를 수 있었다. `YGScaffoldV2`가 `content`를 감싼 `Box`에
+`isLoading`일 때만 `semantics { hideFromAccessibility() }`를 건다(겹침 결정이 스캐폴드 소관이라
+오버레이가 아니라 여기서 푼다).
+
+**② 그 동작은 `assertDoesNotExist()`로 잠글 수 없다** — `hideFromAccessibility()`는 플랫폼
+`AccessibilityNodeInfo` 트리에만 작용하고 Compose 테스트가 걷는 시맨틱 트리에는 노드가 그대로
+남는다. 테스트는 `SemanticsMatcher`로 `SemanticsProperties.HideFromAccessibility` 보유를 단언한다 —
+"기전이 걸렸는가"까지이고 "TalkBack이 실제로 못 닿는가"는 아니다. 후자를 잠그려면
+`UiAutomation.getRootInActiveWindow()`로 플랫폼 트리를 읽어야 하고, 그건 별건이다.
+
+**③ `YGScaffoldV2`는 `YGCustomTheme` 조상을 요구한다** — `YGToastHost` → `YGToast`가
+`YGTheme.layout`을 읽어 테마 밖에서는 `IllegalStateException("Not Init Layout")`이 난다. **토스트가
+뜨기 전까지는 멀쩡하다가 첫 실패에서 죽는** 형태라 KDoc에 전제로 박았다. 앱 루트와 `PreviewBox`가
+이미 감싸므로 실사용 위험은 낮지만, 계측 테스트 `setContent`가 전부 `YGCustomTheme`을 둘러야 했다.
+
+**④ 계획의 테스트 코드 결함 2건** — `assertDoesNotExist`는 top-level 확장이 아니라
+`SemanticsNodeInteraction` 멤버라 import가 필요 없고, 위 ③ 때문에 `setContent` 래핑이 필요했다.
+둘 다 테스트 파일 안에서 끝났고 프로덕션 계약은 무영향.
+
+### 검토하지 않은 대안 (최종 리뷰 지적)
+
+**`YGScaffoldV2`를 새로 만들지 않고 `YGScaffold`에 파라미터 2개를 기본값으로 추가**하는 안을 이
+스펙은 검토하지 않았다. V2 시그니처가 V1의 엄밀한 상위집합이라(그래서 `ReplaceWith`가 성립한다)
+그 안이면 호출처 23곳 무변경·deprecation 사다리 불필요·V1/V2 공존 기간이라는 열린 질문 자체가
+없다. V2 신설의 실질 이득은 **경고가 이관 압력을 만든다** 하나다. 되돌리자는 뜻이 아니라, 다음
+라운드가 같은 논쟁을 처음부터 하지 않도록 남긴다.
+
 ## 주의 / 열린 질문
 
 - **로딩 UI 디자인 미확정.** `YGLoadingOverlay`는 자리 채움이다. 디자인이 나오면 이 파일과
@@ -284,3 +332,10 @@ fun YGScaffold(/* … */)
   떠올랐던 선례가 있고, 스캐폴드 위치가 바뀌면 같은 함정을 다시 지난다.
 - **camera·gallery의 수동 토스트 배선**(Route에서 정책 생성 → Screen 파라미터 → `YGToastHost`
   직접 배치)은 그 화면들이 V2로 이관될 때 걷어낸다. 이번 라운드에서는 손대지 않는다.
+- **토스트가 떠 있는 2초 동안 상단 띠의 탭이 삼켜진다.** Box 히트테스트가 최상위 자식에서 멈추고
+  `YGToast`가 전폭이라, 그 시간 동안 상단바 뒤로가기 같은 버튼이 안 눌릴 수 있다. `YGToastHost`의
+  기존 동작이고 이번 변경이 만든 것이 아니지만, **V2가 그것을 전 화면 공통으로 승격시킨다.**
+- **접근성 차단은 기전까지만 검증됐다.** 위 as-built ②. TalkBack이 실제로 못 닿는지는
+  플랫폼 트리를 읽는 별건 테스트가 필요하다.
+- **기본 `toastPolicy` 경로에 테스트가 없다.** 정책을 안 넘기고 부를 수 있다는 사실은 다른 두
+  테스트가 컴파일된다는 간접 증거뿐이다.
