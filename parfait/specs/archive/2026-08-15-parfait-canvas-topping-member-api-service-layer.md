@@ -36,6 +36,12 @@ tags: [spec, parfait, data, network, api, canvas, topping, member]
 >
 > **범위 밖 동반 변경 2건**(같은 PR, 커밋 `1a6a5577`) — 같은 날 2차 서버 delta(`e4ff23f`)가 바꾼 규칙을
 > 앱에 반영했다. 아래 "서버 규칙 delta 반영" 절에 적는다.
+>
+> 🔁 **후속 라운드가 이름 둘을 바꿨다(2026-08-16, PR #266)** — 이 스펙의 `TodayCanvasVO`는 **`CanvasVO`**,
+> 매퍼 `toTodayCanvasVO()`는 **`toCanvasVO()`**다. 서버가 캔버스 상세 조회에 **같은 응답 클래스**를 쓰면서
+> 한 타입이 오늘과 특정 날짜 양쪽을 담게 됐기 때문이다. 아래 본문의 결정 ①~⑧은 그대로 유효하고 이름만
+> 갈렸다. 그와 함께 **"이 조회가 캔버스 행을 만든다"는 경고가 타입 KDoc에서 함수 KDoc으로 내려갔다**
+> (오늘 조회만 만든다) → [후속 스펙](2026-08-16-canvas-detail-background-api-service-layer.md).
 
 ## 서버 규칙 delta 반영 (범위 밖 동반 변경)
 

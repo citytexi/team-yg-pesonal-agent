@@ -205,6 +205,11 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > **2026-08-15 — auth 도메인이 닫혔다**(PR #260). `reissue`는 `TokenAuthenticator`가, `logout`은
 > `AuthRepository.logout()` → `LogoutUseCase` → S-001 앱 설정이 소비한다. 애플을 뺀 auth 4 엔드포인트
 > 전부가 호출부를 가진다(아래 "401 자동 재발급·세션 종료").
+> **2026-08-16 PR #266으로 표면이 27 엔드포인트가 됐다** — 서버 delta가 벌린 2건(캔버스 상세 조회
+> `GET .../parfaits/{parfaitId}` · 배경 변경 `PATCH .../parfaits/{parfaitId}/background`)이 **같은 날**
+> 들어와 다시 전량을 덮는다(서버 28 − 애플 로그인 1 − 테스트 전용 회전 1). **DI 바인딩이 한 줄도 안 붙는
+> 두 번째 라운드**이고, 배경 변경은 parfait 도메인의 **첫 요청 DTO**다
+> ([spec](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md)).
 > ⚠️ **2026-08-16 — parfait 도메인에 표면을 건너뛴 소비자가 생겼다**(PR #259). C-201 캘린더의
 > `GetParfaitHistoriesUseCase`·`GetParfaitYearsUseCase`가 KDoc으로 파르페 조회 두 엔드포인트를
 > 가리키면서 **`ParfaitRemoteDataSource`를 쓰지 않고 UseCase 본문에서 mock을 만든다** — Repository가
@@ -342,7 +347,8 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   타입 필드의 배선)은 **DataSource 테스트의 케이스로** 잠근다. 규약 본문과 개정 경위는
   [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "테스트 규약" 11번.
   develop의 `XxxRemoteDataSourceImplTest`는 **image·member·parfait·parfaitimage·policy 다섯**이다
-  (PR #250이 parfait를 신설하고 member·parfaitimage를 보강). ⚠️ **`ParfaitGroupRemoteDataSourceImplTest`는
+  (PR #250이 parfait를 신설하고 member·parfaitimage를 보강, PR #266이 parfait를 15 → 25 케이스로 보강).
+  ⚠️ **`ParfaitGroupRemoteDataSourceImplTest`는
   없다** — 그 도메인만 Repository 테스트로 대신하고 있어, 유일하게 남은 `MyParfaitGroupVOMapperTest`의
   케이스를 "DataSource 테스트로 옮긴다"는 규약의 이행 대상 파일이 존재하지 않는다
   → [open-questions](../synthesis/open-questions.md).
@@ -351,7 +357,13 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   `ToppingTransform.toPlaceRequest(imageId, border)`로, sealed `ToppingBorder`(`None`/`Solid(color, width)`)를
   서버가 받는 평면 3필드(`borderType`·`borderColor`·`borderWidth`)로 편다. 2026-08-15에 테두리 수정
   요청(`ToppingBorder.toUpdateBorderRequest()`)이 붙으며 그 평탄화가 두 곳에서 필요해져
-  `private fun ToppingBorder.flatten()`으로 뽑혔다 — **펴는 규칙은 한 자리에 둔다**. **DTO에는 sealed·value class·enum을
+  `private fun ToppingBorder.flatten()`으로 뽑혔다 — **펴는 규칙은 한 자리에 둔다**.
+  2026-08-16(PR #266)에 `source.parfait.mapper`의 `CanvasBackgroundEdit.toRequest()`가 붙어 **세 번째
+  사례**가 됐다 — 서버 요청이 `{ type, value, imageId }` 평면인데 `type`에 따라 한쪽이 필수인
+  **조건부 필수**라, 그 제약을 sealed(`Color(hex)`/`Image(imageId)`)로 세우고 매퍼가 편다. 여기서는
+  **읽기 모델을 재사용하지 못한다는 사정이 더 있다** — 이미지 배경이 쓸 때 `imageId`, 읽을 때 URL이라
+  `CanvasBackground`(읽기)와 `CanvasBackgroundEdit`(쓰기)가 짝이지만 같은 타입이 아니다
+  ([api/parfait.md](../api/parfait.md)). **DTO에는 sealed·value class·enum을
   넣지 않는다**는 규약이 그대로라(계약 문서와 눈으로 대조돼야 한다) 좁히는 쪽은 domain, 펴는 쪽은 매퍼다.
   domain을 좁게 잡는 기준은 **필드 사이에 의존이 있을 때**다 — `borderType = SOLID`면 색·두께가 필수라는
   서버 제약이 sealed로 표현 불가능한 상태가 되고, `ToppingTransform`은 `Double` 넷 연속의 순서 사고를 막는다

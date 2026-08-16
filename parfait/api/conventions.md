@@ -251,6 +251,11 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 "실제 비널 필드"로도 안 잡힌다. 판정은 서비스·도메인이 하고 실패는 `INVALID_BACKGROUND`(400)다.
 이런 계약은 **도메인 문서의 "필수" 열 비고로만** 남는다 → [parfait.md](parfait.md).
 
+✅ **앱은 이것을 도메인 타입으로 표현했다**(2026-08-16, PR #266) — wire DTO는 평면·널 허용 그대로 두고
+(서버의 거울), `:domain`의 sealed `CanvasBackgroundEdit`(`Color(hex)` / `Image(imageId)`)이 잘못된 조합을
+**컴파일에서** 막는다. 펴는 일은 매퍼(`toRequest()`)가 한다. 조건부 필수 계약을 만나는 다른 엔드포인트가
+생기면 같은 형태를 따른다 → [data-layer](../architecture/data-layer.md).
+
 빠진 필드도 **누락하면 400이다** — jackson-module-kotlin이 비널 파라미터 부재에서 실패하고
 `GlobalExceptionHandler`의 bad-request 핸들러가 `INVALID_REQUEST`로 바꾼다.
 
@@ -294,11 +299,12 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 > 검증은 여전히 0건**이다(실기기 미수행) — 위 표의 시각 파싱 불일치도 그래서 아직 코드 대조로만 드러난
 > 상태다 → [open-questions](../synthesis/open-questions.md).
 
-**2026-08-15 기준 서버 엔드포인트는 26개(+테스트 전용 1)고 Android 표면은 25개다.** 분모에서 빠지는 것은
-애플 로그인 1건(`해당 없음`)과 테스트 전용 회전 1건이라 **25/25, 공백 0**이다. 같은 날 서버 delta가
-벌린 공백 5(파르페 오늘 조회·과거 목록, 토핑 테두리 수정·삭제, 회원 탈퇴)를 **PR #250이 한 라운드에
-닫았다**([spec](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)) — 다만
-**소비처는 그 다섯 전부 0건**이고, 벌어졌다 닫히는 이 왕복 자체가 네 번째다
+**2026-08-16 기준 서버 엔드포인트는 28개(+테스트 전용 1)고 Android 표면은 27개다.** 분모에서 빠지는 것은
+애플 로그인 1건(`해당 없음`)과 테스트 전용 회전 1건이라 **27/27, 공백 0**이다. 서버 delta가 벌린 공백 2
+(파르페 상세 조회·배경 변경)를 **같은 날 PR #266이 닫았다**
+([spec](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md)) — 직전 라운드의 공백 5는
+PR #250이 닫았다. **벌어졌다 닫히는 왕복이 다섯 번째**이고, 이번에는 `:data` 표면만 닫히고 `http/` 요청
+모음은 25/27로 남아 **두 표면이 처음으로 갈렸다**. 소비처는 두 도메인 전부 0건이다
 → [open-questions](../synthesis/open-questions.md).
 
 새 간극이 발견되면 이 절에 표를 다시 세운다.

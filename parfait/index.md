@@ -8,9 +8,12 @@ Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data
 2026-08-15 2차 서버 delta는 엔드포인트 증감 없이 규칙만 바꿨고 — 초대코드 6자·닉네임 자모 허용·
 그룹 내 닉네임 중복 허용(`GROUP_NICKNAME_ALREADY_USED` 삭제) — **2026-08-16 delta가 파르페 상세 조회·
 배경 변경 2건을 더했다.** 그중 배경 변경이 C-301이 고른 배경을 버리던 이유의 서버 절반을 닫는다.
-**Android 표면은 25/27, 공백 2다**(2026-08-15 PR #250이 파르페 오늘·과거 조회, 토핑 테두리 수정·삭제,
-회원 탈퇴 다섯을 닫아 한때 공백 0이었고, 위 신규 2건이 다시 벌렸다. 애플 로그인 1건과 테스트 전용
-회전 1건은 분모에서 뺀다).
+**Android 표면은 27/27, 공백 0이다** — 그 신규 2건을 **같은 날 #266이 닫았다**(2026-08-15 PR #250이
+파르페 오늘·과거 조회, 토핑 테두리 수정·삭제, 회원 탈퇴 다섯을 닫은 데 이어. 애플 로그인 1건과
+테스트 전용 회전 1건은 분모에서 뺀다). 배경 변경은 이 도메인 **첫 쓰기 경로**여서 첫 요청 DTO와
+쓰기 전용 `CanvasBackgroundEdit`가 함께 들어왔고(읽기 모델은 이미지 배경을 URL로 들어 되돌려 보낼 수
+없다), `TodayCanvasVO`는 상세 조회와 응답을 공유하며 **`CanvasVO`로 개명**됐다. **다만 `http/` 요청
+모음은 25/27로 남아 표면과 처음으로 갈렸다.**
 같은 PR이 2차 서버 delta도 반영했다 — `CheckNameValidUseCase`가 자모를 허용하고
 `GROUP_NICKNAME_ALREADY_USED` 분기는 걷혔다. **다만 그 다섯 표면은 Repository조차 없다.**
 **2026-08-15 — 하루 만에 8 엔드포인트가 화면까지 결선됐다**(#241·#242·#243·#244·#248).
@@ -77,7 +80,7 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `2d0f6a5d`(2026-08-16, #260 세션 인프라·#262 앱 아이콘·#259 캘린더까지).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `1873a8f0`(2026-08-16, #266 캔버스 상세 조회·배경 변경 표면까지).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md
