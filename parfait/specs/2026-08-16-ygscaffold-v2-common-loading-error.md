@@ -280,9 +280,11 @@ fun YGScaffold(/* … */)
 
 ## as-built (2026-08-16 구현, 미머지)
 
-브랜치 `feature/common-error-loading-scaffold`, 커밋 4개(`46b2d4df` 오버레이 · `7de8cf7f` 스캐폴드 ·
-`542b9563` Deprecated · `0a2975ee` 최종 리뷰 픽스). 실기기(SM-A356N) 계측 9/9 통과, ktlint 0,
-`:app:assembleDebug` 통과(구판 호출 23곳은 경고만).
+브랜치 `feature/common-error-loading-scaffold`, 커밋 5개(`46b2d4df` 오버레이 · `7de8cf7f` 스캐폴드 ·
+`542b9563` Deprecated · `0a2975ee` 최종 리뷰 픽스 · `ade3c09a` A-002 로그인 이관).
+실기기(SM-A356N) 계측 9/9 통과, 로그인 유닛 6건 통과, ktlint 0, `:app:assembleDebug` 통과.
+
+**이관 현황: 1/10 화면.** 로그인만 옮겼고 `YGScaffold`(V1)를 쓰는 파일이 9개 남았다.
 
 설계에서 **뒤집힌 결정 0건.** 위 본문이 그대로 as-built다. 구현·리뷰가 더한 것은 다음 4건이다.
 
@@ -307,6 +309,24 @@ fun YGScaffold(/* … */)
 **④ 계획의 테스트 코드 결함 2건** — `assertDoesNotExist`는 top-level 확장이 아니라
 `SemanticsNodeInteraction` 멤버라 import가 필요 없고, 위 ③ 때문에 `setContent` 래핑이 필요했다.
 둘 다 테스트 파일 안에서 끝났고 프로덕션 계약은 무영향.
+
+**⑤ 첫 이관 사례 — A-002 로그인**(`ade3c09a`). 스펙이 "제외"로 둔 일괄 이관은 그대로 안 하지만,
+화면 하나를 실제로 옮겨 계약을 검증했다. **로딩·실패가 둘 다 배선된 첫 화면**이고 나머지 9개 파일이
+이 파일을 베낄 것이므로, 거기서 나온 것 넷을 여기 적는다.
+
+- **`modifier`는 스캐폴드가 받고 content가 `fillMaxSize()`를 직접 건다.** 호출부 modifier를 content로
+  흘리면 스캐폴드가 빈손이 된다. 단 `fillMaxSize`를 빼면 안 된다 — `LoginScreen`의 `Column` 안
+  `OnboardingPager`가 `weight(1f)`이라 높이가 안 잡히면 레이아웃이 접힌다.
+- **이펙트 수집은 코루틴이라 `stringResource`를 못 부른다.** `LocalContext.current.getString`으로
+  우회하면 리소스 읽기가 컴포지션 밖으로 나가 로케일·설정 변경 때 갱신되지 않는다(`LocalContextResourcesRead`
+  린트가 잡는다). **문구를 컴포지션에서 미리 뽑아 두고 이펙트는 고르기만 한다** —
+  `LoginError.entries.associateWith { it.toStringResource() }`.
+- **화면 어휘는 enum + `@Composable toStringResource()`.** `GlobalNicknameError`와 같은 형태이고,
+  ViewModel은 리소스 ID가 아니라 **사유**를 실어 보낸다(ADR-0016 수렴본). 갈래는 로그보다 굵다 —
+  개발자는 502·503을 구분해야 하지만 사용자에겐 둘 다 "잠시 후 다시"다.
+- **`launch(onError = …)`를 같이 붙여야 한다.** 안 붙이면 `Result.failure`는 알리는데 UseCase가
+  예외를 던지는 경로만 조용해진다. ADR-0020이 공용 error 채널을 철회하며 "이 자리가 통로"라고
+  지정한 곳이다.
 
 ### 검토하지 않은 대안 (최종 리뷰 지적)
 
