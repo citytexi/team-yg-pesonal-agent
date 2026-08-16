@@ -132,6 +132,13 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
 | `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | 순서대로 `GetMyGroupsUseCase`(G-001) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102) |
 | `MemberRepository`(#263) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` |
+| `ParfaitRepository`(#268) | `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` | `GetTodayParfaitUseCase`(C-001 진입) · `GetCanvasByDateUseCase`(C-001 날짜 선택 — 목록→상세 2단) |
+
+**`ParfaitRepository`는 DataSource가 가진 다섯 갈래 중 셋만 연다** — 연도 조회·배경 변경은 소비자가
+생길 때 올린다(`ParfaitGroupRepository`와 같은 방침: 쓰지 않는 갈래를 미리 열면 어떤 실패를 어떻게
+다룰지 정하지 않은 채 계약이 굳는다). 그래서 **같은 ViewModel 안에서 층이 갈린다** — 캔버스 조회는
+이 Repository를 타고, 같은 화면의 달력 조회(`GetParfaitHistoriesUseCase`·`GetParfaitYearsUseCase`)는
+여전히 UseCase 본문 mock이다 → [open-questions](../synthesis/open-questions.md) OQ-P-183.
 
 **`MemberRepository`는 지금까지와 다른 모양이다 — 원격과 로컬을 조율한다.** 다른 원격 Repository가
 DataSource 위임 + `mapErrorToAppError()`뿐인 데 비해, 이쪽은 원격 응답을 **로컬 SSoT에 쓰고** 읽기는
@@ -232,6 +239,10 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > 조회와 닉네임 변경을 소비하고 로컬 SSoT에 쓴다 — Repository가 0건이던 네 도메인이 **셋**
 > (parfait·image·parfait-image)으로 줄었다. member에 남은 공백은 **탈퇴 하나**다(표면은 있고 화면은
 > 여전히 stub) → [api/member.md](../api/member.md).
+> 📌 **2026-08-17 — parfait 도메인도 Repository를 얻었다**(PR #268). `ParfaitRepository`가 오늘·목록·상세
+> 셋을 열고 UseCase 둘을 거쳐 **C-001 캔버스 화면까지** 이어졌다 — Repository가 0건인 도메인은 **둘**
+> (image·parfait-image)로 줄었다. 같은 라운드가 **표면 우회 소비자를 없애지는 않았다** — 달력 UseCase
+> 둘은 그대로 mock이다 → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
 > **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인

@@ -192,8 +192,10 @@ NavKeyCanvasImageAdd ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(s
 - 카메라 실패·취소 경로는 여전히 `sendResult(uri: String?)`라 `ResultEffect<PictureConfirmResult>`인
   배경 편집 화면은 **실패를 받지 못한다**(C-001의 死 `ResultEffect`와 같은 부류)
   → [open-questions](../synthesis/open-questions.md) [2026-08-15].
-- ⚠️ **플로우 전체가 도달 불가다** — 진입 화면 C-001(`NavKeyCanvasImageAdd`)을 `goTo` 하는 호출자가
-  develop에 여전히 0건이다 → [open-questions](../synthesis/open-questions.md) [2026-08-12].
+- ~~⚠️ **플로우 전체가 도달 불가다**~~ → ✅ **닫혔다(2026-08-17, PR #268)**. G-001 그룹 카드의 토핑
+  클릭이 `goTo(NavKeyCanvasImageAdd(groupId))`로 이어져 진입 화면 C-001에 호출자가 생겼고, 이 플로우
+  전체가 함께 도달 가능해졌다
+  → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
 
 ### 토핑 테두리 재편집 왕복 (2026-08-16, PR #264)
 
@@ -250,6 +252,10 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
    > 분기는 여전히 `// Todo`다. 화면을 채우는 PR과 진입을 여는 PR이 갈리면 **완성된 화면이 도달 불가로
    > 머지**된다 → [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) ·
    > [open-questions](../synthesis/open-questions.md) [2026-08-12].
+   > ✅ **그 사례가 닫혔다(2026-08-17, PR #268) — 벌어진 기간은 6일이다.** 진입을 여는 데 필요한 것이
+   > 클릭 배선만이 아니었다: 캔버스는 `groupId`가 있어야 조회되므로 `NavKeyCanvasImageAdd`를
+   > `data object` → `data class(groupId)`로 바꾸는 것이 선행이었다. **도달 불가 기간이 길어지는 이유가
+   > 대개 이것**이다 — 호출자가 없는 화면은 자기가 무엇을 인자로 받아야 하는지도 모른 채 머지된다.
 
 > ⚠️ **이탈 사례(2026-08-01, PR #173)** — G-001 `featureGroupListEntryBuilder`는 엔트리 컨테이너를
 > `YGScaffold`가 아니라 `Box`(전면 배경 이미지)로 두고 `YGScaffold`를 Route 안으로 내렸으며, 그룹 추가
@@ -293,7 +299,8 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
 목적지가 값을 받으면 `data object`가 아니라 `@Serializable data class NavKeyXxx(val …)`로 정의한다
 (`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupCreate`·
 `NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
-`NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)).
+`NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
+`NavKeyCanvasImageAdd`(#268 승격 — `groupId`)).
 **인자가 표시 값이 아니라 동작 플래그인 형태가 #231에서 처음 나왔다** — `showGuideToast`·
 `returnResultOnly`는 화면이 그릴 데이터가 아니라 호출자가 고르는 분기이고, 기본값이 있어 기존
 호출부는 `NavKeyCameraCustom()`처럼 생성자 호출만 바꾸면 됐다. 재사용 화면의 동작 차이를 NavKey에
@@ -313,6 +320,11 @@ A-005를 연다(#222). 현재 그 `nickName`은 `GroupListUiState` 기본값 moc
 → [open-questions](../synthesis/open-questions.md) [2026-08-07]·[2026-07-29].
 그 값을 ViewModel 초기 상태로 넘길 때는 **Assisted 주입**을 쓴다 — `@HiltViewModel(assistedFactory = …)` + `@AssistedInject` +
 `@Assisted` 파라미터, 엔트리 빌더에서 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.…) })`로 생성해 Route에 넘긴다
-(`GroupCreateViewModel`·`SegmentationViewModel`·`GroupNickNameViewModel`(#244)·`TermAgreeViewModel`(#242)).
+(`GroupCreateViewModel`·`SegmentationViewModel`·`GroupNickNameViewModel`(#244)·`TermAgreeViewModel`(#242)·
+`CanvasImageAddViewModel`(#268)).
 **생성 위치는 두 형태가 공존한다** — 엔트리 빌더에서 만들어 Route 파라미터로 넘기거나(`GroupNickName`),
-Route의 기본 인자에서 만들거나(`TermAgree`). 후자는 Route가 인자 값을 받아 팩토리에 넘긴다.
+Route의 기본 인자에서 만들거나(`TermAgree`·`CanvasImageAdd`). 후자는 Route가 인자 값을 받아 팩토리에 넘긴다.
+**인자 출처가 "목록에서 누른 항목"인 첫 사례가 #268이다** — G-001이 `ClickTopping(groupId)`으로 누른
+카드의 식별자를 인텐트에 실어 이펙트까지 나른다(첫 그룹으로 고정하면 두 번째 그룹의 캔버스에 들어갈
+방법이 없다). 클릭은 디자인시스템 컴포넌트(`YGToppingGroup`, `onClick` 없음)가 아니라 **호출부가
+`modifier`로** 붙인다.

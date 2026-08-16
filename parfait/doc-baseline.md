@@ -5,8 +5,30 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `955c4636` (`Merge pull request #267 from mash-up-kr/feature/common-error-loading-scaffold`)
-- **요약**: **로딩과 실패에 공통 자리가 생겼다 — 다만 세 화면만 그 자리에 들어갔다**(delta 1건).
+- **커밋**: `977f44f2` (`Merge pull request #268 from mash-up-kr/feature/canvas-today-parfait-detail`)
+- **요약**: **캔버스가 열렸고, 열자마자 읽기만 된다는 것이 보였다**(delta 1건).
+  **#268**: C-001이 mock을 버리고 **서버 캔버스**를 그린다 — parfait 도메인 첫 Repository
+  (`ParfaitRepository`, 다섯 갈래 중 **오늘·목록·상세 셋만** 노출) → UseCase 둘 → 화면. 핵심은
+  **같은 캔버스를 얻는 두 경로를 용도로 갈랐다**는 것이다: 진입은 `/parfaits/today`(조회인데 행을
+  만드는 부작용을 감수한다 — 토핑을 얹으려면 `parfaitId`가 있어야 하고 부작용 없는 경로는 없는 날을
+  만들어 주지 않는다, 그래서 `launch(key)`로 1회만)이고, 달력에서 고른 날은 **목록→상세 2단**
+  (훑는 것만으로 빈 캔버스가 쌓이면 안 된다). 그 대가로 **없는 날은 실패가 아니라 `null`**이고
+  상세 실패만 실패로 남는다. `today` 응답의 날짜는 앱이 검증해 **자정 경계 재시도 1회**를 하는데,
+  그 "오늘"이 기기 시간대면 해외 기기에서 재시도가 **로드마다** 돌기 때문에 `PARFAIT_TIME_ZONE`(KST)이
+  생겼다 — **03:00 경계는 여전히 미적용**이고 시간대만 맞았다. 렌더에서는 **계약이 말하지 않는 단위를
+  앱이 정했다**: 좌표는 Canvas-Area 대비 **0~1 정규화 중심점**(절대 px이면 기기마다 배치가 어긋난다),
+  `scale` 1.0은 **긴 변이 너비 40%**(위키 C-106을 끌어다 썼다), `borderWidth`는 **화면 dp**. 누끼라
+  사각 테두리를 못 둘러 같은 그림을 색으로 물들여 **8방향으로 밀어 찍고** 원본을 덮는다(= `SOLID`
+  토핑 하나가 이미지 9장, 미측정). **진입이 열린 것도 이번**이다 — `NavKeyCanvasImageAdd`가
+  `data class(groupId)`가 되며 6일간의 도달 불가가 닫혔고(호출자 없는 화면은 자기가 무엇을 인자로
+  받아야 하는지도 모른 채 머지된다), G-001 토핑에 첫 클릭 경로가 `clickableYGScaleRipple`로 붙었다.
+  **그런데 열자마자 드러난 것은 읽기 전용이라는 사실이다** — 배치 확정·좌표 수정 소비처가 0건이라
+  화면은 남이 올린 토핑을 보기만 하고, 조회 실패도 로그만 남아 **빈 캔버스와 실패가 같은 화면**이다.
+  같은 ViewModel 안에서 **캔버스 조회는 계약을 타고 달력 조회는 여전히 mock**이며(막고 있던 이유
+  둘 — Repository 부재·`groupId` 부재 — 은 이번에 다 사라졌다), C-301 편집 탭도 mock이라 **한 앱에서
+  토핑의 출처가 둘**이다. 그룹명·칩 색도 서버가 안 줘서 mock으로 남았다. 테스트: 유닛 417 → **434건**
+  (신규 3파일 16 + 그룹 목록 1). ⚠️ **실기기·실서버 확인 없음.**
+  직전 회차 요약: **로딩과 실패에 공통 자리가 생겼다 — 다만 세 화면만 그 자리에 들어갔다**(delta 1건).
   **#267**(추적하던 미머지 스펙·플랜 한 쌍): 화면마다 손으로 짓던 로딩·실패 표현이 `YGScaffoldV2`
   **한 컴포저블의 세 층**(content → 로딩 오버레이 → 토스트 호스트)으로 모였다. 신규 파라미터는
   `isLoading`·`toastPolicy` 둘뿐이고 **전부 기본값**인데, 이건 편의가 아니라 V1에 붙인
@@ -79,8 +101,8 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-17 (28회차)
-- **미머지 제외 항목**: 없음(직전까지 추적하던 `ygscaffold-v2-common-loading-error`가 이번 회차에 머지됐다).
+- **검증일**: 2026-08-17 (29회차)
+- **미머지 제외 항목**: 없음.
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
@@ -142,3 +164,4 @@
 | 2026-08-16 | `0e2643cf` | Merge #261 (group-join-modal-after-nickname) | delta 1건(#261). **참여 확인 모달이 A-004 초대코드 → S-102 닉네임 화면으로 이관**되고 합류가 모달 뒤로 묶였다: 모달 "참여하기"가 `POST join` → `PATCH nickname`을 연달아 부르고, A-004는 미리보기(`GET join-preview`)까지만 하며 `NavKeyGroupNickName(inviteCode, groupName)`(참여 결과 아닌 참여 재료)로 넘긴다. A-004에서 `groupName`·`isConfirmPopupVisible`·모달 인텐트 2종·`JoinGroupUseCase` 주입 삭제, S-102는 이름 있는 `@Assisted` 2개 + `isConfirmPopupVisible`·`isEntering` 가드. `GroupNickNameError`가 닉네임 400 갈래 대신 **참여 실패 3종**으로 교체돼 `invite_code_error_*` 문구 재사용(`group_nickname_error_invalid` 삭제), `INVALID_GROUP_NICKNAME` 분기는 A-005만 남았다. **닉네임 PATCH 실패는 로그만**(안내 토스트 TODO). 문서 조치: a004·s102 스펙 as-built 갱신 + specs/README 행, navigation-flow 다이어그램·모달 게이트 서술, data-layer Repository 소비 열, design-system `YGModalPopup` 소비처, api/parfait-group Android 매핑·에러코드·두 요청 메모. open-questions: **OQ-P-166 해소됨**, OQ-P-137 ③④ 해소(①② 잔존), OQ-P-167에 "표현 없음" 사례 1건 추가. 테스트 415건 불변(초대코드 17→14 / 닉네임 6→9). 미머지: ① `ygscaffold-v2-common-loading-error` 유지 |
 | 2026-08-16 | `46ed38fb` | Merge #264 (canvas-topping-screen) | delta 1건(#264). **C-301 편집 모드의 비어 있던 절반이 채워졌다** — 토핑 탭이 선택·이동·크기·회전·삭제와 테두리 재편집 왕복을 갖췄다. 딤 한 장을 사이에 낀 4층 스택으로 "내 것만 밝다"를 표현하고, 크기조절은 드래그 벡터를 **회전된 바깥 방향에 투영**해 0.5~2.5로 클램프, 선택 스트로크·버튼은 `ToppingGeometry`가 좌표를 따로 내 **버튼은 돌지 않는다**. 편집 버튼은 `NavKeyToppingEdit(borderOnly = true)`로 C-104/C-105 화면을 탭 없이 열어(`YGFloatingBarEdit` 첫 실화면 소비) 위키 C-306이 새 목적지 없이 성립. 확장 2종(`centeredAt`·`dragBy`) `core:util:android` 승격, 아이콘 2종 신설, release 서명 결선 동승. **사후 스펙 1건 작성**(`implemented`·archive): c301-topping-edit-tab(+README 등록). **as-built 3건**: c301 배경 스펙 드리프트 3 해소 표기, c103 스펙 `borderOnly`(Assisted 4인자·`isBorderOnly`), ADR-0003 release signingConfig. architecture 3건 갱신(module-structure 확장 목록 · design-system 아이콘·`YGCircleButton` 핸들 소비·`YGFloatingBarEdit` 첫 소비·점선 재사용 실패 · navigation-flow 재편집 왕복 절 신설). open-questions: **OQ-P-175 부분 해소**(② 답 나옴, ①③ 잔존), 신규 5건 OQ-P-199~203(mock 목록·미저장 / C-106 규격 부재 / 편집 대상 id가 Route에 삶 / C-202 정책 갈림·핸들 접근성 / 규약 이탈 셋). 테스트 변경 0건. 미머지: ① `ygscaffold-v2-common-loading-error` 유지 |
 | 2026-08-17 | `955c4636` | Merge #267 (common-error-loading-scaffold) | delta 1건(#267, **추적하던 미머지 스펙·플랜 한 쌍**). **공통 로딩·실패에 자리가 생겼다.** `YGScaffoldV2`가 content → 로딩 오버레이 → 토스트 호스트 **세 층**을 겹치고(토스트가 오버레이 위 — 로딩 중 실패도 보여야 한다), 신규 파라미터 `isLoading`·`toastPolicy` 둘 다 **기본값**인 것은 V1 `@Deprecated(ReplaceWith)` 치환이 컴파일되어야 한다는 **계약**이다. 핵심 발견은 **이관이 이름 교체가 아니라 소유 위치 이동**이라는 것 — `hiltViewModel()`이 Route 안이라 `EntryBuilder`는 `isLoading`도 실패 이펙트도 못 본다. 그래서 `ERROR` 승급 기준이 "V1 호출처 0"에서 **"각 화면이 Route에서 스캐폴드를 소유하고 배선함"**으로 정정됐다(IDE 일괄 치환은 호출처만 0으로 만든다). **as-built로 더해진 것**: ① 오버레이의 `pointerInput` 소비만으로 부족 — **TalkBack 더블탭은 `SemanticsActions.OnClick`을 직접 불러** 통과하므로 스캐폴드가 `content`를 `semantics { hideFromAccessibility() }`로 감싼다, ② 그 기전은 `assertDoesNotExist`로 못 잠금(플랫폼 트리 전용) → `SemanticsMatcher`로 속성 보유만 단언, ③ `YGCustomTheme` 조상이 전제(`YGToast`가 `YGTheme.layout`을 읽어 **첫 토스트에서야 죽는다**), ④ 실패 문구는 호출부 소유 — A-002가 `LoginError` 4갈래(로그는 8갈래 유지)를 세우고 `ShowError`가 **문구가 아니라 사유**를 실으며 Route가 컴포지션에서 문구를 미리 뽑아 둔다(`LocalContextResourcesRead` 회피), ⑤ `launch(onError = …)` 동반 필수. 이관은 **3화면**(A-002 로그인 · S-003 앱 설정 · S-002 계정 정보)이고 **V1 잔여 8파일 22곳**. 조치: 스펙 `implemented`·플랜 `done` + 양쪽 archive 이동(링크 보정, 플랜은 frontmatter가 없어 상단 머지 블록 신설)·README 2행, **드리프트 2건 정정**(as-built의 "계측 9건"은 신규 7건 + 기존 smoke 2건 · "로그인 유닛 6건"은 `LoginViewModelTest` 9 → 11건), architecture 3건(design-system 구조 트리 `ygloading/`·`YGScaffoldV2.kt`·모듈 최초 `strings.xml` + 인벤토리 2행 + 화면 컨테이너 이관 현황·오버레이 적용 기준 / navigation-flow 체크리스트에 두 형태 공존 명시 / state-management **feature 로컬 실패 enum 두 번째 사례**), ADR-0020 "남는 것"에 **예상한 비용이 실제로 청구됨** 블록. open-questions: OQ-P-167 마커 갱신(머지 확정·잔여 이관은 OQ-P-204로 분리), **신규 3건**(OQ-P-204 스캐폴드 둘로 갈린 채 잔여 8파일·삭제 시점 미정 · OQ-P-205 오버레이 임시 구현·적용 기준이 귀납뿐 · OQ-P-206 토스트 2초 동안 상단 띠 탭 삼킴이 전 화면 공통으로 승격). 테스트 유닛 415 → **417**, 계측 5 → **12**(신규 7). ⚠️ **이관 3화면 실사용 확인 없음.** 미머지: 없음 |
+| 2026-08-17 | `977f44f2` | Merge #268 (canvas-today-parfait-detail) | delta 1건(#268). **C-001 캔버스가 서버 캔버스를 그린다.** parfait 도메인 **첫 Repository**(`ParfaitRepository`/`Impl` — DataSource의 다섯 갈래 중 **오늘·목록·상세 셋만** 노출, 쓰지 않는 갈래를 미리 열면 실패 처리를 안 정한 채 계약이 굳는다) → UseCase 둘 → 화면. **같은 캔버스를 얻는 두 경로를 용도로 갈랐다** — 진입은 `/parfaits/today`(조회인데 행을 만드는 부작용을 감수: 토핑을 얹으려면 `parfaitId`가 필요한데 부작용 없는 경로는 없는 날을 만들어 주지 않는다 → `launch(key)`로 1회만), 달력 선택은 **목록→상세 2단**(훑는 것만으로 빈 캔버스가 쌓이면 안 된다 → 없는 날은 실패가 아니라 `null`, 상세 실패만 실패). `today` 응답 날짜를 앱이 검증해 **자정 경계 재시도 1회**, 그 "오늘"은 **KST 고정**(`PARFAIT_TIME_ZONE`·`parfaitToday()`) — 기기 시간대면 해외 기기에서 재시도가 **로드마다** 돌기 때문이고 **03:00 경계는 여전히 미적용**(OQ-P-127 ② 확정·① 잔존). 날짜 선택은 즉시 닫고 이전 그림을 비운 뒤 채우며, 응답 경합은 중복 가드가 아니라 **반영 직전 `selectedDate` 재확인**으로 막는다(마지막에 고른 것이 이겨야 한다). 렌더는 **계약이 말하지 않는 단위를 앱이 정했다** — 좌표 0~1 정규화 중심점 · `scale` 1.0 = 긴 변이 너비 **40%**(C-106) · `borderWidth` = **화면 dp** · 색 `#RRGGBB`(신규 OQ-P-207). 누끼라 사각 테두리를 못 둘러 **8방향 스탬프 + 원본 덮기**로 실루엣을 딴다(토핑 1개 = 이미지 9장, 미측정 — 신규 OQ-P-208). **진입도 이번에 열렸다** — `NavKeyCanvasImageAdd`가 `data class(groupId)`가 되며 6일 도달 불가가 닫히고 G-001 토핑에 첫 클릭 경로(`clickableYGScaleRipple`). `String.toColorOrNull()` `core:util:android` 승격. **드러난 것은 읽기 전용이라는 사실** — 배치·좌표 수정 소비처 0건, 조회 실패는 로그만이라 빈 캔버스와 실패가 같은 화면(신규 OQ-P-209). 달력 UseCase 둘·C-301 편집 탭·그룹명·칩 색은 여전히 mock(신규 OQ-P-210). 조치: **사후 스펙 1건 작성**(`implemented`·archive, +README 등록), c001·c201 스펙 as-built 갱신(c001 드리프트 3 해소·1·4 정정·정책 대조 2행 / c201 드리프트 2·4 해소·3 정정), architecture 4건(data-layer Repository 인벤토리 행 + parfait Repository 획득 노트 · module-structure `toColorOrNull` · navigation-flow 도달 불가 해소·인자 목적지·체크리스트 6 사례 종결 · design-system `YGCanvas` 배경/토핑 슬롯 첫 소비·`YGToppingGroup` 클릭 결선·`YGNametagChip` 두 번째 mock 사례), api 2건(parfait.md Android 매핑 — `verified` 불변 / README 도메인 표·소비처 15건). open-questions: **OQ-P-184 해소**, OQ-P-129 ①·OQ-P-130 ③ 해소, OQ-P-127 ②·OQ-P-183 ②③·OQ-P-200 부분 해소, OQ-P-167 ④·OQ-P-181·OQ-P-199 사례 추가, **신규 4건 OQ-P-207~210**. 유닛 417 → **434건**. 미머지: 없음 |

@@ -26,7 +26,7 @@
 | [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | **결선됨**(애플 해당 없음, 나머지 4 전부 호출부 있음) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨(목록 1건 ⚠️불일치) |
-| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음) |
+| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음, 오늘·과거·상세 3건은 **결선됨**) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 구현됨(조회·닉네임 변경은 **결선됨**, 탈퇴 미소비) |
 | [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨 |
@@ -96,6 +96,14 @@
 > 이 도메인 첫 쓰기 경로여서 **첫 요청 DTO**와 쓰기 전용 도메인 모델 `CanvasBackgroundEdit`이 함께 들어왔다 —
 > 이미지 배경이 **쓸 때 `imageId`·읽을 때 URL**이라 읽기 모델을 되돌려 보낼 수 없기 때문이다.
 > `android_status`는 `partial` 그대로다(**소비처가 여전히 0건**) → [parfait.md](parfait.md) Android 매핑.
+>
+> ✅ **2026-08-17 — `parfait.md`에 첫 소비처가 생겼다**(PR #268). `ParfaitRepository` → UseCase 둘 →
+> C-001 캔버스 메인이 **오늘 조회·과거 목록·상세** 셋을 소비한다(연도 조회·배경 변경은 미소비).
+> **소비처를 얻은 엔드포인트는 15건**이고, 표면만 있고 소비처가 0인 도메인은 **둘**(image·parfait-image)로
+> 줄었다. `android_status`는 **`partial` 그대로**다. 같은 도메인의 **표면 우회 소비자(캘린더 mock
+> UseCase 둘)는 그대로**라, 이제 한 화면 안에서 캔버스 조회는 계약을 타고 달력 조회는 안 탄다
+> → [parfait.md](parfait.md) Android 매핑 ·
+> [스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만
