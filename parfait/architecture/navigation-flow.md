@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-16
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
 related_code: core:navigation, Navigator
@@ -194,6 +194,25 @@ NavKeyCanvasImageAdd ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(s
   → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 - ⚠️ **플로우 전체가 도달 불가다** — 진입 화면 C-001(`NavKeyCanvasImageAdd`)을 `goTo` 하는 호출자가
   develop에 여전히 0건이다 → [open-questions](../synthesis/open-questions.md) [2026-08-12].
+
+### 토핑 테두리 재편집 왕복 (2026-08-16, PR #264)
+
+같은 화면의 **토핑 탭**이 편집 화면을 한 번 더 재사용한다. 상세는
+[c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md).
+
+```
+NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdit(source, segmentation, borderLayers, borderOnly = true)
+        ▲                                                          │ sendResult(TOPPING_EDIT_RESULT_KEY, ToppingEditResult) + onBack
+        └──────────────────────────────────────────────────────────┘
+```
+
+- **`NavKeyToppingEdit`의 세 번째 호출자**이자, 그 목적지를 **모드로 가른 첫 사례**다 —
+  `borderOnly = true`면 영역 탭 없이 테두리 편집만 열린다. `returnResultOnly`(#231)와 같은 부류의
+  동작 플래그가 백스택 키에 하나 더 늘었다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- 결과는 종전대로 `ResultEventBus` 왕복이지만, **받는 쪽이 어느 토핑인지 알아야 한다.**
+  그 id를 ViewModel이 아니라 Route의 `rememberSaveable`(`editingToppingId`)이 들고 있다가
+  인텐트에 실어 준다 → [open-questions](../synthesis/open-questions.md) [2026-08-16].
+- 복귀는 편집 화면의 `onBack()` 1회다(배경 이미지 왕복의 `onBack()` 2회와 달리 스택 깊이 가정이 없다).
 
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.

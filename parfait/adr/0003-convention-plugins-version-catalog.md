@@ -23,6 +23,9 @@ tags: [adr, parfait]
 주요 플러그인:
 - `AndroidApplicationConventionPlugin`, `AndroidLibraryConventionPlugin` — compileSdk/minSdk/targetSdk·Java 17 공통.
 - `AndroidApplicationSigningConventionPlugin` — 서명 키를 `local.properties`에서 로드(`PropertySettingManager`).
+  🔁 **as-built(2026-08-16, PR #264)** — `setSigningConfig`이 `signingConfigs`를 만들기만 하던 것에서
+  **release 빌드 타입에 release 설정을 결선**하는 데까지 갔다(`buildTypes.getByName("release")`).
+  그전까지 release 산출물은 등록만 된 키를 쓰지 않았다. debug 타입은 종전대로 기본 결선을 쓴다.
 - `JetpackComposeConventionPlugin` — Compose 활성 + Material3 + Coil.
 - `DaggerHiltCoreConventionPlugin` / `DaggerHiltComposeConventionPlugin` — Hilt + KSP([[0004-hilt-ksp-di]]).
 - `ModuleDataConventionPlugin`, `ModuleDomainConventionPlugin`, `ModuleFeatureApiConventionPlugin`, `ModuleFeatureImplConventionPlugin` — 레이어별 표준 의존·플러그인 묶음.
