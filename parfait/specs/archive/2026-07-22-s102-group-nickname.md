@@ -4,7 +4,7 @@ title: S-102 그룹 내 닉네임 입력 화면 (GroupNickName)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-15
+verified: 2026-08-16
 related_code:
   - NavKeyGroupNickName
   - GroupNickNameRoute.kt#GroupNickNameRoute
@@ -14,7 +14,11 @@ related_code:
   - GroupNickNameError.kt#GroupNickNameError
   - CheckNameValidUseCase.kt#CheckNameValidUseCase
   - ChangeGroupNicknameUseCase.kt#ChangeGroupNicknameUseCase
+  - JoinGroupUseCase.kt#JoinGroupUseCase
   - ParfaitGroupRepository.kt#changeMyNickname
+  - ParfaitGroupRepository.kt#joinGroup
+  - InviteCode.kt#InviteCode
+  - YGModalPopup.kt#YGModalPopup
   - ServerErrorCode.kt#ParfaitGroup
   - Navigator.kt#goToSingleClearTop
   - NameValidResult.kt#NameValidResult
@@ -61,31 +65,44 @@ tags: [spec, parfait, groups, nickname, s102]
 > mock `EnterGroupUseCase`가 삭제되고 `ChangeGroupNicknameUseCase`(PATCH `/{groupId}/nickname`)가 들어왔다.
 > 그래서 `NavKeyGroupNickName`이 **`data object` → `data class(groupId: Long)`**로 바뀌고 VM은 Assisted 주입이 된다.
 > 서버 실패 사유는 `GroupNickNameError` enum + 화면 매핑으로 입력 자리 아래에 나간다.
+>
+> ⚠️ **as-built 갱신(2026-08-16, #261 develop 머지)**: **역할이 한 번 더 바뀌어 이 화면이 참여를 끝낸다.**
+> A-004의 확인 모달이 통째로 여기로 옮겨왔고, 모달의 "참여하기"가 `POST join` → `PATCH nickname`을
+> **순서대로** 부른다. 그래서 앞 화면에서 받는 것이 `groupId`가 아니라 **참여에 쓸 초대코드와 모달에 띄울
+> 그룹명**이고(`NavKeyGroupNickName(inviteCode, groupName)`), 화면을 이탈하면 참여 자체가 일어나지 않는다
+> (OQ-P-166 해소). **닉네임 적용 실패는 참여를 되돌리지 않는다** — 로그만 남기고 전역 닉네임을 쓴 채
+> 다음 화면으로 간다(코드에 안내 토스트 `TODO`). 반대로 참여 실패는 닉네임을 보내지 않고 모달을 닫은 뒤
+> 사유를 입력 자리에 붙인다.
 
 - **화면 ID**: S-102 (그룹 참여 시 그룹 내 닉네임)
-- **대상 모듈**: `feature/groups/enter/impl`(`nickname/`) + `feature/groups/enter/api`(NavKey) + `domain`(UseCase/model)
+- **대상 모듈**: `feature/groups/enter/impl`(`nickname/`) + `feature/groups/enter/api`(NavKey) + `domain`(UseCase/model) + `core:designsystem`(`YGModalPopup`, #261에서 이관)
 
 ## 목표
 
 그룹 참여 플로우에서 "그룹이름에서만 공유되는" 닉네임을 입력받는 화면. 확인 시 유효성 검사를 돌려
-통과해야 다음 단계로 진행한다. #244부터는 **참여를 마친 그룹의 닉네임을 적용**하는 단계다.
+통과해야 다음 단계로 진행한다. #244에서는 **참여를 마친 그룹의 닉네임을 적용**하는 단계였고,
+🔁 **#261부터는 참여 확인 모달을 띄우고 참여와 닉네임 적용을 함께 끝내는 화면**이다.
 
 ## 범위
 
 - 포함: 닉네임 입력 폼(최대 15자)·확인 시 유효성 검사·에러 메시지 인라인 노출·입력 시 에러 초기화·진입 시 자동 포커스·뒤로가기.
   **#224 추가**: 유효성 통과 후 호출·진행 중 재진입 가드·완료 후 그룹 목록 복귀.
   **#244 추가**: 그룹 닉네임 변경 API 호출·서버 실패 사유 인라인 노출·진행 중 확인 버튼 비활성.
+  **#261 추가**: 참여 확인 모달(A-004에서 이관)·참여 요청·참여 실패 사유 인라인 노출·진행 중 모달 dismiss 차단.
 - 제외(구현 TODO):
-  - ~~**그룹 참여 API 연동**~~ — ✅ **해소(#244)**. 다만 이 화면이 부르는 것은 참여가 아니라
-    **닉네임 변경**(PATCH)이다 — 합류는 A-004에서 이미 끝났다.
+  - ~~**그룹 참여 API 연동**~~ — ✅ **해소(#244·#261)**. #244에선 닉네임 변경(PATCH)만 불렀고,
+    🔁 **#261부터 참여(POST join)도 이 화면이 부른다.**
   - ~~다음 화면 네비게이션~~ — #224에서 `goToSingleClearTop(NavKeyGroupList)`로 결선.
-  - **건너뛰기·이탈 경로 없음** — 뒤로가기로 나가면 그룹에는 들어가 있고 닉네임만 서버 초기값으로 남는다.
+  - ~~**건너뛰기·이탈 경로 없음**~~ — 🔁 **#261에서 성격이 바뀌었다**. 이탈해도 참여가 일어나지 않으므로
+    "닉네임 없는 참여"가 남지 않는다. 대신 **닉네임 입력이 참여의 필수 관문**이 됐다(건너뛰기는 여전히 없다).
+  - **닉네임 적용 실패 안내 없음** — 참여만 되고 닉네임 PATCH가 실패하면 로그만 남고 전역 닉네임이 쓰인다.
+    코드에 안내 토스트 `TODO`가 있다.
 
 ## API / 인터페이스
 
 ```kotlin
-// api — 🔁 #244: data object → 인자 있는 NavKey
-@Serializable data class NavKeyGroupNickName(val groupId: Long) : NavKey
+// api — 🔁 #244: data object → 인자 있는 NavKey / 🔁 #261: 참여 결과가 아니라 참여에 쓸 재료를 받는다
+@Serializable data class NavKeyGroupNickName(val inviteCode: String, val groupName: String) : NavKey
 
 // domain — UseCase(ADR-0009: @Inject + operator invoke). 패키지 domain.usecase (#179에서 .group 제거)
 class CheckNameValidUseCase @Inject constructor() {
@@ -100,57 +117,76 @@ sealed interface NameValidResult {
     sealed interface Error : NameValidResult { /* EmptyString, SpaceAtEdge, DuplicatedSpace, InvalidCharacter */ }
 }
 
-// domain — 🔁 #244: mock EnterGroupUseCase 삭제, 그룹 닉네임 변경으로 교체
+// domain — 🔁 #244: mock EnterGroupUseCase 삭제, 그룹 닉네임 변경으로 교체 / 🔁 #261: JoinGroupUseCase 합류
+class JoinGroupUseCase @Inject constructor(private val parfaitGroupRepository: ParfaitGroupRepository) {
+    suspend operator fun invoke(inviteCode: InviteCode): Result<JoinedGroupVO>   // POST join (#261 이관)
+}
 class ChangeGroupNicknameUseCase @Inject constructor(
     private val parfaitGroupRepository: ParfaitGroupRepository,
 ) {
     suspend operator fun invoke(groupId: GroupId, groupNickname: GroupNickname): Result<GroupNicknameVO>
 }
 
-// impl — MVI (🔁 #179 errorMessageResId, #223 nicknameError, #224 isEntering, #244 submitError)
+// impl — MVI (🔁 #179 errorMessageResId, #223 nicknameError, #224 isEntering, #244 submitError, #261 모달)
 data class GroupNickNameUiState(
+    val groupName: String = "",                        // #261 — NavKey 인자, 모달 제목에만 쓴다
     val nickName: String = "",
     val nicknameError: NameValidResult.Error? = null,   // 입력 형식(로컬 검증)
     val submitError: GroupNickNameError? = null,        // 서버만 알 수 있는 사유(#244)
+    val isConfirmPopupVisible: Boolean = false,         // #261 — A-004에서 이관
     val isEntering: Boolean = false,
 ) : UiState
 
 // 서버 실패 사유 — feature 로컬 enum + 화면 매핑(A-004의 InviteCodeError와 같은 형태)
-enum class GroupNickNameError { INVALID, NETWORK, UNKNOWN }   // 🔁 #250에서 ALREADY_USED 제거
+// 🔁 #261: 닉네임 400 갈래(INVALID)가 빠지고 참여 실패 3종이 들어왔다 — 이제 이 화면의 실패는 참여 실패다
+enum class GroupNickNameError { INVALID_INVITE_CODE, ALREADY_JOINED, MEMBER_LIMIT_REACHED, NETWORK, UNKNOWN }
 @Composable internal fun GroupNickNameError.toStringResource(): String
 
 sealed interface GroupNickNameIntent {
     data object ClickNextButton; data object ClickBackButton
     data class InputWord(val nickName: String)
+    data object ClickConfirmPopupEnter; data object DismissConfirmPopup   // #261 — A-004에서 이관
 }
 sealed interface GroupNickNameSideEffect { data object NavigateToBack; data object NavigateToNext }
 
-// ViewModel — groupId 를 NavKey 인자로 받으므로 Assisted 주입(#244)
+// ViewModel — NavKey 인자 둘을 받으므로 Assisted 주입(#244 / 🔁 #261 인자 교체·이름 있는 @Assisted)
 @HiltViewModel(assistedFactory = GroupNickNameViewModel.Factory::class)
 class GroupNickNameViewModel @AssistedInject constructor(
-    @Assisted groupIdValue: Long,
+    @Assisted(ASSISTED_INVITE_CODE) inviteCodeValue: String,
+    @Assisted(ASSISTED_GROUP_NAME) groupName: String,
     private val checkNickNameValid: CheckNameValidUseCase,
+    private val joinGroup: JoinGroupUseCase,              // #261
     private val changeGroupNickname: ChangeGroupNicknameUseCase,
 ) : BaseViewModel<…>
 ```
 
-- 엔트리 빌더가 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.groupId) })`로 VM을 만들어
-  Route에 **파라미터로 넘긴다**(#244) — Route의 기본값 `hiltViewModel()`이 제거돼 이제 VM 없이 호출할 수 없다.
+- 엔트리 빌더가 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.inviteCode, navKey.groupName) })`로
+  VM을 만들어 Route에 **파라미터로 넘긴다**(#244, 🔁 #261 인자 둘) — Route의 기본값 `hiltViewModel()`이
+  제거돼 이제 VM 없이 호출할 수 없다. 인자가 둘 다 `String`이라 이름 있는 `@Assisted` 한정자를 쓴다.
 
 ## 동작 / 상태
 
 - **입력**(`InputWord`): `nickName` 갱신 + `nicknameError`·`submitError` 모두 `null`(입력 시 에러 즉시 해제).
-- **확인**(`ClickNextButton`, 🔁 #244): 먼저 `CheckNameValidUseCase(nickName)`로 형식을 보고, `Error`면 그대로
-  표시하고 요청하지 않는다. 통과하면 `launch(key = KEY_CHANGE_NICKNAME)`에서 두 에러를 지우고 `isEntering = true` →
-  `ChangeGroupNicknameUseCase(groupId, GroupNickname(nickName))` → 해제는 `finally`(버튼이 영구 비활성으로
-  남지 않는다) → **성공이면** `NavigateToNext`. 중복 요청은 job 키 가드가 막는다(🔁 #224의 `isEntering` 조기 return 대체).
-- **서버 실패 매핑**(#244, 🔁 #250 축소): `AppError.Network` → `NETWORK` / `AppError.Server`의
-  `INVALID_GROUP_NICKNAME` → `INVALID`(앱 검증과 서버 규칙이 어긋났다는 신호) / 그 외 `UNKNOWN`.
-  결과는 `submitError`에 담기고 입력 필드 아래 한 줄로 나간다.
-  🔁 **`ALREADY_USED` 갈래는 사라졌다(#250)** — 서버가 그룹 내 닉네임 중복 검사를 없애 그 코드를 더는
-  내지 않으므로 enum 상수·`toStringResource` 분기·`strings.xml` 문구·매핑 분기·`ServerErrorCode` 상수가
-  함께 걷혔다. 그 갈래를 검증하던 유닛 테스트와 화면 프리뷰 에러 케이스는 삭제가 아니라
-  **`INVALID_GROUP_NICKNAME`(400)으로 바꿔 살렸다**.
+- **확인**(`ClickNextButton`, 🔁 #261): 먼저 `CheckNameValidUseCase(nickName)`로 형식을 보고, `Error`면 그대로
+  표시하고 **모달까지 가지 않는다**. 통과하면 `isConfirmPopupVisible = true` — 여기서는 아직 서버를 부르지 않는다
+  (#244까지는 이 시점이 곧 PATCH였다).
+- **모달 참여**(`ClickConfirmPopupEnter`, #261): `launch(key = KEY_ENTER_GROUP)`에서 `submitError`를 지우고
+  `isEntering = true` → `JoinGroupUseCase(inviteCode)` → 성공한 `groupId`로
+  `ChangeGroupNicknameUseCase(groupId, GroupNickname(nickName))` → 모달을 닫고 `NavigateToNext`.
+  해제는 `finally`(버튼이 영구 비활성으로 남지 않는다), 중복 요청은 job 키 가드가 막는다.
+  - **닉네임 적용 실패는 흐름을 멈추지 않는다** — 참여가 이미 끝났으므로 로그만 남기고 전역 닉네임을 쓴 채
+    다음 화면으로 간다(코드에 안내 토스트 `TODO`).
+  - **참여 실패는 닉네임을 보내지 않는다** — 모달을 닫고 사유만 붙인다.
+- **참여 실패 매핑**(🔁 #261 교체): `AppError.Network` → `NETWORK` / `AppError.Server`의
+  `INVALID_INVITE_CODE`·`GROUP_ALREADY_JOINED`·`GROUP_MEMBER_LIMIT_REACHED` → 각 사유 / 그 외 `UNKNOWN`.
+  결과는 `submitError`에 담기고 입력 필드 아래 한 줄로 나간다. **문구는 A-004의 `invite_code_error_*`를
+  그대로 재사용**하고(`group_nickname_error_invalid`는 삭제), 남은 자기 문구는 `NETWORK`·`UNKNOWN` 둘뿐이다.
+  갈래가 이렇게 생긴 이유는 **앞 화면 미리보기를 통과한 뒤에야 도달**하기 때문이다 — 미리보기와 참여 사이에
+  그룹 상태가 바뀐 경우만 남는다(정원이 차거나 그룹이 사라지거나 이미 참여됨).
+  🔁 **#244·#250의 닉네임 400 갈래(`INVALID`)는 사라졌다** — 닉네임 실패가 더는 화면에 표시되지 않으므로
+  `ServerErrorCode.INVALID_GROUP_NICKNAME`을 보는 분기가 이 화면에서 없어졌다(상수는 A-005가 계속 쓴다).
+- **모달 취소·바깥 탭**(`DismissConfirmPopup`, #261): 진행 중(`isEntering`)이면 무시, 아니면 모달만 닫는다
+  (A-005 `isCreating`·구 A-004 `isSubmitting` 가드와 같은 형태).
 - **다음 화면**(`NavigateToNext`, #224): `navigator.goToSingleClearTop(NavKeyGroupList)` — 참여 플로우
   (초대코드 → 닉네임)를 한 번에 걷어내고 백스택의 그룹 목록을 재사용한다 → [navigation-flow](../../architecture/navigation-flow.md).
   의존은 규약대로 `:api`만(`feature/groups/enter/impl` → `feature/groups/list/api`, #224에서 추가).
@@ -158,6 +194,10 @@ class GroupNickNameViewModel @AssistedInject constructor(
 - **자동 포커스**: 화면 진입 시 `FocusRequester.requestFocus()`(`LaunchedEffect(Unit)`).
 - **확인 버튼 활성**: `nickName.isNotEmpty() && isEntering.not()`(🔁 #244 — 진행 중 비활성이 붙었다).
   빈 값만 막고 상세 규칙은 클릭 시 UseCase가 검사한다.
+- **모달 표시**(#261): `uiState.isConfirmPopupVisible`일 때만 `YGModalPopup` 호출(표시 여부는 호출자 소관 —
+  [ygmodalpopup 스펙](2026-07-15-ygmodalpopup.md)). 제목은 `%1$s`에 `groupName`을 끼운 `group_enter_confirm_title`,
+  아이콘 `ic_warning_round`, 좌 Secondary "취소" / 우 Primary "참여하기" — **A-004에서 쓰던 문구·배치 그대로**
+  옮겨왔다. `isEnabledButton`은 주지 않는다(기본 `true`).
 
 ### 유효성 규칙 (`CheckNameValidUseCase`, 순차 검사 — 첫 실패 반환)
 
@@ -203,10 +243,12 @@ class GroupNickNameViewModel @AssistedInject constructor(
 - `domain/model/GroupCreateConfig.kt` — 이름 길이 상한 등 그룹 생성/참여 공용 상수(🔁 #179 신규).
 - `core/ui/res/values/strings.xml` — 유효성 에러 문자열(닉네임/그룹명 각각). ViewModel이 리소스 ID로 참조(🔁 #179 신규, S-002·A-005와 공용).
 - ~~`core/util/jvm/extension/CharExtension.kt#isKorean`~~ — **#244 라운드에서 삭제**(테스트 포함).
-- `impl/nickname/GroupNickNameError.kt` — 서버 실패 사유 enum + `toStringResource()`(#244 신설).
-- `domain/usecase/group/ChangeGroupNicknameUseCase.kt`(#244 신설). 삭제: `EnterGroupUseCase.kt`.
-- 테스트(#244): `GroupNickNameViewModelTest`(형식 검증·성공·서버 실패 매핑).
-- `impl/nickname/GroupNickNameScreen.kt` — stateless UI(길이 상한은 `GroupCreateConfig` 참조).
+- `impl/nickname/GroupNickNameError.kt` — 서버 실패 사유 enum + `toStringResource()`(#244 신설, 🔁 #261 갈래 교체).
+- `domain/usecase/group/ChangeGroupNicknameUseCase.kt`(#244 신설) · `JoinGroupUseCase.kt`(#261에 소비처 이관).
+  삭제: `EnterGroupUseCase.kt`.
+- 테스트(#244 / 🔁 #261): `GroupNickNameViewModelTest` — 모달 게이트·참여 성공·참여 실패 매핑·닉네임 실패에도
+  진행·연타 가드·진행 중 dismiss 차단까지 늘었다(A-004에서 넘어온 참여 케이스 포함).
+- `impl/nickname/GroupNickNameScreen.kt` — stateless UI + 확인 모달(#261 이관, 길이 상한은 `GroupCreateConfig` 참조).
 - `impl/res/values/strings.xml` — 그룹 참여 플로우(S-102 + A-004 초대코드) 공용 정적 라벨. #166 신설, #224에서 확인 모달 문구 추가.
 - `impl/nickname/GroupNickNameRoute.kt` — VM 배선, back→onBack, next stub.
 - `impl/nickname/GroupNickNameViewModel.kt` — MVI, `CheckNameValidUseCase` 주입.
@@ -217,11 +259,15 @@ class GroupNickNameViewModel @AssistedInject constructor(
 - ~~**다음 화면 네비게이션 미구현**~~ — #224에서 결선됐고, 목적지는 A-005가 **아니라** G-001 그룹 목록이다.
   즉 "참여 다음이 생성"이라는 당시 후보 흐름은 성립하지 않고, A-005 진입은 목록 오버레이 하나뿐이다
   → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
-- ~~**참여가 mock**~~ — ✅ **해소(#244)**. 다만 이 화면이 부르는 것은 참여가 아니라 닉네임 변경이다.
-- ⚠️ **합류와 닉네임이 두 요청으로 갈렸다**(#244) — A-004에서 이미 그룹에 들어간 상태로 이 화면에 오므로,
-  **여기서 뒤로 가거나 앱을 닫아도 참여는 유지되고 닉네임만 서버 초기값으로 남는다**. 화면에 건너뛰기·
-  취소 개념이 없고 재진입 경로도 S-101 그룹 설정뿐이다 → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
-- ~~**참여 중 표시가 없다**~~ — **부분 해소(#244)**. 확인 버튼이 진행 중 비활성이 됐다. 진행 표시(스피너 등)는 여전히 없다.
+- ~~**참여가 mock**~~ — ✅ **해소(#244·#261)**. #261부터 이 화면이 `POST join`을 직접 부른다.
+- ~~⚠️ **합류와 닉네임이 두 요청으로 갈렸다**(#244)~~ — ✅ **해소(#261)**. 두 요청은 그대로지만 **한 확인 뒤에
+  연달아** 나가고, 이탈하면 참여 자체가 없다 → [open-questions](../../synthesis/open-questions.md) [2026-08-15] OQ-P-166.
+  **남은 틈은 반대쪽이다** — 참여는 됐는데 닉네임 PATCH만 실패하면 사용자에게 아무 표시 없이 전역 닉네임으로
+  들어간다(코드 `TODO`). 두 요청이 원자적이지 않다는 사실 자체는 그대로다.
+- ~~**참여 중 표시가 없다**~~ — **부분 해소(#244)**. 확인 버튼이 진행 중 비활성이 됐고 #261에서 모달 dismiss도
+  잠긴다. 진행 표시(스피너 등)는 여전히 없다 — 참여+닉네임 두 왕복이라 대기 구간이 더 길어졌다.
+- **참여 실패 문구가 닉네임 입력 자리에 붙는다**(#261) — "이미 참여하고 있는 그룹이에요" 같은 초대코드 사유가
+  닉네임 필드 아래에 뜨고 필드도 에러 상태가 된다. 사유의 원인(초대코드)과 표시 위치(닉네임)가 어긋난다.
 - **복귀 목적지가 위키 정본과 다름** — [[기능정의서-v6]]은 A-004(참여) 다음 단계를 **C-001(메인 캔버스)**로
   적는다 → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
 - 유효성 규칙(공백·문자 종류)은 UseCase, 길이(15)는 `GroupCreateConfig` 상수로 **검사 위치 이원화** — 정책 [[이름-입력-규칙]] 상한과 정합하고 #179로 상수 소유처는 domain 단일화됐으나 검사 자체는 여전히 입력 컴포넌트 소관.
