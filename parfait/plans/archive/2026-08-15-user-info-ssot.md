@@ -1,5 +1,27 @@
 # 유저 정보 로컬 SSoT · 자동로그인 부트스트랩 Implementation Plan
 
+> ✅ **완료·develop 머지(PR #263 `2143c229`, 2026-08-16)** — 8 Task 전량이 develop에 있다.
+> 체크박스는 실행 기록을 이 블록에 모으는 관례대로 미체크로 둔다.
+>
+> **계획이 코드와 갈린 곳 4건**(구현 중 확정분은 각 Task 안의 ✅ 블록에 이미 적혀 있다):
+> ① 계획의 `ObserveMyAccountUseCase`가 **`GetMyAccountFlowUseCase`**로 개명됐다 — 호출이 구독하지 않고
+> `Flow`만 넘기므로 같은 형태의 선례(`GetRecentCacheImagesUseCase`)와 접두사를 맞추고, 일회성
+> `RefreshMyAccountUseCase`와 구분하려 `Flow`를 이름에 남겼다.
+> ② 계획에 없던 **`EncryptedPreferences`(`data/datastore/`)를 뽑았다.** Task 1이 그리던 "저장소가
+> `CryptoManager`+DataStore를 직접 감싼다"를 두 저장소가 그대로 반복하게 두지 않고, 암호화·복호화·
+> 손상분 폐기를 프록시에 모으고 `EncryptedTokenStore`까지 옮겨 태웠다. 프록시가 **암호문 상태에서
+> `distinctUntilChanged`**를 걸어, 토큰 재발급 저장이 계정 정보 구독자(편집 중 입력 필드)를 흔들던
+> 경로를 막는다 — 계획에 없던 성질이고 Task 8의 "편집 중 되돌림" 방어의 실제 근거다.
+> ③ Task 2의 `changeGlobalNickname`이 **로컬이 비어 있을 때 재조회로 폴백**한다. 계획은 "응답 값으로
+> 로컬 닉네임만 갱신"이었으나 로컬이 `null`이면 `memberId`·provider가 없어 VO를 세울 수 없다.
+> 폴백 결과는 무시한다(변경 자체는 이미 성공했다).
+> ④ Task 5의 부트스트랩이 토큰·계정 정보를 **직접 지우지 않고 `LogoutUseCase`에 위임**한다. 지울
+> 대상이 사용자 로그아웃과 같아 "무엇을 지우는가"를 한 자리에 둔다.
+>
+> **테스트**: 저장소 전역 358 → **415건**(테스트 파일 40 → 47). 계획이 예상한 약 20건보다 크게
+> 늘었다 — `EncryptedPreferences`·`TokenAuthenticator` 회귀와 `AccountInfoViewModelTest`의 편집 세션
+> 케이스가 계획 밖에서 붙었다. **수동 확인 7항목은 미수행**이다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `users/me`가 주는 계정 정보를 로컬에 한 벌만 두고 화면이 그것을 구독하게 하며, 스플래시가 토큰으로 세션을 복원해 자동로그인시킨다.
@@ -8,7 +30,7 @@
 
 **Tech Stack:** Kotlin, Preferences DataStore, kotlinx.serialization(`@LocalJson`), `CryptoManager`(Android Keystore AES/GCM), Hilt, Coroutines Flow, MockK, Turbine, kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-15-user-info-ssot.md`](../specs/2026-08-15-user-info-ssot.md) · 대응 ADR [`parfait/adr/0022-user-info-local-ssot.md`](../adr/0022-user-info-local-ssot.md)
+**Spec:** [`parfait/specs/2026-08-15-user-info-ssot.md`](../../specs/archive/2026-08-15-user-info-ssot.md) · 대응 ADR [`parfait/adr/0022-user-info-local-ssot.md`](../../adr/0022-user-info-local-ssot.md)
 
 ## Global Constraints
 
@@ -706,7 +728,7 @@ class ObserveMyAccountUseCase @Inject constructor(
 
 S-002 닉네임 변경은 기존 `CheckNameValidUseCase`로 먼저 거르고(형식), 서버 실패는 별도 갈래로 표시한다. `session-token-refresh-infra`의 `GroupNickNameError` 형태를 참고하되 **전역 닉네임용 에러 타입을 새로 만들지, 기존 것을 재사용할지 정하고 report에 적는다.**
 
-✅ **확정됨(2026-08-15, 구현 중)** — feature 로컬 `GlobalNicknameError`를 **새로 만들었다.** `GroupNickNameError`는 `feature/groups/enter/impl` 안에 있어 재사용하려면 leaf 모듈 사이에 없던 의존을 새로 만들어야 하고, 서버 에러 어휘도 다르다(전역 닉네임엔 `ALREADY_USED`가 없다). 소비처가 하나면 feature 로컬이 맞다는 [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md) 애드덤을 따랐다. 문구가 모듈마다 겹치기 시작한 것은 [OQ-P-167](../synthesis/open-questions.md)이 이미 추적 중이다.
+✅ **확정됨(2026-08-15, 구현 중)** — feature 로컬 `GlobalNicknameError`를 **새로 만들었다.** `GroupNickNameError`는 `feature/groups/enter/impl` 안에 있어 재사용하려면 leaf 모듈 사이에 없던 의존을 새로 만들어야 하고, 서버 에러 어휘도 다르다(전역 닉네임엔 `ALREADY_USED`가 없다). 소비처가 하나면 feature 로컬이 맞다는 [ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md) 애드덤을 따랐다. 문구가 모듈마다 겹치기 시작한 것은 [OQ-P-167](../../synthesis/open-questions.md)이 이미 추적 중이다.
 
 **추가 확정(2026-08-15, 디자인 대조 후)** — 이 화면은 **읽기가 기본이고 편집은 세션**이다. 확인 버튼은 포커스 중에만 하단(`imePadding`)에 뜨고, 활성 조건은 서버 값과 다를 것이다. 그래서 상태가 `savedNickname`(SSoT)과 `nickname`(입력 버퍼)을 나눠 갖는다 — 최종 리뷰가 후속으로 미뤄 뒀던 분리가 dirty 판정 때문에 여기서 필요해졌다. 뒤로가기는 고친 게 있을 때만 `YGModalPopup`으로 확인을 묻는다(`그만두기`=버리고 나가기 / `취소하기`=닫고 계속). 로딩은 자리를 바꾸지 않고 입력 필드를 비활성으로만 둔다. 형제 화면 S-102(`GroupSettingScreen`)가 버튼 스트립 관용구의 선례다.
 

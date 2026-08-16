@@ -5,10 +5,10 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-16
-related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra
-related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021
+related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot
+related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -27,7 +27,8 @@ tags: [architecture, parfait]
 
 ## DataSource 종류
 - **파일 기반** — `FileRecentImageLocalDataSource`, `FileCameraCacheLocalDataSource`(내부 저장소 이미지 I/O).
-- **DataStore 기반** — `RecentImageLocalDataSource`(메타데이터), `RecentImageEditor`(`data/datastore/`, DataStore 접근 추상화 — 단일 키 `get()`/`set()` 동기 인터페이스로, suspend/flow가 아님).
+- **DataStore 기반** — `RecentImageLocalDataSource`(메타데이터), `RecentImageEditor`(`data/datastore/`, DataStore 접근 추상화 — 단일 키 `get()`/`set()` 동기 인터페이스로, suspend/flow가 아님), **`UserInfoLocalDataSource`**(계정 정보 SSoT, 암호화 + `Flow`, PR #263).
+- **암호화 DataStore 프록시** — `EncryptedPreferences`(`data/datastore/`, PR #263). 저장 형태가 값이 아니라 **암호문**인 저장소들이 공유한다(`EncryptedTokenStore`·`UserInfoLocalDataSourceImpl`) — 아래 "토큰·계정 정보 저장 경로" 참고.
 - **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근).
 
 > **표시 포맷은 data가 만들지 않는다**(2026-08-04, PR #191) — `GalleryImageGroup.date`가 문자열에서
@@ -46,8 +47,8 @@ tags: [architecture, parfait]
 
 | 모듈 | 제공/바인딩 |
 |------|-------------|
-| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
-| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`) |
+| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
+| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
 | `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) |
@@ -108,7 +109,10 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 적으면 안 쓰는 상수가 계약 변경 때 방치돼 거짓말이 된다.
 
 중첩 object는 서버 enum 구조를 그대로 따른다 — `Auth`(서버 `AuthErrorCode`) · `ParfaitGroup`
-(`ParfaitGroupApiErrorCode`) · `Common`(`CommonErrorCode`). **2026-08-15 그룹 결선 라운드로 선언된 코드가
+(`ParfaitGroupApiErrorCode`) · **`Member`(`MemberErrorCode`, PR #263 신설: `INVALID_NICKNAME`·
+`MEMBER_NOT_FOUND`)** · `Common`(`CommonErrorCode`). `Member.MEMBER_NOT_FOUND`(404)가 같은 문자열의
+**세 번째 상수**이고, 소비처 둘이 그것을 서로 다르게 읽는다 — `BootstrapSessionUseCase`는 세션 사망으로
+보고 정리하지만 S-002는 표시만 한다(`GlobalNicknameError.ACCOUNT_GONE`). **2026-08-15 그룹 결선 라운드로 선언된 코드가
 전부 소비된다** — `Auth`는 **6종으로 늘었고**(#260이 `INVALID_TOKEN`·`EXPIRED_TOKEN`·
 `FORBIDDEN_REFRESH_TOKEN` 추가, `TokenAuthenticator`의 세션 종료 판정이 소비한다) 기존 3종은 A-002,
 `ParfaitGroup` 7종은 A-004(초대코드·이미 참여·정원)·S-102(닉네임
@@ -127,6 +131,15 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `AuthRepository` | `loginWithKakao(idToken, nonce)` · `signUp(registrationToken, agreements)` · `saveSession(session)` · **`logout()`**(#260) | `LoginWithKakaoUseCase` → A-002 · `SignUpUseCase` → 온보딩 약관 · `LogoutUseCase` → S-001 앱 설정 |
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
 | `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | 순서대로 `GetMyGroupsUseCase`(G-001) · `GetGroupJoinPreviewUseCase`·`JoinGroupUseCase`(A-004) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102) |
+| `MemberRepository`(#263) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` |
+
+**`MemberRepository`는 지금까지와 다른 모양이다 — 원격과 로컬을 조율한다.** 다른 원격 Repository가
+DataSource 위임 + `mapErrorToAppError()`뿐인 데 비해, 이쪽은 원격 응답을 **로컬 SSoT에 쓰고** 읽기는
+로컬 `Flow`만 노출한다(화면은 조회 API를 부르지 않는다, [ADR-0022](../adr/0022-user-info-local-ssot.md)).
+로컬 쓰기·읽기를 `runSuspendCatching`으로 감싸는 것이 여기서 필수다 — `DataStore.edit`·`data.first()`가
+던지는 IOException이 원격 `Result` 체인 안에서 무방비로 나가면 `mapErrorToAppError`를 거치지 않고
+Repository 경계를 뚫어 소비자가 미포착 예외로 크래시한다(ADR-0020). 한쪽만 감싸면 감싸지 않은 쪽이
+그 경로가 된다.
 
 `ParfaitGroupRepository`는 2026-08-15 로그인 라운드에서 화면보다 먼저 경계만 들어왔었고(브랜치
 셋이 같은 4파일을 만들어 충돌하기 때문), **같은 날 그룹 화면 세 라운드(#243·#244·#248)가 5 메서드를
@@ -215,6 +228,10 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > 가리키면서 **`ParfaitRemoteDataSource`를 쓰지 않고 UseCase 본문에서 mock을 만든다** — Repository가
 > 0건인 것은 그대로인데 그 자리를 채울 소비자가 mock으로 먼저 생긴 형태다
 > ([api/parfait.md](../api/parfait.md) Android 매핑 · [open-questions](../synthesis/open-questions.md)).
+> 📌 **2026-08-16 — member 도메인이 Repository를 얻었다**(PR #263). `MemberRepository`가 `users/me`
+> 조회와 닉네임 변경을 소비하고 로컬 SSoT에 쓴다 — Repository가 0건이던 네 도메인이 **셋**
+> (parfait·image·parfait-image)으로 줄었다. member에 남은 공백은 **탈퇴 하나**다(표면은 있고 화면은
+> 여전히 stub) → [api/member.md](../api/member.md).
 > **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
@@ -318,14 +335,24 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   [spec](../specs/archive/2026-08-15-session-token-refresh-infra.md)). `NetworkModuleTest`가 두
   클라이언트가 `Dispatcher`·인증기·`AuthInterceptor`를 공유하지 않는다는 **배선의 구조적 성질**을
   잠근다 — 데드락 자체는 재현하지 않는다(회귀가 실패가 아니라 무한 대기로 나타난다).
-- **토큰 저장 경로**: `CryptoManager`(Android Keystore AES/GCM, `security/`) → `EncryptedTokenStore`
-  (`TokenStore` 구현, `source/token/local/`, `DataStore<Preferences>`에 `IV+암호문` Base64 문자열 저장) →
-  `TokenStore`(`LocalDataSourceModule.bindTokenStore`) → `TokenStoreTokenProvider`
-  (`NetworkModule.provideTokenProvider`) → `AuthInterceptor`. 복호화 실패(키 유실) 시
-  `EncryptedTokenStore`가 예외를 삼키고 `clear()` 후 `null`을 반환 — 재로그인 유도. 근거·대안은
-  [[0019-encrypted-token-storage]]. as-built 기준 `read()`의 `runCatching` 범위는 복호화만이 아니라
-  **DataStore 읽기까지 포함**하고, 복구 경로의 `clear()`도 다시 `runCatching`으로 감싼다 — 즉 키 유실뿐
-  아니라 저장소 I/O 실패도 토큰 삭제로 이어지고, 삭제 자체가 실패해도 `null` 반환은 보장된다.
+- **토큰·계정 정보 저장 경로**: `CryptoManager`(Android Keystore AES/GCM, `security/`) →
+  **`EncryptedPreferences`**(`datastore/`) → `EncryptedTokenStore`(`TokenStore` 구현,
+  `source/token/local/`) → `TokenStore`(`LocalDataSourceModule.bindTokenStore`) →
+  `TokenStoreTokenProvider`(`NetworkModule.provideTokenProvider`) → `AuthInterceptor`.
+  `DataStore<Preferences>`에는 `IV+암호문` Base64 문자열이 들어간다. 근거·대안은
+  [[0019-encrypted-token-storage]].
+  > 🔁 **2026-08-16(PR #263) — 암호화 접근이 프록시로 모였다.** 같은 저장 형태를 쓰는 저장소가 둘이
+  > 되면서(계정 정보 `UserInfoLocalDataSourceImpl`, [ADR-0022](../adr/0022-user-info-local-ssot.md))
+  > 쓰기의 암호화·읽기의 복호화·**못 읽는 저장분 폐기**를 `EncryptedPreferences`가 갖는다. 저장소가
+  > 넘기는 것은 **폐기 범위**(`onDecodeFailure`)와 **해석 방법**(`decode`)뿐이다 — 토큰은 한 짝 전체를
+  > 지우고(같은 키로 암호화돼 하나를 못 읽으면 둘 다 못 읽는다) 계정 정보는 자기 키 하나만 지운다.
+  > **폐기 조건이 좁아졌다**: 값을 손에 넣고도 해석하지 못한 경우만 지우고, **저장소 읽기 자체가
+  > 실패하면(디스크 IO) 아무것도 지우지 않는다** — 값이 손상됐다는 근거가 없는데 일시적 실패로
+  > 지우면 다음 시도에 살아날 세션까지 잃는다(이전 as-built의 "I/O 실패도 토큰 삭제"가 정정됐다).
+  > 쓰기는 여러 키를 **한 `edit` 블록**에서 처리해 반쪽만 저장된 상태가 보이지 않고, 읽기 구독은
+  > **복호화 전 암호문 상태에서 `distinctUntilChanged`**를 건다 — DataStore를 저장소들이 공유해
+  > 토큰 재발급 저장이 무관한 구독자(계정 정보를 보는 편집 중 입력 필드)를 흔들기 때문이고,
+  > 복호화 뒤에 끊으면 이미 매번 Keystore를 두드린 뒤라 비용을 못 던다.
 - **로깅**: `HttpLoggingInterceptor` 레벨은 `BuildConfig.DEBUG`로 게이팅(debug=`BODY`,
   release=`NONE`) — release에서 토큰·바디 노출 방지. 추가로 `redactHeader("Authorization")`를 걸어
   debug 빌드에서도 헤더 값을 가린다. 설정은 `NetworkModule`의 private `loggingInterceptor()` 한

@@ -5,10 +5,10 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-16
-related_spec: c201-canvas-calendar, session-token-refresh-infra
-related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021
+related_spec: c201-canvas-calendar, session-token-refresh-infra, user-info-ssot
+related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022
 related_architecture: data-layer, navigation-flow
-related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel
+related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase
 tags: [architecture, parfait]
 ---
 # 상태 관리 (MVI) · 데이터 흐름
@@ -89,6 +89,24 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
     State 안 계산 프로퍼티다. 화면만 쓰는 값이 아니라 ViewModel의 연도 이동 계산도 읽어서 화면 헬퍼로
     내리면 로직이 갈린다 → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) ·
     [open-questions](../synthesis/open-questions.md) [2026-08-16].
+- **앱 전역 사실은 State가 소유하지 않고 구독한다**(2026-08-16, PR #263). 계정 정보는 화면의 소유물이
+  아니라 앱 수명 동안 하나뿐인 사실이라 `:data` SSoT에 살고, S-001·S-002는 `GetMyAccountFlowUseCase`를
+  `init`에서 수집만 한다 — 화면 진입마다 다시 조회하지 않고, 한 화면의 닉네임 변경이 구독 중인 모든
+  화면에 그대로 전파된다([ADR-0022](../adr/0022-user-info-local-ssot.md)).
+  - **`null`은 빈 문자열이 아니라 로딩이다.** mock 문자열을 지우면 기본값이 없어지므로 State가
+    nullable을 들고 화면이 그것을 다룬다 — S-002는 레이아웃을 그대로 두고 **입력 필드만 비활성**한다
+    (자리를 다른 것으로 바꾸면 값이 도착할 때 화면이 튄다).
+  - **편집 화면은 저장값과 입력 버퍼를 나눠 갖는다** — `savedNickname`(SSoT가 준 값)과 `nickname`(입력).
+    "서버 값과 다른가"(`isDirty`)를 알아야 확인 버튼 활성·뒤로가기 확인 모달이 성립하는데, 버퍼 하나로는
+    사용자가 무엇을 바꿨는지 알 수 없다.
+  - **낙관적 갱신을 하지 않는다.** 변경 성공 시에도 State에 직접 쓰지 않고 SSoT 구독이 새 값을
+    되돌려준다 — 직접 쓰면 저장이 실패해도 화면만 바뀐 상태가 된다.
+- **서버 실패 갈래는 feature 로컬 enum**이다 — S-002의 `GlobalNicknameError` 4종. 형식 오류
+  (`NameValidResult.Error`, 요청 전 검사)와 **별개 축**이라 State가 둘을 따로 들고 화면이
+  `nicknameError ?: submitError` 순으로 보여준다. 문구 매핑은 같은 모듈의 `@Composable` 확장이 갖는다 —
+  소비처가 하나면 feature 로컬이 맞다는 [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)
+  애드덤이고, `feature` `impl`은 서로를 의존하지 않는 leaf라 형제 화면의 `GroupNickNameError`를 재사용할
+  수도 없다(문구 중복은 [open-questions](../synthesis/open-questions.md)가 추적 중이다).
 - **요청 중 플래그는 `finally`로 내린다** — S-001 로그아웃(`isLoggingOut`, PR #260)이 `launch(key)` 중복
   가드 위에 State 플래그를 한 겹 더 두는 사례다. `launch(key)`는 두 번째 탭을 삼킬 뿐 버튼이 눌리는
   것처럼 보이므로 비활성은 State로 드러낸다(아래 "안티패턴" 1번의 반대 사례).

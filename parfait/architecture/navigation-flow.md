@@ -5,8 +5,8 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-16
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar
-related_adr: ADR-0002, ADR-0006, ADR-0021
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot
+related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
 related_code: core:navigation, Navigator
 tags: [architecture, parfait]
@@ -48,10 +48,21 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 
 `NavKeySplash` → `NavKeyLogin` → `NavKeyTermAgree` → `NavKeyGroupList`
 
+> 📌 **첫 화면이 갈림길이 됐다(2026-08-16, PR #263)** — 스플래시가 더는 무조건 로그인으로 가지 않는다.
+> `BootstrapSessionUseCase`가 저장된 refresh token 유무를 보고, 있으면 `users/me`로 세션을 검증하면서
+> 계정 정보 SSoT를 채운 뒤 **`NavKeySplash` → `NavKeyGroupList`**로 바로 넘긴다. 목적지 판단은 전부
+> 도메인이 하고(`SessionBootstrap.ToGroupList`/`ToLogin`) 화면은 그것을 이펙트로 옮기기만 한다 —
+> 스플래시가 "토큰이 있나", "조회가 됐나"를 알지 않는다. 실패는 종류와 무관하게 `ToLogin`이고
+> 갈리는 것은 정리 범위뿐이다(인증 거절만 세션 파기) →
+> [user-info-ssot 스펙](../specs/archive/2026-08-15-user-info-ssot.md).
+> ⚠️ **네트워크 실패도 로그인 화면으로 보낸다** — 오프라인에서 앱을 켜면 토큰이 남아 있어도 로그인
+> 화면이다(그룹 목록을 캐시로 그릴 수단이 아직 없다) → [open-questions](../synthesis/open-questions.md).
+
 - 이전에는 로그인이 `NavKeyGroupHome`(`ResultEventBus` 시연용 임시 화면)으로 갔고, `NavKeyTermAgree`·
   `NavKeyGroupList`는 entry만 등록된 **도달 불가 화면**이었다. 체크리스트 6번의 사례가 하나 닫힌 것.
 - **백스택 리셋 관용구**: 되돌아가면 안 되는 경계에서 **`navigator.replaceAll(...)`** 한 줄을 부른다 —
-  `SplashRoute`(→ 로그인), `TermAgreeRoute`(→ 그룹 목록), `LoginRoute`(기존 회원 → 그룹 목록) 3곳.
+  `SplashRoute`(→ 로그인 **또는 그룹 목록**), `TermAgreeRoute`(→ 그룹 목록),
+  `LoginRoute`(기존 회원 → 그룹 목록) 3곳.
   결과적으로 그룹 목록에서는 백스택이 1개라 뒤로가기가 no-op이다.
   > 🔁 **2026-08-15(PR #260)** — 그전까지는 `clearBackStack()` + `goTo(...)` 두 줄이었고 "반드시 같은
   > 블록에서 `goTo`가 따라와야 한다"가 암묵 규약이었다. 그 규약을 타입에서 지우려고 두 함수를

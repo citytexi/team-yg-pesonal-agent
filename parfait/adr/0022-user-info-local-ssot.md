@@ -1,7 +1,7 @@
 ---
 id: ADR-0022
 title: 계정 정보 로컬 SSoT — 암호화 DataStore + Flow 구독
-status: proposed
+status: accepted
 date: 2026-08-15
 deciders: Parfait 팀
 supersedes:
@@ -17,10 +17,13 @@ tags: [adr, parfait, member, datastore, state]
 
 > 상태·날짜·결정자·대체 관계는 위 frontmatter가 단일 출처. 본문은 결정 내용에 집중.
 
-> 📌 **선행 조건이 열렸다(2026-08-15, PR #260)** — 이 결정이 딛고 서는 세션 인프라
-> ([ADR-0021](0021-token-refresh-forced-logout.md))가 develop에 있다. `LogoutUseCase`·
-> `SessionEventBus`·`TokenAuthenticator`가 이미 코드이고, 이 ADR은 그 위에 "세션 정리 조율"과
-> 부트스트랩을 얹는다. 코드는 아직 미착수다.
+> ✅ **develop 머지(2026-08-16, PR #263 `2143c229`)** — 결정이 그대로 코드가 됐다. 선행이던 세션
+> 인프라([ADR-0021](0021-token-refresh-forced-logout.md))는 2026-08-15 PR #260으로 먼저 들어왔고,
+> 이 라운드가 그 위에 "세션 정리 조율"과 부트스트랩을 얹었다.
+> **as-built 차이 셋**은 아래 본문에 반영했다 — 암호화 접근이 `EncryptedPreferences` 프록시로
+> 뽑혔다는 것, 부트스트랩이 정리를 `LogoutUseCase`에 위임한다는 것, 닉네임 변경이 로컬 공백일 때
+> 재조회로 폴백한다는 것이다. 스펙은
+> [specs/archive/2026-08-15-user-info-ssot](../specs/archive/2026-08-15-user-info-ssot.md).
 
 ## 맥락
 
@@ -34,21 +37,35 @@ tags: [adr, parfait, member, datastore, state]
 ## 결정
 
 **계정 정보는 `:data`의 로컬 저장소 한 곳에 두고, 화면은 그것을 `Flow`로 구독하기만 한다.
-서버 조회는 정해진 두 시점에만 일어난다.**
+서버 조회는 정해진 세 시점에만 일어난다.**
 
 - **읽기 경로는 하나** — `MemberRepository.myAccount: Flow<MyAccountVO?>`. 화면은 조회 API를
   직접 부르지 않는다. 닉네임이 바뀌면 구독 중인 모든 화면이 그 자리에서 갱신된다.
 - **쓰기 시점은 셋뿐** — 로그인·회원가입 직후, 앱 진입(스플래시), 닉네임 변경 성공.
   화면 진입마다 갱신하지 않는다. 조회가 늘어나는 만큼 "언제 값이 바뀌었나"를 추적하기 어려워진다.
+  > **as-built** — 닉네임 변경 성공이 **네 번째 서버 조회를 부를 수 있다.** 로컬이 비어 있으면
+  > `memberId`·provider를 몰라 닉네임만으로 VO를 세울 수 없어 `refreshMyAccount()`로 폴백한다.
+  > 폴백 결과는 무시한다 — 변경 자체는 이미 성공했으므로 재조회 실패로 그것을 되돌리지 않는다.
 - **영속한다.** 앱을 껐다 켜도 서버 응답을 기다리지 않고 첫 프레임부터 값이 보인다.
   Preferences DataStore를 쓰고(ADR-0008), 저장 모델은 `:data`의 `@Serializable` 전용 타입이다 —
   `MyAccountVO`가 값 클래스와 enum을 품어 그대로 직렬화되지 않는다.
 - **암호화한다.** 닉네임과 `memberId`는 식별 가능한 개인정보라 평문으로 두지 않는다.
   `CryptoManager`(ADR-0019)를 그대로 재사용하고, 복호화 실패 시 저장분을 버리고 `null`을 돌려
   다음 갱신이 채우게 한다 — 토큰 저장소와 같은 처리다.
+  > **as-built** — "같은 처리"가 문서상 유사가 아니라 **공유 코드**가 됐다. 암호화·복호화·손상분
+  > 폐기는 `EncryptedPreferences`(`data/datastore/`)가 갖고 두 저장소가 그것을 쓴다. 저장소가 넘기는
+  > 것은 폐기 범위뿐이다 — 토큰은 한 짝 전체, 계정 정보는 자기 키 하나. **읽기 자체가 실패한 경우
+  > (디스크 IO)는 폐기하지 않는다**([ADR-0019](0019-encrypted-token-storage.md) "키 유실 시 정책"의
+  > 정정). 프록시가 **암호문 상태에서 중복 방출을 끊는 것**이 이 결정 쪽에 특히 필요했다 — DataStore를
+  > 토큰과 공유해서, 재발급 저장이 계정 정보 구독자(편집 중인 입력 필드)를 흔든다.
 - **토큰과 수명을 같이 한다.** 로그아웃·강제 로그아웃 어느 쪽으로 끝나든 토큰과 함께 지운다.
   특히 강제 로그아웃은 토큰을 지우는 그 자리(`TokenAuthenticator`)에서 함께 지운다 — 정리를
   이벤트 소비 측에 맡기면 이벤트가 유실되는 순간 **토큰은 지워졌는데 계정 정보는 남는다.**
+  > **as-built** — 정리 주체가 둘로 정리됐다. 자동로그인이 인증 거절로 실패했을 때
+  > `BootstrapSessionUseCase`는 두 저장소를 직접 부르지 않고 **`LogoutUseCase`에 위임한다** —
+  > 지울 대상이 사용자 로그아웃과 같아, "무엇을 지우는가"가 두 곳에 적히면 한쪽만 늘어난다.
+  > 결과적으로 `LogoutUseCase`가 **"무엇을 지우는가"의 단일 자리**이고 호출자가 둘(S-001·부트스트랩),
+  > `TokenAuthenticator`는 `:data` 안에서 끝내야 하는 강제 로그아웃 경로만 갖는다.
 
 ## 대안
 

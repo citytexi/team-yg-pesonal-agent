@@ -5,8 +5,8 @@ server_module: http/member
 server_commit: 22717fe
 verified: 2026-08-16
 android_status: partial
-related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
-related_adr: ADR-0017
+related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-15-user-info-ssot
+related_adr: ADR-0017, ADR-0022
 tags: [api, parfait, server-contract, member]
 ---
 
@@ -28,8 +28,8 @@ tags: [api, parfait, server-contract, member]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/v1/users/me` | 필요 | 없음 | `MyAccountResponse` | 구현됨 |
-| PATCH | `/api/v1/users/me/nickname` | 필요 | `ChangeGlobalNicknameRequest` | `ChangeGlobalNicknameResponse` | 구현됨 |
+| GET | `/api/v1/users/me` | 필요 | 없음 | `MyAccountResponse` | 구현됨·결선됨 |
+| PATCH | `/api/v1/users/me/nickname` | 필요 | `ChangeGlobalNicknameRequest` | `ChangeGlobalNicknameResponse` | 구현됨·결선됨 |
 | DELETE | `/api/v1/users/me` | 필요 | 없음 | **본문 없음(204)** | 구현됨 |
 
 셋 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. memberId는 요청이 아니라
@@ -186,7 +186,8 @@ tags: [api, parfait, server-contract, member]
 
 ## Android 매핑
 
-**세 엔드포인트 전부 표면 있음, 소비처 0**(2026-08-12 PR #230 두 건 + **2026-08-15 PR #250 탈퇴**).
+**세 엔드포인트 전부 표면 있음**(2026-08-12 PR #230 두 건 + 2026-08-15 PR #250 탈퇴), **소비처는 조회·
+닉네임 변경 둘**(2026-08-16 PR #263). 탈퇴만 남았다.
 
 | 계약 | Android 심볼 |
 |---|---|
@@ -218,8 +219,26 @@ domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider
   별개 문제다 → 아래 "미결").
 - **닉네임 변경 반환은 `Result<GlobalNickname>`이고 VO가 없다** — 응답 필드가 하나뿐이라 감쌀 것이 없다.
 
-**소비처는 0건이다.** S-002(계정 정보)가 전역 닉네임을 다루지만 여전히 **화면 로컬 상태에만 산다** —
-이 API가 그 저장 경로인데 아직 연결되지 않았다 → [open-questions](../synthesis/open-questions.md).
+✅ **소비처가 붙었다(2026-08-16, PR #263).** 두 엔드포인트가 **로컬 SSoT를 사이에 두고** 소비된다 —
+화면은 조회 API를 직접 부르지 않고 `MemberRepository.myAccount: Flow<MyAccountVO?>`를 구독하며,
+서버 조회는 **로그인·가입 직후 / 앱 진입(스플래시 부트스트랩) / 닉네임 변경 성공** 세 시점뿐이다
+([ADR-0022](../adr/0022-user-info-local-ssot.md) ·
+[스펙](../specs/archive/2026-08-15-user-info-ssot.md)).
+
+| 계약 | 앱 쪽 경로 |
+|---|---|
+| `GET /api/v1/users/me` | `MemberRepositoryImpl.refreshMyAccount()` → 암호화 로컬 저장 → `GetMyAccountFlowUseCase` 구독(S-001·S-002). 부트스트랩(`BootstrapSessionUseCase`)이 **세션 검증도 이 호출로 겸한다** |
+| `PATCH /api/v1/users/me/nickname` | S-002 확인 → `ChangeGlobalNicknameUseCase` → 응답 값으로 로컬 갱신(낙관적 갱신 없음). 로컬이 비어 있으면 `GET`으로 폴백해 SSoT를 채운다 |
+
+**이 도메인의 에러 코드 둘이 앱에서 서로 다른 두 소비자에게 다르게 읽힌다.**
+`INVALID_NICKNAME`·`MEMBER_NOT_FOUND`가 `:domain`의 `ServerErrorCode.Member`로 들어왔고,
+S-002는 둘을 표시용 갈래(`GlobalNicknameError.INVALID`·`ACCOUNT_GONE`)로 바꿔 **표시만** 하는 반면
+`BootstrapSessionUseCase`는 `MEMBER_NOT_FOUND`를 **세션 사망**(401과 동급)으로 보고 토큰·계정 정보를
+지운다. 같은 코드에 처분이 갈리는 것은 의도다 — 화면이 세션을 파괴하는 경로를 새로 열지 않고, 죽은
+세션은 다음 앱 진입의 부트스트랩이 걷어낸다.
+
+⚠️ **탈퇴만 소비처가 없다** — S-001 Danger Zone은 여전히 TODO 로그만 남긴다
+→ [open-questions](../synthesis/open-questions.md).
 
 `http/users.http`가 세 요청을 덮는다(선행은 `auth.http`만). ⚠️ **마지막 요청이 탈퇴라 파일을 위에서부터
 통째로 돌리면 계정이 지워진다** — `http/README.md`가 이 경고를 담는다.

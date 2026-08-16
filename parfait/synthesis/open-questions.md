@@ -5,9 +5,9 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-16
-related_spec: canvas-detail-background-api-service-layer, c201-canvas-calendar, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021
-related_architecture: design-system, data-layer, navigation-flow, module-structure
+related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
+related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
 tags: [meta, parfait]
 ---
@@ -581,6 +581,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (로그인 연동 라운드로 이월)
   > 📌 **코드가 develop에 머지됐어도 상태 불변(2026-08-04, PR #190)** — 저장 경로 전체가 develop에 들어왔지만 `TokenStore.save()` 호출부는 여전히 0건이다. 머지가 검증을 대신하지 않는다.
   > 📌 **로그인 화면이 다음 단계로 이어져도 상태 불변(2026-08-09, PR #220)** — 카카오 토큰은 `LoginState`에만 담기고 저장 호출은 여전히 0건이다 → [2026-08-10] 온보딩 체인 항목.
+  > 📌 **저장 호출부는 생겼는데 검증은 그대로다(2026-08-16, PR #263)** — 로그인 결선(#241) 이후 저장이 실제로 일어나고, 같은 프록시(`EncryptedPreferences`)로 **계정 정보까지 암호화 저장**돼 확인 대상이 둘이 됐다(DataStore 파일에 닉네임·`memberId` 평문이 없는지 포함). 그런데 자동로그인 라운드의 **수동 확인 7항목이 미수행**이라 저장 → 종료 → 재시작 왕복은 여전히 사람이 본 적이 없다.
 - **해소 메모**: 로그인 연동 라운드에서 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md)와 [specs/archive/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "검증" 절을 갱신한다.
 
 ### [2026-08-02] debug 빌드 `Level.BODY` 로깅이 `reissue`/`logout` 요청 바디의 refresh token을 평문 노출
@@ -1602,8 +1603,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-172
 - **출처**: `feature/app/setting/impl` `AccountInfoScreen`·`AccountInfoViewModel`(S-002)과 `feature/groups/setting/impl` `GroupSettingScreen`(S-102) — 디자인은 두 화면 모두 편집 중 뒤로가기에 `닉네임 수정을 취소할까요?` 확인을 두는데, S-002만 이번에 확인 모달을 붙였다(`isDiscardDialogVisible`, 서버 값과 다를 때만). S-102는 `handleBack`이 `isEditing`이면 포커스만 내리고 두 번째 뒤로가기에 그대로 나가 **고치던 값이 조용히 사라진다.** 두 화면이 같은 컴포넌트(`YGModalPopup`)를 쓸 수 있는데도 동작이 다르다.
 - **항목**: ① S-102도 같은 확인 모달을 붙일지(붙이면 저장값·입력 버퍼 분리가 S-102에도 필요하다 — S-102는 `myNickname`·`nicknameInput`으로 이미 갖고 있어 비용이 작다). ② `그만두기`=나가기 / `취소하기`=닫기 매핑을 두 화면이 공유할지 — 같은 모듈의 탈퇴 확인에서는 `그만두기`가 반대로 닫기를 뜻해 단어가 화면마다 다른 일을 한다.
-- **상태**: 미해결 (S-002만 적용)
-- **해소 메모**: S-102에 붙이면 [user-info-ssot 스펙](../specs/2026-08-15-user-info-ssot.md)의 「S-002 편집 세션」 절을 공용 규칙으로 올리고 이 항목을 닫는다.
+- **상태**: 미해결 (S-002만 적용 — 2026-08-16 PR #263으로 develop 머지됐고 S-102는 그대로다)
+- **해소 메모**: S-102에 붙이면 [user-info-ssot 스펙](../specs/archive/2026-08-15-user-info-ssot.md)의 「S-002 편집 세션」 절을 공용 규칙으로 올리고 이 항목을 닫는다.
 
 ### [2026-08-15] C-301 배경 편집 결과가 아무 데도 반영되지 않는다
 
@@ -1796,8 +1797,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ④ 실패 결과를 짧게 공유하는 쿨다운을 넣을지.
 - **상태**: 미해결 (전부 설계 시점에 알고 남긴 것 — 실기기 검증 전이라 체감 여부 미확인)
 - **해소 메모**: ①④는 [ADR-0021](../adr/0021-token-refresh-forced-logout.md) "영향"에, ②는
-  [navigation-flow](../architecture/navigation-flow.md) "세션 종료 이동"에 반영한다. ①은 자동로그인
-  라운드(ADR-0022 `user-info-ssot`)가 "세션 없음"을 상태로 들이면 함께 정리될 수 있다.
+  [navigation-flow](../architecture/navigation-flow.md) "세션 종료 이동"에 반영한다.
+  > 📌 **①의 피해 범위만 줄었다(2026-08-16, PR #263)** — 자동로그인 라운드가 머지되며 앱 진입마다
+  > `BootstrapSessionUseCase`가 토큰 유무를 보고 없으면 로그인으로 보낸다. 이벤트가 유실돼도
+  > **다음 앱 실행에서는 로그인 화면으로 간다**. 다만 유실된 그 실행 안에서는 여전히 갇힌 채
+  > 실패만 보고, ②③④는 손대지 않았다. "세션 없음을 상태로 들인다"는 방향은 채택되지 않았다 —
+  > 부트스트랩은 진입 시점에 한 번 판정할 뿐 상시 구독이 아니다.
 
 ### [2026-08-16] 로그아웃 비활성이 사용자에게 안 보이고, 같은 화면의 탈퇴는 여전히 stub이다
 
@@ -1980,6 +1985,71 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md)·[state-management](../architecture/state-management.md)에
   반영한다. OQ-P-173·OQ-P-193과 같은 자리다.
 
+### [2026-08-16] 오프라인으로 앱을 켜면 자동로그인을 포기한다 — 토큰은 남고 라우팅만 로그인으로 간다
+
+- **ID**: OQ-P-195
+- **출처**: `domain/usecase/session/BootstrapSessionUseCase`(PR #263) — 부트스트랩은 목적지를 실패
+  종류와 무관하게 `SessionBootstrap.ToLogin` 하나로 내고, 갈리는 것은 정리 범위뿐이다(인증 거절만
+  파기). 즉 **네트워크 실패에도 토큰은 남지만 화면은 로그인으로 간다.** 같은 라운드의
+  `TokenAuthenticator`가 "네트워크 실패에는 토큰을 유지한다"고 결정한 것과 처분은 같은데
+  **사용자가 보는 결과는 다르다** — 이미 로그인한 사용자가 지하철에서 앱을 켜면 로그인 화면을 본다.
+  그렇게 만든 이유는 그룹 목록을 캐시로 그릴 수단이 없어서다(G-001은 매 진입 서버 조회).
+- **항목**: ① "토큰이 있고 네트워크만 실패한 경우"를 `ToGroupList`로 돌릴지 — 돌리려면 목록이 빈
+  화면이 아니라 무언가를 그릴 수 있어야 한다. ② 아니면 로그인 화면이 "연결을 확인해 주세요"를
+  구분해 보여줄지(지금은 처음 쓰는 사람과 오프라인 복귀 사용자가 같은 화면을 본다).
+- **상태**: 미해결 (설계 시점에 알고 남긴 선택)
+- **해소 메모**: 그룹 목록 캐시가 생기는 라운드에서 재검토한다 — 정하면
+  [user-info-ssot 스펙](../specs/archive/2026-08-15-user-info-ssot.md) 부트스트랩 절과
+  [navigation-flow](../architecture/navigation-flow.md) "앱 진입 체인"에 반영한다.
+
+### [2026-08-16] 계정 정보가 낡거나 비어 있어도 사용자에게 알릴 수단이 없다
+
+- **ID**: OQ-P-196
+- **출처**: `MemberRepositoryImpl`·`AppSettingViewModel`·`AccountInfoViewModel`(PR #263) —
+  ① `refreshMyAccount()`가 실패하면 로컬을 **유지**한다(낡은 값이라도 지우지 않는다는 결정). 그런데
+  화면에는 "이 값이 낡았다"를 말할 자리가 없어 사용자는 다른 기기에서 바꾼 닉네임이 안 보이는 이유를
+  알 수 없다. ② 반대로 SSoT가 비어 있으면(최초 로그인 전·복호화 실패 후) 화면은 `null`을 로딩으로
+  다뤄 S-002 입력 필드를 비활성으로 둔다 — **채워질 계기가 그 화면에 없어서**(구독만 한다) 갱신이
+  실패한 상태로 들어오면 비활성이 그대로 남는다. 재시도 수단도 표시도 없다.
+- **항목**: ① 낡음 표시를 둘지(마지막 갱신 시각·조용한 재시도 중 무엇으로). ② 비어 있는 상태에
+  화면이 재시도 진입점을 가질지, 아니면 부트스트랩·로그인 두 시점에만 채워지는 지금을 유지할지.
+- **상태**: 미해결
+- **해소 메모**: 정하면 [ADR-0022](../adr/0022-user-info-local-ssot.md) "영향"과
+  [state-management](../architecture/state-management.md) SSoT 구독 절에 반영한다. 공통 로딩·에러 표현
+  라운드(`ygscaffold-v2-common-loading-error` 스펙)와 같은 자리에서 볼 수 있다.
+
+### [2026-08-16] SSoT가 생겼는데 G-001 목록 닉네임만 여전히 mock이다
+
+- **ID**: OQ-P-197
+- **출처**: `feature/groups/list/impl` `GroupListViewModel`의 `GroupListUiState.nickName` 기본값이
+  하드코딩 문자열 그대로다(PR #263 범위 밖으로 의도적으로 남겼다). S-001·S-002는 mock을 걷고
+  `GetMyAccountFlowUseCase`를 구독하는데 **한 화면만 다른 이름을 보여줄 수 있는 상태**다 — 사용자가
+  S-002에서 닉네임을 바꾸면 설정 화면은 즉시 바뀌고 목록만 옛 문자열을 계속 그린다.
+- **항목**: 이 화면을 SSoT에 붙일 라운드를 정한다. 붙이는 비용은 UseCase 구독 한 줄이라 작지만,
+  G-001이 그리는 값이 **전역 닉네임인지 그룹 닉네임인지**를 먼저 확정해야 한다 — 서버는 둘을 다른
+  컬럼으로 들고 전역 닉네임 변경이 그룹 닉네임을 바꾸지 않는다([api/member.md](../api/member.md)).
+- **상태**: 미해결
+- **해소 메모**: 붙일 때 [g001 스펙](../specs/archive/2026-08-01-g001-group-list.md)과
+  [api/member.md](../api/member.md) Android 매핑을 함께 갱신한다.
+
+### [2026-08-16] 같은 `MEMBER_NOT_FOUND`에 두 소비자의 처분이 갈린다 — 화면은 표시만 하고 세션은 그대로다
+
+- **ID**: OQ-P-198
+- **출처**: `BootstrapSessionUseCase`는 `ServerErrorCode.Member.MEMBER_NOT_FOUND`를 **세션 사망**으로
+  보고 `LogoutUseCase`로 토큰·계정 정보를 지우는데, 같은 코드를 S-002
+  (`AccountInfoViewModel`·`GlobalNicknameError.ACCOUNT_GONE`)는 **문구로 표시만** 한다(PR #263).
+  의도된 갈림이다 — 강제 로그아웃 발신 주체를 `TokenAuthenticator` 하나로 두려고 화면이 세션을
+  파괴하는 경로를 새로 열지 않았고, 죽은 세션은 다음 앱 진입의 부트스트랩이 걷어낸다. 대가는
+  **탈퇴된 계정으로 앱을 계속 쓰는 창**이다: 그 화면에서 나가도 로그인 상태가 유지되고, 이후 호출은
+  각자 실패하며, 사용자는 이유를 모른다.
+- **항목**: ① 화면이 세션 사망을 감지했을 때 무엇을 할지 — 아무것도 안 함(현재) / 강제 로그아웃
+  이벤트를 쏠 수 있는 단일 창구를 도메인에 둘지. ② 둘 이상의 화면이 같은 판단을 하게 되면 그 규칙을
+  어디에 둘지(지금은 부트스트랩 안의 `private` 판정이다).
+- **상태**: 미해결 (설계 시점에 알고 남긴 선택)
+- **해소 메모**: 정하면 [ADR-0021](../adr/0021-token-refresh-forced-logout.md) 세션 종료 경로와
+  [ADR-0022](../adr/0022-user-info-local-ssot.md) 세션 정리 절에 함께 반영한다. OQ-P-185(유실 창)와
+  같은 자리다.
+
 <!--
 항목 추가 형식:
 
@@ -1990,4 +2060,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 193 -->
+<!-- oq-next: 199 -->

@@ -28,7 +28,8 @@ class GetRecentCacheImagesUseCase @Inject constructor(
 
 - 생성자에 `@Inject`, 의존은 Repository 인터페이스.
 - 반응형 결과는 `Flow`로 반환(예: `Flow<List<String>>`).
-- 예: `GetRecentCacheImagesUseCase`, `SplashInitialUseCase`, `GetMyGroupsUseCase`(2026-08-15 결선 라운드에서 `CheckInviteCodeValidUseCase` 등 mock UseCase 3종은 삭제됐다).
+- 예: `GetRecentCacheImagesUseCase`, `GetMyAccountFlowUseCase`, `GetMyGroupsUseCase`(2026-08-15 결선 라운드에서 `CheckInviteCodeValidUseCase` 등 mock UseCase 3종은 삭제됐다. 2026-08-16 PR #263이 `delay(1000)` mock이던 `SplashInitialUseCase`도 지웠다 — 최소 노출 시간 요구가 없어 자리채움을 남길 이유가 없었고, 진입은 `BootstrapSessionUseCase`가 대신한다).
+- **`Flow`를 돌려주는 UseCase는 `Get…`이다**(`Observe…`가 아니다). 호출 자체는 구독하지 않고 `Flow`만 넘기며 구독 시점은 수집하는 쪽이 정하기 때문이다. 같은 대상에 일회성 갱신이 함께 있으면 이름으로 가른다 — `GetMyAccountFlowUseCase`(구독) vs `RefreshMyAccountUseCase`(1회 서버 갱신).
 
 UseCase는 `domain`에, Repository 인터페이스도 `domain`, 구현은 `data`([[data-layer]]).
 
