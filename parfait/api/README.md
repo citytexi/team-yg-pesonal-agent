@@ -26,14 +26,15 @@
 | [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | **결선됨**(애플 해당 없음, 나머지 4 전부 호출부 있음) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨(목록 1건 ⚠️불일치) |
-| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 조회 3 구현됨 · **신규 2 미구현**(회전 해당 없음) |
+| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 구현됨 |
 | [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨 |
 
-**총 28 엔드포인트 + 테스트 전용 1**(2026-08-16, 서버 `22717fe`). **Android 표면은 25/27로 공백 2다** —
+**총 28 엔드포인트 + 테스트 전용 1**(2026-08-16, 서버 `22717fe`). **Android 표면은 27/27, 공백 0이다** —
 분모에서 애플 로그인 1(`해당 없음`)을 뺀 값이 27이고, 테스트 전용 회전 1은 총계에서 이미 분리했다.
-공백 2는 2026-08-16 서버 delta가 들여온 **파르페 상세 조회·배경 변경**이다.
+서버 delta가 벌린 공백 2(파르페 상세 조회·배경 변경)를 **같은 날 PR #266이 닫았다**
+([spec](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md)).
 
 > **`구현됨`은 `:data`에 Service·DataSource 표면이 있고 계약과 일치한다는 뜻**이다(2026-08-06, PR #197
 > develop 머지).
@@ -83,6 +84,12 @@
 > 서버 절반(`background_type`·`background_value`에 쓰는 API 부재)이 닫혔다. 상세 조회는 응답이
 > `GetTodayParfaitResponse` **재사용**이라 앱 DTO·VO·매퍼가 이미 있고 Service·DataSource 함수만 붙이면
 > 된다 → [parfait.md](parfait.md).
+>
+> ✅ **2026-08-16 — 그 공백이 같은 날 닫혔다**(PR #266). 서버 delta와 앱 대응이 하루 안에 붙은 첫 사례라
+> **표면 왕복이 가장 짧게 끝났다**(직전 라운드는 서버 `36ecd1c` → PR #250까지 벌어져 있었다). 배경 변경은
+> 이 도메인 첫 쓰기 경로여서 **첫 요청 DTO**와 쓰기 전용 도메인 모델 `CanvasBackgroundEdit`이 함께 들어왔다 —
+> 이미지 배경이 **쓸 때 `imageId`·읽을 때 URL**이라 읽기 모델을 되돌려 보낼 수 없기 때문이다.
+> `android_status`는 `partial` 그대로다(**소비처가 여전히 0건**) → [parfait.md](parfait.md) Android 매핑.
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만
@@ -129,6 +136,11 @@ TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요�
 >
 > 📌 **2026-08-16 서버 delta로 다시 25/27이 됐다** — `parfait.http`에 상세 조회·배경 변경 요청이 없다.
 > **다섯 번째 왕복**이다.
+>
+> ⚠️ **이번엔 왕복이 반만 닫혔다(2026-08-16, PR #266)** — 같은 두 엔드포인트에 **`:data` 표면은 붙었는데
+> `http/`는 그대로 25/27이다. 앞선 네 번은 표면과 요청 모음이 한 라운드에서 함께 메워졌다** — 두 표면이
+> 갈린 첫 사례다. 배경 변경은 손으로 쏴 볼 값이 특히 많다(HEX 형식·조건부 필수·업로드 확인 상태)
+> → [open-questions](../synthesis/open-questions.md).
 >
 > ⚠️ **파괴적 요청이 두 파일의 마지막에 있다** — `users.http`의 탈퇴, `parfait-image.http`의 토핑 삭제.
 > 파일을 위에서부터 통째로 돌리면 계정·데이터가 지워진다(`http/README.md`가 이 경고를 담는다).

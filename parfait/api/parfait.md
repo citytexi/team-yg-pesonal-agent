@@ -5,7 +5,7 @@ server_module: http/parfait
 server_commit: 22717fe
 verified: 2026-08-16
 android_status: partial
-related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, c201-canvas-calendar
+related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, canvas]
 ---
@@ -29,8 +29,8 @@ tags: [api, parfait, server-contract, canvas]
 | GET | `/api/v1/groups/{groupId}/parfaits/year` | 필요 | path `groupId` Long | `ParfaitYearsResponse` | 구현됨 |
 | GET | `/api/v1/groups/{groupId}/parfaits/today` | 필요 | path `groupId` Long | `GetTodayParfaitResponse` | 구현됨 |
 | GET | `/api/v1/groups/{groupId}/parfaits` | 필요 | query `from`·`to`(선택) | `PastParfaitsResponse` | 구현됨 |
-| GET | `/api/v1/groups/{groupId}/parfaits/{parfaitId}` | 필요 | path `groupId`·`parfaitId` Long | `GetTodayParfaitResponse`(**재사용**) | 미구현 |
-| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/background` | 필요 | `ChangeParfaitBackgroundRequest` | `ChangeParfaitBackgroundResponse` | 미구현 |
+| GET | `/api/v1/groups/{groupId}/parfaits/{parfaitId}` | 필요 | path `groupId`·`parfaitId` Long | `GetTodayParfaitResponse`(**재사용**) | 구현됨 |
+| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/background` | 필요 | `ChangeParfaitBackgroundRequest` | `ChangeParfaitBackgroundResponse` | 구현됨 |
 | POST | `/api/v1/test/parfait-canvas/rotate` | **불필요(화이트리스트)** | 없음 | `RotateParfaitCanvasesResponse` | 해당 없음[^test] |
 
 [^test]: **테스트 전용 엔드포인트다.** 서버 컨트롤러(`ParfaitCanvasRotationTestController`)와
@@ -139,8 +139,8 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   ✅ **배경을 설정하는 API가 생겼다**(2026-08-16, PR #103) — 아래
   [PATCH .../background](#patch-apiv1groupsgroupidparfaitsparfaitidbackground). 이전 판본이 "쓰기 경로가
   서버 어디에도 없어 항상 `null`"이라고 적던 자리다. **C-301 배경 편집 화면**(develop, PR #231)이 고른
-  배경을 버리던 이유 중 서버 절반이 닫혔고, 남은 것은 앱 연동이다
-  → [open-questions](../synthesis/open-questions.md).
+  배경을 버리던 이유 중 서버 절반이 닫혔고, **앱 표면도 다음 날 붙었다**(PR #266) — 남은 것은
+  Repository·UseCase·화면이다 → [open-questions](../synthesis/open-questions.md).
 
   **`groupMembers`는 탈퇴하지 않은 멤버만**이다(`findAllByGroupIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc` —
   참여 순). ⚠️ **그런데 `placedBy` 조회에는 그 필터가 없다**(`findAllByIdIn`). 탈퇴한 멤버가 남긴 토핑은
@@ -359,10 +359,15 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
 
 ## Android 매핑
 
-**앱 표면은 조회 셋뿐이다**(2026-08-15, PR #250 develop 머지). 2026-08-16 서버 delta로 들어온
-**상세 조회·배경 변경 둘은 대응 심볼이 0건**이다(develop `2d0f6a5d` 기준 `ParfaitService`에
-`@GET .../year`·`.../today`·`.../parfaits` 세 함수뿐). 테스트 전용 회전은 대상이 아니다.
-**소비처(Repository·UseCase·화면)는 여전히 0건이다.**
+**앱 표면이 다섯 전부를 덮는다**(2026-08-16, PR #266 develop 머지). 서버 delta가 벌린 상세 조회·배경
+변경 둘이 **같은 날 표면을 얻어** 공백이 하루 만에 닫혔다 — 이 도메인은 테스트 전용 회전을 뺀 전량에
+Service·DataSource 함수가 있다. **소비처(Repository·UseCase·화면)는 여전히 0건이다.**
+
+⚠️ **배경 변경은 이 도메인 첫 쓰기 경로**이고, 그래서 **첫 요청 DTO**(`ChangeParfaitBackgroundRequest`)와
+**쓰기 전용 도메인 모델**(`CanvasBackgroundEdit`)이 함께 들어왔다. 읽기 모델 `CanvasBackground`를
+재사용하지 않은 이유는 계약이 비대칭이기 때문이다 — 이미지 배경은 **쓸 때 `imageId`, 읽을 때 URL**이라
+읽은 값을 그대로 되돌려 보낼 수 없다. 동시에 이 sealed가 **조건부 필수를 컴파일 시점으로 끌어올린다**
+(평면 DTO를 도메인에 노출하면 잘못된 조합을 400 `INVALID_BACKGROUND`로만 알게 된다).
 
 ⚠️ **표면을 건너뛴 소비자가 생겼다**(2026-08-16, PR #259) — C-201 캘린더의
 `GetParfaitHistoriesUseCase`·`GetParfaitYearsUseCase`가 KDoc으로 `GET .../parfaits?from=&to=`와
@@ -378,30 +383,44 @@ mock을 만든다**. 즉 이 도메인은 "표면은 있는데 소비처가 없�
 | GET `/api/v1/groups/{groupId}/parfaits/year` | `ParfaitService#getGroupsByGroupIdParfaitsYear` | `ParfaitRemoteDataSource#getYears` |
 | GET `.../parfaits/today` | `ParfaitService#getGroupsByGroupIdParfaitsToday` | `ParfaitRemoteDataSource#getTodayCanvas(groupId)` |
 | GET `.../parfaits` | `ParfaitService#getGroupsByGroupIdParfaits` | `ParfaitRemoteDataSource#getPastCanvases(groupId, from, to)` |
-| GET `.../parfaits/{parfaitId}` | — (미구현) | — (미구현) |
-| PATCH `.../parfaits/{parfaitId}/background` | — (미구현) | — (미구현) |
+| GET `.../parfaits/{parfaitId}` | `ParfaitService#getGroupsByGroupIdParfaitsByParfaitId` | `ParfaitRemoteDataSource#getCanvasDetail(groupId, parfaitId)` |
+| PATCH `.../parfaits/{parfaitId}/background` | `ParfaitService#patchGroupsByGroupIdParfaitsByParfaitIdBackground` | `ParfaitRemoteDataSource#changeCanvasBackground(groupId, parfaitId, background)` |
 | POST `/api/v1/test/parfait-canvas/rotate` | — (해당 없음) | — (해당 없음) |
 
-**신규 둘의 앱 쪽 비용은 비대칭이다.** 상세 조회는 응답이 `GetTodayParfaitResponse` 재사용이라
-**DTO·VO·매퍼가 이미 전부 있다** — Service 함수 한 줄과 DataSource 함수 하나면 끝난다. 반면 배경
-변경은 이 도메인의 **첫 요청 DTO**이고(지금까지 전부 GET) 응답도 새 타입이라 요청/응답 DTO가 함께
-필요하다. 도메인 쪽 `CanvasBackground`는 이미 있으니 그것을 요청으로 되돌리는 매핑이 새로 생긴다.
+**신규 둘의 앱 쪽 비용은 비대칭이었다.** 상세 조회는 응답이 `GetTodayParfaitResponse` 재사용이라
+DTO·VO·매퍼를 그대로 썼다 — Service 함수 하나와 DataSource 함수 하나로 끝났다. 배경 변경은 요청·응답
+DTO가 함께 새로 생겼다. **DI 등록 줄은 한 줄도 늘지 않았다**(Service·DataSource가 이미 바인딩돼 있고
+함수만 늘었다 — PR #250에 이어 두 번째).
 
-- **응답 DTO**(현재 표면 셋 기준): `ParfaitYearsResponse`(`years: List<Int>`) · `GetTodayParfaitResponse`(중첩
+- **응답 DTO**: `ParfaitYearsResponse`(`years: List<Int>`) · `GetTodayParfaitResponse`(중첩
   `GroupMemberResponse`·`BackgroundResponse`·`TodayParfaitImageResponse`·`PlacedByResponse`) ·
-  `PastParfaitsResponse`(중첩 `PastParfaitResponse`) — 전부
-  `data/service/model/response/parfait/`. 요청 DTO는 없다(전부 GET).
+  `PastParfaitsResponse`(중첩 `PastParfaitResponse`) · `ChangeParfaitBackgroundResponse`(중첩
+  `BackgroundResponse`를 **조회 응답 파일의 것 그대로 재사용** — 서버도 같은 클래스를 쓴다) — 전부
+  `data/service/model/response/parfait/`.
+- **요청 DTO**: `ChangeParfaitBackgroundRequest`(`data/service/model/request/parfait/`) — **이 도메인 첫
+  요청 DTO**다(그전엔 전부 GET). 서버의 거울이라 `type`·`value`·`imageId` 평면·널 허용 그대로 두고,
+  잘못된 조합을 막는 일은 domain `CanvasBackgroundEdit`가 한다(DTO에 sealed를 넣지 않는 규약).
   ⚠️ **중첩 응답은 상위 응답 파일 안에 함께 둔다** — `:data`의 "선언당 파일 하나" 규약의 명시적 예외이고
   근거는 "서버가 한 파일에 담은 것을 앱도 한 파일에 담아야 계약 문서와 눈으로 대조된다"이다
   ([data-layer](../architecture/data-layer.md)). `PlacedByResponse`라는 이름이
   `response/parfait`·`response/parfaitimage` **두 패키지에 각각 존재**하는 것도 같은 이유다(서버가 그렇다).
-- **domain VO**: `domain/model/canvas/`에 여섯(`TodayCanvasVO`·`PastCanvasVO`·`CanvasStatus`·
-  `CanvasBackground`·`CanvasMemberVO`·`CanvasToppingVO`). 이름은 제품 언어라 서버 `parfait`가 `Canvas`,
-  응답 필드 `imageCount`가 `toppingCount`다 — 다만 **id 타입은 서버 언어 유지**(`ParfaitId`).
-  연도 조회만 VO가 없다(응답이 `years` 한 필드라 `transform = { it.years }`).
+- **domain VO**: `domain/model/canvas/`에 일곱(`CanvasVO`·`PastCanvasVO`·`CanvasStatus`·
+  `CanvasBackground`·`CanvasBackgroundEdit`·`CanvasMemberVO`·`CanvasToppingVO`). 이름은 제품 언어라 서버
+  `parfait`가 `Canvas`, 응답 필드 `imageCount`가 `toppingCount`다 — 다만 **id 타입은 서버 언어 유지**
+  (`ParfaitId`). 연도 조회만 VO가 없다(응답이 `years` 한 필드라 `transform = { it.years }`).
+  ⚠️ **`TodayCanvasVO`는 `CanvasVO`로 개명됐다**(2026-08-16, PR #266) — 상세 조회가 같은 응답 클래스를
+  쓰면서 한 타입이 오늘과 특정 날짜 양쪽을 담게 됐기 때문이다. 그 대가로 **"이 조회가 캔버스 행을
+  만든다"는 경고의 소유가 타입에서 함수로 옮겨졌다** — 오늘 조회만 만들고 상세 조회는 만들지 않으므로
+  VO KDoc이 그 성질을 대표할 수 없다 → [open-questions](../synthesis/open-questions.md).
 - **Mapper**: `source/parfait/mapper/VOMapper.kt`(이 도메인 첫 매퍼 — 연도 조회뿐이던 시절엔 없었다).
   계약의 "널이 세 가지를 뜻한다"를 여기서 가른다 — `images` `null`은 **빈 목록으로 접고**,
   `background`(미설정)·`lastClosedDate`(마감 이력 없음)의 `null`은 **그대로 둔다**.
+  요청 방향 변환(`CanvasBackgroundEdit.toRequest()`)도 같은 파일에 있다 — **조건부 필수를 여기서 편다**
+  (색이면 `value`만, 이미지면 `imageId`만 채워 서버가 값을 버릴 경로를 만들지 않는다).
+- **배경 변경 반환은 `CanvasBackground?`다.** 응답 `background`는 비널인데 널 허용으로 받는 이유는
+  **미지 `type`을 `null`로 접는 규칙을 조회와 통일**했기 때문이다(뜻은 "저장은 됐는데 그릴 수 없다").
+  echo를 버리지 않는 이유는 **이미지 배경일 때 앱이 URL을 모르기 때문**이다 — 요청은 id로 보내고 응답에
+  저장된 URL이 실려 오며, 그 값이 화면이 그릴 값이다.
 - **미지 값 폴백 두 갈래**: `status`가 모르는 값이면 `CanvasStatus.UNKNOWN`(값 자체가 상태라 버릴 수 없다),
   `background.type`이 모르는 값이면 **`null`로 접는다**(미지와 미설정은 화면 처리가 같다).
   토핑 테두리도 `SOLID`인데 색·두께가 비면 `ToppingBorder.None`으로 떨어뜨린다 — 서버가 저장 시점에
@@ -409,7 +428,10 @@ mock을 만든다**. 즉 이 도메인은 "표면은 있는데 소비처가 없�
 - **범위 파라미터는 `null` 그대로 보낸다** — `from`·`to`가 `null`이면 Retrofit이 쿼리를 URL에서 빼므로
   서버 기본값(오늘 − 30일 ~ 오늘)이 산다. 문자열 변환(`LocalDate.toString()`)은 DataSource가 한다.
 
-설계 근거는 [specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md).
+설계 근거는 [specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)와
+신규 둘의 사후 스펙 [specs/archive/2026-08-16-canvas-detail-background-api-service-layer](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md).
+DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조건부 필수 두 갈래를 `coVerify` 인자 비교로**
+잠근다(매퍼 단독 테스트를 만들지 않는 규약 그대로).
 
 **`today` 조회가 C-001 캔버스 결선의 선행이다.** "배치 목록 조회 API가 없어 캔버스를 다시 그릴 수 없다"던
 자리가 이 엔드포인트로 닫혔고([parfait-image.md](parfait-image.md) 참고) 이제 **앱 표면까지 있다** —

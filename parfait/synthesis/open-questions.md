@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-16
-related_spec: c201-canvas-calendar, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
+related_spec: canvas-detail-background-api-service-layer, c201-canvas-calendar, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
@@ -784,6 +784,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ✅ **auth 도메인이 닫혔다(2026-08-15, PR #260)** — `reissue`(`TokenAuthenticator`)·`logout`
   > (`AuthRepository.logout` → `LogoutUseCase` → S-001)이 소비처를 얻어 애플을 뺀 4 엔드포인트 전부가
   > 호출부를 가진다. `api/auth.md`가 `android_status: done`이 된 두 번째 도메인이다.
+  > 📌 **표면이 25에서 27로 늘었고 그 둘도 소비처 0이다(2026-08-16, PR #266)** — 캔버스 상세 조회·배경
+  > 변경이 Service·DataSource·domain 모델까지 들어왔다. ③("표면이 노는 기간")의 대상이 다시 넓어졌고,
+  > 이번 둘 중 **배경 변경은 소비처가 이미 화면으로 존재한다**는 점이 앞선 공백들과 다르다 — C-301
+  > 배경 편집은 develop에 있으면서 고른 값을 버리고 있다(OQ-P-173). 즉 "표면이 노는" 것이 아니라
+  > **화면과 표면이 서로를 모르는** 상태다.
   > ⚠️ **parfait 도메인에는 표면을 우회하는 소비자가 생겼다(2026-08-16, PR #259)** — C-201 캘린더의
   > UseCase 둘이 조회 두 엔드포인트를 KDoc으로 가리키면서 remote DataSource를 안 쓰고 mock을 만든다.
   > ③("표면이 노는 기간")의 성격이 바뀐 셈이다 — 이제는 **놀고 있는 표면 위에 mock 소비자가 얹힌**
@@ -807,7 +812,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **여덟 번째 하위 패키지(2026-08-15, PR #250)** — `canvas/`가 여섯 선언(`TodayCanvasVO`·`PastCanvasVO`·
   > `CanvasStatus`·`CanvasBackground`·`CanvasMemberVO`·`CanvasToppingVO`)과 함께 들어왔고 루트 평면 8선언은
   > 이번에도 그대로다. **신규분만 계속 나뉜다는 ②의 패턴이 네 라운드째 반복됐다** — 규약 없이 관행만 굳는
-  > 상태다.
+  > 상태다. (2026-08-16 PR #266이 `TodayCanvasVO`를 **`CanvasVO`로 개명**하고 쓰기 전용
+  > `CanvasBackgroundEdit`를 더해 **일곱 선언**이 됐다 — 하위 패키지 개수는 그대로다.)
   > 📌 **혼재가 더 깊어졌다(2026-08-12, PR #230)** — 하위 패키지가 `image/`·`member/`·`topping/` 셋 늘어 **넷에서 일곱**이 됐고, 루트 평면 8선언은 하나도 안 옮겨졌다. `GalleryImageGroup`(루트, 기기 갤러리)과 `image/`(서버 업로드)가 이제 나란히 있어 `KakaoLoginResult`/`KakaoLoginVO` 사례가 하나 더 늘었다 — 이름이 닮았는데 위치가 다르고, **가리키는 대상도 다르다**([2026-08-10] `image` 이름 선점 항목과 같은 뿌리). 규약 없이 라운드가 반복되면 신규분만 계속 나뉜다.
 - **해소 메모**: 결정 후 [data-layer](../architecture/data-layer.md) "레이어 배치"의 `domain/model/` 서술과 [data-api-service-layer 스펙](../specs/archive/2026-08-03-data-api-service-layer.md) "As-built 이탈" 6번을 정리한다.
 
@@ -935,7 +941,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-108
 - **출처**: 서버 delta `5bb2a3a`로 엔드포인트가 16개가 됐는데 TJYG-Android 루트 `http/`에는 `images.http`가 없었다(당시 `auth`·`policy`·`parfait-group`·`parfait`·`health` 5개 파일 = 14 엔드포인트). PR #197 시점의 "전량 커버"가 깨졌다. 이는 [2026-08-04] `http/`↔`api/` 이중 관리 항목이 예고한 갈라짐이 **처음 실제로 발생한 사례**다.
 - **항목**: [2026-08-04] 항목의 선택지 ①(스킬이 `http/`도 갱신)·②(`http/`를 실행 방법으로만 축소) 중 무엇을 고를지. 갱신 경로가 둘이라는 구조 자체는 그대로다.
-- **상태**: 미해결 (**2026-08-16 서버 delta로 다시 25/27** — 다섯 번째 왕복, 구조 결정은 그대로)
+- **상태**: 미해결 (**2026-08-16 서버 delta로 다시 25/27** — 다섯 번째 왕복, 구조 결정은 그대로.
+  이번엔 `:data` 표면만 닫히고 `http/`는 안 닫혀 **두 표면이 처음으로 갈렸다**)
+  > ⚠️ **왕복이 반만 닫혔다(2026-08-16, PR #266)** — 같은 두 엔드포인트에 Service·DataSource가 붙었는데
+  > `http/parfait.http`는 그대로다. **앞선 네 번은 표면과 요청 모음이 한 라운드에서 함께 메워졌다** —
+  > "손으로 메운다"가 유지되던 근거(같은 사람이 같은 라운드에 둘 다 만진다)가 이번에 깨졌다.
+  > 요청 모음이 코드 표면보다 뒤처지는 형태는 [2026-08-04] "갱신 경로가 둘" 항목이 예고한 그대로다.
   > 📌 **재발(2026-08-16, 서버 `22717fe`)** — `parfait.http`에 **상세 조회·배경 변경** 두 요청이 없다.
   > 배경 변경은 특히 손으로 쏴 볼 값이 많다(HEX 형식·조건부 필수·업로드 확인 상태) — 요청 모음이
   > 없으면 계약을 확인할 수단이 스웨거뿐이다.
@@ -1599,7 +1610,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-173
 - **출처**: `feature/groups/canvas/impl` `CanvasBGEditViewModel#handleOnClickConfirm`·`CanvasBGEditRoute`(PR #231) — 확인이 `YGCanvasBackground`(`Image`/`Solid`)를 만들어 `ConfirmBackground` 이펙트에 싣지만 Route가 그 값을 쓰지 않고 `// TODO: 선택한 배경을 서버에 업로드/저장하는 연동 필요` 주석과 함께 `onBack()`만 한다. C-001은 `YGCanvas`에 `background`를 넘기지 않아 기본값 `Solid(Gray100)` 그대로다. 브랜치 안에 "이미지 선택 완료 후 메인 캔버스에 반영" 커밋이 있었다가 되돌려졌다(커밋 `10e70809`). 저장 경로가 없으니 재진입하면 기본값부터 다시 고른다.
 - **항목**: ① 배경을 어디에 저장할지 — 서버 캔버스 계약에 배경 필드가 있는지부터 확인해야 한다([api/parfait-group.md](../api/parfait-group.md)·[api/README.md](../api/README.md)에 캔버스 조회 계약 자체가 아직 공백). ② 서버 전까지 C-001로 값을 되돌릴지(`ResultEventBus` 왕복 vs 공유 상태), ③ 되돌린 배경을 C-001이 `YGCanvas.background`로 그릴지.
-- **상태**: 미해결 (화면이 왕복만 하고 결과를 버린다 — **①의 서버 쪽 막힘은 2026-08-16에 풀렸다**)
+- **상태**: 미해결 (화면이 왕복만 하고 결과를 버린다 — **①은 서버·앱 표면까지 열렸고 결선만 남았다**)
+  > ✅ **앱 표면도 붙었다(2026-08-16, PR #266)** — `ParfaitRemoteDataSource.changeCanvasBackground(groupId,
+  > parfaitId, background)`와 쓰기 전용 `CanvasBackgroundEdit`(`Color(hex)`/`Image(imageId)`)이 develop에
+  > 있다([spec](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md)). ①의 남은 내용은
+  > **Repository·UseCase·화면 결선**뿐이고, ②(임시로 C-001에 되돌리기)는 이제 만들 이유가 사라졌다 —
+  > 정식 경로가 서버·앱 양쪽에 있다. 결선에서 함께 정해야 할 것은 **화면이 어느 배경 표현을 들지**
+  > (OQ-P-194)와 **저장 성공인데 그릴 수 없는 응답을 어떻게 다룰지**(OQ-P-193)다.
+  > ⚠️ 표면이 붙은 지금도 **C-301은 여전히 고른 값을 버린다** — 화면과 표면이 서로를 모르는 상태다.
   > ✅ **전제 반전(2026-08-16, 서버 `22717fe`)** — **배경 저장 API가 생겼다**:
   > `PATCH /api/v1/groups/{groupId}/parfaits/{parfaitId}/background`(PR #103, `type` = `COLOR`(HEX) 또는
   > `IMAGE`(업로드 확인 완료 `imageId`)). 아래 2026-08-15 메모의 "쓰는 API가 서버 어디에도 없다"는
@@ -1697,6 +1715,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ③ 배경의 미지 type과 미설정을 화면이 구분해야 할 일이 생기는지 — 지금 결론("화면 처리가 같다")은
   배경 편집(C-301)이 결선되기 전의 판단이다.
 - **상태**: 미해결 (소비처 0건이라 현재 영향 없음 — C-001 결선 라운드에서 판정)
+  > 📌 **③의 걱정 한 갈래는 구조로 닫혔고 다른 갈래가 늘었다(2026-08-16, PR #266)** — 앱이 배경을
+  > 되돌려 보낼 때 **읽기 모델을 재사용하지 않는다**(쓰기 전용 `CanvasBackgroundEdit`). 그래서 "미지
+  > type을 `null`로 접었다가 다음 저장 요청에서 조용히 사라진다"는 경로는 생기지 않는다. 대신
+  > **배경 변경 응답에도 같은 폴백이 걸렸다** — 저장은 성공인데 결과가 `null`이면 그릴 값이 없다
+  > (OQ-P-193). 폴백 자리가 셋에서 **넷**이 된 셈이고 ①(로그를 남길지)의 대상도 그만큼 늘었다.
   > 📌 **③의 전제가 바뀌었다(2026-08-16)** — 배경 쓰기 API가 생겨(OQ-P-173) 배경 편집 결선이 실제
   > 일정에 들어왔다. "미지 type과 미설정을 화면이 구분할 일이 없다"는 판단은 **읽기 전용이던 시절의
   > 것**이고, 이제 앱이 배경을 **되돌려 보내는** 경로가 생긴다 — 미지 type을 `null`로 접으면 다음 저장
@@ -1845,6 +1868,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   사후 수정 가능하다) — 서버팀 확인 대상이다. ② 의도가 아니라면 서버가 막을지, 앱이 C-301 진입을
   막을지. ③ 막는다면 어느 코드로 낼지(`PARFAIT_ALREADY_CLOSED`가 이미 있다).
 - **상태**: 미해결 (서버 소관 — 앱 소비처가 아직 0건이라 체감 사고는 없다)
+  > 📌 **앱 표면이 붙으면서 "화면 책임"이 문서에서 코드 주석으로 내려왔다(2026-08-16, PR #266)** —
+  > `ParfaitService`·`ParfaitRemoteDataSource`의 함수 KDoc이 "마감 캔버스도 바뀐다 · 막는 것은 화면
+  > 책임"을 ⚠️로 달았다. **가드 코드는 없다** — 표면 라운드가 의도적으로 범위 밖에 뒀다
+  > ([spec](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md) 결정 ⑤). 즉 ②가
+  > 앱으로 정해지면 **C-301 진입 조건이 그 유일한 방어**가 되고, 지금은 경고만 있고 아무도 안 막는다.
 - **해소 메모**: ②가 앱 쪽으로 정해지면 [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md)에
   진입 조건으로 적는다. OQ-P-173과 같은 라운드에서 본다.
 
@@ -1861,6 +1889,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   교체 시점 감소 지점이 지금 없다. ② 아니라면 배경 이미지를 별도 수명 규칙으로 둘지. ③ 앱이 배경과
   토핑에 같은 이미지를 쓰지 못하게 막을지(현재 계약상 막을 근거가 없다).
 - **상태**: 미해결 (서버 소관 — 실사용 0건이라 아직 드러나지 않았다)
+  > 📌 **앱 표면에는 경고만 실렸다(2026-08-16, PR #266)** — DataSource·Service KDoc이 참조 카운트 함정을
+  > ⚠️로 옮겨 적었다. ③(앱이 같은 이미지를 배경·토핑에 쓰지 못하게 막을지)은 그대로 열려 있고,
+  > 배경 이미지 업로드 경로가 결선되면(C-301) 그때 처음 실제 사례가 생긴다.
 - **해소 메모**: 정해지면 [api/image.md](../api/image.md)·[api/parfait.md](../api/parfait.md)의
   수명 서술을 함께 맞춘다.
 
@@ -1878,9 +1909,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   가는 것으로 충분한지. ② 앱 요청 모델을 sealed로 만들어 조건부 필수를 타입으로 세울지, 서버 형태
   그대로 널 허용 세 필드로 둘지([data-layer](../architecture/data-layer.md)의 "서버 형태를 따른다"와
   충돌한다).
-- **상태**: 미해결 (앱 연동 전이라 결정 여지가 남아 있다)
-- **해소 메모**: ②는 이 도메인의 **첫 요청 DTO**를 만드는 라운드에서 정해진다 — 정하면
-  [data-layer](../architecture/data-layer.md) "요청 매핑" 절에 적는다.
+- **상태**: **부분 해소** (2026-08-16, PR #266 — **② 결정됨**, ①은 서버 소관으로 잔존)
+  > ✅ **②는 sealed로 갔다** — wire DTO(`ChangeParfaitBackgroundRequest`)는 서버 형태 그대로 평면·널 허용을
+  > 유지하고, `:domain`의 쓰기 전용 sealed `CanvasBackgroundEdit`(`Color(hex)`/`Image(imageId)`)이 조건부
+  > 필수를 **컴파일에서** 막는다. 펴는 일은 매퍼(`toRequest()`)가 한다. "서버 형태를 따른다"와 충돌하지
+  > 않는 이유는 그 규약이 **DTO에 대한 것**이고 domain은 좁게 잡는다는 규약이 이미 짝으로 있기 때문이다
+  > (선례 `ToppingTransform.toPlaceRequest`·`ToppingBorder.toUpdateBorderRequest`) →
+  > [data-layer](../architecture/data-layer.md) "요청 방향 변환"·[api/conventions.md](../api/conventions.md).
+  > ①(응답에 `imageId`를 실을지)은 서버 변경이라 그대로 열려 있다. 다만 앱이 **읽기 모델을 되돌려 보내지
+  > 않는 구조**가 돼서, 편집 세션 안에서 방금 고른 `imageId`를 들고 가면 왕복은 성립한다 — 다시 켰을 때
+  > "지금 배경이 어느 이미지인지"를 되짚는 문제만 남는다.
+- **해소 메모**: ②는 이 도메인의 **첫 요청 DTO** 라운드에서 위와 같이 정해졌다
+  ([spec](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md) 결정 ①②).
+  ①이 정해지면 [api/parfait.md](../api/parfait.md) 응답 필드 표를 함께 고친다.
 
 ### [2026-08-16] 파르페 상세 조회가 상태를 거르지 않아 오늘 캔버스를 얻는 경로가 둘이 됐다
 
@@ -1895,9 +1936,49 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ② 캘린더에서 "오늘"을 고른 경우를 상세로 보낼지 `today`로 보낼지 — 같은 화면이 두 경로를 타면
   부작용 유무가 사용자 조작에 따라 갈린다.
 - **상태**: 미해결 (앱 소비처 0건 — C-001·C-201 결선 라운드에서 판정)
+  > 📌 **두 경로 다 앱 표면을 얻었고, 그 과정에서 경고의 소유가 옮겨졌다(2026-08-16, PR #266)** —
+  > 상세 조회 응답이 오늘 조회와 같은 클래스라 **`TodayCanvasVO`가 `CanvasVO`로 개명**됐다(한 타입이
+  > 두 경로를 담는다). 그 결과 "이 값을 얻는 조회는 서버에 캔버스 행을 만든다"는 경고가 **타입 KDoc에서
+  > 함수 KDoc으로** 내려갔다 — 오늘 조회만 만들고 상세는 안 만들기 때문이다. **호출부는 반환 타입만
+  > 봐서는 부작용 유무를 알 수 없다**는 뜻이라, ①②의 선택이 코드에 남을 자리가 함수 이름뿐이다.
 - **해소 메모**: OQ-P-160(부작용 있는 GET)과 한 결정이다. 정해지면
   [c001 스펙](../specs/archive/2026-08-12-c001-canvas-main.md)·[c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md)에
   조회 경로를 명시한다.
+
+### [2026-08-16] 배경 변경 성공이 `null`로 접힐 수 있다 — "저장됐는데 그릴 수 없다"가 성공과 구분되지 않는다
+
+- **ID**: OQ-P-193
+- **출처**: `data/source/parfait/remote/ParfaitRemoteDataSource#changeCanvasBackground`가
+  `Result<CanvasBackground?>`를 반환한다(PR #266) — 서버 응답의 `background`는 비널인데, 매퍼
+  (`ChangeParfaitBackgroundResponse.toCanvasBackground()`)가 **미지 `type`을 `null`로 접는 조회 규칙을
+  그대로 재사용**하기 때문이다. 그래서 호출부가 받는 성공값 `null`의 뜻은 "미설정"이 아니라
+  **"저장은 됐는데 앱이 그릴 수 없다"**이다. 조회 쪽 `null`(미설정)과 **같은 값이 다른 뜻**을 갖는다.
+- **항목**: ① 화면이 이 경우를 실패처럼 다뤄야 하는지(저장은 성공했으므로 되돌리면 안 되고, 그렇다고
+  그릴 값도 없다). ② 아니면 반환을 비널로 두고 미지 type을 실패(`ApiException`)로 올릴지 —
+  조회와 규칙이 갈리지만 뜻은 정확해진다. ③ 폴백 발동을 로그로 남길지(OQ-P-181 ①과 같은 결정).
+- **상태**: 미해결 (소비처 0건 — 배경 편집 결선 라운드에서 판정)
+- **해소 메모**: 정해지면 [api/parfait.md](../api/parfait.md) Android 매핑의 반환 타입 설명과
+  [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md)에 함께 적는다.
+  OQ-P-173(배경 연동)·OQ-P-181(폴백 관측)과 한 라운드에서 본다.
+
+### [2026-08-16] 배경 표현이 셋으로 갈렸다 — 읽기 VO·쓰기 VO·화면 타입 사이 변환 주체가 없다
+
+- **ID**: OQ-P-194
+- **출처**: 배경을 가리키는 타입이 develop에 셋이다 — `domain/model/canvas/CanvasBackground`(읽기,
+  `Color(value)`/`Image(url)`) · `CanvasBackgroundEdit`(쓰기, `Color(hex)`/`Image(imageId)`, PR #266 신설) ·
+  `feature/groups/canvas/impl`의 화면 타입 `YGCanvasBackground`(C-301 이펙트가 싣는 값, PR #231).
+  **읽기/쓰기가 갈린 것은 서버 계약이 비대칭이라 근거가 분명하다**(쓸 때 `imageId`, 읽을 때 URL).
+  문제는 셋 사이를 잇는 코드가 아직 하나도 없다는 것이다 — C-301이 고른 값은 화면 타입에 머물고,
+  그 값에서 `CanvasBackgroundEdit`를 만들려면 이미지 배경의 경우 **업로드·확인을 거쳐 `imageId`를
+  얻는 단계**가 먼저 필요한데 그 경로도 아직 없다([api/image.md](../api/image.md) 2단계 업로드).
+- **항목**: ① 화면 타입을 없애고 도메인 타입을 화면까지 쓸지, 아니면 매핑 계층을 둘지
+  (C-301 State가 Compose `Color`를 들고 있는 것과 같은 쟁점이다 — OQ-P-176). ② 이미지 배경 저장이
+  "갤러리·카메라 선택 → 업로드 → confirm → `changeCanvasBackground`" 네 단계인데 그 조율을 UseCase가
+  할지 화면이 할지. ③ 저장 후 C-001이 그릴 값을 응답 echo에서 받을지 재조회할지.
+- **상태**: 미해결 (표면만 있고 잇는 코드가 0건)
+- **해소 메모**: 배경 편집 결선 라운드에서 ①②③이 한 번에 정해진다 — 정하면
+  [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md)·[state-management](../architecture/state-management.md)에
+  반영한다. OQ-P-173·OQ-P-193과 같은 자리다.
 
 <!--
 항목 추가 형식:
