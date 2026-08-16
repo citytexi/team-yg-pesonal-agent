@@ -4,9 +4,9 @@ title: 상태 관리 (MVI) · 데이터 흐름
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-14
-related_spec:
-related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020
+verified: 2026-08-16
+related_spec: c201-canvas-calendar, session-token-refresh-infra
+related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021
 related_architecture: data-layer, navigation-flow
 related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel
 tags: [architecture, parfait]
@@ -28,10 +28,14 @@ tags: [architecture, parfait]
        └─ 1회성 효과  → SharedFlow<E> → Screen에서 소비(내비게이션 등)
 ```
 
-> **2026-08-14 갱신** — `BaseViewModel`이 확장됐다([ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md),
-> 브랜치 `feature/mvi-error-infra-a002-login`, develop 미머지). 이펙트 전달이 `Channel` 기반으로
-> 바뀌고 `launch(key, onError, block)`가 생겼다. **3분할 계약은 그대로다** — 설계 도중 4번째
+> **2026-08-15 갱신** — `BaseViewModel`이 확장됐다([ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md),
+> **PR #241로 develop 머지 완료**). 이펙트 전달이 `Channel` 기반으로 바뀌고
+> `launch(key, onError, block)`가 생겼다. **3분할 계약은 그대로다** — 설계 도중 4번째
 > 스트림(`error`)이 생겼다가 철회됐다.
+>
+> **화면 밖 이벤트는 이 계약 밖이다**(2026-08-15, PR #260) — 강제 로그아웃은 ViewModel이 아니라
+> `:data`의 `SessionEventBus`가 발행하고 앱 루트가 수집한다. 채널 선택 근거(`Channel` + 단일 소비자)는
+> 같지만 소유자가 화면이 아니라 세션이다 → [navigation-flow](navigation-flow.md) "세션 종료 이동".
 
 ## 3분할 계약 (`MviContract`)
 - **UiState** — 불변. 화면이 그리는 전부. `StateFlow<S>`로 노출.
@@ -81,6 +85,13 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
 - **표시 문자열·리소스 ID를 State에 담지 않는다.** State는 도메인 의미를 들고, 표시 변환은 화면이 렌더 시점에 한다. 유효성 결과가 대표 사례다 — `NameValidResult.Error?`를 담고 화면이 `core:ui`의 `toStringResource(fieldType)` 확장으로 문자열을 얻는다([ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md), 원안 수렴 — #223 develop 머지 2026-08-13). ViewModel이 `@StringRes Int`를 산출해 담던 과도기 형태는 같은 매핑을 feature마다 복제해 폐기됐다.
 - **도메인 VO 보유는 허용**하되 강제는 아니다. S-101(`GroupSettingUiState`, #223 develop 머지)이 `GroupName`·`GroupNickname`·`InviteCode`를 State에 들인 첫 사례다. 단 **편집 중 입력값처럼 유효성이 보장되지 않는 값은 원시 타입으로 둔다** — VO로 감싸면 "타입은 맞는데 유효하지 않다"는 모순이 생긴다.
 - 표시 규칙에 따른 분기(문구 선택·상태 enum 산출)는 화면의 private 헬퍼가 갖는다. State가 계산 프로퍼티로 들 이유가 없다.
+  - ⚠️ **이탈 사례(2026-08-16, PR #259)** — C-201 캘린더의 `CanvasImageAddUiState.selectableMonths`가
+    State 안 계산 프로퍼티다. 화면만 쓰는 값이 아니라 ViewModel의 연도 이동 계산도 읽어서 화면 헬퍼로
+    내리면 로직이 갈린다 → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) ·
+    [open-questions](../synthesis/open-questions.md) [2026-08-16].
+- **요청 중 플래그는 `finally`로 내린다** — S-001 로그아웃(`isLoggingOut`, PR #260)이 `launch(key)` 중복
+  가드 위에 State 플래그를 한 겹 더 두는 사례다. `launch(key)`는 두 번째 탭을 삼킬 뿐 버튼이 눌리는
+  것처럼 보이므로 비활성은 State로 드러낸다(아래 "안티패턴" 1번의 반대 사례).
 - ⚠️ **UI 타입 보유 사례(2026-08-15, PR #231)** — C-301 배경 편집의 `CanvasBGEditUiState`가 Compose
   `Color`를, `CanvasBGEditEffect.ConfirmBackground`가 디자인시스템 타입 `YGCanvasBackground`를 든다.
   선택 팔레트(`CanvasBackgroundPaletteColors`)도 ViewModel 파일의 public 상수다. 위 "표시 문자열을

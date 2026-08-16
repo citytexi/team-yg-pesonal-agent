@@ -4,9 +4,9 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-15
-related_spec: c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020
+verified: 2026-08-16
+related_spec: c201-canvas-calendar, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021
 related_architecture: design-system, data-layer, navigation-flow, module-structure
 related_code:
 tags: [meta, parfait]
@@ -377,8 +377,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-045
 - **출처**: `component/ygcanvas/YGCanvas.kt#YGCanvas`(PR #185 develop 머지) — ① Dim은 소비 전용 `pointerInput`으로 아래 레이어 터치를 막지만 **탭했을 때의 동작이 없다**(`onDimClick` 미노출). `Expanded`·`Calendar`를 Dim 탭으로 닫을지가 규정되지 않았고 Figma도 다루지 않는다. 부작용으로 드래그도 막히는데 스크림으로선 의도된 동작이다. ② `calendarContent` 슬롯을 채울 컴포넌트가 없어 `Status=Calendar`를 실물로 대조하지 못했다 — 패널·`List-Date`·`Chip-Indicator`는 C-201 라운드 몫이다. 같은 이유로 `YGCanvasBackground.Image` 화면의 실제 렌더도 여전히 미검증이다(막고 있던 Coil 네트워크 페처 부재는 #186로 해소).
 - **항목**: ① Dim 탭 닫기를 컴포넌트 API로 열지(=`onDimClick`) 화면이 바깥에서 처리할지, ② 캘린더 패널이 붙은 뒤 `Status=Calendar`·`Image` 배경을 재대조할지.
-- **상태**: **부분 해소** (① 해소 — 2026-08-11 PR #199, ② 잔존)
-- **해소 메모**: **①**: 컴포넌트 API를 여는 쪽으로 결론났다 — `YGCanvas(onDimClick: () -> Unit = {})` 신설, 구현이 소비 전용 `pointerInput`에서 `clickable(interactionSource = null, indication = null)`로 바뀌어 터치 소비는 유지된다. C-001이 이걸로 확장 메뉴를 닫는다. **②**: `calendarContent`는 여전히 미충전이고(C-001이 `isCalendarVisible`를 안 켠다) `YGCanvasBackground.Image`도 미검증이다 — C-001이 배경 기본값 `Solid(Gray100)`으로만 그린다. C-201 캘린더 라운드에서 슬롯을 채우며 확정하고 [캔버스 컴포넌트 스펙](../specs/archive/2026-07-31-designsystem-canvas-components.md)의 "주의 / 열린 질문"을 정리한다.
+- **상태**: **부분 해소** (① 해소 — 2026-08-11 PR #199 / ② **캘린더 슬롯은 2026-08-16 PR #259로 충전**, `YGCanvasBackground.Image` 렌더 미검증만 잔존)
+- **해소 메모**: **①**: 컴포넌트 API를 여는 쪽으로 결론났다 — `YGCanvas(onDimClick: () -> Unit = {})` 신설, 구현이 소비 전용 `pointerInput`에서 `clickable(interactionSource = null, indication = null)`로 바뀌어 터치 소비는 유지된다. C-001이 이걸로 확장 메뉴를 닫는다. **②**: **C-201 캘린더 라운드(2026-08-16, PR #259)가 슬롯을 채웠다** — C-001이 `isCalendarVisible`을 켜고 화면 로컬 `CustomCalendar`를 넣으면서 `Status=Calendar` 조합이 실물로 그려지고, Dim이 메뉴와 캘린더 양쪽의 스크림을 겸한다(`onDimClick`이 둘 다 닫는다). 이로써 `YGCanvas`의 직교 플래그 넷이 전부 실사용된다 → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md). **남은 것은 `YGCanvasBackground.Image` 렌더 미검증뿐**이다 — C-001이 여전히 배경 기본값 `Solid(Gray100)`으로만 그린다. [캔버스 컴포넌트 스펙](../specs/archive/2026-07-31-designsystem-canvas-components.md)의 "주의 / 열린 질문"은 그 한 줄만 남기고 정리한다.
 
 ### [2026-08-01] G-001 목록 화면이 화면 컨테이너 규약을 벗어남
 - **ID**: OQ-P-046
@@ -587,7 +587,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-073
 - **출처**: `NetworkModule.provideOkHttpClient`의 `HttpLoggingInterceptor`가 `redactHeader("Authorization")`로 헤더는 가렸으나 `Level.BODY`는 유지했다. `/api/v1/auth/reissue`·`/api/v1/auth/logout` 요청 바디에 실린 `refreshToken`은 헤더가 아니라 바디 필드라 redact 대상이 아니고, debug logcat에 평문으로 남는다.
 - **항목**: 바디 필드 단위 redact(예: 커스텀 인터셉터로 JSON 필드 마스킹) 또는 auth 관련 경로만 `Level.NONE`/`Level.HEADERS`로 낮추는 방안 중 선택.
-- **상태**: 미해결 (다음 라운드로 이월)
+- **상태**: 미해결 (**이론적 노출이 실제 노출이 됐다**)
+  > ⚠️ **두 요청 모두 호출부를 얻었다(2026-08-15, PR #260)** — `reissue`는 `TokenAuthenticator`가 401마다
+  > 부르고 `logout`은 S-001 앱 설정이 부른다. 게다가 재발급 전용 클라이언트도 같은 `loggingInterceptor()`
+  > 설정을 공유하므로 **재발급 요청 바디의 refresh token이 debug logcat에 그대로 남는다.**
+  > 실기기 검증(OQ-P-146)에서 로그를 캡처할 때 이 값이 함께 찍힌다는 뜻이다.
 - **해소 메모**: 반영 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절과 `NetworkModule.provideOkHttpClient`를 갱신한다.
 
 ### [2026-08-02] `@NoAuth` 판정이 Retrofit `Invocation` 태그에 의존 — OkHttp 직접 요청·R8 release 미검증
@@ -777,6 +781,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 공백은 이제 없다** — Android가 쓰기로 한 25 엔드포인트 전량에 심볼이 있다. 그래서 ③("이 상태로 남는
   > 기간")이 네 도메인(parfait·image·member·parfait-image)에 대해 **유일하게 남은 질문**이 됐고, 그중
   > 캔버스 조회는 C-001 결선의 선행이라 순서상 가장 앞이다.
+  > ✅ **auth 도메인이 닫혔다(2026-08-15, PR #260)** — `reissue`(`TokenAuthenticator`)·`logout`
+  > (`AuthRepository.logout` → `LogoutUseCase` → S-001)이 소비처를 얻어 애플을 뺀 4 엔드포인트 전부가
+  > 호출부를 가진다. `api/auth.md`가 `android_status: done`이 된 두 번째 도메인이다.
+  > ⚠️ **parfait 도메인에는 표면을 우회하는 소비자가 생겼다(2026-08-16, PR #259)** — C-201 캘린더의
+  > UseCase 둘이 조회 두 엔드포인트를 KDoc으로 가리키면서 remote DataSource를 안 쓰고 mock을 만든다.
+  > ③("표면이 노는 기간")의 성격이 바뀐 셈이다 — 이제는 **놀고 있는 표면 위에 mock 소비자가 얹힌**
+  > 상태이고, 이것은 2026-08-12 그룹 라운드에서 한 번 겪고 걷어낸 형태다(OQ-P-134) → OQ-P-183.
   > 📌 **표면이 14에서 20으로 늘었고 소비처는 그대로 0이다(2026-08-12, PR #230)** — Service 7·remote DataSource 7쌍·DTO 30·domain 37이 됐다. **"덮을 게 남아서 소비를 미룬다"는 사유가 이번 라운드로 사라졌다**([2026-08-11] 7 엔드포인트 공백 항목 해소) — 표면을 더 만들 것이 없으므로 ③("이 상태로 남는 기간을 얼마로 볼지")이 이제 실질적인 질문이다. ②(Repository를 둘지)도 여전히 미정이고, 그 사이 표면만 계속 컴파일된다.
 
 ### [2026-08-06] 스펙이 지시한 근거 주석·KDoc 2건이 코드에 없다
@@ -1112,6 +1123,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasImageAddViewModel.kt#loadCanvasImageAddInfo`(PR #199 develop 머지) — 캔버스 날짜 라벨을 `Clock.System.todayIn(TimeZone.currentSystemDefault())`로 만든다. 위키 [[캔버스-마감-스케줄]]은 하루 경계가 **03:00 KST 고정**이고(서버 기준 KST), `domain`의 `DayWindow.current(timeZone, clock)`가 그 경계를 이미 구현해 C-102 갤러리가 쓰고 있다. 지금 구현은 경계가 00:00이고 시간대도 기기 설정을 따른다 — 00:00~02:59 사이에는 화면이 **캔버스의 실제 날짜보다 하루 뒤 날짜**를 보여준다.
 - **항목**: ① 화면 날짜를 `DayWindow` 기준으로 옮길지(경계·시간대 둘 다), ② 시간대를 KST로 고정할지 기기 시간대를 인정할지 — 서버가 KST로 캔버스를 마감하므로 해외 사용자는 어느 쪽이든 정책 결정이 필요하다. ③ 날짜가 화면에서 계산되는 구조 자체를 유지할지(서버가 캔버스 날짜를 내려주면 표시만 남는다).
 - **상태**: 미해결 (그룹·캔버스 데이터 미결선이라 지금은 표시만 틀린다)
+  > ⚠️ **범위가 커졌다(2026-08-16, PR #259)** — 같은 `today` 값이 이제 **캘린더의 미래 날짜 잠금과 오늘
+  > 강조**까지 결정한다. 00:00~02:59에는 캔버스의 실제 날짜가 아직 어제인데 달력이 오늘을 다음 날로
+  > 표시하고 그 날을 이미 선택 가능하게 연다. 게다가 `today`가 **UiState 기본값과 로드 함수에서 각각**
+  > `Clock`을 읽어 자정을 사이에 두면 두 값이 갈릴 수 있다
+  > → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md).
 - **해소 메모**: ①②가 정해지면 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) "정책 대조" 표와 드리프트 1번을 고치고, `DayWindow`를 화면 계층에서도 쓰는 관용구를 [module-structure](../architecture/module-structure.md)에 한 줄 남긴다. [2026-08-04] 날짜 영문 표기 항목과 같은 화면·같은 값에 걸린다.
 
 ### [2026-08-12] Dot Grid가 시스템 바 영역을 못 덮는다 — 정책은 "화면 전체 뒤"
@@ -1131,6 +1147,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ①을 열 때 `NavKeyCanvasImageAdd`에 `groupId` 인자를 붙일지 함께 정한다([navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지"). 체크리스트 6번 사례 목록도 그때 정리한다. 상세는 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 3·6번.
 
   > 📌 **②의 셋 중 캔버스 편집만 결선됐다(2026-08-15, PR #231)** — `onClickEditCanvasBG`가 `NavKeyCanvasBGEdit`(C-301 배경 편집)으로 간다. 날짜 선택·상단 메뉴는 그대로 빈 람다다. **①은 그대로라 새로 생긴 화면까지 도달 불가 범위에 들어왔다** → [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md).
+  > 📌 **날짜 선택도 결선됐다(2026-08-16, PR #259)** — `onClickDateSelect`가 캘린더 오버레이를 연다.
+  > **②에 남은 것은 상단 메뉴 하나**다. ①(진입 경로 0건)은 그대로이고, ③(`OnClickCanvas`/`NavigateToCanvas`
+  > 이름 불일치)도 그대로다 → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md).
 
 ### [2026-08-12] C-001이 mock을 ViewModel 로직에 박고 `isEmpty`를 상수로 넘긴다
 
@@ -1191,10 +1210,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-136
 - **출처**: `core/navigation/Navigator.kt#goToSingleClearTop`(PR #224 신설) × `SplashRoute.kt`·`TermAgreeRoute.kt`의 `clearBackStack()` + `goTo` — 둘 다 "되돌아가면 안 되는 경계"를 표현하는데 전제가 다르다. 앞은 스택을 비우고 새로 쌓아 **대상 화면이 새로 만들어지고**, 뒤는 스택에 이미 있는 엔트리 위만 잘라내 **상태·ViewModel이 살아난다**. 고르는 기준이 문서에도 코드 주석에도 없고, `clearBackStack()`은 단독으로 부르면 백스택이 비어 크래시 위험이 있어 항상 `goTo`가 따라와야 한다는 암묵 규약까지 얹혀 있다.
 - **항목**: ① 두 관용구의 선택 기준을 명문화할지(대상이 스택에 있으면 SingleClearTop, 진입 체인 리셋은 clearBackStack), ② `clearBackStack()`을 목적지 인자를 받는 형태로 합쳐 "비우고 안 쌓는" 상태를 타입에서 지울지, ③ `goToSingleClearTop`이 **엔트리를 재사용**한다는 성질이 목록 재조회 미발생과 직결되므로([2026-08-12] mock 항목) 화면 갱신 규약과 함께 볼지.
-- **상태**: 미해결 (동작 결함은 아님 — 관용구 선택 기준 부재)
+- **상태**: 부분 해소 (② 해소 — 2026-08-15 PR #260로 `clearBackStack()` 제거 / ①③ 잔존 — 선택 기준 부재)
 - **해소 메모**: 정하면 [navigation-flow](../architecture/navigation-flow.md) "앱 진입 체인"·"그룹 생성·참여 플로우" 두 절과 신규 목적지 체크리스트에 반영한다.
 
   > 📌 **세 번째 형태(2026-08-15, PR #231)** — C-301 배경 편집으로 돌아오는 경로는 `navigator.onBack()`을 **두 번 연달아** 부른다(확인 화면·카메라/갤러리를 각각 걷는다). 명시적 관용구가 아니라 **스택 깊이 가정**이라, 중간에 화면이 하나 끼면 조용히 어긋난다.
+  > ✅ **②가 해소됐다(2026-08-15, PR #260)** — `clearBackStack()`이 **제거**되고 목적지를 받는
+  > `replaceAll(destination)`으로 합쳐졌다. "비우고 안 쌓은" 중간 상태를 API에서 지운 것이고, 호출부
+  > 3곳(`Splash`·`TermAgree`·`Login`)이 함께 옮겨졌으며 강제 로그아웃이 네 번째 소비처다.
+  > `NavigatorTest`가 "항상 비지 않는다"를 잠근다. **①③은 그대로다** — 선택 기준(`replaceAll` vs
+  > `goToSingleClearTop` vs `onBack()` 2회)은 여전히 문서·주석 어디에도 없다.
 
 ### [2026-08-12] 확인 모달의 문구·좌우 배치가 정책 소스 없이 코드로 확정됐다
 
@@ -1297,6 +1321,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 그룹 생성 후 목록 반영, 초대코드 실패 3갈래(없는 코드·이미 참여·정원 초과) 문구, 닉네임 중복 409.
   > 특히 **그룹 목록은 코드 대조만으로 이미 실패가 예상된다**(업로드 시각 파싱, OQ-P-165) — 실기기 1회로
   > 바로 드러날 종류다.
+  > ⚠️ **검증 대상이 또 늘었다(2026-08-15, PR #260)** — 세션 인프라의 수동 확인 4항목이 그대로 미수행이다:
+  > ① 만료된 access token으로 조회 시 **화면에 에러 없이** 목록이 그려지는가(재발급 투명성) ② refresh
+  > token까지 무효화한 뒤 아무 API 호출 → 로그인 화면 이동 + 뒤로가기 불가 ③ **비행기 모드에서
+  > 로그아웃되지 않는가**(이 갈래가 무너지면 지하철 진입이 곧 로그아웃이다) ④ 설정에서 로그아웃 →
+  > 재로그인. 셋 다 유닛 테스트가 잠근 분기지만 실기기에서만 드러나는 실패 양상이 따로 있다
+  > (`runBlocking` 체감 지연·디스패처 고갈).
 - **해소 메모**: ⑥은 버튼이 비활성이어도 시각적으로 동일하므로("눌리는가"로 확인, "비활성으로 보이는가"가 아니다) 주의한다. ⚠️ 디버그 빌드는 `HttpLoggingInterceptor.Level.BODY`라 logcat에 ID 토큰·nonce·발급 토큰이 찍힌다 — 그 로그를 PR·이슈에 붙이지 않는다. 결과에 따라 [api/auth.md](../api/auth.md) 판별자 키 항목과 [ADR-0019](../adr/0019-encrypted-token-storage.md) 검증 절을 갱신한다.
 
 ### [2026-08-14] 신규 가입자가 세션 없이 그룹 목록에 도달한다 — signup 라운드까지의 과도기
@@ -1662,6 +1692,120 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 정하면 [api/README.md](../api/README.md) "계약을 실제로 확인하는 법" 절과
   `http/README.md`를 함께 맞춘다. [2026-08-04] `http/`↔`api/` 이중 관리 항목과 같은 자리에서 본다.
 
+### [2026-08-16] 캘린더가 mock UseCase로 결선됐고 mock 생성 로직이 `domain`에 산다
+
+- **ID**: OQ-P-183
+- **출처**: `domain/usecase/parfait/GetParfaitHistoriesUseCase.kt`·`GetParfaitYearsUseCase.kt`(PR #259) —
+  둘 다 고정 지연 후 성공만 반환하고, `ParfaitRemoteDataSource`·`ParfaitService`(표면은 PR #250으로
+  이미 있다)를 호출하지 않는다. **이번 것은 한 걸음 더 갔다** — 반환값이 리터럴 하나가 아니라
+  달마다 정해진 날짜 목록·`dayOfYear % 9`로 흩뜨린 이미지 수·epoch day를 쓴 가짜 `ParfaitId`를
+  만드는 **생성 로직이 프로덕션 `domain` 코드에 있다**. 그 형태가 2026-08-12 그룹 라운드에서 한 번
+  들어왔다가 #243·#244·#248로 전부 걷힌 것(OQ-P-134 해소)과 같은데 하루 만에 되돌아왔다.
+  `groupId`는 인자에서 아예 빠져 있다 — 화면 `NavKeyCanvasImageAdd`가 `data object`라 그룹 식별자를
+  들고 있지 않기 때문이고, 그래서 실연동 시 **NavKey 인자 추가가 선행**이다(OQ-P-129 ①과 같은 자리).
+- **항목**: ① mock을 UseCase 본문에 두는 것을 관례로 볼지 — 이번 라운드까지 develop에 mock 소유
+  형태가 넷이다(UiState 기본값 / 로드 함수 / UseCase 반환 / **UseCase 안 생성 로직**). ② 실연동
+  라운드에서 `ParfaitRepository`를 둘지(OQ-P-094 ②의 결론대로면 둔다). ③ `groupId` 전달을 NavKey
+  인자로 열지, 그룹 컨텍스트를 다른 방식으로 들고 다닐지.
+- **상태**: 미해결
+- **해소 메모**: 실연동 시 [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) "데이터" 표와
+  [api/parfait.md](../api/parfait.md) Android 매핑, [data-layer](../architecture/data-layer.md) Repository
+  인벤토리를 함께 고친다. ③은 [navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지".
+
+### [2026-08-16] 고른 날짜가 아무것도 바꾸지 않는다 — 캘린더의 출력이 셀 강조뿐이다
+
+- **ID**: OQ-P-184
+- **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasImageAddViewModel.kt`(`ClickDate` 처리)·
+  `component/CustomCalendar.kt`(PR #259) — 날짜를 누르면 `selectedDate`만 갱신된다. 달력은 닫히지
+  않고, 상단 날짜 라벨(`canvasDate`·`canvasDay`)은 오늘 고정이며, 캔버스 내용도 그대로다(토핑 슬롯
+  자체가 미사용, OQ-P-130 ③). 즉 **날짜 선택이 캔버스 전환으로 이어지는 경로가 없다** — 캘린더가
+  하는 일은 셀 강조까지다.
+- **항목**: ① 날짜를 고르면 무엇이 일어나야 하는가 — 그 날 캔버스를 열지(그러면 화면이 "오늘"이
+  아닌 상태를 가져야 한다), 아니면 목록·상세로 넘어갈지. 위키 [[캘린더-컴포넌트]]는 컴포넌트 정의만
+  담고 선택 후 동작을 적지 않는다. ② 선택 즉시 달력을 닫을지(지금은 다시 눌러야 닫힌다).
+  ③ `selectedDate` 기본값이 오늘인데 그 상태와 "아무것도 안 골랐다"가 구분되지 않는 것을 유지할지.
+- **상태**: 미해결 (표시는 정상, 후속 동작 부재)
+- **해소 메모**: ①은 파르페 조회 결선(OQ-P-183)과 같은 라운드에서 정한다. 정해지면
+  [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) 드리프트 2번을 지운다.
+
+### [2026-08-16] 세션 인프라에 남은 구멍 넷 — 유실 창·단일 수집·한정자 그물·재발급 쿨다운
+
+- **ID**: OQ-P-185
+- **출처**: `data/session/SessionEventBus.kt`·`data/network/TokenAuthenticator.kt`·`app/MainRoute.kt`
+  (PR #260, [ADR-0021](../adr/0021-token-refresh-forced-logout.md) "트레이드오프"·"위험·방어") —
+  ① **`Channel(CONFLATED)`에 `onUndeliveredElement`가 없다.** 값을 꺼낸 직후 수집 코루틴이 취소되면
+  (Activity 재생성 창) 이벤트가 조용히 사라지고, 토큰은 이미 지워진 뒤라 이후 401은 "refresh token
+  부재" 경로로 조용히 끝나 **두 번째 이벤트가 오지 않는다** — 로그인 화면으로 못 가고 실패만 계속 본다.
+  ② **수집 지점이 앱 루트 한 곳이라는 것은 규약일 뿐 기계 검사가 없다**(`BaseViewModel.effect`가
+  구독자 수를 세어 로그를 남기는 것과 대비된다). ③ **`TokenAuthenticator`가 `@UnauthenticatedClient`
+  `AuthService`를 받는다는 사실에 그물이 없다** — 생성자에서 한정자만 지우면 모든 테스트가 통과하면서
+  디스패처 데드락이 되살아난다(`NetworkModuleTest`는 클라이언트 쪽 성질만 잠근다). ④ **재발급 실패에
+  쿨다운이 없다** — 오프라인에서 401 N건이 각자 최대 15초(read timeout)씩 직렬로 재발급을 시도한다.
+- **항목**: ① 유실 창을 닫을지(`onUndeliveredElement`로 재발행 / 이벤트 대신 "세션 없음" 상태를
+  구독) ② 수집 지점 단일성에 방어를 둘지 ③ 한정자 누락을 컴파일·테스트로 잡을 방법이 있는지
+  ④ 실패 결과를 짧게 공유하는 쿨다운을 넣을지.
+- **상태**: 미해결 (전부 설계 시점에 알고 남긴 것 — 실기기 검증 전이라 체감 여부 미확인)
+- **해소 메모**: ①④는 [ADR-0021](../adr/0021-token-refresh-forced-logout.md) "영향"에, ②는
+  [navigation-flow](../architecture/navigation-flow.md) "세션 종료 이동"에 반영한다. ①은 자동로그인
+  라운드(ADR-0022 `user-info-ssot`)가 "세션 없음"을 상태로 들이면 함께 정리될 수 있다.
+
+### [2026-08-16] 로그아웃 비활성이 사용자에게 안 보이고, 같은 화면의 탈퇴는 여전히 stub이다
+
+- **ID**: OQ-P-186
+- **출처**: `core:designsystem` `component/ygactionitem/YGActionItem.kt`(`enabled` 신설, PR #260)·
+  `feature/app/setting/impl` `screen/AppSettingScreen.kt`·`viewmodel/AppSettingViewModel.kt` —
+  ① 요청 중 로그아웃 항목이 `enabled = !isLoggingOut`으로 클릭만 막히고 **색은 그대로다**. 비활성 색이
+  디자인시스템에 없어 컴포넌트가 임의로 정하지 않았고 KDoc에도 그렇게 적혀 있다 — 사용자는 눌러도
+  아무 일이 없는 이유를 알 수 없다. 로딩 표시도 없다. ② 같은 Danger Zone의 **회원 탈퇴는 stub**인데
+  서버 계약(`DELETE /api/v1/users/me`)도 앱 표면(`MemberRemoteDataSource#withdraw`)도 이미 있다
+  ([api/member.md](../api/member.md)) — 한 화면에 결선된 항목과 안 된 항목이 나란히 있다.
+- **항목**: ① `YGActionItem` 비활성 색을 디자인에서 받을지, 아니면 진행 표시(스피너·문구)로 대신할지.
+  ② 탈퇴 결선을 어느 라운드에 둘지 — 탈퇴는 로그아웃과 달리 **되돌릴 수 없어** 실패 표현이 필요하고,
+  애플 연동 해제 수단 부재(OQ-P-164)와도 얽힌다.
+- **상태**: 미해결
+- **해소 메모**: ①은 [design-system](../architecture/design-system.md) `YGActionItem` 항목과
+  [ygactionitem 스펙](../specs/archive/2026-07-12-ygactionitem.md)에 반영한다. ②는 결선 시
+  [api/member.md](../api/member.md) Android 매핑을 함께 갱신한다.
+
+### [2026-08-16] 런처 아이콘 교체가 스플래시 테마 속성을 함께 지웠다 — 구버전 콜드 스타트 미검증
+
+- **ID**: OQ-P-187
+- **출처**: `app/src/main/res/values/themes.xml`·`drawable/splash_icon*.xml`·`mipmap-*`(PR #262,
+  `app`·`app-preview` 동일 변경) — 적응형 아이콘 3종(전경·배경·**monochrome**)과 밀도별 모눈 배경
+  PNG로 교체하면서 `Theme.TeamYg`의 `android:windowSplashScreenAnimatedIcon`·`android:windowBackground`를
+  **제거**했다. 주석은 "비워 두면 Android 12+ 시스템 스플래시가 런처 아이콘을 그대로 쓴다"는 근거를
+  적는데, `minSdk`는 26이다 — **Android 12 미만에서는 시스템 스플래시가 없고 `windowBackground`도
+  사라져** 콜드 스타트 첫 프레임이 플랫폼 기본 테마 배경이 된다. 앱이 직접 그리는
+  `feature:intro`의 `SplashScreen`은 그 뒤에 온다. 확인 기록은 없다.
+- **항목**: ① Android 12 미만에서 콜드 스타트 첫 프레임이 무엇으로 보이는지 실기기 확인(흰 배경이면
+  문제 없고, 검정·깜빡임이면 `windowBackground`를 되살려야 한다). ② `core-splashscreen`
+  호환 라이브러리를 쓸지 아니면 12 미만을 그대로 둘지. ③ 아이콘 에셋이 `app`·`app-preview` 두 곳에
+  **복제**돼 있는데(파일 내용 동일) 공유할지 — 지금은 한쪽만 고치면 조용히 갈린다.
+- **상태**: 미해결 (렌더 확인 0건)
+- **해소 메모**: ①은 OQ-P-146 실기기 항목과 같은 회차에 본다.
+  parfait에 앱 리소스·테마 인벤토리 문서가 없어 반영처는 결정 시 함께 정한다.
+
+### [2026-08-16] 캘린더 라운드가 규약 이탈 셋을 함께 들였다 — 그리기 확장 소유·State 계산 프로퍼티·치수 리터럴
+
+- **ID**: OQ-P-188
+- **출처**: `core:util:android` `extension/Modifier.kt#verticalScrollbar` ·
+  `feature/groups/canvas/impl` `component/CustomCalendar.kt#sideBorder`(파일 안 private) ·
+  `viewmodel/CanvasImageAddViewModel.kt`(`CanvasImageAddUiState.selectableMonths`) ·
+  `component/CalendarDropdown.kt`(폭·최대 높이 `dp` 리터럴)(PR #259) —
+  ① 테마 비의존 그리기 확장의 소유가 이제 **네 곳**이다(`core:designsystem` `border/`·`shape/` /
+  `core:designsystem` `component/ygbackgrounddotgrid/` / `core:util:android` `extension/` / feature
+  파일 안 private). ② [state-management](../architecture/state-management.md)는 "State가 계산 프로퍼티로
+  들 이유가 없다"고 적는데 `selectableMonths`가 State 안에 있다 — 다만 화면만이 아니라 ViewModel의
+  연도 이동 계산도 읽어서 화면 헬퍼로 내리면 로직이 갈린다. ③ 드롭다운 폭·최대 높이·스크롤바
+  기본값이 토큰 스케일 밖 리터럴이다(A-002·C-001 치수 리터럴 항목과 같은 성격).
+- **항목**: ① 그리기 확장 소유 규칙을 세울지(①은 [2026-08-01] 프리미티브 소유 항목의 확장이다).
+  ② State 계산 프로퍼티를 허용 사례로 규약에 적을지, 아니면 ViewModel private 헬퍼로 옮길지.
+  ③ 화면 고유 치수를 토큰으로 올릴지 인정할지.
+- **상태**: 미해결 (동작 결함 아님 — 규약 정합)
+- **해소 메모**: ①은 [design-system](../architecture/design-system.md) "과도기" 절, ②는
+  [state-management](../architecture/state-management.md) "UI State가 담는 것", ③은 [2026-08-11] 치수
+  리터럴 항목과 같은 결정에 묶인다.
+
 <!--
 항목 추가 형식:
 
@@ -1672,4 +1816,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 183 -->
+<!-- oq-next: 189 -->

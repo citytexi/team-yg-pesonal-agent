@@ -48,7 +48,7 @@ tags: [spec, parfait, member, session, datastore]
 
 ## 선행
 
-**[session-token-refresh-infra](2026-08-15-session-token-refresh-infra.md)가 먼저 머지돼야 한다.**
+**[session-token-refresh-infra](archive/2026-08-15-session-token-refresh-infra.md)가 먼저 머지돼야 한다.**
 이 스펙은 그 라운드가 만든 것 셋에 의존한다.
 
 - `LogoutUseCase` — 여기에 `clearMyAccount()`를 더한다

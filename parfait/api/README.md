@@ -23,7 +23,7 @@
 ## 도메인 계약
 | 문서 | 서버 위치 | 엔드포인트 | Android |
 |---|---|---|---|
-| [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | 부분(애플 해당 없음, 나머지 구현됨) |
+| [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | **결선됨**(애플 해당 없음, 나머지 4 전부 호출부 있음) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨(목록 1건 ⚠️불일치) |
 | [parfait.md](parfait.md) | `http/parfait` | 3 + 테스트 전용 1 (연도 리스트 · **오늘의 캔버스** · **과거 목록** / 테스트 회전) | 구현됨(회전 해당 없음) |
@@ -41,8 +41,17 @@
 > ✅ **2026-08-15 — 소비처가 생겼다.** 다섯 라운드(PR #241·#242·#243·#244·#248)가 **8 엔드포인트를
 > 화면까지** 이었다 — 카카오 로그인·회원가입(auth), 약관 목록(policy), 그룹 목록·생성·참여 미리보기·참여·
 > 닉네임 변경(parfait-group). `policy.md`는 유일한 엔드포인트가 전부 소비돼 **`android_status: done`**이고,
-> `auth.md`(reissue·logout 미소비)·`parfait-group.md`(상세·탈퇴·신고 미소비)는 `partial`이다. 나머지 넷
+> `parfait-group.md`(상세·탈퇴·신고 미소비)는 `partial`이다. 나머지 넷
 > (parfait·image·member·parfait-image)은 여전히 표면만 있고 소비처가 0이다.
+>
+> ✅ **2026-08-15 — `auth.md`가 `done`이 됐다**(PR #260). `reissue`는 `TokenAuthenticator`가, `logout`은
+> `AuthRepository.logout()` → `LogoutUseCase` → S-001 앱 설정이 소비한다. 애플을 뺀 4 엔드포인트 전부가
+> 호출부를 가지므로 **소비처를 얻은 엔드포인트는 10건**이 됐다
+> ([스펙](../specs/archive/2026-08-15-session-token-refresh-infra.md)).
+>
+> ⚠️ **2026-08-16 — `parfait.md`에 표면을 우회하는 소비자가 생겼다**(PR #259). C-201 캘린더의 UseCase
+> 둘이 파르페 조회 두 엔드포인트를 KDoc으로 가리키면서 remote DataSource를 안 쓰고 mock을 만든다.
+> `android_status`는 `partial` 그대로다(소비처가 계약을 타지 않는다) → [parfait.md](parfait.md) Android 매핑.
 > **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 >
 > `image.md`(2026-08-10 신설) · `member.md`·`parfait-image.md`(2026-08-11 신설)도 **2026-08-12 PR #230

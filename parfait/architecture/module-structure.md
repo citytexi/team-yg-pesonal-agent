@@ -4,8 +4,8 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-15
-related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit
+verified: 2026-08-16
+related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
 related_code:
@@ -38,8 +38,8 @@ app / app-preview
 | core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 여러 feature 공용 레이아웃(`VerticalGridLayout`)·공용 문자열 리소스(유효성 에러 문구) + **도메인 결과 → 표시 문자열 매핑**(`text/NameValidResultUiText.kt`, [[0016-domain-result-presentation-string-mapping]]). `:domain` 의존(#223, 2026-08-13) | android-library + compose |
 | core | `core:designsystem` | 테마(`YGMaterialTheme`)·토큰(`YGSemanticColors`, `SizeTokens` 등) | android-library + compose |
 | core | `core:navigation` | `Navigator`, NavKey 레지스트리, 엔트리 등록 | android-library |
-| core | `core:util:android` | Android 전용 유틸(`decodeUriToBitmap`, `AndroidBitmap`) + Compose clickable 유틸(`clickable/`: `clickableYG`·`clickableYGNoRipple`·`ygDimRipple`·`ygScaleRipple`, 테마 비의존) + 포커스 유틸(`focus/`: `Modifier.clearFocusOnTap`) + Compose·플랫폼 확장(`extension/`: `Modifier.navigationBarsAndImePadding`·`Modifier.drawTooltipCornerTop`·`AnnotatedString.Builder.withStyle`·`List<Offset>.toPath`/`toAndroidPath`·`ClipDescription.isSensitive`). `core:util:jvm` 의존 | android-library + compose |
-| core | `core:util:jvm` | 순수 Kotlin 유틸·로깅·플랫폼 무관 추상(`BitmapWrapper`) + 공용 날짜 포맷(`model/DateFormat`·`model/DateTextFormat`, `kotlinx-datetime`) + 픽셀 연산 확장(`extension/`: `Int.fadeArgb`·`Int.mixArgb`·`FloatArray.fillWithSquaredDistance`) | kotlin-jvm |
+| core | `core:util:android` | Android 전용 유틸(`decodeUriToBitmap`, `AndroidBitmap`) + Compose clickable 유틸(`clickable/`: `clickableYG`·`clickableYGNoRipple`·`ygDimRipple`·`ygScaleRipple`, 테마 비의존) + 포커스 유틸(`focus/`: `Modifier.clearFocusOnTap`) + Compose·플랫폼 확장(`extension/`: `Modifier.navigationBarsAndImePadding`·`Modifier.drawTooltipCornerTop`·`AnnotatedString.Builder.withStyle`·`List<Offset>.toPath`/`toAndroidPath`·`ClipDescription.isSensitive`·`Modifier.verticalScrollbar`(#259)). `core:util:jvm` 의존 | android-library + compose |
+| core | `core:util:jvm` | 순수 Kotlin 유틸·로깅·플랫폼 무관 추상(`BitmapWrapper`) + 공용 날짜 포맷(`model/DateFormat`·`model/DateTextFormat`, `kotlinx-datetime`)·날짜 확장(`extension/LocalDateExtension`, #259) + 픽셀 연산 확장(`extension/`: `Int.fadeArgb`·`Int.mixArgb`·`FloatArray.fillWithSquaredDistance`) | kotlin-jvm |
 | core | `core:testing` | **테스트 전용** 공용 유틸(`MainDispatcherRule`). 테스트 소스셋만 소비하므로 위 의존 방향 그래프에 없다 | kotlin-jvm |
 | domain | `domain` | UseCase, Repository 인터페이스, 도메인 모델 | `ModuleDomain`(kotlin-jvm) |
 | data | `data` | Repository 구현, DataSource, DI 모듈 | `ModuleData` |
@@ -73,6 +73,9 @@ app / app-preview
   `core:designsystem` `YGCanvas`의 private `CANVAS_AREA_ASPECT_RATIO`로 이미 있다. Android 의존은
   없어 위 "순수 Kotlin 유지" 규칙은 어기지 않지만 **레이어 소유가 갈렸다**
   → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- **feature `impl`이 다른 feature `:api`에 의존하는 경우가 하나 늘었다**(2026-08-15, PR #260) —
+  `feature/app/setting/impl` → `feature/login/api`(강제·사용자 로그아웃 뒤 `NavKeyLogin`으로 간다).
+  규약대로 `:api`만 본다.
 - **`core:util:jvm`의 `Char.isKorean()`은 삭제됐다**(2026-08-15, PR #243) — 이름 유효성 검사가 서버 정규식과
   같은 문자 집합(`가-힣A-Za-z0-9` + 스페이스)을 직접 쓰게 되며 유일한 사용처가 사라졌다.
 - **여러 feature가 공유하는 화면**은 특정 도메인 feature 밑이 아니라 `feature/common/*`에 둔다([[0015-feature-common-shared-layer]]). 단, **2개 이상 소비처가 확정된 경우에만**(단일 소비면 소유 feature 유지).

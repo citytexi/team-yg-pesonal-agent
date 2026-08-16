@@ -5,7 +5,7 @@ server_module: http/parfait
 server_commit: e4ff23f
 verified: 2026-08-15
 android_status: partial
-related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
+related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, c201-canvas-calendar
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, canvas]
 ---
@@ -244,6 +244,15 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 
 **앱이 쓰는 세 엔드포인트 전부 표면이 있다**(2026-08-15, PR #250 develop 머지). 테스트 전용 회전은
 대상이 아니다. **소비처(Repository·UseCase·화면)는 0건이다.**
+
+⚠️ **표면을 건너뛴 소비자가 생겼다**(2026-08-16, PR #259) — C-201 캘린더의
+`GetParfaitHistoriesUseCase`·`GetParfaitYearsUseCase`가 KDoc으로 `GET .../parfaits?from=&to=`와
+`GET .../parfaits/year`를 각각 가리키면서 **`ParfaitRemoteDataSource`를 호출하지 않고 UseCase 본문에서
+mock을 만든다**. 즉 이 도메인은 "표면은 있는데 소비처가 없다"가 아니라 **소비처가 표면을 우회한
+상태**다. 계약 대조 관점에서 두 가지가 미검증으로 남는다 — 응답 매핑(`ParfaitHistory`가 서버 응답의
+어느 필드에 대응하는지 코드에 없다)과 `groupId` 전달(화면 `NavKeyCanvasImageAdd`가 `data object`라
+그룹 식별자를 들고 있지 않아 UseCase 인자에서 아예 뺐다) → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) ·
+[open-questions](../synthesis/open-questions.md).
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|

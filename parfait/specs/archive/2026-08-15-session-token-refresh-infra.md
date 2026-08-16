@@ -1,11 +1,11 @@
 ---
 id: session-token-refresh-infra
 title: 세션 인프라 — 401 자동 재발급 · 강제 로그아웃 이벤트 · 로그아웃 결선 (Token Refresh Infra)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-15
-related_code: TokenAuthenticator, SessionEventBus, AuthInterceptor, TokenStore, EncryptedTokenStore, AuthRemoteDataSource, AuthRepositoryImpl, AuthService#postAuthReissue, AuthService#postAuthLogout, NetworkModule, AppSettingViewModel
+verified: 2026-08-16
+related_code: TokenAuthenticator, SessionEventBus, SessionEventSource, SessionEvent, UnauthenticatedClient, SessionModule, LogoutUseCase, AuthInterceptor, TokenStore, EncryptedTokenStore, AuthRemoteDataSource, AuthRepositoryImpl, AuthService#postAuthReissue, AuthService#postAuthLogout, NetworkModule, ServiceModule, Navigator#replaceAll, MainRoute, AppSettingViewModel, YGActionItem
 related_adr: ADR-0021, ADR-0019, ADR-0017, ADR-0020
 related_spec: network-envelope-token-storage, a002-kakao-login-api
 related_architecture: data-layer
@@ -17,6 +17,20 @@ tags: [spec, parfait, auth, network, session]
 # Spec: 세션 인프라 — 401 자동 재발급 · 강제 로그아웃 · 로그아웃 결선
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+
+> ✅ **develop 머지(2026-08-15, PR #260 `9cfbd117`)** — 설계와 코드가 대체로 일치한다.
+> **as-built 차이 3건**을 아래 본문에 반영했다.
+> ① 재발급 전용 표면의 한정자 이름이 **`@AuthClient` → `@UnauthenticatedClient`**다(`data/model/qualifier/`).
+> 이름이 사용처("재발급용")가 아니라 표면의 성질("자격증명을 붙이지 않는다")을 가리키도록 바꾼 것이고,
+> `OkHttpClient`·`Retrofit`·`AuthService` 세 provider가 모두 이 한정자를 단다 — 그중 `AuthService`는
+> `NetworkModule`이 아니라 **`ServiceModule`**이 만든다(서비스 생성은 그 모듈 소관이라는 기존 규약).
+> ② `SessionEventBus.postForcedLogout()`이 `trySend` 실패를 **로그로 남긴다** — `CONFLATED`인 지금은
+> 실패할 수 없지만 채널 종류가 바뀌면 조용한 유실이 되므로 그 회귀가 드러나게 남겼다.
+> ③ `SessionEventSource` ↔ `SessionEventBus` 바인딩은 신설 **`SessionModule`**이 `@Provides`로 준다.
+> **서술 오류 1건 정정**: 아래 "범위 → 제외"가 회원 탈퇴를 "서버에 엔드포인트 계약이 없다"고 적었으나
+> 2026-08-15 서버 delta로 `DELETE /api/v1/users/me`가 생겼고 앱 표면(`MemberService`·DataSource)도
+> PR #250으로 들어와 있다([api/member.md](../../api/member.md)). 제외 사유는 계약 부재가 아니라
+> **이 라운드 범위 밖**이다 — `AppSettingViewModel.handleConfirmWithdraw`는 여전히 stub이다.
 
 ## 목표
 
@@ -38,7 +52,7 @@ access token이 만료되면 화면이 알아채지 못한 채 재발급되고 �
 - **제외**
   - **userInfo SSoT**(`GET /api/v1/users/me` → DataStore) — 후속 스펙. 이 스펙은 토큰만 정리한다
   - **자동로그인 라우팅**(스플래시 분기) — 후속 스펙. 이 인프라 위에 얹는다
-  - **회원 탈퇴** — 서버에 엔드포인트 계약이 없다(`api/auth.md`)
+  - **회원 탈퇴** — 이 라운드 범위 밖(계약·앱 표면은 이미 있다 → 위 as-built 블록)
   - 401 외 상태코드의 자동 재시도
 
 ## API / 인터페이스
@@ -47,7 +61,7 @@ access token이 만료되면 화면이 알아채지 못한 채 재발급되고 �
 // data/network/TokenAuthenticator.kt
 class TokenAuthenticator @Inject constructor(
     private val tokenStore: TokenStore,
-    @AuthClient private val authService: AuthService,
+    @UnauthenticatedClient private val authService: AuthService,
     private val apiCaller: ApiCaller,
     private val sessionEventBus: SessionEventBus,
 ) : Authenticator {
@@ -55,8 +69,9 @@ class TokenAuthenticator @Inject constructor(
 }
 ```
 
-**재발급은 전용 `OkHttpClient`로 나간다**(`@AuthClient` 한정자). 그 클라이언트는 자기
-`Dispatcher`를 갖고, 인증기도 `AuthInterceptor`도 달지 않는다.
+**재발급은 전용 `OkHttpClient`로 나간다**(`@UnauthenticatedClient` 한정자). 그 클라이언트는 자기
+`Dispatcher`를 갖고, 인증기도 `AuthInterceptor`도 달지 않는다. `AuthInterceptor`를 빼는 이유는
+재발급이 자격증명을 헤더가 아니라 **본문**(`ReissueRequest.refreshToken`)으로 보내기 때문이다.
 
 이유가 둘이고 둘 다 데드락이다.
 
@@ -201,7 +216,7 @@ token을 **회전시키고 구 토큰을 폐기한다**(`api/auth.md`). 인증�
 - `ForcedLogout` 이동은 백스택을 비운다 — 뒤로가기로 인증이 필요한 화면에 돌아갈 수 없다
 - 로그아웃 버튼은 요청 중 비활성 — 다만 **클릭만 막히고 색은 바뀌지 않는다.** `YGActionItem`에
   비활성 색이 디자인시스템에 정의돼 있지 않아 컴포넌트가 임의로 정하지 않았다
-  ([ygactionitem 스펙](archive/2026-07-12-ygactionitem.md)의 as-built 노트 참고). 사용자는 클릭이
+  ([ygactionitem 스펙](2026-07-12-ygactionitem.md)의 as-built 노트 참고). 사용자는 클릭이
   안 먹는 이유를 알 수 없는 상태이고, 비활성 색이 확정되면 채운다
 
 ## 파일 구성
@@ -210,19 +225,23 @@ token을 **회전시키고 구 토큰을 폐기한다**(`api/auth.md`). 인증�
 |---|---|
 | `data/network/TokenAuthenticator.kt` | 401 가로채 재발급·재시도. 신규 |
 | `data/session/SessionEventBus.kt` | `SessionEventSource` 구현. 발행+구독, `@Singleton`. 신규 |
+| `data/di/SessionModule.kt` | `SessionEventBus` → `SessionEventSource` 바인딩. 신규 |
 | `domain/model/session/SessionEvent.kt` | `ForcedLogout`. 신규 |
 | `domain/repository/session/SessionEventSource.kt` | 구독 인터페이스. 신규 |
 | `domain/usecase/auth/LogoutUseCase.kt` | 신규 |
-| `data/di/NetworkModule.kt` | 메인 `OkHttpClient`에 `authenticator(...)` 결합 + **재발급 전용 클라이언트·Retrofit·AuthService**(독립 `Dispatcher`) |
-| `data/model/qualifier/AuthClient.kt` | 재발급 전용 클라이언트 한정자. 신규 |
+| `data/di/NetworkModule.kt` | 메인 `OkHttpClient`에 `authenticator(...)` 결합 + **자격증명 없는 클라이언트·Retrofit**(독립 `Dispatcher`) + 두 클라이언트가 공유하는 `loggingInterceptor()` 추출 |
+| `data/di/ServiceModule.kt` | `@UnauthenticatedClient AuthService` provider 추가(같은 인터페이스, 다른 Retrofit) |
+| `data/model/qualifier/UnauthenticatedClient.kt` | 자격증명을 붙이지 않는 표면 한정자. 신규 |
 | `domain/model/error/ServerErrorCode.kt` | `Auth`에 `INVALID_TOKEN`·`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN` 추가 |
 | `data/repository/auth/AuthRepositoryImpl.kt` | `logout()` 추가 |
 | `domain/repository/auth/AuthRepository.kt` | `logout()` 추가 |
 | `feature/app/setting/.../AppSettingViewModel.kt` | 로그아웃 stub 제거 + `NavigateToLogin` + `isLoggingOut` |
 | `feature/app/setting/.../AppSettingScreen.kt` | 요청 중 로그아웃 항목 비활성 |
+| `feature/app/setting/impl/build.gradle.kts` | `feature.login.api` 의존 추가(`NavKeyLogin`) |
+| `feature/app/setting/.../AppSettingRoute.kt` | `NavigateToLogin` → `navigator.replaceAll(NavKeyLogin)` |
 | `core/designsystem/.../ygactionitem/YGActionItem.kt` | `enabled` 파라미터 추가(클릭 차단만, 색 불변) |
 | `core/navigation/.../Navigator.kt` | `replaceAll(destination)` 추가·`clearBackStack()` 제거 |
-| 앱 루트 Composable | `SessionEventSource` 단일 구독 |
+| `app/.../MainRoute.kt`·`MainActivity.kt` | `SessionEventSource` 주입·단일 구독 |
 
 ## 테스트
 
@@ -262,6 +281,17 @@ token을 **회전시키고 구 토큰을 폐기한다**(`api/auth.md`). 인증�
 앱 루트의 이벤트 구독은 Compose 테스트 비용 대비 이득이 적어 수동 확인으로 둔다. 대신 발행
 측(`TokenAuthenticator`)을 위처럼 조인다.
 
+**as-built(2026-08-15 머지)** — 위 목록이 그대로 파일 넷으로 들어왔다: `TokenAuthenticatorTest`
+(MockWebServer, 12케이스 — envelope 실패·403 HTML·403 거절 코드·리다이렉트 선행 응답·`@NoAuth`
+포함) · `NetworkModuleTest`(3케이스, `@Provides` 함수를 직접 호출해 **다른 `Dispatcher` 인스턴스**·
+인증기 미부착·`AuthInterceptor` 미부착을 단언) · `SessionEventBusTest`(2) · `AuthRepositoryImplTest`
+로그아웃 5케이스(회전 재전송·회전 없으면 재전송 안 함 포함) · `AppSettingViewModelTest` 로그아웃
+4케이스(`isLoggingOut` 상승·`finally` 하강·연타 1회).
+**계획에 없던 테스트 파일이 하나 늘었다** — `core:navigation`의 `NavigatorTest`(3케이스)가 신설돼
+`replaceAll`이 목적지 하나만 남기는지·백스택이 비지 않는지·직후 `onBack`이 no-op인지를 잠근다.
+`clearBackStack()`을 지운 근거(빈 백스택을 만들 수 있는 API 자체를 없앤다)를 코드가 아니라
+테스트가 들고 있는 셈이다.
+
 ## 주의 / 열린 질문
 
 - **`runBlocking`이 OkHttp 디스패처 스레드를 잡는다.** `Authenticator` 계약이 동기라 피할 수
@@ -273,9 +303,12 @@ token을 **회전시키고 구 토큰을 폐기한다**(`api/auth.md`). 인증�
   세션을 버리지 않는 쪽을 택했다
 - **`ForcedLogout` 수집 지점이 앱 루트 한 곳이라는 것은 규약일 뿐 기계 검사가 없다.**
   `BaseViewModel.effect`가 구독자 수를 세어 로그를 남기는 것과 같은 방어를 둘지 미정
-- **`TokenAuthenticator`가 한정된(`@AuthClient`) `AuthService`를 받는다는 사실에 그물이 없다.**
-  생성자에서 한정자만 지우면 모든 테스트가 통과하면서 디스패처 데드락이 되살아난다
+- **`TokenAuthenticator`가 한정된(`@UnauthenticatedClient`) `AuthService`를 받는다는 사실에 그물이
+  없다.** 생성자에서 한정자만 지우면 모든 테스트가 통과하면서 디스패처 데드락이 되살아난다
+  (`NetworkModuleTest`는 클라이언트 쪽 성질만 잠근다)
 - **Activity 재생성 중 `ForcedLogout` 유실 창.** `Channel(CONFLATED)`에 `onUndeliveredElement`가
   없어, 값을 꺼낸 직후 수집 코루틴이 취소되면 이벤트가 조용히 사라진다. 토큰은 이미 지워진
   뒤라 이후 401은 "refresh token 부재" 경로로 조용히 끝나고 두 번째 이벤트가 오지 않는다
-- 회원 탈퇴는 서버 계약 신설 후 별건. `AppSettingViewModel.handleConfirmWithdraw` stub 유지
+- 회원 탈퇴는 별건이다. **계약도 앱 표면도 이미 있는데**(`DELETE /api/v1/users/me`,
+  `MemberRemoteDataSource#withdraw`) `AppSettingViewModel.handleConfirmWithdraw`는 stub 그대로다 —
+  로그아웃이 결선된 지금 같은 화면에 결선된 항목과 안 된 항목이 나란히 있다
