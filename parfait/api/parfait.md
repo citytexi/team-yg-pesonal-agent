@@ -1,24 +1,26 @@
 ---
 id: parfait
-title: 파르페(캔버스) 조회·회전
+title: 파르페(캔버스) 조회·배경·회전
 server_module: http/parfait
-server_commit: e4ff23f
-verified: 2026-08-15
+server_commit: 22717fe
+verified: 2026-08-16
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, c201-canvas-calendar
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, canvas]
 ---
 
-# 파르페(캔버스) 조회·회전 API 계약
+# 파르페(캔버스) 조회·배경·회전 API 계약
 
 > 정본은 서버 코드(`mash-up-kr/TEAMYG-SERVER` `main`). 이 문서는 미러다 — 어긋나면 서버가 옳다.
 > 전역 계약(envelope·에러 체계·인증)은 [conventions.md](conventions.md).
 
 `feat: 오늘의 파르페(캔버스) 조회 API 구현`(PR #92)·`feat: 과거 파르페(캔버스) 목록 조회 API 구현`(PR #94)·
-`[Feat/#85] 캔버스 상태 자동 전환 배치(새벽 3시) 구현 (#97)`으로 **1 → 3 엔드포인트 + 테스트 전용 1**이 됐다.
-같은 라운드에 `parfait` 테이블이 `status`·`background_type`·`background_value` 세 컬럼을 얻었다
-(`V11__add_status_and_background_to_parfait.sql`).
+`[Feat/#85] 캔버스 상태 자동 전환 배치(새벽 3시) 구현 (#97)`으로 **1 → 3 엔드포인트 + 테스트 전용 1**이 됐고,
+`feat: 이전 파르페(캔버스) 상세 조회 API 구현`(PR #96)·`feat: 파르페(캔버스) 배경 변경 API 구현`(PR #103)이
+**3 → 5**로 올렸다. `parfait` 테이블의 `status`·`background_type`·`background_value` 세 컬럼
+(`V11__add_status_and_background_to_parfait.sql`)은 이 라운드에 **쓰기 경로를 얻었다** — 배경 필드가
+"읽기만 있고 채우는 코드가 없는" 상태가 닫혔다.
 
 ## 엔드포인트
 
@@ -27,6 +29,8 @@ tags: [api, parfait, server-contract, canvas]
 | GET | `/api/v1/groups/{groupId}/parfaits/year` | 필요 | path `groupId` Long | `ParfaitYearsResponse` | 구현됨 |
 | GET | `/api/v1/groups/{groupId}/parfaits/today` | 필요 | path `groupId` Long | `GetTodayParfaitResponse` | 구현됨 |
 | GET | `/api/v1/groups/{groupId}/parfaits` | 필요 | query `from`·`to`(선택) | `PastParfaitsResponse` | 구현됨 |
+| GET | `/api/v1/groups/{groupId}/parfaits/{parfaitId}` | 필요 | path `groupId`·`parfaitId` Long | `GetTodayParfaitResponse`(**재사용**) | 미구현 |
+| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/background` | 필요 | `ChangeParfaitBackgroundRequest` | `ChangeParfaitBackgroundResponse` | 미구현 |
 | POST | `/api/v1/test/parfait-canvas/rotate` | **불필요(화이트리스트)** | 없음 | `RotateParfaitCanvasesResponse` | 해당 없음[^test] |
 
 [^test]: **테스트 전용 엔드포인트다.** 서버 컨트롤러(`ParfaitCanvasRotationTestController`)와
@@ -35,6 +39,12 @@ tags: [api, parfait, server-contract, canvas]
 
 경로 주의: 그룹을 `groups`로 부르는 유일한 경로다(다른 그룹 API는 `parfait-groups`) —
 [conventions.md](conventions.md)의 URL 규약 절 참고.
+
+컨트롤러 주의: 조회 넷은 `ParfaitController` 하나에 모였지만 **배경 변경만 별도 컨트롤러**
+(`ChangeParfaitBackgroundController`)다. 같은 `http/parfait` 패키지이고 OpenAPI 태그도 `Parfait`로
+같으므로 소비 측에서는 한 도메인으로 본다. 상세 조회의 `@GetMapping("/{parfaitId}")`가 `year`·`today`
+같은 고정 세그먼트와 한 컨트롤러 안에서 겹치지만, Spring이 고정 세그먼트를 먼저 매칭하므로
+`/parfaits/year`가 `parfaitId = "year"`로 새지 않는다(`year`는 Long 변환도 안 된다).
 
 ## 엔드포인트 상세
 
@@ -126,10 +136,11 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   둘 중 하나라도 없으면 통째로 `null`이다. envelope는 `default-property-inclusion: always`라 키 자체는
   실려 오므로([conventions.md](conventions.md)), 소비 측은 **키 존재가 아니라 값이 `null`인지**로 갈라야 한다.
 
-  **배경을 설정하는 API는 아직 없다.** 컬럼(`background_type`·`background_value`)과 응답 필드만 있고
-  쓰기 경로가 서버 어디에도 없어 현재는 항상 `null`이다. ⚠️ **C-301 캔버스 배경 편집 화면이 이미
-  develop에 있다**(PR #231) — 고른 배경이 아무 데도 반영되지 않는 이유의 절반이 여기다(나머지 절반은
-  화면 쪽 확인 이펙트 TODO) → [open-questions](../synthesis/open-questions.md).
+  ✅ **배경을 설정하는 API가 생겼다**(2026-08-16, PR #103) — 아래
+  [PATCH .../background](#patch-apiv1groupsgroupidparfaitsparfaitidbackground). 이전 판본이 "쓰기 경로가
+  서버 어디에도 없어 항상 `null`"이라고 적던 자리다. **C-301 배경 편집 화면**(develop, PR #231)이 고른
+  배경을 버리던 이유 중 서버 절반이 닫혔고, 남은 것은 앱 연동이다
+  → [open-questions](../synthesis/open-questions.md).
 
   **`groupMembers`는 탈퇴하지 않은 멤버만**이다(`findAllByGroupIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc` —
   참여 순). ⚠️ **그런데 `placedBy` 조회에는 그 필터가 없다**(`findAllByIdIn`). 탈퇴한 멤버가 남긴 토핑은
@@ -193,6 +204,109 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 
   근거: `ParfaitControllerTest`가 성공·기본값 위임·400·403 네 케이스를 직접 검증한다.
 
+### GET /api/v1/groups/{groupId}/parfaits/{parfaitId}
+
+과거 목록에서 항목을 눌러 들어가는 **캔버스 상세**다. 응답 타입이 `today`와 **같은 클래스**
+(`GetTodayParfaitResult`·`GetTodayParfaitResponse`)라 필드 구성이 완전히 동일하다 — 소비 측은 DTO를
+하나만 만들면 된다.
+
+- **인증**: 필요
+- **성공**: HTTP 200 · envelope `code` = `"OK"`(`ApiResponse.ok`, `@ResponseStatus` 없음)
+- **요청 필드**: 경로 변수 `groupId`·`parfaitId`(쿼리·바디 없음)
+- **응답 필드**: `today`와 동일 → [위 표](#get-apiv1groupsgroupidparfaitstoday) 참고.
+  `lastClosedDate`·`groupMembers`·`background`·`images`의 널 규칙(0건이 빈 배열이 아니라 `null`)도 같다.
+
+  **`today`와 다른 점은 셋이다.**
+  ① **부작용이 없다** — `EnsureActiveCanvasUseCase`를 부르지 않고 `@Transactional(readOnly = true)`다.
+  없는 날짜를 조회해도 행이 생기지 않는다.
+  ② **날짜가 아니라 id로 찾는다**(`ParfaitRepository.findByIdAndParfaitGroupId`). 그룹이 다르면 조회되지
+  않으므로 **남의 그룹 캔버스를 id로 훔쳐볼 수 없다**(응답은 404 `PARFAIT_NOT_FOUND`, 403이 아니다).
+  ③ **상태로 거르지 않는다** — `ACTIVE`인 오늘 캔버스도 이 경로로 조회된다. "이전 파르페 상세"라는
+  이름이지만 계약상 과거 전용이 아니다.
+
+  `lastClosedDate`는 **조회 대상 파르페 기준이 아니라 그룹 기준**이다(`findLastClosedDateByGroupId`) —
+  과거 캔버스를 봐도 그 값은 그룹의 최신 마감일이라 **조회 대상 날짜보다 뒤일 수 있다.**
+
+- **에러 코드**
+
+| HTTP | code | 의미 |
+|---|---|---|
+| 404 | `PARFAIT_NOT_FOUND` | 파르페가 없거나 **그 그룹 소속이 아님**(`ParfaitErrorCode`) |
+| 403 | `GROUP_NOT_JOINED` | 그 그룹의 멤버가 아님(`ParfaitGroupApiErrorCode`) |
+| 400 | `INVALID_REQUEST` | `parfaitId`가 Long으로 파싱되지 않음(`CommonErrorCode`) |
+| 401 | `UNAUTHORIZED` 외 | 전역 인증(`AuthErrorCode`) |
+
+  멤버십 검사가 파르페 조회보다 **먼저**다 — 남의 그룹이면 파르페 존재 여부와 무관하게 403이다.
+  근거: `ParfaitControllerTest`가 성공·404·403 세 케이스를 직접 검증한다.
+
+### PATCH /api/v1/groups/{groupId}/parfaits/{parfaitId}/background
+
+C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단색(HEX) 또는 업로드 완료된 이미지 둘 중 하나로
+바꾼다.
+
+- **인증**: 필요
+- **성공**: HTTP 200 · envelope `code` = `"OK"`(`ApiResponse.ok`, `@ResponseStatus` 없음)
+- **요청 필드**(`ChangeParfaitBackgroundRequest`)
+
+| 필드 | 타입 | 필수 | 비고 |
+|---|---|---|---|
+| `type` | String(enum) | 필수 | `COLOR` · `IMAGE` |
+| `value` | String? | `type = COLOR`일 때 필수 | HEX 문자열. `#` + 6자리(대소문자 무관) |
+| `imageId` | Long? | `type = IMAGE`일 때 필수 | [image.md](image.md)의 업로드 확인을 마친 이미지 |
+
+  ⚠️ **Bean Validation 애노테이션이 하나도 없다.** 필수 여부는 서비스(`resolveValue`)와 도메인
+  (`Parfait.changeBackground`)이 판정하므로 **OpenAPI 스키마 `required`에는 `type`조차 나오지 않는다**
+  ([conventions.md](conventions.md) "OpenAPI가 모르는 것"). `type`은 Kotlin 비널이라 누락하면 검증
+  에러가 아니라 역직렬화 실패 → 400 `INVALID_REQUEST`다.
+
+  **타입별로 다른 필드가 필수인데 표현 수단이 널 허용 두 개뿐이다.** `type = COLOR` + `imageId`만,
+  또는 `type = IMAGE` + `value`만 보내면 400 `INVALID_BACKGROUND`다. 반대로 **둘 다 채워 보내면 오류가
+  아니라 `type`에 해당하는 쪽만 쓰이고 나머지는 조용히 버려진다.**
+
+  **HEX 검증은 도메인이 한다** — `Parfait.changeBackground`의 `HEX_COLOR_PATTERN`이 `#` + 6자리만
+  통과시킨다. 3자리 축약형·8자리 알파 포함·`#` 없는 형태는 전부 400 `INVALID_BACKGROUND`다.
+
+- **응답 필드**(`ChangeParfaitBackgroundResponse`)
+
+| JSON 키 | 타입 | 널 허용 | 비고 |
+|---|---|---|---|
+| `background` | 객체 | 아니오 | `type`(`COLOR`·`IMAGE`) · `value`(String) |
+
+  **중첩 `BackgroundResponse`는 조회 응답의 것을 그대로 재사용**한다(`GetTodayParfaitResponse.kt`에
+  선언된 같은 클래스). 조회에서는 `background`가 널 허용인데 **여기서는 비널**이다 — 방금 설정한 값을
+  돌려주기 때문이다.
+
+  ⚠️ **`type = IMAGE`로 저장되는 `value`는 `imageId`가 아니라 이미지 URL이다**(`ImageMeta.url`). 요청은
+  id로 받고 응답·조회는 URL로 내려온다. 앱이 "지금 배경이 어느 이미지인지"를 id로 되짚을 방법이
+  계약에 없다 → [미결](#미결).
+
+- **에러 코드**
+
+| HTTP | code | 의미 |
+|---|---|---|
+| 400 | `INVALID_BACKGROUND` | 타입에 필요한 값 누락, 또는 HEX 형식 위반(`ParfaitErrorCode`) |
+| 404 | `PARFAIT_NOT_FOUND` | 파르페가 없거나 그 그룹 소속이 아님(`ParfaitErrorCode`) |
+| 404 | `IMAGE_NOT_FOUND` | `imageId`에 해당하는 이미지 메타 없음(`ImageErrorCode`) |
+| 409 | `BACKGROUND_IMAGE_NOT_CONFIRMED` | 이미지가 `COMPLETED`가 아님(`ParfaitErrorCode`) |
+| 403 | `GROUP_NOT_JOINED` | 그 그룹의 멤버가 아님(`ParfaitGroupApiErrorCode`) |
+| 400 | `INVALID_REQUEST` | 바디 역직렬화 실패(`type` 누락·모르는 enum 값 등, `CommonErrorCode`) |
+| 401 | `UNAUTHORIZED` 외 | 전역 인증(`AuthErrorCode`) |
+
+  **한 엔드포인트가 세 enum의 코드를 섞어 낸다**(`ParfaitErrorCode`·`ImageErrorCode`·
+  `ParfaitGroupApiErrorCode`). 이미지 미확인은 `ImageErrorCode`가 아니라 **parfait 쪽 enum**
+  (`BACKGROUND_IMAGE_NOT_CONFIRMED`)이라는 점이 특히 갈린다 — 소비 측은 도메인별로 분기하면 놓친다.
+  근거: `ChangeParfaitBackgroundControllerTest`가 성공 2·400·404 2·409·403 일곱 케이스를 직접 검증한다.
+
+  ⚠️ **마감된 캔버스의 배경도 바꿀 수 있다.** `ChangeParfaitBackgroundService`가 `status`를 보지 않아
+  `CLOSED`·`EMPTY` 파르페에도 그대로 저장된다. 토핑 네 엔드포인트도 상태를 보지 않으므로
+  ([parfait-image.md](parfait-image.md)) **마감 후 편집을 막는 서버 가드는 지금 어디에도 없다** —
+  `PARFAIT_ALREADY_CLOSED`는 회전 로직 안에만 있다 → [미결](#미결).
+
+  ⚠️ **배경 이미지는 `image_meta.reference_count`를 올리지 않는다.** 증감 경로는 토핑 배치(+1)·토핑
+  삭제(−1)뿐이고([parfait-image.md](parfait-image.md)) 이 API는 `ImageMetaQueryPort`로 **읽기만** 한다.
+  같은 이미지를 토핑으로도 올렸다가 그 토핑을 지우면 카운트가 0이 되어 **S3 객체가 삭제되고 배경이
+  깨진다** → [미결](#미결).
+
 ### POST /api/v1/test/parfait-canvas/rotate (테스트 전용)
 
 ⚠️ **인증 없이 전체 그룹의 캔버스를 즉시 마감·재생성한다.** 화이트리스트에 올라 있어 토큰 없이 호출되고,
@@ -225,25 +339,30 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 
 ## 도메인 에러 코드 전수
 
-`ParfaitErrorCode`(`core/parfait/exception`) 2종 전부. 이 라운드에 신설됐다(이전 판본은 "전용 enum 없음"이었다).
+`ParfaitErrorCode`(`core/parfait/exception`) 5종 전부. 2026-08-16 delta가 **2 → 5**로 늘렸다.
 
 | HTTP | code | message | 귀속 |
 |---|---|---|---|
 | 400 | `INVALID_DATE_RANGE` | 조회 시작일이 종료일보다 늦을 수 없습니다 | 과거 목록 조회 |
+| 404 | `PARFAIT_NOT_FOUND` | 존재하지 않는 파르페입니다 | 상세 조회 · 배경 변경 |
 | 409 | `PARFAIT_ALREADY_CLOSED` | 이미 마감된 파르페입니다 | **공개 경로 없음** — 아래 |
+| 400 | `INVALID_BACKGROUND` | 배경 정보가 올바르지 않습니다 | 배경 변경 |
+| 409 | `BACKGROUND_IMAGE_NOT_CONFIRMED` | 업로드가 확인되지 않은 이미지입니다 | 배경 변경 |
 
   ⚠️ **`PARFAIT_ALREADY_CLOSED`에 도달하는 공개 엔드포인트가 없다.** `Parfait.close`·`markEmpty`가
   `status != ACTIVE`일 때 던지는데, 두 메서드를 부르는 곳은 회전 로직뿐이고 회전은 `ACTIVE`만 골라 온다.
   즉 이 코드는 **회전 배치가 동시 실행돼 경합할 때만** 나갈 수 있고, 그때도 응답이 아니라 `failedCount`로
   집계된다. 앱이 이 코드를 받을 경로는 현재 없다.
 
-이 도메인은 자기 enum 밖의 코드도 던진다 — `ParfaitGroupApiErrorCode.GROUP_NOT_JOINED`(403).
-소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
+이 도메인은 자기 enum 밖의 코드도 던진다 — `ParfaitGroupApiErrorCode.GROUP_NOT_JOINED`(403),
+그리고 배경 변경의 `ImageErrorCode.IMAGE_NOT_FOUND`(404). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
 
 ## Android 매핑
 
-**앱이 쓰는 세 엔드포인트 전부 표면이 있다**(2026-08-15, PR #250 develop 머지). 테스트 전용 회전은
-대상이 아니다. **소비처(Repository·UseCase·화면)는 0건이다.**
+**앱 표면은 조회 셋뿐이다**(2026-08-15, PR #250 develop 머지). 2026-08-16 서버 delta로 들어온
+**상세 조회·배경 변경 둘은 대응 심볼이 0건**이다(develop `2d0f6a5d` 기준 `ParfaitService`에
+`@GET .../year`·`.../today`·`.../parfaits` 세 함수뿐). 테스트 전용 회전은 대상이 아니다.
+**소비처(Repository·UseCase·화면)는 여전히 0건이다.**
 
 ⚠️ **표면을 건너뛴 소비자가 생겼다**(2026-08-16, PR #259) — C-201 캘린더의
 `GetParfaitHistoriesUseCase`·`GetParfaitYearsUseCase`가 KDoc으로 `GET .../parfaits?from=&to=`와
@@ -259,9 +378,16 @@ mock을 만든다**. 즉 이 도메인은 "표면은 있는데 소비처가 없�
 | GET `/api/v1/groups/{groupId}/parfaits/year` | `ParfaitService#getGroupsByGroupIdParfaitsYear` | `ParfaitRemoteDataSource#getYears` |
 | GET `.../parfaits/today` | `ParfaitService#getGroupsByGroupIdParfaitsToday` | `ParfaitRemoteDataSource#getTodayCanvas(groupId)` |
 | GET `.../parfaits` | `ParfaitService#getGroupsByGroupIdParfaits` | `ParfaitRemoteDataSource#getPastCanvases(groupId, from, to)` |
+| GET `.../parfaits/{parfaitId}` | — (미구현) | — (미구현) |
+| PATCH `.../parfaits/{parfaitId}/background` | — (미구현) | — (미구현) |
 | POST `/api/v1/test/parfait-canvas/rotate` | — (해당 없음) | — (해당 없음) |
 
-- **응답 DTO**: `ParfaitYearsResponse`(`years: List<Int>`) · `GetTodayParfaitResponse`(중첩
+**신규 둘의 앱 쪽 비용은 비대칭이다.** 상세 조회는 응답이 `GetTodayParfaitResponse` 재사용이라
+**DTO·VO·매퍼가 이미 전부 있다** — Service 함수 한 줄과 DataSource 함수 하나면 끝난다. 반면 배경
+변경은 이 도메인의 **첫 요청 DTO**이고(지금까지 전부 GET) 응답도 새 타입이라 요청/응답 DTO가 함께
+필요하다. 도메인 쪽 `CanvasBackground`는 이미 있으니 그것을 요청으로 되돌리는 매핑이 새로 생긴다.
+
+- **응답 DTO**(현재 표면 셋 기준): `ParfaitYearsResponse`(`years: List<Int>`) · `GetTodayParfaitResponse`(중첩
   `GroupMemberResponse`·`BackgroundResponse`·`TodayParfaitImageResponse`·`PlacedByResponse`) ·
   `PastParfaitsResponse`(중첩 `PastParfaitResponse`) — 전부
   `data/service/model/response/parfait/`. 요청 DTO는 없다(전부 GET).
@@ -303,3 +429,12 @@ Service·DataSource KDoc에만 있고 호출 지점 관리는 화면 책임이�
   → [open-questions](../synthesis/open-questions.md)
 - `images[].placedBy`가 탈퇴 멤버를 걸러내지 않아 `groupMembers`에 없는 `groupMemberId`와 `(알수없음)`
   닉네임이 섞인다 → [open-questions](../synthesis/open-questions.md)
+- 배경 변경이 캔버스 마감 상태를 보지 않아 `CLOSED`·`EMPTY` 캔버스의 배경도 바뀐다
+  → [open-questions](../synthesis/open-questions.md)
+- 배경 이미지가 `reference_count`를 올리지 않아 같은 이미지의 토핑을 지우면 배경이 깨질 수 있다
+  → [open-questions](../synthesis/open-questions.md)
+- 배경 이미지를 요청은 `imageId`로 받고 응답·조회는 URL로만 내려줘 앱이 현재 배경의 이미지 id를 되짚을
+  수단이 없다 → [open-questions](../synthesis/open-questions.md)
+- 상세 조회가 상태를 거르지 않아 "이전 파르페 상세"라는 이름과 달리 오늘의 `ACTIVE` 캔버스도 조회된다.
+  같은 캔버스를 `today`와 상세 두 경로로 얻을 수 있고 **한쪽만 부작용이 있다**
+  → [open-questions](../synthesis/open-questions.md)

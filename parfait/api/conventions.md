@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: e4ff23f
-verified: 2026-08-15
+server_commit: 22717fe
+verified: 2026-08-16
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -59,7 +59,7 @@ tags: [api, parfait, server-contract, conventions]
 | `ImageErrorCode` | `core/image/exception` | 4 |
 | `MemberErrorCode` | `core/member/exception` | 2 |
 | `ParfaitImageErrorCode` | `core/parfaitimage/exception` | 5 |
-| `ParfaitErrorCode` | `core/parfait/exception` | 2 (2026-08-15 신설) |
+| `ParfaitErrorCode` | `core/parfait/exception` | 5 (2026-08-15 신설, 2026-08-16 상세 조회·배경 변경으로 2 → 5) |
 
 ### `CommonErrorCode`
 
@@ -123,6 +123,9 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 **2026-08-15 delta의 신규 5건**(파르페 오늘·과거 목록 · 토핑 테두리 수정·삭제 · 회원 탈퇴)**도 전부
 화이트리스트 밖이라 인증 대상**이다. 위 테스트 전용 회전 1건만 예외다.
 
+**2026-08-16 delta의 신규 2건**(파르페 상세 조회 · 배경 변경)**도 화이트리스트 밖이라 인증 대상**이다
+([parfait.md](parfait.md)). 화이트리스트 자체는 이 delta에서 바뀌지 않았다.
+
 **2026-08-11 member 2건·parfait-image 2건도 화이트리스트 밖이라 전부 인증 대상**이다
 ([member.md](member.md)·[parfait-image.md](parfait-image.md)). 네 엔드포인트 모두 대상 회원을 요청이 아니라
 **토큰에서** 정한다 — 남의 계정을 지목할 경로가 없다. 다만 토핑 배치(POST)는 배치자 대조가 없어
@@ -140,7 +143,7 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 | `/api/v1/<도메인>` | `/api/v1/auth/kakao` · `/api/v1/auth/apple` · `/api/v1/auth/signup` · `/api/v1/auth/reissue` · `/api/v1/auth/logout` · `/api/v1/policies` · `/api/v1/images` |
 | `/api/v1/<도메인>/{id}/<동작>` | `/api/v1/images/{imageId}/confirm` |
 | `/api/v1/<도메인>/me/<하위>` | `/api/v1/users/me` · `/api/v1/users/me/nickname` |
-| `/api/v1/groups/{groupId}/<하위>` | `/api/v1/groups/{groupId}/parfaits` · `.../parfaits/year` · `.../parfaits/today` · `.../parfaits/{parfaitId}/images/{parfaitImageId}/border` |
+| `/api/v1/groups/{groupId}/<하위>` | `/api/v1/groups/{groupId}/parfaits` · `.../parfaits/year` · `.../parfaits/today` · `.../parfaits/{parfaitId}` · `.../parfaits/{parfaitId}/background` · `.../parfaits/{parfaitId}/images/{parfaitImageId}/border` |
 | `/api/v1/test/<도메인>/<동작>` | `/api/v1/test/parfait-canvas/rotate` (테스트 전용) |
 | `/api/<도메인>` (버전 없음) | `/api/parfait-groups` |
 
@@ -241,6 +244,12 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 | `PlaceParfaitImageRequest` | (없음) | `imageId`·`positionX`·`positionY`·`positionZ`·`scale`·`rotation`·`borderType` |
 | `UpdateParfaitImageRequest` | (없음) | (없음 — 전 필드가 널 허용, 빈 바디도 유효) |
 | `UpdateParfaitImageBorderRequest` | (없음) | `borderType` (2026-08-15 신설) |
+| `ChangeParfaitBackgroundRequest` | (없음) | `type` — `value`·`imageId`는 널 허용이지만 **`type`에 따라 하나가 필수**다(2026-08-16 신설) |
+
+⚠️ **조건부 필수는 스키마도 타입도 표현하지 못한다.** `ChangeParfaitBackgroundRequest`가 첫 사례다 —
+`type = COLOR`면 `value`가, `type = IMAGE`면 `imageId`가 필수인데 둘 다 Kotlin 널 허용이라 위 표의
+"실제 비널 필드"로도 안 잡힌다. 판정은 서비스·도메인이 하고 실패는 `INVALID_BACKGROUND`(400)다.
+이런 계약은 **도메인 문서의 "필수" 열 비고로만** 남는다 → [parfait.md](parfait.md).
 
 빠진 필드도 **누락하면 400이다** — jackson-module-kotlin이 비널 파라미터 부재에서 실패하고
 `GlobalExceptionHandler`의 bad-request 핸들러가 `INVALID_REQUEST`로 바꾼다.
