@@ -107,7 +107,37 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 
 화면 루트에 쓰는 컨테이너 2종 + 뒤로가기 스코프. 설계 상세 → [designsystem-ygscreen-scaffold 스펙](../specs/archive/2026-07-20-designsystem-ygscreen-scaffold.md).
 
-- **역할 분리 (컨벤션)**:
+> 🔁 **정본 변경 (2026-08-16) — 스캐폴드는 이제 `YGScaffoldV2`이고, 그 자리는 nav가 아니라 Route다.**
+> 아래 `YGScaffold` 항목은 **역사**이고, **새 코드는 예외 없이 `YGScaffoldV2`를 Route 안에서 쓴다.**
+> 설계 → [ygscaffold-v2 스펙](../specs/2026-08-16-ygscaffold-v2-common-loading-error.md).
+>
+> ```kotlin
+> // EntryBuilder — Route 를 부르기만 한다
+> entry<NavKeyXxx> { XxxRoute(navigator = navigator, modifier = Modifier.fillMaxSize()) }
+>
+> // Route — 스캐폴드를 소유하고 로딩·실패를 배선한다
+> YGScaffoldV2(modifier = modifier, isLoading = state.isLoading, toastPolicy = toastPolicy) { innerPadding ->
+>     XxxScreen(..., modifier = Modifier.fillMaxSize().padding(innerPadding))
+> }
+> ```
+>
+> **왜 Route인가**: `hiltViewModel()`이 Route 안에서 호출되므로 `EntryBuilder`는 `state.isLoading`을
+> 읽을 수도, 실패 이펙트를 받을 수도 없다. 스캐폴드가 nav 레벨에 있으면 공통 로딩·에러를 채울 방법이
+> 원리적으로 없다.
+>
+> 지켜야 할 것 셋:
+> - **`modifier`는 스캐폴드가 받고, Screen에는 `Modifier.fillMaxSize().padding(innerPadding)`을 새로 만들어 준다.**
+>   `fillMaxSize`를 빼면 `weight(1f)`을 쓰는 화면이 접힌다.
+> - **에러 토스트가 필요한 화면만** `rememberYGToastPolicy()`를 만들어 넘기고 이펙트에서 `showError(문구)`를 부른다.
+>   문구는 화면 소유이고(`String` 계약), 사유→문구 매핑은 `GlobalNicknameError`·`LoginError`처럼
+>   enum + `@Composable toStringResource()`로 둔다(ADR-0016).
+> - **재시도 동선이 필요한 실패는 V2가 다루지 않는다.** 그건 화면이 자기 UI로 표현한다
+>   (`GroupListErrorScreen` 같은 전면 에러, 입력 자리 인라인 등).
+>
+> 이관은 화면별로 진행 중이다(현황은 스펙). `YGScaffold`는 `@Deprecated(WARNING)`이고 삭제 시점은
+> **모든 화면이 Route에서 스캐폴드를 소유하고 로딩·실패를 배선한 뒤**다.
+
+- **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.
   - **`YGScreen` = 화면 최외곽(Screen 컴포저블)** — `internal fun XxxScreen(...) { YGScreen(modifier = modifier) { ... } }`. `Surface` 래퍼(`modifier` + `content`만) + `YGScreenScope` 리시버. `Surface`는 `color`를 항상 칠하므로(기본 Material surface 불투명) 내부 `color = YGAtomicColors.Gray.Transparent` 고정 → 배경 미페인트, 실제 배경은 nav의 `YGScaffold` containerColor가 담당(레이어 분리). 화면 `modifier`는 `YGScreen`에 전달(관례).
 - **뒤로가기**: `YGScreen`의 content는 `YGScreenScope` 리시버라 `OnBack(enabled, handler) { }`(@Composable, 내부 `BackHandler` emit)로 처리. 호출한 화면만 back 가로챔 — 안 쓰면 안 부르면 됨(강제 리턴 없음). `OnBack`은 @Composable node-emit이라 PascalCase(`BackHandler` 동일 규칙).

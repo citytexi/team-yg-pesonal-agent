@@ -181,7 +181,15 @@ NavKeyCanvasImageAdd ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(s
 
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.
-2. `feature/xxx/impl`에 `featureXxxEntryBuilder()` 작성: `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(modifier = Modifier.padding(innerPadding)) } }`. **엔트리(nav) 레벨 컨테이너는 `YGScaffold`**(`core:designsystem` `screen/`, Material3 `Scaffold` 래퍼, 기본 배경 흰색·`contentWindowInsets` 노출). 화면 최외곽 컨테이너 `YGScreen`과 역할 분리 → [design-system](design-system.md) "화면 컨테이너".
+2. `feature/xxx/impl`에 `featureXxxEntryBuilder()` 작성: `entry<NavKeyXxx> { XxxRoute(navigator = navigator, modifier = Modifier.fillMaxSize()) }`.
+   > 🔁 **정본 변경 (2026-08-16)** — **엔트리는 더 이상 스캐폴드를 감싸지 않는다.** 스캐폴드는
+   > `YGScaffoldV2`이고 **Route가 소유**한다 — `hiltViewModel()`이 Route 안에 있어 EntryBuilder는
+   > `isLoading`도 실패 이펙트도 볼 수 없기 때문이다. 아래 인셋 관용구 논의는 구 형태(엔트리
+   > `YGScaffold`) 기준의 역사이고, 인셋은 이제 Route의 `YGScaffoldV2(contentWindowInsets = …)`가 정한다.
+   > 규약 본문 → [design-system](design-system.md) "화면 컨테이너", 설계 →
+   > [ygscaffold-v2 스펙](../specs/2026-08-16-ygscaffold-v2-common-loading-error.md).
+
+   (구 형태) `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(modifier = Modifier.padding(innerPadding)) } }`. 화면 최외곽 컨테이너 `YGScreen`과의 역할 분리는 그대로 → [design-system](design-system.md) "화면 컨테이너".
 3. 빌더를 Hilt 모듈(`NavigationModule`, ActivityRetainedComponent)의 `Set<...>` 멀티바인딩에 `@IntoSet`으로 제공.
 4. 이동 원하는 feature는 대상의 `:api`에 의존 추가(`settings.gradle.kts`/build 파일).
 5. 결과가 필요하면 `ResultEventBus` 데코레이터 경로 사용.
