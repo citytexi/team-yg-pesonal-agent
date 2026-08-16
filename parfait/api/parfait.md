@@ -361,7 +361,34 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
 
 **앱 표면이 다섯 전부를 덮는다**(2026-08-16, PR #266 develop 머지). 서버 delta가 벌린 상세 조회·배경
 변경 둘이 **같은 날 표면을 얻어** 공백이 하루 만에 닫혔다 — 이 도메인은 테스트 전용 회전을 뺀 전량에
-Service·DataSource 함수가 있다. **소비처(Repository·UseCase·화면)는 여전히 0건이다.**
+Service·DataSource 함수가 있다.
+
+✅ **소비처가 생겼다**(2026-08-17, PR #268). `ParfaitRepository`/`ParfaitRepositoryImpl`(위임 +
+`mapErrorToAppError`, `RepositoryModule` `@Binds` 1줄) → UseCase 둘 → **C-001 캔버스 메인**까지 이어졌다.
+**다섯 중 셋만 열었다** — 오늘 조회·과거 목록·상세다. 연도 조회와 배경 변경은 소비자가 생길 때
+인터페이스에 올린다(쓰지 않는 갈래를 미리 열면 어떤 실패를 어떻게 다룰지 정하지 않은 채 계약이 굳는다).
+`android_status`는 **`partial` 그대로**다.
+
+**계약의 두 성질이 소비 방식을 갈랐다.**
+① `today`는 **부작용이 있어**(행 생성) 진입 시 `launch(key)`로 1회만 부른다 — 그럼에도 쓰는 이유는
+토핑을 얹으려면 `parfaitId`가 있어야 하고, **부작용 없는 두 경로는 없는 날을 만들어 주지 않기** 때문이다.
+② 달력에서 날짜를 고를 때는 반대로 **목록→상세 2단**을 탄다(`GetCanvasByDateUseCase`) — 훑는 것만으로
+빈 캔버스가 쌓이면 안 된다. "같은 캔버스를 두 경로로 얻는데 한쪽만 부작용이 있다"는 [미결](#미결)이
+**앱에서 용도 분리로 굳었다.**
+
+⚠️ **계약이 말하지 않는 것을 앱이 정했다.** 배치 값의 단위·기준이 계약에 없어 렌더가 규칙을 만들었다 —
+`positionX`·`positionY`는 **Canvas-Area 대비 0~1 정규화 중심점**, `scale` 1.0은 **긴 변이 그 너비의 40%**
+(위키 C-106 초기 크기), `borderWidth` 1.0은 **화면 기준 1dp**(토핑 배율과 무관), `borderColor`는
+`#RRGGBB` 6자리(알파 8자리도 읽는다). 서버가 같은 값을 다른 뜻으로 쓰거나 iOS가 달리 해석해도
+**계약으로는 드러나지 않는다** → [open-questions](../synthesis/open-questions.md).
+
+⚠️ **`today` 응답의 `date`를 앱이 검증한다.** 자정을 걸친 요청이 어제 캔버스를 받을 수 있어, 오늘을
+**응답 뒤에** 읽어 비교하고 어긋나면 딱 한 번 다시 부른다. 그 "오늘"은 기기 시간대가 아니라
+**KST**(`PARFAIT_TIME_ZONE`)다 — 캔버스 행이 KST 날짜를 키로 저장되기 때문이고, 기기 시간대로 세면
+해외 기기에서 재시도가 하루 한 번이 아니라 **로드마다** 돈다.
+
+⚠️ **과거 목록은 범위를 하루로 좁혀 부르고도 응답 날짜를 다시 본다** — 경계 처리가 서버 몫이라 하루가
+더 딸려 오면 옆날 캔버스를 고른 날로 착각한다(유닛 테스트로 잠갔다).
 
 ⚠️ **배경 변경은 이 도메인 첫 쓰기 경로**이고, 그래서 **첫 요청 DTO**(`ChangeParfaitBackgroundRequest`)와
 **쓰기 전용 도메인 모델**(`CanvasBackgroundEdit`)이 함께 들어왔다. 읽기 모델 `CanvasBackground`를
@@ -377,6 +404,9 @@ mock을 만든다**. 즉 이 도메인은 "표면은 있는데 소비처가 없�
 어느 필드에 대응하는지 코드에 없다)과 `groupId` 전달(화면 `NavKeyCanvasImageAdd`가 `data object`라
 그룹 식별자를 들고 있지 않아 UseCase 인자에서 아예 뺐다) → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) ·
 [open-questions](../synthesis/open-questions.md).
+📌 **막고 있던 이유는 사라졌는데 상태는 그대로다**(2026-08-17, PR #268) — Repository가 생겼고
+`NavKeyCanvasImageAdd`가 `groupId`를 들고 다니지만 **두 UseCase는 여전히 mock**이다. 이제 같은
+ViewModel 안에서 **캔버스 조회는 계약을 타고 달력 조회는 안 탄다.**
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|
@@ -433,11 +463,14 @@ DTO가 함께 새로 생겼다. **DI 등록 줄은 한 줄도 늘지 않았다**
 DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조건부 필수 두 갈래를 `coVerify` 인자 비교로**
 잠근다(매퍼 단독 테스트를 만들지 않는 규약 그대로).
 
-**`today` 조회가 C-001 캔버스 결선의 선행이다.** "배치 목록 조회 API가 없어 캔버스를 다시 그릴 수 없다"던
-자리가 이 엔드포인트로 닫혔고([parfait-image.md](parfait-image.md) 참고) 이제 **앱 표면까지 있다** —
-남은 것은 Repository·UseCase·화면이다. ⚠️ **부작용 있는 GET을 억제하는 코드 수단은 없다** — 경고가
-Service·DataSource KDoc에만 있고 호출 지점 관리는 화면 책임이다
-→ [open-questions](../synthesis/open-questions.md).
+**`today` 조회가 C-001 캔버스 결선의 선행이었다.** "배치 목록 조회 API가 없어 캔버스를 다시 그릴 수 없다"던
+자리가 이 엔드포인트로 닫혔고([parfait-image.md](parfait-image.md) 참고) **2026-08-17 화면까지 이어졌다.**
+⚠️ **부작용 있는 GET을 억제하는 코드 수단은 여전히 없다** — 경고가 Service·DataSource·Repository KDoc에만
+있고, 실제 억제는 화면의 `launch(key = LOAD_TODAY_CANVAS_KEY)` **하나**에 걸려 있다(다른 소비자가 생기면
+같은 규율을 스스로 지켜야 한다) → [open-questions](../synthesis/open-questions.md).
+
+⚠️ **읽기만 붙었다.** 토핑 배치(POST)·좌표 수정 경로는 소비처가 여전히 0건이라, 화면은 **서버가 가진
+배치를 그리기만 하고 새로 얹지 못한다**([parfait-image.md](parfait-image.md)).
 
 ## 미결
 

@@ -3,7 +3,7 @@
 > 세션 시작·작업 전 **이 파일부터** 읽어라. 여기서 "무엇을 찾으면 어디를 보라"로 라우팅한 뒤, 필요한 문서만 펼친다 (전체를 읽지 말 것).
 
 ## 지금 상태 (1줄)
-Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록(#222로 실패 화면·pull-to-refresh·A-005 이동까지)·C-101 카메라 플로우·C-001 캔버스 메인(#199 — 반응형 배치·Dot Grid 배경·토핑 추가 메뉴, **진입 경로 0건**)까지 들어왔고 전부 **데이터·후속 화면 미결선** 상태다. **토핑 생성 경로는 이어졌다**(#221) — C-101-confirm "다음"이 C-103 누끼 추출로 결선되고 확인(C-103)·수동 편집(C-104)·테두리 편집(C-105)이 한 라운드에 들어와 캔버스 배치(C-106) 직전까지 닿는다. 다만 네 화면의 닫기가 전부 빈 람다라 **플로우를 나갈 출구가 없다**. **캔버스 편집 갈래도 열렸다**(#231) — C-001 편집 버튼이 C-301 배경 편집으로 이어지고 카메라·갤러리·확인 세 화면을 토핑 생성 플로우와 공유하지만(NavKey `returnResultOnly` 인자로 분기), 고른 배경이 저장·반영되지 않고 C-001 진입 경로가 여전히 0건이라 이 갈래 전체가 도달 불가다. 앱 진입 체인은 Splash→Login→TermAgree→GroupList로 이어졌고(#220), 그 첫 화면 A-002 로그인이 온보딩 일러스트 3장으로 실물화됐고(#218) **인증까지 결선됐다**(#241). 그룹 생성(A-005)·참여(A-004→S-102) 두 갈래도 확인 모달을 거쳐 **목록으로 되돌아오며 닫혔다**(#224, `goToSingleClearTop`) — 위키 정본은 이 자리를 C-001 직접 진입으로 적는다. 디자인시스템은 Figma 바 3종(Top Bar Canvas·List-Date·Floating Bar)과 배경 블러(Haze, ADR-0018)까지 머지됐다(#188).
+Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록(#222로 실패 화면·pull-to-refresh·A-005 이동까지)·C-101 카메라 플로우·C-001 캔버스 메인(#199 — 반응형 배치·Dot Grid 배경·토핑 추가 메뉴, ~~진입 경로 0건~~ → **#268로 G-001에서 진입**)까지 들어왔고 전부 **데이터·후속 화면 미결선** 상태다. **토핑 생성 경로는 이어졌다**(#221) — C-101-confirm "다음"이 C-103 누끼 추출로 결선되고 확인(C-103)·수동 편집(C-104)·테두리 편집(C-105)이 한 라운드에 들어와 캔버스 배치(C-106) 직전까지 닿는다. 다만 네 화면의 닫기가 전부 빈 람다라 **플로우를 나갈 출구가 없다**. **캔버스 편집 갈래도 열렸다**(#231) — C-001 편집 버튼이 C-301 배경 편집으로 이어지고 카메라·갤러리·확인 세 화면을 토핑 생성 플로우와 공유하지만(NavKey `returnResultOnly` 인자로 분기), 고른 배경이 저장·반영되지 않는다(~~C-001 진입 경로 0건이라 이 갈래 전체가 도달 불가~~ → #268로 진입이 열려 함께 도달 가능해졌다). 앱 진입 체인은 Splash→Login→TermAgree→GroupList로 이어졌고(#220), 그 첫 화면 A-002 로그인이 온보딩 일러스트 3장으로 실물화됐고(#218) **인증까지 결선됐다**(#241). 그룹 생성(A-005)·참여(A-004→S-102) 두 갈래도 확인 모달을 거쳐 **목록으로 되돌아오며 닫혔다**(#224, `goToSingleClearTop`) — 위키 정본은 이 자리를 C-001 직접 진입으로 적는다. 디자인시스템은 Figma 바 3종(Top Bar Canvas·List-Date·Floating Bar)과 배경 블러(Haze, ADR-0018)까지 머지됐다(#188).
 서버 계약은 `api/`에 스냅샷돼 있다(도메인 7건·**엔드포인트 28개 + 테스트 전용 1**, 서버 `22717fe`).
 2026-08-15 2차 서버 delta는 엔드포인트 증감 없이 규칙만 바꿨고 — 초대코드 6자·닉네임 자모 허용·
 그룹 내 닉네임 중복 허용(`GROUP_NICKNAME_ALREADY_USED` 삭제) — **2026-08-16 delta가 파르페 상세 조회·
@@ -23,8 +23,8 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
 `ServerErrorCode` 12종도 이 라운드에서 모두 소비된다. 그 아래는 MVI 공통 에러 인프라
 (`AppError`·`Channel` 이펙트·`launch(key, onError)`)다([ADR-0020](adr/0020-mvi-error-effect-infrastructure.md)).
 남은 mock은 G-001의 `nickName` 하나인데, **그 값이 그룹 생성 요청으로 서버에 나간다.**
-파르페·이미지·회원·토핑 4 도메인은 표면은 전량 있는데 여전히 Repository조차 없다 —
-`GET .../parfaits/today`가 배치 전량을 주므로 **C-001 캔버스 결선의 서버 측 선행 조건은 사라졌다**.
+~~파르페·이미지·회원·토핑 4 도메인은 표면은 전량 있는데 여전히 Repository조차 없다~~ → **회원(#263)·
+파르페(#268)가 Repository를 얻어 이미지·토핑 둘만 남았다.**
 ⚠️ **그룹 목록은 코드 대조만으로 실패가 예상된다** — 업로드 시각을 오프셋 필수 파서로 읽는데 서버는
 오프셋을 안 싣는다([OQ-P-165](synthesis/open-questions.md)). 그리고 **어느 경로도 실서버 요청을 해 본 적이 없다**
 ([OQ-P-146](synthesis/open-questions.md)).
@@ -38,6 +38,12 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
 처음 채워 연·월 드롭다운 + 날짜 그리드가 열린다. 다만 **두 조회 UseCase가 mock**이고(표면은 있는데
 우회한다) 고른 날짜가 캔버스·라벨을 바꾸지 않는다([c201 스펙](specs/archive/2026-08-16-c201-canvas-calendar.md)).
 런처 아이콘도 교체됐다(#262 — 적응형 3종 + monochrome, 스플래시 테마 속성 제거).
+**2026-08-17 — 캔버스가 서버를 본다**(#268). `ParfaitRepository`(파르페 도메인 첫 Repository, 오늘·목록·상세
+셋만) → UseCase 둘 → C-001이 **배경·토핑·멤버를 실데이터로** 그리고, 날짜 선택이 그날 캔버스를 불러온다.
+진입도 열렸다 — `NavKeyCanvasImageAdd(groupId)` + G-001 토핑 클릭. Repository가 0건인 도메인은 **둘**
+(image·parfait-image)로 줄었다. ⚠️ **읽기만이다** — 배치·좌표 저장 경로가 없어 토핑을 새로 얹지 못하고,
+조회 실패는 로그만이라 빈 캔버스와 구분되지 않는다. 달력 UseCase 둘·C-301 편집 탭은 여전히 mock이다
+([c001-canvas-today-detail 스펙](specs/archive/2026-08-17-c001-canvas-today-detail.md)).
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |
@@ -81,7 +87,7 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `955c4636`(2026-08-17 검증, #267 `YGScaffoldV2`로 공통 로딩 오버레이·에러 토스트 자리가 생기고 3화면이 Route로 이관된 데까지 — V1은 8파일에 잔존).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `977f44f2`(2026-08-17 검증, #268로 C-001 캔버스가 `ParfaitRepository`를 거쳐 **서버 캔버스**를 그리고 G-001에서 진입이 열린 데까지 — 배치·저장 경로는 아직 없다).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md
