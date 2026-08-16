@@ -1,11 +1,11 @@
 ---
 id: user-info-ssot
 title: S-001 유저 정보 — users/me 로컬 SSoT · 자동로그인 부트스트랩 (User Info SSoT)
-status: in-progress
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-15
-related_code: MemberRepository, UserInfoLocalDataSource, MemberRemoteDataSource, MyAccountVO, GlobalNickname, LoginProvider, CryptoManager, SplashViewModel, AppSettingViewModel, AccountInfoViewModel, LogoutUseCase, TokenAuthenticator
+verified: 2026-08-16
+related_code: MemberRepository, MemberRepositoryImpl, UserInfoLocalDataSource, EncryptedPreferences, UserInfoEntity, MemberRemoteDataSource, MyAccountVO, GlobalNickname, LoginProvider, CryptoManager, GetMyAccountFlowUseCase, RefreshMyAccountUseCase, ChangeGlobalNicknameUseCase, BootstrapSessionUseCase, SessionBootstrap, ServerErrorCode, GlobalNicknameError, LoginProviderUiText, SplashViewModel, AppSettingViewModel, AccountInfoViewModel, LogoutUseCase, TokenAuthenticator, EncryptedTokenStore
 related_adr: ADR-0022, ADR-0019, ADR-0021, ADR-0008, ADR-0009
 related_spec: session-token-refresh-infra, s002-account-info, app-setting-s001
 related_architecture: data-layer, state-management
@@ -17,6 +17,31 @@ tags: [spec, parfait, member, session, datastore]
 # Spec: 유저 정보 로컬 SSoT · 자동로그인 부트스트랩
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+
+> ✅ **develop 머지(2026-08-16, PR #263 `2143c229`)** — 설계 범위 전량이 들어왔다.
+> **as-built 차이 5건**을 아래 본문에 반영했다.
+> ① UseCase 이름이 **`ObserveMyAccountUseCase` → `GetMyAccountFlowUseCase`**다. 호출 자체는 구독하지
+> 않고 `Flow`만 넘기므로(구독 시점은 수집 측이 정한다) `Flow`를 돌려주는 선례
+> (`GetRecentCacheImagesUseCase`)와 접두사를 맞췄고, 일회성 갱신인 `RefreshMyAccountUseCase`와
+> 구분하려고 이름에 `Flow`를 남겼다.
+> ② **암호화 DataStore 접근이 `EncryptedPreferences`(`data/datastore/`)로 뽑혔다.** 이 스펙이 그리던
+> "저장소가 직접 `CryptoManager`를 감싼다"는 형태가 아니라, 쓰기의 암호화·읽기의 복호화·**못 읽는
+> 저장분 폐기**를 프록시가 갖고 저장소는 *무엇을 지울지*와 *어떻게 해석할지*만 넘긴다
+> (`EncryptedTokenStore`도 같은 프록시로 옮겨 탔다). 프록시가 **암호문 상태에서 `distinctUntilChanged`**
+> 하는 것이 계정 정보 쪽에 필요했다 — 이 DataStore를 토큰과 공유해서, 재발급 저장이 무관한 구독자
+> (편집 중인 입력 필드)를 재방출로 흔든다.
+> ③ **닉네임 변경 성공 시 로컬이 비어 있으면 재조회로 채운다.** 아래 "갱신 시점"이 "재조회 안 함"으로
+> 못 박았으나, 로컬이 `null`이면 `memberId`·provider를 몰라 닉네임만으로 VO를 만들 수 없다. 폴백
+> 결과는 무시한다 — 변경 자체는 이미 성공했다.
+> ④ **부트스트랩이 두 저장소를 직접 지우지 않고 `LogoutUseCase`에 위임한다.** 지울 대상이 사용자
+> 로그아웃과 같아서, "무엇을 지우는가"가 두 곳에 적히면 한쪽만 늘어난다는 것이 근거다.
+> ⑤ **`SplashInitialUseCase`가 삭제됐고**(최소 노출 시간 요구가 없어 자리채움 mock을 남길 이유가 없다)
+> 부트스트랩 진입은 `SplashIntent.Init` 하나다. 화면 쪽에는 계획에 없던 것이 둘 더 붙었다 —
+> 서버 실패 갈래를 담는 feature 로컬 `GlobalNicknameError`(4종)와, `ServerErrorCode.Member`
+> (`INVALID_NICKNAME`·`MEMBER_NOT_FOUND`) 신설이다.
+>
+> **미검증**: 아래 계획의 수동 확인 7항목(자동로그인 왕복·첫 프레임·계정 전환·오프라인 진입 등)은
+> 실기기로 돌리지 않았다.
 
 ## 목표
 
@@ -48,7 +73,7 @@ tags: [spec, parfait, member, session, datastore]
 
 ## 선행
 
-**[session-token-refresh-infra](archive/2026-08-15-session-token-refresh-infra.md)가 먼저 머지돼야 한다.**
+**[session-token-refresh-infra](2026-08-15-session-token-refresh-infra.md)가 먼저 머지돼야 한다.**
 이 스펙은 그 라운드가 만든 것 셋에 의존한다.
 
 - `LogoutUseCase` — 여기에 `clearMyAccount()`를 더한다
@@ -87,7 +112,7 @@ interface MemberRepository {
 
 ```kotlin
 // domain/usecase/member/
-class ObserveMyAccountUseCase   { operator fun invoke(): Flow<MyAccountVO?> }
+class GetMyAccountFlowUseCase   { operator fun invoke(): Flow<MyAccountVO?> }
 class RefreshMyAccountUseCase   { suspend operator fun invoke(): Result<MyAccountVO> }
 class ChangeGlobalNicknameUseCase { suspend operator fun invoke(nickname: GlobalNickname): Result<GlobalNickname> }
 ```
@@ -109,10 +134,18 @@ class BootstrapSessionUseCase { suspend operator fun invoke(): SessionBootstrap 
 ### 저장 형태
 
 `MyAccountVO`는 값 클래스 둘(`MemberId`·`GlobalNickname`)과 enum 하나(`LoginProvider`)를 품어
-그대로 직렬화할 수 없다. `:data`에 저장 전용 `@Serializable` 모델과 매퍼를 두고, 직렬화한
-문자열 전체를 `CryptoManager.encrypt()`로 감싸 단일 `parfait_preferences` DataStore에 키 하나로
-넣는다. `RecentImageLocalDataSourceImpl`(`@LocalJson Json` + DataStore)과 `EncryptedTokenStore`
-(`CryptoManager`)의 선례를 각각 따른다.
+그대로 직렬화할 수 없다. `:data`에 저장 전용 `@Serializable` 모델(`UserInfoEntity`)과 매퍼를 두고,
+직렬화한 문자열 전체를 암호화해 단일 DataStore에 키 하나로 넣는다.
+`RecentImageLocalDataSourceImpl`(`@LocalJson Json` + DataStore)과 `EncryptedTokenStore`의 선례를 각각 따른다.
+
+> **as-built** — 암호화·복호화·손상분 폐기는 저장소가 직접 하지 않고 `EncryptedPreferences`
+> (`data/datastore/`)가 한다. `UserInfoLocalDataSourceImpl`이 정하는 것은 저장 형태(JSON)와 실패 시
+> 지울 범위(자기 키 하나)뿐이고, `EncryptedTokenStore`는 같은 프록시에 **한 짝 전체**(access+refresh)를
+> 지우도록 넘긴다 — 두 토큰이 같은 키로 암호화돼 하나를 못 읽으면 다른 하나도 못 읽기 때문이다.
+> 프록시는 **복호화 전, 암호문 상태에서 중복 방출을 끊는다**(`distinctUntilChanged`). DataStore를
+> 저장소들이 공유해서 토큰 재발급 저장 같은 무관한 키 변경에도 `data`가 재방출하는데, 복호화 뒤에
+> 끊으면 이미 매번 Keystore를 두드린 다음이라 비용을 못 던다. 이 성질이 S-002의 입력 버퍼가
+> 편집 중에 되돌려지지 않는 근거이기도 하다.
 
 **닉네임과 `memberId`는 식별 가능한 개인정보**라 평문으로 두지 않는다. 복호화에 실패하면
 (키 회전·백업 복원) 저장분을 버리고 `null`을 돌려 다음 갱신이 채우게 한다 —
@@ -129,7 +162,7 @@ class BootstrapSessionUseCase { suspend operator fun invoke(): SessionBootstrap 
 |---|---|
 | 로그인·회원가입 성공 직후 | `refreshMyAccount()` 1회. 실패해도 로그인은 진행한다 |
 | 앱 진입(스플래시) | 토큰이 있으면 `refreshMyAccount()` 1회 |
-| 닉네임 변경 성공 | 응답 값으로 로컬 갱신(재조회 안 함) |
+| 닉네임 변경 성공 | 응답 값으로 로컬 갱신. **로컬이 비어 있으면 재조회로 채운다**(as-built) — `memberId`·provider를 몰라 닉네임만으로 VO를 세울 수 없다. 폴백 실패는 무시한다 |
 | 그 외 화면 진입 | **없음.** 화면은 구독만 한다 |
 
 로그인 직후 실패를 무시하는 이유 — 그 시점에 화면을 되돌릴 곳이 없다. 사용자는 이미 인증됐고,
@@ -173,6 +206,12 @@ userInfo는 토큰과 **같은 수명**이다. 지우는 자리가 둘이다.
 |---|---|
 | 사용자 로그아웃 | `LogoutUseCase`가 `authRepository.logout()` + `memberRepository.clearMyAccount()` |
 | 강제 로그아웃 | `TokenAuthenticator`가 토큰을 지우는 그 자리에서 userInfo도 지운다 |
+| 부트스트랩 인증 거절 | **`LogoutUseCase`에 위임한다**(as-built) — 지울 대상이 사용자 로그아웃과 같다 |
+
+as-built로 정리 주체가 **둘**(`LogoutUseCase`·`TokenAuthenticator`)이 됐다. 부트스트랩이 두 저장소를
+직접 부르지 않는 이유는 "무엇을 지우는가"가 두 곳에 적히면 한쪽만 늘어나기 때문이고, 반환값도
+보지 않는다 — 라우팅은 이미 `ToLogin`으로 정해져 있다. `clearMyAccount()`의 IO 실패는 `LogoutUseCase`가
+`runSuspendCatching`으로 삼켜 로그아웃 자체를 실패로 만들지 않는다.
 
 강제 로그아웃 쪽을 `:data` 안에서 끝내는 이유 — 앱 루트가 이벤트를 받아 정리하게 하면, 그
 이벤트가 유실되는 순간(재생성 창, `session-token-refresh-infra`의 열린 질문) **토큰은 지워졌는데
@@ -186,8 +225,16 @@ userInfo는 남는** 상태가 생긴다. 지우는 주체를 하나로 두면 �
 
 | 화면 | 지금 | 바뀐 뒤 |
 |---|---|---|
-| S-001 앱 설정 | `nickname`·`loginProvider` mock 문자열 | `ObserveMyAccountUseCase` 구독 |
+| S-001 앱 설정 | `nickname`·`loginProvider` mock 문자열 | `GetMyAccountFlowUseCase` 구독 |
 | S-002 계정 정보 | `nickname` mock 문자열 | 구독 + 변경은 `ChangeGlobalNicknameUseCase` |
+
+**서버 실패 갈래는 feature 로컬 `GlobalNicknameError` 4종**(`INVALID`·`ACCOUNT_GONE`·`NETWORK`·`UNKNOWN`)으로
+받는다(as-built). `GroupNickNameError`(`feature/groups/enter/impl`)와 형태는 같지만 재사용하지 않는다 —
+feature `impl`은 서로를 의존하지 않는 leaf 모듈이고, 전역 닉네임에는 중복(`ALREADY_USED`) 개념이 없다.
+`ACCOUNT_GONE`(404 `MEMBER_NOT_FOUND`)을 `UNKNOWN`과 나눠 두는 이유는 **재시도가 절대 성공하지 못하는
+실패**여서다. ⚠️ 그 코드를 `BootstrapSessionUseCase`는 세션 사망으로 판정하는데 **이 화면은 표시만 하고
+세션을 정리하지 않는다** — 죽은 세션은 다음 앱 진입의 부트스트랩이 걷어낸다(강제 로그아웃 발신 주체는
+`TokenAuthenticator` 하나라는 결정을 유지한다).
 
 `LoginProvider`는 enum이라 표시 문구 매핑이 필요하다(`KAKAO` → "Kakao"). ADR-0016 결정대로
 **domain은 의미만 돌려주고 표시 매핑은 프레젠테이션이 소유한다** — `core:ui`에

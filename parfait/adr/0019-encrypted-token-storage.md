@@ -49,6 +49,13 @@ tags: [adr, parfait, security, network, data, auth]
   `getAccessToken()`·`getRefreshToken()`·`save(accessToken, refreshToken)`·`clear()`, 전부 suspend.
   `CryptoManager`로 암복호화한 문자열을 [ADR-0008](0008-datastore-local-persistence.md)의
   기존 `DataStore<Preferences>`(`DataStoreModule` 제공, 새 인스턴스 아님)에 넣고 뺀다.
+  > 📌 **as-built(PR #263, 2026-08-16)** — 암복호화·폐기를 `EncryptedTokenStore`가 직접 하지 않고
+  > **`EncryptedPreferences`**(`data/datastore/`)에 위임한다. 같은 저장 형태(값이 아니라 암호문)를
+  > 쓰는 저장소가 둘이 되며(계정 정보, [ADR-0022](0022-user-info-local-ssot.md)) 세 가지 — 쓰기의
+  > 암호화, 읽기의 복호화·역직렬화, **못 읽는 저장분 폐기** — 가 그대로 복제될 자리였고, 특히
+  > 마지막은 빠뜨려도 평소엔 드러나지 않는다. 저장소가 정하는 것은 **무엇을 지울지**와
+  > **어떻게 해석할지**뿐이다. `save`는 두 토큰을 **한 `edit` 블록**에서 써 반쪽만 저장된 상태가
+  > 보이지 않게 한다.
 - **`TokenProvider`** — ADR-0017의 동기 인터페이스를 그대로 유지하고 구현만 교체한다
   (`EmptyTokenProvider` → `TokenStoreTokenProvider`, `EmptyTokenProvider`는 삭제). `AuthInterceptor`는
   시그니처 변경 없음. `TokenStoreTokenProvider.getToken()`은 `runBlocking { tokenStore.getAccessToken() }`으로
@@ -68,6 +75,15 @@ tags: [adr, parfait, security, network, data, auth]
 > 복구 경로의 `clear()`도 다시 `runCatching`으로 감싼다. 즉 키 무효화뿐 아니라 저장소 I/O 실패도
 > 같은 "토큰 삭제 후 null" 경로로 떨어지고, 삭제 자체가 실패해도 `null` 반환은 보장된다. 넓힌 만큼
 > **일시적 I/O 실패를 영구 토큰 삭제로 처리**하게 되는데, 재로그인으로 복구 가능하므로 수용한다.
+>
+> 🔁 **정정(PR #263, 2026-08-16) — 그 수용이 되돌려졌다.** 폐기 판단이 `EncryptedPreferences`
+> (`data/datastore/`)로 옮겨가며 **저장소 읽기 실패와 해석 실패가 갈렸다**: 값을 손에 넣고도
+> 복호화·역직렬화하지 못했을 때만 폐기하고, 읽기 자체가 실패하면(디스크 IO) **아무것도 지우지 않고
+> `null`만 돌려준다**. 근거는 값이 손상됐다는 근거가 없다는 것 — 일시적 실패로 지우면 다음 시도에
+> 살아날 세션까지 잃는다. `EncryptedTokenStore`는 자기 몫 하나만 남겼다: **폐기 범위가 한 짝 전체**
+> (`clear()`)라는 것. 두 토큰이 같은 키로 암호화돼 하나를 못 읽으면 다른 하나도 못 읽기 때문이고,
+> 프록시가 이 범위를 임의로 정하지 않도록 호출부가 `onDecodeFailure`로 넘긴다(계정 정보는 자기 키
+> 하나만 지운다 → [ADR-0022](0022-user-info-local-ssot.md)).
 
 예외를 전파하면 `TokenProvider.getToken()` → `AuthInterceptor.intercept`에서 터져 **모든 네트워크
 요청이 죽는다** — 사용자가 앱을 지우기 전까지 복구할 수 없는 상태가 된다.
