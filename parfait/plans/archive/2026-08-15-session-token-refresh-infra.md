@@ -1,5 +1,25 @@
 # 세션 인프라 (401 자동 재발급 · 강제 로그아웃) Implementation Plan
 
+> ✅ **완료·develop 머지(PR #260 `9cfbd117`, 2026-08-15)** — 9 Task 전량이 develop에 있다.
+> 체크박스는 실행 기록을 이 블록에 모으는 관례대로 미체크로 둔다.
+>
+> **계획이 코드와 갈린 곳 3건**(전부 스펙 쪽이 최신이고 이 계획서가 낡은 판본이다):
+> ① Task 3의 `authService: Provider<AuthService>` **지연 주입이 채택되지 않았다** — 재발급 전용
+> 클라이언트(`@UnauthenticatedClient`)를 따로 만들며 `Retrofit`↔`OkHttpClient`↔`Authenticator`
+> Dagger 순환 자체가 사라져 `Provider`가 필요 없어졌다. Task 6의 게이트(`:app:kspDebugKotlin`이
+> 순환을 끊었는지 판정)도 그래서 의미가 바뀌었고, `NetworkModule`·`ServiceModule`에
+> provider 세 개(`OkHttpClient`·`Retrofit`·`AuthService`)가 더 붙었다.
+> ② Task 8 Step 6·Task 9 Step 1의 `clearBackStack()` + `goTo(NavKeyLogin)`가 **`replaceAll(NavKeyLogin)`**
+> 한 줄로 바뀌었다 — 같은 라운드가 `Navigator.replaceAll`을 신설하고 `clearBackStack()`을 **제거**해
+> 기존 호출부 3곳(`SplashRoute`·`TermAgreeRoute`·`LoginRoute`)도 함께 옮겼다. 계획에 없던
+> `NavigatorTest` 3케이스가 그 결정을 잠근다.
+> ③ Task 8이 계획에 없던 UI 상태를 하나 더 들였다 — `AppSettingState.isLoggingOut` + `try`/`finally`,
+> `YGActionItem(enabled = …)` 파라미터 신설(클릭만 막고 **색은 안 바꾼다** — 비활성 색이 DS에 없다).
+>
+> 신규 테스트는 계획의 12건 대비 **파일 5개 26케이스**로 늘었다(위 `NavigatorTest` 포함).
+> 수동 확인 4항목은 **미수행**이다 → [open-questions](../../synthesis/open-questions.md) OQ-P-146.
+> 산출물 계약의 정본은 [스펙](../../specs/archive/2026-08-15-session-token-refresh-infra.md)이다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** access token이 만료되면 화면 모르게 재발급해 원요청을 잇고, 재발급까지 서버에 거절당하면 앱 전체를 한 번에 로그인 화면으로 보낸다.
@@ -8,7 +28,7 @@
 
 **Tech Stack:** Kotlin, OkHttp 3 `Authenticator`, Retrofit, Hilt(`Provider` 지연 주입), kotlinx.coroutines(`Mutex`·`Channel`), MockWebServer(`mockwebserver3`), MockK, kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-15-session-token-refresh-infra.md`](../specs/2026-08-15-session-token-refresh-infra.md) · 대응 ADR [`parfait/adr/0021-token-refresh-forced-logout.md`](../adr/0021-token-refresh-forced-logout.md)
+**Spec:** [`parfait/specs/archive/2026-08-15-session-token-refresh-infra.md`](../../specs/archive/2026-08-15-session-token-refresh-infra.md) · 대응 ADR [`parfait/adr/0021-token-refresh-forced-logout.md`](../../adr/0021-token-refresh-forced-logout.md)
 
 ## Global Constraints
 

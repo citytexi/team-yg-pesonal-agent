@@ -4,9 +4,9 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-15
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit
-related_adr: ADR-0002, ADR-0006
+verified: 2026-08-16
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar
+related_adr: ADR-0002, ADR-0006, ADR-0021
 related_architecture:
 related_code: core:navigation, Navigator
 tags: [architecture, parfait]
@@ -18,7 +18,13 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 > 근거는 파일명+심볼명으로만.
 
 ## 구성 요소
-- **Navigator**(`core:navigation`, `@ActivityRetainedScoped`) — 백스택 = `SnapshotStateList<NavKey>`. `goTo()`, `goToSingleClearTop()`, `goToAndPopCurrent()`, `onBack()`, `clearBackStack()`.
+- **Navigator**(`core:navigation`, `@ActivityRetainedScoped`) — 백스택 = `SnapshotStateList<NavKey>`. `goTo()`, `goToSingleClearTop()`, `goToAndPopCurrent()`, `replaceAll()`, `onBack()`.
+  - `replaceAll(destination)`(#260 신설, **`clearBackStack()` 대체**) — 백스택을 비우고 목적지 하나만
+    남긴다. 비우기와 채우기를 나눠 노출하면 그 사이에 **빈 백스택**이 생기고 채우는 것은 호출부의
+    규약일 뿐이라, 빈 상태를 만들 수 있는 API 자체를 없앴다(빈 백스택은 `onBack`이 이미 방어하고 있는
+    크래시 원인이다). `clearBackStack()`은 제거됐고 기존 호출부 3곳(`SplashRoute`·`TermAgreeRoute`·
+    `LoginRoute`)이 함께 옮겨졌다. `NavigatorTest`가 이 성질을 잠근다 — 저장소에서 `Navigator`에
+    테스트가 붙은 것도 이번이 처음이다.
   - `goToSingleClearTop(destination)`(#224 신설) — 대상이 백스택에 있으면 **그 위를 한 번에 잘라내(`removeRange`) 기존 엔트리를 재사용**하고, 없으면 `goTo`처럼 새로 쌓는다. 한 칸씩 빼면 스냅샷 변경이 그만큼 쌓이므로 범위 삭제로 처리한다. 엔트리 재사용이므로 대상 화면의 상태·ViewModel이 그대로 살아난다(돌아온 화면이 새로 조회하지 않는다).
   - `goToAndPopCurrent(destination)`(#221 신설) — 지금 화면을 대상으로 **치환**한다(마지막 칸에 덮어쓰기).
     백스택 깊이가 늘지 않고 뒤로 가면 지금 화면을 건너뛴다. 스택이 비어 있으면 그냥 쌓는다.
@@ -44,10 +50,12 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 
 - 이전에는 로그인이 `NavKeyGroupHome`(`ResultEventBus` 시연용 임시 화면)으로 갔고, `NavKeyTermAgree`·
   `NavKeyGroupList`는 entry만 등록된 **도달 불가 화면**이었다. 체크리스트 6번의 사례가 하나 닫힌 것.
-- **백스택 리셋 관용구**: 되돌아가면 안 되는 경계에서 `navigator.clearBackStack()` 직후
-  `navigator.goTo(...)`를 부른다 — `SplashRoute`(→ 로그인), `TermAgreeRoute`(→ 그룹 목록) 2곳.
-  `clearBackStack()`은 백스택을 비우기만 하므로 **반드시 같은 블록에서 `goTo`가 따라와야** 한다.
+- **백스택 리셋 관용구**: 되돌아가면 안 되는 경계에서 **`navigator.replaceAll(...)`** 한 줄을 부른다 —
+  `SplashRoute`(→ 로그인), `TermAgreeRoute`(→ 그룹 목록), `LoginRoute`(기존 회원 → 그룹 목록) 3곳.
   결과적으로 그룹 목록에서는 백스택이 1개라 뒤로가기가 no-op이다.
+  > 🔁 **2026-08-15(PR #260)** — 그전까지는 `clearBackStack()` + `goTo(...)` 두 줄이었고 "반드시 같은
+  > 블록에서 `goTo`가 따라와야 한다"가 암묵 규약이었다. 그 규약을 타입에서 지우려고 두 함수를
+  > `replaceAll`로 합치고 `clearBackStack()`을 제거했다 → [open-questions](../synthesis/open-questions.md) [2026-08-12].
 - 의존 방향은 규약대로 `:api`만: `feature/login/impl` → `feature/intro/api`,
   `feature/intro/impl` → `feature/groups/list/api`.
 - ~~**화면 전이만 결선됐다**~~ → ✅ **데이터까지 이어졌다(2026-08-15, PR #241·#242)**. 로그인이
@@ -55,11 +63,30 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
   `POST /auth/signup`으로 동의를 보내고 **세션을 저장한 뒤** 목록으로 넘어간다. 즉 이 체인의 세 구멍
   (인증·회원 분기·동의 저장)이 닫혔다 → [open-questions](../synthesis/open-questions.md) [2026-08-10].
   **기존 회원은 약관 화면을 거치지 않으므로 백스택 리셋 지점이 두 곳**이다 — `LoginRoute`가 기존 회원이면
-  `clearBackStack()` + `goTo(NavKeyGroupList)`, 신규면 리셋 없이 `goTo(NavKeyTermAgree(registrationToken))`이라
+  `replaceAll(NavKeyGroupList)`, 신규면 리셋 없이 `goTo(NavKeyTermAgree(registrationToken))`이라
   약관 화면에서 뒤로 가면 로그인으로 돌아간다. 리셋은 그 뒤 `TermAgreeRoute`가 한다.
 - 📌 **체인 첫 화면이 실물이 됐다(2026-08-11, PR #218)** — A-002 로그인의 온보딩 자리가 placeholder
   박스에서 일러스트 3장으로 채워졌다. 전이·인증 구조는 그대로다(카카오 토큰은 여전히 `LoginState`
   안에서 끝난다) → [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md).
+
+## 세션 종료 이동 (2026-08-15, PR #260)
+
+화면이 아니라 **네트워크 계층이 이동을 일으키는 첫 경로**다. 상세는
+[session-token-refresh-infra 스펙](../specs/archive/2026-08-15-session-token-refresh-infra.md).
+
+```
+TokenAuthenticator(재발급 거절) → SessionEventBus.postForcedLogout()
+    → MainRoute의 LaunchedEffect 단일 수집 → navigator.replaceAll(NavKeyLogin)
+```
+
+- **수집 지점은 앱 루트 `MainRoute` 한 곳**이다(`NavDisplay` 상위 `LaunchedEffect`). 화면마다 구독하면
+  한 이벤트로 이동이 여러 번 일어난다. `SessionEventSource`는 `MainActivity`가 주입받아 내려준다.
+- 통로는 `Channel(CONFLATED)`이라 **단일 소비자**이고, 401이 여러 건 터져도 이동은 한 번이다. 이
+  성질이 규약이 아니라 타입에서 나온다는 점이 화면 이펙트(`BaseViewModel`)와 같다([ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md)).
+- 사용자가 직접 누르는 로그아웃은 같은 목적지를 화면 이펙트로 간다 — S-001 앱 설정의
+  `AppSettingSideEffect.NavigateToLogin` → `replaceAll(NavKeyLogin)`. 즉 **같은 이동에 진입점이 둘**이고
+  둘 다 백스택을 비운다.
+- ⚠️ **수집 지점이 하나라는 것은 규약일 뿐 기계 검사가 없다** → [open-questions](../synthesis/open-questions.md) [2026-08-16].
 
 ## 그룹 생성·참여 플로우 (2026-08-12, PR #224)
 
@@ -78,9 +105,9 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
 
 - 복귀는 `clearBackStack()` + `goTo`가 아니라 **`goToSingleClearTop(NavKeyGroupList)`**다 —
   목록 엔트리가 백스택에 이미 있으므로 그 위만 걷어낸다. 목록에서 뒤로가기는 여전히 no-op이다(백스택 1개).
-  즉 develop에 **백스택 리셋 관용구가 둘**이다: 되돌아갈 화면이 없는 경계는 `clearBackStack()`+`goTo`
-  (Splash·TermAgree), 이미 스택에 있는 화면으로 복귀는 `goToSingleClearTop`(그룹 생성·참여)
-  → [open-questions](../synthesis/open-questions.md) [2026-08-12].
+  즉 develop에 **백스택 리셋 관용구가 둘**이다: 되돌아갈 화면이 없는 경계는 `replaceAll`
+  (Splash·TermAgree·Login·강제 로그아웃), 이미 스택에 있는 화면으로 복귀는 `goToSingleClearTop`
+  (그룹 생성·참여) → [open-questions](../synthesis/open-questions.md) [2026-08-12].
 - **확인 모달이 전이의 게이트**다 — 두 화면 다 확인 버튼이 곧바로 이동하지 않고 `YGModalPopup`을 띄우며,
   이동은 모달의 Primary 버튼에서 일어난다. 모달 표시 여부는 각 UiState의 `isConfirmPopupVisible`이다
   ([a005](../specs/archive/2026-07-29-a005-group-create.md)·[a004](../specs/archive/2026-08-12-a004-group-invite-code.md) 스펙).

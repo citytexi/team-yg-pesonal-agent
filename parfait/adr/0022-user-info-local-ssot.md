@@ -17,6 +17,11 @@ tags: [adr, parfait, member, datastore, state]
 
 > 상태·날짜·결정자·대체 관계는 위 frontmatter가 단일 출처. 본문은 결정 내용에 집중.
 
+> 📌 **선행 조건이 열렸다(2026-08-15, PR #260)** — 이 결정이 딛고 서는 세션 인프라
+> ([ADR-0021](0021-token-refresh-forced-logout.md))가 develop에 있다. `LogoutUseCase`·
+> `SessionEventBus`·`TokenAuthenticator`가 이미 코드이고, 이 ADR은 그 위에 "세션 정리 조율"과
+> 부트스트랩을 얹는다. 코드는 아직 미착수다.
+
 ## 맥락
 
 계정 정보(전역 닉네임·`memberId`·로그인 provider)를 쓰는 화면이 늘고 있다. 지금은 화면마다 mock

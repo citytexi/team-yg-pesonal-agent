@@ -23,6 +23,16 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
 ⚠️ **그룹 목록은 코드 대조만으로 실패가 예상된다** — 업로드 시각을 오프셋 필수 파서로 읽는데 서버는
 오프셋을 안 싣는다([OQ-P-165](synthesis/open-questions.md)). 그리고 **어느 경로도 실서버 요청을 해 본 적이 없다**
 ([OQ-P-146](synthesis/open-questions.md)).
+**2026-08-15 — 만료를 다루는 주체가 생겼다**(#260, [ADR-0021](adr/0021-token-refresh-forced-logout.md)).
+`TokenAuthenticator`가 401을 가로채 재발급하고 원요청을 잇는다(화면은 못 본다). 재발급이 **서버에
+거절당할 때만** 세션을 버리고 `SessionEvent.ForcedLogout`을 앱 루트 한 곳이 받아 로그인으로 보낸다 —
+네트워크 실패·5xx는 토큰을 유지한다. 재발급은 자격증명을 안 붙이는 전용 클라이언트로 나간다(디스패처
+고갈 방지). 로그아웃도 결선돼 **auth 도메인이 `android_status: done`**이 됐고, 같은 라운드가
+`Navigator.clearBackStack()`을 제거하고 `replaceAll()`로 합쳤다.
+**2026-08-16 — C-201 캘린더가 붙었다**(#259). C-001의 날짜 버튼이 `YGCanvas.calendarContent` 슬롯을
+처음 채워 연·월 드롭다운 + 날짜 그리드가 열린다. 다만 **두 조회 UseCase가 mock**이고(표면은 있는데
+우회한다) 고른 날짜가 캔버스·라벨을 바꾸지 않는다([c201 스펙](specs/archive/2026-08-16-c201-canvas-calendar.md)).
+런처 아이콘도 교체됐다(#262 — 적응형 3종 + monochrome, 스플래시 테마 속성 제거).
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |
@@ -65,7 +75,7 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `60df07a4`(2026-08-15, #250 API 표면 25/25 회복까지).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `2d0f6a5d`(2026-08-16, #260 세션 인프라·#262 앱 아이콘·#259 캘린더까지).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md

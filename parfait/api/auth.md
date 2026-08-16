@@ -4,8 +4,8 @@ title: 인증(카카오·애플 로그인·회원가입·토큰 재발급·로�
 server_module: http/auth
 server_commit: e4ff23f
 verified: 2026-08-15
-android_status: partial
-related_spec: a002-kakao-login-api
+android_status: done
+related_spec: a002-kakao-login-api, session-token-refresh-infra
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, auth]
 ---
@@ -21,9 +21,9 @@ tags: [api, parfait, server-contract, auth]
 |---|---|---|---|---|---|
 | POST | `/api/v1/auth/kakao` | 불필요(화이트리스트) | `KakaoLoginRequest` | `KakaoLoginResponse` | **결선됨**[^newuser] |
 | POST | `/api/v1/auth/apple` | 불필요(화이트리스트) | `AppleLoginRequest` | `AppleLoginResponse` | 해당 없음[^apple] |
-| POST | `/api/v1/auth/signup` | 불필요(화이트리스트) | `SignupRequest` | `SignupResponse` | 구현됨 |
-| POST | `/api/v1/auth/reissue` | 불필요(화이트리스트) | `ReissueRequest` | `ReissueResponse` | 구현됨 |
-| POST | `/api/v1/auth/logout` | **필요**(화이트리스트 밖) | `LogoutRequest` | 없음(204, envelope 없음) | 구현됨 |
+| POST | `/api/v1/auth/signup` | 불필요(화이트리스트) | `SignupRequest` | `SignupResponse` | **결선됨**(PR #242, 온보딩 약관) |
+| POST | `/api/v1/auth/reissue` | 불필요(화이트리스트) | `ReissueRequest` | `ReissueResponse` | **결선됨**[^reissue] |
+| POST | `/api/v1/auth/logout` | **필요**(화이트리스트 밖) | `LogoutRequest` | 없음(204, envelope 없음) | **결선됨**[^logout] |
 
 [^newuser]: **2026-08-14 해소** — `@SerialName("isNewUser")`로 정정하고 실제 JSON 본문을 디코딩하는
 와이어 계약 테스트(`KakaoLoginResponseSerializationTest`)를 붙였다. 되돌리면 그 테스트가
@@ -31,6 +31,15 @@ tags: [api, parfait, server-contract, auth]
 (PR #241 `80895eb1`, 2026-08-15 develop 머지)
 → [a002-kakao-login-api 스펙](../specs/archive/2026-08-13-a002-kakao-login-api.md).
 **단 실서버 응답으로는 아직 확인하지 못했다** — 아래 [판별자 키](#판별자-키는-isnewuser다).
+
+[^reissue]: **2026-08-15 결선(PR #260)** — 호출부는 화면이 아니라 `TokenAuthenticator`다. 401을 가로채
+이 엔드포인트로 재발급한 뒤 원요청을 다시 만든다. 거절(401 또는 본문 `code`가 `INVALID_TOKEN`·
+`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN`)만 세션을 끝내고 네트워크 실패·5xx는 토큰을 유지한다
+→ 아래 [Android 매핑](#android-매핑).
+
+[^logout]: **2026-08-15 결선(PR #260)** — `AuthRepository.logout()` → `LogoutUseCase` → S-001 앱 설정.
+화이트리스트 밖이라 **만료 상태의 로그아웃이 `TokenAuthenticator`를 한 번 탄다**는 점이 이 엔드포인트
+고유의 문제를 만든다(refresh token 회전 → 재전송) → 아래 [Android 매핑](#android-매핑).
 
 [^apple]: **Android는 애플 로그인을 쓰지 않기로 결정했다**(2026-08-11). 서버에는 있으나 앱 대응
 심볼을 만들지 않으며 `http/auth.http`에도 요청을 넣지 않는다 — `미구현`(아직 없음)이 아니라
@@ -374,7 +383,19 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 `agreements[]`는 화면에 노출한 약관 **전체**(미동의는 `agreed = false`)이고 그 목록 출처는 [policy.md](policy.md)다.
 필수 약관 미동의는 요청 전에 도메인이 막는다(`SignUpException.RequiredPolicyNotAgreed`) — 서버
 `REQUIRED_TERMS_NOT_AGREED` 400은 화면 가드가 뚫렸을 때만 도달한다.
-**`reissue`·`logout`은 여전히 Repository·UseCase 0건**이고 이후 라운드다.
+**2026-08-15 — `reissue`·`logout`도 결선돼 애플을 뺀 4 엔드포인트 전부가 호출부를 얻었다**(PR #260
+`9cfbd117`, [스펙](../specs/archive/2026-08-15-session-token-refresh-infra.md)).
+- **`reissue`의 호출부는 화면이 아니다** — `TokenAuthenticator`(OkHttp `Authenticator`)가 401을 가로채
+  부른다. 이 엔드포인트만 **자격증명을 안 붙이는 전용 표면**(`@UnauthenticatedClient` `OkHttpClient`·
+  `Retrofit`·`AuthService`)을 타는데, 인증기가 자기 자신을 재진입하지 않게 하려는 것과 재발급이
+  자격증명을 헤더가 아니라 **본문**으로 보내기 때문이다. `ServerErrorCode.Auth`에 토큰 거절 코드
+  3종(`INVALID_TOKEN`·`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN`)이 추가돼 세션 종료 판정에 쓰인다.
+- **`logout`은 회전 재전송을 한 번 한다** — 만료 상태에서 부르면 인증기가 먼저 재발급을 하고 서버가
+  refresh token을 **회전시켜 방금 본문에 실어 보낸 값을 죽인다**. 인증기는 `Authorization` 헤더만 갈아
+  끼우고 같은 본문을 재전송하므로 그대로 두면 로컬만 지워지고 서버 세션은 살아남는다. 그래서
+  `AuthRepositoryImpl.logout()`이 실패 시 저장소의 refresh token을 다시 읽어 **바뀌었으면 새 값으로
+  정확히 1회** 재전송한다. 서버가 끝내 실패해도 로컬은 정리하고 성공을 반환한다.
+- 204·envelope 없음이라는 이 문서의 서술대로 `safeApiCallNoContent`를 쓴다(변경 없음).
 
 **실제 서버 호출로는 아직 한 번도 검증되지 않았다** — 실기기 검증이 남아 있다. 개발 서버 평문 HTTP
 차단은 `usesCleartextTraffic`으로 뚫었으나 그 설정 자체가 미결이다

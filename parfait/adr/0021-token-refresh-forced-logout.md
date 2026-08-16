@@ -1,7 +1,7 @@
 ---
 id: ADR-0021
 title: 401 자동 재발급 — OkHttp Authenticator + 강제 로그아웃 이벤트
-status: proposed
+status: accepted
 date: 2026-08-15
 deciders: Parfait 팀
 supersedes:
@@ -16,6 +16,14 @@ tags: [adr, parfait, auth, network, session]
 # ADR-0021: 401 자동 재발급 — OkHttp Authenticator + 강제 로그아웃 이벤트
 
 > 상태·날짜·결정자·대체 관계는 위 frontmatter가 단일 출처. 본문은 결정 내용에 집중.
+
+> ✅ **develop 머지(2026-08-15, PR #260 `9cfbd117`)** — 결정이 코드가 됐다. 아래 서술의 `@AuthClient`는
+> as-built에서 **`@UnauthenticatedClient`**다(사용처가 아니라 표면의 성질을 가리키도록 개명, 세
+> provider가 이 한정자를 단다). 나머지는 본문 그대로이고, 방어 네 겹·실패 두 부류·`CONFLATED` 채널·
+> 앱 루트 단일 수집이 전부 테스트로 잠겼다
+> ([스펙](../specs/archive/2026-08-15-session-token-refresh-infra.md) "테스트" 절).
+> **같은 라운드가 `Navigator`도 바꿨다** — `clearBackStack()`을 제거하고 `replaceAll(destination)`으로
+> 합쳐 "비우고 안 쌓은" 중간 상태를 API에서 지웠다(강제 로그아웃 이동이 첫 소비처).
 
 ## 맥락
 
@@ -35,7 +43,7 @@ tags: [adr, parfait, auth, network, session]
 - **`TokenAuthenticator`**(`data/network`) — `authenticate()`가 `@NoAuth` 가드 → 루프 가드 →
   `Mutex` → 선점 확인 → 재발급 순으로 판단한다. `Authenticator` 계약이 동기라 `runBlocking`을
   쓴다(`TokenStoreTokenProvider` 선례와 동일).
-- **재발급은 전용 `OkHttpClient`로 나간다**(`@AuthClient`, 독립 `Dispatcher`, 인증기·`AuthInterceptor`
+- **재발급은 전용 `OkHttpClient`로 나간다**(`@UnauthenticatedClient`, 독립 `Dispatcher`, 인증기·`AuthInterceptor`
   없음). 같은 클라이언트를 쓰면 **디스패처가 고갈돼 앱 전체가 정지한다** — `authenticate()`는 자기
   호출이 슬롯을 점유한 채 블록된 상태로 실행되는데, 재발급이 같은 디스패처·같은 호스트로 enqueue
   되고 기본 `maxRequestsPerHost`는 5다. 동시 401이 5건이면 재발급이 영원히 promote되지 않고
@@ -113,4 +121,4 @@ tags: [adr, parfait, auth, network, session]
 - **디스패처 데드락 자체는 테스트로 재현하지 않는다.** 회귀가 실패가 아니라 무한 대기로 나타나
   CI가 걸린다. 대신 전용 클라이언트의 구조적 성질(인증기 미부착, 별도 `Dispatcher` 인스턴스)을
   고정한다. 남은 구멍: **`TokenAuthenticator`가 한정된 `AuthService`를 받는다는 사실에는 그물이
-  없다** — 생성자에서 `@AuthClient`만 지우면 모든 테스트가 통과하면서 데드락이 되살아난다
+  없다** — 생성자에서 `@UnauthenticatedClient`만 지우면 모든 테스트가 통과하면서 데드락이 되살아난다

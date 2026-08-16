@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-15
-related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer
-related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020
+verified: 2026-08-16
+related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra
+related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -20,6 +20,9 @@ tags: [architecture, parfait]
 ## 레이어 배치
 - **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`·`MyParfaitGroupVO`) + 도메인 예외(sealed `SegmentationException` — `ImageNotFound`·`ClientInit`·`ModuleNotReady`·`Process` / `SignUpException.RequiredPolicyNotAgreed`).
   - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드가 추가한 VO·value class만 하위 패키지로 들어갔고(PR #197의 `auth/`·`group/`·`id/`·`policy/`에 PR #230이 `image/`·`member/`·`topping/`을, PR #250이 `canvas/`를 더했다), 그 이전 선언 8개는 루트에 남았다. 하위 패키지가 넷에서 여덟이 되며 **비율은 더 기울었는데 규약은 여전히 없다** — 어디에 새 모델을 둘지 매번 판단해야 하는 상태 → [open-questions](../synthesis/open-questions.md).
+    2026-08-15~16 라운드가 `session/`(PR #260, `SessionEvent` — **원격 VO가 아닌 첫 하위 패키지**)과
+    `parfait/`(PR #259, `ParfaitHistory`)를 더해 **열이 됐다**. "원격 API 라운드가 만든 것만 하위
+    패키지"라는 느슨한 기준마저 더는 성립하지 않는다.
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
 ## DataSource 종류
@@ -46,8 +49,9 @@ tags: [architecture, parfait]
 | `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
 | `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
-| `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`) |
-| `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`OkHttpClient`·`Retrofit` |
+| `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
+| `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) |
+| `SessionModule` | `SessionEventBus` → `SessionEventSource` 바인딩(#260 신설) |
 | `DataStoreModule` | `DataStore<Preferences>` 싱글톤 |
 | `JsonModule` | `@LocalJson`·`@RemoteJson` `Json` 2종(현재 설정 동일: `ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`) |
 | `SingletonInjectModule` | 기타 앱 전역 싱글톤 |
@@ -105,7 +109,9 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 
 중첩 object는 서버 enum 구조를 그대로 따른다 — `Auth`(서버 `AuthErrorCode`) · `ParfaitGroup`
 (`ParfaitGroupApiErrorCode`) · `Common`(`CommonErrorCode`). **2026-08-15 그룹 결선 라운드로 선언된 코드가
-전부 소비된다** — `Auth` 3종은 A-002, `ParfaitGroup` 7종은 A-004(초대코드·이미 참여·정원)·S-102(닉네임
+전부 소비된다** — `Auth`는 **6종으로 늘었고**(#260이 `INVALID_TOKEN`·`EXPIRED_TOKEN`·
+`FORBIDDEN_REFRESH_TOKEN` 추가, `TokenAuthenticator`의 세션 종료 판정이 소비한다) 기존 3종은 A-002,
+`ParfaitGroup` 7종은 A-004(초대코드·이미 참여·정원)·S-102(닉네임
 규칙)·A-005(그룹명·닉네임·정원·회원 없음), `Common.INVALID_REQUEST`는 A-005가 쓴다. "분기에 쓰는 코드만
 둔다"는 자기 KDoc 규칙이 다시 지켜지는 상태다.
 
@@ -118,7 +124,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 
 | Repository | 메서드 | 소비 |
 |---|---|---|
-| `AuthRepository` | `loginWithKakao(idToken, nonce)` · `signUp(registrationToken, agreements)` · `saveSession(session)` | `LoginWithKakaoUseCase` → A-002 · `SignUpUseCase` → 온보딩 약관 |
+| `AuthRepository` | `loginWithKakao(idToken, nonce)` · `signUp(registrationToken, agreements)` · `saveSession(session)` · **`logout()`**(#260) | `LoginWithKakaoUseCase` → A-002 · `SignUpUseCase` → 온보딩 약관 · `LogoutUseCase` → S-001 앱 설정 |
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
 | `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | 순서대로 `GetMyGroupsUseCase`(G-001) · `GetGroupJoinPreviewUseCase`·`JoinGroupUseCase`(A-004) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102) |
 
@@ -126,6 +132,14 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 셋이 같은 4파일을 만들어 충돌하기 때문), **같은 날 그룹 화면 세 라운드(#243·#244·#248)가 5 메서드를
 전부 소비하며 그 선반영이 닫혔다.** DataSource가 가진 나머지 호출(그룹 상세·나가기·신고)은
 **화면이 요구할 때까지 인터페이스에 올리지 않는다**는 방침 그대로다.
+
+**`logout()`은 실패를 전파하지 않는다**(#260) — 서버 호출이 실패해도 `TokenStore.clear()` 후
+`Result.success`다. 사용자가 눌렀으면 이 기기에서는 나가는 것이 기대 동작이라는 근거이고, 화면이
+갈래를 나눌 이유가 없다. 다만 한 가지를 더 한다: **실패 시 저장소의 refresh token을 다시 읽어
+바뀌었으면 새 값으로 정확히 1회 재전송**한다(`retryIfRefreshTokenRotated`). `logout`이 화이트리스트
+밖이라 만료 상태의 로그아웃은 `TokenAuthenticator`를 한 번 타는데, 재발급이 refresh token을
+회전시키고 인증기는 **헤더만 갈아끼워 같은 본문을 재전송**하므로 그대로 두면 로컬만 정리되고 갓
+발급된 서버 세션이 refresh token 수명만큼 살아남는다.
 
 UseCase는 대개 Repository 위임 한 줄이고, 규칙을 더 얹는 것은 둘이다 — `CreateGroupUseCase`가
 응답 `groupId > 0`을 성공 조건으로 못 박고, `SignUpUseCase`가 필수 약관 미동의를 도메인 예외
@@ -188,6 +202,14 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > 이로써 **auth·policy·parfait-group 세 도메인이 화면 소비처를 가진다**. 나머지 4 도메인
 > (parfait·image·member·parfait-image)은 **표면은 전량 있는데 Repository가 0건**이다 — PR #250이 표면을
 > 채웠어도 그 위층은 그대로다.
+> **2026-08-15 — auth 도메인이 닫혔다**(PR #260). `reissue`는 `TokenAuthenticator`가, `logout`은
+> `AuthRepository.logout()` → `LogoutUseCase` → S-001 앱 설정이 소비한다. 애플을 뺀 auth 4 엔드포인트
+> 전부가 호출부를 가진다(아래 "401 자동 재발급·세션 종료").
+> ⚠️ **2026-08-16 — parfait 도메인에 표면을 건너뛴 소비자가 생겼다**(PR #259). C-201 캘린더의
+> `GetParfaitHistoriesUseCase`·`GetParfaitYearsUseCase`가 KDoc으로 파르페 조회 두 엔드포인트를
+> 가리키면서 **`ParfaitRemoteDataSource`를 쓰지 않고 UseCase 본문에서 mock을 만든다** — Repository가
+> 0건인 것은 그대로인데 그 자리를 채울 소비자가 mock으로 먼저 생긴 형태다
+> ([api/parfait.md](../api/parfait.md) Android 매핑 · [open-questions](../synthesis/open-questions.md)).
 > **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
@@ -274,6 +296,23 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`로 등록한다(PR #197) —
   라이브러리 모듈의 `proguardFiles`는 앱의 R8 실행에 전달되지 않으므로 이 자리가 유일하게 유효하다.
   근거는 같은 ADR "인증"의 R8 절.
+- **401 자동 재발급·세션 종료**(#260 develop 머지, 2026-08-15): 만료를 다루는 주체가 생겼다.
+  `TokenAuthenticator`(`network/`, OkHttp `Authenticator`)가 401을 가로채 `@NoAuth` 가드 → 루프 가드
+  → `Mutex` → 선점 확인 → 재발급 순으로 판단하고 새 토큰을 단 요청을 돌려준다. 화면은 성공 경로에서
+  아무것도 보지 못한다. **재발급은 자격증명을 안 붙이는 전용 표면으로 나간다**
+  (`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`·`AuthService`, `model/qualifier/`) — 같은
+  클라이언트를 타면 `authenticate()`가 점유한 슬롯 뒤에서 큐잉돼 per-host 한도(기본 5)가 차는 순간
+  앱 전체 네트워크가 멈춘다. `newBuilder()` 파생은 부모 `Dispatcher`를 물려받아 무효라 `Dispatcher()`를
+  직접 만든다. 부수 효과로 `Retrofit`↔`OkHttpClient`↔`Authenticator` Dagger 순환이 사라져 `Provider`
+  지연 주입이 필요 없다. **실패는 두 부류**다 — 서버가 refresh token을 거절한 경우(401, 또는 본문
+  `code`가 `INVALID_TOKEN`·`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN`)만 `clear()` + `ForcedLogout`,
+  네트워크 실패·5xx·본문 없는 403은 **토큰을 유지**한 채 `null`을 반환해 원요청 401이 화면의 기존
+  `AppError` 경로로 간다. 세션 종료는 `:domain`의 `SessionEvent.ForcedLogout`·`SessionEventSource`로
+  알리고 구현 `SessionEventBus`(`session/`, `Channel(CONFLATED)` + `receiveAsFlow()`)가 발행·구독을
+  겸하며, **수집은 앱 루트 `MainRoute` 한 곳**이다([ADR-0021](../adr/0021-token-refresh-forced-logout.md),
+  [spec](../specs/archive/2026-08-15-session-token-refresh-infra.md)). `NetworkModuleTest`가 두
+  클라이언트가 `Dispatcher`·인증기·`AuthInterceptor`를 공유하지 않는다는 **배선의 구조적 성질**을
+  잠근다 — 데드락 자체는 재현하지 않는다(회귀가 실패가 아니라 무한 대기로 나타난다).
 - **토큰 저장 경로**: `CryptoManager`(Android Keystore AES/GCM, `security/`) → `EncryptedTokenStore`
   (`TokenStore` 구현, `source/token/local/`, `DataStore<Preferences>`에 `IV+암호문` Base64 문자열 저장) →
   `TokenStore`(`LocalDataSourceModule.bindTokenStore`) → `TokenStoreTokenProvider`
@@ -284,8 +323,10 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   아니라 저장소 I/O 실패도 토큰 삭제로 이어지고, 삭제 자체가 실패해도 `null` 반환은 보장된다.
 - **로깅**: `HttpLoggingInterceptor` 레벨은 `BuildConfig.DEBUG`로 게이팅(debug=`BODY`,
   release=`NONE`) — release에서 토큰·바디 노출 방지. 추가로 `redactHeader("Authorization")`를 걸어
-  debug 빌드에서도 헤더 값을 가린다. **바디는 redact 대상이 아니다** — `reissue`·`logout` 요청 바디의
-  refresh token은 debug logcat에 평문으로 남는다 → [open-questions](../synthesis/open-questions.md).
+  debug 빌드에서도 헤더 값을 가린다. 설정은 `NetworkModule`의 private `loggingInterceptor()` 한
+  자리에서 만들어 **두 클라이언트가 같은 처리를 받는다**(#260). **바디는 redact 대상이 아니다** —
+  `reissue`·`logout` 요청 바디의 refresh token은 debug logcat에 평문으로 남고, #260으로 두 요청
+  **모두 실제 호출부를 얻었다**(이전에는 이론적 노출이었다) → [open-questions](../synthesis/open-questions.md).
 - **응답 매핑**: 원격 DataSource는 **도메인 모델을 반환**한다(`PolicyRemoteDataSource.getPolicies():
   Result<List<PolicyVO>>`). 서버 응답 타입(`service.model.response`의 `PolicyResponse`/
   `PolicyItemResponse`)은 data 안에서만 살고, `source.<도메인>.mapper`의 `internal` 확장 함수
