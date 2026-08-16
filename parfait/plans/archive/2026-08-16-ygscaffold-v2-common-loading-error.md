@@ -1,5 +1,22 @@
 # YGScaffoldV2 공통 로딩·에러 토스트 Implementation Plan
 
+> ✅ **완료·develop 머지(PR #267 `955c4636`, 2026-08-16)** — 3 Task 전량이 develop에 있다.
+> 체크박스는 실행 기록을 이 블록에 모으는 관례대로 미체크로 둔다.
+>
+> **계획이 코드와 갈린 곳 2건**:
+> ① **계측 테스트가 5건이 아니라 7건이다.** 리뷰 라운드에서 접근성 차단 대조 2건
+> (`ygScaffoldV2_isLoadingTrue_marksContentHiddenFromAccessibility` ·
+> `…_isLoadingFalse_keepsContentVisibleToAccessibility`)이 추가됐다 — 오버레이의 `pointerInput`
+> 소비만으로는 TalkBack 더블탭(`SemanticsActions.OnClick` 직접 호출)을 막지 못한다는 사실이
+> 구현 중에 드러났기 때문이다. 계획의 테스트 코드에도 결함 2건이 있었다(`assertDoesNotExist`
+> import 불필요 · `setContent`를 `YGCustomTheme`으로 감싸야 함) — 둘 다 테스트 파일 안에서 끝났다.
+> ② **이 계획의 "범위 밖"이던 화면 이관 3건이 같은 브랜치에 들어왔다**(A-002 로그인 `dbbed12e` ·
+> S-003·S-002 `d63ed5b0` · S-002 제출 중 차단 `8e0662b5`). 일괄 이관은 여전히 하지 않았고, 계약이
+> 실제로 성립하는지 확인하려고 세 화면만 옮긴 것이다. 그 과정에서 나온 발견은 스펙 as-built ⑤에 있다.
+>
+> **설계 계약은 무변경** — `YGScaffoldV2`·`YGLoadingOverlay`·`showError` 시그니처, `@Deprecated`
+> `ReplaceWith` 문자열, Task 순서 전부 계획대로다. 상세 → [스펙 as-built](../../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `YGScaffold`에 공통 로딩 오버레이와 공통 에러 토스트 자리를 더한 `YGScaffoldV2`를 만들고, V1에 `@Deprecated`를 붙여 점진 이관 경로를 연다.
@@ -8,7 +25,7 @@
 
 **Tech Stack:** Kotlin, Jetpack Compose (Material3 `Scaffold`), Compose UI Test (`ui-test-junit4` 계측), ktlint
 
-**Spec:** [`parfait/specs/2026-08-16-ygscaffold-v2-common-loading-error.md`](../specs/2026-08-16-ygscaffold-v2-common-loading-error.md)
+**Spec:** [`parfait/specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md`](../../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)
 
 ## Global Constraints
 

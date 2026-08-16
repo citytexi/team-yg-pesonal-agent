@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-16
-related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api
+verified: 2026-08-17
+related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -1541,20 +1541,23 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: 2026-08-15 결선 라운드 4건 — ① **입력 자리 인라인 한 줄**(A-004 `InviteCodeError`·S-102 `GroupNickNameError`), ② **전면 에러 화면**(G-001 `GroupListErrorScreen`, 성공하던 목록도 통째로 대체), ③ **목록 자리 임시 문구 + "다시 시도"**(온보딩 약관, 코드에 `TODO(공통 에러화면)`), ④ **표현 없음 — 로그만**(A-005 그룹 생성, 실패 토스트가 같은 PR에서 "문구 정책이 없다"는 이유로 걷혔다 / 약관 화면의 가입 실패, 각 갈래에 `TODO(에러 UX 미정)`).
 - **항목**: ① 공통 에러화면·공통 에러 표시 규약을 세울지(약관 화면 코드가 그 존재를 전제하고 있다). ② 실패 문구를 누가 확정할지 — 지금은 A-004·S-102만 `strings.xml`에 문구가 있고 나머지는 문구 자체가 없다. ③ 재시도 수단의 최소선(G-001은 당김, 약관은 텍스트 탭, A-005는 없음).
 - **상태**: 미해결 (실패 UX 미정 — 결선은 끝났고 표현만 남았다)
-  > 📌 **부분 진전(2026-08-16, 미머지 브랜치 `feature/common-error-loading-scaffold`)** — ①에 답이 생겼다.
-  > [ygscaffold-v2 스펙](../specs/2026-08-16-ygscaffold-v2-common-loading-error.md)이 **"알리고 끝나는 실패는
+  > 📌 **부분 진전(2026-08-16, develop 머지 PR #267 `955c4636`)** — ①에 답이 생겼다.
+  > [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)이 **"알리고 끝나는 실패는
   > 공통 토스트(`YGToastType.Fail`)"**로 확정하고 `YGScaffoldV2`가 그 자리를 제공한다. 다만 **차단성 에러
   > (재시도 동선이 필요한 실패)는 여전히 화면 소관**이라 위 ②(전면 에러 화면)·③은 갈래로 남는다.
   > ②(문구를 누가 확정하나)도 절반만 답했다 — 계약이 `String`이라 **문구는 화면 소유**이고,
   > A-002 로그인이 `LoginError` 4갈래로 첫 사례를 만들었다(`login_error_*`). 화면 고유 문구가 없는
   > 실패(`AppError.Unexpected` 등)를 위한 **공통 매핑은 여전히 없다** — 화면 수만큼 "알 수 없는 오류"가
   > 복제될 자리다. ③(재시도 최소선)은 손대지 않았다.
-  > **현황(2026-08-16 기준)**: 이관 3화면(A-002 로그인 · S-003 앱 설정 · S-002 계정 정보), V1 잔여 8파일.
+  > **현황(2026-08-16 develop 기준, 코드 대조 확인)**: 이관 3화면(A-002 로그인 · S-003 앱 설정 ·
+  > S-002 계정 정보), V1 잔여 8파일·호출 22곳(camera·gallery·canvas·groups enter/list/setting·intro·
+  > segmentation). 잔여 이관과 V1 삭제 시점은 OQ-P-204.
   > 📌 **④(표현 없음 — 로그만)에 사례가 하나 늘었다(2026-08-16, PR #261)** — S-102가 참여 뒤 부르는
   > 닉네임 `PATCH`가 실패하면 **참여는 유지한 채 로그만 남기고 다음 화면으로 간다**. 코드에
   > `TODO(닉네임 적용 실패 안내)`가 있고 "닉네임은 나중에 바꿀 수 있어요" 수준의 토스트 자리를 지목한다 —
-  > ygscaffold-v2가 확정한 "알리고 끝나는 실패는 공통 토스트"에 정확히 해당하는 갈래라, 그 스펙이 머지되면
-  > 첫 소비 후보다.
+  > ygscaffold-v2가 확정한 "알리고 끝나는 실패는 공통 토스트"에 정확히 해당하는 갈래다. **그 스펙은
+  > 2026-08-16 머지됐으므로(PR #267) 자리는 이미 있고, S-102는 아직 이관되지 않아 `TODO`가 그대로다** —
+  > 첫 소비 후보.
   > 다만 **실패 표현을 실제로 바꾼 건 로그인 하나**다 — ④(표현 없음)에서 토스트로 옮겼다. S-002 는
   > 이미 ①(입력 자리 인라인)이라 그대로 두는 것이 맞고, S-003 은 표현할 실패가 없다(로그아웃은
   > 서버 실패해도 로컬 정리 후 진행). **즉 이관과 실패 표현 통일은 별개 축이다.**
@@ -2156,6 +2159,52 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ①은 [design-system](../architecture/design-system.md) "그리기 프리미티브 소유"
   항목(현재 네 곳 + 이번 예외)과 함께 정한다. ②③은 [2026-08-04]·[2026-08-16] 규약 이탈 항목과 묶인다.
 
+### [2026-08-17] 스캐폴드가 둘로 갈린 채 남았다 — 잔여 이관 8파일과 V1 삭제 시점이 미정이다
+
+- **ID**: OQ-P-204
+- **출처**: `YGScaffold.kt`(`@Deprecated(WARNING)` 부착)·`YGScaffoldV2.kt`(PR #267 develop 머지) —
+  V2가 정본이 되고 V1에 경고가 붙었지만, 이관은 3화면(A-002·S-003·S-002)에서 멈췄고 **V1 호출이
+  8파일 22곳 남았다**(camera·gallery·groups canvas/enter/list/setting·intro·segmentation). 스펙이
+  `ERROR` 승급 기준을 "호출처 0"이 아니라 **"각 화면이 Route에서 스캐폴드를 소유하고 로딩·실패를
+  배선함"**으로 정정했으므로 IDE 일괄 치환으로는 기준을 채울 수 없고, 화면별 결선 라운드가 필요하다.
+  그 라운드가 언제 도는지는 정해진 바 없다.
+- **항목**: ① 잔여 8파일을 화면별 API 결선 라운드에 붙일지, 이관만 하는 라운드를 따로 돌릴지.
+  ② `ERROR` 승급·V1 파일 삭제 시점. ③ 공존 기간 동안 새로 생기는 화면이 규약(Route 소유)을 지키는지
+  기계로 확인할 수단이 없다 — 지금은 리뷰가 유일한 관문이다.
+- **상태**: 미해결
+- **해소 메모**: 이관이 끝나면 [design-system](../architecture/design-system.md) "화면 컨테이너"의
+  V1 항목과 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번의 "(구 형태)" 서술을
+  함께 지운다. OQ-P-167(실패 표현 갈래)과는 별개 축이다 — 이관해도 실패 표현이 통일되지는 않는다.
+
+### [2026-08-17] 공통 로딩 오버레이가 임시 구현이고, 적용 기준도 사례에서 귀납한 것뿐이다
+
+- **ID**: OQ-P-205
+- **출처**: `YGLoadingOverlay.kt`(PR #267 develop 머지) — KDoc이 스스로 "임시 구현"이라고 적고
+  Dim 농도·인디케이터 모양·문구 유무가 전부 디자인 미확정이다. `SegmentationLoadingScreen`의
+  "로띠 넣을 예정" `TODO`와 같은 운명이고, 그 화면은 여전히 자기 로딩 UI를 따로 그린다. **언제 켜는가**도
+  규칙이 아니라 세 화면에서 귀납한 기준("네트워크 왕복인가")이다 — S-002는 처음엔 안 걸었다가
+  `isSubmitting`으로 정정했다(`8e0662b5`).
+- **항목**: ① 로딩 UI 디자인 확정 시 이 파일과 `SegmentationLoadingScreen`을 함께 정리한다.
+  ② 오버레이를 켜는 기준을 규약으로 승격할지 — 지금은 화면마다 "이건 왕복인가"를 다시 판단한다.
+  ③ 화면 고유 로딩 화면(문구·닫기 버튼을 가진 것)을 V2가 흡수할 갈래인지 계속 별개로 둘지.
+- **상태**: 미해결
+- **해소 메모**: 정해지면 [design-system](../architecture/design-system.md) "화면 컨테이너"에 적고
+  [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)의 "임시" 표기를 걷는다.
+
+### [2026-08-17] 토스트가 떠 있는 2초 동안 상단 띠의 탭이 삼켜지는 것이 전 화면 공통이 됐다
+
+- **ID**: OQ-P-206
+- **출처**: `YGToastHost`(기존 동작)·`YGScaffoldV2.kt`(PR #267 develop 머지) — 호스트가 `Box` 최상단
+  자식이고 전폭이라, 토스트가 사는 동안 그 띠 아래의 상단바 뒤로가기 같은 버튼이 히트테스트에서
+  가려질 수 있다. **이번 변경이 만든 동작은 아니지만**, 지금까지 camera·gallery가 손으로 붙였던 것을
+  V2가 모든 화면의 기본으로 승격시켰다.
+- **항목**: ① 호스트에 `pointerInput`을 통과시키는 처리(예: 토스트 영역만 히트, 나머지는 관통)를
+  넣을지. ② 아니면 토스트를 화면 최상단이 아닌 다른 위치로 옮길지 — 위→아래 노출은 Toast 공통 정책이라
+  정책 변경이 선행이다.
+- **상태**: 미해결 (실기기로 재현·측정된 바 없다 — 코드 구조에서만 드러났다)
+- **해소 메모**: 고치면 `YGToastPolicy`·`YGToastHost` 쪽이 소관이고
+  [design-system](../architecture/design-system.md) 토스트 항목에 적는다.
+
 <!--
 항목 추가 형식:
 
@@ -2166,4 +2215,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 204 -->
+<!-- oq-next: 207 -->

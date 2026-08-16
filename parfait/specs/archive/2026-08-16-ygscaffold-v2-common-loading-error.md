@@ -1,11 +1,11 @@
 ---
 id: ygscaffold-v2-common-loading-error
 title: YGScaffoldV2 — 공통 로딩 오버레이·에러 토스트 (common loading & error scaffold)
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-16
-related_code: YGScaffold.kt#YGScaffold, YGToast.kt#YGToastType, YGToastPolicy.kt#YGToastPolicy, YGToastPolicy.kt#YGToastHost, BaseViewModel.kt#launch, GroupListRoute.kt#GroupListRoute
+verified: 2026-08-17
+related_code: YGScaffoldV2.kt#YGScaffoldV2, YGLoadingOverlay.kt#YGLoadingOverlay, YGToastPolicy.kt#showError, YGScaffold.kt#YGScaffold, LoginRoute.kt#LoginRoute, LoginError.kt#LoginError, AppSettingRoute.kt#AppSettingRoute, AccountInfoRoute.kt#AccountInfoRoute, BaseViewModel.kt#launch
 related_adr: ADR-0020, ADR-0016, ADR-0007
 related_spec: mvi-error-infrastructure
 related_architecture: design-system, state-management
@@ -29,7 +29,7 @@ tags: [spec, parfait, designsystem]
 Screen까지 파라미터로 내린 뒤 `YGToastHost`를 자기 레이아웃에 꽂는다. 같은 배선이 화면 수만큼
 복제된다.
 
-[ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md)이 공용 error 채널을 철회하면서 남긴
+[ADR-0020](../../adr/0020-mvi-error-effect-infrastructure.md)이 공용 error 채널을 철회하면서 남긴
 문장 — *"에러 UX가 '전 화면 공통'으로 정해지면 화면마다 케이스 추가가 필요하다"* — 의 그 지점이다.
 이 스펙은 **공통 실패 표현을 토스트로 확정**해 그 자리를 닫는다.
 
@@ -40,7 +40,8 @@ Screen까지 파라미터로 내린 뒤 `YGToastHost`를 자기 레이아웃에 
   - `YGLoadingOverlay` 신설 — Dim + 인디케이터 + 터치 삼킴 (**임시 구현**, 디자인 미확정)
   - `YGToastPolicy.showError(text)` 확장 — 에러 토스트는 `YGToastType.Fail` 고정
   - `YGScaffold`(V1)에 `@Deprecated` + `ReplaceWith` 부착
-  - 계측 테스트 5건(as-built 9건 — 접근성 차단 2건과 로딩 대조 2건이 리뷰 라운드에서 추가됨)
+  - 계측 테스트 5건(as-built **7건** — 접근성 차단 2건이 리뷰 라운드에서 추가됨.
+    모듈 전체 계측이 9건인 것은 기존 `YGThemeSmokeTest` 2건을 더한 수다)
 - **제외**
   - **기존 사용처 11곳 일괄 이관** — 화면별 API 결선 라운드에 묶어 점진 진행(ADR-0020이 쓴 것과
     같은 전략). 이 스펙은 V1을 삭제하지 않는다.
@@ -278,18 +279,22 @@ fun YGScaffold(/* … */)
 `waitForIdle()`이 가상 시간을 진행시켜 **단언 전에 토스트가 사라질 수 있다.** 토스트 테스트는
 `autoAdvance`를 끄고 진입 애니메이션만큼만 손으로 진행시킨다.
 
-## as-built (2026-08-16 구현, 미머지)
+## as-built (2026-08-16 구현 · 2026-08-16 develop 머지 PR #267 `955c4636`)
 
-브랜치 `feature/common-error-loading-scaffold`, 커밋 5개(`46b2d4df` 오버레이 · `7de8cf7f` 스캐폴드 ·
-`542b9563` Deprecated · `0a2975ee` 최종 리뷰 픽스 · `ade3c09a` A-002 로그인 이관).
-실기기(SM-A356N) 계측 9/9 통과, 로그인 유닛 6건 통과, ktlint 0, `:app:assembleDebug` 통과.
+브랜치 `feature/common-error-loading-scaffold`, 커밋 7개(`69053863` 오버레이 · `06debd3a` 스캐폴드 ·
+`cbec3962` Deprecated · `e86fb82a` 최종 리뷰 픽스 · `dbbed12e` A-002 로그인 이관 ·
+`d63ed5b0` S-003·S-002 이관 · `8e0662b5` S-002 제출 중 화면 차단).
+실기기(SM-A356N) 계측 통과 — `:core:designsystem:connectedDebugAndroidTest` 9건(**이 라운드 신규 7건**
++ 기존 `YGThemeSmokeTest` 2건), ktlint 0, `:app:assembleDebug` 통과.
+테스트 총량: 유닛 415 → **417건**(`LoginViewModelTest` 9 → 11, 파일 수 47 불변),
+계측 5 → **12건**(파일 2 → 4).
 
 **이관 현황: 3화면(A-002 로그인 · S-003 앱 설정 · S-002 계정 정보).** `YGScaffold`(V1)를 쓰는
 파일이 8개 남았다.
 
 **규약은 이관 진도와 무관하게 지금부터 정본이다**(2026-08-16 확정). 새로 쓰는 화면은 예외 없이
-Route에서 `YGScaffoldV2`를 소유한다 — [design-system](../architecture/design-system.md) "화면 컨테이너",
-[navigation-flow](../architecture/navigation-flow.md) "신규 목적지 등록 체크리스트"에 반영했다.
+Route에서 `YGScaffoldV2`를 소유한다 — [design-system](../../architecture/design-system.md) "화면 컨테이너",
+[navigation-flow](../../architecture/navigation-flow.md) "신규 목적지 등록 체크리스트"에 반영했다.
 V1 삭제 시점만 이관 완료에 걸린다.
 
 설계에서 **뒤집힌 결정 0건.** 위 본문이 그대로 as-built다. 구현·리뷰가 더한 것은 다음 4건이다.
