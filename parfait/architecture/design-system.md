@@ -4,8 +4,8 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-16
-related_spec: designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab
+verified: 2026-08-17
+related_spec: designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error
 related_adr: ADR-0007, ADR-0010, ADR-0018
 related_architecture:
 related_code: core:designsystem, YGTheme
@@ -36,7 +36,8 @@ core/designsystem/.../theme/
 component/
   ygbutton/               ← YGButton (첫 컴포넌트, 작성 패턴 레퍼런스)
   ygalert/                ← YGAlert 배너 + YGAlertPolicy/Host (노출 정책 패턴)
-  ygtoast/                ← YGToast(+YGToastType) + YGToastPolicy/Host (노출 정책 패턴)
+  ygtoast/                ← YGToast(+YGToastType) + YGToastPolicy/Host (노출 정책 패턴) + showError 확장 (#267)
+  ygloading/              ← YGLoadingOverlay (Dim+인디케이터+터치 삼킴, **임시 구현**) (#267 develop 머지)
   ygcanvas/               ← YGCanvas + YGCanvasBackground (C-001 캔버스 합성 컨테이너, 반응형 배치 #199) (#185 develop 머지)
   ygbackgrounddotgrid/    ← ygBackgroundDotGrid() Modifier (C-001 배경 점 격자, drawBehind) (#199 develop 머지)
   yglistdate/             ← YGListDate (C-201 날짜 셀 = YGDateButton + YGChipColorIndicator) (#188 develop 머지)
@@ -50,9 +51,11 @@ component/etc/
   YGHorizontalDashedDivider.kt  ← 점선 수평 구분선 (Canvas+drawLine+dashPathEffect) (#159 develop 머지)
 screen/                   ← 화면 루트 컨테이너 (아래 "화면 컨테이너")
   YGScreen.kt             Surface 래퍼 + YGScreenScope 리시버 (화면 최외곽)
-  YGScaffold.kt           Material3 Scaffold 래퍼 (nav/EntryBuilder)
+  YGScaffold.kt           Material3 Scaffold 래퍼 (구판, @Deprecated(WARNING) #267)
+  YGScaffoldV2.kt         Scaffold + 로딩 오버레이 + 토스트 호스트 3층 (Route 소유, #267 develop 머지)
   YGScreenScope.kt        YGScreenScope + OnBack(@Composable, BackHandler 래핑)
 res/font/                 ← suit_regular/medium/semi_bold/bold.ttf
+res/values/strings.xml    ← 모듈 최초의 문자열(#267) — 로딩 오버레이 접근성 contentDescription 1건
 res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-002 온보딩 일러스트 `image_onboarding_*` 추가, #264로 `ic_edit`·`ic_scale` 추가)
 ```
 
@@ -109,7 +112,7 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 
 > 🔁 **정본 변경 (2026-08-16) — 스캐폴드는 이제 `YGScaffoldV2`이고, 그 자리는 nav가 아니라 Route다.**
 > 아래 `YGScaffold` 항목은 **역사**이고, **새 코드는 예외 없이 `YGScaffoldV2`를 Route 안에서 쓴다.**
-> 설계 → [ygscaffold-v2 스펙](../specs/2026-08-16-ygscaffold-v2-common-loading-error.md).
+> 설계 → [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md).
 >
 > ```kotlin
 > // EntryBuilder — Route 를 부르기만 한다
@@ -134,8 +137,14 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > - **재시도 동선이 필요한 실패는 V2가 다루지 않는다.** 그건 화면이 자기 UI로 표현한다
 >   (`GroupListErrorScreen` 같은 전면 에러, 입력 자리 인라인 등).
 >
-> 이관은 화면별로 진행 중이다(현황은 스펙). `YGScaffold`는 `@Deprecated(WARNING)`이고 삭제 시점은
-> **모든 화면이 Route에서 스캐폴드를 소유하고 로딩·실패를 배선한 뒤**다.
+> 이관은 화면별로 진행 중이다 — **develop 기준 3화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
+> 정보), V1 잔여 8파일**(PR #267). `YGScaffold`는 `@Deprecated(WARNING)`이고 삭제 시점은 **모든 화면이
+> Route에서 스캐폴드를 소유하고 로딩·실패를 배선한 뒤**다 →
+> [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
+>
+> **로딩 오버레이를 켜는 기준은 "네트워크 왕복인가"**다(세 사례에서 귀납한 것이고 디자인이 확정한
+> 규칙은 아니다 → OQ-P-205). 버튼 비활성은 "지금 눌러도 소용없다"만 말할 뿐 언제 끝날지 모르는 대기를
+> 표현하지 못하고, 그동안 입력 필드가 살아 있어 요청이 나간 뒤에도 값을 고칠 수 있다.
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.
@@ -165,7 +174,8 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 | `YGNametagChip`(+`YGNametagChipStyle`·`YGColorChipType`·`YGNametagChipPreviewData`) / `YGUserChip`(+`YGUserNameStyle`) / `YGChipColorIndicator` | `component/ygcolorchip/` | [ygcolorchip](../specs/archive/2026-07-18-ygcolorchip.md) |
 | `YGDate` / `YGLabel` | `component/ygtext/` | [ygtext-date-label](../specs/archive/2026-07-18-ygtext-date-label.md) |
 | `YGAlert`(+`YGAlertPolicy`·`YGAlertHost`·`YGAlertItem`·`rememberYGAlertPolicy`) | `component/ygalert/` | [ygalert](../specs/archive/2026-07-23-ygalert.md) |
-| `YGToast`(+`YGToastType`·`YGToastPolicy`·`YGToastHost`·`YGToastItem`·`rememberYGToastPolicy`) | `component/ygtoast/` | [ygtoast](../specs/archive/2026-07-23-ygtoast.md) |
+| `YGToast`(+`YGToastType`·`YGToastPolicy`·`YGToastHost`·`YGToastItem`·`rememberYGToastPolicy`·`showError` #267) | `component/ygtoast/` | [ygtoast](../specs/archive/2026-07-23-ygtoast.md) · [ygscaffold-v2](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)(`showError`) |
+| `YGLoadingOverlay`(+`YG_LOADING_OVERLAY_TEST_TAG`) — **임시 구현**(로딩 디자인 미확정) | `component/ygloading/` | [ygscaffold-v2](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md) |
 | `YGTopBar`(Back/Detail/Empty/Canvas 변형 + private `YGTopBarContent`·`ygTopBarBackdrop` + `YGTopBarDefaults`) | `component/ygtopbar/` | [ygtopbar](../specs/archive/2026-07-18-ygtopbar.md)(최초 계약) · [designsystem-bar-listdate-components](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md)(Canvas·날짜·블러) |
 | `YGListDate` | `component/yglistdate/` | [designsystem-bar-listdate-components](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) |
 | `YGFloatingBar{BackClose,Close,Edit,EditTab}` | `component/ygfloatingbar/` | [designsystem-bar-listdate-components](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) |

@@ -24,9 +24,9 @@ tags: [spec, parfait, login, a002, auth]
 > ✅ **develop 머지 완료 · 실기기 미검증** (2026-08-15, PR #241 `80895eb1`). 본문은 as-built 다.
 > **실기기 9항목이 남아 있다** — 아래 "실기기 검증", [OQ-P-146](../../synthesis/open-questions.md).
 
-> 📌 **후속(2026-08-16, 미머지 브랜치 `feature/common-error-loading-scaffold` `ade3c09a`)** — 이 스펙이
+> 📌 **후속(2026-08-16, develop 머지 PR #267 `955c4636` — 이관 커밋 `dbbed12e`)** — 이 스펙이
 > "로그 + TODO(에러 UX 미정)"로 남긴 **실패 8케이스가 사용자에게 보이게 됐다.** 화면이
-> [`YGScaffoldV2`](../2026-08-16-ygscaffold-v2-common-loading-error.md)로 이관되면서 스캐폴드를
+> [`YGScaffoldV2`](2026-08-16-ygscaffold-v2-common-loading-error.md)로 이관되면서 스캐폴드를
 > `EntryBuilder`에서 `LoginRoute` 안으로 내렸고, 신설 `LoginError`(NETWORK · INVALID_ID_TOKEN ·
 > KAKAO_UNAVAILABLE · UNKNOWN) + `LoginSideEffect.ShowError`로 실패 토스트를 띄운다. 로그 분기는
 > 그대로 8갈래이고 사용자 문구만 4갈래로 묶었다(502·503·SDK 실패는 "잠시 후 다시"로 같다).

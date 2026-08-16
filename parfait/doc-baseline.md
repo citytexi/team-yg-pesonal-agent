@@ -5,8 +5,31 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `46ed38fb` (`Merge pull request #264 from mash-up-kr/feature/canvas-topping-screen`)
-- **요약**: **편집 모드의 비어 있던 절반이 채워졌다 — 다만 고치는 대상이 아직 mock이다**(delta 1건).
+- **커밋**: `955c4636` (`Merge pull request #267 from mash-up-kr/feature/common-error-loading-scaffold`)
+- **요약**: **로딩과 실패에 공통 자리가 생겼다 — 다만 세 화면만 그 자리에 들어갔다**(delta 1건).
+  **#267**(추적하던 미머지 스펙·플랜 한 쌍): 화면마다 손으로 짓던 로딩·실패 표현이 `YGScaffoldV2`
+  **한 컴포저블의 세 층**(content → 로딩 오버레이 → 토스트 호스트)으로 모였다. 신규 파라미터는
+  `isLoading`·`toastPolicy` 둘뿐이고 **전부 기본값**인데, 이건 편의가 아니라 V1에 붙인
+  `@Deprecated(ReplaceWith)`의 치환 코드가 컴파일되게 하는 계약이다. 핵심은 **이관이 이름 교체가
+  아니라 소유 위치 이동**이라는 점 — `hiltViewModel()`이 Route 안에 있어 `EntryBuilder`는 `isLoading`도
+  실패 이펙트도 볼 수 없으므로, 스캐폴드가 nav에서 Route로 내려와야 비로소 채울 것이 생긴다. 그래서
+  `ERROR` 승급 기준도 "V1 호출처 0"이 아니라 **"각 화면이 Route에서 스캐폴드를 소유하고 배선했는가"**로
+  정정됐다(IDE 일괄 치환은 호출처만 0으로 만들고 어느 화면도 로딩·에러를 얻지 못한다). 구현이 설계에
+  더한 것 중 큰 것은 **접근성**이다 — 오버레이의 `pointerInput` 소비로는 부족했다. **TalkBack 더블탭은
+  포인터 이벤트가 아니라 `SemanticsActions.OnClick`을 직접 부르기 때문**에 로딩 중에도 뒤 버튼이
+  눌렸고, 스캐폴드가 `content`를 `semantics { hideFromAccessibility() }`로 감싸 막는다(그 기전은
+  `assertDoesNotExist`로 못 잠근다 — 플랫폼 트리에만 작용해서 `SemanticsMatcher`로 속성 보유만 단언한다).
+  실패 문구는 **호출부 소유**로 확정돼 A-002가 첫 사례를 만들었다 — `LoginError` 4갈래(로그는 여전히
+  8갈래, 사용자에겐 502·503·SDK 실패가 다 "잠시 후 다시"다)를 `ShowError`가 **문구가 아니라 사유로**
+  실어 보내고, Route가 컴포지션에서 문구를 미리 뽑아 둔다(이펙트 수집은 코루틴이라 `stringResource`를
+  못 부르고, `LocalContext.getString` 우회는 로케일 변경 때 안 갱신된다). **그러나 이관은 3화면
+  (A-002 로그인 · S-003 앱 설정 · S-002 계정 정보)에서 멈췄고 V1이 8파일 22곳에 살아 있다** — 두 스캐폴드가
+  공존하고 삭제 시점은 미정이다. 로딩 오버레이 자체도 **디자인 미확정 임시 구현**이고, 켜는 기준
+  ("네트워크 왕복인가")은 규칙이 아니라 세 사례에서 귀납한 것이다(S-002는 처음엔 안 걸었다가 정정했다).
+  테스트: 유닛 415 → **417건**(`LoginViewModelTest` 9 → 11), 계측 5 → **12건**(신규 7건). `core:designsystem`에
+  **모듈 최초의 `strings.xml`**이 생겼다(오버레이 접근성 문구). ⚠️ **실기기 계측은 통과했으나 이관 3화면의
+  실사용 확인은 없다.**
+  직전 회차 요약: **편집 모드의 비어 있던 절반이 채워졌다 — 다만 고치는 대상이 아직 mock이다**(delta 1건).
   **#264**: C-301 토핑 탭이 상태만 바꾸던 자리에서 **놓인 토핑을 고르고 옮기고 키우고 돌리고 지우는
   화면**이 됐다. 구성은 **딤 한 장을 사이에 낀 4층 스택** — 남의 토핑을 아래, 딤, 내 토핑, 선택
   오버레이 순으로 그려 "내 것만 밝다"를 레이어 순서로 표현하고, 남의 토핑 탭은 딤이 먼저 받아
@@ -56,9 +79,8 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-16 (27회차)
-- **미머지 제외 항목**: ① `ygscaffold-v2-common-loading-error`(스펙 draft, **구현 완료·미머지**) —
-  브랜치 `feature/common-error-loading-scaffold`, develop에 `YGScaffoldV2` 없음(이번 회차 재확인).
+- **검증일**: 2026-08-17 (28회차)
+- **미머지 제외 항목**: 없음(직전까지 추적하던 `ygscaffold-v2-common-loading-error`가 이번 회차에 머지됐다).
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
@@ -119,3 +141,4 @@
 | 2026-08-16 | `2143c229` | Merge #263 (user-info-ssot) | delta 1건(#263, **추적하던 미머지 스펙·플랜 한 쌍**). 계정 정보가 **암호화 로컬 SSoT**로 모이고 화면은 구독만 한다 — `UserInfoLocalDataSource`(DataStore+암호화·`Flow`) → `MemberRepositoryImpl`(remote↔local 조율) → UseCase 3종 → S-001·S-002 mock 제거(`null`=로딩, S-002는 입력 필드만 비활성). 스플래시가 `BootstrapSessionUseCase`로 갈라져 **자동로그인 성립**(`SplashInitialUseCase` 삭제, 진입은 `SplashIntent.Init` 하나), 판정은 `SessionBootstrap` 도메인 타입으로 나온다. 실패 목적지는 `ToLogin` 하나이고 **정리 범위만 갈린다**(401·`MEMBER_NOT_FOUND`만 파기 — 5xx·네트워크·로컬 저장 실패는 아무것도 안 지운다). **as-built 5건**: `ObserveMyAccountUseCase`→**`GetMyAccountFlowUseCase`**(구독하지 않고 `Flow`만 넘기므로 `Get…`) / 암호화 접근을 **`EncryptedPreferences`(`data/datastore/`)로 추출**하고 `EncryptedTokenStore`까지 이관 — **폐기 조건이 좁아져 읽기 IO 실패는 더는 지우지 않고**(ADR-0019 이전 as-built 정정) **암호문 상태 `distinctUntilChanged`**가 공유 DataStore 재방출로부터 편집 중 입력 버퍼를 지킨다 / 닉네임 변경 시 로컬 공백이면 **재조회 폴백**(`memberId`·provider를 몰라 VO를 못 세운다) / 부트스트랩 정리를 **`LogoutUseCase`에 위임**("무엇을 지우는가"의 단일 자리, 호출자 둘) / feature 로컬 `GlobalNicknameError` 4종 + `ServerErrorCode.Member` 2종 신설. DI 줄 증가 2(`RepositoryModule`·`LocalDataSourceModule`), 테스트 358 → **415건**(파일 40 → 47). 조치: 스펙 `implemented`·플랜 `done` + 양쪽 archive 이동(링크 보정, 플랜은 frontmatter가 없어 상단 머지 블록 신설)·README 2행, ADR-0022 `proposed`→**`accepted`** + as-built 3블록, ADR-0019 폐기 조건 정정·프록시 위임, ADR-0009 `Flow`는 `Get…` 명명 규약 + `SplashInitialUseCase` 삭제 반영, **ADR README status 드리프트 1건 정정**(ADR-0021이 `proposed`로 남아 있었다), architecture 3건(data-layer 프록시 저장 경로·`MemberRepository` 인벤토리 행·`ServerErrorCode.Member`·member Repository 획득 / state-management **SSoT 구독 절 신설**(`null`=로딩·저장값↔버퍼 분리·낙관적 갱신 금지·feature 로컬 실패 enum) / navigation-flow 앱 진입 체인이 갈림길이 됨), **api 3표면**(member.md Android 매핑 재작성 + 엔드포인트 표 2칸 `구현됨·결선됨` + 같은 코드에 처분이 갈리는 이유, README 도메인 표·소비처 문단 12건 — `android_status`는 `partial` 유지(탈퇴 미소비), `verified`·서버 계약 절 불변). open-questions: 마커 3건(OQ-P-072 저장 호출부는 생겼는데 검증은 그대로·OQ-P-172 S-002만 적용 확정·OQ-P-185 ① 피해 범위만 축소), **신규 4건**(OQ-P-195 오프라인 진입이 자동로그인 포기 · OQ-P-196 낡거나 빈 SSoT를 알릴 수단 없음 · OQ-P-197 G-001만 mock 잔존 · OQ-P-198 같은 서버 코드에 처분이 갈림), **oq-next 카운터 스테일 정정**(193 → 199). ⚠️ **수동 확인 7항목 미수행**. 미머지: `ygscaffold-v2-common-loading-error`(구현 완료·미머지) |
 | 2026-08-16 | `0e2643cf` | Merge #261 (group-join-modal-after-nickname) | delta 1건(#261). **참여 확인 모달이 A-004 초대코드 → S-102 닉네임 화면으로 이관**되고 합류가 모달 뒤로 묶였다: 모달 "참여하기"가 `POST join` → `PATCH nickname`을 연달아 부르고, A-004는 미리보기(`GET join-preview`)까지만 하며 `NavKeyGroupNickName(inviteCode, groupName)`(참여 결과 아닌 참여 재료)로 넘긴다. A-004에서 `groupName`·`isConfirmPopupVisible`·모달 인텐트 2종·`JoinGroupUseCase` 주입 삭제, S-102는 이름 있는 `@Assisted` 2개 + `isConfirmPopupVisible`·`isEntering` 가드. `GroupNickNameError`가 닉네임 400 갈래 대신 **참여 실패 3종**으로 교체돼 `invite_code_error_*` 문구 재사용(`group_nickname_error_invalid` 삭제), `INVALID_GROUP_NICKNAME` 분기는 A-005만 남았다. **닉네임 PATCH 실패는 로그만**(안내 토스트 TODO). 문서 조치: a004·s102 스펙 as-built 갱신 + specs/README 행, navigation-flow 다이어그램·모달 게이트 서술, data-layer Repository 소비 열, design-system `YGModalPopup` 소비처, api/parfait-group Android 매핑·에러코드·두 요청 메모. open-questions: **OQ-P-166 해소됨**, OQ-P-137 ③④ 해소(①② 잔존), OQ-P-167에 "표현 없음" 사례 1건 추가. 테스트 415건 불변(초대코드 17→14 / 닉네임 6→9). 미머지: ① `ygscaffold-v2-common-loading-error` 유지 |
 | 2026-08-16 | `46ed38fb` | Merge #264 (canvas-topping-screen) | delta 1건(#264). **C-301 편집 모드의 비어 있던 절반이 채워졌다** — 토핑 탭이 선택·이동·크기·회전·삭제와 테두리 재편집 왕복을 갖췄다. 딤 한 장을 사이에 낀 4층 스택으로 "내 것만 밝다"를 표현하고, 크기조절은 드래그 벡터를 **회전된 바깥 방향에 투영**해 0.5~2.5로 클램프, 선택 스트로크·버튼은 `ToppingGeometry`가 좌표를 따로 내 **버튼은 돌지 않는다**. 편집 버튼은 `NavKeyToppingEdit(borderOnly = true)`로 C-104/C-105 화면을 탭 없이 열어(`YGFloatingBarEdit` 첫 실화면 소비) 위키 C-306이 새 목적지 없이 성립. 확장 2종(`centeredAt`·`dragBy`) `core:util:android` 승격, 아이콘 2종 신설, release 서명 결선 동승. **사후 스펙 1건 작성**(`implemented`·archive): c301-topping-edit-tab(+README 등록). **as-built 3건**: c301 배경 스펙 드리프트 3 해소 표기, c103 스펙 `borderOnly`(Assisted 4인자·`isBorderOnly`), ADR-0003 release signingConfig. architecture 3건 갱신(module-structure 확장 목록 · design-system 아이콘·`YGCircleButton` 핸들 소비·`YGFloatingBarEdit` 첫 소비·점선 재사용 실패 · navigation-flow 재편집 왕복 절 신설). open-questions: **OQ-P-175 부분 해소**(② 답 나옴, ①③ 잔존), 신규 5건 OQ-P-199~203(mock 목록·미저장 / C-106 규격 부재 / 편집 대상 id가 Route에 삶 / C-202 정책 갈림·핸들 접근성 / 규약 이탈 셋). 테스트 변경 0건. 미머지: ① `ygscaffold-v2-common-loading-error` 유지 |
+| 2026-08-17 | `955c4636` | Merge #267 (common-error-loading-scaffold) | delta 1건(#267, **추적하던 미머지 스펙·플랜 한 쌍**). **공통 로딩·실패에 자리가 생겼다.** `YGScaffoldV2`가 content → 로딩 오버레이 → 토스트 호스트 **세 층**을 겹치고(토스트가 오버레이 위 — 로딩 중 실패도 보여야 한다), 신규 파라미터 `isLoading`·`toastPolicy` 둘 다 **기본값**인 것은 V1 `@Deprecated(ReplaceWith)` 치환이 컴파일되어야 한다는 **계약**이다. 핵심 발견은 **이관이 이름 교체가 아니라 소유 위치 이동**이라는 것 — `hiltViewModel()`이 Route 안이라 `EntryBuilder`는 `isLoading`도 실패 이펙트도 못 본다. 그래서 `ERROR` 승급 기준이 "V1 호출처 0"에서 **"각 화면이 Route에서 스캐폴드를 소유하고 배선함"**으로 정정됐다(IDE 일괄 치환은 호출처만 0으로 만든다). **as-built로 더해진 것**: ① 오버레이의 `pointerInput` 소비만으로 부족 — **TalkBack 더블탭은 `SemanticsActions.OnClick`을 직접 불러** 통과하므로 스캐폴드가 `content`를 `semantics { hideFromAccessibility() }`로 감싼다, ② 그 기전은 `assertDoesNotExist`로 못 잠금(플랫폼 트리 전용) → `SemanticsMatcher`로 속성 보유만 단언, ③ `YGCustomTheme` 조상이 전제(`YGToast`가 `YGTheme.layout`을 읽어 **첫 토스트에서야 죽는다**), ④ 실패 문구는 호출부 소유 — A-002가 `LoginError` 4갈래(로그는 8갈래 유지)를 세우고 `ShowError`가 **문구가 아니라 사유**를 실으며 Route가 컴포지션에서 문구를 미리 뽑아 둔다(`LocalContextResourcesRead` 회피), ⑤ `launch(onError = …)` 동반 필수. 이관은 **3화면**(A-002 로그인 · S-003 앱 설정 · S-002 계정 정보)이고 **V1 잔여 8파일 22곳**. 조치: 스펙 `implemented`·플랜 `done` + 양쪽 archive 이동(링크 보정, 플랜은 frontmatter가 없어 상단 머지 블록 신설)·README 2행, **드리프트 2건 정정**(as-built의 "계측 9건"은 신규 7건 + 기존 smoke 2건 · "로그인 유닛 6건"은 `LoginViewModelTest` 9 → 11건), architecture 3건(design-system 구조 트리 `ygloading/`·`YGScaffoldV2.kt`·모듈 최초 `strings.xml` + 인벤토리 2행 + 화면 컨테이너 이관 현황·오버레이 적용 기준 / navigation-flow 체크리스트에 두 형태 공존 명시 / state-management **feature 로컬 실패 enum 두 번째 사례**), ADR-0020 "남는 것"에 **예상한 비용이 실제로 청구됨** 블록. open-questions: OQ-P-167 마커 갱신(머지 확정·잔여 이관은 OQ-P-204로 분리), **신규 3건**(OQ-P-204 스캐폴드 둘로 갈린 채 잔여 8파일·삭제 시점 미정 · OQ-P-205 오버레이 임시 구현·적용 기준이 귀납뿐 · OQ-P-206 토스트 2초 동안 상단 띠 탭 삼킴이 전 화면 공통으로 승격). 테스트 유닛 415 → **417**, 계측 5 → **12**(신규 7). ⚠️ **이관 3화면 실사용 확인 없음.** 미머지: 없음 |

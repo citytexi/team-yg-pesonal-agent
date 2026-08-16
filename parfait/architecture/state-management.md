@@ -4,8 +4,8 @@ title: 상태 관리 (MVI) · 데이터 흐름
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-16
-related_spec: c201-canvas-calendar, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab
+verified: 2026-08-17
+related_spec: c201-canvas-calendar, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error
 related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022
 related_architecture: data-layer, navigation-flow
 related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase
@@ -107,6 +107,16 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
   소비처가 하나면 feature 로컬이 맞다는 [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)
   애드덤이고, `feature` `impl`은 서로를 의존하지 않는 leaf라 형제 화면의 `GroupNickNameError`를 재사용할
   수도 없다(문구 중복은 [open-questions](../synthesis/open-questions.md)가 추적 중이다).
+  > 📌 **두 번째 사례 — A-002 `LoginError` 4종(PR #267 develop 머지).** 같은 형태이고, 여기서 규약이
+  > 하나 더 드러났다: **로그 분기는 8갈래인데 사용자 갈래는 4개다.** 502·503·SDK 실패가 사용자에겐
+  > "잠시 후 다시"로 같아서 한 갈래로 묶인다 — enum이 세는 것은 서버 에러 코드가 아니라 **문구가
+  > 갈리는 지점**이다. `SideEffect`가 실어 보내는 것도 문구가 아니라 **사유**(`ShowError(error: LoginError)`)이고,
+  > 문구는 Route가 `LoginError.entries.associateWith { it.toStringResource() }`로 **컴포지션에서 미리 뽑아
+  > 둔다** — 이펙트 수집은 코루틴이라 `stringResource`를 부를 수 없고, `LocalContext.getString` 우회는
+  > 로케일 변경 때 갱신되지 않는다(`LocalContextResourcesRead` 린트).
+  > 함께 **`launch(onError = …)`를 붙여야 한다** — 안 붙이면 `Result.failure`만 알려지고 UseCase가
+  > 예외를 던지는 경로가 조용해진다([ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md)이 "이 자리가
+  > 통로"라고 지정한 곳이다).
 - **요청 중 플래그는 `finally`로 내린다** — S-001 로그아웃(`isLoggingOut`, PR #260)이 `launch(key)` 중복
   가드 위에 State 플래그를 한 겹 더 두는 사례다. `launch(key)`는 두 번째 탭을 삼킬 뿐 버튼이 눌리는
   것처럼 보이므로 비활성은 State로 드러낸다(아래 "안티패턴" 1번의 반대 사례).

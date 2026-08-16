@@ -7,7 +7,7 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr: ADR-0005, ADR-0009, ADR-0016, ADR-0017
-related_spec: mvi-error-infrastructure, a002-kakao-login-api
+related_spec: mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error
 related_architecture: state-management, data-layer
 platforms: android
 tags: [adr, parfait]
@@ -169,6 +169,15 @@ launch(key = …) { … }
 번복의 유일한 비용이다. 다만 화면별 표현이 실제로 갈릴 가능성이 크고(토스트/인라인/다이얼로그),
 세션 만료처럼 **진짜 앱 전역**인 관심사는 애초에 VM 채널이 아니라 앱 스코프 버스 소관이다 —
 위 트레이드오프 절이 "진짜 멀티캐스트가 필요하면 별도 `SharedFlow`"라고 적어 둔 그 자리다.
+
+> 📌 **그 비용이 실제로 청구됐고, 예상대로 갈렸다(2026-08-16, PR #267)** —
+> [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)이 **"알리고 끝나는
+> 실패는 공통 토스트"**로 확정하고 `YGScaffoldV2`가 그 자리를 제공한다. 다만 **공통은 자리뿐이고
+> 케이스는 화면마다 추가한다** — 이 절이 예상한 그대로다. 계약이 `String`이라 문구는 화면 소유이고,
+> A-002가 `LoginError` + `LoginSideEffect.ShowError`로 첫 사례를 만들었다. **재시도 동선이 필요한
+> 차단성 실패는 여전히 화면 소관**이라 표현은 지금도 갈려 있다(OQ-P-167).
+> `launch(onError = …)`가 "이 자리가 통로"로 실제 소비된 첫 사례이기도 하다 — A-002가 `onError`와
+> `Result.failure` 두 경로를 모두 토스트로 잇는다.
 
 ### 배운 것
 

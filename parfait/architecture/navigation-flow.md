@@ -4,8 +4,8 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-16
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab
+verified: 2026-08-17
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
 related_code: core:navigation, Navigator
@@ -217,14 +217,16 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.
 2. `feature/xxx/impl`에 `featureXxxEntryBuilder()` 작성: `entry<NavKeyXxx> { XxxRoute(navigator = navigator, modifier = Modifier.fillMaxSize()) }`.
-   > 🔁 **정본 변경 (2026-08-16)** — **엔트리는 더 이상 스캐폴드를 감싸지 않는다.** 스캐폴드는
+   > 🔁 **정본 변경 (2026-08-16, PR #267 develop 머지)** — **엔트리는 더 이상 스캐폴드를 감싸지 않는다.** 스캐폴드는
    > `YGScaffoldV2`이고 **Route가 소유**한다 — `hiltViewModel()`이 Route 안에 있어 EntryBuilder는
    > `isLoading`도 실패 이펙트도 볼 수 없기 때문이다. 아래 인셋 관용구 논의는 구 형태(엔트리
    > `YGScaffold`) 기준의 역사이고, 인셋은 이제 Route의 `YGScaffoldV2(contentWindowInsets = …)`가 정한다.
    > 규약 본문 → [design-system](design-system.md) "화면 컨테이너", 설계 →
-   > [ygscaffold-v2 스펙](../specs/2026-08-16-ygscaffold-v2-common-loading-error.md).
+   > [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md).
 
    (구 형태) `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(modifier = Modifier.padding(innerPadding)) } }`. 화면 최외곽 컨테이너 `YGScreen`과의 역할 분리는 그대로 → [design-system](design-system.md) "화면 컨테이너".
+   **develop에는 두 형태가 공존한다** — 신형은 `featureAppSettingEntryBuilder`·`featureLoginEntryBuilder`
+   3화면, 구 형태가 8파일 남았다 → [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
 3. 빌더를 Hilt 모듈(`NavigationModule`, ActivityRetainedComponent)의 `Set<...>` 멀티바인딩에 `@IntoSet`으로 제공.
 4. 이동 원하는 feature는 대상의 `:api`에 의존 추가(`settings.gradle.kts`/build 파일).
 5. 결과가 필요하면 `ResultEventBus` 데코레이터 경로 사용.
