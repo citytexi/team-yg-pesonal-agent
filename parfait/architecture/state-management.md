@@ -5,10 +5,10 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-17
-related_spec: c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
-related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022
+related_spec: c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, group-ssot
+related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: data-layer, navigation-flow
-related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase
+related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase, GetMyGroupsFlowUseCase, GetGroupDetailUseCase, GroupListViewModel, GroupSettingViewModel, CanvasMainViewModel
 tags: [architecture, parfait]
 ---
 # 상태 관리 (MVI) · 데이터 흐름
@@ -112,6 +112,16 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
     사용자가 무엇을 바꿨는지 알 수 없다.
   - **낙관적 갱신을 하지 않는다.** 변경 성공 시에도 State에 직접 쓰지 않고 SSoT 구독이 새 값을
     되돌려준다 — 직접 쓰면 저장이 실패해도 화면만 바뀐 상태가 된다.
+  - **그룹 정보도 같은 규약을 탄다**(2026-08-17, 브랜치 `feature/#294-group-ssot`, **미머지**).
+    G-001·C-001·S-101이 `GetMyGroupsFlowUseCase`·`GetGroupDetailUseCase`를 `init`에서 수집하고,
+    서버 조회는 `Enter`(화면이 앞에 설 때)·`Refresh`가 따로 부른다 — 갱신 함수가 `Result<Unit>`이라
+    화면이 조회 결과를 State에 넣을 길 자체가 없다([ADR-0023](../adr/0023-group-in-memory-ssot.md)).
+    S-101은 그 덕에 닉네임 변경 성공 후 멤버 목록을 손으로 고치던 코드를 버렸다.
+    - **여기서도 `null`은 빈 목록이 아니라 미조회다.** `GroupListUiState.groupList`가 nullable이고,
+      조회 실패 시 에러 화면 판정(`isNullOrEmpty()`)과 0건 온보딩 툴팁 분기가 그 구분에 걸린다.
+    - **구독은 `viewModelScope.launch`가 아니라 `BaseViewModel.launch`로 연다.** 무한 구독이라 key
+      가드가 의미 없어 보이지만, 구독 시작부에서 다른 SSoT(계정 정보, DataStore)를 읽으면 그 실패가
+      가드 없는 코루틴에서는 그대로 크래시가 된다 — S-101이 실제로 그 회귀를 냈다.
 - **서버 실패 갈래는 feature 로컬 enum**이다 — S-002의 `GlobalNicknameError` 4종. 형식 오류
   (`NameValidResult.Error`, 요청 전 검사)와 **별개 축**이라 State가 둘을 따로 들고 화면이
   `nicknameError ?: submitError` 순으로 보여준다. 문구 매핑은 같은 모듈의 `@Composable` 확장이 갖는다 —

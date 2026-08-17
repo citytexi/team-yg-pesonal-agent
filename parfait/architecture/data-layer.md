@@ -5,10 +5,10 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-17
-related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server
-related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022
+related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
+related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -31,6 +31,10 @@ tags: [architecture, parfait]
 ## DataSource 종류
 - **파일 기반** — `FileRecentImageLocalDataSource`, `FileCameraCacheLocalDataSource`(내부 저장소 이미지 I/O).
 - **DataStore 기반** — `RecentImageLocalDataSource`(메타데이터), `RecentImageEditor`(`data/datastore/`, DataStore 접근 추상화 — 단일 키 `get()`/`set()` 동기 인터페이스로, suspend/flow가 아님), **`UserInfoLocalDataSource`**(계정 정보 SSoT, 암호화 + `Flow`, PR #263).
+- **인메모리** — **`GroupLocalDataSource`**(그룹 목록·상세 SSoT, `@Singleton` + `MutableStateFlow`,
+  [ADR-0023](../adr/0023-group-in-memory-ssot.md)). 디스크를 쓰지 않아 **모든 함수가 non-suspend**이고
+  실패 채널이 없다 — 계정 정보 SSoT와 형태는 같되 영속·암호화만 뺀 갈래다. 목록은
+  `StateFlow<List<MyParfaitGroupVO>?>`이고 **`null`이 "아직 못 받음"**, `emptyList()`가 "그룹 0건"이다.
 - **암호화 DataStore 프록시** — `EncryptedPreferences`(`data/datastore/`, PR #263). 저장 형태가 값이 아니라 **암호문**인 저장소들이 공유한다(`EncryptedTokenStore`·`UserInfoLocalDataSourceImpl`) — 아래 "토큰·계정 정보 저장 경로" 참고.
 - **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근).
 
@@ -51,7 +55,7 @@ tags: [architecture, parfait]
 | 모듈 | 제공/바인딩 |
 |------|-------------|
 | `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
-| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`) |
+| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
 | `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) |
@@ -133,7 +137,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 |---|---|---|
 | `AuthRepository` | `loginWithKakao(idToken, nonce)` · `signUp(registrationToken, agreements)` · `saveSession(session)` · **`logout()`**(#260) | `LoginWithKakaoUseCase` → A-002 · `SignUpUseCase` → 온보딩 약관 · `LogoutUseCase` → S-001 앱 설정 |
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
-| `ParfaitGroupRepository`(#285, #287) | `getMyGroups` · `getGroupDetail`(#285) · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` · `leaveGroup`(#287) · `reportGroup`(#287) | `GetMyGroupsUseCase`(G-001) · `GetGroupDetailUseCase`(S-101) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102·S-101) · `LeaveGroupUseCase`·`ReportGroupUseCase`(S-101 Danger Zone) |
+| `ParfaitGroupRepository`(#285, #287, 그룹 SSoT 라운드) | **읽기** `myGroups: Flow<List<MyParfaitGroupVO>?>` · `groupDetail(groupId): Flow<ParfaitGroupDetailVO?>` / **갱신** `refreshMyGroups` · `refreshGroupDetail`(둘 다 `Result<Unit>`) / **정리** `clearGroups`(non-suspend) / **명령** `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` · `leaveGroup`(#287) · `reportGroup`(#287) | `GetMyGroupsFlowUseCase`·`RefreshMyGroupsUseCase`(G-001·C-001) · `GetGroupDetailUseCase`·`RefreshGroupDetailUseCase`(S-101) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102·S-101) · `LeaveGroupUseCase`·`ReportGroupUseCase`(S-101 Danger Zone) · `LogoutUseCase`(`clearGroups`) |
 | `MemberRepository`(#263) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` |
 | `ParfaitRepository`(#268, #279) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) |
 
@@ -145,7 +149,17 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 `GetParfaitDetailUseCase`로 대체됐다 — 달력이 그 해 목록을 캐시로 들게 되면서 UseCase가 하던
 목록→상세 2단 중 앞 단이 화면으로 옮겨 갔다.
 
-**`MemberRepository`는 지금까지와 다른 모양이다 — 원격과 로컬을 조율한다.** 다른 원격 Repository가
+**원격과 로컬을 조율하는 Repository는 이제 둘이다**(`MemberRepository`·`ParfaitGroupRepository`).
+그룹 쪽은 같은 모양을 **인메모리로** 다시 쓴 것이라 차이가 셋이다 — ① 로컬 쓰기가 IO가 아니라
+`runSuspendCatching`이 필요 없고, ② 조회 API를 부르는 시점을 화면이 정하되(`refreshX`) 값을 받는
+길은 `Flow` 하나뿐이며(갱신 함수가 `Result<Unit>`이라 반환값으로는 못 받는다), ③ 명령형 함수가
+성공 직후 캐시를 갱신한다(생성·참여는 목록 재조회, 닉네임 변경은 상세 재조회, 나가기·신고는 제거).
+**뒷정리 재조회가 실패해도 이미 성공한 조작을 실패로 되돌리지 않는다** — ADR-0022의 닉네임 폴백과
+같은 판단이다. 세션이 끝나면 `LogoutUseCase`(단일 정리 자리)와 `TokenAuthenticator`(강제 로그아웃)가
+**던지지 않는 그룹 캐시부터** 지운다 — 계정 정보 정리는 DataStore IO라 던질 수 있어, 뒤에 두면 그때
+그룹 캐시가 남는다([ADR-0023](../adr/0023-group-in-memory-ssot.md)).
+
+**`MemberRepository`는 그중 먼저 생긴 쪽이다 — 원격과 로컬을 조율한다.** 다른 원격 Repository가
 DataSource 위임 + `mapErrorToAppError()`뿐인 데 비해, 이쪽은 원격 응답을 **로컬 SSoT에 쓰고** 읽기는
 로컬 `Flow`만 노출한다(화면은 조회 API를 부르지 않는다, [ADR-0022](../adr/0022-user-info-local-ssot.md)).
 로컬 쓰기·읽기를 `runSuspendCatching`으로 감싸는 것이 여기서 필수다 — `DataStore.edit`·`data.first()`가
@@ -266,6 +280,11 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > ([api/parfait-group.md](../api/parfait-group.md) `android_status: done`). Repository가 0건인 도메인은
 > 그대로 **둘**(image·parfait-image)이다
 > → [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
+> ⚙️ **2026-08-17 — 그룹 정보가 두 번째 로컬 SSoT를 얻었다**(브랜치 `feature/#294-group-ssot`, **미머지**).
+> `GroupLocalDataSource`(인메모리)가 목록·상세를 들고 `ParfaitGroupRepository`가 읽기를 `Flow`로만
+> 노출한다 — G-001·C-001·S-101 세 화면이 조회 결과를 자기 State에 넣지 않고 구독한다. 부수적으로
+> **그룹명 하나 때문에 목록을 다시 부르던 두 번째 HTTP 호출이 사라졌다**(`GetGroupDetailUseCase`가
+> 두 캐시를 `combine`한다, OQ-P-216 ③ 해소) → [group-ssot 스펙](../specs/2026-08-17-group-ssot.md).
 > **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
