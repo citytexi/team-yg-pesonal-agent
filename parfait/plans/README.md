@@ -6,6 +6,7 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 | 계획 | 내용 |
 |------|------|
+| [2026-08-17-group-ssot.md](2026-08-17-group-ssot.md) | 그룹 목록·상세 인메모리 SSoT 구현 계획(7 Task). 기준선은 develop이 아니라 **`feature/#288-group-list-refresh`** — 그 브랜치가 들여온 `Enter` 인텐트(재진입마다 재조회)와 "캐시 있으면 목록 유지" 실패 규칙을 전제로 짠다. 순서: `GroupLocalDataSource` 신설(1) → Repository 읽기 `Flow`·갱신·write-through(2) → UseCase 구독/갱신 분리(3) → 목록(4)·설정(5)·캔버스(6) 이관 → 세션 정리(7). 2~3 구간에서는 `:feature`가 옛 API를 부르므로 **앱 빌드가 일시적으로 깨진 채 진행**되고 Task 6 Step 5에서 회복을 확인한다. 캐시 검증은 mock이 아니라 실물 `GroupLocalDataSourceImpl`을 Repository 테스트에 주입해서 한다(캐시 상태가 관찰 대상이라). **커밋하지 않는다**(TJYG-Android 규약). 실기기 미검증 5항목 명시. 스펙: [specs](../specs/2026-08-17-group-ssot.md) |
 | [2026-08-05-orchestration-session-pipeline.md](2026-08-05-orchestration-session-pipeline.md) | 오케스트레이션 파이프라인 스킬 구현(6 Task, **TJYG-Android 코드 변경 0**): `start-session` → `start-default-session` 개명 → `start-orchestration-session` 골격(전제 확인·요구사항 수집·Run 생성) → 문서 단계 W1~W4 + 게이트 G1·G2 → 구현 단계(모듈 worktree·모델 지정 2단계 경로·RED/GREEN 증거 계약) → 통합·코드리뷰·최종 산출·에스컬레이션 → CLAUDE.md 라우팅. 산출물은 마크다운 스킬 문서 2개뿐이라 자동 테스트가 없고, 검증은 **frontmatter `name`↔디렉토리명 일치 · placeholder grep · 문서에 적은 orca 명령·플래그가 `--help`에 실재하는지 대조**로 한다. 스펙: [specs](../specs/2026-08-05-orchestration-session-pipeline.md) |
 
 ## 아카이브
