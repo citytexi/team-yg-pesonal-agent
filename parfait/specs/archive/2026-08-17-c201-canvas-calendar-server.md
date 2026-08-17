@@ -4,10 +4,10 @@ title: C-201 캘린더 서버 결선 (mock 제거 + 연도별 캐시 + 지난 �
 status: implemented
 category: feature-spec
 platforms: android
-verified: 2026-08-17
+verified: 2026-08-18
 related_code: GetParfaitHistoriesUseCase, GetParfaitYearsUseCase, GetParfaitDetailUseCase, ParfaitRepository, ParfaitRepositoryImpl, PastCanvasVO, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainRoute, CanvasMainScreen, CustomCalendar, YGCanvasMenuAction, parfaitToday
 related_adr: ADR-0009, ADR-0017, ADR-0020
-related_spec: c201-canvas-calendar, c001-canvas-today-detail, c001-canvas-main, parfait-canvas-topping-member-api-service-layer
+related_spec: c201-canvas-calendar, c001-canvas-today-detail, c001-canvas-main, parfait-canvas-topping-member-api-service-layer, screen-resume-refetch
 related_architecture: data-layer, state-management, design-system
 supersedes:
 superseded_by:
@@ -58,7 +58,7 @@ tags: [spec, parfait, canvas, calendar, c201, api-consumer]
 
 | 필드 | 뜻 | 쓰임 |
 |---|---|---|
-| `todayCanvas` | 진입 시 `/parfaits/today`로 받아 둔 오늘 캔버스 | 오늘로 돌아올 때 **재조회 없이** 되돌리는 원본 |
+| `todayCanvas` | `/parfaits/today`로 받아 둔 오늘 캔버스(#297부터 화면이 앞에 설 때마다 갱신) | 오늘로 돌아올 때 **재조회 없이** 되돌리는 원본 |
 | `viewedCanvas` | 지금 화면에 그려지는 캔버스 | `canvasBackground`·`toppings`·`isCanvasEmpty` 파생의 유일한 출처 |
 
 가른 이유는 **토핑 추가·배경 편집이 언제나 오늘 것을 대상으로 해야 하는데** 서버가 마감된 캔버스의
@@ -154,6 +154,11 @@ tags: [spec, parfait, canvas, calendar, c201, api-consumer]
    코드에 없다 → [open-questions](../../synthesis/open-questions.md).
 3. **연도별 캐시에 무효화 경로가 없다** — 화면이 사는 동안 한 번 받은 해는 다시 받지 않는다. 오늘
    캔버스에 토핑을 얹어도 달력 점이 그대로다. 지금은 얹는 경로 자체가 없어 드러나지 않는다(OQ-P-209).
+   > 🔁 **부분 해소(2026-08-17, PR #297)** — **올해만** 재진입(`Enter`)마다 다시 받는다. 다른 멤버가
+   > 오늘 토핑을 올리면 오늘 칸 점이 생기는데 캐시가 그것을 스스로 알 수 없고, 바뀔 수 있는 해는
+   > 올해뿐이라는 근거다. 지난 해는 여전히 무효화되지 않고, `loadParfaitHistories`의 KDoc은 아직
+   > "연 단위로 한 번만 받는다"라고 적혀 있어 **주석과 동작이 어긋난다**
+   > → [screen-resume-refetch 스펙](2026-08-17-screen-resume-refetch.md).
 4. **`parfaitHistories` 파생이 캐시가 가른 둘을 다시 뭉갠다** — `parfaitHistoriesByYear[year].orEmpty()`가
    "아직 안 받은 해"와 "기록 없는 해"를 똑같이 빈 목록으로 준다. 무효화·재시도가 이 파생을 근거로
    판단하면 캐시를 나눈 이유가 사라진다.

@@ -25,7 +25,7 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
     크래시 원인이다). `clearBackStack()`은 제거됐고 기존 호출부 3곳(`SplashRoute`·`TermAgreeRoute`·
     `LoginRoute`)이 함께 옮겨졌다. `NavigatorTest`가 이 성질을 잠근다 — 저장소에서 `Navigator`에
     테스트가 붙은 것도 이번이 처음이다.
-  - `goToSingleClearTop(destination)`(#224 신설) — 대상이 백스택에 있으면 **그 위를 한 번에 잘라내(`removeRange`) 기존 엔트리를 재사용**하고, 없으면 `goTo`처럼 새로 쌓는다. 한 칸씩 빼면 스냅샷 변경이 그만큼 쌓이므로 범위 삭제로 처리한다. 엔트리 재사용이므로 대상 화면의 상태·ViewModel이 그대로 살아난다(돌아온 화면이 새로 조회하지 않는다).
+  - `goToSingleClearTop(destination)`(#224 신설) — 대상이 백스택에 있으면 **그 위를 한 번에 잘라내(`removeRange`) 기존 엔트리를 재사용**하고, 없으면 `goTo`처럼 새로 쌓는다. 한 칸씩 빼면 스냅샷 변경이 그만큼 쌓이므로 범위 삭제로 처리한다. 엔트리 재사용이므로 대상 화면의 상태·ViewModel이 그대로 살아난다(`init` 조회는 다시 돌지 않는다 — 돌아온 화면이 다시 조회하려면 화면 쪽에 `Enter` 인텐트가 있어야 하고, G-001·C-001이 #297에서 그것을 갖췄다 → [state-management](state-management.md)).
   - `goToAndPopCurrent(destination)`(#221 신설) — 지금 화면을 대상으로 **치환**한다(마지막 칸에 덮어쓰기).
     백스택 깊이가 늘지 않고 뒤로 가면 지금 화면을 건너뛴다. 스택이 비어 있으면 그냥 쌓는다.
     확인·경유 화면처럼 되돌아올 이유가 없는 자리에 쓴다(첫 사용처: C-101-confirm → C-103).
@@ -122,6 +122,8 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
 
 - 복귀는 `clearBackStack()` + `goTo`가 아니라 **`goToSingleClearTop(NavKeyGroupList)`**다 —
   목록 엔트리가 백스택에 이미 있으므로 그 위만 걷어낸다. 목록에서 뒤로가기는 여전히 no-op이다(백스택 1개).
+  📌 **새 그룹이 바로 보이는 것은 이 관용구가 아니라 목록 화면이 다시 묻기 때문이다**(#297) — 엔트리
+  재사용은 그대로 두고 `GroupListIntent.Enter`가 재조회한다(OQ-P-169 해소).
   즉 develop에 **백스택 리셋 관용구가 둘**이다: 되돌아갈 화면이 없는 경계는 `replaceAll`
   (Splash·TermAgree·Login·강제 로그아웃), 이미 스택에 있는 화면으로 복귀는 `goToSingleClearTop`
   (그룹 생성·참여) → [open-questions](../synthesis/open-questions.md) [2026-08-12].

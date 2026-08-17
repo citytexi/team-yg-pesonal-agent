@@ -5,8 +5,36 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `2d15cd9f` (`Merge pull request #287 from mash-up-kr/feature/#277-group-leave-report-api`)
-- **요약**: **그룹 설정이 mock을 다 버렸고, 나가는 문도 열렸다**(delta 2건, 둘 다 결선).
+- **커밋**: `8730ffa3` (`Merge pull request #297 from mash-up-kr/feature/#288-group-list-refresh`)
+- **요약**: **화면이 앞에 설 때마다 다시 묻기 시작했고, 그러자 실패 규칙이 뒤집혔다**(delta 1건).
+  **#297**(`feature/#288-group-list-refresh`): G-001 목록·C-001 캔버스에 **`Enter` 인텐트**가 생기고
+  Route의 `LifecycleResumeEffect`가 그것을 보낸다. `init` 조회는 화면 수명이 아니라 **ViewModel 수명**에
+  걸린 것이라, 백스택 아래 엔트리가 컴포지션에서 빠져도 살아남아 돌아온 화면이 낡은 값을 그대로 보여
+  주던 것이 닫혔다(**OQ-P-169**). 고른 답이 `ON_RESUME` 관측인 이유는 **재조회가 필요한 진짜 이유가
+  복귀가 아니라 남이 바꾸기 때문**이라는 것이다 — 그래서 복귀 관용구(`goToSingleClearTop`)는 손대지
+  않았고, 백스택 리셋 관용구 결정(OQ-P-136)과도 떨어졌다.
+  **뒤집힌 것은 실패 규칙이다** — 재진입마다 조회가 나가게 되자 "목록이 남아 있어도 전면 에러 화면"이
+  **뒤로 온 것만으로 보던 목록이 사라진다**가 됐다. 그래서 보여 줄 목록이 있으면 화면을 유지하고,
+  **사용자가 직접 당긴 새로고침 실패만** 토스트로 알린다(`ShowRefreshError`) — 목록이 그대로인 것은
+  "새 소식이 없다"와 구분되지 않기 때문이고, 목록이 비면 종전대로 에러 화면이라 토스트를 겹치지 않는다.
+  토스트 호스트가 필요해 G-001 Route가 `YGScaffold` → **`YGScaffoldV2`**로 옮겨졌다 — **API 결선이 아닌
+  라운드가 이관을 끌어온 첫 사례**이고(V1 잔여 7 → **6파일**), 이관을 부르는 것은 결선이 아니라
+  **채울 것이 생기는 시점**임을 보였다(OQ-P-204 ①).
+  C-001은 `syncToday()` 뒤 **오늘을 보고 있을 때만** 오늘 캔버스와 **올해** 달력 기록을 다시 받는다
+  (지난 날은 마감돼 안 바뀌고, 연도 목록은 해가 바뀔 때만 늘어 `init`에 남는다). 부작용 있는
+  `/parfaits/today`를 재진입마다 부르지만 첫 진입에서 만들어진 것을 받을 뿐이고, 반대로 **ViewModel이
+  만들어지는 것만으로는 캔버스가 생기지 않게** 됐다. `syncToday()`는 화면을 열어 둔 채 자정을 넘긴
+  경우를 맡는다 — 오늘을 보던 중이면 두 캔버스를 비우고 새 날로 옮기고(어제 것 위에 토핑을 얹는 일을
+  막는다), 지난 날을 보던 중이면 `today`만 고친다.
+  ⚠️ **남은 것은 규약 공백과 한쪽만 생긴 표면이다** — 재진입 재조회는 규약이 아니라 두 화면의 관용구고
+  (key도 `Unit`/`viewModel`로 갈렸다), C-001은 조회 실패가 여전히 로그뿐인데 **실패할 기회만 늘었다**
+  (OQ-P-221 신설). G-001도 재진입 조회 실패는 조용하다. `loadParfaitHistories` KDoc은 아직 "연 단위로
+  한 번만"이라 동작과 어긋난다. 자정 경계는 처리 자리가 둘로 늘었지만 **둘 다 KST 자정**이라 03:00은
+  그대로 미적용이다(OQ-P-127).
+  테스트: 유닛 456 → **467건**(`CanvasMainViewModelTest` 5 신설 — `feature/groups/canvas/impl`에
+  `parfait.test.unit`이 처음 붙었다, `GroupListViewModelTest` 8 → 14).
+  ⚠️ **실기기·실서버 확인 없음.**
+  직전 회차 요약: **그룹 설정이 mock을 다 버렸고, 나가는 문도 열렸다**(delta 2건, 둘 다 결선).
   **#285**(`feature/#275-group-setting-api`): S-101이 상세 조회로 채워진다. `ParfaitGroupRepository`에
   `getGroupDetail`이 올라오고 mock 기본값 5종이 사라졌으며, **진입도 이때 열렸다** —
   `NavKeyGroupSetting`이 `data class(groupId)`가 되고 C-001 상단 메뉴가 호출자가 돼 **4일간의 도달
@@ -167,9 +195,10 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-17 (31회차)
-- **미머지 제외 항목**: 없음(직전까지 추적하던 선반영 2건 `refactor/#278-canvas-main`·
-  `refactor/#284-clickable-to-clickable-yg`이 이번 회차에 머지로 닫혔다).
+- **검증일**: 2026-08-18 (32회차)
+- **미머지 제외 항목**: `feature/#294-group-ssot`(그룹 목록·상세 인메모리 SSoT — 이 기준선 위 커밋 10개,
+  [스펙](specs/2026-08-17-group-ssot.md)·[플랜](plans/2026-08-17-group-ssot.md)·[ADR-0023](adr/0023-group-in-memory-ssot.md)
+  선반영 완료). 그 브랜치는 이번 delta의 `Enter` 인텐트를 **전제로** 쓰고 대상만 캐시 구독으로 바꾼다.
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
@@ -235,3 +264,4 @@
 | 2026-08-17 | `fa7d79d6` | Merge #279 (canvas-calendar-api) | delta 1건(#279). **달력이 mock을 버렸고, 그 대가로 지난 날이 진짜 열렸다.** `ParfaitRepository`에 `getYears`가 올라와 **다섯 갈래 중 넷**이 열리고(남은 하나는 배경 변경) 두 UseCase의 mock 생성 로직이 통째로 사라졌다 → **OQ-P-183 해소**(하루 전 라운드가 남긴 "한 ViewModel 안에서 층이 갈린다"가 닫혔다). `ParfaitHistory` **삭제** — 달력이 계약 VO `PastCanvasVO`를 그대로 써 점 찍는 기준이 `imageCount` → `toppingCount`가 됐고 `domain/model/parfait/` 패키지가 소멸해 하위 패키지가 열 → **아홉**. `GetCanvasByDateUseCase`(목록→상세 2단)도 하루 만에 **삭제**되고 `GetParfaitDetailUseCase`로 대체 — 달력이 그 해 목록을 캐시로 들면서 **앞 단이 UseCase에서 화면으로 옮겨 갔다**. 상태가 `todayCanvas`/`viewedCanvas` **두 갈래**로 갈린 이유는 서버가 마감 캔버스 편집을 안 막기 때문이고, 부수 효과로 **오늘로 돌아갈 때 부작용 있는 `today` 재조회가 없다**. 지난 캔버스는 메뉴 액션이 **갤러리에 저장·오늘의 파르페 가기**로 바뀌어 편집 진입점이 사라졌다(OQ-P-189 ②에 앱 쪽 첫 답 — 가드가 아니라 길 치우기). 달력 셀은 **기록 있는 날 + 오늘**만 활성. 조치: 사후 스펙 1건 작성(`implemented`·archive) c201-canvas-calendar-server + README 등록, c201(#259)·c001-canvas-today-detail(#268) 아카이브 스펙에 대체·해소 마커, `api/parfait.md` Android 매핑(우회 소비자 해소·연 단위 조회·`android_status` partial 유지, **`verified`는 서버 계약 대조일이라 미변경**)·`api/README.md` 도메인 표 Android 열, `data-layer` Repository 인벤토리·하위 패키지 수·네트워킹 절. open-questions: OQ-P-183 **해소됨**, OQ-P-184 ②에 뒤집힘 마커, OQ-P-189에 앱 쪽 답 마커, OQ-P-199 심볼 정정, **신규 4건**(OQ-P-211 갤러리 저장이 로그 한 줄 / OQ-P-212 상세 조회 `launch(key)` 가드로 **연속 선택 시 머리말과 그림이 어긋난 채 남는다** — #268이 일부러 안 걸었던 것이 근거 없이 뒤집힘 / OQ-P-213 기록 없는 과거 날짜 잠금이 위키 Disabled 정의를 넘어섬 / OQ-P-214 연도 캐시 무효화 부재·파생이 캐시가 가른 둘을 뭉갬), `oq-next` 스테일(207 → 215) 정정. 유닛 434 → **436건**. 실기기·실서버 확인 없음. 미머지: 없음 |
 | 2026-08-17 | `ede719f0` | Merge #292 (#284 clickable-to-clickable-yg) | delta 2건(#291·#292) — **둘 다 리팩터이고 둘 다 문서 선반영이 먼저 끝나 있던 브랜치**라, 이번 회차는 대조가 전부다(어긋난 곳 0건). **#291**(`refactor/#278-canvas-main`): C-001 화면 계열 `CanvasImageAdd*` → `CanvasMain*` 개명(NavKey·Route·Screen·ViewModel·UiState·Intent·Effect·`strings.xml` `canvas_main_*`). diff를 이름 치환 후 대조하면 짝 안 맞는 라인 0줄 = 시그니처·동작 불변이 기계 확인되고, develop 잔존 참조 0건. **#292**(`refactor/#284-clickable-to-clickable-yg`): 프로덕션 Foundation `Modifier.clickable` 28곳 전량 `clickableYGNoRipple` 이관 — develop 잔존은 `YGClickable.kt` 내부 구현 1곳 + `androidTest` 픽스처 2건(`YGLoadingOverlayTest`·`YGThemeSmokeTest`)뿐이라 design-system 서술 그대로다. `clickableYGNoRipple`에 `interactionSource` 첫 파라미터 추가(다른 네 변형과 동일 자리), 300ms 스로틀이 feature 화면 클릭 전반으로 확장. 문서 조치는 **선반영 문구의 미머지 마커 해제만** — `index.md` "지금 상태" 두 문단(⚠️ 미머지 선반영 → develop 머지 확정)과 doc-baseline 라인 갱신. `specs/README.md`·아카이브 스펙 7건 각주와 open-questions 해소 메모는 미머지 표현이 없어 그대로 유효. 신규 스펙·플랜·ADR 0건, 신규 미결 0건, 테스트 436건 불변. 실기기·실서버 확인 없음. 미머지: 없음 |
 | 2026-08-17 | `2d15cd9f` | Merge #287 (#277 group-leave-report-api) | delta 2건(#285·#287) — **S-101 그룹 설정 결선 라운드**. **#285**: 상세 조회로 mock 기본값 5종이 사라지고 화면이 서버를 본다. 계약에 그룹명이 없어 `GetGroupDetailUseCase`가 `getMyGroups()`를 **한 번 더 불러 이름만 붙이고**(그 실패는 실패로 치지 않는다 — 빈 제목 + 나머지 표시), 조합 결과가 서버 응답에 1:1 대응하지 않는 유일한 그룹 VO `GroupDetailVO`다. `isMe`는 닉네임 중복 허용 이후라 **`memberId`** 로 판별(계정 SSoT 구독). **진입도 이때 열렸다** — `NavKeyGroupSetting`이 `data class(groupId)`가 되고 C-001 상단 메뉴가 호출자가 돼 OQ-P-138(4일간 도달 불가) 해소. 컨테이너도 `YGScaffold`(엔트리) → `YGScaffoldV2`(Route)로 이관돼 **결선 라운드에 스캐폴드 이관이 딸려 온 첫 사례**(V1 잔여 8→7파일, OQ-P-204 ①에 사례로 답). **#287**: `leaveGroup`·`reportGroup`이 올라와 **DataSource 8함수 전량 = Repository 8함수**가 됐고 parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부). OQ-P-141의 셋 중 **①만 채우고 둘은 필요 없게 만들었다** — in-flight 필드 신설, 순서는 뒤집지 않고 스캐폴드 오버레이가 덮음, 그래서 `YGModalPopup` 좌우 플래그 분리 불필요. 나가기·신고는 결과가 같아 한 함수로 모으고 성공 시 **`replaceAll(NavKeyGroupList)`**(백스택이 전부 떠난 그룹 것이라 되돌아가면 403). 조치: 사후 스펙 1건 신규(`2026-08-17-s101-group-setting-api`, implemented·archive + README 등록), s101·Danger Zone 아카이브 스펙에 결선 노트, api/parfait-group(`android_status: done`·엔드포인트 표 결선됨·Repository 표 3행·Android 매핑 5건)·api/README(도메인 표·라운드 노트, 소비 19건), data-layer(Repository 인벤토리·방침 종결·UseCase 조합 첫 사례)·navigation-flow(진입·이탈 절 신설·리셋 관용구 4번째·Assisted 목록·구 형태 7파일)·module-structure(feature 간 `:api` 의존 2건)·state-management(in-flight 분리 규약)·design-system(V2 4화면·잔여 7파일) 갱신. open-questions: **OQ-P-138 해소됨**, OQ-P-139·140·141·167·186·204 갱신, **신규 3건**(OQ-P-216 상세 2회 호출·217 신고 사유 상수·218 403/404가 일시 장애와 같은 문구). 유닛 436 → **456건**. 미머지: 없음 |
+| 2026-08-18 | `8730ffa3` | Merge #297 (#288 group-list-refresh) | delta 1건(#297). **화면이 앞에 설 때마다 다시 묻기 시작했다** — G-001·C-001에 `Enter` 인텐트 + Route `LifecycleResumeEffect`. `init` 조회는 화면 수명이 아니라 ViewModel 수명에 걸린 것이라 백스택 아래에서 살아남아 낡았고, 그것이 닫혔다(**OQ-P-169 해소**). 복귀 관용구(`goToSingleClearTop`)는 손대지 않았다 — 재조회가 필요한 이유가 복귀가 아니라 **남이 바꾸기 때문**이라서다(OQ-P-136과 분리). **실패 규칙이 뒤집혔다**: 목록이 남아 있으면 화면 유지 + 당긴 새로고침 실패만 토스트(`ShowRefreshError`), 목록이 비면 종전대로 에러 화면. 토스트 호스트 때문에 G-001 Route가 **`YGScaffoldV2`**로 이관 — **결선 아닌 라운드가 이관을 끌어온 첫 사례**(V1 잔여 7 → **6파일**, OQ-P-204 ①). C-001은 `syncToday()` 뒤 **오늘을 볼 때만** 오늘 캔버스 + **올해** 달력 기록을 재조회(연도 목록·지난 캔버스는 그대로), 부작용 GET을 재진입마다 부르되 ViewModel 생성만으로는 캔버스가 안 생기게 됐다. `syncToday()`가 열어 둔 채 자정을 넘긴 경우를 맡는다. 문서: 사후 스펙 1건 신규(`2026-08-17-screen-resume-refetch`, implemented·archive + README 등록), g001·c001-today-detail·c201-calendar-server 아카이브 스펙에 갱신 노트, state-management(재진입 재조회 절 신설)·navigation-flow(`goToSingleClearTop`·생성 참여 복귀)·design-system(V2 5화면·잔여 6파일) 갱신. open-questions: **OQ-P-169 해소됨**, OQ-P-046·204 갱신, **신규 1건**(OQ-P-221 재진입 재조회가 규약 아님 + 실패 표현 편차). 범위 밖 정정 1건: g001 스펙의 토핑 클릭 미결선 서술이 #268 이후 stale이라 함께 고쳤다. 유닛 456 → **467건**. 미머지: `feature/#294-group-ssot`(스펙·플랜 등록됨) |
