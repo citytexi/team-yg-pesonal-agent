@@ -5,9 +5,9 @@ status: implemented
 category: feature-spec
 platforms: android
 verified: 2026-08-17
-related_code: ParfaitRepository, ParfaitRepositoryImpl, GetTodayParfaitUseCase, GetCanvasByDateUseCase, parfaitToday, PARFAIT_TIME_ZONE, CanvasToppingLayer, CanvasImageAddViewModel, CanvasImageAddUiState, CanvasImageAddRoute, CanvasImageAddScreen, NavKeyCanvasImageAdd, GroupListViewModel, GroupListScreen, GroupListRoute, String.toColorOrNull, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingBorder, YGCanvasBackground
+related_code: ParfaitRepository, ParfaitRepositoryImpl, GetTodayParfaitUseCase, GetParfaitDetailUseCase, parfaitToday, PARFAIT_TIME_ZONE, CanvasToppingLayer, CanvasImageAddViewModel, CanvasImageAddUiState, CanvasImageAddRoute, CanvasImageAddScreen, NavKeyCanvasImageAdd, GroupListViewModel, GroupListScreen, GroupListRoute, String.toColorOrNull, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingBorder, YGCanvasBackground
 related_adr: ADR-0009, ADR-0017, ADR-0020
-related_spec: c001-canvas-main, c201-canvas-calendar, c301-topping-edit-tab, parfait-canvas-topping-member-api-service-layer, canvas-detail-background-api-service-layer, g001-group-list
+related_spec: c001-canvas-main, c201-canvas-calendar, c201-canvas-calendar-server, c301-topping-edit-tab, parfait-canvas-topping-member-api-service-layer, canvas-detail-background-api-service-layer, g001-group-list
 related_architecture: data-layer, navigation-flow, module-structure, design-system
 supersedes:
 superseded_by:
@@ -86,6 +86,12 @@ DI는 `RepositoryModule`에 `@Binds` 한 줄.
 (`domain`의 `DayWindow`는 C-102 갤러리만 쓴다) → [open-questions](../../synthesis/open-questions.md) OQ-P-127.
 
 ### 날짜별 조회 — 훑는 것만으로 캔버스를 만들지 않는다
+
+> 📌 **이 UseCase는 하루 뒤 삭제됐다(2026-08-17, PR #279)** — 달력이 mock을 버리고 그 해 목록을
+> 캐시로 들게 되면서 목록 조회를 화면이 이미 갖게 됐고, `GetCanvasByDateUseCase`는 캐시에서
+> `parfaitId`를 꺼내 상세만 부르는 `GetParfaitDetailUseCase`로 대체됐다. 아래 2단 설계와 셋으로
+> 갈리는 결과는 그 시점까지의 기록이다 —
+> [c201-canvas-calendar-server 스펙](2026-08-17-c201-canvas-calendar-server.md).
 
 `GetCanvasByDateUseCase`는 **목록(하루 범위) → 상세** 2단이다. 오늘을 골라도 `today`로 가지 않는다 —
 달력을 훑는 것만으로 빈 캔버스가 쌓이면 안 되기 때문이다. 셋으로 갈린다.

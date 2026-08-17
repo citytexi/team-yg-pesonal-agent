@@ -5,9 +5,9 @@ status: implemented
 category: ui-spec
 platforms: android
 verified: 2026-08-17
-related_code: CustomCalendar, CalendarDropdown, CalendarDayUiModel, CanvasImageAddViewModel, CanvasImageAddUiState, CanvasImageAddIntent, GetParfaitHistoriesUseCase, GetParfaitYearsUseCase, GetCanvasByDateUseCase, ParfaitHistory, parfaitToday, YGListDate, YGStrokeButton, YGCanvas, verticalScrollbar, toFirstDayOfMonth, DateTextFormat
+related_code: CustomCalendar, CalendarDropdown, CalendarDayUiModel, CanvasImageAddViewModel, CanvasImageAddUiState, CanvasImageAddIntent, GetParfaitHistoriesUseCase, GetParfaitYearsUseCase, GetParfaitDetailUseCase, PastCanvasVO, parfaitToday, YGListDate, YGStrokeButton, YGCanvas, verticalScrollbar, toFirstDayOfMonth, DateTextFormat
 related_adr: ADR-0002, ADR-0005, ADR-0009
-related_spec: c001-canvas-main, c001-canvas-today-detail, designsystem-canvas-components, designsystem-bar-listdate-components
+related_spec: c001-canvas-main, c001-canvas-today-detail, c201-canvas-calendar-server, designsystem-canvas-components, designsystem-bar-listdate-components
 related_architecture: design-system, module-structure, state-management
 supersedes:
 superseded_by:
@@ -43,7 +43,8 @@ C-001에서 날짜 버튼을 눌러 그룹의 과거 파르페를 날짜로 훑�
     `LocalDate.toFirstDayOfMonth()`·`DateTextFormat.monthFormat`/`fullMonthFormat`(`core:util:jvm`).
   - `YGStrokeButton.borderWidth` 파라미터(`Dp.Hairline`이면 테두리를 안 그린다).
 - **제외**(이번 라운드에서 안 함)
-  - **서버 연동** — 두 UseCase가 고정 mock을 만든다(`Todo : 서버 연동 시 groupId를 받아…`). **#268 이후로도 그대로다.**
+  - ~~**서버 연동**~~ — 두 UseCase가 고정 mock을 만들었다(`Todo : 서버 연동 시 groupId를 받아…`).
+    #268 이후로도 그대로였고 → **#279에서 걷혔다**(드리프트 1).
   - ~~**날짜 선택의 결과**~~ — 고른 날짜가 캔버스 내용·상단 날짜 라벨을 바꾸지 않는다 → **#268에서 결선됐다**(드리프트 2).
   - C-201을 별도 화면(목적지)으로 만드는 것 — 캔버스 위 오버레이 슬롯이다.
 
@@ -90,9 +91,9 @@ C-001에서 날짜 버튼을 눌러 그룹의 과거 파르페를 날짜로 훑�
 
 | 심볼 | 하는 일 | 상태 |
 |---|---|---|
-| `GetParfaitHistoriesUseCase(year)` | 그 해 파르페를 최신순으로 | **mock** — 고정 지연 + 달마다 정해진 6일, 이미지 수는 `dayOfYear % 9`, `parfaitId`는 epoch day |
-| `GetParfaitYearsUseCase()` | 파르페가 있는 연도 목록 | **mock** — 올해부터 3년 |
-| `ParfaitHistory` | `parfaitId`·`date`·`thumbnailUrl`·`imageCount` + `isEmpty` | 서버 응답 형태를 따른다 |
+| `GetParfaitHistoriesUseCase(year)` | 그 해 파르페를 최신순으로 | ~~**mock**~~ — 고정 지연 + 달마다 정해진 6일, 이미지 수는 `dayOfYear % 9`, `parfaitId`는 epoch day → **#279에서 서버 결선** |
+| `GetParfaitYearsUseCase()` | 파르페가 있는 연도 목록 | ~~**mock**~~ — 올해부터 3년 → **#279에서 서버 결선**(올해 채우기만 남았다) |
+| `ParfaitHistory` | `parfaitId`·`date`·`thumbnailUrl`·`imageCount` + `isEmpty` | 서버 응답 형태를 따랐다 → **#279에서 삭제**, 계약 VO `PastCanvasVO`로 대체 |
 
 두 UseCase의 KDoc이 대응 서버 엔드포인트를 적는다(`GET /api/v1/groups/{groupId}/parfaits?from=&to=` ·
 `.../parfaits/year`). 계약·앱 표면(`ParfaitService`·`ParfaitRemoteDataSource`)은 **이미 있는데**
@@ -102,16 +103,23 @@ UseCase가 그것을 쓰지 않고 자기 안에서 mock을 만든다 → [api/p
 > `NavKeyCanvasImageAdd`가 `groupId`를 들고 다니므로, "화면이 그룹 식별자를 안 갖고 있어 UseCase 인자에서
 > 뺐다"는 근거는 더 이상 성립하지 않는다. **그런데 이 둘은 여전히 mock이다** — 같은 ViewModel 안에서
 > 캔버스 조회는 Repository를 타고 달력 조회는 안 탄다 → [open-questions](../../synthesis/open-questions.md) OQ-P-183.
+>
+> ✅ **같은 날 결선됐다(2026-08-17, PR #279)** — 두 UseCase가 `ParfaitRepository`를 주입받고 mock 생성
+> 로직이 전부 사라졌다. `getYears`가 Repository에 올라오며 다섯 갈래 중 넷이 열렸고, `ParfaitHistory`는
+> 삭제돼 달력이 계약 VO `PastCanvasVO`를 그대로 쓴다. 층이 갈렸던 상태는 닫혔다(OQ-P-183)
+> → [c201-canvas-calendar-server 스펙](2026-08-17-c201-canvas-calendar-server.md).
 
 빈 파르페(캔버스를 열어만 보고 이미지를 안 올린 날)는 `isEmpty`로 걸러 `uploadedDates`에서 뺀다 —
 안 그러면 화면을 열어 본 날마다 점이 찍힌다.
 
 ## 드리프트 / 잔존
 
-1. **mock UseCase가 다시 들어왔다** — 같은 형태(고정 지연 + 성공만 반환)가 2026-08-15 그룹 결선
-   라운드에서 전부 걷혔는데(OQ-P-134 해소) 하루 만에 `domain`에 둘이 새로 생겼다. 이번 것은
-   **mock 데이터 생성 로직이 `domain` UseCase 본문에 있다**는 점에서 더 나아갔다(달력 좌표를 만드는
-   상수 셋과 말일 계산이 프로덕션 코드에 산다) → [open-questions](../../synthesis/open-questions.md).
+1. ~~**mock UseCase가 다시 들어왔다**~~ — 같은 형태(고정 지연 + 성공만 반환)가 2026-08-15 그룹 결선
+   라운드에서 전부 걷혔는데(OQ-P-134 해소) 하루 만에 `domain`에 둘이 새로 생겼고, **mock 데이터 생성
+   로직이 `domain` UseCase 본문에 있다**는 점에서 더 나아갔다(달력 좌표를 만드는 상수 셋과 말일 계산이
+   프로덕션 코드에 살았다). → ✅ **해소(2026-08-17, PR #279)**. 둘 다 Repository를 타고 상수 셋은
+   사라졌다(연 범위를 얻는 말일 계산 수법만 남았다) → OQ-P-183 ·
+   [c201-canvas-calendar-server 스펙](2026-08-17-c201-canvas-calendar-server.md).
 2. ~~**고른 날짜가 아무것도 바꾸지 않는다**~~ → ✅ **해소(2026-08-17, PR #268)**. `ClickDate`가 달력을
    닫고, 이전 날 그림을 즉시 비운 뒤 `GetCanvasByDateUseCase`로 그날 캔버스를 채운다. 상단 날짜 라벨도
    `selectedDate` 파생이라 고른 날을 따라간다. 조회는 **목록→상세 2단**이라 훑는 것만으로 캔버스가
@@ -139,8 +147,8 @@ UseCase가 그것을 쓰지 않고 자기 안에서 mock을 만든다 → [api/p
 |---|---|---|
 | Button-Date 4상태(Default/Selected/Today/Disabled) | `YGListDate(isSelected, isToday, isEnabled)` | 일치 |
 | Selected와 Today가 겹치면 Selected | `YGDateButton` 상태 분기 | 일치 |
-| Disabled = 캔버스를 볼 수 없는 **미래 날짜** | `isCurrentMonth && date <= today` | **확대** — 앞뒤 달 날짜도 Disabled로 잠근다(정책엔 없는 조건) |
-| Chip-Indicator = 그 날 토핑 1개 이상 | `imageCount > 0`인 날만 `uploadedDates` | 일치 |
+| Disabled = 캔버스를 볼 수 없는 **미래 날짜** | `isCurrentMonth && date <= today` | **확대** — 앞뒤 달 날짜도 Disabled로 잠근다(정책엔 없는 조건). **#279에서 기록 없는 과거 날짜까지 확대됐다** → [c201-canvas-calendar-server 스펙](2026-08-17-c201-canvas-calendar-server.md) |
+| Chip-Indicator = 그 날 토핑 1개 이상 | `imageCount > 0`인 날만 `uploadedDates`(#279부터 `toppingCount`) | 일치 |
 | Disabled면 인디케이터 항상 False | `YGListDate` 내부 `isEnabled && isUploaded` | 일치(컴포넌트가 강제) |
 | 하루 경계 03:00 KST([[캔버스-마감-스케줄]]) | `todayIn(currentSystemDefault())` | **불일치**(드리프트 3) |
 | 연·월 선택 UI·주 시작 요일·드롭다운 | 정책 소스 없음 | 대조 대상 부재 — 코드가 먼저 확정(일요일 시작, 영문 월 표기) |

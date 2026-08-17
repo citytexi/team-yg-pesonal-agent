@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-17
-related_spec: c201-canvas-calendar, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error
+related_spec: c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error
 related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022
 related_architecture: data-layer, navigation-flow
 related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase
@@ -89,6 +89,12 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
     State 안 계산 프로퍼티다. 화면만 쓰는 값이 아니라 ViewModel의 연도 이동 계산도 읽어서 화면 헬퍼로
     내리면 로직이 갈린다 → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) ·
     [open-questions](../synthesis/open-questions.md) [2026-08-16].
+  - ⚠️ **같은 State가 계산 프로퍼티 일곱으로 늘었다(2026-08-17, PR #279)** — 저장 필드를
+    **원천 둘**(`todayCanvas`·`viewedCanvas`)과 **캐시 하나**(`parfaitHistoriesByYear`)로 줄이고
+    배경·토핑·날짜 라벨·빈 여부·오늘 여부·그 해 목록을 전부 파생으로 돌렸다. 방향 자체는 원천을
+    하나로 모으는 것이라 이 규약의 취지와 어긋나지 않지만, **파생이 캐시가 가른 구분을 다시 뭉개는
+    자리**(`parfaitHistories`의 `orEmpty()`)가 생겼다 → OQ-P-214 ·
+    [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md).
 - **앱 전역 사실은 State가 소유하지 않고 구독한다**(2026-08-16, PR #263). 계정 정보는 화면의 소유물이
   아니라 앱 수명 동안 하나뿐인 사실이라 `:data` SSoT에 살고, S-001·S-002는 `GetMyAccountFlowUseCase`를
   `init`에서 수집만 한다 — 화면 진입마다 다시 조회하지 않고, 한 화면의 닉네임 변경이 구독 중인 모든

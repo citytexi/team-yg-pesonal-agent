@@ -44,6 +44,13 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
 (image·parfait-image)로 줄었다. ⚠️ **읽기만이다** — 배치·좌표 저장 경로가 없어 토핑을 새로 얹지 못하고,
 조회 실패는 로그만이라 빈 캔버스와 구분되지 않는다. 달력 UseCase 둘·C-301 편집 탭은 여전히 mock이다
 ([c001-canvas-today-detail 스펙](specs/archive/2026-08-17-c001-canvas-today-detail.md)).
+**2026-08-17 — 달력도 서버를 본다**(#279). 두 UseCase가 mock을 버리고 `getYears`가 올라와
+`ParfaitRepository`가 **다섯 갈래 중 넷**을 연다(남은 하나는 배경 변경). `ParfaitHistory`는 삭제되고
+달력이 계약 VO `PastCanvasVO`를 그대로 쓰며, 날짜 선택은 캐시에서 `parfaitId`를 꺼내 **상세만** 부른다.
+상태가 `todayCanvas`/`viewedCanvas`로 갈려 편집 대상이 언제나 오늘이고, 지난 캔버스에서는 메뉴가
+**갤러리에 저장·오늘의 파르페 가기**로 바뀐다(저장은 아직 로그 한 줄). ⚠️ 상세 조회에 붙은
+`launch(key)` 가드가 **직전 라운드의 "마지막 선택이 이긴다"를 뒤집어**, 연속 선택 시 머리말과 그림이
+어긋난 채 남는다([c201-canvas-calendar-server 스펙](specs/archive/2026-08-17-c201-canvas-calendar-server.md)).
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |
@@ -87,7 +94,7 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `977f44f2`(2026-08-17 검증, #268로 C-001 캔버스가 `ParfaitRepository`를 거쳐 **서버 캔버스**를 그리고 G-001에서 진입이 열린 데까지 — 배치·저장 경로는 아직 없다).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `fa7d79d6`(2026-08-17 검증, #279로 C-201 달력까지 mock을 버리고 `ParfaitRepository`가 다섯 갈래 중 넷을 여는 데까지 — 배치·저장 경로는 아직 없다).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md
