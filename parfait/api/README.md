@@ -25,7 +25,7 @@
 |---|---|---|---|
 | [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | **결선됨**(애플 해당 없음, 나머지 4 전부 호출부 있음) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
-| [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | 구현됨(목록 1건 ⚠️불일치) |
+| [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | **결선됨**(8 전부 호출부 있음, 목록 1건 ⚠️불일치) |
 | [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음, 연도·오늘·과거·상세 4건은 **결선됨**, 배경 변경만 미소비) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 구현됨(조회·닉네임 변경은 **결선됨**, 탈퇴 미소비) |
@@ -111,6 +111,13 @@
 > 2026-08-16에 열렸던 "소비자가 표면을 우회한다"는 상태가 **하루 만에 닫혔다**
 > → [parfait.md](parfait.md) Android 매핑 ·
 > [스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md).
+>
+> ✅ **2026-08-17 — `parfait-group.md`가 `done`이 됐다**(PR #285·#287). S-101 그룹 설정이 상세 조회·
+> 나가기·신고를 소비해 **8 엔드포인트 전부 호출부를 얻었다**(닉네임 변경은 S-102와 공용). Repository에
+> 남겨 뒀던 세 갈래가 "화면이 요구할 때 올린다"는 방침대로 이때 올라왔다. **소비처를 얻은 엔드포인트는
+> 19건**이다. `done`은 소비 여부만 뜻한다 — 목록의 `recentImageUploadedAt` 파싱 불일치는 **그대로**다
+> ([conventions.md](conventions.md) "Android 불일치") → [parfait-group.md](parfait-group.md) Android 매핑 ·
+> [스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만

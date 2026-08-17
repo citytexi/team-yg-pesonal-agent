@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-17
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error
+related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
 related_code: core:navigation, Navigator
@@ -67,6 +67,10 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
   > 🔁 **2026-08-15(PR #260)** — 그전까지는 `clearBackStack()` + `goTo(...)` 두 줄이었고 "반드시 같은
   > 블록에서 `goTo`가 따라와야 한다"가 암묵 규약이었다. 그 규약을 타입에서 지우려고 두 함수를
   > `replaceAll`로 합치고 `clearBackStack()`을 제거했다 → [open-questions](../synthesis/open-questions.md) [2026-08-12].
+  > 📌 **네 번째 자리가 생겼다(2026-08-17, PR #287)** — S-101 그룹 나가기·신고 성공 시
+  > `replaceAll(NavKeyGroupList)`다. 앞의 셋과 달리 **되돌아갈 화면이 없어서가 아니라 되돌아가면
+  > 전부 403이라서**다 — 백스택에 쌓인 화면이 방금 떠난 그룹의 것이고, 그 그룹의 상세·닉네임 변경·
+  > 신고는 나간 뒤 `GROUP_NOT_JOINED`로 떨어진다. 부수 효과로 목록이 새 엔트리라 다시 조회된다.
 - 의존 방향은 규약대로 `:api`만: `feature/login/impl` → `feature/intro/api`,
   `feature/intro/impl` → `feature/groups/list/api`.
 - ~~**화면 전이만 결선됐다**~~ → ✅ **데이터까지 이어졌다(2026-08-15, PR #241·#242)**. 로그인이
@@ -216,6 +220,25 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
   인텐트에 실어 준다 → [open-questions](../synthesis/open-questions.md) [2026-08-16].
 - 복귀는 편집 화면의 `onBack()` 1회다(배경 이미지 왕복의 `onBack()` 2회와 달리 스택 깊이 가정이 없다).
 
+## 그룹 설정 진입·이탈 (2026-08-17, PR #285·#287)
+
+상세는 [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
+
+```
+NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
+                                             │ 나가기·신고 성공
+                                             ▼
+                                        replaceAll(NavKeyGroupList)
+```
+
+- **도달 불가가 닫혔다** — `NavKeyGroupSetting`이 `data object` → `data class(groupId)`가 되고
+  C-001이 호출자가 됐다(OQ-P-138). 인자 출처는 C-001이 Assisted로 들고 있던 `groupId`라
+  **화면 상태가 그대로 다음 목적지의 인자**다. 체크리스트 6번(호출자 없이 머지된 목적지) 사례가
+  또 하나 닫혔고, 도달 불가 기간은 약 4일이었다.
+- 나가기·신고의 이탈은 `onBack()`이 아니라 `replaceAll`이다 — 위 "백스택 리셋 관용구" 참고.
+- `feature/groups/canvas/impl` → `feature/groups/setting/api`, `feature/groups/setting/impl` →
+  `feature/groups/list/api`. 둘 다 규약대로 `:api`만 본다.
+
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.
 2. `feature/xxx/impl`에 `featureXxxEntryBuilder()` 작성: `entry<NavKeyXxx> { XxxRoute(navigator = navigator, modifier = Modifier.fillMaxSize()) }`.
@@ -227,8 +250,9 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
    > [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md).
 
    (구 형태) `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(modifier = Modifier.padding(innerPadding)) } }`. 화면 최외곽 컨테이너 `YGScreen`과의 역할 분리는 그대로 → [design-system](design-system.md) "화면 컨테이너".
-   **develop에는 두 형태가 공존한다** — 신형은 `featureAppSettingEntryBuilder`·`featureLoginEntryBuilder`
-   3화면, 구 형태가 8파일 남았다 → [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
+   **develop에는 두 형태가 공존한다** — 신형은 `featureAppSettingEntryBuilder`·`featureLoginEntryBuilder`·
+   `featureGroupSettingEntryBuilder`(#285) 4화면, 구 형태가 **7파일** 남았다
+   → [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
 3. 빌더를 Hilt 모듈(`NavigationModule`, ActivityRetainedComponent)의 `Set<...>` 멀티바인딩에 `@IntoSet`으로 제공.
 4. 이동 원하는 feature는 대상의 `:api`에 의존 추가(`settings.gradle.kts`/build 파일).
 5. 결과가 필요하면 `ResultEventBus` 데코레이터 경로 사용.
@@ -300,7 +324,7 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
 (`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupCreate`·
 `NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
-`NavKeyCanvasMain`(#268 승격 — `groupId`)).
+`NavKeyCanvasMain`(#268 승격 — `groupId`)·`NavKeyGroupSetting`(#285 승격 — `groupId`)).
 **인자가 표시 값이 아니라 동작 플래그인 형태가 #231에서 처음 나왔다** — `showGuideToast`·
 `returnResultOnly`는 화면이 그릴 데이터가 아니라 호출자가 고르는 분기이고, 기본값이 있어 기존
 호출부는 `NavKeyCameraCustom()`처럼 생성자 호출만 바꾸면 됐다. 재사용 화면의 동작 차이를 NavKey에
@@ -321,7 +345,7 @@ A-005를 연다(#222). 현재 그 `nickName`은 `GroupListUiState` 기본값 moc
 그 값을 ViewModel 초기 상태로 넘길 때는 **Assisted 주입**을 쓴다 — `@HiltViewModel(assistedFactory = …)` + `@AssistedInject` +
 `@Assisted` 파라미터, 엔트리 빌더에서 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.…) })`로 생성해 Route에 넘긴다
 (`GroupCreateViewModel`·`SegmentationViewModel`·`GroupNickNameViewModel`(#244)·`TermAgreeViewModel`(#242)·
-`CanvasMainViewModel`(#268)).
+`CanvasMainViewModel`(#268)·`GroupSettingViewModel`(#285)).
 **생성 위치는 두 형태가 공존한다** — 엔트리 빌더에서 만들어 Route 파라미터로 넘기거나(`GroupNickName`),
 Route의 기본 인자에서 만들거나(`TermAgree`·`CanvasMain`). 후자는 Route가 인자 값을 받아 팩토리에 넘긴다.
 **인자 출처가 "목록에서 누른 항목"인 첫 사례가 #268이다** — G-001이 `ClickTopping(groupId)`으로 누른

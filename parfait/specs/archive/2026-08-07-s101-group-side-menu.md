@@ -23,6 +23,13 @@ tags: [spec, parfait, feature, groups, setting, navigation]
 
 > 상태·날짜·대상·관련은 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 >
+> ✅ **결선됐다(2026-08-17, PR #285·#287)** — 이 스펙이 "이번 범위 밖"으로 미뤄 둔 것 대부분이 닫혔다.
+> mock 기본값 5종이 사라지고 상세 조회·닉네임 변경·나가기·신고가 실제 요청을 보내며, C-001 상단
+> 메뉴가 호출자가 돼 **도달 불가도 닫혔다**(`NavKeyGroupSetting`이 `data class(groupId)`). 화면
+> 컨테이너도 `YGScaffold`(엔트리) → `YGScaffoldV2`(Route)로 이관됐다. 아래 본문의 mock 상수·
+> `// TODO: API 연동` 서술은 **당시 기록**이다. 남은 것은 `remainingCount`(계약에 `memberLimit`
+> 부재)와 컬러칩 인덱스 순환 둘 → [s101-group-setting-api 스펙](2026-08-17-s101-group-setting-api.md).
+>
 > ✅ **2026-08-13 develop 머지(PR #223).** 아래 2026-08-09 개정본이 머지된 코드와 **거의 그대로 일치**한다.
 > 머지 시점 재대조에서 확정한 as-built 3건과 서술 오류 2건만 아래에 반영했다.
 >
@@ -343,8 +350,12 @@ fun NameValidResult.Error.toStringResource(fieldType: NameFieldType): String
   - `api` 승격이 의미상 맞으나 **저장소에 `api(...)` 선언이 0건**이고 컨벤션 플러그인 `DependencyHandler`에 `api` 확장 함수 자체가 없다. `0fbddfb1`·`09f49a92`가 `api`를 되돌린 이력도 있어 이번엔 손대지 않았다 — 팀 결정 대상.
 - **확인 버튼 스트립의 탭 흡수 방식** — `pointerInput { detectTapGestures {} }`로 탭을 소비해 루트 `clearFocusOnTap`이 발화하지 않게 한다. `detectTapGestures`의 `awaitFirstDown(requireUnconsumed = true)` 동작에 기대는 방식이라 Compose 버전이 바뀌면 깨질 수 있다. 다만 `clearFocusOnTap` 자체가 같은 패턴이라 저장소 관례와는 일관된다.
 - **서버 그룹 상세 응답에 `groupName`·`memberLimit`가 없다** — `GET /api/parfait-groups/{groupId}`는 `groupId`·`groupNickname`·`inviteCode`·`members`만 준다([api/parfait-group.md](../../api/parfait-group.md)). 상단바 제목과 `N명 남음`의 출처가 계약상 없다. 그룹 목록 API에서 이름을 받아 NavKey로 넘기거나 서버에 필드 추가를 요청해야 한다.
+  > 📌 **절반만 답했다(2026-08-17, PR #285)** — 그룹명은 NavKey가 아니라 **`GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 불러** 붙인다(이름 조회 실패는 실패로 치지 않는다). `memberLimit`은 여전히 없어 `remainingCount`가 mock 1로 남았다 → [s101-group-setting-api 스펙](2026-08-17-s101-group-setting-api.md).
 - **컬러칩 타입 부여 주체 미정** — 서버 응답에 타입이 없어 Mock 인덱스 순환으로 대체.
+  > ⚠️ **실데이터가 되면서 증상이 실재가 됐다(2026-08-17, PR #285)** — 순환 배정은 그대로인데 목록이 실제 멤버라, 멤버가 들고 나면 남은 사람의 색이 바뀐다(OQ-P-140).
 - **그룹 나가기·신고 확인 모달 미제공** — 클릭은 stub(로그 + TODO)이다. Danger Zone 동작 자체가 미구현이라는 뜻이다.
   > ✅ **모달은 붙었다(2026-08-13, PR #225)** — [Danger Zone 팝업 스펙](2026-08-09-setting-danger-zone-popups.md)이 `GroupSettingDialog?` + `YGModalPopup` 2종을 얹었다. 다만 확인 버튼은 여전히 팝업만 닫고 TODO라 **동작 미구현은 그대로**다.
+  > ✅ **동작도 붙었다(2026-08-17, PR #287)** — 확인 버튼이 `DELETE …/members/me`·`POST …/reports`를 부르고 성공하면 `replaceAll(NavKeyGroupList)`로 나간다.
 - **화면 진입 경로 없음** — `NavKeyGroupSetting`으로 `goTo` 하는 호출자가 아직 없어 이번 라운드에서는 프리뷰·수동 진입으로만 확인된다.
   > ⚠️ **머지 후에도 0건이다(2026-08-13 확인)** — develop 전체에서 `NavKeyGroupSetting` 참조는 선언과 `EntryBuilder` entry뿐이다. 화면 전체가 도달 불가 상태로 머지됐다(C-001 선례) → [open-questions](../../synthesis/open-questions.md) [2026-08-13].
+  > ✅ **닫혔다(2026-08-17, PR #285)** — C-001 상단 메뉴가 `goTo(NavKeyGroupSetting(groupId))`로 연다. 도달 불가 기간은 약 4일이었다. 실기기 육안 확인 항목(S-101 9건 + 팝업 8건)은 이제 막혀 있지 않으나 **수행되지 않았다**.
