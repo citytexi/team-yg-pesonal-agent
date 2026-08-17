@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-17
-related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api
+verified: 2026-08-18
+related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -385,6 +385,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `feature/groups/list/impl/navigation/EntryBuilder.kt#featureGroupListEntryBuilder`·`route/GroupListRoute.kt`(PR #173 develop 머지) — 엔트리 컨테이너가 `YGScaffold`가 아니라 `Box`(전면 배경 이미지 `group_list_background`)이고 `YGScaffold(containerColor = Gray.Transparent)`는 Route 안으로 내려갔다. 그룹 추가 오버레이는 **두 번째 `YGScaffold`**(`Transparency.Black25`)를 겹쳐 그린다. 화면 최외곽 `YGScreen`도 쓰지 않아 `YGScreenScope.OnBack` 경로가 없다. [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번·[design-system](../architecture/design-system.md) "화면 컨테이너" 역할 분리와 어긋난다.
 - **항목**: ① 전면 배경 이미지가 있는 화면의 관용구를 정할지(`YGScaffold`에 배경 슬롯을 열지 / nav 레벨 `Box` 래핑을 허용할지), ② 오버레이·Dim을 `YGScaffold` 중첩으로 그리는 것이 맞는지(`Dialog`·`Popup`·단일 `Box` 대안), ③ 화면 최외곽 `YGScreen` 사용을 규약으로 강제할지 — 강제하면 이 화면이 위반이고, 안 하면 [2026-07-20 화면 컨테이너 ADR](#2026-07-20-화면-컨테이너ygscreenygscaffold-컨벤션--adr-미작성) 내용이 달라진다.
 - **상태**: 미해결 (코드 머지됨 — 규약 쪽 결정 필요)
+  > 📌 **스캐폴드만 V2가 됐다(2026-08-17, PR #297)** — 두 자리 다 `YGScaffoldV2`로 바뀌었지만 이 항목이
+  > 묻는 것(엔트리 `Box` + Route 스캐폴드, 오버레이를 **스캐폴드 중첩**으로 그리기, `YGScreen` 미사용)은
+  > 그대로다. 오버레이 쪽에는 `toastPolicy`를 주지 않아 **토스트 호스트는 아래 스캐폴드 하나**다.
 - **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트와 [design-system](../architecture/design-system.md) "화면 컨테이너"를 함께 고치고, [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md)의 이탈 표기를 정리한다. [2026-07-20 항목](#2026-07-20-화면-컨테이너ygscreenygscaffold-컨벤션--adr-미작성)의 ADR 내용에 직접 걸린다.
 
 ### [2026-08-01] G-001 파르페·툴팁이 위키 정책과 미결선 — 화면 골격만 머지됨
@@ -1000,6 +1003,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `isError = true`만 세운다. 그래서 **성공한 목록이 남아 있어도 재조회가 실패하면 전면 에러 화면으로 바뀐다**
   (코드 주석이 "실패를 알릴 다른 자리가 없다"고 근거를 적는다) — 부분 실패 표현은 OQ-P-167로 옮겼다.
   반영처: [g001 스펙](../specs/archive/2026-08-01-g001-group-list.md) "에러·새로고침"·정책 대조 표.
+  > 🔁 **그 규칙은 뒤집혔다(2026-08-17, PR #297)** — 재진입마다 조회가 나가게 되면서 "실패 = 전면 교체"가
+  > **뒤로 온 것만으로 목록이 사라진다**가 됐다. 이제 목록이 남아 있으면 화면을 유지하고
+  > `isError`는 `groupList.isEmpty()`일 때만 선다. "실패를 알릴 다른 자리"는 토스트로 생겼고
+  > (`ShowRefreshError`, 당긴 새로고침에만) 세 필드 독립은 그대로다
+  > → [screen-resume-refetch 스펙](../specs/archive/2026-08-17-screen-resume-refetch.md).
 
 ### [2026-08-11] 로딩 표현이 위키 정책의 "자체 로딩 그래픽"과 다르다
 
@@ -1151,6 +1159,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 그대로**라 ①(`DayWindow` 03:00으로 옮길지)은 열려 있고, `DayWindow`는 여전히 C-102 갤러리만 쓴다.
   > **`today` 이중 계산은 해소됐다** — 로드 함수가 날짜를 만들지 않게 되어 UiState 기본값 한 자리다
   > → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
+  > ⚠️ **경계 00:00을 읽는 자리가 늘었다(2026-08-17, PR #297)** — 재진입마다 도는 `syncToday()`가
+  > `parfaitToday()`로 오늘을 다시 세고, 값이 달라지면 **보고 있던 캔버스를 비우고 날짜를 옮긴다.**
+  > 즉 03:00 미적용이 이제 표시·달력 잠금뿐 아니라 **화면 상태 리셋 시점**까지 정한다 — 00:00~02:59에
+  > 재진입하면 서버가 아직 어제로 치는 날에 앱이 새 날 캔버스를 요청한다. G-001도 같은 시점에 날짜
+  > 헤더를 다시 센다(이쪽은 기기 시간대 그대로)
+  > → [screen-resume-refetch 스펙](../specs/archive/2026-08-17-screen-resume-refetch.md).
 - **해소 메모**: ①②가 정해지면 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) "정책 대조" 표와 드리프트 1번을 고치고, `DayWindow`를 화면 계층에서도 쓰는 관용구를 [module-structure](../architecture/module-structure.md)에 한 줄 남긴다. [2026-08-04] 날짜 영문 표기 항목과 같은 화면·같은 값에 걸린다.
 
 ### [2026-08-12] Dot Grid가 시스템 바 영역을 못 덮는다 — 정책은 "화면 전체 뒤"
@@ -1403,6 +1417,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 로그아웃되지 않는가**(이 갈래가 무너지면 지하철 진입이 곧 로그아웃이다) ④ 설정에서 로그아웃 →
   > 재로그인. 셋 다 유닛 테스트가 잠근 분기지만 실기기에서만 드러나는 실패 양상이 따로 있다
   > (`runBlocking` 체감 지연·디스패처 고갈).
+  > ⚠️ **재진입·시간 경계 항목이 붙었다(2026-08-17, PR #297)** — 유닛 테스트가 인텐트까지만 잠그므로
+  > 실기기에서만 보이는 것이 넷이다: ① 다른 화면에 갔다 오면 목록·캔버스가 실제로 갱신되는가
+  > (`LifecycleResumeEffect`가 기대한 시점에 도는가 — 대화상자·권한 요청처럼 **부분 정지**하는 경로에서
+  > 몇 번 도는지 포함) ② 새로고침 실패 토스트가 실제로 뜨는가(비행기 모드로 당기기) ③ 재진입 왕복이
+  > 잦을 때 `/parfaits/today` 호출이 눈에 띄는 지연·중복을 만드는가 ④ 화면을 열어 둔 채 자정을 넘겼을 때
+  > `syncToday()`가 날짜와 캔버스를 갈아 끼우는가.
 - **해소 메모**: ⑥은 버튼이 비활성이어도 시각적으로 동일하므로("눌리는가"로 확인, "비활성으로 보이는가"가 아니다) 주의한다. ⚠️ 디버그 빌드는 `HttpLoggingInterceptor.Level.BODY`라 logcat에 ID 토큰·nonce·발급 토큰이 찍힌다 — 그 로그를 PR·이슈에 붙이지 않는다. 결과에 따라 [api/auth.md](../api/auth.md) 판별자 키 항목과 [ADR-0019](../adr/0019-encrypted-token-storage.md) 검증 절을 갱신한다.
 
 ### [2026-08-14] 신규 가입자가 세션 없이 그룹 목록에 도달한다 — signup 라운드까지의 과도기
@@ -1627,6 +1647,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > `group_setting_nickname_error_unknown`("잠시 후 다시 시도해 주세요")이 상세 조회·나가기·신고 실패까지
   > 받아, `GROUP_NOT_FOUND`(404)·`GROUP_NOT_JOINED`(403)와 일시 장애가 같은 문구다. ③(재시도 최소선)은
   > 여전히 손대지 않았다 — 이 화면의 조회 실패에는 재시도 동선이 없다.
+  > 📌 **세 번째 화면 + ②(전면 에러 화면)의 성격 변화(2026-08-17, PR #297)** — G-001이 토스트를 얻었는데
+  > 앞의 둘과 결이 다르다: 문구 갈래를 세는 enum이 아니라 **문구 하나**이고(사유는 로그로만 갈린다),
+  > 조건이 화면 상태가 아니라 **"사용자가 시켰는가"**다(당긴 새로고침만 알리고 재진입 조회 실패는 조용).
+  > 이로써 ②는 "성공하던 목록을 통째로 대체한다"에서 **"보여 줄 것이 없을 때만 전면"**으로 좁혀졌다.
+  > 대신 **④(로그만)의 무게가 C-001로 옮겨 갔다** — 같은 라운드가 그 화면의 조회 빈도를 재진입마다로
+  > 늘렸는데 표현은 그대로다 → OQ-P-221.
 - **해소 메모**: 정해지면 네 스펙(a005·a004·s102·intro-term-agree·g001)의 실패 절과 [design-system](../architecture/design-system.md)에 공통 규약을 적는다.
 
 ### [2026-08-15] 매퍼 단독 테스트가 규약을 어기고 다시 생겼다
@@ -1650,8 +1676,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-169
 - **출처**: `GroupListViewModel`(조회는 `init` + `Refresh`뿐, PR #248) × `goToSingleClearTop(NavKeyGroupList)` 복귀(PR #224) — 복귀가 엔트리를 재사용하므로 ViewModel이 살아 있고 `init`이 다시 돌지 않는다. **그룹을 만들거나 참여하고 목록으로 돌아와도 새 그룹이 바로 보이지 않고, 당겨야 나타난다.** OQ-P-134 ③에서 승계된 항목이다(그때는 조회 자체가 없어 관측되지 않았다).
 - **항목**: ① 복귀 시 재조회를 무엇으로 트리거할지 — `ResultEventBus` 결과 반환, 목록 화면의 `ON_RESUME` 관측, 복귀 관용구를 `clearBackStack()`+`goTo`로 바꿔 엔트리를 새로 만들기 중 하나. ②는 위키가 요구하는 "재진입 시 자동 재조회"와도 직결된다([[무한-파르페-그리드]]). ③ 백스택 리셋 관용구 선택 기준(OQ-P-136)과 같이 정해야 한다.
-- **상태**: 미해결
-- **해소 메모**: 정하면 [navigation-flow](../architecture/navigation-flow.md) "그룹 생성·참여 플로우"와 [g001 스펙](../specs/archive/2026-08-01-g001-group-list.md) 조회 절을 갱신한다.
+- **상태**: **해소됨** (2026-08-17, PR #297)
+  > ✅ **①은 `ON_RESUME` 관측으로 결론났다** — `GroupListIntent.Enter`가 신설되고 Route의
+  > `LifecycleResumeEffect`가 화면이 앞에 설 때마다 그것을 보낸다. VM `init`은 통째로 사라져 첫 조회도
+  > 이 경로다. 복귀 관용구(`goToSingleClearTop`)는 **바꾸지 않았다** — 엔트리를 새로 만드는 쪽은 백스택
+  > 정책을 재조회 사정으로 흔드는 것이고, 재조회가 필요한 진짜 이유는 복귀가 아니라 **남이 바꾸기
+  > 때문**(다른 멤버가 올린 최근 사진)이라 화면이 스스로 묻는 편이 근거와 맞는다. 그래서 ③(백스택
+  > 리셋 관용구 선택 기준, OQ-P-136)과도 **떨어졌다** — 그쪽은 여전히 열려 있다.
+  > ②(위키 [[무한-파르페-그리드]]의 "재진입 시 자동 재조회") 요구는 충족됐다.
+  > 같은 관용구를 C-001도 함께 받았다(오늘 캔버스·올해 달력 기록).
+  > **딸려 온 것 둘** — 재조회가 잦아지면서 조회 실패 규칙이 "목록이 남아 있으면 화면 유지 + 당김 실패만
+  > 토스트"로 뒤집혔고, 토스트 호스트 때문에 G-001 Route가 `YGScaffoldV2`로 이관됐다(OQ-P-204).
+  > 남은 축은 **관용구가 규약이 아니라는 것**(OQ-P-221)이다.
+- **해소 메모**: 반영처 — [screen-resume-refetch 스펙](../specs/archive/2026-08-17-screen-resume-refetch.md)(신설) ·
+  [g001 스펙](../specs/archive/2026-08-01-g001-group-list.md) 조회·실패 절 ·
+  [navigation-flow](../architecture/navigation-flow.md) `goToSingleClearTop`·"그룹 생성·참여 플로우" ·
+  [state-management](../architecture/state-management.md) 재진입 재조회 규약.
 
 ### [2026-08-15] G-001 상대시간이 위키 표기와 갈린다 — 7일 이상 갈래 없음, 정렬은 서버 위임
 
@@ -2296,7 +2336,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 잔여 8파일을 화면별 API 결선 라운드에 붙일지, 이관만 하는 라운드를 따로 돌릴지.
   ② `ERROR` 승급·V1 파일 삭제 시점. ③ 공존 기간 동안 새로 생기는 화면이 규약(Route 소유)을 지키는지
   기계로 확인할 수단이 없다 — 지금은 리뷰가 유일한 관문이다.
-- **상태**: 미해결 (**8파일 → 7파일**)
+- **상태**: 미해결 (**8파일 → 7파일 → 6파일**)
 - **해소 메모**: 이관이 끝나면 [design-system](../architecture/design-system.md) "화면 컨테이너"의
   V1 항목과 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번의 "(구 형태)" 서술을
   함께 지운다. OQ-P-167(실패 표현 갈래)과는 별개 축이다 — 이관해도 실패 표현이 통일되지는 않는다.
@@ -2306,6 +2346,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 때문이다 — 스펙이 정정한 `ERROR` 승급 기준과 같은 논리다. 남은 것은 **7파일**
   > (camera·gallery·groups canvas/enter/list·intro·segmentation)이고, 그중 groups canvas·list는
   > 이미 서버를 보는 화면이라 **결선 라운드에 딸려 갈 기회가 지나간 자리**다.
+  > 📌 **①의 답이 넓어졌다(2026-08-17, PR #297)** — G-001 그룹 목록이 **API 결선이 아닌 재조회
+  > 라운드**에 이관됐다. 새로고침 실패를 토스트로 알리기로 하면서 호스트가 필요해진 것이고, 즉 이관을
+  > 끌어오는 것은 결선 자체가 아니라 **채울 것이 생기는 시점**이다("기회가 지나갔다"고 적은 자리가
+  > 다른 이유로 다시 왔다). 남은 것은 **6파일**(camera·gallery·groups canvas/enter·intro·segmentation).
+  > 이 화면은 `isLoading`은 여전히 안 넘기고 오버레이용 두 번째 스캐폴드도 V2로 겹쳐 그린다(OQ-P-046)
+  > → [screen-resume-refetch 스펙](../specs/archive/2026-08-17-screen-resume-refetch.md).
 
 ### [2026-08-17] 공통 로딩 오버레이가 임시 구현이고, 적용 기준도 사례에서 귀납한 것뿐이다
 
@@ -2587,6 +2633,26 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 정하면 [ADR-0023](../adr/0023-group-in-memory-ssot.md) "트레이드오프"와
   [specs/2026-08-17-group-ssot.md](../specs/2026-08-17-group-ssot.md) 열린 질문 절에 반영한다.
 
+### [2026-08-18] 재진입 재조회가 관용구일 뿐 규약이 아니고, 실패 표현이 화면마다 갈린다
+
+- **ID**: OQ-P-221
+- **출처**: `GroupListRoute`·`CanvasMainRoute`의 `LifecycleResumeEffect` + 두 ViewModel의 `Enter`
+  (PR #297 develop 머지) — 같은 형태가 두 화면에 생겼지만 **어디에도 규약으로 적혀 있지 않다.**
+  ① 새로 생기는 화면이 이것을 따르는지 확인할 수단이 없다(리뷰가 유일한 관문이고, `init` 조회로
+  머지되면 그 화면만 조용히 낡는다). ② key 관용구도 갈렸다 — G-001은 `LifecycleResumeEffect(Unit)`,
+  C-001은 `LifecycleResumeEffect(viewModel)`. ③ **실패 표현이 같이 안 왔다** — G-001은 당긴 새로고침
+  실패에 토스트 자리가 생겼지만 재진입 조회 실패는 조용하고, C-001은 오늘 캔버스·달력 기록 조회 실패가
+  전부 로그뿐인데 **재조회 빈도만 늘었다**. 즉 재진입마다 실패할 기회가 늘어난 화면에서 사용자는
+  낡은 값을 낡은 줄 모르고 본다.
+- **항목**: ① 재진입 재조회를 규약으로 올릴지(올린다면 "무엇을 다시 묻고 무엇은 두는가"의 기준도 함께 —
+  C-001은 오늘·올해만 다시 받고 연도 목록·지난 캔버스는 두는데 그 판단이 화면마다 재발명된다).
+  ② key 관용구 통일. ③ 재진입 조회 실패를 알릴지 — 알린다면 사용자가 시키지 않은 조회의 실패를
+  어떤 강도로 말할지(토스트는 스스로 뜬 실패라 성격이 다르다), 안 알린다면 그 결정을 어디에 적을지.
+- **상태**: 미해결
+- **해소 메모**: ①②는 [state-management](../architecture/state-management.md) 재진입 재조회 절을
+  규약으로 승격하고 [screen-resume-refetch 스펙](../specs/archive/2026-08-17-screen-resume-refetch.md)을
+  정본으로 가리킨다. ③은 실패 표현 갈래(OQ-P-167)·V2 이관(OQ-P-204)과 같은 자리에서 정한다.
+
 <!--
 항목 추가 형식:
 
@@ -2597,4 +2663,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 221 -->
+<!-- oq-next: 222 -->

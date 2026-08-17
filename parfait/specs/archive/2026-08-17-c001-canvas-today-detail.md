@@ -4,10 +4,10 @@ title: C-001 캔버스 오늘·날짜별 조회 결선 (ParfaitRepository + 토�
 status: implemented
 category: feature-spec
 platforms: android
-verified: 2026-08-17
+verified: 2026-08-18
 related_code: ParfaitRepository, ParfaitRepositoryImpl, GetTodayParfaitUseCase, GetParfaitDetailUseCase, parfaitToday, PARFAIT_TIME_ZONE, CanvasToppingLayer, CanvasMainViewModel, CanvasMainUiState, CanvasMainRoute, CanvasMainScreen, NavKeyCanvasMain, GroupListViewModel, GroupListScreen, GroupListRoute, String.toColorOrNull, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingBorder, YGCanvasBackground
 related_adr: ADR-0009, ADR-0017, ADR-0020
-related_spec: c001-canvas-main, c201-canvas-calendar, c201-canvas-calendar-server, c301-topping-edit-tab, parfait-canvas-topping-member-api-service-layer, canvas-detail-background-api-service-layer, g001-group-list
+related_spec: c001-canvas-main, c201-canvas-calendar, c201-canvas-calendar-server, c301-topping-edit-tab, parfait-canvas-topping-member-api-service-layer, canvas-detail-background-api-service-layer, g001-group-list, screen-resume-refetch
 related_architecture: data-layer, navigation-flow, module-structure, design-system
 supersedes:
 superseded_by:
@@ -70,12 +70,24 @@ DI는 `RepositoryModule`에 `@Binds` 한 줄.
 `GET /parfaits/today`는 **조회인데 그날 캔버스가 없으면 만들어 저장한다**([api/parfait.md](../../api/parfait.md)).
 그래서 진입 시 **한 번만** 부르고 `launch(key = LOAD_TODAY_CANVAS_KEY)`로 중복 호출을 막는다.
 
+> 🔁 **뒤집힘(2026-08-17, PR #297)** — 이제 **화면이 앞에 설 때마다** 부른다(`Enter` 인텐트 +
+> `LifecycleResumeEffect`). 근거는 캔버스가 다른 멤버의 토핑으로도 바뀐다는 것이고, 재진입 호출은
+> 첫 진입에서 이미 만들어진 것을 받을 뿐이라 캔버스가 늘지 않는다. 대신 `init`에서는 더 이상 부르지
+> 않아 **ViewModel이 만들어지는 것만으로는 캔버스가 생기지 않는다.** `LOAD_TODAY_CANVAS_KEY`는 동시
+> 중복 호출만 막는 역할로 남았고, 지난 날을 보는 중이면 재진입해도 부르지 않는다
+> → [screen-resume-refetch 스펙](2026-08-17-screen-resume-refetch.md).
+
 그럼에도 `today`를 쓰는 이유는 **토핑을 올리려면 `parfaitId`가 있어야 하기 때문**이다 — 목록·상세는
 부작용이 없지만 없는 날을 만들어 주지 않는다. 초기 구현은 목록→상세로 우회했다가 이 이유로 되돌렸다.
 
 **자정 경계 재시도 1회** — 요청이 도는 사이 날이 바뀌면 어제 캔버스가 온다. 그래서 오늘을
 **응답을 받은 뒤에** 읽어 비교하고, 어긋나면 딱 한 번 다시 부른다. 두 번째도 어긋나면 기기와 서버의
 시계가 어긋난 것이라 더 불러도 같은 답이 온다.
+
+> 📌 **자정 처리 자리가 하나 늘었다(2026-08-17, PR #297)** — 위 재시도는 **요청 중** 날이 바뀐 경우고,
+> 화면을 열어 둔 채 날이 바뀐 경우는 재진입 때 `syncToday()`가 `UiState.today`를 다시 센다(오늘을
+> 보고 있었으면 두 캔버스를 비우고 새 날로 옮긴다). 서로 다른 상황을 덮지만 기준 시각은 둘 다
+> KST 자정이라 03:00 경계 미적용은 그대로다.
 
 ### 오늘은 서버 시간대로 센다
 

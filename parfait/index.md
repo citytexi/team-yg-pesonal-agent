@@ -75,6 +75,16 @@ parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부).
 `remainingCount` mock 1(정원이 생성 응답에만 있다)·컬러칩 인덱스 순환·**신고 사유 하드코딩 하나**,
 그리고 403/404가 일시 장애와 같은 문구다. **회원 탈퇴는 그대로 stub**
 ([s101-group-setting-api 스펙](specs/archive/2026-08-17-s101-group-setting-api.md)).
+**2026-08-17 — 화면이 앞에 설 때마다 다시 묻는다**(#288, PR #297 develop 머지). G-001 목록·C-001 캔버스에
+`Enter` 인텐트가 생기고 Route의 `LifecycleResumeEffect`가 그것을 보낸다 — `init` 조회는 ViewModel 수명에
+걸린 것이라 백스택 아래에서 살아남아 낡았고, **생성·참여 후 목록이 갱신되지 않던 문제가 닫혔다**
+(OQ-P-169). 복귀 관용구는 손대지 않았다(재조회가 필요한 이유는 복귀가 아니라 **남이 바꾸기 때문**).
+같이 뒤집힌 것이 실패 규칙이다 — 목록이 남아 있으면 화면을 유지하고 **당긴 새로고침 실패만 토스트**로
+알린다(목록이 비면 종전대로 에러 화면). 토스트 호스트 때문에 G-001이 `YGScaffoldV2`로 이관돼
+**V1 잔여 6파일**. C-001은 오늘을 볼 때만 오늘 캔버스·올해 달력 기록을 다시 받고, 화면을 열어 둔 채
+자정을 넘긴 경우는 `syncToday()`가 맡는다. ⚠️ 관용구일 뿐 규약이 아니고(OQ-P-221) C-001 조회 실패는
+여전히 로그뿐인데 **실패할 기회만 늘었다**
+([screen-resume-refetch 스펙](specs/archive/2026-08-17-screen-resume-refetch.md)).
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |
@@ -118,7 +128,7 @@ parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부).
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `2d15cd9f`(2026-08-17 검증, #285·#287 S-101 그룹 설정 결선까지 — mock 5종 제거·상세 조회 2회 호출·나가기/신고 결선·C-001에서 진입, parfait-group `android_status: done`).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `8730ffa3`(2026-08-18 검증, #297 재진입 재조회까지 — G-001·C-001 `Enter` 인텐트 + `LifecycleResumeEffect`, 목록 조회 실패 규칙 교체(화면 유지 + 당김 실패 토스트), G-001 `YGScaffoldV2` 이관으로 V1 잔여 6파일).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md
