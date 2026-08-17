@@ -5,8 +5,25 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `fa7d79d6` (`Merge pull request #279 from mash-up-kr/feature/canvas-calendar-api`)
-- **요약**: **달력이 mock을 버렸고, 그 대가로 지난 날이 진짜 열렸다**(delta 1건).
+- **커밋**: `ede719f0` (`Merge pull request #292 from mash-up-kr/refactor/#284-clickable-to-clickable-yg`)
+- **요약**: **선반영해 둔 문서 둘이 코드로 확정됐다 — 이번 회차는 대조가 전부다**(delta 2건, 둘 다 리팩터).
+  기능 변화 0건이고 문서 콘텐츠도 이미 [2026-08-17 선반영 커밋 2건](index.md)이 반영해 둔 상태라,
+  이번 라운드가 한 일은 **선반영이 머지본과 어긋나지 않았는지 확인**하는 것이었다. **어긋난 곳 0건.**
+  **#291**(`refactor/#278-canvas-main`): C-001 화면 계열이 `CanvasImageAdd*` → **`CanvasMain*`**로 개명됐다
+  (`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`, `strings.xml` 키
+  `canvas_main_*`). diff를 이름 치환 후 대조하면 **짝이 안 맞는 라인이 0줄**이라 시그니처·동작 불변이
+  기계적으로 확인된다. develop에 `CanvasImageAdd` 잔존 참조 0건.
+  **#292**(`refactor/#284-clickable-to-clickable-yg`): 프로덕션 Foundation `Modifier.clickable` **28곳이 전량
+  `clickableYGNoRipple`로** 옮겨졌다. develop에 남은 `clickable`은 `YGClickable.kt` 내부 구현 1곳과
+  `androidTest` 픽스처 2건(`YGLoadingOverlayTest`·`YGThemeSmokeTest`)뿐 — 문서가 적은 "픽스처 2건뿐"이
+  그대로 맞다. `clickableYGNoRipple`에 `interactionSource: MutableInteractionSource? = null`이 첫 파라미터로
+  붙어 다른 네 변형과 자리가 같아졌고, 이로써 **300ms 스로틀이 디자인시스템을 넘어 feature 화면 클릭
+  전반에** 걸린다. 사용처 0으로 남아 있던 API가 프로젝트 표준 클릭 유틸이 된 것이라 존치 판단이 결과로
+  갚아졌다(OQ-P-077). 미결 3건 해소는 선반영 때 기록된 그대로다.
+  ⚠️ **직전 회차가 남긴 것은 하나도 안 닫혔다** — 상세 조회 `launch(key)` 가드가 뒤집은 "마지막 선택이
+  이긴다", 연도 캐시 `orEmpty()`가 뭉개는 빈 해/안 받은 해, 로그 한 줄뿐인 갤러리 저장, 토핑 배치·좌표
+  저장 경로 부재가 그대로다. 테스트 건수도 **436건 불변**(리팩터라 신규 0). ⚠️ **실기기·실서버 확인 없음.**
+  직전 회차 요약: **달력이 mock을 버렸고, 그 대가로 지난 날이 진짜 열렸다**(delta 1건).
   **#279**: 하루 전 라운드가 "같은 ViewModel 안에서 캔버스 조회는 계약을 타고 달력 조회는 mock을
   만든다"로 남긴 자리가 닫혔다(OQ-P-183). `ParfaitRepository`에 **`getYears`가 올라와 다섯 갈래 중
   넷**이 열렸고(남은 하나는 배경 변경), 두 UseCase에서 mock 생성 로직이 통째로 사라졌다.
@@ -124,8 +141,9 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-17 (30회차)
-- **미머지 제외 항목**: 없음.
+- **검증일**: 2026-08-17 (31회차)
+- **미머지 제외 항목**: 없음(직전까지 추적하던 선반영 2건 `refactor/#278-canvas-main`·
+  `refactor/#284-clickable-to-clickable-yg`이 이번 회차에 머지로 닫혔다).
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
@@ -189,3 +207,4 @@
 | 2026-08-17 | `955c4636` | Merge #267 (common-error-loading-scaffold) | delta 1건(#267, **추적하던 미머지 스펙·플랜 한 쌍**). **공통 로딩·실패에 자리가 생겼다.** `YGScaffoldV2`가 content → 로딩 오버레이 → 토스트 호스트 **세 층**을 겹치고(토스트가 오버레이 위 — 로딩 중 실패도 보여야 한다), 신규 파라미터 `isLoading`·`toastPolicy` 둘 다 **기본값**인 것은 V1 `@Deprecated(ReplaceWith)` 치환이 컴파일되어야 한다는 **계약**이다. 핵심 발견은 **이관이 이름 교체가 아니라 소유 위치 이동**이라는 것 — `hiltViewModel()`이 Route 안이라 `EntryBuilder`는 `isLoading`도 실패 이펙트도 못 본다. 그래서 `ERROR` 승급 기준이 "V1 호출처 0"에서 **"각 화면이 Route에서 스캐폴드를 소유하고 배선함"**으로 정정됐다(IDE 일괄 치환은 호출처만 0으로 만든다). **as-built로 더해진 것**: ① 오버레이의 `pointerInput` 소비만으로 부족 — **TalkBack 더블탭은 `SemanticsActions.OnClick`을 직접 불러** 통과하므로 스캐폴드가 `content`를 `semantics { hideFromAccessibility() }`로 감싼다, ② 그 기전은 `assertDoesNotExist`로 못 잠금(플랫폼 트리 전용) → `SemanticsMatcher`로 속성 보유만 단언, ③ `YGCustomTheme` 조상이 전제(`YGToast`가 `YGTheme.layout`을 읽어 **첫 토스트에서야 죽는다**), ④ 실패 문구는 호출부 소유 — A-002가 `LoginError` 4갈래(로그는 8갈래 유지)를 세우고 `ShowError`가 **문구가 아니라 사유**를 실으며 Route가 컴포지션에서 문구를 미리 뽑아 둔다(`LocalContextResourcesRead` 회피), ⑤ `launch(onError = …)` 동반 필수. 이관은 **3화면**(A-002 로그인 · S-003 앱 설정 · S-002 계정 정보)이고 **V1 잔여 8파일 22곳**. 조치: 스펙 `implemented`·플랜 `done` + 양쪽 archive 이동(링크 보정, 플랜은 frontmatter가 없어 상단 머지 블록 신설)·README 2행, **드리프트 2건 정정**(as-built의 "계측 9건"은 신규 7건 + 기존 smoke 2건 · "로그인 유닛 6건"은 `LoginViewModelTest` 9 → 11건), architecture 3건(design-system 구조 트리 `ygloading/`·`YGScaffoldV2.kt`·모듈 최초 `strings.xml` + 인벤토리 2행 + 화면 컨테이너 이관 현황·오버레이 적용 기준 / navigation-flow 체크리스트에 두 형태 공존 명시 / state-management **feature 로컬 실패 enum 두 번째 사례**), ADR-0020 "남는 것"에 **예상한 비용이 실제로 청구됨** 블록. open-questions: OQ-P-167 마커 갱신(머지 확정·잔여 이관은 OQ-P-204로 분리), **신규 3건**(OQ-P-204 스캐폴드 둘로 갈린 채 잔여 8파일·삭제 시점 미정 · OQ-P-205 오버레이 임시 구현·적용 기준이 귀납뿐 · OQ-P-206 토스트 2초 동안 상단 띠 탭 삼킴이 전 화면 공통으로 승격). 테스트 유닛 415 → **417**, 계측 5 → **12**(신규 7). ⚠️ **이관 3화면 실사용 확인 없음.** 미머지: 없음 |
 | 2026-08-17 | `977f44f2` | Merge #268 (canvas-today-parfait-detail) | delta 1건(#268). **C-001 캔버스가 서버 캔버스를 그린다.** parfait 도메인 **첫 Repository**(`ParfaitRepository`/`Impl` — DataSource의 다섯 갈래 중 **오늘·목록·상세 셋만** 노출, 쓰지 않는 갈래를 미리 열면 실패 처리를 안 정한 채 계약이 굳는다) → UseCase 둘 → 화면. **같은 캔버스를 얻는 두 경로를 용도로 갈랐다** — 진입은 `/parfaits/today`(조회인데 행을 만드는 부작용을 감수: 토핑을 얹으려면 `parfaitId`가 필요한데 부작용 없는 경로는 없는 날을 만들어 주지 않는다 → `launch(key)`로 1회만), 달력 선택은 **목록→상세 2단**(훑는 것만으로 빈 캔버스가 쌓이면 안 된다 → 없는 날은 실패가 아니라 `null`, 상세 실패만 실패). `today` 응답 날짜를 앱이 검증해 **자정 경계 재시도 1회**, 그 "오늘"은 **KST 고정**(`PARFAIT_TIME_ZONE`·`parfaitToday()`) — 기기 시간대면 해외 기기에서 재시도가 **로드마다** 돌기 때문이고 **03:00 경계는 여전히 미적용**(OQ-P-127 ② 확정·① 잔존). 날짜 선택은 즉시 닫고 이전 그림을 비운 뒤 채우며, 응답 경합은 중복 가드가 아니라 **반영 직전 `selectedDate` 재확인**으로 막는다(마지막에 고른 것이 이겨야 한다). 렌더는 **계약이 말하지 않는 단위를 앱이 정했다** — 좌표 0~1 정규화 중심점 · `scale` 1.0 = 긴 변이 너비 **40%**(C-106) · `borderWidth` = **화면 dp** · 색 `#RRGGBB`(신규 OQ-P-207). 누끼라 사각 테두리를 못 둘러 **8방향 스탬프 + 원본 덮기**로 실루엣을 딴다(토핑 1개 = 이미지 9장, 미측정 — 신규 OQ-P-208). **진입도 이번에 열렸다** — `NavKeyCanvasImageAdd`가 `data class(groupId)`가 되며 6일 도달 불가가 닫히고 G-001 토핑에 첫 클릭 경로(`clickableYGScaleRipple`). `String.toColorOrNull()` `core:util:android` 승격. **드러난 것은 읽기 전용이라는 사실** — 배치·좌표 수정 소비처 0건, 조회 실패는 로그만이라 빈 캔버스와 실패가 같은 화면(신규 OQ-P-209). 달력 UseCase 둘·C-301 편집 탭·그룹명·칩 색은 여전히 mock(신규 OQ-P-210). 조치: **사후 스펙 1건 작성**(`implemented`·archive, +README 등록), c001·c201 스펙 as-built 갱신(c001 드리프트 3 해소·1·4 정정·정책 대조 2행 / c201 드리프트 2·4 해소·3 정정), architecture 4건(data-layer Repository 인벤토리 행 + parfait Repository 획득 노트 · module-structure `toColorOrNull` · navigation-flow 도달 불가 해소·인자 목적지·체크리스트 6 사례 종결 · design-system `YGCanvas` 배경/토핑 슬롯 첫 소비·`YGToppingGroup` 클릭 결선·`YGNametagChip` 두 번째 mock 사례), api 2건(parfait.md Android 매핑 — `verified` 불변 / README 도메인 표·소비처 15건). open-questions: **OQ-P-184 해소**, OQ-P-129 ①·OQ-P-130 ③ 해소, OQ-P-127 ②·OQ-P-183 ②③·OQ-P-200 부분 해소, OQ-P-167 ④·OQ-P-181·OQ-P-199 사례 추가, **신규 4건 OQ-P-207~210**. 유닛 417 → **434건**. 미머지: 없음 |
 | 2026-08-17 | `fa7d79d6` | Merge #279 (canvas-calendar-api) | delta 1건(#279). **달력이 mock을 버렸고, 그 대가로 지난 날이 진짜 열렸다.** `ParfaitRepository`에 `getYears`가 올라와 **다섯 갈래 중 넷**이 열리고(남은 하나는 배경 변경) 두 UseCase의 mock 생성 로직이 통째로 사라졌다 → **OQ-P-183 해소**(하루 전 라운드가 남긴 "한 ViewModel 안에서 층이 갈린다"가 닫혔다). `ParfaitHistory` **삭제** — 달력이 계약 VO `PastCanvasVO`를 그대로 써 점 찍는 기준이 `imageCount` → `toppingCount`가 됐고 `domain/model/parfait/` 패키지가 소멸해 하위 패키지가 열 → **아홉**. `GetCanvasByDateUseCase`(목록→상세 2단)도 하루 만에 **삭제**되고 `GetParfaitDetailUseCase`로 대체 — 달력이 그 해 목록을 캐시로 들면서 **앞 단이 UseCase에서 화면으로 옮겨 갔다**. 상태가 `todayCanvas`/`viewedCanvas` **두 갈래**로 갈린 이유는 서버가 마감 캔버스 편집을 안 막기 때문이고, 부수 효과로 **오늘로 돌아갈 때 부작용 있는 `today` 재조회가 없다**. 지난 캔버스는 메뉴 액션이 **갤러리에 저장·오늘의 파르페 가기**로 바뀌어 편집 진입점이 사라졌다(OQ-P-189 ②에 앱 쪽 첫 답 — 가드가 아니라 길 치우기). 달력 셀은 **기록 있는 날 + 오늘**만 활성. 조치: 사후 스펙 1건 작성(`implemented`·archive) c201-canvas-calendar-server + README 등록, c201(#259)·c001-canvas-today-detail(#268) 아카이브 스펙에 대체·해소 마커, `api/parfait.md` Android 매핑(우회 소비자 해소·연 단위 조회·`android_status` partial 유지, **`verified`는 서버 계약 대조일이라 미변경**)·`api/README.md` 도메인 표 Android 열, `data-layer` Repository 인벤토리·하위 패키지 수·네트워킹 절. open-questions: OQ-P-183 **해소됨**, OQ-P-184 ②에 뒤집힘 마커, OQ-P-189에 앱 쪽 답 마커, OQ-P-199 심볼 정정, **신규 4건**(OQ-P-211 갤러리 저장이 로그 한 줄 / OQ-P-212 상세 조회 `launch(key)` 가드로 **연속 선택 시 머리말과 그림이 어긋난 채 남는다** — #268이 일부러 안 걸었던 것이 근거 없이 뒤집힘 / OQ-P-213 기록 없는 과거 날짜 잠금이 위키 Disabled 정의를 넘어섬 / OQ-P-214 연도 캐시 무효화 부재·파생이 캐시가 가른 둘을 뭉갬), `oq-next` 스테일(207 → 215) 정정. 유닛 434 → **436건**. 실기기·실서버 확인 없음. 미머지: 없음 |
+| 2026-08-17 | `ede719f0` | Merge #292 (#284 clickable-to-clickable-yg) | delta 2건(#291·#292) — **둘 다 리팩터이고 둘 다 문서 선반영이 먼저 끝나 있던 브랜치**라, 이번 회차는 대조가 전부다(어긋난 곳 0건). **#291**(`refactor/#278-canvas-main`): C-001 화면 계열 `CanvasImageAdd*` → `CanvasMain*` 개명(NavKey·Route·Screen·ViewModel·UiState·Intent·Effect·`strings.xml` `canvas_main_*`). diff를 이름 치환 후 대조하면 짝 안 맞는 라인 0줄 = 시그니처·동작 불변이 기계 확인되고, develop 잔존 참조 0건. **#292**(`refactor/#284-clickable-to-clickable-yg`): 프로덕션 Foundation `Modifier.clickable` 28곳 전량 `clickableYGNoRipple` 이관 — develop 잔존은 `YGClickable.kt` 내부 구현 1곳 + `androidTest` 픽스처 2건(`YGLoadingOverlayTest`·`YGThemeSmokeTest`)뿐이라 design-system 서술 그대로다. `clickableYGNoRipple`에 `interactionSource` 첫 파라미터 추가(다른 네 변형과 동일 자리), 300ms 스로틀이 feature 화면 클릭 전반으로 확장. 문서 조치는 **선반영 문구의 미머지 마커 해제만** — `index.md` "지금 상태" 두 문단(⚠️ 미머지 선반영 → develop 머지 확정)과 doc-baseline 라인 갱신. `specs/README.md`·아카이브 스펙 7건 각주와 open-questions 해소 메모는 미머지 표현이 없어 그대로 유효. 신규 스펙·플랜·ADR 0건, 신규 미결 0건, 테스트 436건 불변. 실기기·실서버 확인 없음. 미머지: 없음 |
