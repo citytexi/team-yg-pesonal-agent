@@ -2,8 +2,8 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: 22717fe
-verified: 2026-08-16
+server_commit: 08df1bf
+verified: 2026-08-18
 android_status: done
 related_spec: s101-group-setting-api
 related_adr: ADR-0017
@@ -57,6 +57,14 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | `groupName` | String | 아니오 | |
 | `recentImageUrl` | String? | 예 | 최근 업로드 이미지 없으면 `null` |
 | `recentImageUploadedAt` | LocalDateTime? | 예 | 아래 직렬화 포맷 참고. `recentImageUrl`과 함께 `null` 가능 |
+| `lastPlacedByNametagChip` | String(enum)? | 예 | **2026-08-18 신설.** 마지막 토핑을 올린 사람의 Nametag-Chip 타입 → 아래 [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙) |
+
+  **`lastPlacedByNametagChip`의 출처와 함정**: `recentImageUrl`·`recentImageUploadedAt`과 같은 네이티브
+  쿼리(`findMyGroupSummaries`)의 **별개 상관 서브쿼리**이고, 정렬 기준(`parfait_date` → `created_at` → `id`
+  내림차순)이 같아 같은 토핑을 가리킨다. 조인 대상은 **배치 당시가 아니라 지금의 `parfait_group_member`
+  행**이라, 그 사람이 이미 탈퇴했으면 `RELEASED`가 내려온다(서버 쿼리 주석이 `left_at IS NULL` 필터를
+  붙이지 말라고 명시한다). 토핑이 하나도 없는 그룹은 `null`이고, 그때는 `recentImageUrl`도 함께 `null`이다.
+  근거: `ParfaitGroupControllerTest`가 값 있는 케이스(`"TYPE7"`)와 `null` 케이스를 각각 `jsonPath`로 단언한다.
 
   응답은 `List<MyParfaitGroupResponse>`. nullable 필드도 값이 없다고 생략되지 않고 `null`로 내려온다
   (`jackson.default-property-inclusion: always`, `bootstrap/application.yaml`) — `ParfaitGroupControllerTest`의
@@ -97,9 +105,21 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | 필드 | 타입 | 널 허용 | 비고 |
 |---|---|---|---|
 | `groupId` | Long | 아니오 | |
+| `groupName` | String | 아니오 | **2026-08-18 신설**(`ParfaitGroup.name`) |
 | `groupNickname` | String | 아니오 | 인증 회원 본인의 그룹 닉네임 |
 | `inviteCode` | String | 아니오 | |
-| `members` | List<`ParfaitGroupMemberResponse`> | 아니오 | 원소: `memberId` Long · `groupNickname` String |
+| `memberLimit` | Int | 아니오 | **2026-08-18 신설.** 그룹 정원(`GroupMemberLimit`, 1~12) |
+| `members` | List<`ParfaitGroupMemberResponse`> | 아니오 | 원소: `memberId` Long · `groupNickname` String · `nametagChip` String(enum)?(**2026-08-18 신설**) |
+
+  **`members`는 탈퇴하지 않은 멤버만**이다(`findAllByParfaitGroupIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc` —
+  참여 순). 따라서 원소의 `nametagChip`에는 `RELEASED`가 오지 않고 `TYPE1`~`TYPE12` 중 하나이며,
+  **같은 응답 안에서 값이 겹치지 않는다** → 아래 [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙).
+  근거: `ParfaitGroupControllerTest`가 `groupName`·`memberLimit`·`members[0].nametagChip`(`"TYPE3"`)을
+  `jsonPath`로 단언한다.
+
+  ✅ **2026-08-18 — 앱이 메우던 계약 공백 둘이 서버에서 닫혔다.** 그룹명(상세 응답에 없어
+  `GetGroupDetailUseCase`가 목록을 한 번 더 읽어 붙이던 값)과 정원(생성 응답에만 있어 "N명 남음"이
+  mock 1이던 값)이 이 응답에 실린다 → [Android 매핑](#android-매핑).
 
 - **에러 코드**
 
@@ -287,6 +307,8 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   근거: `ParfaitGroupService.leave`가 `findGroupByIdForUpdate`(→ `GROUP_NOT_FOUND`) →
   `findMembership`(→ `GROUP_NOT_JOINED`) → `ParfaitGroupMemberLeavePort.leave` 순서로 실행한다. 탈퇴 시
   `groupNickname`은 `GroupNickname.unknown()`("(알수없음)")으로 대체되고 `leftAt`이 기록된다(`ParfaitGroupMember.leave`).
+  **2026-08-18부터 `nametagChip`도 같은 전이에서 `RELEASED`로 반납된다** → 아래
+  [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙).
 
   **2026-08-15 — 같은 전이를 부르는 두 번째 경로가 생겼다.** 회원 탈퇴(`DELETE /api/v1/users/me`,
   [member.md](member.md))가 그 회원의 **모든 그룹 멤버십에 같은 `leave()`를 적용**한다. 즉 이 그룹 API를
@@ -324,6 +346,37 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   `GROUP_NOT_JOINED`) → 신고 저장 → **같은 트랜잭션에서 신고자 멤버십을 탈퇴 처리**한다(`leave()`). 즉 신고
   성공은 항상 탈퇴를 동반한다. 근거: `ParfaitGroupServiceTest`("그룹 신고는 신고를 저장한 뒤 같은 트랜잭션에서
   탈퇴 이력을 남긴다"·"비어 있는 신고 사유는 신고나 탈퇴 없이 거부한다").
+
+## Nametag-Chip 배정 규칙
+
+2026-08-18 delta(`[Fix] 그룹/캔버스 API에 Nametag-Chip 노출&배치 작업 시간 수정`)로 **칩 타입의 부여
+주체가 서버가 됐다.** 그전까지 응답에 타입 필드가 없어 앱이 목록 인덱스로 돌려 쓰던 자리다
+([open-questions](../synthesis/open-questions.md) OQ-P-140·OQ-P-210).
+
+- **값 집합**: `NameTagChipType`(`core/parfaitgroup/domain`) — `TYPE1`~`TYPE12` + `RELEASED`.
+  JSON에는 **enum 이름 문자열 그대로** 실린다(`"TYPE7"`). 위키 [[nametag-chip]]의 12종과 개수가 같고,
+  `RELEASED`는 그 12종 밖의 **반납 표식**이다(정책 문서에 대응 항목이 없다 → [미결](#미결)).
+- **부여 시점**: 그룹 **생성**과 **참여** 두 경로 모두 `ParfaitGroupService.assignNametagChip`이
+  `NameTagChipType.assignRandom`으로 뽑는다. 후보는 `ASSIGNABLE`(= 전체 − `RELEASED`)에서 **그 그룹의
+  탈퇴하지 않은 멤버가 이미 쓰는 값을 뺀 나머지**이고 그중 무작위다.
+- **유일성 범위**: **그룹 안 · 활동 중인 멤버 사이에서만** 겹치지 않는다. 그룹이 다르면 같은 회원이 다른
+  타입을 받고, 같은 타입이 다른 그룹에서 다른 사람에게 갈 수 있다. **계정 공통이 아니다** — 닉네임 초기값이
+  계정 공통인 것과 반대다(위키 [[닉네임-자동-생성]]).
+- **반납**: `ParfaitGroupMember.leave()`가 `RELEASED`로 바꾼다. 그룹 탈퇴와 **회원 탈퇴**
+  (`DELETE /api/v1/users/me`, [member.md](member.md)) 양쪽이 같은 전이를 부른다. 반납된 값은 후보에서
+  빠지므로 **뒤에 들어오는 사람이 그 타입을 다시 받을 수 있다.**
+- **닉네임 변경은 칩을 바꾸지 않는다**(`changeNickname`이 값을 그대로 넘긴다).
+- **재배정 경로가 없다.** 한번 받은 타입을 바꾸는 API도, 다시 뽑는 내부 경로도 없다 — 그룹을 나갔다
+  다시 들어오면 새로 뽑힌다.
+- **기존 행**: 마이그레이션 `V14__add_nametag_chip_to_parfait_group_member.sql`이 활동 중인 멤버에게
+  그룹별 무작위 순번으로 `TYPE1`~`TYPE12`를, 이미 탈퇴한 행에는 `RELEASED`를 채웠다. 컬럼은 널 허용이고
+  응답 타입도 널 허용이지만, **이 마이그레이션 이후 값이 비는 경로는 없다.**
+- **정원과의 결속**: 배정 가능 타입 12종과 `GroupMemberLimit.MAX`(12)가 같아야 마지막 멤버까지 배정된다
+  (서버 코드가 주석으로 이 전제를 적는다). 후보가 비면 `check()`가 `IllegalStateException`을 던지므로
+  도메인 에러 코드가 아니라 **500**이다 — 참여는 정원 검사(`GROUP_MEMBER_LIMIT_REACHED`)를 먼저 통과하므로
+  정상 경로에서는 닿지 않는다.
+
+근거: `NameTagChipTypeTest`·`ParfaitGroupMemberTest`·`ParfaitGroupServiceTest`·`ParfaitGroupAdapterTest`.
 
 ## 도메인 에러 코드 전수 — `ParfaitGroupApiErrorCode`(10종)
 
@@ -430,14 +483,22 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
 - ⚠️ **`recentImageUploadedAt` 파싱이 이 문서의 직렬화 포맷과 어긋난다** — 앱 매퍼가
   `kotlin.time.Instant::parse`(오프셋 필수)를 쓰는데 서버는 오프셋 없는 로컬 날짜시간을 내려준다
   → [open-questions](../synthesis/open-questions.md) [2026-08-15].
-- ⚠️ **상세 조회 한 화면에 요청이 둘이다**(2026-08-17, PR #285) — 상세 응답에 **그룹명이 없어**
-  `GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 불러 같은 `groupId`의 이름만 집어 붙인다.
-  이름 조회 실패는 실패로 치지 않고 **빈 제목**으로 두고 나머지를 띄운다. 앱 코드가 두 곳
-  (Repository KDoc·UseCase KDoc)에 `TODO(서버 응답 확장 대기)`를 달아 두었다 — 서버가 상세에
-  `groupName`을 실으면 두 번째 호출이 사라진다 → [open-questions](../synthesis/open-questions.md) [2026-08-17].
-- ⚠️ **`memberLimit`이 없어 "N명 남음"이 mock 1로 남았다** — 정원은 **그룹 생성 응답에만** 있어
-  상세로는 얻을 길이 없다. 화면의 나머지가 전부 실데이터가 된 지금은 이 한 값만 그럴듯하게 틀리다
+- ✅ **상세 조회 한 화면에 요청이 둘이던 이유가 서버에서 사라졌다**(2026-08-18 서버 delta) — 상세 응답에
+  **그룹명이 없어** `GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 읽어 붙이던 자리다(그룹 SSoT
+  라운드에서 HTTP 호출은 이미 사라지고 인메모리 캐시 `combine`으로 바뀌었으나, **조합 자체와
+  `GroupDetailVO`는 남아 있다**). 앱 코드 두 곳(Repository KDoc·UseCase KDoc)의
+  `TODO(서버 응답 확장 대기)`가 예고한 조건이 충족됐다 — 걷어내는 것은 앱 쪽 작업이다
+  → [open-questions](../synthesis/open-questions.md) [2026-08-17].
+- ✅ **`memberLimit` 공백도 닫혔다**(2026-08-18 서버 delta) — 정원이 **그룹 생성 응답에만** 있어
+  "N명 남음"이 mock 1로 남아 있던 자리다. 상세 응답이 `memberLimit`을 실으므로
+  `memberLimit - members.size`로 바꿀 수 있다(앱 `GroupSettingViewModel`의 TODO가 그 식을 적어 두었다)
   → [open-questions](../synthesis/open-questions.md) [2026-08-13].
+- ⚠️ **칩 타입을 서버가 주기 시작했는데 앱은 아직 인덱스로 돌린다**(2026-08-18 서버 delta) —
+  `GroupSettingViewModel`이 `NAMETAG_CHIP_TYPES[index % 12]`로, `GroupListScreen`이
+  `YGGrouptagChipType.entries`를 순환으로 쓴다. 계약이 `members[].nametagChip`·
+  `lastPlacedByNametagChip`을 주므로 **"멤버가 빠지면 남은 사람 색이 밀린다"는 성질을 없앨 수 있다**.
+  응답 필드를 안 읽는 것뿐이라 `⚠️불일치`는 아니다(앱 JSON은 `ignoreUnknownKeys = true`)
+  → [open-questions](../synthesis/open-questions.md) [2026-08-18].
 - ⚠️ **신고 사유가 하드코딩 상수 하나**다(`GROUP_REPORT_REASON`) — 사유 선택 UI가 없는데 서버는
   사유를 필수로 받으므로(빈 값이면 400 `INVALID_GROUP_REPORT_REASON`) 화면이 대신 채운다. 결과적으로
   **모든 신고가 같은 문자열로 저장된다** → [open-questions](../synthesis/open-questions.md) [2026-08-17].
@@ -514,3 +575,13 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   앱은 완성형만 통과시켜 **서버보다 좁다** → [open-questions](../synthesis/open-questions.md)
 - 초대코드 자릿수 6이 서버·앱 코드 양쪽에만 있고 정책 문서에 없다 →
   [open-questions](../synthesis/open-questions.md)
+
+2026-08-18 서버 delta로 새로 열린 것:
+
+- **Nametag-Chip 배정 규칙이 서버 코드에만 있다.** 위키 [[nametag-chip]]은 "타입은 유저별 고정"이라고만
+  적고 부여 주체·유일성 범위를 정하지 않았는데, 서버가 **그룹별 무작위·활동 멤버 사이 유일**로 구현했다
+  (계정 공통이 아니다). `RELEASED`라는 13번째 값도 정책에 없다 →
+  [open-questions](../synthesis/open-questions.md)
+- **`RELEASED`를 받는 소비 측 처리가 정해지지 않았다.** 그룹 상세 `members`에는 안 오지만
+  **목록의 `lastPlacedByNametagChip`에는 온다**(마지막 토퍼가 탈퇴한 경우). 앱 `YGColorChipType`은
+  12종 + `NametagChipPlus`뿐이라 대응 값이 없다 → [open-questions](../synthesis/open-questions.md)

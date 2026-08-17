@@ -1311,7 +1311,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-139
 - **출처**: `GroupSettingViewModel.kt`의 `MOCK_GROUP_NAME`·`MOCK_MY_NICKNAME`·`MOCK_INVITE_CODE`·`MOCK_REMAINING_COUNT`·`MOCK_MEMBER_NICKNAMES`(전부 `GroupSettingUiState` 기본값) × [api/parfait-group.md](../api/parfait-group.md) — 화면이 쓰는 값 중 **서버 `GET /api/parfait-groups/{groupId}` 응답에 없는 것이 둘**이다: 상단바 제목이 되는 `groupName`, `N명 남음` 계산에 필요한 `memberLimit`. 응답은 `groupId`·`groupNickname`·`inviteCode`·`members`만 준다. 닉네임 변경·그룹 나가기·신고도 엔드포인트는 있으나 호출하는 코드가 없다(확인 핸들러가 TODO). G-001·C-001과 같은 뿌리의 mock이지만, 이 화면은 **계약 자체가 화면을 못 채운다**는 점이 다르다.
 - **항목**: ① `groupName`을 그룹 목록 API에서 받아 NavKey로 넘길지 서버에 필드 추가를 요청할지, ② `memberLimit`(위키 [[그룹]] 최대 12명)을 서버가 줄지 클라이언트 상수로 둘지 — 상수로 두면 정책 변경 시 앱 배포가 필요하다, ③ 컬러칩 타입도 응답에 없다(아래 항목).
-- **상태**: 미해결 (mock은 걷혔고 **계약 공백 둘만 남았다**)
+- **상태**: 해소됨 (2026-08-18 서버 delta — 계약 공백 둘이 채워졌다. 앱 반영은 OQ-P-216·OQ-P-224)
 - **해소 메모**: 서버 소관 결정이면 [api/parfait-group.md](../api/parfait-group.md) Android 매핑 절에, 클라이언트 소관이면 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md)에 반영한다.
   > 📌 **①은 앱이 임시로 답했고 ②는 그대로다(2026-08-17, PR #285)** — mock 5종이 전부 걷히고 화면이
   > 서버를 본다. 그룹명은 **NavKey가 아니라 `GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 불러**
@@ -1321,18 +1321,29 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ⚠️ **②는 오히려 눈에 띄게 됐다** — `remainingCount`만 mock 1로 남아, 나머지가 전부 실데이터인
   > 화면에서 **"1명 남음"이 그럴듯하게 틀린 값**으로 보인다. 전에는 화면 전체가 mock이라 오해할
   > 여지가 없었다. ③은 [OQ-P-140] 그대로다.
+  > ✅ **①②③이 전부 서버에서 닫혔다(2026-08-18 서버 delta `08df1bf`)** — 그룹 상세 응답이
+  > `groupName`·`memberLimit`을 싣고 `members[].nametagChip`까지 준다
+  > ([api/parfait-group.md](../api/parfait-group.md)). **계약 공백이라는 이 항목의 근거가 사라졌다** —
+  > 남은 것은 앱이 그 필드를 읽는 작업이고(그러면 목록 조합·`GroupDetailVO`·mock 1·인덱스 순환이 함께
+  > 걷힌다) 그것은 OQ-P-216·OQ-P-224의 항목이다. ③의 "부여 주체" 결정 자체는 OQ-P-223으로 옮겨간다.
 
 ### [2026-08-13] 네임태그 컬러칩 배정 주체가 여전히 미정 — 첫 소비처가 인덱스 순환으로 열렸다
 
 - **ID**: OQ-P-140
 - **출처**: `GroupSettingViewModel.kt`의 `NAMETAG_CHIP_TYPES` + `MOCK_MEMBERS`(PR #223 develop 머지) — 위키 [[nametag-chip]]은 "타입은 유저별로 **고정**"이라고 정하지만 **부여 주체를 적지 않았고**, 서버 `ParfaitGroupMemberResponse`도 `memberId`·`groupNickname` 2필드뿐이라 타입 정보가 없다. `YGColorChipType`이 12종+Plus로 정렬되며 개수 쟁점([2026-07-18])은 닫혔는데, 그 타입들의 **첫 화면 소비처**가 목록 인덱스 `% 12` 순환으로 열렸다 — 멤버가 나가고 들어오면 남은 사람의 색이 바뀐다. 정책이 요구하는 고정성과 정반대다.
 - **항목**: ① 타입 부여 주체를 서버로 할지(응답에 필드 추가) 클라이언트가 `memberId` 해시로 유도할지, ② 후자면 그룹 간 같은 유저가 같은 색인지(앱 닉네임처럼 계정 공통인지) 정해야 한다 — 위키 [[nametag-chip]]에 그 범위가 없다, ③ G-001의 `YGGrouptagChipType`도 전 항목 동일 값 고정이라 같은 결정에 걸린다([2026-08-07] 토핑 항목).
-- **상태**: 미해결
+- **상태**: 미해결 (① 서버로 확정·②③ 계약이 답함 — 2026-08-18. 남은 것은 정책 문서 공백(OQ-P-223)과 앱 미반영(OQ-P-224))
 - **해소 메모**: 정하면 위키 [[nametag-chip]]에 부여 주체·범위를 추가하고(정책 소관), 구현 쪽은 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md) "컬러칩 배정 규칙"과 [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md)에 반영한다.
   > ⚠️ **가정이 실재가 됐다(2026-08-17, PR #285)** — `NAMETAG_CHIP_TYPES[index % 12]`는 그대로인데
   > 목록이 mock이 아니라 **서버 멤버**다. 멤버가 나가고 들어오면(그리고 이제 나가기가 실제로
   > 동작한다) 남은 사람의 색이 실제로 바뀐다. 코드의 TODO도 "서버가 타입을 주면 교체"로 남았다.
   > C-001 캔버스 멤버 칩(OQ-P-210)과 **같은 결정에 걸린 자리가 둘**이 됐다.
+  > ✅ **①이 서버로 확정됐다(2026-08-18 서버 delta `08df1bf`)** — 그룹 상세 `members[].nametagChip`이
+  > 생겼고 코드 TODO가 기다리던 조건이 충족됐다. **②의 답도 함께 나왔다: 계정 공통이 아니라 그룹별**이다
+  > (`assignRandom`이 그 그룹의 활동 멤버가 안 쓰는 값 중에서 뽑는다) → [api/parfait-group.md](../api/parfait-group.md)
+  > "Nametag-Chip 배정 규칙". ③도 계약이 답했다 — G-001 목록에 `lastPlacedByNametagChip`이 실린다.
+  > **남은 것은 둘**이다: 정책 문서에 규칙이 없다는 것(OQ-P-223)과 앱이 아직 필드를 안 읽는다는 것
+  > (OQ-P-224). 즉 이 항목의 "부여 주체 미정"은 끝났고 자리가 그 둘로 갈라진다.
 
 ### [2026-08-13] Danger Zone 확인 3종이 되돌릴 수 없는 동작을 담을 자리 없이 머지됐다
 
@@ -2448,10 +2459,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   (예: `groupMemberId` 해시) — 후자면 두 화면이 같은 규칙을 공유해야 한다. ② 캔버스가 쓰는 팔레트가
   7종인 근거가 없다(`YGColorChipType`은 12종 + Plus). ③ 칩 글자가 닉네임 `take(1)`인데 정책에는
   "첫 글자"의 정의(공백·이모지·조합 문자)가 없다.
-- **상태**: 미해결
+- **상태**: 미해결 (①은 서버가 절반만 답했다 — 2026-08-18)
 - **해소 메모**: ①이 서버 변경이면 `sync-teamyg-server-api` 요청이 선행이다. 정하면
   [design-system](../architecture/design-system.md) `YGNametagChip` 항목의 두 사례와
   [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md) 정책 대조 표를 함께 고친다.
+  > ⚠️ **①의 답이 이 화면만 비껴갔다(2026-08-18 서버 delta `08df1bf`)** — 서버가 칩 배정을 가져갔지만
+  > 필드는 **`placedBy`에만** 붙었고 상단 칩이 읽는 `groupMembers`에는 없다. 그룹 설정 화면
+  > (OQ-P-140)은 `members[].nametagChip`으로 닫을 수 있는데 **여기만 계약 밖에 남았다**
+  > → OQ-P-224 ①. ②(팔레트 7종의 근거 없음)는 그대로이고, 서버가 12종을 주는 지금은
+  > **7종으로 접으면 계약이 주는 구분을 앱이 도로 뭉갠다**는 문제로 성격이 바뀌었다.
+  > ③(칩 글자 `take(1)`의 정의)은 변동 없다.
 
 ### [2026-08-17] 지난 캔버스의 "갤러리에 저장"이 로그 한 줄이다
 
@@ -2560,10 +2577,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `GetGroupDetailUseCase`는 두 캐시를 `combine`할 뿐이라 이름 때문에 나가는 HTTP 호출이 사라졌다
   ([ADR-0023](../adr/0023-group-in-memory-ssot.md)). ①②는 그대로 남는다 — 서버 응답에 여전히
   그룹명이 없고, 빈 제목의 표현도 정하지 않았다.
-- **상태**: 미해결 (③ 해소, ①② 남음 — 계약 공백을 앱이 메우는 중)
+- **상태**: 미해결 (③ 해소, **①의 전제도 2026-08-18 서버 delta로 사라졌다** — 앱이 조합을 걷어내는
+  작업과 ②(빈 제목 표현)만 남음)
 - **해소 메모**: 서버가 필드를 실으면 [api/parfait-group.md](../api/parfait-group.md) Android 매핑과
   [data-layer](../architecture/data-layer.md)의 "UseCase가 Repository를 두 번 부르는 첫 사례" 서술을
   함께 걷는다. 같은 응답의 `memberLimit` 공백은 [2026-08-13] S-101 데이터 항목(OQ-P-139)이다.
+  > ✅ **서버가 실었다(2026-08-18 서버 delta `08df1bf`)** — 상세 응답에 `groupName`이 있고 같은 라운드가
+  > `memberLimit`도 넣어 OQ-P-139까지 함께 닫혔다. 두 KDoc의 `TODO(서버 응답 확장 대기)`가 기다리던
+  > 조건이 충족됐으므로, **`GroupDetailVO` 조합과 `GetGroupDetailUseCase`의 `combine`을 걷어내는 것은
+  > 이제 앱 쪽 작업**이다(OQ-P-224 ②). ②(이름만 실패했을 때의 빈 제목 표현)는 조합이 사라지면 문제
+  > 자체가 없어진다 — 상세 한 번으로 이름이 온다.
 
 ### [2026-08-17] 모든 그룹 신고가 같은 사유 문자열로 저장된다
 
@@ -2653,6 +2676,76 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   규약으로 승격하고 [screen-resume-refetch 스펙](../specs/archive/2026-08-17-screen-resume-refetch.md)을
   정본으로 가리킨다. ③은 실패 표현 갈래(OQ-P-167)·V2 이관(OQ-P-204)과 같은 자리에서 정한다.
 
+### [2026-08-18] 하루의 경계가 서버는 03시, 앱은 자정 — 그 세 시간 동안 오늘 조회가 두 번 돈다
+
+- **ID**: OQ-P-222
+- **출처**: 서버 `ParfaitDay`(`core/parfait/domain`, 2026-08-18 delta `08df1bf`) ×
+  앱 `domain/model/ParfaitDay.kt`의 `parfaitToday()` × `GetTodayParfaitUseCase` ×
+  [api/parfait.md](../api/parfait.md) "하루 경계" — 서버가 파르페의 하루를 **03:00에 넘긴다**(회전 배치
+  실행 시각과 같은 값이고 위키 [[캔버스-마감-스케줄]]의 03시와도 같다). 오늘 조회·그룹 생성·회전 가드가
+  전부 이 기준이다. **앱은 KST 자정 기준 그대로**라, 00:00~03:00 KST에는 서버가 준 정상 응답(D−1 날짜의
+  `ACTIVE` 캔버스)을 `GetTodayParfaitUseCase`가 "자정을 걸친 요청"으로 오인해 **한 번 더 부른다** —
+  두 번째도 같은 값이라 결국 그것을 쓰지만, **부작용 있는 GET이 그 구간 내내 두 배로 돈다.** 표시도
+  어긋난다: `CanvasMainUiState.today`는 D인데 그 아래 그려지는 캔버스는 D−1이고, `syncToday()`가 자정에
+  화면을 비우고 다시 불러도 03시까지 계속 D−1이 온다. 달력이 고르는 "오늘"과 활성 캔버스 날짜도 그
+  구간에는 다르다.
+- **항목**: ① 앱 `parfaitToday()`를 03시 경계로 맞출지 — 맞추면 재시도 조건·달력의 오늘·`syncToday()`
+  트리거 시각이 전부 03시로 옮겨간다(자정에 도는 지금의 재계산은 의미가 없어진다). ② 경계 값(03시)을
+  앱이 상수로 복제할지 계약에서 읽을지 — 지금 계약에 그 값을 내려주는 필드가 없고, 복제하면 서버가
+  배치 시각을 바꿀 때 조용히 갈린다. ③ **서버 안에서도 두 기준이 공존한다** — 과거 목록의 `to`
+  기본값만 `LocalDate.now()`(자정)라, 그 구간에 목록 기본 상한이 활성 캔버스 날짜보다 하루 앞선다.
+  서버에 정렬을 요청할지, 앱이 항상 범위를 명시해 회피할지.
+- **상태**: 미해결 (계약 대조로만 드러남 — 실기기·실서버 요청 검증 0건)
+- **해소 메모**: 정책상 옳은 쪽은 서버다(03시는 위키 [[캔버스-마감-스케줄]]에 이미 있다). 고치면
+  [api/parfait.md](../api/parfait.md) 엔드포인트 표의 `⚠️불일치` 각주와
+  [api/conventions.md](../api/conventions.md) "Android 불일치" 2행을 함께 걷는다. ③은 서버 소관이라
+  다음 `sync-teamyg-server-api` 라운드에서 확인한다.
+
+### [2026-08-18] Nametag-Chip 부여 주체가 서버로 정해졌는데 정책 문서에 그 규칙이 없다
+
+- **ID**: OQ-P-223
+- **출처**: 서버 `NameTagChipType`·`ParfaitGroupService#assignNametagChip`·`ParfaitGroupMember#leave`
+  (2026-08-18 delta) × 위키 [[nametag-chip]] × [api/parfait-group.md](../api/parfait-group.md)
+  "Nametag-Chip 배정 규칙" — 오래 열려 있던 "부여 주체" 질문(OQ-P-140 ①·OQ-P-210 ①)에 **서버가 코드로
+  답했다.** 규칙은 이렇다: 참여·생성 시 **그 그룹의 활동 멤버가 안 쓰는 타입 중 무작위**, 탈퇴 시
+  `RELEASED`로 반납, 닉네임 변경은 칩을 안 바꾸고 **재배정 경로는 없다.** 유일성은 **그룹 안**에서만
+  성립해 같은 회원이 그룹마다 다른 색이다 — 위키가 "타입은 유저별 고정"이라고만 적고 **범위를 정하지
+  않은 자리**를 코드가 그룹 단위로 메운 것이라, 정책 문서에는 여전히 근거가 없다. `RELEASED`라는
+  13번째 값도 정책 밖이다.
+- **항목**: ① 위키 [[nametag-chip]]에 부여 주체(서버)·유일성 범위(그룹 내, 계정 공통 아님)·반납을
+  올릴지 — 올리면 "유저별 고정"의 뜻이 "그룹 안에서 고정"으로 좁혀진다. ② `RELEASED`의 표시 규칙이
+  없다 — 앱 `YGColorChipType`은 12종 + `NametagChipPlus`뿐이고 대응 값이 없는데, 그룹 목록
+  `lastPlacedByNametagChip`에는 **마지막 토퍼가 탈퇴하면 `RELEASED`가 온다**(그룹 상세 `members`에는
+  안 온다 — 탈퇴자를 거른다). 캔버스 `placedBy`도 같다. ③ 배정 가능 타입 12종과 그룹 정원 12가 같아야
+  한다는 전제가 서버 주석에만 있다 — 정원 정책이 바뀌면 후보 고갈로 **도메인 에러가 아니라 500**이 된다.
+- **상태**: 미해결 (서버는 확정, 정책·앱이 안 따라옴)
+- **해소 메모**: ①은 위키 소관(정책 SoT). ②③을 정하면
+  [api/parfait-group.md](../api/parfait-group.md) "Nametag-Chip 배정 규칙"과
+  [design-system](../architecture/design-system.md) `YGNametagChip` 항목에 반영한다. 앱이 필드를 읽는
+  작업은 OQ-P-140·OQ-P-210의 잔여 항목이다.
+
+### [2026-08-18] 칩 필드가 `placedBy`에만 붙어 캔버스 상단 멤버 칩은 여전히 계약 밖이다
+
+- **ID**: OQ-P-224
+- **출처**: 서버 `GetTodayParfaitUseCase`의 `GroupMemberResult`·`PlacedByResult`(2026-08-18 delta) ×
+  `CanvasMainViewModel#toMemberChips` × [api/parfait.md](../api/parfait.md) — 같은 응답 안에서
+  **토핑 작성자(`placedBy`)는 `nametagChip`을 받고 멤버 목록(`groupMembers`)은 못 받는다.** 그런데 C-001이
+  상단에 그리는 칩은 `groupMembers`에서 오고, 그것이 7종 팔레트를 인덱스로 도는 자리다(OQ-P-210).
+  즉 **서버가 칩을 주기 시작했는데 정작 이 화면의 문제는 안 닫혔다.** 반대로 `placedBy.nametagChip`은
+  받을 수 있게 됐지만 앱 DTO에 필드가 없어 아직 아무도 안 읽는다. 그룹 상세(`members[].nametagChip`)와
+  그룹 목록(`lastPlacedByNametagChip`)도 같은 상태다.
+- **항목**: ① 서버에 `groupMembers[].nametagChip` 추가를 요청할지 — 상세/목록·`placedBy`가 이미 주므로
+  **한 응답 안에서 두 목록의 표현이 갈린 것**이고, 안 주면 C-001만 영원히 자체 규칙을 쓴다.
+  ② 앱이 필드 넷(`members[].nametagChip`·`lastPlacedByNametagChip`·`placedBy.nametagChip` +
+  그룹 상세 `groupName`·`memberLimit`)을 읽는 라운드를 언제 잡을지 — 지금은 `ignoreUnknownKeys = true`
+  덕에 깨지지 않고 **조용히 안 쓰이는 중**이다. ③ 서버 enum 문자열(`TYPE1`~`TYPE12`·`RELEASED`)을
+  앱 `YGColorChipType`에 매핑하는 자리를 어디로 둘지(디자인시스템 타입은 `:core:designsystem`이고
+  응답 매핑은 `:data`다 — 지금 둘 사이에 다리가 없다).
+- **상태**: 미해결
+- **해소 메모**: ①은 다음 `sync-teamyg-server-api` 라운드 전에 서버팀에 요청해야 확인된다.
+  ②③을 하면 OQ-P-140·OQ-P-210의 잔여 항목이 함께 닫히고
+  [api/parfait.md](../api/parfait.md)·[api/parfait-group.md](../api/parfait-group.md) Android 매핑 절을 고친다.
+
 <!--
 항목 추가 형식:
 
@@ -2663,4 +2756,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 222 -->
+<!-- oq-next: 225 -->

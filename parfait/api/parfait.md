@@ -2,8 +2,8 @@
 id: parfait
 title: 파르페(캔버스) 조회·배경·회전
 server_module: http/parfait
-server_commit: 22717fe
-verified: 2026-08-16
+server_commit: 08df1bf
+verified: 2026-08-18
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server
 related_adr: ADR-0017
@@ -22,12 +22,18 @@ tags: [api, parfait, server-contract, canvas]
 (`V11__add_status_and_background_to_parfait.sql`)은 이 라운드에 **쓰기 경로를 얻었다** — 배경 필드가
 "읽기만 있고 채우는 코드가 없는" 상태가 닫혔다.
 
+⚠️ **2026-08-18 — 엔드포인트는 안 늘고 "하루"의 정의가 바뀌었다**(`[Fix] 그룹/캔버스 API에 Nametag-Chip
+노출&배치 작업 시간 수정`). `ParfaitDay`(`core/parfait/domain`)가 생겨 **파르페의 하루가 자정이 아니라
+03:00에 넘어간다** — 자정~03시 사이에는 전날이 아직 진행 중이다. 오늘 조회·그룹 생성·회전 가드가 전부
+이 기준을 쓴다. **앱은 여전히 자정 기준**이라 이 구간에서 계약과 어긋난다 → 아래
+[하루 경계](#하루-경계) · [Android 매핑](#android-매핑).
+
 ## 엔드포인트
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
 | GET | `/api/v1/groups/{groupId}/parfaits/year` | 필요 | path `groupId` Long | `ParfaitYearsResponse` | 구현됨 |
-| GET | `/api/v1/groups/{groupId}/parfaits/today` | 필요 | path `groupId` Long | `GetTodayParfaitResponse` | 구현됨 |
+| GET | `/api/v1/groups/{groupId}/parfaits/today` | 필요 | path `groupId` Long | `GetTodayParfaitResponse` | 결선됨·⚠️불일치[^dayboundary] |
 | GET | `/api/v1/groups/{groupId}/parfaits` | 필요 | query `from`·`to`(선택) | `PastParfaitsResponse` | 구현됨 |
 | GET | `/api/v1/groups/{groupId}/parfaits/{parfaitId}` | 필요 | path `groupId`·`parfaitId` Long | `GetTodayParfaitResponse`(**재사용**) | 구현됨 |
 | PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/background` | 필요 | `ChangeParfaitBackgroundRequest` | `ChangeParfaitBackgroundResponse` | 구현됨 |
@@ -36,6 +42,13 @@ tags: [api, parfait, server-contract, canvas]
 [^test]: **테스트 전용 엔드포인트다.** 서버 컨트롤러(`ParfaitCanvasRotationTestController`)와
 `SecurityConfig.WHITELIST_PATHS` 양쪽에 "프로덕션 오픈 전 함께 제거할 것"이라는 TODO가 달려 있다.
 앱이 붙일 대상이 아니다 → [미결](#미결).
+
+[^dayboundary]: **2026-08-18** — 서버가 "오늘"을 `ParfaitDay`(03시 경계)로 세는데 앱
+    `parfaitToday()`(`domain/model/ParfaitDay.kt`)는 **KST 자정 경계**다. 00:00~03:00 KST에는 서버가
+    전날 캔버스를 주고, `GetTodayParfaitUseCase`가 그것을 어긋난 응답으로 보고 **한 번 더 부른 뒤
+    같은 값을 그대로 쓴다** → 아래 [하루 경계](#하루-경계) ·
+    [conventions.md](conventions.md) "Android 불일치" ·
+    [open-questions](../synthesis/open-questions.md) [2026-08-18].
 
 경로 주의: 그룹을 `groups`로 부르는 유일한 경로다(다른 그룹 API는 `parfait-groups`) —
 [conventions.md](conventions.md)의 URL 규약 절 참고.
@@ -109,7 +122,12 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 
   ⚠️ **`ensure`는 상태가 아니라 날짜로 찾는다.** `findByGroupIdAndDate`라서, 오늘 날짜 캔버스가 이미
   `CLOSED`·`EMPTY`면 **그것을 그대로 돌려준다**(새로 만들지 않는다). 응답 `status`가 `ACTIVE`가 아닐 수 있고,
-  그때는 토핑을 더 올릴 수 없는 캔버스를 "오늘"로 받는다.
+  그때는 토핑을 더 올릴 수 없는 캔버스를 "오늘"로 받는다. **2026-08-18에 이 상태로 가는 지름길이 생겼다** —
+  테스트 전용 회전이 오늘 캔버스를 강제로 마감하고 내일 날짜 캔버스를 만들므로, 그 뒤 `today`를 부르면
+  방금 마감된 캔버스가 온다.
+
+  ⚠️ **"오늘"이 자정이 아니라 03시 기준이다**(2026-08-18) — `ParfaitDay.current()` →
+  아래 [하루 경계](#하루-경계).
 
 - **응답 필드**
 
@@ -126,7 +144,14 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   토핑 원소(`TodayParfaitImageResponse`) 필드: `parfaitImageId` · `imageId` · `imageUrl` ·
   `positionX`/`positionY`(Double) · `positionZ`(Int) · `scale`/`rotation`(Double) ·
   `borderType`(`NONE`·`SOLID`) · `borderColor`(String?) · `borderWidth`(Double?) ·
-  `placedBy`(`groupMemberId`·`nickname`) · `createdAt`(LocalDateTime).
+  `placedBy`(`groupMemberId`·`nickname`·`nametagChip`) · `createdAt`(LocalDateTime).
+
+  ⚠️ **`nametagChip`은 `placedBy`에만 붙었고 `groupMembers`에는 없다**(2026-08-18 신설). 값 집합·배정
+  규칙은 [parfait-group.md](parfait-group.md) "Nametag-Chip 배정 규칙"이 정본이고, JSON에는 enum 이름
+  문자열(`"TYPE6"`)로 실린다. 널 허용이며 **탈퇴한 멤버가 남긴 토핑에는 `RELEASED`가 온다**(`placedBy`
+  조회에 탈퇴 필터가 없다 — 아래 참고). 즉 **캔버스 상단 멤버 칩은 여전히 계약으로 색을 정할 수 없고,
+  토핑 작성자 표시만 정할 수 있다** → [미결](#미결).
+  근거: `ParfaitControllerTest`가 `images[0].placedBy.nametagChip`(`"TYPE6"`)을 `jsonPath`로 단언한다.
 
   ⚠️ **`lastClosedDate`는 `EMPTY`를 세지 않는다.** `ParfaitAdapter.findLastClosedDateByGroupId`가
   `status = CLOSED` 행만 최신순으로 하나 집는다. 토핑 0건으로 마감된 날은 `EMPTY`라 여기 잡히지 않으므로,
@@ -318,9 +343,35 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
 - **요청 필드**: 없음
 - **응답 필드**: `closedCount` · `emptyCount` · `createdCount` · `failedCount`(전부 Int)
 
-  `ParfaitService.rotateAll`이 `ParfaitGroupQueryPort.findAllIds()`로 전 그룹을 돌며 그룹당
-  `ParfaitCanvasRotator.rotateOne`을 재시도 정책(`canvasRotationRetryTemplate` — 3회·고정 백오프)으로
+  `ParfaitService.forceRotateAll`이 `ParfaitGroupQueryPort.findAllIds()`로 전 그룹을 돌며 그룹당
+  `ParfaitCanvasRotator.forceRotateOne`을 재시도 정책(`canvasRotationRetryTemplate` — 3회·고정 백오프)으로
   실행한다. 그룹 하나가 3회 모두 실패하면 `failedCount`만 올리고 **다음 그룹으로 넘어간다**(전체가 멈추지 않음).
+
+  ⚠️ **2026-08-18 — 정식 배치와 다른 경로를 탄다.** 그전에는 배치와 같은 `rotateAll`을 불렀는데, 같은
+  라운드가 `rotateOne`에 "오늘 또는 미래 날짜는 마감하지 않는다" 가드를 넣으면서 이 엔드포인트의
+  원래 목적(지금 당장 강제 마감)이 막혔다. 그래서 **가드를 건너뛰는 `ForceRotateParfaitCanvasesUseCase`가
+  따로 생겼고 컨트롤러가 그것만 주입받는다.** 결과적으로 이 엔드포인트는 **오늘 캔버스를 마감하고
+  내일 날짜 캔버스를 만든다** — 그 뒤 `today` 조회는 방금 마감된 오늘 캔버스를 돌려준다(내일 캔버스는
+  날짜로 찾지 않으므로 잡히지 않는다). 정식 배치는 `rotateOne` 가드가 그 미래 캔버스를 다시 건드리지
+  않으므로 **한 번의 강제 회전이 영구 드리프트가 되지는 않는다**(서버 주석이 이 근거를 적는다).
+
+## 하루 경계
+
+2026-08-18 delta가 도입한 `ParfaitDay`(`core/parfait/domain`)가 **"오늘"의 단일 정의**다.
+
+- **경계는 03:00**(`ROLLOVER_TIME`)이고 회전 배치의 실행 시각과 같은 값이다. `now`가 03시 전이면
+  `current()`는 **전날 날짜**를 돌려준다. 위키 [[캔버스-마감-스케줄]]의 "매일 03시 마감"을 조회 쪽에도
+  적용한 것이다.
+- **타임존은 서버 로컬 시간**이다 — `LocalDateTime.now()`를 그대로 쓰고 `ZoneId`를 명시하지 않는다.
+  서버·DB가 `Asia/Seoul`로 맞춰져 있어([parfait-group.md](parfait-group.md) 타임존 절) 실질은 KST다.
+- **쓰는 곳은 셋**이다 — 오늘 조회(`GetTodayParfaitService`), **그룹 생성 시 최초 캔버스**
+  (`ParfaitGroupService.create`의 `ensure`), 회전 가드(`ParfaitCanvasRotator.rotateOne`).
+  그전까지 앞의 둘은 `LocalDate.now()`(자정 기준)를 썼고, 그래서 **자정~03시에 앱을 켜거나 그룹을
+  만들면 아직 안 끝난 전날 대신 당일 날짜 캔버스가 생기고 뒤이은 배치가 그것을 또 하루 밀었다.**
+- **계약에 드러나는 결과**: 00:00~03:00 사이 `today` 응답의 `date`는 **캘린더상 어제**다. `status`는
+  그 시각에도 `ACTIVE`이므로 **그 캔버스에 계속 토핑을 올리는 것이 정상 동작**이다.
+- **과거 목록은 이 기준을 쓰지 않는다** — `GetPastParfaitsService`의 `to` 기본값은 여전히
+  `LocalDate.now()`다. 즉 00:00~03:00에는 목록의 기본 상한이 **활성 캔버스 날짜보다 하루 앞선다.**
 
 ## 캔버스 회전(마감·재생성) 규칙
 
@@ -335,7 +386,12 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
 - **다음 캔버스**: 마감한 날 **+1일** 날짜로 새 `ACTIVE`를 만든다. 그 날짜 캔버스가 이미 있으면 생략한다.
 - **불변식**: "마감 후 생성" 순서가 **그룹당 `ACTIVE` 최대 1개**를 지키는 유일한 근거다(DB 제약이 없다).
   `findActiveByGroupId`가 이 전제에 기대고 있고 서버 코드 주석이 순서 변경을 금지한다.
-- **가드**: 미래 날짜 캔버스는 마감하지 않는다.
+- **가드**(2026-08-18 강화): **오늘 또는 미래 날짜 캔버스는 마감하지 않는다** — 여기서 "오늘"은
+  [`ParfaitDay`](#하루-경계) 기준이다. 이전 판본은 `isAfter(LocalDate.now())`라 **오늘 날짜는
+  걸러내지 못했고**, 자정~03시 사이 `ensure`가 만든 오늘 캔버스를 03시 배치가 마감해 다음 날짜 캔버스를
+  또 만들었다. 지금은 `!isBefore(ParfaitDay.current(now))`다.
+- **가드를 건너뛰는 경로가 하나 있다** — 테스트 전용 회전이 쓰는 `forceRotateOne`이다(위
+  [테스트 전용 절](#post-apiv1testparfait-canvasrotate-테스트-전용)). 정식 배치는 쓰지 않는다.
 
 ## 도메인 에러 코드 전수
 
@@ -397,6 +453,21 @@ Service·DataSource 함수가 있다.
 **응답 뒤에** 읽어 비교하고 어긋나면 딱 한 번 다시 부른다. 그 "오늘"은 기기 시간대가 아니라
 **KST**(`PARFAIT_TIME_ZONE`)다 — 캔버스 행이 KST 날짜를 키로 저장되기 때문이고, 기기 시간대로 세면
 해외 기기에서 재시도가 하루 한 번이 아니라 **로드마다** 돈다.
+
+⚠️ **그 검증이 2026-08-18 서버 delta로 어긋났다.** 앱 `parfaitToday()`는 **KST 자정** 경계이고 서버는
+**03시** 경계다([하루 경계](#하루-경계)). 00:00~03:00 KST에는 서버가 전날 캔버스를 주는 것이
+정상인데 앱은 그것을 "자정을 걸친 요청"으로 보고 **매번 한 번 더 부른다** — 두 번째 응답도 같으므로
+그대로 쓰지만, 그 구간 동안 오늘 조회가 **요청 2회**가 되고 **부작용 있는 GET이 두 배로 돈다.**
+표시도 어긋난다 — `CanvasMainUiState.today`는 캘린더 오늘(D)인데 그 아래 그려지는 캔버스는 D−1이고,
+`syncToday()`가 자정에 화면을 비우고 다시 불러도 03시까지는 계속 D−1이 온다. 달력이 고른 "오늘"과
+활성 캔버스 날짜도 그 구간에는 다르다. **정책상 옳은 쪽은 서버다**(위키 [[캔버스-마감-스케줄]]의 03시)
+→ [conventions.md](conventions.md) "Android 불일치" · [open-questions](../synthesis/open-questions.md) [2026-08-18].
+
+⚠️ **`placedBy.nametagChip`을 아직 아무도 안 읽는다**(2026-08-18 서버 delta) — 캔버스 상단 멤버 칩은
+`groupMembers`에서 오는데 그쪽에는 필드가 없고(`CanvasMainViewModel`이 7종 팔레트를 인덱스로 돌린다),
+토핑 작성자 칩은 `placedBy`에서 올 수 있는데 앱 DTO가 필드를 두지 않았다. 응답 필드를 안 읽는 것뿐이라
+`⚠️불일치`는 아니다(앱 JSON은 `ignoreUnknownKeys = true`) →
+[open-questions](../synthesis/open-questions.md) [2026-08-18].
 
 ⚠️ **과거 목록은 이제 연 단위로 부른다**(2026-08-17, PR #279) — 1월 1일 ~ 12월 31일을 한 번에 받아
 화면이 연도별로 캐시한다. 근거는 계약이다 — **페이지네이션도 범위 상한도 없어**(→ [미결](#미결))
@@ -513,3 +584,10 @@ DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조
 - 상세 조회가 상태를 거르지 않아 "이전 파르페 상세"라는 이름과 달리 오늘의 `ACTIVE` 캔버스도 조회된다.
   같은 캔버스를 `today`와 상세 두 경로로 얻을 수 있고 **한쪽만 부작용이 있다**
   → [open-questions](../synthesis/open-questions.md)
+- **하루 경계가 서버 안에서도 갈렸다** — 오늘 조회·그룹 생성·회전 가드는 `ParfaitDay`(03시)를 쓰는데
+  과거 목록의 `to` 기본값은 `LocalDate.now()`(자정)다. 앱과의 어긋남은 그 위에 얹힌 것이다
+  → [open-questions](../synthesis/open-questions.md)
+- **`nametagChip`이 `placedBy`에만 있고 `groupMembers`에는 없다** — 캔버스 상단 멤버 칩 색을 계약으로
+  정할 수단이 여전히 없다 → [open-questions](../synthesis/open-questions.md)
+- **테스트 전용 회전이 오늘 캔버스를 강제로 마감한다**(2026-08-18) — 호출 뒤 `today`가 `CLOSED` 캔버스를
+  돌려주는 상태를 아무나 만들 수 있다 → [open-questions](../synthesis/open-questions.md)
