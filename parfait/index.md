@@ -65,6 +65,16 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
 **갤러리에 저장·오늘의 파르페 가기**로 바뀐다(저장은 아직 로그 한 줄). ⚠️ 상세 조회에 붙은
 `launch(key)` 가드가 **직전 라운드의 "마지막 선택이 이긴다"를 뒤집어**, 연속 선택 시 머리말과 그림이
 어긋난 채 남는다([c201-canvas-calendar-server 스펙](specs/archive/2026-08-17-c201-canvas-calendar-server.md)).
+**2026-08-17 — 그룹 설정이 mock을 다 버렸고 나가는 문도 열렸다**(#285·#287). 상세 조회로 화면이
+채워지고 닉네임 변경·나가기·신고가 실제 요청을 보낸다. `ParfaitGroupRepository`가 **8/8**이 되며
+parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부). **진입도 이때 열렸다** —
+`NavKeyGroupSetting(groupId)` + C-001 상단 메뉴로 4일간의 도달 불가가 닫혔고, 컨테이너도
+`YGScaffoldV2`(Route)로 이관돼 V1 잔여가 7파일로 줄었다. 상세 응답에 그룹명이 없어 **UseCase가
+목록을 한 번 더 부르고**(그 실패는 삼킨다), 나가기·신고 성공은 `replaceAll(NavKeyGroupList)`다
+(백스택이 전부 떠난 그룹 것이라 되돌아가면 403). ⚠️ 남은 것은 계약 공백과 임시 상수다 —
+`remainingCount` mock 1(정원이 생성 응답에만 있다)·컬러칩 인덱스 순환·**신고 사유 하드코딩 하나**,
+그리고 403/404가 일시 장애와 같은 문구다. **회원 탈퇴는 그대로 stub**
+([s101-group-setting-api 스펙](specs/archive/2026-08-17-s101-group-setting-api.md)).
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |
@@ -108,7 +118,7 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `ede719f0`(2026-08-17 검증, #291 C-001 심볼 리네임·#292 clickable 전량 이관까지 — 선반영해 둔 문서 둘이 머지로 확정됐고 드리프트 0건).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `2d15cd9f`(2026-08-17 검증, #285·#287 S-101 그룹 설정 결선까지 — mock 5종 제거·상세 조회 2회 호출·나가기/신고 결선·C-001에서 진입, parfait-group `android_status: done`).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md

@@ -8,7 +8,7 @@ verified: 2026-08-17
 related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -133,7 +133,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 |---|---|---|
 | `AuthRepository` | `loginWithKakao(idToken, nonce)` · `signUp(registrationToken, agreements)` · `saveSession(session)` · **`logout()`**(#260) | `LoginWithKakaoUseCase` → A-002 · `SignUpUseCase` → 온보딩 약관 · `LogoutUseCase` → S-001 앱 설정 |
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
-| `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | 순서대로 `GetMyGroupsUseCase`(G-001) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102) |
+| `ParfaitGroupRepository`(#285, #287) | `getMyGroups` · `getGroupDetail`(#285) · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` · `leaveGroup`(#287) · `reportGroup`(#287) | `GetMyGroupsUseCase`(G-001) · `GetGroupDetailUseCase`(S-101) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102·S-101) · `LeaveGroupUseCase`·`ReportGroupUseCase`(S-101 Danger Zone) |
 | `MemberRepository`(#263) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` |
 | `ParfaitRepository`(#268, #279) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) |
 
@@ -155,8 +155,16 @@ Repository 경계를 뚫어 소비자가 미포착 예외로 크래시한다(ADR
 
 `ParfaitGroupRepository`는 2026-08-15 로그인 라운드에서 화면보다 먼저 경계만 들어왔었고(브랜치
 셋이 같은 4파일을 만들어 충돌하기 때문), **같은 날 그룹 화면 세 라운드(#243·#244·#248)가 5 메서드를
-전부 소비하며 그 선반영이 닫혔다.** DataSource가 가진 나머지 호출(그룹 상세·나가기·신고)은
-**화면이 요구할 때까지 인터페이스에 올리지 않는다**는 방침 그대로다.
+전부 소비하며 그 선반영이 닫혔다.** ✅ **나머지 셋(상세·나가기·신고)도 2026-08-17에 올라왔다**
+(#285·#287) — S-101 그룹 설정이 요구한 시점이고, **"화면이 요구할 때까지 올리지 않는다"는 방침이
+끝까지 지켜진 첫 도메인**이다. DataSource 8함수 = Repository 8함수가 됐다
+([spec](../specs/archive/2026-08-17-s101-group-setting-api.md)).
+
+**UseCase 하나가 Repository를 두 번 부르는 첫 사례도 여기서 나왔다** — `GetGroupDetailUseCase`가
+`getGroupDetail` + `getMyGroups`다. 상세 응답에 그룹명이 없어 목록에서 이름만 집어 붙이는 것이고,
+**이름 조회 실패는 실패로 치지 않는다**(빈 이름 + 나머지 표시). 서버 응답 하나에 대응하지 않는 VO
+(`GroupDetailVO`)가 그래서 `:data` 매퍼가 아니라 UseCase에서 만들어진다
+→ [open-questions](../synthesis/open-questions.md) [2026-08-17].
 
 **`logout()`은 실패를 전파하지 않는다**(#260) — 서버 호출이 실패해도 `TokenStore.clear()` 후
 `Result.success`다. 사용자가 눌렀으면 이 기기에서는 나가는 것이 기대 동작이라는 근거이고, 화면이
@@ -166,7 +174,8 @@ Repository 경계를 뚫어 소비자가 미포착 예외로 크래시한다(ADR
 회전시키고 인증기는 **헤더만 갈아끼워 같은 본문을 재전송**하므로 그대로 두면 로컬만 정리되고 갓
 발급된 서버 세션이 refresh token 수명만큼 살아남는다.
 
-UseCase는 대개 Repository 위임 한 줄이고, 규칙을 더 얹는 것은 둘이다 — `CreateGroupUseCase`가
+UseCase는 대개 Repository 위임 한 줄이고, 규칙을 더 얹는 것은 셋이다(#285로 하나 늘었다 —
+`GetGroupDetailUseCase`가 호출 둘을 조합하고 그중 하나의 실패를 삼킨다) — `CreateGroupUseCase`가
 응답 `groupId > 0`을 성공 조건으로 못 박고, `SignUpUseCase`가 필수 약관 미동의를 도메인 예외
 (`SignUpException.RequiredPolicyNotAgreed`)로 되돌린 뒤 성공 시 **세션 저장까지** 한다
 (`LoginWithKakaoUseCase`와 같은 이유 — 저장 전에 이동하면 다음 화면 첫 요청이 토큰 없이 나간다).
@@ -252,6 +261,11 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > 주입받고 `getYears`가 인터페이스에 올라왔다. **`:data` 표면을 건너뛰는 프로덕션 소비자는 0건**이 됐고,
 > `ParfaitHistory` 삭제로 `domain/model/`의 하위 패키지도 아홉으로 줄었다
 > → [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md).
+> ✅ **2026-08-17 — parfait-group 도메인이 표면을 다 소비했다**(PR #285·#287). `ParfaitGroupRepository`가
+> 상세·나가기·신고를 더해 **8/8**이 됐고 S-101 그룹 설정이 셋 다 소비한다
+> ([api/parfait-group.md](../api/parfait-group.md) `android_status: done`). Repository가 0건인 도메인은
+> 그대로 **둘**(image·parfait-image)이다
+> → [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
 > **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인

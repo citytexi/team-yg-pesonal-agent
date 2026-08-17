@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-17
-related_spec: c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error
+related_spec: c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022
 related_architecture: data-layer, navigation-flow
 related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase
@@ -83,6 +83,11 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
 ## UI State가 담는 것 / 담지 않는 것
 
 - **표시 문자열·리소스 ID를 State에 담지 않는다.** State는 도메인 의미를 들고, 표시 변환은 화면이 렌더 시점에 한다. 유효성 결과가 대표 사례다 — `NameValidResult.Error?`를 담고 화면이 `core:ui`의 `toStringResource(fieldType)` 확장으로 문자열을 얻는다([ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md), 원안 수렴 — #223 develop 머지 2026-08-13). ViewModel이 `@StringRes Int`를 산출해 담던 과도기 형태는 같은 매핑을 feature마다 복제해 폐기됐다.
+- **in-flight는 원인별로 나눠 들고 화면 덮개는 그 OR로 판단한다**(2026-08-17, PR #285·#287) —
+  `GroupSettingUiState`가 `isLoadingDetail`·`isSubmittingNickname`·`isSubmittingDialogAction` 셋을
+  따로 두고 `isLoading`이 파생이다. 합쳐 하나로 두면 "첫 조회 중"과 "왕복 중"을 가르지 못해 버튼
+  활성 기준(`isConfirmEnabled`)을 만들 수 없다. 셋 다 `finally`에서 내려 **예외·취소 어느 경로로
+  빠져나가도 로딩이 걸린 채 남지 않는다** → [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
 - **도메인 VO 보유는 허용**하되 강제는 아니다. S-101(`GroupSettingUiState`, #223 develop 머지)이 `GroupName`·`GroupNickname`·`InviteCode`를 State에 들인 첫 사례다. 단 **편집 중 입력값처럼 유효성이 보장되지 않는 값은 원시 타입으로 둔다** — VO로 감싸면 "타입은 맞는데 유효하지 않다"는 모순이 생긴다.
 - 표시 규칙에 따른 분기(문구 선택·상태 enum 산출)는 화면의 private 헬퍼가 갖는다. State가 계산 프로퍼티로 들 이유가 없다.
   - ⚠️ **이탈 사례(2026-08-16, PR #259)** — C-201 캘린더의 `CanvasMainUiState.selectableMonths`가

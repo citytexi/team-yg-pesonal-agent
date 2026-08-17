@@ -5,7 +5,7 @@ category: architecture
 status: living
 platforms: android
 verified: 2026-08-17
-related_spec: designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error
+related_spec: designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0007, ADR-0010, ADR-0018
 related_architecture:
 related_code: core:designsystem, YGTheme
@@ -137,8 +137,10 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > - **재시도 동선이 필요한 실패는 V2가 다루지 않는다.** 그건 화면이 자기 UI로 표현한다
 >   (`GroupListErrorScreen` 같은 전면 에러, 입력 자리 인라인 등).
 >
-> 이관은 화면별로 진행 중이다 — **develop 기준 3화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
-> 정보), V1 잔여 8파일**(PR #267). `YGScaffold`는 `@Deprecated(WARNING)`이고 삭제 시점은 **모든 화면이
+> 이관은 화면별로 진행 중이다 — **develop 기준 4화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
+> 정보 · **S-101 그룹 설정**(#285)), V1 잔여 7파일**(PR #267 · #285). S-101은 **API 결선 라운드에
+> 이관이 딸려 온 첫 사례**다 — 로딩 오버레이와 실패 토스트를 채울 것이 그때 생겼기 때문이고,
+> OQ-P-204 ①("결선 라운드에 붙일지 이관 전용 라운드를 돌릴지")에 사례로 답한 셈이다. `YGScaffold`는 `@Deprecated(WARNING)`이고 삭제 시점은 **모든 화면이
 > Route에서 스캐폴드를 소유하고 로딩·실패를 배선한 뒤**다 →
 > [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
 >

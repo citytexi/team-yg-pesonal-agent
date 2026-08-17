@@ -27,6 +27,16 @@ tags: [spec, parfait, feature, setting, modal]
 > 남은 것은 본문이 이미 적은 그대로다 — 확인 버튼은 팝업만 닫고 TODO이고(탈퇴·나가기·신고 **동작
 > 미구현**), 실기기 육안 항목은 여전히 미수행이며, `GroupSettingScreen` 자체가 `goTo` 호출자
 > 0건이라 **팝업까지 통째로 도달 불가**다(→ [s101 스펙](2026-08-07-s101-group-side-menu.md)).
+>
+> ✅ **셋 중 둘이 결선됐다(2026-08-17, PR #285·#287)** — 그룹 나가기·신고 확인이 실제 요청을 보내고
+> 성공하면 `replaceAll(NavKeyGroupList)`로 나간다. 화면도 도달 가능해졌다. **회원 탈퇴는 그대로
+> stub**이다(서버 엔드포인트·앱 표면은 있고 확인 핸들러만 로그 한 줄).
+>
+> 본문 "API 연동" 절이 필요하다고 적은 셋 중 **①(in-flight 필드)만 채웠다** — `isSubmittingDialogAction`
+> 신설. ②(순서를 "요청 → 결과 → 닫기"로 뒤집기)는 **뒤집지 않고** 팝업을 먼저 닫은 뒤
+> `YGScaffoldV2` 로딩 오버레이가 덮게 했고(팝업을 띄운 채 두면 그 덮개 아래 가려진다),
+> ③(`isEnabledButton` 좌우 분리)은 그래서 필요 없어져 손대지 않았다. 실패는 공통 토스트다
+> → [s101-group-setting-api 스펙](2026-08-17-s101-group-setting-api.md).
 
 > **2026-08-09 구현 완료(미머지)** — 브랜치 `feature/group-and-app-setting-pop-up`에 커밋 5개
 > (`08b97005`·`4ea6b210`·`8d5f477c`·`5b3290e8` + 리뷰 반영 `fff6159e`). **설계에서 뒤집힌 결정

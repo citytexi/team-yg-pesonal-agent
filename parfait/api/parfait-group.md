@@ -4,8 +4,8 @@ title: 파르페 그룹
 server_module: http/parfaitgroup
 server_commit: 22717fe
 verified: 2026-08-16
-android_status: partial
-related_spec:
+android_status: done
+related_spec: s101-group-setting-api
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, group]
 ---
@@ -22,14 +22,14 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | ⚠️불일치[^uploadedat] |
-| GET | `/api/parfait-groups/{groupId}` | 필요 | path `groupId` Long | `MyParfaitGroupDetailResponse` | 구현됨 |
-| GET | `/api/parfait-groups/join-preview` | 필요 | query `inviteCode` String | `PreviewParfaitGroupJoinResponse` | 구현됨 |
-| POST | `/api/parfait-groups/join` | 필요 | `JoinParfaitGroupRequest` | `JoinParfaitGroupResponse` | 구현됨 |
-| POST | `/api/parfait-groups` | 필요 | `CreateParfaitGroupRequest` | `CreateParfaitGroupResponse` | 구현됨 |
-| PATCH | `/api/parfait-groups/{groupId}/nickname` | 필요 | `ChangeMyParfaitGroupNicknameRequest` | `ChangeMyParfaitGroupNicknameResponse` | 구현됨 |
-| DELETE | `/api/parfait-groups/{groupId}/members/me` | 필요 | path `groupId` Long | `LeaveParfaitGroupResponse` | 구현됨 |
-| POST | `/api/parfait-groups/{groupId}/reports` | 필요 | `ReportParfaitGroupRequest` | `ReportParfaitGroupResponse` | 구현됨 |
+| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | 결선됨·⚠️불일치[^uploadedat] |
+| GET | `/api/parfait-groups/{groupId}` | 필요 | path `groupId` Long | `MyParfaitGroupDetailResponse` | 구현됨·결선됨 |
+| GET | `/api/parfait-groups/join-preview` | 필요 | query `inviteCode` String | `PreviewParfaitGroupJoinResponse` | 구현됨·결선됨 |
+| POST | `/api/parfait-groups/join` | 필요 | `JoinParfaitGroupRequest` | `JoinParfaitGroupResponse` | 구현됨·결선됨 |
+| POST | `/api/parfait-groups` | 필요 | `CreateParfaitGroupRequest` | `CreateParfaitGroupResponse` | 구현됨·결선됨 |
+| PATCH | `/api/parfait-groups/{groupId}/nickname` | 필요 | `ChangeMyParfaitGroupNicknameRequest` | `ChangeMyParfaitGroupNicknameResponse` | 구현됨·결선됨 |
+| DELETE | `/api/parfait-groups/{groupId}/members/me` | 필요 | path `groupId` Long | `LeaveParfaitGroupResponse` | 구현됨·결선됨 |
+| POST | `/api/parfait-groups/{groupId}/reports` | 필요 | `ReportParfaitGroupRequest` | `ReportParfaitGroupResponse` | 구현됨·결선됨 |
 
 [^uploadedat]: **2026-08-15** — Service·DataSource·DTO는 계약과 맞지만 매퍼가 `recentImageUploadedAt`을
     `kotlin.time.Instant::parse`(오프셋 필수)로 읽는다. 이 응답의 값은 오프셋 없는 로컬 날짜시간이라
@@ -384,13 +384,22 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 **✅ 2026-08-15 — 다섯 함수 전부 화면까지 결선됐다**(PR #243·#244·#248). 선반영이던 Repository 경계가
 같은 날 UseCase·ViewModel을 얻었다.
 
+**✅ 2026-08-17 — 남은 셋도 올라왔고, 이 도메인이 `android_status: done`이 됐다**(PR #285·#287).
+S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`·`reportGroup`이 인터페이스에
+올라왔다 — **DataSource 8함수 전량이 Repository를 얻었고 8 엔드포인트 전부 호출부가 있다**
+([spec](../specs/archive/2026-08-17-s101-group-setting-api.md)). "화면이 요구할 때 올린다"는 방침이
+끝까지 지켜진 도메인이다.
+
 | Repository 함수 | 반환 | 대응 엔드포인트 | UseCase → 화면 |
 |---|---|---|---|
 | `getMyGroups()` | `Result<List<MyParfaitGroupVO>>` | GET `/api/parfait-groups` | `GetMyGroupsUseCase` → G-001(진입·당김 재조회) |
 | `previewJoin(inviteCode)` | `Result<GroupName>` | GET `/api/parfait-groups/join-preview` | `GetGroupJoinPreviewUseCase` → A-004(확인 버튼, 통과하면 S-102로 이동) |
 | `joinGroup(inviteCode)` | `Result<JoinedGroupVO>` | POST `/api/parfait-groups/join` | `JoinGroupUseCase` → **S-102(모달 확인)** — #261에서 A-004에서 이관 |
 | `createGroup(groupName, groupNickname, memberLimit)` | `Result<CreatedGroupVO>` | POST `/api/parfait-groups` | `CreateGroupUseCase` → A-005(모달 확인) |
-| `changeMyNickname(groupId, groupNickname)` | `Result<GroupNicknameVO>` | PATCH `/api/parfait-groups/{groupId}/nickname` | `ChangeGroupNicknameUseCase` → S-102 |
+| `changeMyNickname(groupId, groupNickname)` | `Result<GroupNicknameVO>` | PATCH `/api/parfait-groups/{groupId}/nickname` | `ChangeGroupNicknameUseCase` → S-102 · **S-101(#285)** |
+| `getGroupDetail(groupId)`(#285) | `Result<ParfaitGroupDetailVO>` | GET `/api/parfait-groups/{groupId}` | `GetGroupDetailUseCase` → S-101(진입 1회) |
+| `leaveGroup(groupId)`(#287) | `Result<GroupId>` | DELETE `/api/parfait-groups/{groupId}/members/me` | `LeaveGroupUseCase` → S-101(나가기 확인 팝업) |
+| `reportGroup(groupId, reason)`(#287) | `Result<ReportedGroupVO>` | POST `/api/parfait-groups/{groupId}/reports` | `ReportGroupUseCase` → S-101(신고 확인 팝업) |
 
 앱 동작 메모(코드 대조):
 
@@ -421,7 +430,23 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 - ⚠️ **`recentImageUploadedAt` 파싱이 이 문서의 직렬화 포맷과 어긋난다** — 앱 매퍼가
   `kotlin.time.Instant::parse`(오프셋 필수)를 쓰는데 서버는 오프셋 없는 로컬 날짜시간을 내려준다
   → [open-questions](../synthesis/open-questions.md) [2026-08-15].
-- 그룹 상세·탈퇴·신고는 여전히 Repository 인터페이스에 없다(화면이 요구할 때 올린다).
+- ⚠️ **상세 조회 한 화면에 요청이 둘이다**(2026-08-17, PR #285) — 상세 응답에 **그룹명이 없어**
+  `GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 불러 같은 `groupId`의 이름만 집어 붙인다.
+  이름 조회 실패는 실패로 치지 않고 **빈 제목**으로 두고 나머지를 띄운다. 앱 코드가 두 곳
+  (Repository KDoc·UseCase KDoc)에 `TODO(서버 응답 확장 대기)`를 달아 두었다 — 서버가 상세에
+  `groupName`을 실으면 두 번째 호출이 사라진다 → [open-questions](../synthesis/open-questions.md) [2026-08-17].
+- ⚠️ **`memberLimit`이 없어 "N명 남음"이 mock 1로 남았다** — 정원은 **그룹 생성 응답에만** 있어
+  상세로는 얻을 길이 없다. 화면의 나머지가 전부 실데이터가 된 지금은 이 한 값만 그럴듯하게 틀리다
+  → [open-questions](../synthesis/open-questions.md) [2026-08-13].
+- ⚠️ **신고 사유가 하드코딩 상수 하나**다(`GROUP_REPORT_REASON`) — 사유 선택 UI가 없는데 서버는
+  사유를 필수로 받으므로(빈 값이면 400 `INVALID_GROUP_REPORT_REASON`) 화면이 대신 채운다. 결과적으로
+  **모든 신고가 같은 문자열로 저장된다** → [open-questions](../synthesis/open-questions.md) [2026-08-17].
+- **신고 성공은 탈퇴를 동반한다는 서버 동작을 앱이 그대로 받는다** — 나가기와 신고가 같은 함수
+  (`submitDialogAction`)로 모이고 성공하면 둘 다 `replaceAll(NavKeyGroupList)`로 그룹 목록에 간다.
+  나간 뒤에는 그 그룹의 상세·닉네임 변경·신고가 전부 403 `GROUP_NOT_JOINED`라 백스택을 남기지 않는다.
+- **에러 코드 분기는 늘지 않았다** — S-101은 `INVALID_GROUP_NICKNAME`만 문구를 갖고
+  `GROUP_NOT_FOUND`(404)·`GROUP_NOT_JOINED`(403)는 `UNKNOWN`으로 접힌다. 즉 **이미 나간 그룹을 다시
+  여는 상황과 일시 장애가 같은 문구**다 → [open-questions](../synthesis/open-questions.md) [2026-08-17].
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|
@@ -446,6 +471,9 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
   `domain/model/group/` 패키지, 선언당 파일 하나(10개. 예전엔 `ParfaitGroupVO.kt`·`GroupValues.kt` 두
   파일에 묶여 있었으나 지금은 각 선언이 동명 파일로 분리돼 있다). join-preview·탈퇴는 응답이 필드
   하나뿐이라 래퍼 VO 없이 `GroupName`·`GroupId`를 그대로 반환한다.
+  📌 **2026-08-17(PR #285)에 `GroupDetailVO`가 더해져 11개다** — 이 하나만 **서버 응답에 1:1로
+  대응하지 않는다.** 상세(`ParfaitGroupDetailVO`)에 목록에서 가져온 `groupName`을 붙인 조합 결과이고,
+  그래서 `data/source/group/mapper/VOMapper.kt`가 아니라 `GetGroupDetailUseCase`가 만든다.
 - **Mapper**: `data/source/group/mapper/VOMapper.kt`(응답별 `toMyParfaitGroupVO`·
   `toParfaitGroupDetailVO`·`toParfaitGroupMemberVO`·`toJoinedGroupVO`·`toCreatedGroupVO`·
   `toGroupNicknameVO`·`toReportedGroupVO`·`toGroupName`·`toGroupId`). `recentImageUploadedAt`은

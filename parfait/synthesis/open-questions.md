@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-17
-related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error
+related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -1289,16 +1289,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-138
 - **출처**: `feature/groups/setting/api/NavKeyGroupSetting.kt`·`feature/groups/setting/impl/navigation/EntryBuilder.kt`(PR #223·#225 develop 머지) — develop 전체에서 `NavKeyGroupSetting` 참조는 **선언과 entry 등록 두 곳뿐**이고 `goTo` 호출자가 없다. 화면 본문(닉네임 인라인 편집·그룹원 목록·초대 코드 복사·Danger Zone)과 확인 팝업 2종이 전부 들어왔는데 앱에서 열 방법이 없다. 진입 후보는 G-001 그룹 목록 또는 C-001 캔버스이나 어느 쪽에도 진입점 UI가 없다. C-001(도달 불가)·A-005(약 2주 뒤 호출자 확보)에 이어 같은 패턴이 세 번째다.
 - **항목**: ① 진입점을 어느 화면에 둘지 확정(위키 [[화면-ID-체계]]상 `S-` = Sidebar라 상단바 메뉴가 자연스러우나 문서 근거가 없다), ② 진입 시 `groupId`를 넘겨야 하는데 `NavKeyGroupSetting`이 `data object`라 인자 추가가 함께 필요하다, ③ 화면을 도달 가능하게 만들기 전까지 실기기 육안 확인 항목(S-101 9건 + 팝업 8건)이 통째로 막혀 있다는 점을 어떻게 다룰지.
-- **상태**: 미해결 (동작 결함 아님 — 배선 부재)
-- **해소 메모**: 결선하면 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md)의 "화면 진입 경로 없음" 항목과 [navigation-flow](../architecture/navigation-flow.md) 신규 목적지 체크리스트 6번 사례를 함께 정리한다.
+- **상태**: **해소됨(2026-08-17, PR #285)**
+- **해소 메모**: ①은 **C-001 캔버스 상단 메뉴**로 확정됐다(위키 [[화면-ID-체계]]의 `S-` = Sidebar와 어긋나지 않는다 — 캔버스에서 여는 사이드 메뉴다). ② `NavKeyGroupSetting`이 `data class(groupId)`가 되고 C-001이 자기 `groupId`를 그대로 넘긴다. ③ 실기기 육안 확인 항목(S-101 9건 + 팝업 8건)은 **막혀 있지 않게 됐을 뿐 수행되지는 않았다** — 실기기 미검증은 [OQ-P-146] 축으로 남는다. 도달 불가 기간은 약 4일. 반영: [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md) · [navigation-flow](../architecture/navigation-flow.md) "그룹 설정 진입·이탈".
 
 ### [2026-08-13] S-101 데이터가 전량 mock이고 서버 계약에 필요한 필드가 없다
 
 - **ID**: OQ-P-139
 - **출처**: `GroupSettingViewModel.kt`의 `MOCK_GROUP_NAME`·`MOCK_MY_NICKNAME`·`MOCK_INVITE_CODE`·`MOCK_REMAINING_COUNT`·`MOCK_MEMBER_NICKNAMES`(전부 `GroupSettingUiState` 기본값) × [api/parfait-group.md](../api/parfait-group.md) — 화면이 쓰는 값 중 **서버 `GET /api/parfait-groups/{groupId}` 응답에 없는 것이 둘**이다: 상단바 제목이 되는 `groupName`, `N명 남음` 계산에 필요한 `memberLimit`. 응답은 `groupId`·`groupNickname`·`inviteCode`·`members`만 준다. 닉네임 변경·그룹 나가기·신고도 엔드포인트는 있으나 호출하는 코드가 없다(확인 핸들러가 TODO). G-001·C-001과 같은 뿌리의 mock이지만, 이 화면은 **계약 자체가 화면을 못 채운다**는 점이 다르다.
 - **항목**: ① `groupName`을 그룹 목록 API에서 받아 NavKey로 넘길지 서버에 필드 추가를 요청할지, ② `memberLimit`(위키 [[그룹]] 최대 12명)을 서버가 줄지 클라이언트 상수로 둘지 — 상수로 두면 정책 변경 시 앱 배포가 필요하다, ③ 컬러칩 타입도 응답에 없다(아래 항목).
-- **상태**: 미해결
+- **상태**: 미해결 (mock은 걷혔고 **계약 공백 둘만 남았다**)
 - **해소 메모**: 서버 소관 결정이면 [api/parfait-group.md](../api/parfait-group.md) Android 매핑 절에, 클라이언트 소관이면 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md)에 반영한다.
+  > 📌 **①은 앱이 임시로 답했고 ②는 그대로다(2026-08-17, PR #285)** — mock 5종이 전부 걷히고 화면이
+  > 서버를 본다. 그룹명은 **NavKey가 아니라 `GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 불러**
+  > 붙인다(이름 조회 실패는 실패로 치지 않고 빈 제목). 두 코드가 `TODO(서버 응답 확장 대기)`로
+  > "서버가 상세에 `groupName`을 실으면 걷어낸다"를 명시하므로 **①은 임시 답이지 확정이 아니다**
+  > → [2026-08-17] 상세 조회 2회 항목.
+  > ⚠️ **②는 오히려 눈에 띄게 됐다** — `remainingCount`만 mock 1로 남아, 나머지가 전부 실데이터인
+  > 화면에서 **"1명 남음"이 그럴듯하게 틀린 값**으로 보인다. 전에는 화면 전체가 mock이라 오해할
+  > 여지가 없었다. ③은 [OQ-P-140] 그대로다.
 
 ### [2026-08-13] 네임태그 컬러칩 배정 주체가 여전히 미정 — 첫 소비처가 인덱스 순환으로 열렸다
 
@@ -1307,14 +1315,30 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 타입 부여 주체를 서버로 할지(응답에 필드 추가) 클라이언트가 `memberId` 해시로 유도할지, ② 후자면 그룹 간 같은 유저가 같은 색인지(앱 닉네임처럼 계정 공통인지) 정해야 한다 — 위키 [[nametag-chip]]에 그 범위가 없다, ③ G-001의 `YGGrouptagChipType`도 전 항목 동일 값 고정이라 같은 결정에 걸린다([2026-08-07] 토핑 항목).
 - **상태**: 미해결
 - **해소 메모**: 정하면 위키 [[nametag-chip]]에 부여 주체·범위를 추가하고(정책 소관), 구현 쪽은 [s101 스펙](../specs/archive/2026-08-07-s101-group-side-menu.md) "컬러칩 배정 규칙"과 [ygcolorchip 스펙](../specs/archive/2026-07-18-ygcolorchip.md)에 반영한다.
+  > ⚠️ **가정이 실재가 됐다(2026-08-17, PR #285)** — `NAMETAG_CHIP_TYPES[index % 12]`는 그대로인데
+  > 목록이 mock이 아니라 **서버 멤버**다. 멤버가 나가고 들어오면(그리고 이제 나가기가 실제로
+  > 동작한다) 남은 사람의 색이 실제로 바뀐다. 코드의 TODO도 "서버가 타입을 주면 교체"로 남았다.
+  > C-001 캔버스 멤버 칩(OQ-P-210)과 **같은 결정에 걸린 자리가 둘**이 됐다.
 
 ### [2026-08-13] Danger Zone 확인 3종이 되돌릴 수 없는 동작을 담을 자리 없이 머지됐다
 
 - **ID**: OQ-P-141
 - **출처**: `AppSettingViewModel.kt#handleConfirmWithdraw`·`GroupSettingViewModel.kt#handleConfirmLeaveGroup`·`#handleConfirmReportGroup`(PR #225 develop 머지) — 세 핸들러 모두 멱등 가드를 통과하면 **팝업을 먼저 닫고** TODO 로그만 남긴다. 실제 네트워크 호출을 넣으려면 지금 없는 것이 셋이다: ① 두 `UiState` 어디에도 in-flight·error 필드가 없고, ② 팝업을 먼저 닫아 진행 표시·실패 재시도를 얹을 자리가 사라지므로 "닫고 나서 요청" 순서를 뒤집어야 하며, ③ `YGModalPopup.isEnabledButton`이 좌우 공용 단일 플래그라 "요청 중엔 확인만 비활성, 취소는 살림"이 표현 불가능하다. 게다가 **회원 탈퇴는 서버에 엔드포인트 자체가 없다**. 현재 구조의 기본값은 실패해도 "성공한 것처럼 팝업만 닫힘"이다.
 - **항목**: ① 확인 핸들러의 순서를 "요청 → 결과 → 닫기"로 뒤집을지, ② `isEnabledButton`을 좌우 개별 플래그로 재분리할지(`YGModalPopup` 변경 — [ygmodalpopup 스펙](../specs/archive/2026-07-15-ygmodalpopup.md)이 이미 "개별 비활성 불가"를 미결로 안고 있다), ③ 회원 탈퇴 엔드포인트를 서버에 요청할지, ④ 탈퇴·나가기 성공 후 이동할 화면(로그인 / 그룹 목록)을 정할지 — SideEffect 신설이 필요하다.
-- **상태**: 미해결 (지금은 동작 미구현이라 무해)
+- **상태**: 미해결 (**셋 중 둘 해소** — 회원 탈퇴만 stub으로 남았고, 그쪽은 이제 "무해"하지 않다)
 - **해소 메모**: [Danger Zone 팝업 스펙](../specs/archive/2026-08-09-setting-danger-zone-popups.md) "API 연동" 열린 질문의 develop 확정판이다. 연동 시 [state-management](../architecture/state-management.md)의 로딩·에러 표현 규약과 함께 본다.
+  > ✅ **그룹 나가기·신고가 결선됐다(2026-08-17, PR #287)** — 세 구멍 중 **①만 채우고 나머지 둘은
+  > 필요 없게 만들었다.** ① `isSubmittingDialogAction` 신설(+ 첫 조회·닉네임 왕복과 따로 들고
+  > `isLoading`이 OR). ② 순서는 **뒤집지 않았다** — 팝업을 먼저 닫고 `YGScaffoldV2` 로딩 오버레이가
+  > 화면을 덮는다. 근거는 "팝업을 띄운 채 두면 그 덮개 아래 가려 아무것도 알리지 못한다"이고,
+  > 실패는 공통 토스트가 말한다. ③ 그래서 `isEnabledButton` 좌우 분리도 손대지 않았다
+  > ([ygmodalpopup 스펙](../specs/archive/2026-07-15-ygmodalpopup.md)의 미결은 그대로 남는다).
+  > ④ 목적지는 **그룹 목록**으로 확정(`replaceAll(NavKeyGroupList)` — 백스택이 전부 떠난 그룹 것이라
+  > 돌아가면 403뿐이다). 연타 방어는 `launch(key)` + 멱등 가드이고 테스트가 "두 번 눌러도 API 1회"를
+  > 잠근다 → [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
+  > ⚠️ **회원 탈퇴(S-003)만 그대로 stub이다** — 서버 엔드포인트(`DELETE /api/v1/users/me`)도 앱 표면도
+  > 있는데 확인 핸들러가 로그 한 줄이다. 같은 화면의 로그아웃은 결선돼 있어 **한 Danger Zone 안에서
+  > 하나는 동작하고 하나는 안 한다**(OQ-P-186).
 
 ### [2026-08-13] `core:ui`의 표시 매핑 확장이 숨은 `:domain` 의존 위에 서 있다
 
@@ -1596,6 +1620,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 다만 **실패 표현을 실제로 바꾼 건 로그인 하나**다 — ④(표현 없음)에서 토스트로 옮겼다. S-002 는
   > 이미 ①(입력 자리 인라인)이라 그대로 두는 것이 맞고, S-003 은 표현할 실패가 없다(로그아웃은
   > 서버 실패해도 로컬 정리 후 진행). **즉 이관과 실패 표현 통일은 별개 축이다.**
+  > 📌 **두 번째 화면이 토스트로 옮겼다(2026-08-17, PR #285·#287)** — S-101 그룹 설정이 `GroupSettingError`
+  > 3갈래(`INVALID_NICKNAME`·`NETWORK`·`UNKNOWN`)로 A-002와 같은 형태를 만들었고, **한 화면이 ①과
+  > 공통 토스트를 함께 쓰는 첫 사례**다(입력 형식 오류는 고칠 곳이 눈앞이라 인라인, 서버가 되돌린
+  > 사유는 토스트). 다만 **②가 경고한 "화면마다 복제되는 알 수 없는 오류"가 실제로 늘었다** —
+  > `group_setting_nickname_error_unknown`("잠시 후 다시 시도해 주세요")이 상세 조회·나가기·신고 실패까지
+  > 받아, `GROUP_NOT_FOUND`(404)·`GROUP_NOT_JOINED`(403)와 일시 장애가 같은 문구다. ③(재시도 최소선)은
+  > 여전히 손대지 않았다 — 이 화면의 조회 실패에는 재시도 동선이 없다.
 - **해소 메모**: 정해지면 네 스펙(a005·a004·s102·intro-term-agree·g001)의 실패 절과 [design-system](../architecture/design-system.md)에 공통 규약을 적는다.
 
 ### [2026-08-15] 매퍼 단독 테스트가 규약을 어기고 다시 생겼다
@@ -1911,6 +1942,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ①은 [design-system](../architecture/design-system.md) `YGActionItem` 항목과
   [ygactionitem 스펙](../specs/archive/2026-07-12-ygactionitem.md)에 반영한다. ②는 결선 시
   [api/member.md](../api/member.md) Android 매핑을 함께 갱신한다.
+  > 📌 **옆 화면이 먼저 답을 만들었다(2026-08-17, PR #287)** — S-101 그룹 설정의 나가기·신고가
+  > 같은 성질의 되돌릴 수 없는 동작을 결선하며 **덮개는 `YGScaffoldV2` 로딩 오버레이, 실패는 공통
+  > 토스트**라는 형태를 확정했다(①이 물은 "비활성 색이냐 진행 표시냐"에 진행 표시 쪽 사례다).
+  > ②의 탈퇴는 그대로 stub이라, 이제 develop에서 **되돌릴 수 없는 확인 셋 중 둘만 동작한다**.
 
 ### [2026-08-16] 런처 아이콘 교체가 스플래시 테마 속성을 함께 지웠다 — 구버전 콜드 스타트 미검증
 
@@ -2261,10 +2296,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 잔여 8파일을 화면별 API 결선 라운드에 붙일지, 이관만 하는 라운드를 따로 돌릴지.
   ② `ERROR` 승급·V1 파일 삭제 시점. ③ 공존 기간 동안 새로 생기는 화면이 규약(Route 소유)을 지키는지
   기계로 확인할 수단이 없다 — 지금은 리뷰가 유일한 관문이다.
-- **상태**: 미해결
+- **상태**: 미해결 (**8파일 → 7파일**)
 - **해소 메모**: 이관이 끝나면 [design-system](../architecture/design-system.md) "화면 컨테이너"의
   V1 항목과 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번의 "(구 형태)" 서술을
   함께 지운다. OQ-P-167(실패 표현 갈래)과는 별개 축이다 — 이관해도 실패 표현이 통일되지는 않는다.
+  > 📌 **①에 사례로 답이 나왔다(2026-08-17, PR #285)** — S-101 그룹 설정이 **API 결선 라운드에 이관을
+  > 딸려서** 옮겼다(엔트리의 `YGScaffold` → Route의 `YGScaffoldV2`). 이관만 하는 라운드가 아니라
+  > 결선 라운드에 붙인 것이고, 그 편이 자연스러운 이유는 **채울 것(로딩·실패)이 그때 생기기**
+  > 때문이다 — 스펙이 정정한 `ERROR` 승급 기준과 같은 논리다. 남은 것은 **7파일**
+  > (camera·gallery·groups canvas/enter/list·intro·segmentation)이고, 그중 groups canvas·list는
+  > 이미 서버를 보는 화면이라 **결선 라운드에 딸려 갈 기회가 지나간 자리**다.
 
 ### [2026-08-17] 공통 로딩 오버레이가 임시 구현이고, 적용 기준도 사례에서 귀납한 것뿐이다
 
@@ -2456,6 +2497,57 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   아래 승격 기준을 한 줄 추가하고 후보 목록을 지운다. 이 항목은 [2026-08-04] 갤러리 그리드 셀
   항목의 ②(리플 변형 선택)를 이어받은 자리다.
 
+### [2026-08-17] 그룹 상세 한 화면에 요청이 둘이고, 둘째 실패는 조용히 삼켜진다
+
+- **ID**: OQ-P-216
+- **출처**: `GetGroupDetailUseCase`·`ParfaitGroupRepository#getGroupDetail` KDoc(PR #285) ×
+  [api/parfait-group.md](../api/parfait-group.md) — `GET /api/parfait-groups/{groupId}` 응답에
+  **그룹명이 없어** UseCase가 `getMyGroups()`를 한 번 더 불러 같은 `groupId`의 이름만 집어 붙인다
+  (조합 결과가 `GroupDetailVO`이고, 서버 응답에 1:1로 대응하지 않는 유일한 그룹 VO다). 이름 조회
+  실패는 실패로 치지 않고 **빈 `GroupName`** 으로 둔다 — 상단바 제목만 빈 채 나머지가 뜬다.
+  양쪽 KDoc에 `TODO(서버 응답 확장 대기)`가 붙어 있어 **임시임을 코드가 스스로 적는다.**
+- **항목**: ① 서버에 상세 응답 `groupName` 추가를 요청할지(그러면 두 번째 호출과 조합 VO가 함께
+  사라진다), 아니면 진입 화면이 이름을 NavKey로 넘기는 형태로 갈지 — 후자는 C-001이 이미 그룹명을
+  갖고 있지 않아 그쪽에도 조회가 필요하다. ② 빈 제목이 사용자에게 어떻게 보이는지 정하지 않았다
+  (지금은 상단바가 그냥 빈칸이고, 이름만 실패했다는 표시가 없다). ③ 화면 진입마다 목록 전체를 다시
+  받는 비용을 감수할지 — G-001이 이미 그 목록을 받아 두지만 공유 캐시가 없다.
+- **상태**: 미해결 (동작은 하되 계약 공백을 앱이 메우는 중)
+- **해소 메모**: 서버가 필드를 실으면 [api/parfait-group.md](../api/parfait-group.md) Android 매핑과
+  [data-layer](../architecture/data-layer.md)의 "UseCase가 Repository를 두 번 부르는 첫 사례" 서술을
+  함께 걷는다. 같은 응답의 `memberLimit` 공백은 [2026-08-13] S-101 데이터 항목(OQ-P-139)이다.
+
+### [2026-08-17] 모든 그룹 신고가 같은 사유 문자열로 저장된다
+
+- **ID**: OQ-P-217
+- **출처**: `GroupSettingViewModel`의 `GROUP_REPORT_REASON`(PR #287) ×
+  [api/parfait-group.md](../api/parfait-group.md) — 서버는 신고 사유를 필수로 받고 공백이면 400
+  `INVALID_GROUP_REPORT_REASON`인데 **사유를 고르는 UI가 없다.** 화면이 상수 문자열 하나를 대신
+  채우고, 코드 TODO가 "사유 선택이 생기면 이 상수는 사라진다"고 적는다. 신고는 성공 시 **탈퇴를
+  동반**하므로(서버가 같은 트랜잭션에서 처리) 되돌릴 수 없는 동작인데, 운영 쪽에는 모든 건이
+  구분되지 않는 같은 사유로 쌓인다.
+- **항목**: ① 사유 선택 UI를 넣을지(디자인·문구 미정), 아니면 자유 입력으로 받을지. ② 사유 목록을
+  누가 정의할지 — 서버가 enum으로 받을지 지금처럼 자유 문자열로 둘지. ③ 그 전까지 상수 문구를
+  운영이 식별 가능한 값(예: 진입 화면 표시)으로 둘지.
+- **상태**: 미해결
+- **해소 메모**: 정해지면 [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md)
+  드리프트 절과 [api/parfait-group.md](../api/parfait-group.md) 신고 절에 반영한다.
+
+### [2026-08-17] 이미 나간 그룹을 다시 여는 것과 일시 장애가 같은 문구다
+
+- **ID**: OQ-P-218
+- **출처**: `GroupSettingError`·`GroupSettingViewModel#toGroupSettingError`(PR #285·#287) —
+  갈래가 셋(`INVALID_NICKNAME`·`NETWORK`·`UNKNOWN`)인데 소비 경로는 넷(상세 조회·닉네임 변경·
+  나가기·신고)이다. `GROUP_NOT_FOUND`(404)·`GROUP_NOT_JOINED`(403)가 전부 `UNKNOWN`("잠시 후 다시
+  시도해 주세요")으로 접혀, **다시 시도해도 결과가 같은 실패**가 일시 장애처럼 안내된다. enum KDoc도
+  "닉네임 변경이 서버에서 되돌아온 사유"라고 적어 지금 쓰임과 어긋난다.
+- **항목**: ① 403/404에 별도 문구를 줄지 — 준다면 "이미 나간 그룹"은 문구보다 **목록으로 돌려보내는
+  것**이 맞을 수 있다(나가기 성공 경로가 이미 `replaceAll`을 한다). ② 화면 고유 문구가 없는 실패의
+  공통 매핑(OQ-P-167 ②)이 생기면 이 enum이 그 위에 얹힐지. ③ enum KDoc·이름을 네 경로 공용으로 정정할지.
+- **상태**: 미해결 (실패해도 화면은 남으므로 갇히지는 않는다)
+- **해소 메모**: OQ-P-167(실패 표현 갈래)의 하위 사례다. 정하면
+  [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md)과
+  [api/parfait-group.md](../api/parfait-group.md) Android 매핑에 반영한다.
+
 <!--
 항목 추가 형식:
 
@@ -2466,4 +2558,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 216 -->
+<!-- oq-next: 219 -->

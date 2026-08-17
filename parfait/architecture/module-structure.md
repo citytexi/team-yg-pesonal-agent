@@ -4,7 +4,7 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-16
+verified: 2026-08-17
 related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
@@ -76,6 +76,9 @@ app / app-preview
 - **feature `impl`이 다른 feature `:api`에 의존하는 경우가 하나 늘었다**(2026-08-15, PR #260) —
   `feature/app/setting/impl` → `feature/login/api`(강제·사용자 로그아웃 뒤 `NavKeyLogin`으로 간다).
   규약대로 `:api`만 본다.
+  > 📌 **둘 더 늘었다(2026-08-17, PR #285·#287)** — `feature/groups/canvas/impl` →
+  > `feature/groups/setting/api`(C-001 상단 메뉴가 S-101을 연다)와 `feature/groups/setting/impl` →
+  > `feature/groups/list/api`(그룹 나가기·신고 성공 후 목록으로 백스택 교체). 둘 다 `:api`만 본다.
 - **`core:util:jvm`의 `Char.isKorean()`은 삭제됐다**(2026-08-15, PR #243) — 이름 유효성 검사가 서버 정규식과
   같은 문자 집합(`가-힣A-Za-z0-9` + 스페이스)을 직접 쓰게 되며 유일한 사용처가 사라졌다.
 - **여러 feature가 공유하는 화면**은 특정 도메인 feature 밑이 아니라 `feature/common/*`에 둔다([[0015-feature-common-shared-layer]]). 단, **2개 이상 소비처가 확정된 경우에만**(단일 소비면 소유 feature 유지).
