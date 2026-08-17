@@ -17,6 +17,8 @@ tags: [spec, parfait, gallery, c102]
 # Spec: C-102 커스텀 갤러리 선택 화면
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+>
+> 📌 **심볼 리네임(2026-08-17, #278)** — 아래 본문의 `CanvasImageAdd*`는 **당시 이름**이다. 현재 코드는 **`CanvasMain*`**(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`, `strings.xml` 키 `canvas_main_*`). 이름만 바뀌고 시그니처·동작은 불변이라 본문은 기록대로 둔다.
 
 > ⚠️ **사후 스펙(as-built)** — 선작성 스펙 없이 PR #191(`feature/#171-gallery-screen`)이 develop에
 > 머지됐다(2026-08-04). 화면 골격 자체는 그 전부터 있었고(#182 라운드에서 권한 화면·`strings.xml`만

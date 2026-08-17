@@ -29,7 +29,7 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
   - `goToAndPopCurrent(destination)`(#221 신설) — 지금 화면을 대상으로 **치환**한다(마지막 칸에 덮어쓰기).
     백스택 깊이가 늘지 않고 뒤로 가면 지금 화면을 건너뛴다. 스택이 비어 있으면 그냥 쌓는다.
     확인·경유 화면처럼 되돌아올 이유가 없는 자리에 쓴다(첫 사용처: C-101-confirm → C-103).
-- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasImageAdd`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`·`NavKeyCanvasBGEdit`(#231), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
+- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasMain`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`·`NavKeyCanvasBGEdit`(#231), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
 - **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`ImageAdd`·`BGEdit`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
   - `rememberSaveableStateHolderNavEntryDecorator` — 엔트리별 상태 보존.
@@ -174,7 +174,7 @@ C-001 캔버스 메인의 편집 버튼이 C-301 배경 편집(`NavKeyCanvasBGEd
 [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md).
 
 ```
-NavKeyCanvasImageAdd ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnResultOnly=true) ─┐
+NavKeyCanvasMain ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnResultOnly=true) ─┐
                                             └─▶ NavKeyCustomGalleryPicker(동일 인자) ───────────────────────────┤
                                                                                                                  ▼
                                                         NavKeyPictureConfirm(uri, source, returnResultOnly=true)
@@ -193,7 +193,7 @@ NavKeyCanvasImageAdd ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(s
   배경 편집 화면은 **실패를 받지 못한다**(C-001의 死 `ResultEffect`와 같은 부류)
   → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 - ~~⚠️ **플로우 전체가 도달 불가다**~~ → ✅ **닫혔다(2026-08-17, PR #268)**. G-001 그룹 카드의 토핑
-  클릭이 `goTo(NavKeyCanvasImageAdd(groupId))`로 이어져 진입 화면 C-001에 호출자가 생겼고, 이 플로우
+  클릭이 `goTo(NavKeyCanvasMain(groupId))`로 이어져 진입 화면 C-001에 호출자가 생겼고, 이 플로우
   전체가 함께 도달 가능해졌다
   → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
 
@@ -234,7 +234,7 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
 5. 결과가 필요하면 `ResultEventBus` 데코레이터 경로 사용.
    > ⚠️ **반환 경로를 없앨 땐 호출자의 `ResultEffect`도 같이 본다(2026-08-04, PR #191)** — 커스텀
    > 갤러리가 `sendResult` 대신 확인 화면으로 `goTo` 하도록 바뀌었는데, 호출 화면
-   > `CanvasImageAddRoute`의 `ResultEffect<String>`는 그대로 남아 아무것도 받지 못한다
+   > `CanvasMainRoute`의 `ResultEffect<String>`는 그대로 남아 아무것도 받지 못한다
    > → [open-questions](../synthesis/open-questions.md) [2026-08-04].
    > 📌 **반대로 되살아난 사례(2026-08-14, PR #221)** — 토핑 편집 화면이 `sendResult` +
    > `ResultEffect` 왕복으로 결과를 돌려준다. NavKey가 담지 못하는 **나올 때의 값**을 넘겨야 해서
@@ -247,13 +247,13 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
 6. **`goTo` 호출자를 같은 PR에 넣는다** — entry만 등록하고 진입 경로가 없으면 도달 불가 화면이 된다
    (선례: `NavKeyGroupCreate` — 등록 후 **약 2주 뒤**인 #222에서야 G-001 그룹 추가 오버레이가 호출자가 됐다,
    [open-questions](../synthesis/open-questions.md) [2026-07-29]).
-   > 📌 **사례가 하나 더(2026-08-11, PR #199)** — C-001 캔버스 메인이 실물화됐지만 `NavKeyCanvasImageAdd`를
+   > 📌 **사례가 하나 더(2026-08-11, PR #199)** — C-001 캔버스 메인이 실물화됐지만 `NavKeyCanvasMain`를
    > `goTo` 하는 호출자가 develop에 0건이다. 유일한 후보인 G-001 `GroupListSideEffect.NavigateToCanvas`
    > 분기는 여전히 `// Todo`다. 화면을 채우는 PR과 진입을 여는 PR이 갈리면 **완성된 화면이 도달 불가로
    > 머지**된다 → [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) ·
    > [open-questions](../synthesis/open-questions.md) [2026-08-12].
    > ✅ **그 사례가 닫혔다(2026-08-17, PR #268) — 벌어진 기간은 6일이다.** 진입을 여는 데 필요한 것이
-   > 클릭 배선만이 아니었다: 캔버스는 `groupId`가 있어야 조회되므로 `NavKeyCanvasImageAdd`를
+   > 클릭 배선만이 아니었다: 캔버스는 `groupId`가 있어야 조회되므로 `NavKeyCanvasMain`를
    > `data object` → `data class(groupId)`로 바꾸는 것이 선행이었다. **도달 불가 기간이 길어지는 이유가
    > 대개 이것**이다 — 호출자가 없는 화면은 자기가 무엇을 인자로 받아야 하는지도 모른 채 머지된다.
 
@@ -300,7 +300,7 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
 (`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupCreate`·
 `NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
-`NavKeyCanvasImageAdd`(#268 승격 — `groupId`)).
+`NavKeyCanvasMain`(#268 승격 — `groupId`)).
 **인자가 표시 값이 아니라 동작 플래그인 형태가 #231에서 처음 나왔다** — `showGuideToast`·
 `returnResultOnly`는 화면이 그릴 데이터가 아니라 호출자가 고르는 분기이고, 기본값이 있어 기존
 호출부는 `NavKeyCameraCustom()`처럼 생성자 호출만 바꾸면 됐다. 재사용 화면의 동작 차이를 NavKey에
@@ -321,9 +321,9 @@ A-005를 연다(#222). 현재 그 `nickName`은 `GroupListUiState` 기본값 moc
 그 값을 ViewModel 초기 상태로 넘길 때는 **Assisted 주입**을 쓴다 — `@HiltViewModel(assistedFactory = …)` + `@AssistedInject` +
 `@Assisted` 파라미터, 엔트리 빌더에서 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.…) })`로 생성해 Route에 넘긴다
 (`GroupCreateViewModel`·`SegmentationViewModel`·`GroupNickNameViewModel`(#244)·`TermAgreeViewModel`(#242)·
-`CanvasImageAddViewModel`(#268)).
+`CanvasMainViewModel`(#268)).
 **생성 위치는 두 형태가 공존한다** — 엔트리 빌더에서 만들어 Route 파라미터로 넘기거나(`GroupNickName`),
-Route의 기본 인자에서 만들거나(`TermAgree`·`CanvasImageAdd`). 후자는 Route가 인자 값을 받아 팩토리에 넘긴다.
+Route의 기본 인자에서 만들거나(`TermAgree`·`CanvasMain`). 후자는 Route가 인자 값을 받아 팩토리에 넘긴다.
 **인자 출처가 "목록에서 누른 항목"인 첫 사례가 #268이다** — G-001이 `ClickTopping(groupId)`으로 누른
 카드의 식별자를 인텐트에 실어 이펙트까지 나른다(첫 그룹으로 고정하면 두 번째 그룹의 캔버스에 들어갈
 방법이 없다). 클릭은 디자인시스템 컴포넌트(`YGToppingGroup`, `onClick` 없음)가 아니라 **호출부가

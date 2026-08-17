@@ -92,6 +92,8 @@ tags: [spec, parfait, designsystem, figma-sync, canvas]
 >   화면이 쓸 `Modifier.ygBackgroundDotGrid()`가 `core:designsystem` `component/ygbackgrounddotgrid/`에
 >   신설됐다. `border/`·`shape/` 프리미티브와 다른 자리라 소유 기준 미결에 사례가 하나 더 붙었다
 >   → [open-questions](../../synthesis/open-questions.md) [2026-08-01].
+>
+> 📌 **심볼 리네임(2026-08-17, #278)** — 아래 본문의 `CanvasImageAdd*`는 **당시 이름**이다. 현재 코드는 **`CanvasMain*`**(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`, `strings.xml` 키 `canvas_main_*`). 이름만 바뀌고 시그니처·동작은 불변이라 본문은 기록대로 둔다.
 
 ## 목표
 

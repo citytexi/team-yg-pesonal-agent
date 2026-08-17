@@ -5,7 +5,7 @@ status: implemented
 category: ui-spec
 platforms: android
 verified: 2026-08-17
-related_code: CustomCalendar, CalendarDropdown, CalendarDayUiModel, CanvasImageAddViewModel, CanvasImageAddUiState, CanvasImageAddIntent, GetParfaitHistoriesUseCase, GetParfaitYearsUseCase, GetParfaitDetailUseCase, PastCanvasVO, parfaitToday, YGListDate, YGStrokeButton, YGCanvas, verticalScrollbar, toFirstDayOfMonth, DateTextFormat
+related_code: CustomCalendar, CalendarDropdown, CalendarDayUiModel, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, GetParfaitHistoriesUseCase, GetParfaitYearsUseCase, GetParfaitDetailUseCase, PastCanvasVO, parfaitToday, YGListDate, YGStrokeButton, YGCanvas, verticalScrollbar, toFirstDayOfMonth, DateTextFormat
 related_adr: ADR-0002, ADR-0005, ADR-0009
 related_spec: c001-canvas-main, c001-canvas-today-detail, c201-canvas-calendar-server, designsystem-canvas-components, designsystem-bar-listdate-components
 related_architecture: design-system, module-structure, state-management
@@ -17,6 +17,8 @@ tags: [spec, parfait, canvas, calendar, c201]
 # Spec: C-201 캔버스 캘린더
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+>
+> 📌 **심볼 리네임(2026-08-17, #278)** — 아래 본문의 `CanvasImageAdd*`는 **당시 이름**이다. 현재 코드는 **`CanvasMain*`**(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`, `strings.xml` 키 `canvas_main_*`). 이름만 바뀌고 시그니처·동작은 불변이라 본문은 기록대로 둔다.
 
 > ⚠️ **사후 스펙(as-built)** — 선작성 스펙 없이 PR #259(`feature/#207-canvas-calendar`)가 develop에
 > 머지됐다(2026-08-16). C-001 캔버스 메인의 날짜 버튼이 처음으로 무언가를 열고, 그 자리를 채우는

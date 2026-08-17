@@ -5,7 +5,7 @@ status: implemented
 category: feature-spec
 platforms: android
 verified: 2026-08-17
-related_code: GetParfaitHistoriesUseCase, GetParfaitYearsUseCase, GetParfaitDetailUseCase, ParfaitRepository, ParfaitRepositoryImpl, PastCanvasVO, CanvasImageAddViewModel, CanvasImageAddUiState, CanvasImageAddIntent, CanvasImageAddRoute, CanvasImageAddScreen, CustomCalendar, YGCanvasMenuAction, parfaitToday
+related_code: GetParfaitHistoriesUseCase, GetParfaitYearsUseCase, GetParfaitDetailUseCase, ParfaitRepository, ParfaitRepositoryImpl, PastCanvasVO, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainRoute, CanvasMainScreen, CustomCalendar, YGCanvasMenuAction, parfaitToday
 related_adr: ADR-0009, ADR-0017, ADR-0020
 related_spec: c201-canvas-calendar, c001-canvas-today-detail, c001-canvas-main, parfait-canvas-topping-member-api-service-layer
 related_architecture: data-layer, state-management, design-system
@@ -17,6 +17,8 @@ tags: [spec, parfait, canvas, calendar, c201, api-consumer]
 # Spec: C-201 캘린더 서버 결선
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+>
+> 📌 **심볼 리네임(2026-08-17, #278)** — 아래 본문의 `CanvasImageAdd*`는 **당시 이름**이다. 현재 코드는 **`CanvasMain*`**(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`, `strings.xml` 키 `canvas_main_*`). 이름만 바뀌고 시그니처·동작은 불변이라 본문은 기록대로 둔다.
 
 > ⚠️ **사후 스펙(as-built)** — 선작성 스펙 없이 PR #279(`feature/canvas-calendar-api`)가 develop에
 > 머지됐다(2026-08-17). 캘린더가 처음 들어온 라운드의 기록은

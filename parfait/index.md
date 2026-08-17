@@ -40,10 +40,15 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
 런처 아이콘도 교체됐다(#262 — 적응형 3종 + monochrome, 스플래시 테마 속성 제거).
 **2026-08-17 — 캔버스가 서버를 본다**(#268). `ParfaitRepository`(파르페 도메인 첫 Repository, 오늘·목록·상세
 셋만) → UseCase 둘 → C-001이 **배경·토핑·멤버를 실데이터로** 그리고, 날짜 선택이 그날 캔버스를 불러온다.
-진입도 열렸다 — `NavKeyCanvasImageAdd(groupId)` + G-001 토핑 클릭. Repository가 0건인 도메인은 **둘**
+진입도 열렸다 — `NavKeyCanvasMain(groupId)` + G-001 토핑 클릭. Repository가 0건인 도메인은 **둘**
 (image·parfait-image)로 줄었다. ⚠️ **읽기만이다** — 배치·좌표 저장 경로가 없어 토핑을 새로 얹지 못하고,
 조회 실패는 로그만이라 빈 캔버스와 구분되지 않는다. 달력 UseCase 둘·C-301 편집 탭은 여전히 mock이다
 ([c001-canvas-today-detail 스펙](specs/archive/2026-08-17-c001-canvas-today-detail.md)).
+⚠️ **2026-08-17 — 미머지 리네임 선반영**(#278). C-001 화면 계열이 `CanvasImageAdd*` → **`CanvasMain*`**로
+개명됐다(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`,
+`strings.xml` 키 `canvas_main_*`). 이름만 바뀌고 시그니처·동작은 불변이다. **아직 develop에 없다**
+(`refactor/#278-canvas-main`) — 현행 문서(index·architecture·api·open-questions 미결)는 새 이름을
+선반영했고, 아카이브 스펙 본문과 `doc-baseline`은 당시 이름을 유지한 채 각주로 표기했다.
 **2026-08-17 — 달력도 서버를 본다**(#279). 두 UseCase가 mock을 버리고 `getYears`가 올라와
 `ParfaitRepository`가 **다섯 갈래 중 넷**을 연다(남은 하나는 배경 변경). `ParfaitHistory`는 삭제되고
 달력이 계약 VO `PastCanvasVO`를 그대로 쓰며, 날짜 선택은 캐시에서 `parfaitId`를 꺼내 **상세만** 부른다.
