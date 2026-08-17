@@ -1,7 +1,7 @@
 ---
 id: group-ssot
 title: 그룹 목록·상세 인메모리 SSoT — Flow 구독 + 명시적 갱신 (Group SSoT)
-status: planned
+status: implemented
 category: behavior-spec
 platforms: android
 verified:
@@ -17,6 +17,15 @@ tags: [spec, parfait, group, state, cache]
 # Spec: 그룹 목록·상세 인메모리 SSoT
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+
+> ⚙️ **구현 완료·미머지(2026-08-17, 브랜치 `feature/#294-group-ssot`, 로컬 커밋 9개)** — 계획 7 Task가
+> 전부 들어왔고 설계에서 뒤집힌 결정은 없다. **as-built 차이 둘**: ① 세션 정리에서 그룹 캐시 clear를
+> 계정 정보 clear **앞에** 둔다(두 경로 모두) — 계정 정보 정리는 DataStore IO라 던질 수 있고, 뒤에
+> 두면 그때 그룹 캐시가 지워지지 않아 이 스펙이 "실제 위험"이라 부른 상태가 된다. ② `GroupSettingViewModel`이
+> 계정 id를 읽는 자리를 `BaseViewModel.launch` 가드 + `runCatching`으로 감싼다 — 구독을 별도 코루틴으로
+> 옮기면서 이전에 있던 예외 가드를 잃어 DataStore 읽기 실패가 크래시가 됐다.
+> 실기기·실서버 확인은 하지 않았다(아래 "검증 못 한 것" 참고). 미결 2건은
+> [open-questions](../synthesis/open-questions.md) OQ-P-219·OQ-P-220으로 등록했다.
 
 > **기준선** — 이 스펙은 develop이 아니라 **`feature/#288-group-list-refresh`** 위에서 쓴다.
 > 그 브랜치가 목록·캔버스에 `Enter` 인텐트(`LifecycleResumeEffect`)를 들여 **화면이 앞에 설 때마다
@@ -181,6 +190,16 @@ ADR-0022의 닉네임 폴백과 같은 판단이다.
 
 `Flow` 단언은 Turbine을 쓴다. 매퍼 단독 테스트는 만들지 않고 DataSource 테스트 케이스로 덮는
 기존 관례를 유지한다.
+
+## 검증 못 한 것
+
+유닛 테스트로 덮이지 않아 실기기 확인이 남았다.
+
+- 그룹 생성·참여 후 목록에 새 그룹이 실제로 뜨는지(캐시 갱신 + `Enter` 재조회가 함께 도는 경로)
+- 설정에서 닉네임을 바꾼 뒤 다른 화면으로 나갔을 때 값이 따라오는지
+- 나가기·신고 후 목록에서 그 그룹이 사라지는지
+- 계정 전환 시 이전 계정 그룹이 남지 않는지(로그아웃 → 다른 계정 로그인)
+- 캔버스 그룹명이 실제 그룹 이름으로 뜨는지
 
 ## 열린 질문
 
