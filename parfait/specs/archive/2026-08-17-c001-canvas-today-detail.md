@@ -5,7 +5,7 @@ status: implemented
 category: feature-spec
 platforms: android
 verified: 2026-08-17
-related_code: ParfaitRepository, ParfaitRepositoryImpl, GetTodayParfaitUseCase, GetParfaitDetailUseCase, parfaitToday, PARFAIT_TIME_ZONE, CanvasToppingLayer, CanvasImageAddViewModel, CanvasImageAddUiState, CanvasImageAddRoute, CanvasImageAddScreen, NavKeyCanvasImageAdd, GroupListViewModel, GroupListScreen, GroupListRoute, String.toColorOrNull, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingBorder, YGCanvasBackground
+related_code: ParfaitRepository, ParfaitRepositoryImpl, GetTodayParfaitUseCase, GetParfaitDetailUseCase, parfaitToday, PARFAIT_TIME_ZONE, CanvasToppingLayer, CanvasMainViewModel, CanvasMainUiState, CanvasMainRoute, CanvasMainScreen, NavKeyCanvasMain, GroupListViewModel, GroupListScreen, GroupListRoute, String.toColorOrNull, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingBorder, YGCanvasBackground
 related_adr: ADR-0009, ADR-0017, ADR-0020
 related_spec: c001-canvas-main, c201-canvas-calendar, c201-canvas-calendar-server, c301-topping-edit-tab, parfait-canvas-topping-member-api-service-layer, canvas-detail-background-api-service-layer, g001-group-list
 related_architecture: data-layer, navigation-flow, module-structure, design-system
@@ -17,6 +17,8 @@ tags: [spec, parfait, canvas, c001, api-consumer]
 # Spec: C-001 캔버스 오늘·날짜별 조회 결선
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+>
+> 📌 **심볼 리네임(2026-08-17, #278)** — 아래 본문의 `CanvasImageAdd*`는 **당시 이름**이다. 현재 코드는 **`CanvasMain*`**(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`, `strings.xml` 키 `canvas_main_*`). 이름만 바뀌고 시그니처·동작은 불변이라 본문은 기록대로 둔다.
 
 > ⚠️ **사후 스펙(as-built)** — 선작성 스펙 없이 PR #268(`feature/canvas-today-parfait-detail`)이
 > develop에 머지됐다(2026-08-17). 화면 맥락은 [c001-canvas-main 스펙](2026-08-12-c001-canvas-main.md),

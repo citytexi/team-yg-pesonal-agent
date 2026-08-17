@@ -704,14 +704,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 ### [2026-08-04] 커스텀 갤러리가 결과 반환을 끊었는데 호출 화면의 `ResultEffect`가 남음
 - **ID**: OQ-P-087
-- **출처**: `feature/gallery/impl` `CustomGalleryPickerViewModel`(`ReturnResult` → `NavigateToConfirm`으로 교체)·`route/CustomGalleryPickerRoute.kt`(`LocalResultEventBus` 사용 제거) vs `feature/groups/canvas/impl/route/CanvasImageAddRoute.kt`(PR #191 develop 머지) — 호출 화면은 여전히 `ResultEffect<String> { CacheImage(imageUri) }`로 URI 반환을 기다리지만, 커스텀 갤러리는 이제 아무것도 보내지 않고 확인 화면으로 `goTo` 한다. 같은 화면에서 가는 다른 목적지(`NavKeyCameraCustom`)도 성공 시엔 확인 화면으로 전진하고 `ReturnResult`는 실패·취소(null)에만 쓴다. 즉 **이 `ResultEffect`가 캐시 저장을 트리거하는 경로가 사실상 없다.**
-- **항목**: ① 사진 선택 후 캐시 저장(`CanvasImageAddIntent.CacheImage`)을 어디서 할지 — 확인 화면 "다음"이 결선되면 그쪽 책임인지, ② 결선 후에도 `ResultEffect`를 남길지 걷어낼지, ③ 커스텀/시스템 피커가 반환 방식이 갈린 것(시스템 쪽은 `LocalResultEventBus` 유지)이 의도인지.
+- **출처**: `feature/gallery/impl` `CustomGalleryPickerViewModel`(`ReturnResult` → `NavigateToConfirm`으로 교체)·`route/CustomGalleryPickerRoute.kt`(`LocalResultEventBus` 사용 제거) vs `feature/groups/canvas/impl/route/CanvasMainRoute.kt`(PR #191 develop 머지) — 호출 화면은 여전히 `ResultEffect<String> { CacheImage(imageUri) }`로 URI 반환을 기다리지만, 커스텀 갤러리는 이제 아무것도 보내지 않고 확인 화면으로 `goTo` 한다. 같은 화면에서 가는 다른 목적지(`NavKeyCameraCustom`)도 성공 시엔 확인 화면으로 전진하고 `ReturnResult`는 실패·취소(null)에만 쓴다. 즉 **이 `ResultEffect`가 캐시 저장을 트리거하는 경로가 사실상 없다.**
+- **항목**: ① 사진 선택 후 캐시 저장(`CanvasMainIntent.CacheImage`)을 어디서 할지 — 확인 화면 "다음"이 결선되면 그쪽 책임인지, ② 결선 후에도 `ResultEffect`를 남길지 걷어낼지, ③ 커스텀/시스템 피커가 반환 방식이 갈린 것(시스템 쪽은 `LocalResultEventBus` 유지)이 의도인지.
 - **상태**: 미해결 (코드 수정 대상 — 죽은 결과 수신부)
 - **해소 메모**: [2026-08-01 확인 화면 이후 경로 항목](#2026-08-01-c-101-confirm-이후-경로-미결선--확인-화면에서-앞으로-못-감)과 같은 라운드에서 처리하고 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md)·[navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번 마커를 정리한다.
 
-  > 📌 **다른 死 `ResultEffect` 하나는 걷혔다(2026-08-09, PR #220)** — 로그인 화면의 `ResultEffect<String>` Toast가 짝(`GroupHomeRoute`)과 함께 삭제됐다. 여기 남은 `CanvasImageAddRoute` 건은 그대로다 → [2026-08-10] 데코레이터 존치 항목.
+  > 📌 **다른 死 `ResultEffect` 하나는 걷혔다(2026-08-09, PR #220)** — 로그인 화면의 `ResultEffect<String>` Toast가 짝(`GroupHomeRoute`)과 함께 삭제됐다. 여기 남은 `CanvasMainRoute` 건은 그대로다 → [2026-08-10] 데코레이터 존치 항목.
 
-  > 📌 **같은 화면 트리에 두 번째 수신부가 생겼다(2026-08-15, PR #231)** — C-301 배경 편집이 `ResultEffect<PictureConfirmResult>`로 확인 화면 결과를 받는다(이쪽은 실제로 발동한다). `CanvasImageAddRoute`의 `ResultEffect<String>`는 여전히 死경로이고, 카메라 실패·취소가 보내는 `String?` 결과는 **새 수신부도 타입이 달라 못 받는다** → [2026-08-15] 재사용 진입 플래그 항목.
+  > 📌 **같은 화면 트리에 두 번째 수신부가 생겼다(2026-08-15, PR #231)** — C-301 배경 편집이 `ResultEffect<PictureConfirmResult>`로 확인 화면 결과를 받는다(이쪽은 실제로 발동한다). `CanvasMainRoute`의 `ResultEffect<String>`는 여전히 死경로이고, 카메라 실패·취소가 보내는 `String?` 결과는 **새 수신부도 타입이 달라 못 받는다** → [2026-08-15] 재사용 진입 플래그 항목.
 
 ### [2026-08-04] 갤러리 그리드 셀이 `clickableYG` 대신 표준 `clickable` 사용
 - **ID**: OQ-P-088
@@ -906,7 +906,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-10] `ResultEventBus` 왕복을 검증하던 유일한 화면이 사라졌다
 
 - **ID**: OQ-P-105
-- **출처**: PR #220 develop 머지 — `feature/groups/home/{api,impl}` 모듈 삭제(`NavKeyGroupHome`·`GroupHomeRoute`·`EntryBuilder`·`NavigationModule`)와 `LoginRoute`의 `ResultEffect<String>` Toast 제거. 둘은 짝이었다(홈이 `sendResult` + `onBack`, 로그인이 `ResultEffect`로 수신). `MainRoute`의 `rememberResultEventBusNavEntryDecorator`는 그대로 남고, 남은 실사용은 카메라·시스템 갤러리의 `sendResult` 3곳 + `CanvasImageAddRoute`의 `ResultEffect` 1곳인데 그 수신부는 이미 死경로로 등록돼 있다([2026-08-04] 항목).
+- **출처**: PR #220 develop 머지 — `feature/groups/home/{api,impl}` 모듈 삭제(`NavKeyGroupHome`·`GroupHomeRoute`·`EntryBuilder`·`NavigationModule`)와 `LoginRoute`의 `ResultEffect<String>` Toast 제거. 둘은 짝이었다(홈이 `sendResult` + `onBack`, 로그인이 `ResultEffect`로 수신). `MainRoute`의 `rememberResultEventBusNavEntryDecorator`는 그대로 남고, 남은 실사용은 카메라·시스템 갤러리의 `sendResult` 3곳 + `CanvasMainRoute`의 `ResultEffect` 1곳인데 그 수신부는 이미 死경로로 등록돼 있다([2026-08-04] 항목).
 - **항목**: ① 결과 반환 관용구를 계속 쓸지 — 커스텀 갤러리·카메라는 이미 `goTo` 전진으로 갈아탔고 남은 소비처가 死경로뿐이라, 데코레이터째 걷어낼지 아니면 재사용처를 확정할지. ② 걷어낸다면 `Navigator.onBack()`의 `size <= 1` 가드 주석("`ResultEffect` 발동 상황에서 사이즈가 1인 경우 크래시")이 가리키는 전제도 같이 정리한다.
 - **상태**: 부분 해소 (① **PR #221 develop 머지, 2026-08-14** — 실사용 왕복이 하나 되살아났다. 토핑 편집 화면이 `sendResult(TOPPING_EDIT_RESULT_KEY, ToppingEditResult)` + `onBack()`으로 결과를 돌려주고 `SegmentationConfirmRoute`가 `ResultEffect<ToppingEditResult>`로 받는다. **NavKey가 담지 못하는 "나올 때의 값"이라 이 관용구를 다시 고른 것**이므로 데코레이터째 걷어내는 선택지는 사실상 닫혔다. / ② 가드는 여전히 필요하다 — 그룹 목록에서 백스택이 1개다. / [2026-08-04]의 死 `ResultEffect` 1건은 그대로다)
 - **해소 메모**: ①이 닫혔으니 남은 것은 死 수신부 정리([2026-08-04] 항목)뿐이다. [navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번에 "되살아난 사례" 마커를 넣었고 "토핑 생성 플로우" 절에 왕복 경로를 적었다.
@@ -1135,7 +1135,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-12] 캔버스 날짜가 03시 경계를 안 쓴다 — 같은 저장소에 `DayWindow`가 있는데도
 
 - **ID**: OQ-P-127
-- **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasImageAddViewModel.kt#loadCanvasImageAddInfo`(PR #199 develop 머지) — 캔버스 날짜 라벨을 `Clock.System.todayIn(TimeZone.currentSystemDefault())`로 만든다. 위키 [[캔버스-마감-스케줄]]은 하루 경계가 **03:00 KST 고정**이고(서버 기준 KST), `domain`의 `DayWindow.current(timeZone, clock)`가 그 경계를 이미 구현해 C-102 갤러리가 쓰고 있다. 지금 구현은 경계가 00:00이고 시간대도 기기 설정을 따른다 — 00:00~02:59 사이에는 화면이 **캔버스의 실제 날짜보다 하루 뒤 날짜**를 보여준다.
+- **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasMainViewModel.kt#loadCanvasMainInfo`(PR #199 develop 머지) — 캔버스 날짜 라벨을 `Clock.System.todayIn(TimeZone.currentSystemDefault())`로 만든다. 위키 [[캔버스-마감-스케줄]]은 하루 경계가 **03:00 KST 고정**이고(서버 기준 KST), `domain`의 `DayWindow.current(timeZone, clock)`가 그 경계를 이미 구현해 C-102 갤러리가 쓰고 있다. 지금 구현은 경계가 00:00이고 시간대도 기기 설정을 따른다 — 00:00~02:59 사이에는 화면이 **캔버스의 실제 날짜보다 하루 뒤 날짜**를 보여준다.
 - **항목**: ① 화면 날짜를 `DayWindow` 기준으로 옮길지(경계·시간대 둘 다), ② 시간대를 KST로 고정할지 기기 시간대를 인정할지 — 서버가 KST로 캔버스를 마감하므로 해외 사용자는 어느 쪽이든 정책 결정이 필요하다. ③ 날짜가 화면에서 계산되는 구조 자체를 유지할지(서버가 캔버스 날짜를 내려주면 표시만 남는다).
 - **상태**: 미해결 (그룹·캔버스 데이터 미결선이라 지금은 표시만 틀린다)
   > ⚠️ **범위가 커졌다(2026-08-16, PR #259)** — 같은 `today` 값이 이제 **캘린더의 미래 날짜 잠금과 오늘
@@ -1155,7 +1155,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-12] Dot Grid가 시스템 바 영역을 못 덮는다 — 정책은 "화면 전체 뒤"
 
 - **ID**: OQ-P-128
-- **출처**: `feature/groups/canvas/impl` `screen/CanvasImageAddScreen.kt` + `core:designsystem` `component/ygbackgrounddotgrid/YGBackgroundDotGrid.kt#ygBackgroundDotGrid`(PR #199 develop 머지) — 격자 Modifier가 엔트리 `YGScaffold`의 `innerPadding` **안쪽** `Column`에 붙는다. 위키 [[캔버스-반응형-레이아웃]]은 "화면 전체(상단바·하단바·캔버스 포함) 뒤에 동일하게 깔리고, 앵커는 화면 좌상단 (0,0)"이라고 못박는다. 지금은 상태바·내비게이션 바 영역이 `YGScaffold`의 흰 `containerColor`만 남고, 격자 원점도 상단 인셋만큼 밀려 **점 위치가 정책 좌표와 어긋난다**. 점 스펙(지름 2·`Gray100`·간격 20)은 정책과 일치한다.
+- **출처**: `feature/groups/canvas/impl` `screen/CanvasMainScreen.kt` + `core:designsystem` `component/ygbackgrounddotgrid/YGBackgroundDotGrid.kt#ygBackgroundDotGrid`(PR #199 develop 머지) — 격자 Modifier가 엔트리 `YGScaffold`의 `innerPadding` **안쪽** `Column`에 붙는다. 위키 [[캔버스-반응형-레이아웃]]은 "화면 전체(상단바·하단바·캔버스 포함) 뒤에 동일하게 깔리고, 앵커는 화면 좌상단 (0,0)"이라고 못박는다. 지금은 상태바·내비게이션 바 영역이 `YGScaffold`의 흰 `containerColor`만 남고, 격자 원점도 상단 인셋만큼 밀려 **점 위치가 정책 좌표와 어긋난다**. 점 스펙(지름 2·`Gray100`·간격 20)은 정책과 일치한다.
 - **항목**: ① 격자를 엔트리 컨테이너 쪽으로 올릴지(`YGScaffold` 배경 슬롯 신설 / entry에서 `Box`로 감싸기 — 후자는 [2026-08-01] G-001 컨테이너 이탈과 같은 형태다), ② 탑바가 인셋을 흡수하는 G-001 관용구로 갈지(그러려면 `YGTopBarCanvas`에 `windowInsets`를 열어야 한다 — [2026-08-07] 항목 ②), ③ 정책의 "앵커 (0,0)"을 화면 원점으로 볼지 콘텐츠 원점으로 볼지 디자이너에게 확인할지.
 - **상태**: 미해결 (렌더는 되지만 정책 불일치)
 - **해소 메모**: ①②는 인셋 관용구 결정([2026-08-07])과 한 몸이다. 정하면 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) "정책 대조" 표와 [navigation-flow](../architecture/navigation-flow.md) 인셋 사례 노트를 함께 고친다.
@@ -1163,28 +1163,32 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-12] C-001이 도달 불가로 머지됐고 화면 안 콜백 3종이 빈 람다
 
 - **ID**: OQ-P-129
-- **출처**: `feature/groups/canvas/impl` `route/CanvasImageAddRoute.kt` + `feature/groups/list/impl` `route/GroupListRoute.kt`(PR #199 develop 머지) — ① `NavKeyCanvasImageAdd`를 `goTo` 하는 호출자가 develop에 **0건**이다(entry 등록만 있다). 유일한 후보인 G-001의 `GroupListSideEffect.NavigateToCanvas` 분기는 여전히 `// Todo : canvas page 이동`이고, 애초에 그 이펙트를 쏘는 토핑 클릭 경로도 없다([2026-08-07] 死경로 항목). ② 화면 안에서도 `onClickDateSelect`·`onClickMenu`·`onClickEditCanvasBG`가 TODO 주석 달린 빈 람다다 — 날짜 선택(캘린더)·상단 메뉴·캔버스 편집이 전부 미결선이고, `NavKeyCanvasEdit`·`NavKeyCanvasImageSelect` entry는 등록돼 있는데 이 화면에서 가지 않는다. ③ 이름과 목적지도 어긋난다 — `CanvasImageAddIntent.OnClickCanvas`·`CanvasImageAddEffect.NavigateToCanvas`가 실제로는 갤러리(`NavKeyCustomGalleryPicker`)로 간다.
-- **항목**: ① G-001 토핑 클릭 → C-001 진입을 어느 라운드에서 결선할지(그룹 데이터 결선과 묶일 수밖에 없다 — 캔버스는 `groupId`가 필요한데 `NavKeyCanvasImageAdd`는 `data object`다), ② 날짜 선택·상단 메뉴·캔버스 편집의 목적지를 확정할지, ③ `OnClickCanvas`/`NavigateToCanvas` 이름을 목적지에 맞게 고칠지(화면 이름 `CanvasImageAdd*`가 C-001 캔버스 메인을 가리키는 것도 같은 성격이다).
+- **출처**: `feature/groups/canvas/impl` `route/CanvasMainRoute.kt` + `feature/groups/list/impl` `route/GroupListRoute.kt`(PR #199 develop 머지) — ① `NavKeyCanvasMain`를 `goTo` 하는 호출자가 develop에 **0건**이다(entry 등록만 있다). 유일한 후보인 G-001의 `GroupListSideEffect.NavigateToCanvas` 분기는 여전히 `// Todo : canvas page 이동`이고, 애초에 그 이펙트를 쏘는 토핑 클릭 경로도 없다([2026-08-07] 死경로 항목). ② 화면 안에서도 `onClickDateSelect`·`onClickMenu`·`onClickEditCanvasBG`가 TODO 주석 달린 빈 람다다 — 날짜 선택(캘린더)·상단 메뉴·캔버스 편집이 전부 미결선이고, `NavKeyCanvasEdit`·`NavKeyCanvasImageSelect` entry는 등록돼 있는데 이 화면에서 가지 않는다. ③ 이름과 목적지도 어긋난다 — `CanvasMainIntent.OnClickCanvas`·`CanvasMainEffect.NavigateToCanvas`가 실제로는 갤러리(`NavKeyCustomGalleryPicker`)로 간다.
+- **항목**: ① G-001 토핑 클릭 → C-001 진입을 어느 라운드에서 결선할지(그룹 데이터 결선과 묶일 수밖에 없다 — 캔버스는 `groupId`가 필요한데 `NavKeyCanvasMain`는 `data object`다), ② 날짜 선택·상단 메뉴·캔버스 편집의 목적지를 확정할지, ③ `OnClickCanvas`/`NavigateToCanvas` 이름을 목적지에 맞게 고칠지(화면 이름이 `CanvasImageAdd*`인데 C-001 캔버스 메인을 가리키는 것도 같은 성격이다 — 이쪽은 2026-08-17 리네임으로 닫혔다).
 - **상태**: 미해결
-- **해소 메모**: ①을 열 때 `NavKeyCanvasImageAdd`에 `groupId` 인자를 붙일지 함께 정한다([navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지"). 체크리스트 6번 사례 목록도 그때 정리한다. 상세는 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 3·6번.
+- **해소 메모**: ①을 열 때 `NavKeyCanvasMain`에 `groupId` 인자를 붙일지 함께 정한다([navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지"). 체크리스트 6번 사례 목록도 그때 정리한다. 상세는 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 3·6번.
 
   > 📌 **②의 셋 중 캔버스 편집만 결선됐다(2026-08-15, PR #231)** — `onClickEditCanvasBG`가 `NavKeyCanvasBGEdit`(C-301 배경 편집)으로 간다. 날짜 선택·상단 메뉴는 그대로 빈 람다다. **①은 그대로라 새로 생긴 화면까지 도달 불가 범위에 들어왔다** → [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md).
   > 📌 **날짜 선택도 결선됐다(2026-08-16, PR #259)** — `onClickDateSelect`가 캘린더 오버레이를 연다.
   > **②에 남은 것은 상단 메뉴 하나**다. ①(진입 경로 0건)은 그대로이고, ③(`OnClickCanvas`/`NavigateToCanvas`
   > 이름 불일치)도 그대로다 → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md).
-  > ✅ **①이 해소됐다(2026-08-17, PR #268)** — G-001 토핑 클릭이 `goTo(NavKeyCanvasImageAdd(groupId))`로
+  > ✅ **①이 해소됐다(2026-08-17, PR #268)** — G-001 토핑 클릭이 `goTo(NavKeyCanvasMain(groupId))`로
   > 이어져 진입 경로가 열렸고, 그 선행으로 NavKey가 `data object` → **`data class(groupId)`**가 됐다
   > (해소 메모가 "함께 정한다"고 적어 둔 그것이다). 인텐트·이펙트도 `GroupId`를 싣는다 — 첫 그룹으로
   > 고정하면 두 번째 그룹의 캔버스에 들어갈 방법이 없기 때문이고, `GroupListViewModelTest`가 잠근다.
   > **남은 것은 ②의 상단 메뉴 하나와 ③(이름 불일치)이고, ③은 이번에 `NavigateToCanvas`가 G-001 쪽에서
   > 실제로 캔버스로 가게 되면서 두 모듈의 같은 이름이 서로 다른 뜻이 됐다** — C-001의
-  > `CanvasImageAddEffect.NavigateToCanvas`는 여전히 갤러리로 간다
+  > `CanvasMainEffect.NavigateToCanvas`는 여전히 갤러리로 간다
   > → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
+  > 📌 **③의 절반이 닫혔다(2026-08-17, 리네임 #278)** — 화면 계열이 `CanvasImageAdd*` → **`CanvasMain*`**로
+  > 바뀌어(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`,
+  > `strings.xml` 키 `canvas_main_*`) 이름이 C-001 캔버스 메인이라는 실제 역할과 맞는다. **남은 것은
+  > `OnClickCanvas`/`NavigateToCanvas`가 갤러리로 가는 이름 불일치**이고, ②의 상단 메뉴도 그대로다.
 
 ### [2026-08-12] C-001이 mock을 ViewModel 로직에 박고 `isEmpty`를 상수로 넘긴다
 
 - **ID**: OQ-P-130
-- **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasImageAddViewModel.kt#loadCanvasImageAddInfo`·`screen/CanvasImageAddScreen.kt`(PR #199 develop 머지) — ① `init`이 부르는 로드 함수가 그룹명 문자열과 멤버 7명을 TODO 주석과 함께 채운다(G-001이 mock을 UiState **기본값**에 둔 것과 또 다른 형태다 — [2026-08-07] 항목). ② 프리뷰 `CanvasImageAddScreenPreviewParameterProvider`가 같은 7명을 **다른 이름·다른 칩 타입**으로 따로 들고 있어 두 벌이 어긋나는데 컴파일은 통과한다(A-002 프리뷰 드리프트와 같은 구조 — [2026-08-11] 항목). ③ `isEmpty = true`가 화면에 상수로 박혀 있고 `content` 토핑 슬롯을 아예 안 넘긴다 — 토핑이 하나라도 생기면 빈 상태 문구가 그 위에 계속 그려진다.
+- **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasMainViewModel.kt#loadCanvasMainInfo`·`screen/CanvasMainScreen.kt`(PR #199 develop 머지) — ① `init`이 부르는 로드 함수가 그룹명 문자열과 멤버 7명을 TODO 주석과 함께 채운다(G-001이 mock을 UiState **기본값**에 둔 것과 또 다른 형태다 — [2026-08-07] 항목). ② 프리뷰 `CanvasMainScreenPreviewParameterProvider`가 같은 7명을 **다른 이름·다른 칩 타입**으로 따로 들고 있어 두 벌이 어긋나는데 컴파일은 통과한다(A-002 프리뷰 드리프트와 같은 구조 — [2026-08-11] 항목). ③ `isEmpty = true`가 화면에 상수로 박혀 있고 `content` 토핑 슬롯을 아예 안 넘긴다 — 토핑이 하나라도 생기면 빈 상태 문구가 그 위에 계속 그려진다.
 - **항목**: ① mock 소유를 어디로 통일할지(UiState 기본값 / 로드 함수 / 프리뷰 전용) — 지금 develop에 세 형태가 있다. ② 프리뷰 데이터와 실행 데이터가 갈리는 것을 막을 방법(공유 provider·`@PreviewParameter` 재사용)을 규약으로 둘지. ③ `isEmpty`를 UiState의 토핑 목록 유무에서 파생시킬지 — 캔버스 데이터가 붙는 라운드의 선행 결정이다.
 - **상태**: 미해결 (③ 해소·① 대부분 해소, ② 잔존)
   > ✅ **캔버스 데이터가 붙으며 ③이 닫히고 ①이 대부분 걷혔다(2026-08-17, PR #268)** — `isEmpty`는
@@ -1202,7 +1206,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-12] `MAX_VISIBLE_MEMBER_CHIPS`가 死상수 — 임계값이 리터럴로 두 번 적혔다
 
 - **ID**: OQ-P-131
-- **출처**: `feature/groups/canvas/impl` `screen/CanvasImageAddScreen.kt`(PR #199 develop 머지) — 상단 바 멤버 칩 개수 상한을 `private const val MAX_VISIBLE_MEMBER_CHIPS`로 선언해 두고, 정작 `take(…)`와 초과분 계산은 **리터럴 숫자**를 쓴다. 상수를 고쳐도 동작이 안 바뀌고 리터럴 둘 중 하나만 고치면 칩 개수와 `+N`이 어긋난다. 칩 겹침 간격도 `dp` 리터럴이라 토큰 스케일 밖이다([2026-08-11] A-002 치수 리터럴 항목과 같은 성격).
+- **출처**: `feature/groups/canvas/impl` `screen/CanvasMainScreen.kt`(PR #199 develop 머지) — 상단 바 멤버 칩 개수 상한을 `private const val MAX_VISIBLE_MEMBER_CHIPS`로 선언해 두고, 정작 `take(…)`와 초과분 계산은 **리터럴 숫자**를 쓴다. 상수를 고쳐도 동작이 안 바뀌고 리터럴 둘 중 하나만 고치면 칩 개수와 `+N`이 어긋난다. 칩 겹침 간격도 `dp` 리터럴이라 토큰 스케일 밖이다([2026-08-11] A-002 치수 리터럴 항목과 같은 성격).
 - **항목**: ① 상수를 실제로 쓰게 고칠지(즉시 가능한 코드 수정), ② 겹침 간격을 토큰으로 올릴지 화면 고유 값으로 인정할지, ③ `+N` 임계값 자체의 근거 — Figma 주석("캔버스 전용 `+` 칩")뿐이고 위키에 그룹원 표시 정책이 없다. 그룹 정원은 [[그룹]]이 12명으로 못박는데 상단 바가 몇 명까지 보여야 하는지는 정책 소스가 없다.
 - **상태**: 미해결 (①은 즉시 고칠 수 있는 코드 수정, ③은 정책 수집 판단)
 - **해소 메모**: ①② 처리 시 [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md) 드리프트 5번을 지운다. ③은 위키 소관이라 정책 소스 수집 요청이 먼저다. ②는 [2026-08-11] 치수 리터럴 항목과 같은 결정에 묶인다.
@@ -1241,7 +1245,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-135
 - **출처**: `GroupCreateRoute.kt`·`GroupNickNameRoute.kt`의 `goToSingleClearTop(NavKeyGroupList)`(PR #224 develop 머지) — 코드는 생성·참여를 마치면 **G-001 그룹 목록**으로 돌아온다. 위키 정본 [[기능정의서-v6]]은 중간 화면 G-002(그룹 진입)를 삭제하면서 A-004(참여)·A-005(생성)의 다음 단계를 **C-001(메인 캔버스) 직접 진입**으로 재배선했고, 위키 [[그룹]]도 같은 서술이다. 게다가 C-001은 지금 `goTo` 호출자가 0건이라([2026-08-12] C-001 항목) 정본대로였다면 이 라운드가 그 진입도 함께 열었어야 한다.
-- **항목**: ① 코드가 맞다면 위키 흐름을 바꿔야 하는 사안이므로 기획 확인이 필요하다(만든 그룹으로 바로 들어갈지, 목록에서 고르게 할지), ② 정본이 맞다면 `NavKeyCanvasImageAdd`가 그룹 식별자를 인자로 받아야 하는데 현재 `data object`다 — 인자 있는 NavKey 전환이 선행 조건, ③ 어느 쪽이든 새 그룹을 목록에서 어떻게 보여줄지([2026-08-12] mock 항목 ③)와 함께 정해진다.
+- **항목**: ① 코드가 맞다면 위키 흐름을 바꿔야 하는 사안이므로 기획 확인이 필요하다(만든 그룹으로 바로 들어갈지, 목록에서 고르게 할지), ② 정본이 맞다면 `NavKeyCanvasMain`가 그룹 식별자를 인자로 받아야 하는데 현재 `data object`다 — 인자 있는 NavKey 전환이 선행 조건, ③ 어느 쪽이든 새 그룹을 목록에서 어떻게 보여줄지([2026-08-12] mock 항목 ③)와 함께 정해진다.
 - **상태**: 미해결 (코드 ↔ 위키 정책 불일치 — SoT 우선순위상 코드가 앞서지만 기획 의도 확인 대상)
 - **해소 메모**: 확정 시 [navigation-flow](../architecture/navigation-flow.md) "그룹 생성·참여 플로우" 절과 세 화면 스펙의 "복귀 목적지" 서술을 정리하고, 정본이 바뀌면 위키 쪽에 별도 등록한다(여기는 구현 소관만 둔다).
 
@@ -1930,7 +1934,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-188
 - **출처**: `core:util:android` `extension/Modifier.kt#verticalScrollbar` ·
   `feature/groups/canvas/impl` `component/CustomCalendar.kt#sideBorder`(파일 안 private) ·
-  `viewmodel/CanvasImageAddViewModel.kt`(`CanvasImageAddUiState.selectableMonths`) ·
+  `viewmodel/CanvasMainViewModel.kt`(`CanvasMainUiState.selectableMonths`) ·
   `component/CalendarDropdown.kt`(폭·최대 높이 `dp` 리터럴)(PR #259) —
   ① 테마 비의존 그리기 확장의 소유가 이제 **네 곳**이다(`core:designsystem` `border/`·`shape/` /
   `core:designsystem` `component/ygbackgrounddotgrid/` / `core:util:android` `extension/` / feature
@@ -2327,7 +2331,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-17] 캔버스가 도달 가능해졌는데 토핑을 얹는 경로는 여전히 없다
 
 - **ID**: OQ-P-209
-- **출처**: `CanvasImageAddViewModel`(PR #268) · [api/parfait-image.md](../api/parfait-image.md) —
+- **출처**: `CanvasMainViewModel`(PR #268) · [api/parfait-image.md](../api/parfait-image.md) —
   진입이 열리고 서버 배치가 그려지면서 **읽기만 붙었다는 사실이 사용자 경로 위로 올라왔다.** 토핑 배치
   확정(POST)·좌표 수정 표면은 `:data`까지 있는데 소비처가 0건이고, C-102 갤러리는 결과 반환이 끊겨 있어
   (OQ-P-087) 카메라·갤러리로 들어가도 캔버스로 돌아오지 못한다. 즉 화면이 **남이 올린 토핑을 보는
@@ -2345,7 +2349,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-17] 캔버스 멤버 칩 색이 목록 순서로 돌아가 사람에 붙지 않는다
 
 - **ID**: OQ-P-210
-- **출처**: `CanvasImageAddViewModel#toMemberChips`(PR #268) — 서버 `groupMembers`에 칩 색·타입 필드가
+- **출처**: `CanvasMainViewModel#toMemberChips`(PR #268) — 서버 `groupMembers`에 칩 색·타입 필드가
   없어 **목록 인덱스로 팔레트 7종을 돌려 쓴다.** 보장되는 것은 "같은 그룹을 다시 열면 같은 사람에게 같은
   색"까지이고, **멤버가 빠지면 뒤가 한 칸씩 밀려 색이 바뀐다.** 위키 [[nametag-chip]]은 "타입은 유저별
   고정"이라고 적는다. S-101 그룹원 목록이 같은 형태로 먼저 어긴 자리(2026-08-13)의 두 번째 사례이고,
@@ -2362,8 +2366,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-17] 지난 캔버스의 "갤러리에 저장"이 로그 한 줄이다
 
 - **ID**: OQ-P-211
-- **출처**: `CanvasImageAddViewModel#handleClickSaveToGallery`(PR #279) — 지난 캔버스를 볼 때 메뉴
-  맨 위에 오는 액션인데 핸들러가 `TODO` 주석과 정보 로그 하나다. 버튼·문구(`canvas_image_add_save_to_gallery`)·
+- **출처**: `CanvasMainViewModel#handleClickSaveToGallery`(PR #279) — 지난 캔버스를 볼 때 메뉴
+  맨 위에 오는 액션인데 핸들러가 `TODO` 주석과 정보 로그 하나다. 버튼·문구(`canvas_main_save_to_gallery`)·
   아이콘·인텐트는 다 있어서 **사용자에게는 동작하는 기능처럼 보인다.** 같은 라운드가 지난 캔버스에서
   편집 진입점을 치운 자리를 이 액션이 대신 차지했으므로, 지금 지난 캔버스에서 할 수 있는 일은
   **오늘로 돌아가기 하나뿐**이다.
@@ -2378,7 +2382,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-17] 날짜 연속 선택의 승자가 근거 없이 뒤집혔다 — 머리말과 그림이 어긋난 채 남는다
 
 - **ID**: OQ-P-212
-- **출처**: `CanvasImageAddViewModel#loadCanvasDetail`·`handleClickDate`(PR #279) — 상세 조회에
+- **출처**: `CanvasMainViewModel#loadCanvasDetail`·`handleClickDate`(PR #279) — 상세 조회에
   `launch(key = LOAD_CANVAS_DETAIL_KEY)` 가드가 붙었다. `BaseViewModel.launch`의 key 가드는 **같은 key가
   돌고 있으면 새 작업을 시작하지 않는다**(앞선 것이 이긴다). 같은 라운드가 **이전 날 그림을 비우지 않도록**
   바꿨으므로, A → B를 빠르게 고르면 ⓐ B 요청이 버려지고 ⓑ A 응답이 와도 `selectedDate`가 B라 반영되지
@@ -2414,7 +2418,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-17] 연도별 캐시에 무효화 경로가 없고, 파생이 캐시가 가른 둘을 다시 뭉갠다
 
 - **ID**: OQ-P-214
-- **출처**: `CanvasImageAddUiState.parfaitHistoriesByYear`·`parfaitHistories`(PR #279) — 한 번 받은 해는
+- **출처**: `CanvasMainUiState.parfaitHistoriesByYear`·`parfaitHistories`(PR #279) — 한 번 받은 해는
   화면이 사는 동안 다시 받지 않는다. ⓐ **무효화 경로가 없어** 오늘 캔버스에 토핑을 얹어도 달력 점이
   안 바뀐다(지금은 얹는 경로가 없어 안 드러난다, OQ-P-209). ⓑ 캐시를 `Map`으로 둔 근거는 **"받아 봤는데
   비어 있는 해"와 "아직 안 받은 해"를 구분**하는 것인데, 정작 화면이 읽는 파생 `parfaitHistories`는
