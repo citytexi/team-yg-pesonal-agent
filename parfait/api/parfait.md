@@ -5,7 +5,7 @@ server_module: http/parfait
 server_commit: 22717fe
 verified: 2026-08-16
 android_status: partial
-related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar
+related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, canvas]
 ---
@@ -369,12 +369,20 @@ Service·DataSource 함수가 있다.
 인터페이스에 올린다(쓰지 않는 갈래를 미리 열면 어떤 실패를 어떻게 다룰지 정하지 않은 채 계약이 굳는다).
 `android_status`는 **`partial` 그대로**다.
 
+✅ **같은 날 넷이 됐다**(2026-08-17, PR #279). C-201 캘린더가 mock을 버리면서 **연도 조회**가 그
+방침대로 소비자와 함께 올라왔다(`ParfaitRepository#getYears`). 남은 하나는 **배경 변경**이고,
+`android_status`는 여전히 `partial`이다 — 표면·계약이 아니라 **소비처가 다섯 중 넷**이라는 뜻이다.
+
 **계약의 두 성질이 소비 방식을 갈랐다.**
 ① `today`는 **부작용이 있어**(행 생성) 진입 시 `launch(key)`로 1회만 부른다 — 그럼에도 쓰는 이유는
 토핑을 얹으려면 `parfaitId`가 있어야 하고, **부작용 없는 두 경로는 없는 날을 만들어 주지 않기** 때문이다.
-② 달력에서 날짜를 고를 때는 반대로 **목록→상세 2단**을 탄다(`GetCanvasByDateUseCase`) — 훑는 것만으로
-빈 캔버스가 쌓이면 안 된다. "같은 캔버스를 두 경로로 얻는데 한쪽만 부작용이 있다"는 [미결](#미결)이
-**앱에서 용도 분리로 굳었다.**
+② 달력에서 날짜를 고를 때는 반대로 **부작용 없는 경로**를 탄다 — 훑는 것만으로 빈 캔버스가 쌓이면
+안 된다. "같은 캔버스를 두 경로로 얻는데 한쪽만 부작용이 있다"는 [미결](#미결)이 **앱에서 용도 분리로
+굳었다.** 처음에는 하루 범위 목록→상세 2단(`GetCanvasByDateUseCase`)이었고, **#279부터는 달력이 그 해
+목록을 이미 캐시로 들고 있어 거기서 `parfaitId`를 꺼내 상세만 부른다**(`GetParfaitDetailUseCase`).
+날짜로 캔버스를 찾는 엔드포인트가 없다는 계약 사실은 그대로이고, 그 조회를 화면 캐시가 대신한다.
+같은 이유로 **오늘로 되돌아갈 때도 조회를 안 한다** — 받아 둔 오늘 캔버스를 상태에서 갈아 끼운다
+(다시 부르면 부작용 있는 `today`가 돈다).
 
 ⚠️ **계약이 말하지 않는 것을 앱이 정했다.** 배치 값의 단위·기준이 계약에 없어 렌더가 규칙을 만들었다 —
 `positionX`·`positionY`는 **Canvas-Area 대비 0~1 정규화 중심점**, `scale` 1.0은 **긴 변이 그 너비의 40%**
@@ -387,8 +395,12 @@ Service·DataSource 함수가 있다.
 **KST**(`PARFAIT_TIME_ZONE`)다 — 캔버스 행이 KST 날짜를 키로 저장되기 때문이고, 기기 시간대로 세면
 해외 기기에서 재시도가 하루 한 번이 아니라 **로드마다** 돈다.
 
-⚠️ **과거 목록은 범위를 하루로 좁혀 부르고도 응답 날짜를 다시 본다** — 경계 처리가 서버 몫이라 하루가
-더 딸려 오면 옆날 캔버스를 고른 날로 착각한다(유닛 테스트로 잠갔다).
+⚠️ **과거 목록은 이제 연 단위로 부른다**(2026-08-17, PR #279) — 1월 1일 ~ 12월 31일을 한 번에 받아
+화면이 연도별로 캐시한다. 근거는 계약이다 — **페이지네이션도 범위 상한도 없어**(→ [미결](#미결))
+최대 366건이 한 응답으로 오고, 달력은 월을 오갈 때마다 다시 부를 이유가 없다.
+**정렬은 앱이 한다** — 계약이 순서를 약속하지 않아 UseCase가 날짜 내림차순으로 세운다.
+직전 구현(범위를 하루로 좁혀 부르고도 응답 날짜를 다시 보던 것 — 경계 처리가 서버 몫이라 하루가 더
+딸려 오면 옆날을 고른 날로 착각한다)은 그 UseCase와 함께 사라졌다.
 
 ⚠️ **배경 변경은 이 도메인 첫 쓰기 경로**이고, 그래서 **첫 요청 DTO**(`ChangeParfaitBackgroundRequest`)와
 **쓰기 전용 도메인 모델**(`CanvasBackgroundEdit`)이 함께 들어왔다. 읽기 모델 `CanvasBackground`를
@@ -407,6 +419,11 @@ mock을 만든다**. 즉 이 도메인은 "표면은 있는데 소비처가 없�
 📌 **막고 있던 이유는 사라졌는데 상태는 그대로다**(2026-08-17, PR #268) — Repository가 생겼고
 `NavKeyCanvasImageAdd`가 `groupId`를 들고 다니지만 **두 UseCase는 여전히 mock**이다. 이제 같은
 ViewModel 안에서 **캔버스 조회는 계약을 타고 달력 조회는 안 탄다.**
+✅ **해소(2026-08-17, PR #279)** — 두 UseCase가 `ParfaitRepository`를 주입받아 **표면 우회가 사라졌다.**
+미검증으로 남았던 둘도 닫혔다: 응답 매핑은 `ParfaitHistory`를 **삭제**하고 계약 VO `PastCanvasVO`를
+그대로 쓰는 것으로(그래서 "달력이 점을 찍는 기준"이 응답 필드 `imageCount` → VO `toppingCount`가
+됐다), `groupId`는 NavKey 인자를 타고 두 UseCase 시그니처에 들어왔다
+→ [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md).
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|

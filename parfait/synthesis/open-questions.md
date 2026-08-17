@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-17
-related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error
+related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -1818,17 +1818,23 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   형태가 넷이다(UiState 기본값 / 로드 함수 / UseCase 반환 / **UseCase 안 생성 로직**). ② 실연동
   라운드에서 `ParfaitRepository`를 둘지(OQ-P-094 ②의 결론대로면 둔다). ③ `groupId` 전달을 NavKey
   인자로 열지, 그룹 컨텍스트를 다른 방식으로 들고 다닐지.
-- **상태**: 미해결 (②③ 답 나옴 — ①과 실연동 자체는 잔존)
+- **상태**: **해소됨** (2026-08-17, PR #279 — 실연동 완료. ①의 판단만 사례로 남는다)
   > ✅ **②③이 답을 얻었는데 mock은 그대로다(2026-08-17, PR #268)** — ②는 **`ParfaitRepository`를 둔다**로
   > 확정됐고(오늘·목록·상세 셋을 열었다), ③은 **NavKey 인자**로 열렸다(`NavKeyCanvasImageAdd(groupId)`).
   > 즉 "화면이 그룹 식별자를 안 갖고 있어 UseCase 인자에서 뺐다"는 근거가 사라졌다. **그런데 이 두
   > UseCase는 손대지 않아**, 지금 같은 ViewModel 안에서 **캔버스 조회는 Repository를 타고 달력 조회는
   > mock을 만든다.** ①(mock을 UseCase 본문에 두는 것을 관례로 볼지)은 그대로이고, 이제 **같은 파일
   > 안의 대조군**이 생겨 판단 근거가 더 분명해졌다.
-- **해소 메모**: 실연동 시 [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) "데이터" 표와
-  [api/parfait.md](../api/parfait.md) Android 매핑, [data-layer](../architecture/data-layer.md) Repository
-  인벤토리를 함께 고친다(②③의 반영은 2026-08-17에 끝냈다). 연도 조회·과거 목록을 `ParfaitRepository`에
-  **올리는 것**이 실연동의 첫 걸음이다 — 목록은 이미 올라와 있다.
+- **해소 메모**: **PR #279가 다음 날 실연동을 끝냈다.** 예고한 첫 걸음(연도 조회를 `ParfaitRepository`에
+  올리는 것) 그대로 `getYears`가 올라왔고 두 UseCase가 Repository를 주입받아 mock 생성 로직이 전부
+  사라졌다. 덤으로 `ParfaitHistory`가 **삭제**되고 달력이 계약 VO `PastCanvasVO`를 그대로 쓰게 돼
+  "응답의 어느 필드에 대응하는지 코드에 없다"는 미검증도 닫혔다.
+  ①(mock을 UseCase 본문에 두는 것을 관례로 볼지)은 **결정이 아니라 사례로 남는다** — 이번 것도 하루를
+  못 넘겼다(OQ-P-134와 같은 결말). 반영처: [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md)
+  "데이터" 표·드리프트 1 · [api/parfait.md](../api/parfait.md) Android 매핑 ·
+  [data-layer](../architecture/data-layer.md) Repository 인벤토리 ·
+  [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md).
+  **실연동이 새로 연 미결 넷은 OQ-P-211~214다.**
 
 ### [2026-08-16] 고른 날짜가 아무것도 바꾸지 않는다 — 캘린더의 출력이 셀 강조뿐이다
 
@@ -1853,6 +1859,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   "아무것도 안 골랐다"와 구분되지 않고, 지금은 같은 날 재선택을 "닫기만"으로 처리해 드러나지 않는다.
   반영처: [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) 드리프트 2 ·
   [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
+  > ⚠️ **②의 두 근거가 하루 만에 뒤집혔다(2026-08-17, PR #279)** — 이전 날 그림을 **비우지 않게** 됐고
+  > (달력이 기록 있는 날만 열어 주므로 "잠깐 비어 보임"이 항상 거짓말이라는 새 근거) 상세 조회에
+  > **`launch(key)` 가드가 붙었다**(= 앞선 조회가 이긴다). 두 번째 변경은 근거가 코드에 없고,
+  > 위 문장이 적어 둔 이유와 정면으로 어긋난다 → OQ-P-212.
 
 ### [2026-08-16] 세션 인프라에 남은 구멍 넷 — 유실 창·단일 수집·한정자 그물·재발급 쿨다운
 
@@ -1953,8 +1963,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 책임"을 ⚠️로 달았다. **가드 코드는 없다** — 표면 라운드가 의도적으로 범위 밖에 뒀다
   > ([spec](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md) 결정 ⑤). 즉 ②가
   > 앱으로 정해지면 **C-301 진입 조건이 그 유일한 방어**가 되고, 지금은 경고만 있고 아무도 안 막는다.
+  > 📌 **②에 앱 쪽 첫 답이 나왔다(2026-08-17, PR #279)** — C-001이 지난 캔버스를 볼 때 메뉴 액션
+  > 두 개(토핑 추가·캔버스 편집)를 **갤러리에 저장·오늘의 파르페 가기로 갈아 끼워 진입점 자체를
+  > 치운다.** UiState도 `todayCanvas`/`viewedCanvas`로 갈라 편집 대상이 언제나 오늘이 되게 했다.
+  > **가드가 아니라 길 치우기**라는 점이 남는다 — 다른 진입 경로(딥링크·C-301 직접 진입)가 생기면
+  > 다시 뚫리고, 서버는 여전히 아무것도 안 막는다.
 - **해소 메모**: ②가 앱 쪽으로 정해지면 [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md)에
-  진입 조건으로 적는다. OQ-P-173과 같은 라운드에서 본다.
+  진입 조건으로 적는다. OQ-P-173과 같은 라운드에서 본다. 화면이 실제로 택한 방식은
+  [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md)에 있다.
 
 ### [2026-08-16] 배경 이미지가 참조 카운트를 올리지 않아 토핑을 지우면 배경이 깨진다
 
@@ -2141,7 +2157,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   모달 시점에 즉시 반영할지, 확인 버튼까지 미룰지(지금은 즉시 목록에서 뺀다).
 - **상태**: 미해결
   > ⚠️ **①의 답이 절반만 나오면서 출처가 둘로 갈렸다(2026-08-17, PR #268)** — C-001 캔버스는 이제
-  > 서버 조회(`GetTodayParfaitUseCase`·`GetCanvasByDateUseCase`)로 토핑을 그리는데, **C-301 편집 탭은
+  > 서버 조회(`GetTodayParfaitUseCase`·`GetParfaitDetailUseCase`)로 토핑을 그리는데, **C-301 편집 탭은
   > 여전히 `loadMockToppings()`를 고친다.** 즉 같은 앱 안에서 같은 캔버스의 토핑이 **한쪽은 서버,
   > 한쪽은 mock**이다. ①의 원래 물음("C-001과 C-301이 같은 조회를 쓰는지")은 이제 **"C-301을 그
   > 조회로 옮기는 일"**로 좁혀졌고, 옮기면 ②(저장 단위)가 곧바로 걸린다 — 서버 토핑 수정 표면은
@@ -2343,6 +2359,78 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [design-system](../architecture/design-system.md) `YGNametagChip` 항목의 두 사례와
   [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md) 정책 대조 표를 함께 고친다.
 
+### [2026-08-17] 지난 캔버스의 "갤러리에 저장"이 로그 한 줄이다
+
+- **ID**: OQ-P-211
+- **출처**: `CanvasImageAddViewModel#handleClickSaveToGallery`(PR #279) — 지난 캔버스를 볼 때 메뉴
+  맨 위에 오는 액션인데 핸들러가 `TODO` 주석과 정보 로그 하나다. 버튼·문구(`canvas_image_add_save_to_gallery`)·
+  아이콘·인텐트는 다 있어서 **사용자에게는 동작하는 기능처럼 보인다.** 같은 라운드가 지난 캔버스에서
+  편집 진입점을 치운 자리를 이 액션이 대신 차지했으므로, 지금 지난 캔버스에서 할 수 있는 일은
+  **오늘로 돌아가기 하나뿐**이다.
+- **항목**: ① 캔버스를 이미지로 만드는 주체 — Compose `GraphicsLayer` 캡처인지 서버 렌더인지
+  (전자면 화면 밖 영역·비동기 이미지 로딩 완료를 어떻게 다룰지가 따라온다). ② 저장 권한·경로
+  (`MediaStore` 진입점이 앱에 아직 없다). ③ 결과 표현 — 성공·실패 토스트가 필요하면 `YGScaffoldV2`
+  이관과 같은 자리다(OQ-P-204). ④ 구현 전까지 버튼을 비활성으로 둘지.
+- **상태**: 미해결
+- **해소 메모**: 정하면 [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md)
+  드리프트 1을 지운다. ①이 캡처면 `core:util:android` 소유 판단이 붙는다(OQ-P-186과 같은 성격).
+
+### [2026-08-17] 날짜 연속 선택의 승자가 근거 없이 뒤집혔다 — 머리말과 그림이 어긋난 채 남는다
+
+- **ID**: OQ-P-212
+- **출처**: `CanvasImageAddViewModel#loadCanvasDetail`·`handleClickDate`(PR #279) — 상세 조회에
+  `launch(key = LOAD_CANVAS_DETAIL_KEY)` 가드가 붙었다. `BaseViewModel.launch`의 key 가드는 **같은 key가
+  돌고 있으면 새 작업을 시작하지 않는다**(앞선 것이 이긴다). 같은 라운드가 **이전 날 그림을 비우지 않도록**
+  바꿨으므로, A → B를 빠르게 고르면 ⓐ B 요청이 버려지고 ⓑ A 응답이 와도 `selectedDate`가 B라 반영되지
+  않아 **B 머리말 + A 토핑**이 다음 조작까지 남는다. 직전 라운드(PR #268)는 정확히 이 이유로 가드를
+  **일부러 걸지 않았다**고 코드 주석에 적었는데(OQ-P-184 ②), 그 주석과 함께 근거가 사라졌다.
+- **항목**: ① 마지막 선택이 이겨야 하는가(그러면 가드를 빼거나 앞선 job을 취소하는 형태로 바꾼다) —
+  `launch`에 "새 것이 이긴다" 변형이 없어 **베이스 확장 여부**가 함께 걸린다. ② 아니면 조회 중 달력·
+  날짜 탭을 막을지. ③ 어느 쪽이든 이전 날 그림을 남기는 선택과 짝이라 함께 정해야 한다.
+- **상태**: 미해결 (실기기 확인 없음 — 재현은 연속 탭 타이밍에 달렸다)
+- **해소 메모**: 정하면 [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md)
+  드리프트 2와 [state-management](../architecture/state-management.md) `launch` 가드 서술을 함께 고친다.
+  ①을 고르면 [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md)의
+  "반영 직전 재확인" 서술이 정본이 된다.
+
+### [2026-08-17] 달력이 기록 없는 과거 날짜를 잠근다 — 위키 정책의 Disabled 정의를 넘어섰다
+
+- **ID**: OQ-P-213
+- **출처**: `CustomCalendar`(PR #279) — 셀 활성 조건이 `date <= today`에서
+  `오늘 || uploadedDates 포함`으로 바뀌었다. 위키 [[캘린더-컴포넌트]]는 Disabled를 **"캔버스를 볼 수
+  없는 미래 날짜"**로 정의하는데, 이제 **파르페가 없는 과거 날짜와 토핑이 0건인 날**까지 잠긴다
+  (`uploadedDates`는 `toppingCount > 0`만 담는다). 이유는 타당하다 — 눌러도 열 캔버스가 없으면 그 탭은
+  아무 일도 하지 않는다. 다만 **정책 문서에 없는 조건이고**, "캔버스는 열렸는데 토핑이 없는 날"은
+  서버에 행이 있어 열 수 있는데도 닫힌다.
+- **항목**: ① 정책을 코드에 맞춰 넓힐지(위키 수집 요청) 코드를 정책에 맞춰 되돌릴지.
+  ② 토핑 0건인 날을 "열 수 있는 날"로 볼지 — `isEmpty`는 원래 **점을 찍지 않는 기준**이었는데 이번에
+  **열람 가능 기준**까지 겸하게 됐다(한 값이 두 뜻을 진다). ③ 앞뒤 달 날짜를 잠그는 기존 확대
+  (2026-08-16 항목)와 함께 정리할지.
+- **상태**: 미해결 (정책 소스 부재 — 위키 소관 판단이 먼저)
+- **해소 메모**: 정하면 [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) 정책 대조 표와
+  [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md)
+  정책 대조 표를 함께 고친다. ①이 위키 쪽이면 정책 소스 수집 요청이 선행이다.
+
+### [2026-08-17] 연도별 캐시에 무효화 경로가 없고, 파생이 캐시가 가른 둘을 다시 뭉갠다
+
+- **ID**: OQ-P-214
+- **출처**: `CanvasImageAddUiState.parfaitHistoriesByYear`·`parfaitHistories`(PR #279) — 한 번 받은 해는
+  화면이 사는 동안 다시 받지 않는다. ⓐ **무효화 경로가 없어** 오늘 캔버스에 토핑을 얹어도 달력 점이
+  안 바뀐다(지금은 얹는 경로가 없어 안 드러난다, OQ-P-209). ⓑ 캐시를 `Map`으로 둔 근거는 **"받아 봤는데
+  비어 있는 해"와 "아직 안 받은 해"를 구분**하는 것인데, 정작 화면이 읽는 파생 `parfaitHistories`는
+  `orEmpty()`라 **둘을 다시 같은 빈 목록으로** 준다. ⓒ 그 해 조회가 실패해도 캐시에 안 들어가므로
+  같은 해로 돌아올 때마다 다시 부른다 — 재시도로는 맞고, 실패를 화면에 알리지 않으므로 사용자에겐
+  "점이 없는 해"와 같아 보인다.
+- **항목**: ① 토핑 배치 결선 때 무효화를 어떻게 걸지 — 해당 연도만 버릴지, `PastCanvasVO`를 로컬에서
+  갱신할지. ② 파생이 상태 셋(미조회·조회됨·실패)을 표현해야 하는지 — 그러면 UiState가 `Map<Int, X>`의
+  값 타입을 갖게 된다. ③ 캐시 상한이 없다(연도를 오갈수록 쌓인다) — 화면 수명 안이라 문제가 아니라고
+  볼지.
+- **상태**: 미해결
+- **해소 메모**: ①은 OQ-P-209(토핑 얹는 경로)와 한 라운드다. 정하면
+  [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md)
+  드리프트 3·4를 지우고 [state-management](../architecture/state-management.md)의 "UI State가 담는 것"에
+  캐시 형태를 한 줄 적는다.
+
 <!--
 항목 추가 형식:
 
@@ -2353,4 +2441,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 207 -->
+<!-- oq-next: 215 -->

@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-16
-related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot
+verified: 2026-08-17
+related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -23,6 +23,9 @@ tags: [architecture, parfait]
     2026-08-15~16 라운드가 `session/`(PR #260, `SessionEvent` — **원격 VO가 아닌 첫 하위 패키지**)과
     `parfait/`(PR #259, `ParfaitHistory`)를 더해 **열이 됐다**. "원격 API 라운드가 만든 것만 하위
     패키지"라는 느슨한 기준마저 더는 성립하지 않는다.
+    **2026-08-17(PR #279)에 `parfait/`가 통째로 사라져 다시 아홉이 됐다** — 그 안의 유일한 선언
+    `ParfaitHistory`가 계약 VO `PastCanvasVO`로 대체됐기 때문이고, 같은 도메인의 날짜 헬퍼
+    `parfaitToday()`는 여전히 루트 평면(`model/ParfaitDay.kt`)에 있다. 규약이 없다는 사실은 그대로다.
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
 ## DataSource 종류
@@ -132,13 +135,15 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
 | `ParfaitGroupRepository` | `getMyGroups` · `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` | 순서대로 `GetMyGroupsUseCase`(G-001) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102) |
 | `MemberRepository`(#263) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` |
-| `ParfaitRepository`(#268) | `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` | `GetTodayParfaitUseCase`(C-001 진입) · `GetCanvasByDateUseCase`(C-001 날짜 선택 — 목록→상세 2단) |
+| `ParfaitRepository`(#268, #279) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) |
 
-**`ParfaitRepository`는 DataSource가 가진 다섯 갈래 중 셋만 연다** — 연도 조회·배경 변경은 소비자가
+**`ParfaitRepository`는 DataSource가 가진 다섯 갈래 중 넷을 연다** — 남은 배경 변경은 소비자가
 생길 때 올린다(`ParfaitGroupRepository`와 같은 방침: 쓰지 않는 갈래를 미리 열면 어떤 실패를 어떻게
-다룰지 정하지 않은 채 계약이 굳는다). 그래서 **같은 ViewModel 안에서 층이 갈린다** — 캔버스 조회는
-이 Repository를 타고, 같은 화면의 달력 조회(`GetParfaitHistoriesUseCase`·`GetParfaitYearsUseCase`)는
-여전히 UseCase 본문 mock이다 → [open-questions](../synthesis/open-questions.md) OQ-P-183.
+다룰지 정하지 않은 채 계약이 굳는다). #268에서는 셋이었고 **같은 ViewModel 안에서 층이 갈려 있었다**
+(캔버스 조회는 이 Repository, 달력 조회는 UseCase 본문 mock) — **#279가 그 방침대로 연도 조회를
+소비자와 함께 올려 층 갈림을 닫았다**(OQ-P-183). 그 라운드에 `GetCanvasByDateUseCase`가
+`GetParfaitDetailUseCase`로 대체됐다 — 달력이 그 해 목록을 캐시로 들게 되면서 UseCase가 하던
+목록→상세 2단 중 앞 단이 화면으로 옮겨 갔다.
 
 **`MemberRepository`는 지금까지와 다른 모양이다 — 원격과 로컬을 조율한다.** 다른 원격 Repository가
 DataSource 위임 + `mapErrorToAppError()`뿐인 데 비해, 이쪽은 원격 응답을 **로컬 SSoT에 쓰고** 읽기는
@@ -243,6 +248,10 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > 셋을 열고 UseCase 둘을 거쳐 **C-001 캔버스 화면까지** 이어졌다 — Repository가 0건인 도메인은 **둘**
 > (image·parfait-image)로 줄었다. 같은 라운드가 **표면 우회 소비자를 없애지는 않았다** — 달력 UseCase
 > 둘은 그대로 mock이다 → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
+> ✅ **2026-08-17 — 표면 우회 소비자가 사라졌다**(PR #279). 달력 UseCase 둘이 `ParfaitRepository`를
+> 주입받고 `getYears`가 인터페이스에 올라왔다. **`:data` 표면을 건너뛰는 프로덕션 소비자는 0건**이 됐고,
+> `ParfaitHistory` 삭제로 `domain/model/`의 하위 패키지도 아홉으로 줄었다
+> → [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md).
 > **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
