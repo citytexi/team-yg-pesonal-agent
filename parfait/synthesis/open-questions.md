@@ -109,8 +109,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-011
 - **출처**: `component/ygdatebutton/YGDateButton.kt` — 클릭을 표준 `Modifier.clickable(indication = null)` + `semantics { role = Role.Button }`로 직접 구현. 다른 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem·YGChipButton)가 쓰는 `core:util:android`의 중복 클릭 leading-throttle 유틸(`clickableYG`)을 안 씀 → 빠른 연타 방어 부재.
 - **항목**: `YGDateButton`을 `clickableYG`(또는 변형)로 전환할지, 캘린더 셀은 스로틀 예외로 둘지.
-- **상태**: 미해결 (코드 수정 대상)
-- **해소 메모**: 방침 확정 시 [design-system](../architecture/design-system.md) "pressed 상태 관용구"·clickable 규약과 정합. [clickableyg-throttle 스펙](../specs/archive/2026-07-12-clickableyg-throttle.md) 참조.
+- **상태**: **해소됨** (2026-08-17, 리네임/이관 #284)
+- **해소 메모**: `clickableYGNoRipple`로 이관돼 스로틀을 탄다. **캘린더 셀을 예외로 두지 않는 쪽**으로 정해졌다 — 날짜 셀은 단일 선택이라 같은 날짜를 연타해도 멱등이고, 스로틀 게이트는 Modifier 노드마다 하나여서 다른 날짜로 옮겨 누르는 것은 막지 않는다. 규약은 [design-system](../architecture/design-system.md) clickable 절 "무리플이 기본이다"로 옮겨 적었다.
 
 ### [2026-07-18] FCM 토큰 서버 전송 미구현
 - **ID**: OQ-P-012
@@ -632,8 +632,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `core/util/android/clickable/YGClickable.kt#clickableYGNoRipple` — `YGScreen` 배경 탭 포커스 해제를 위해 신설됐으나, 그 결선이 접근성 사유로 철회되고 [clearfocusontap-modifier](../specs/archive/2026-08-03-clearfocusontap-modifier.md)(`pointerInput` 기반)로 대체되면서 **호출자가 코드 전체에 없다**(정의만 잔존). 함께 들어온 `clickableYGThrottle`의 `indications: List<Indication>?` nullable 일반화도 이 API 전용이다.
   > 📌 **2026-08-04 (PR #192 머지) 갱신** — 이 API는 **이번 머지로 develop에 처음 들어왔다.** 즉 "결선을 위해 만들었다가 결선이 없어진 API"가 아니라, **결선이 develop에 한 번도 도달하지 않은 채 잔여물만 머지된** 상태다. 되돌리기 비용이 가장 싼 시점이 지금이라는 뜻이기도 하다(호출부 0, 되돌릴 시그니처 1개).
 - **항목**: ① 존치 — `clickableYG`/`DimRipple`/`ScaleRipple`/`MergeRipple` 4종과 세트를 이루는 공용 API라 "리플 없는 클릭"이 앞으로 쓰일 수 있다, ② 제거(YAGNI) — 제거 시 `clickableYGThrottle`의 nullable 일반화도 함께 되돌려 시그니처를 원복해야 한다.
-- **상태**: 미해결 (코드 수정 대상 — 현재 죽은 API)
-- **해소 메모**: 제거를 택하면 [clickableyg-throttle 스펙](../specs/archive/2026-07-12-clickableyg-throttle.md)·[clickableyg-ripple-variants 스펙](../specs/archive/2026-07-13-clickableyg-ripple-variants.md)의 변형 목록을 함께 정리한다.
+- **상태**: **해소됨** (2026-08-17, 이관 #284 — ① 존치)
+- **해소 메모**: 죽은 API가 아니라 **프로젝트 표준 클릭 유틸**이 됐다. 프로덕션 `Modifier.clickable` 28곳이 전부 이 함수로 이관되면서 사용처 0이 28이 됐고, 되돌리기 후보였던 `clickableYGThrottle`의 `indications` nullable 일반화도 존치 근거를 얻었다. 같은 라운드에서 `interactionSource` 파라미터가 추가됐다(hoisted `MutableInteractionSource`를 넘겨야 pressed 표현이 살아 있는 컴포넌트 9종 때문). 규약은 [design-system](../architecture/design-system.md) clickable 절.
 
 ### [2026-08-03] 배경 탭 포커스 해제가 입력 화면 3종에 미적용
 - **ID**: OQ-P-078
@@ -717,10 +717,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-088
 - **출처**: `feature/gallery/impl/.../component/GalleryImageGridComponent.kt#GalleryImageCell`(PR #191 develop 머지) — 셀 클릭이 `Modifier.clickable`이라 `core:util:android`의 leading-throttle(`clickableYG`)을 타지 않는다. 이 클릭은 `navigator.goTo`로 이어지므로 연타 시 확인 화면이 백스택에 중복으로 쌓일 수 있다. 같은 규약 이탈이 [2026-07-18 `YGDateButton` 항목](#2026-07-18-ygdatebutton-clickableyg-미사용--스로틀-규약-이탈)으로 이미 등록돼 있다.
 - **항목**: ① 화면(feature) 쪽 클릭에도 `clickableYG`를 규약으로 적용할지 — 지금까지 이 규약은 디자인시스템 컴포넌트 기준으로만 서술됐다, ② 적용한다면 리플 변형(그리드 셀은 이미지 위라 dim/scale 중 무엇인지) 선택.
-- **상태**: 미해결 (코드 수정 대상)
-- **해소 메모**: ①이 정해지면 [design-system](../architecture/design-system.md) clickable 규약의 적용 범위를 "디자인시스템 컴포넌트"에서 "네비게이션을 유발하는 모든 클릭"으로 넓히는 서술이 필요하다. [2026-07-18 항목](#2026-07-18-ygdatebutton-clickableyg-미사용--스로틀-규약-이탈)과 함께 처리.
+- **상태**: **해소됨** (2026-08-17, 이관 #284 — ①은 적용, ②는 무리플로 확정)
+- **해소 메모**: ① 규약이 **"디자인시스템 컴포넌트"에서 feature 화면 클릭까지 넓어졌다** — 프로덕션 `Modifier.clickable` 28곳 전량 이관. ② 리플 변형을 고르는 대신 **`clickableYGNoRipple`(무리플)을 기본**으로 놓고 리플이 필요한 지점을 나중에 올리는 방향으로 갔다. 그리드 셀은 선택 상태 표현이 없어 리플이 유일한 피드백이었으므로 **`clickableYG` 승격 후보 목록**에 올라간다 → [2026-08-17] 승격 후보 항목. 규약 서술은 [design-system](../architecture/design-system.md) clickable 절.
 
   > 📌 **사례 추가(2026-08-15, PR #231)** — C-301 배경 편집의 팔레트 원 3종(갤러리·카메라·색)이 전부 `Modifier.clickable`이다. 갤러리·카메라 원은 `goTo`로 이어져 그리드 셀과 같은 중복 진입 위험이 있다.
+  > ✅ **이 사례도 함께 닫혔다(2026-08-17, #284)** — 팔레트 원 3종이 `clickableYGNoRipple`로 이관돼 `goTo` 중복 진입이 스로틀에 막힌다.
 
 ### [2026-08-04] 갤러리 死코드 2건 — 부분 접근 배너·전체 조회 UseCase
 - **ID**: OQ-P-089
@@ -866,7 +867,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-101
 - **출처**: `feature/groups/list/impl/route/component/ToppingLayout.kt#animateToppingPlacement`·`ToppingLayoutDefaults`(PR #194 develop 머지) — 목록 중간 삽입·삭제로 자리가 밀릴 때 순간이동 대신 애니메이션시키는 `Modifier` 확장인데 호출부가 없다. KDoc이 "호출부에서 각 항목을 안정적인 key로 감싸야 항목 이동으로 인식된다"고 전제를 다는데 `ToppingLayout` 호출부는 `fastForEachIndexed`로 key 없이 그린다. 같은 파일의 `ToppingLayout`·`ToppingLayoutDefaults`가 feature `impl` 내부 전용인데도 `public`이라(같은 폴더 `GroupListParfaitLayout`은 `internal`) 가시성도 갈린다.
-- **항목**: ① 조회 결선 라운드에서 실제로 붙일지, 아니면 걷어낼지(사용처 0 공개 API를 남긴 선례가 이미 있다 — [2026-08-03 `clickableYGNoRipple` 항목](#2026-08-03-clickableygnoripple-사용처-0--존치-여부)), ② feature `impl` 내부 심볼의 기본 가시성을 `internal`로 못박을지.
+- **항목**: ① 조회 결선 라운드에서 실제로 붙일지, 아니면 걷어낼지(사용처 0 공개 API를 남긴 선례가 이미 있다 — [2026-08-03 `clickableYGNoRipple` 항목](#2026-08-03-clickableygnoripple-사용처-0--존치-여부). **그 선례는 2026-08-17 #284로 존치 쪽으로 닫혔다** — 사용처 0이던 API가 표준 유틸이 됐다), ② feature `impl` 내부 심볼의 기본 가시성을 `internal`로 못박을지.
 - **상태**: 미해결
 - **해소 메모**: 결정 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "토핑 배치" 절을 정리한다.
 
@@ -1104,7 +1105,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-123
 - **출처**: PR #218 develop 머지 — 브랜치가 애플 로그인 버튼을 넣었다가 같은 브랜치에서 지웠는데(`chore: 애플 로그인 관련 코드 삭제`) 부속물이 남았다. `core:designsystem` `theme/colors/AppleDesignGuideColors.kt`(신규 파일), `feature/login/impl` `res/drawable/icon_logo_apple.xml`, `feature/login/impl` `strings.xml`의 애플 버튼 라벨·`contentDescription` 2건. develop 전수 검색에서 **참조가 0건**이다. 바로 전날 **Android는 애플 로그인을 쓰지 않기로 확정**했으므로([2026-08-11] 서버 delta 항목의 ② 해소) 이 심볼들은 앞으로도 소비처가 생기지 않는다.
-- **항목**: ① 지금 걷어낼지, 아니면 "언젠가 붙을 수도"로 두고 死코드 목록에 올려둘지 — 사용처 0 공개 심볼을 남긴 선례가 이미 둘 있다(`clickableYGNoRipple` [2026-08-03], `animateToppingPlacement` [2026-08-07]). ② 걷어낸다면 `AppleDesignGuideColors`는 `core:designsystem` 소관이라 로그인 PR과 별개 정리 대상이다. ③ 브랜치 안에서 되돌린 기능의 부속 리소스를 리뷰가 못 잡는다는 신호 — 체크 지점을 어디에 둘지(R8은 리소스 축소를 하지만 소스 심볼은 남는다).
+- **항목**: ① 지금 걷어낼지, 아니면 "언젠가 붙을 수도"로 두고 死코드 목록에 올려둘지 — 사용처 0 공개 심볼을 남긴 선례가 이미 둘 있다(`clickableYGNoRipple` [2026-08-03] — **2026-08-17 #284로 존치 쪽 결말**, `animateToppingPlacement` [2026-08-07] — 미결). 다만 선례가 존치로 닫혔다고 이쪽까지 존치가 되는 건 아니다: 저쪽은 소비처가 실제로 생겼고 애플 로그인은 **Android가 안 쓰기로 확정**돼 소비처가 생길 길이 없다. ② 걷어낸다면 `AppleDesignGuideColors`는 `core:designsystem` 소관이라 로그인 PR과 별개 정리 대상이다. ③ 브랜치 안에서 되돌린 기능의 부속 리소스를 리뷰가 못 잡는다는 신호 — 체크 지점을 어디에 둘지(R8은 리소스 축소를 하지만 소스 심볼은 남는다).
 - **상태**: 미해결 (기능 영향 0 — 정리 시점 문제)
 - **해소 메모**: 걷어내면 [design-system](../architecture/design-system.md) 색 트리의 `AppleDesignGuideColors` 줄과 [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md) "드리프트" 1번을 함께 지운다. 서버 계약 쪽 애플 엔드포인트는 그대로 둔다(iOS 소관).
 
@@ -2239,7 +2240,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   간격·버튼 시각 반지름·모서리 간격이 토큰 밖 리터럴이고, 코드 주석이 "공통에 없음"이라고 자인한다.
   같은 라운드가 배치·제스처 확장 2종은 규약대로 `core:util:android` `extension/`으로 올렸다.
 - **항목**: ① 회전 가능한 점선 테두리를 `dashedBorder()` 확장으로 흡수할지, 편집 전용 그리기로 둘지.
-  ② 인터랙션이 "탭 아님"(드래그·선택 토글)일 때도 `clickableYG` 관용구를 강제할지.
+  ② ~~인터랙션이 "탭 아님"(드래그·선택 토글)일 때도 `clickableYG` 관용구를 강제할지.~~
+  → ✅ **해소(2026-08-17, 이관 #284)**. 토핑·딤이 `clickableYGNoRipple`로 이관돼 관용구를 탄다 —
+  드래그·선택 토글도 예외로 두지 않는다(무리플이라 시각은 그대로, 스로틀만 얹힌다).
   ③ 편집 화면용 치수(60·14·2·7.5·9·7dp)를 토큰 스케일에 올릴지 — A-002·C-201이 남긴 "스케일 공백"
   지적과 같은 자리다.
 - **상태**: 미해결
@@ -2435,6 +2438,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   드리프트 3·4를 지우고 [state-management](../architecture/state-management.md)의 "UI State가 담는 것"에
   캐시 형태를 한 줄 적는다.
 
+### [2026-08-17] 무리플 전면 이관으로 피드백이 사라진 클릭 6곳 — `clickableYG` 승격 후보
+
+- **ID**: OQ-P-215
+- **출처**: 이관 #284 — 프로덕션 `Modifier.clickable` 28곳이 `clickableYGNoRipple`로 옮겨졌다. 그중
+  **원래 Material 기본 리플이 돌던 자리**는 무리플이 되면서 시각 피드백이 실제로 줄었다. 컴포넌트가
+  `collectIsPressedAsState()`로 눌림을 그리거나 선택 상태가 남는 곳은 손실이 없지만, 아래 여섯은
+  **리플이 유일한 피드백**이었다 — `NotionWebView` 재시도 텍스트, `TermAgreeScreen` 재시도 텍스트와
+  약관 링크 caret, `InviteCodePasteBar`, `GalleryImageGridComponent` 셀,
+  `CanvasImageSelectScreen` 이미지. 뒤 둘은 탭 즉시 `goTo`로 전진해 화면이 바뀌므로 손실이 가볍고,
+  앞 넷은 제자리에 남아 "눌렸는지" 단서가 없다.
+- **항목**: ① 여섯을 `clickableYG`(Dim 리플)로 올릴지, 텍스트 링크류는 색 변화 같은 다른 표현으로 갈지.
+  ② 승격 판정 기준을 규약으로 적을지 — "자체 눌림/선택 표현이 없고 제자리에 남는 클릭은 리플을 준다"
+  같은 문장이 있어야 다음 화면에서 같은 판단을 반복하지 않는다.
+- **상태**: 미해결 (실기기 확인 없음 — 체감 손실 크기를 눈으로 못 봤다)
+- **해소 메모**: 정하면 [design-system](../architecture/design-system.md) clickable 절의 "무리플이 기본이다"
+  아래 승격 기준을 한 줄 추가하고 후보 목록을 지운다. 이 항목은 [2026-08-04] 갤러리 그리드 셀
+  항목의 ②(리플 변형 선택)를 이어받은 자리다.
+
 <!--
 항목 추가 형식:
 
@@ -2445,4 +2466,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 215 -->
+<!-- oq-next: 216 -->

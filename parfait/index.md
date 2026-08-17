@@ -44,6 +44,14 @@ mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 
 (image·parfait-image)로 줄었다. ⚠️ **읽기만이다** — 배치·좌표 저장 경로가 없어 토핑을 새로 얹지 못하고,
 조회 실패는 로그만이라 빈 캔버스와 구분되지 않는다. 달력 UseCase 둘·C-301 편집 탭은 여전히 mock이다
 ([c001-canvas-today-detail 스펙](specs/archive/2026-08-17-c001-canvas-today-detail.md)).
+⚠️ **2026-08-17 — 미머지 이관 선반영**(#284). 프로덕션 Foundation `Modifier.clickable` **28곳을 전량
+`clickableYGNoRipple`로 이관**했다. 컴포넌트 대부분이 `collectIsPressedAsState()`로 눌림을 직접 그려
+리플이 필요 없는데 호출 지점마다 `indication = null` 유무가 갈려 의도가 코드로 구분되지 않았다 —
+**무리플을 기본에 두고 리플이 필요한 곳을 나중에 `clickableYG`로 올리는** 방향이다. 그 과정에서
+`clickableYGNoRipple`에 `interactionSource` 파라미터가 붙었고, 300ms 스로틀이 화면 클릭 전반에
+적용됐다(게이트는 Modifier 노드마다 하나라 같은 요소 연타만 막는다). 미결 3건 해소(`YGDateButton`
+규약 이탈·`clickableYGNoRipple` 사용처 0·갤러리 그리드 셀), 신규 1건(리플이 유일한 피드백이던 6곳)
+→ [design-system](architecture/design-system.md) clickable 절.
 ⚠️ **2026-08-17 — 미머지 리네임 선반영**(#278). C-001 화면 계열이 `CanvasImageAdd*` → **`CanvasMain*`**로
 개명됐다(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`,
 `strings.xml` 키 `canvas_main_*`). 이름만 바뀌고 시그니처·동작은 불변이다. **아직 develop에 없다**
