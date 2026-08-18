@@ -68,8 +68,13 @@ YGColorChipType / YGGrouptagChipType(:core:designsystem)
 | `YGColorChipType.Default` | 필요 | fill `Gray.White` · stroke `Gray.Gray100` · text `Gray.Gray300` |
 | `YGGrouptagChipType.DEFAULT` | 필요 | timestamp `Gray.Gray300` |
 
-Nametag-Chip `Default`의 글자는 닉네임 첫 글자가 아니라 **`-`**다. `YGNametagChip`은 글자를 파라미터로
-받으므로 컴포저블은 안 바뀌고 호출부가 넘긴다(`NametagChipPlus`의 `+7`과 같은 방식).
+Figma의 Nametag-Chip `Default`는 글자가 닉네임 첫 글자가 아니라 **`-`**다. `YGNametagChip`은 글자를
+파라미터로 받으므로 컴포저블은 안 바뀌고 호출부가 넘긴다(`NametagChipPlus`의 `+7`과 같은 방식).
+
+**이 라운드에서 `-`를 넘기는 호출부는 없다.** S-101 멤버 목록은 서버가 탈퇴자를 빼고 주므로 `Default`가
+계약상 나오지 않고, 나온다면 그건 계약 위반이라 닉네임 첫 글자가 오히려 단서다. `-`가 뜻을 갖는 자리는
+"알 수 없는 사용자"를 그리는 C-202 작성자 표시이고 그것은 PR #298 소관이다 — 타입만 세워 두고 글자
+규칙은 그 화면이 정한다.
 
 > ⚠️ **`YGColorChipType.Default`는 열린 PR #298(스포트라이트 토핑)도 추가한다.** 이름·토큰·위치가 같아
 > 머지 충돌은 한 블록이고 해소가 자명하다. 이 스펙은 #298이 develop에 없는 상태를 전제로 자체 신설하되
@@ -106,7 +111,9 @@ Nametag-Chip `Default`의 글자는 닉네임 첫 글자가 아니라 **`-`**다
 (부작용 있는 GET이 두 배), 화면은 캘린더 오늘(D) 아래 D−1 캔버스를 그린다. C-201 달력의 오늘 강조·
 미래 잠금도 같은 값을 쓴다.
 
-- `domain/model/ParfaitDay.kt`의 `parfaitToday()`에 03시 롤오버를 넣는다. 상수는 같은 파일.
+- `domain/model/ParfaitDay.kt`의 `parfaitToday()`에 03시 롤오버를 넣는다.
+- **상수는 새로 만들지 않고 `DayWindow.DAY_BOUNDARY_HOUR`를 쓴다.** 같은 `:domain`에 이미 03시 경계가
+  있고(갤러리 하루 윈도우가 쓴다) 두 번 적으면 서버가 배치 시각을 바꿀 때 한쪽만 고쳐진다.
 - KDoc에 **"서버 `ParfaitDay`의 거울 — 서버가 배치 시각을 바꾸면 같이 바꾼다"**를 박는다. 지금 계약에
   그 값을 내려주는 필드가 없어 앱이 복제하는 것이고, 복제라는 사실이 코드에 남아야 한다.
 - `GetTodayParfaitUseCase`·`GetParfaitYearsUseCase`·`CanvasMainViewModel`은 **코드가 안 바뀐다** —
@@ -154,8 +161,9 @@ TDD로 간다. 매퍼 단독 테스트는 만들지 않는다(규약) — 판단
 | `GroupSettingViewModelTest` | 칩이 서버 값을 따른다 · `remainingCount` 계산 · 음수 클램프 |
 | `GroupListViewModelTest` 또는 화면 단위 | 칩 매핑 · 폴백 |
 
-`MyParfaitGroupVOMapperTest`가 이미 있다 — 규약 예외로 남아 있는 파일이라 새로 늘리지 않고 기존
-케이스만 신규 필드에 맞춰 고친다.
+그룹 도메인에는 DataSource 테스트가 없어 `ParfaitGroupRemoteDataSourceImplTest`를 신설한다(다른 도메인은
+전부 갖고 있다). `MyParfaitGroupVOMapperTest`는 규약 예외로 남아 있는 파일이라 **늘리지도 손대지도 않는다** —
+신규 DTO 필드가 널 허용이라 그 파일은 그대로 컴파일된다.
 
 ## 열린 질문
 
