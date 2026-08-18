@@ -5,8 +5,55 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `8730ffa3` (`Merge pull request #297 from mash-up-kr/feature/#288-group-list-refresh`)
-- **요약**: **화면이 앞에 설 때마다 다시 묻기 시작했고, 그러자 실패 규칙이 뒤집혔다**(delta 1건).
+- **커밋**: `86f0f6b0` (`Merge pull request #305 from mash-up-kr/feature/#254-group-list-refresh-lottie`)
+- **요약**: **화면 둘이 하나로 줄었고, 자리채움 둘이 실물로 바뀌었다**(delta 3건).
+  **#296**(`feature/#281-policy-detail-webview`): 약관 종류마다 있던 목적지가 사라졌다.
+  `NavKeyServiceTerms`·`NavKeyPrivacyPolicy` 두 `data object`와 Route/Screen/ViewModel 2벌이
+  **`NavKeyWebView(title, url)` 한 벌**로 합쳐지고 **ViewModel은 아예 없어졌다** — 이 화면의 상태는
+  실려 온 두 값이 전부이고 부를 API가 없어 감쌀 것이 없다. 합칠 수 있게 된 이유는 **두 화면을 가르던
+  제목·주소가 이제 서버 값**이기 때문이다(`GET /api/v1/policies`). 앞선 라운드들이 "같은 화면을
+  재사용하려고 인자를 붙인" 것이라면 이번은 **인자가 생겨서 화면이 줄어든** 반대 방향이고,
+  그래서 출처 인자도 두지 않았다(설정·온보딩 어느 쪽에서 왔든 그릴 것이 같다). 동시에 온보딩 약관
+  화면의 마지막 stub(`/* navigate to url */`)이 닫혔고 — caret을 탭하면 실제로 전문이 열린다 —
+  설정 화면은 진입 시 약관 목록을 받아 두는 **두 번째 소비처**가 됐다(policy 도메인은 이미 `done`).
+  엔트리에서 머티리얼 `Scaffold`를 직접 부르던 규약 이탈도 이때 `YGScaffoldV2`로 메워졌다.
+  ⚠️ **다만 실패가 조용하다** — 설정에서 목록 조회가 실패하면 줄은 그대로 있는데 **눌러도 아무 일이
+  없다**(로그만, OQ-P-231). 온보딩 쪽은 재시도 문구가 있어 같은 API의 실패 표현이 화면마다 갈린다.
+  그리고 계약 공백이 처음으로 화면까지 내려왔다 — 서버 `url`이 URL 전용 컬럼이 아니라 본문 컬럼
+  재사용이라(OQ-P-068) 전문이 오면 웹뷰가 로드에 실패한다. 목적지가 임의 주소를 받는 범용 화면이 된
+  것에 출처 검증도 없다(OQ-P-232 신설).
+  **#295**(`feature/#282-app-setting-version-info`): `"1.0v"` 리터럴이던 버전이 실값이 됐다.
+  `versionName`이 애플리케이션 모듈 속성이라 라이브러리에서 읽을 수 없어, `core:util:android`가
+  **`:app`과 같은 카탈로그 항목을 자기 `BuildConfig`에 다시 심고** `APP_VERSION_NAME` 상수로 낸다
+  (저장소에서 `buildConfig`를 켜는 첫 라이브러리 모듈이다). 출처가 하나라 지금은 안 갈리지만
+  접미사·플레이버가 생기면 설정 화면만 옛 값이 된다(OQ-P-233 신설). 표시의 `v`는 포맷 리소스가
+  붙이고 상태에는 숫자만 둔다. 겸해 **`YGListItem`이 두 오버로드의 줄 높이를 스스로 맞췄다** —
+  화면이 먼저 맞췄다가 컴포넌트로 내려간 것이고, 리터럴이 아니라 아이콘 프리셋 높이를 계산해 깐다.
+  **#305**(`feature/#254-group-list-refresh-lottie`): 로딩 인디케이터가 **디자인 로띠로 확정**됐다.
+  `YGLoadingLottie`(+`YGLoadingTone`)가 신설되고 `YGLoadingOverlay`의 `CircularProgressIndicator`가
+  교체되며 Dim이 `Black25` → `Black75`로 짙어졌다 — **교체가 한 파일에서 끝난 것은 스펙이 그 파일을
+  나눠 둔 이유가 그대로 맞았다는 뜻**이다(OQ-P-205 ① 절반 해소). 색을 화면 테마가 아니라 **얹히는
+  바탕**으로 고르게 한 것이 이 컴포넌트의 결정이고, 그래서 Dim 위는 `Light`·흰 목록은 `Dark`다.
+  G-001 당겨서 새로고침은 머티리얼 기본 인디케이터 컨테이너를 버리고(디자인에 없는 흰 원이 하나 더
+  생긴다) 콘텐츠가 비켜 준 틈에 로띠를 직접 놓으며, 당기는 동안은 **손가락을 progress로 넘겨** 시계를
+  하나만 돌린다. 스플래시도 로띠를 얻었는데 여기서 **진입 규칙이 바뀌었다** — 부트스트랩 응답과 재생
+  종료가 **둘 다** 끝나야 이동하고, 순서가 정해져 있지 않아 나중에 끝난 쪽이 이동을 일으킨다.
+  화면은 여전히 목적지를 모르고 "내 애니메이션이 끝났다"만 올리며, **파싱 실패도 '끝'으로 넘긴다**
+  (그 신호가 없으면 스플래시를 벗어날 방법이 없다). ⚠️ 그러나 이것은
+  [user-info-ssot 스펙](specs/archive/2026-08-15-user-info-ssot.md)이 "최소 노출 시간 요구가 없다"며
+  `SplashInitialUseCase`를 지운 자리에 **다른 이유로 최소 노출이 돌아온 것**이고, 상한이 없다
+  (OQ-P-229 신설). 로띠 호출 관용구도 갈렸다 — 스플래시는 공용 표면을 안 쓰고 `LottieAnimation`을
+  직접 부르며 모듈이 의존을 따로 문다(OQ-P-230 신설).
+  스캐폴드 이관은 **7화면**이 됐지만(스플래시·약관 웹뷰 추가) **V1 잔여는 6파일 그대로**다 —
+  `feature/intro/impl` EntryBuilder에 약관 동의 엔트리가 남는다. 이번 둘은 로딩·실패를 채우려 옮긴
+  것이 아니라 **어차피 그 파일을 여는 라운드**여서 옮긴 것이라, OQ-P-204 ①의 답이 한 번 더 넓어졌다.
+  테스트: 유닛 467 → **474건**(`AppSettingViewModelTest`·`SplashViewModelTest`·`TermAgreeViewModelTest` 보강).
+  ⚠️ **실기기·실서버 확인 없음.**
+  ⚠️ **문서 전제 오류 1건 정정**: [design-system](architecture/design-system.md)이
+  `refactor/segmentation-logic`의 8엔트리 일괄 이관을 **"develop 기준 13화면·V1 잔여 3파일"**로 적고
+  있었으나 그 브랜치는 **로컬에만 있고 develop에 없다**(리모트에도 없다). 수치를 브랜치 기준으로
+  표기하고 develop 값(6파일)을 병기했다. 아래 "미머지 제외 항목"에도 추가한다.
+  직전 회차 요약: **화면이 앞에 설 때마다 다시 묻기 시작했고, 그러자 실패 규칙이 뒤집혔다**(delta 1건).
   **#297**(`feature/#288-group-list-refresh`): G-001 목록·C-001 캔버스에 **`Enter` 인텐트**가 생기고
   Route의 `LifecycleResumeEffect`가 그것을 보낸다. `init` 조회는 화면 수명이 아니라 **ViewModel 수명**에
   걸린 것이라, 백스택 아래 엔트리가 컴포지션에서 빠져도 살아남아 돌아온 화면이 낡은 값을 그대로 보여
@@ -195,8 +242,12 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-18 (32회차)
-- **미머지 제외 항목**: `feature/#294-group-ssot`(그룹 목록·상세 인메모리 SSoT — 이 기준선 위 커밋 10개,
+- **검증일**: 2026-08-18 (33회차)
+- **미머지 제외 항목**: `refactor/segmentation-logic`(세그멘테이션 파이프라인 하드닝 + 스캐폴드 8엔트리
+  일괄 이관 + `popUpTo<T>()` — **로컬 브랜치이고 리모트에도 없다**.
+  [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md) 선반영 완료. develop 대조 시
+  `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`인 것으로 확인된다),
+  `feature/#294-group-ssot`(그룹 목록·상세 인메모리 SSoT — 이 기준선 위 커밋 10개,
   [스펙](specs/2026-08-17-group-ssot.md)·[플랜](plans/2026-08-17-group-ssot.md)·[ADR-0023](adr/0023-group-in-memory-ssot.md)
   선반영 완료). 그 브랜치는 이번 delta의 `Enter` 인텐트를 **전제로** 쓰고 대상만 캐시 구독으로 바꾼다.
 
@@ -265,3 +316,4 @@
 | 2026-08-17 | `ede719f0` | Merge #292 (#284 clickable-to-clickable-yg) | delta 2건(#291·#292) — **둘 다 리팩터이고 둘 다 문서 선반영이 먼저 끝나 있던 브랜치**라, 이번 회차는 대조가 전부다(어긋난 곳 0건). **#291**(`refactor/#278-canvas-main`): C-001 화면 계열 `CanvasImageAdd*` → `CanvasMain*` 개명(NavKey·Route·Screen·ViewModel·UiState·Intent·Effect·`strings.xml` `canvas_main_*`). diff를 이름 치환 후 대조하면 짝 안 맞는 라인 0줄 = 시그니처·동작 불변이 기계 확인되고, develop 잔존 참조 0건. **#292**(`refactor/#284-clickable-to-clickable-yg`): 프로덕션 Foundation `Modifier.clickable` 28곳 전량 `clickableYGNoRipple` 이관 — develop 잔존은 `YGClickable.kt` 내부 구현 1곳 + `androidTest` 픽스처 2건(`YGLoadingOverlayTest`·`YGThemeSmokeTest`)뿐이라 design-system 서술 그대로다. `clickableYGNoRipple`에 `interactionSource` 첫 파라미터 추가(다른 네 변형과 동일 자리), 300ms 스로틀이 feature 화면 클릭 전반으로 확장. 문서 조치는 **선반영 문구의 미머지 마커 해제만** — `index.md` "지금 상태" 두 문단(⚠️ 미머지 선반영 → develop 머지 확정)과 doc-baseline 라인 갱신. `specs/README.md`·아카이브 스펙 7건 각주와 open-questions 해소 메모는 미머지 표현이 없어 그대로 유효. 신규 스펙·플랜·ADR 0건, 신규 미결 0건, 테스트 436건 불변. 실기기·실서버 확인 없음. 미머지: 없음 |
 | 2026-08-17 | `2d15cd9f` | Merge #287 (#277 group-leave-report-api) | delta 2건(#285·#287) — **S-101 그룹 설정 결선 라운드**. **#285**: 상세 조회로 mock 기본값 5종이 사라지고 화면이 서버를 본다. 계약에 그룹명이 없어 `GetGroupDetailUseCase`가 `getMyGroups()`를 **한 번 더 불러 이름만 붙이고**(그 실패는 실패로 치지 않는다 — 빈 제목 + 나머지 표시), 조합 결과가 서버 응답에 1:1 대응하지 않는 유일한 그룹 VO `GroupDetailVO`다. `isMe`는 닉네임 중복 허용 이후라 **`memberId`** 로 판별(계정 SSoT 구독). **진입도 이때 열렸다** — `NavKeyGroupSetting`이 `data class(groupId)`가 되고 C-001 상단 메뉴가 호출자가 돼 OQ-P-138(4일간 도달 불가) 해소. 컨테이너도 `YGScaffold`(엔트리) → `YGScaffoldV2`(Route)로 이관돼 **결선 라운드에 스캐폴드 이관이 딸려 온 첫 사례**(V1 잔여 8→7파일, OQ-P-204 ①에 사례로 답). **#287**: `leaveGroup`·`reportGroup`이 올라와 **DataSource 8함수 전량 = Repository 8함수**가 됐고 parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부). OQ-P-141의 셋 중 **①만 채우고 둘은 필요 없게 만들었다** — in-flight 필드 신설, 순서는 뒤집지 않고 스캐폴드 오버레이가 덮음, 그래서 `YGModalPopup` 좌우 플래그 분리 불필요. 나가기·신고는 결과가 같아 한 함수로 모으고 성공 시 **`replaceAll(NavKeyGroupList)`**(백스택이 전부 떠난 그룹 것이라 되돌아가면 403). 조치: 사후 스펙 1건 신규(`2026-08-17-s101-group-setting-api`, implemented·archive + README 등록), s101·Danger Zone 아카이브 스펙에 결선 노트, api/parfait-group(`android_status: done`·엔드포인트 표 결선됨·Repository 표 3행·Android 매핑 5건)·api/README(도메인 표·라운드 노트, 소비 19건), data-layer(Repository 인벤토리·방침 종결·UseCase 조합 첫 사례)·navigation-flow(진입·이탈 절 신설·리셋 관용구 4번째·Assisted 목록·구 형태 7파일)·module-structure(feature 간 `:api` 의존 2건)·state-management(in-flight 분리 규약)·design-system(V2 4화면·잔여 7파일) 갱신. open-questions: **OQ-P-138 해소됨**, OQ-P-139·140·141·167·186·204 갱신, **신규 3건**(OQ-P-216 상세 2회 호출·217 신고 사유 상수·218 403/404가 일시 장애와 같은 문구). 유닛 436 → **456건**. 미머지: 없음 |
 | 2026-08-18 | `8730ffa3` | Merge #297 (#288 group-list-refresh) | delta 1건(#297). **화면이 앞에 설 때마다 다시 묻기 시작했다** — G-001·C-001에 `Enter` 인텐트 + Route `LifecycleResumeEffect`. `init` 조회는 화면 수명이 아니라 ViewModel 수명에 걸린 것이라 백스택 아래에서 살아남아 낡았고, 그것이 닫혔다(**OQ-P-169 해소**). 복귀 관용구(`goToSingleClearTop`)는 손대지 않았다 — 재조회가 필요한 이유가 복귀가 아니라 **남이 바꾸기 때문**이라서다(OQ-P-136과 분리). **실패 규칙이 뒤집혔다**: 목록이 남아 있으면 화면 유지 + 당긴 새로고침 실패만 토스트(`ShowRefreshError`), 목록이 비면 종전대로 에러 화면. 토스트 호스트 때문에 G-001 Route가 **`YGScaffoldV2`**로 이관 — **결선 아닌 라운드가 이관을 끌어온 첫 사례**(V1 잔여 7 → **6파일**, OQ-P-204 ①). C-001은 `syncToday()` 뒤 **오늘을 볼 때만** 오늘 캔버스 + **올해** 달력 기록을 재조회(연도 목록·지난 캔버스는 그대로), 부작용 GET을 재진입마다 부르되 ViewModel 생성만으로는 캔버스가 안 생기게 됐다. `syncToday()`가 열어 둔 채 자정을 넘긴 경우를 맡는다. 문서: 사후 스펙 1건 신규(`2026-08-17-screen-resume-refetch`, implemented·archive + README 등록), g001·c001-today-detail·c201-calendar-server 아카이브 스펙에 갱신 노트, state-management(재진입 재조회 절 신설)·navigation-flow(`goToSingleClearTop`·생성 참여 복귀)·design-system(V2 5화면·잔여 6파일) 갱신. open-questions: **OQ-P-169 해소됨**, OQ-P-046·204 갱신, **신규 1건**(OQ-P-221 재진입 재조회가 규약 아님 + 실패 표현 편차). 범위 밖 정정 1건: g001 스펙의 토핑 클릭 미결선 서술이 #268 이후 stale이라 함께 고쳤다. 유닛 456 → **467건**. 미머지: `feature/#294-group-ssot`(스펙·플랜 등록됨) |
+| 2026-08-18 | `86f0f6b0` | Merge #305 (#254 group-list-refresh-lottie) | delta 3건(#296·#295·#305). **#296**(약관 웹뷰): `NavKeyServiceTerms`·`NavKeyPrivacyPolicy` + Route/Screen/ViewModel 2벌 → **`NavKeyWebView(title, url)` 1벌**, **ViewModel 삭제**(상태가 인자뿐·부를 API 없음), 엔트리 머티리얼 `Scaffold` → Route `YGScaffoldV2`. 온보딩 약관의 마지막 stub(`NavigateToUrl`) 해소 — `ClickTermDetail(policy)`·`NavigateToPolicyDetail(title, url)`로 개명. 설정 화면이 `GetPoliciesUseCase` **두 번째 소비처**(policy 도메인 `done` 유지). **#295**(버전 정보): `core:util:android`에 `AppInfo#APP_VERSION_NAME`(모듈 `buildConfig` 첫 활성 + `:app`과 같은 카탈로그 항목 재기입) → S-001 버전 placeholder 해소, 표시 `v` 접두는 포맷 리소스. `YGListItem` 두 오버로드 줄 높이를 컴포넌트가 `heightIn`으로 정렬. **#305**(로띠): `YGLoadingLottie`(+`YGLoadingTone`) 신설·`YGLoadingOverlay` 인디케이터 교체(Dim `Black25`→`Black75`), G-001 당겨서 새로고침 커스텀 인디케이터, 스플래시 로띠 + **부트스트랩·재생 종료 둘 다 대기**(`SplashState` 2필드). 조치: architecture 3건(design-system 트리·컴포넌트 표·화면 컨테이너·로띠 의존·`YGListItem` 노트 / module-structure terms·`core:util:android` 행 / navigation-flow NavKey 통합·출처 인자 비적용·스플래시 진입 조건) + api 2건(policy.md Android 매핑·앱 동작 메모·미결 경고, README 도메인 표 주석 — `android_status`·`verified` 불변) + 아카이브 스펙 6건 as-built(s004·feature-common-terms-module·intro-term-agree·app-setting-s001·ygscaffold-v2·user-info-ssot). **문서 전제 오류 1건 정정**: design-system이 `refactor/segmentation-logic`(로컬 전용 브랜치) 수치를 "develop 기준 13화면·V1 3파일"로 적고 있어 브랜치 기준으로 표기 + develop 값(6파일) 병기, 미머지 추적에 추가. open-questions: **부분 해소 1건**(OQ-P-205 ① 인디케이터), 마커 3건(OQ-P-204 이관 계기 확장·OQ-P-068 계약 공백이 화면으로·OQ-P-125 로띠 애셋 소유), **신규 5건**(OQ-P-229 스플래시 대기 상한·OQ-P-230 로띠 호출 관용구 갈림·OQ-P-231 약관 탭 무반응·OQ-P-232 웹뷰 출처 검증·OQ-P-233 버전 상수 이중 출처). 신규 spec 작성 0건(신규 화면 없음, `YGLoadingLottie`는 ygscaffold-v2 스펙 as-built로 흡수). 테스트 467 → **474건**. 미머지: `refactor/segmentation-logic`·`feature/#294-group-ssot` |

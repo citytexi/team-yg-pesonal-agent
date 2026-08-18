@@ -4,17 +4,17 @@ title: S-004 약관/개인정보 처리 방침 화면 분리 + Notion 웹뷰 (Se
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-07-22
+verified: 2026-08-18
 related_code:
-  - EntryBuilder.kt#featureAppSettingEntryBuilder
-  - ServiceTermsRoute.kt#ServiceTermsRoute
-  - PrivacyPolicyRoute.kt#PrivacyPolicyRoute
-  - ServiceTermsScreen.kt#ServiceTermsScreen
-  - PrivacyPolicyScreen.kt#PrivacyPolicyScreen
-  - ServiceTermsViewModel.kt#ServiceTermsViewModel
-  - PrivacyPolicyViewModel.kt#PrivacyPolicyViewModel
+  - EntryBuilder.kt#featureCommonTermsEntryBuilder
+  - NavKeyWebView.kt#NavKeyWebView
+  - WebViewRoute.kt#WebViewRoute
+  - WebViewScreen.kt#WebViewScreen
   - NotionWebView.kt#NotionWebView
   - YGTopBar.kt#YGTopBarDetail
+  - YGScaffoldV2.kt#YGScaffoldV2
+  - AppSettingViewModel.kt#AppSettingViewModel
+  - TermAgreeViewModel.kt#TermAgreeViewModel
 related_adr:
 related_spec: app-setting-s001
 related_architecture:
@@ -32,6 +32,30 @@ tags: [spec, parfait, setting, webview, s004]
 > [feature-common-terms-module](2026-07-21-feature-common-terms-module.md), [ADR-0015](../../adr/0015-feature-common-shared-layer.md)).
 > 따라서 아래 본문의 "대상 모듈 = setting/impl"·`EntryBuilder#featureAppSettingEntryBuilder` 등 경로는
 > 최종 위치가 `common:terms:impl`(`featureCommonTermsEntryBuilder`)로 대체됨. 화면 구조·MVI·NotionWebView 설계 자체는 코드와 일치.
+>
+> 🔁 **as-built 정정 (2026-08-18, develop 머지 #296) — 화면 2벌이 1벌이 됐고 ViewModel은 사라졌다.**
+> 이 설계의 뼈대(목표 1·2, MVI 세트 2벌, `State`가 url을 소유하고 UseCase 주입을 기다리는 자리)는
+> **더 이상 코드가 아니다.** 아래가 develop 실물이다.
+>
+> - **목적지**: `NavKeyServiceTerms`·`NavKeyPrivacyPolicy` 두 `data object` **삭제** →
+>   `NavKeyWebView(title, url)` 하나. 무엇을 여는지는 부르는 쪽이 정한다.
+> - **삭제**: `ServiceTermsRoute`·`ServiceTermsScreen`·`ServiceTermsViewModel`·`PrivacyPolicyViewModel`.
+>   `PrivacyPolicyScreen` → **`WebViewScreen`**(제목이 `stringResource`가 아니라 파라미터), `Route`는
+>   **`WebViewRoute`** 신규. `terms_service_title`·`terms_privacy_title` 문자열도 삭제됐다 —
+>   제목이 서버 값이라 화면이 가질 것이 없다.
+> - **ViewModel이 없다**: 이 화면의 상태는 목적지에 실려 온 `title`·`url`이 전부고 부를 API도 없다.
+>   뒤로가기만 남는데 그것을 상태로 감쌀 이유가 없어 `Route`가 `navigator::onBack`을 그대로 넘긴다.
+>   설계 3번("`url`만 `State` 필드 → ViewModel이 소유")이 뒤집힌 자리다.
+> - **컨테이너**: 엔트리의 머티리얼 `Scaffold`(V1·V2 어느 쪽도 아니던 규약 이탈) → Route의
+>   **`YGScaffoldV2`**. 엔트리는 Route를 부르기만 한다.
+> - **호출자 둘**: S-001 앱 설정(`AppSettingViewModel`이 `GetPoliciesUseCase`로 받아 둔 목록에서
+>   종류로 골라 `title`·`url`을 싣는다)과 온보딩 약관 동의(`TermAgreeViewModel`, 줄의 화살표).
+>   출처 인자는 두지 않았다 — 그려야 할 것이 갈리지 않는다.
+> - **`NotionWebView`는 그대로**다(로딩·에러·재시도·`clipToBounds`·`tag` 가드·`onRelease` 전부 유지).
+>   이름만 옛 전제를 이고 있다 — 이제 여는 주소가 노션이라는 보장이 없다.
+> - 남은 것: 서버가 `url` 자리에 약관 **전문**을 내려줄 수 있어(계약이 URL 전용 컬럼을 두지 않았다,
+>   [api/policy.md](../../api/policy.md)) 그때는 웹뷰가 로드에 실패해 재시도 화면이 뜬다. 목적지가
+>   임의 `url`을 받는 범용 화면이 된 것에 출처 검증도 없다 → [open-questions](../../synthesis/open-questions.md).
 
 - **화면 ID**: S-004 (서비스 이용약관 / 개인정보 처리 방침)
 - **대상 모듈**: `feature/app/setting/impl`
@@ -132,4 +156,6 @@ WebView 내부 back 미구현(비목표).
 
 ## 열린 질문
 
-- 실제 Notion 공개 URL 2개 — 현재 placeholder. 확정 시 각 ViewModel `State` 기본값 교체(또는 UseCase 주입).
+- ~~실제 Notion 공개 URL 2개 — 현재 placeholder. 확정 시 각 ViewModel `State` 기본값 교체(또는 UseCase 주입).~~
+  ✅ **해소(2026-08-18, #296)** — 주소는 `GET /api/v1/policies` 응답 값이고 목적지 인자로 실려 온다.
+  ViewModel 자체가 사라져 "기본값 교체" 자리도 없다. 다만 그 값이 링크라는 보장이 계약에 없다(위 as-built).

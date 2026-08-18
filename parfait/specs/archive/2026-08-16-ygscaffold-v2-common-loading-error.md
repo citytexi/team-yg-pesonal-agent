@@ -4,8 +4,8 @@ title: YGScaffoldV2 — 공통 로딩 오버레이·에러 토스트 (common loa
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-17
-related_code: YGScaffoldV2.kt#YGScaffoldV2, YGLoadingOverlay.kt#YGLoadingOverlay, YGToastPolicy.kt#showError, YGScaffold.kt#YGScaffold, LoginRoute.kt#LoginRoute, LoginError.kt#LoginError, AppSettingRoute.kt#AppSettingRoute, AccountInfoRoute.kt#AccountInfoRoute, BaseViewModel.kt#launch
+verified: 2026-08-18
+related_code: YGScaffoldV2.kt#YGScaffoldV2, YGLoadingOverlay.kt#YGLoadingOverlay, YGLoadingLottie.kt#YGLoadingLottie, YGLoadingLottie.kt#YGLoadingTone, YGToastPolicy.kt#showError, YGScaffold.kt#YGScaffold, LoginRoute.kt#LoginRoute, LoginError.kt#LoginError, AppSettingRoute.kt#AppSettingRoute, AccountInfoRoute.kt#AccountInfoRoute, BaseViewModel.kt#launch
 related_adr: ADR-0020, ADR-0016, ADR-0007
 related_spec: mvi-error-infrastructure
 related_architecture: design-system, state-management
@@ -37,7 +37,7 @@ Screen까지 파라미터로 내린 뒤 `YGToastHost`를 자기 레이아웃에 
 
 - **포함**
   - `YGScaffoldV2` 신설 — `isLoading`·`toastPolicy` 2개 파라미터 추가
-  - `YGLoadingOverlay` 신설 — Dim + 인디케이터 + 터치 삼킴 (**임시 구현**, 디자인 미확정)
+  - `YGLoadingOverlay` 신설 — Dim + 인디케이터 + 터치 삼킴 (당시 임시 구현 — 인디케이터는 #305에서 로띠로 확정)
   - `YGToastPolicy.showError(text)` 확장 — 에러 토스트는 `YGToastType.Fail` 고정
   - `YGScaffold`(V1)에 `@Deprecated` + `ReplaceWith` 부착
   - 계측 테스트 5건(as-built **7건** — 접근성 차단 2건이 리뷰 라운드에서 추가됨.
@@ -121,12 +121,19 @@ Scaffold(containerColor, contentWindowInsets) { innerPadding ->
 
 | 요소 | 조건 | 토큰·심볼 |
 |---|---|---|
-| Dim | `isLoading = true` | `YGAtomicColors.Transparency.Black25` |
-| 인디케이터 | 동일 | `CircularProgressIndicator`, `YGAtomicColors.Cherry.Cherry100` |
+| Dim | `isLoading = true` | ~~`YGAtomicColors.Transparency.Black25`~~ → **`Black75`**(🔁 #305) |
+| 인디케이터 | 동일 | ~~`CircularProgressIndicator` + `Cherry100`~~ → **`YGLoadingLottie`**(`YGLoadingTone.Light`, `SizeTokens.Size44`, 🔁 #305) |
 | 에러 토스트 | `showError()` 호출 | `YGToastType.Fail`(`Cherry500` 문구 · `Black75` 배경) |
 
-Dim 농도·인디케이터 모양은 **디자인 미확정 상태의 자리 채움**이다. 현행 `SegmentationLoadingScreen`이
-쓰는 값(`CircularProgressIndicator` + `Cherry100`)을 그대로 따른다 — 새 값을 지어내지 않는다.
+~~Dim 농도·인디케이터 모양은 **디자인 미확정 상태의 자리 채움**이다. 현행 `SegmentationLoadingScreen`이
+쓰는 값(`CircularProgressIndicator` + `Cherry100`)을 그대로 따른다 — 새 값을 지어내지 않는다.~~
+
+🔁 **as-built 정정 (2026-08-18, develop 머지 #305) — 인디케이터가 디자인 로띠로 확정됐다.**
+`YGLoadingLottie`(+`YGLoadingTone`)가 같은 패키지에 신설되고 오버레이가 그것을 쓴다. 크기를
+`Size44`로 묶는 이유는 **애셋 원본이 그 치수**라 다시 그리는 일이 없어서다. 로띠가 Dim 위에 얹히므로
+화면 테마와 무관하게 `Light` 고정이고, Dim은 `Black25` → **`Black75`**로 짙어졌다(로띠가 배경에 묻히지
+않으려면 필요하다). 남은 미확정은 **Dim 농도의 근거와 문구 유무**이며 `SegmentationLoadingScreen`의
+`// TODO: 로띠 넣을 예정`은 **그대로다** — 같은 로띠가 있는데도 화면 고유 로딩이 아직 자기 UI를 그린다.
 
 ### 터치 삼킴
 
@@ -235,8 +242,11 @@ fun YGScaffold(/* … */)
 
 `YGLoadingOverlay`를 V2 안에 인라인하지 않고 파일을 나누는 이유 둘: 로띠 등으로 교체될 때
 고칠 곳이 한 곳이고, 스캐폴드 없이 로딩만 필요한 화면이 이미 존재한다.
+✅ **이 예상이 그대로 맞았다(#305)** — 교체는 `YGLoadingOverlay.kt` 한 파일 안에서 끝났고
+(호출부·파라미터·테스트 태그 전부 불변), 새 로띠 표면은 형제 파일 `YGLoadingLottie.kt`로 들어갔다.
 
-`YGLoadingOverlay`의 KDoc은 임시 상태를 명시한다.
+`YGLoadingOverlay`의 KDoc은 임시 상태를 명시한다(🔁 #305로 "임시 구현" 단정이 걷히고 Dim·문구만
+미확정으로 좁혀졌다).
 
 ```kotlin
 /**
@@ -349,8 +359,9 @@ V1 삭제 시점만 이관 완료에 걸린다.
 
 ## 주의 / 열린 질문
 
-- **로딩 UI 디자인 미확정.** `YGLoadingOverlay`는 자리 채움이다. 디자인이 나오면 이 파일과
-  `SegmentationLoadingScreen`의 `// TODO: 로띠 넣을 예정`을 함께 정리한다.
+- **로딩 UI 디자인 미확정** → **부분 해소(2026-08-18, #305)**. 인디케이터는 디자인 로띠로 확정됐고
+  Dim은 `Black75`로 짙어졌다. 남은 것: Dim 농도·문구의 근거, 그리고 `SegmentationLoadingScreen`의
+  `// TODO: 로띠 넣을 예정`은 **아직 그대로**라 로띠가 있는데도 화면 고유 로딩이 따로 그려진다.
 - **`AppError` → 문구 공통 매핑이 없다.** 이번 계약은 `String`이라 화면 고유 문구를 자유롭게
   넘길 수 있지만, 화면 고유 문구가 없는 실패(`AppError.Unexpected` 등)는 어디서나 같은 말을
   해야 한다. 매핑이 없으면 "알 수 없는 오류" 문구가 화면 수만큼 복제된다.
@@ -376,4 +387,4 @@ V1 삭제 시점만 이관 완료에 걸린다.
   표현하지 못하고, 그동안 입력 필드가 살아 있어 요청이 나간 뒤에도 값을 더 고칠 수 있다.
   지금은 셋 다 왕복 구간을 `isLoading`으로 덮는다(A-002 `isLoading`, S-003 `isLoggingOut`,
   S-002 `isSubmitting`). 다만 이건 **세 사례에서 귀납한 기준**이고 디자인이 확정한 규칙은 아니다 —
-  오버레이 자체가 임시 구현이라 확정 시 함께 정리한다.
+  오버레이 인디케이터는 #305에서 확정됐지만 **켜는 기준은 여전히 귀납한 것**이라 그대로 남는다.

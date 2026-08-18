@@ -4,7 +4,7 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-17
+verified: 2026-08-18
 related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
@@ -38,7 +38,7 @@ app / app-preview
 | core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 여러 feature 공용 레이아웃(`VerticalGridLayout`)·공용 문자열 리소스(유효성 에러 문구) + **도메인 결과 → 표시 문자열 매핑**(`text/NameValidResultUiText.kt`, [[0016-domain-result-presentation-string-mapping]]). `:domain` 의존(#223, 2026-08-13) | android-library + compose |
 | core | `core:designsystem` | 테마(`YGMaterialTheme`)·토큰(`YGSemanticColors`, `SizeTokens` 등) | android-library + compose |
 | core | `core:navigation` | `Navigator`, NavKey 레지스트리, 엔트리 등록 | android-library |
-| core | `core:util:android` | Android 전용 유틸(`decodeUriToBitmap`, `AndroidBitmap`) + Compose clickable 유틸(`clickable/`: `clickableYG`·`clickableYGNoRipple`·`ygDimRipple`·`ygScaleRipple`, 테마 비의존 — #284로 프로덕션 클릭 전량이 이 패키지를 탄다) + 포커스 유틸(`focus/`: `Modifier.clearFocusOnTap`) + Compose·플랫폼 확장(`extension/`: `Modifier.navigationBarsAndImePadding`·`Modifier.drawTooltipCornerTop`·`AnnotatedString.Builder.withStyle`·`List<Offset>.toPath`/`toAndroidPath`·`ClipDescription.isSensitive`·`Modifier.verticalScrollbar`(#259)·`Modifier.centeredAt`·`Modifier.dragBy`(#264)·`String.toColorOrNull`(#268 — 서버가 주는 `#RRGGBB` 색 문자열은 캔버스 전용이 아니라 어느 화면에나 온다)). `core:util:jvm` 의존 | android-library + compose |
+| core | `core:util:android` | Android 전용 유틸(`decodeUriToBitmap`, `AndroidBitmap`) + Compose clickable 유틸(`clickable/`: `clickableYG`·`clickableYGNoRipple`·`ygDimRipple`·`ygScaleRipple`, 테마 비의존 — #284로 프로덕션 클릭 전량이 이 패키지를 탄다) + 포커스 유틸(`focus/`: `Modifier.clearFocusOnTap`) + Compose·플랫폼 확장(`extension/`: `Modifier.navigationBarsAndImePadding`·`Modifier.drawTooltipCornerTop`·`AnnotatedString.Builder.withStyle`·`List<Offset>.toPath`/`toAndroidPath`·`ClipDescription.isSensitive`·`Modifier.verticalScrollbar`(#259)·`Modifier.centeredAt`·`Modifier.dragBy`(#264)·`String.toColorOrNull`(#268 — 서버가 주는 `#RRGGBB` 색 문자열은 캔버스 전용이 아니라 어느 화면에나 온다)) + 앱 메타(`AppInfo.kt#APP_VERSION_NAME`, #295 — 이 모듈만 `buildFeatures.buildConfig`를 켜고 `:app`과 **같은 버전 카탈로그 항목**을 `buildConfigField`로 다시 심는다. `versionName`은 애플리케이션 모듈 속성이라 라이브러리 `BuildConfig`에 없기 때문이고, `:app`이 `versionNameSuffix`·플레이버로 갈아 끼우면 따라가지 않는다 → [open-questions](../synthesis/open-questions.md)). `core:util:jvm` 의존 | android-library + compose |
 | core | `core:util:jvm` | 순수 Kotlin 유틸·로깅·플랫폼 무관 추상(`BitmapWrapper`) + 공용 날짜 포맷(`model/DateFormat`·`model/DateTextFormat`, `kotlinx-datetime`)·날짜 확장(`extension/LocalDateExtension`, #259) + 픽셀 연산 확장(`extension/`: `Int.fadeArgb`·`Int.mixArgb`·`FloatArray.fillWithSquaredDistance`) | kotlin-jvm |
 | core | `core:testing` | **테스트 전용** 공용 유틸(`MainDispatcherRule`). 테스트 소스셋만 소비하므로 위 의존 방향 그래프에 없다 | kotlin-jvm |
 | domain | `domain` | UseCase, Repository 인터페이스, 도메인 모델 | `ModuleDomain`(kotlin-jvm) |
@@ -46,7 +46,7 @@ app / app-preview
 | feature | `feature/{login,segmentation,camera,gallery,intro}/{api,impl}` | 화면·VM(impl) / NavKey 계약(api) | `ModuleFeatureApi` / `ModuleFeatureImpl` |
 | feature | `feature/groups/{canvas,enter,list,setting}/{api,impl}` | 그룹 관련 화면 묶음 | 동일 |
 | feature | `feature/app/setting/{api,impl}` | 앱 설정 화면(`NavKeyAppSetting`, `AppSettingRoute`) | 동일 |
-| feature | `feature/common/terms/{api,impl}` | 약관·개인정보 화면(`NavKeyServiceTerms`/`NavKeyPrivacyPolicy`, `ServiceTermsRoute`/`PrivacyPolicyRoute`, `NotionWebView`) — 여러 feature 공유([[0015-feature-common-shared-layer]]) | 동일 |
+| feature | `feature/common/terms/{api,impl}` | 웹뷰 화면(`NavKeyWebView(title, url)`, `WebViewRoute`/`WebViewScreen`, `NotionWebView`) — 여러 feature 공유([[0015-feature-common-shared-layer]]). **#296에서 약관 종류별 NavKey·Route·ViewModel 2벌이 하나로 합쳐졌다**(무엇을 여는지는 부르는 쪽이 인자로 정한다) | 동일 |
 
 > **픽셀 연산이 `core:util:jvm`으로 올라온 이유(2026-08-14, PR #221)** — 토핑 테두리를 거리장으로 그리려면
 > 픽셀 배열을 직접 훑어야 해서 색 하나마다 Compose `Color` 변환을 태울 수 없다. ARGB 정수를 그대로 만지는

@@ -4,7 +4,7 @@ title: 온보딩 약관 동의 화면 (TermAgree)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-15
+verified: 2026-08-18
 related_code:
   - NavKeyTermAgree
   - TermAgreeRoute.kt#TermAgreeRoute
@@ -18,6 +18,7 @@ related_code:
   - PolicyRepositoryImpl.kt#PolicyRepositoryImpl
   - AuthRepository.kt#signUp
   - EntryBuilder.kt#featureTermAgreeEntryBuilder
+  - NavKeyWebView.kt#NavKeyWebView
   - feature/intro/impl/res/values/strings.xml
 related_adr: ADR-0005, ADR-0006, ADR-0016, ADR-0017, ADR-0019, ADR-0020
 related_spec: s004-terms-privacy-webview, a002-kakao-login-api, mvi-error-infrastructure
@@ -47,6 +48,16 @@ tags: [spec, parfait, intro, terms, onboarding]
 > 저장한다. 즉 **신규 가입자가 세션 없이 그룹 목록에 도달하던 과도기가 닫혔다**. 랜딩 URL도 이제
 > 서버가 주므로(`PolicyVO.url`) 리터럴 TODO가 사라졌고, 남은 stub은 Route의 `NavigateToUrl` 소비뿐이다.
 > 조회 실패 자리와 가입 실패 표현은 임시다(아래 "실패 표현" 절).
+>
+> ✅ **as-built 갱신(2026-08-18, #296 develop 머지)**: **마지막 stub이던 상세 랜딩이 열렸다.**
+> `ClickTermLandingUrl(landingUrl)` → **`ClickTermDetail(policy)`**, `NavigateToUrl(landingUrl)` →
+> **`NavigateToPolicyDetail(title, url)`**로 바뀌고 Route의 `/* navigate to url */` 주석이
+> `goTo(NavKeyWebView(title, url))`가 됐다. 주소만 넘기던 것을 **제목까지** 넘기는 이유는 여는 화면이
+> 상단바에 걸 것을 스스로 조회하지 않기 때문이다 — 목적지는 설정 화면(S-001)과 공유한다
+> ([s004 스펙 as-built](2026-07-20-s004-terms-privacy-webview.md)). 화면 콜백도
+> `onClickTermLandingUrl(String)` → `onClickTermDetail(PolicyVO)`로 넓어져 `url`을 뽑는 자리가
+> ViewModel로 내려갔다. `feature/intro/impl` → `feature/common/terms/api` 의존이 이때 생겼다.
+> 조회 실패·가입 실패 표현은 여전히 임시다.
 
 - **대상 모듈**: `feature/intro/impl`(`termagree/`) + `feature/intro/api`(NavKey) + `domain`(UseCase·Repository·예외)
   + `data`(`PolicyRepositoryImpl`·`AuthRepositoryImpl#signUp`). `feature/groups/list/api` 의존(#220, 다음 목적지).
@@ -64,7 +75,7 @@ tags: [spec, parfait, intro, terms, onboarding]
   **#242 추가**: 진입 시 약관 목록 서버 조회·조회 실패 표시와 재시도·확인 시 회원가입 요청·가입 중 재진입 가드·세션 저장 후 이동.
 - 제외(구현 TODO 상태):
   - ~~**동의 결과 저장 로직**~~ — ✅ **해소(#242)**. `ClickNextButton` → `SignUpUseCase` → `POST /auth/signup` → 세션 저장 → `NavigateToNext`.
-  - ~~**랜딩 URL 실값**~~ — **부분 해소(#242)**. 값은 서버가 준다(`PolicyVO.url`). 다만 `NavigateToUrl` effect는 Route에서 여전히 stub(`/* navigate to url */`)이라 **탭해도 아무 화면도 열리지 않는다**.
+  - ~~**랜딩 URL 실값**~~ — ✅ **해소(#242 값 + #296 화면)**. 값은 서버가 주고(`PolicyVO.url`), 탭하면 `NavKeyWebView(title, url)`로 공용 웹뷰가 열린다.
   - **조회 실패 화면** — 지금은 목록 자리에 문구 + "다시 시도" 텍스트 두 줄이고, 코드가 `TODO(공통 에러화면)`으로 공용 에러화면 대체를 예고한다.
   - **가입 실패 표현** — 실패 갈래는 전부 열거돼 있으나 전부 로그뿐이다(아래 "실패 표현" 절).
 - 결선 완료(#220): **다음 화면 네비게이션** — `NavigateToNext`가 `clearBackStack()` 후 `NavKeyGroupList`로 `goTo`.
@@ -104,13 +115,14 @@ data class TermAgreeState(
 
 sealed interface TermAgreeIntent {
     data class ClickTermAgree(val termsId: TermsId, val newSelected: Boolean)  // 개별 토글(🔁 index → termsId)
-    data class ClickTermLandingUrl(val landingUrl: String)               // 상세 진입
+    data class ClickTermDetail(val policy: PolicyVO)                     // 상세 진입(🔁 #296, 구 ClickTermLandingUrl(String))
     data class ClickAgreeAllTerm(val newSelected: Boolean)               // 전체 토글
     data object ClickNextButton; data object ClickBackButton
     data object ClickRetryLoad                                           // #242 신설
 }
 sealed interface TermAgreeSideEffect {
-    data class NavigateToUrl(val landingUrl: String); data object NavigateToBack; data object NavigateToNext
+    data class NavigateToPolicyDetail(val title: String, val url: String)  // 🔁 #296, 구 NavigateToUrl(String)
+    data object NavigateToBack; data object NavigateToNext
 }
 
 // ViewModel — 가입 토큰을 NavKey 인자로 받으므로 Assisted 주입(#242)
@@ -188,9 +200,9 @@ class TermAgreeViewModel @AssistedInject constructor(
 ## 주의 / 열린 질문
 
 - ~~**동의 저장 미구현**~~ — ✅ **해소(#242)**. 가입 요청 + 세션 저장까지 이 화면이 책임진다.
-- **랜딩 URL은 값만 왔다** — `PolicyVO.url`이 실값을 주지만 Route의 `NavigateToUrl`이 여전히 stub이라
-  caret을 탭해도 아무 화면도 열리지 않는다. 랜딩은 [s004-terms-privacy-webview](2026-07-20-s004-terms-privacy-webview.md)의
-  NotionWebView 재사용 후보 → [open-questions](../../synthesis/open-questions.md).
+- ~~**랜딩 URL은 값만 왔다**~~ — ✅ **해소(#296)**. caret 탭이 `NavKeyWebView(title, url)`로
+  [s004-terms-privacy-webview](2026-07-20-s004-terms-privacy-webview.md)의 `NotionWebView` 화면을 연다
+  (후보로 적어 둔 재사용이 그대로 실현됐다).
   ⚠️ 서버 계약상 이 필드는 URL 전용 컬럼이 아니라 약관 본문 컬럼(`Tos.content`) 재사용이라
   **전문이 내려올 수도 있다** → [api/policy.md](../../api/policy.md) 미결.
 - **빈 목록이어도 200이다** — 서버가 약관 0건을 정상 응답으로 내려주며(계약 문서 명시), 그 경우 이 화면은

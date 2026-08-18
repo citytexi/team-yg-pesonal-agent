@@ -42,7 +42,8 @@
 >
 > ✅ **2026-08-15 — 소비처가 생겼다.** 다섯 라운드(PR #241·#242·#243·#244·#248)가 **8 엔드포인트를
 > 화면까지** 이었다 — 카카오 로그인·회원가입(auth), 약관 목록(policy), 그룹 목록·생성·참여 미리보기·참여·
-> 닉네임 변경(parfait-group). `policy.md`는 유일한 엔드포인트가 전부 소비돼 **`android_status: done`**이고,
+> 닉네임 변경(parfait-group). `policy.md`는 유일한 엔드포인트가 전부 소비돼 **`android_status: done`**이고
+(2026-08-18 PR #296으로 소비 화면이 온보딩·설정 둘이 됐다 — 응답의 `title`·`url`이 웹뷰 목적지 인자로 나간다),
 > `parfait-group.md`(상세·탈퇴·신고 미소비)는 `partial`이다. 나머지 넷
 > (parfait·image·member·parfait-image)은 여전히 표면만 있고 소비처가 0이다(**member는 2026-08-16에 닫혔다** — 아래).
 >
