@@ -18,7 +18,7 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 > 근거는 파일명+심볼명으로만.
 
 ## 구성 요소
-- **Navigator**(`core:navigation`, `@ActivityRetainedScoped`) — 백스택 = `SnapshotStateList<NavKey>`. `goTo()`, `goToSingleClearTop()`, `goToAndPopCurrent()`, `replaceAll()`, `onBack()`.
+- **Navigator**(`core:navigation`, `@ActivityRetainedScoped`) — 백스택 = `SnapshotStateList<NavKey>`. `goTo()`, `goToSingleClearTop()`, `goToAndPopCurrent()`, `replaceAll()`, `popUpTo()`, `onBack()`.
   - `replaceAll(destination)`(#260 신설, **`clearBackStack()` 대체**) — 백스택을 비우고 목적지 하나만
     남긴다. 비우기와 채우기를 나눠 노출하면 그 사이에 **빈 백스택**이 생기고 채우는 것은 호출부의
     규약일 뿐이라, 빈 상태를 만들 수 있는 API 자체를 없앴다(빈 백스택은 `onBack`이 이미 방어하고 있는
@@ -29,6 +29,16 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
   - `goToAndPopCurrent(destination)`(#221 신설) — 지금 화면을 대상으로 **치환**한다(마지막 칸에 덮어쓰기).
     백스택 깊이가 늘지 않고 뒤로 가면 지금 화면을 건너뛴다. 스택이 비어 있으면 그냥 쌓는다.
     확인·경유 화면처럼 되돌아올 이유가 없는 자리에 쓴다(첫 사용처: C-101-confirm → C-103).
+  - `popUpTo<T>()` / `popUpTo(type: KClass<out NavKey>)`(`Navigator.kt#popUpTo`, 세그멘테이션 라운드
+    신설, 2026-08-18) — 백스택에서 `T` 타입 키를 뒤에서부터 찾아 있으면 그 위를 전부 걷어내고
+    `true`를, 없으면 아무것도 하지 않고 `false`를 준다. **`goToSingleClearTop` 대신 이것을 쓰는 경우는
+    호출부가 목적지 키의 인자를 모를 때다** — `goToSingleClearTop`은 키 동등성 비교라 `NavKeyCanvasMain`의
+    `groupId`를 알아야 하는데, 카메라·세그멘테이션 쪽 닫기 콜백은 그 값을 들고 있지 않다. NavKey 다섯
+    개에 `groupId`를 실어 나르는 대안은 배경 편집처럼 그 값이 무의미한 경로에도 인자를 붙이게 돼
+    기각했다. reified 버전은 호출부 편의이고 `KClass` 버전이 실제 구현·테스트 대상이다. 첫
+    소비처는 `PictureConfirmRoute`(`returnResultOnly = false`)·`SegmentationRoute`·
+    `SegmentationConfirmRoute`의 닫기 → `popUpTo<NavKeyCanvasMain>()`
+    ([segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)).
 - **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasMain`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`·`NavKeyCanvasBGEdit`(#231), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
 - **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`ImageAdd`·`BGEdit`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
@@ -282,6 +292,12 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
    > 클릭 배선만이 아니었다: 캔버스는 `groupId`가 있어야 조회되므로 `NavKeyCanvasMain`를
    > `data object` → `data class(groupId)`로 바꾸는 것이 선행이었다. **도달 불가 기간이 길어지는 이유가
    > 대개 이것**이다 — 호출자가 없는 화면은 자기가 무엇을 인자로 받아야 하는지도 모른 채 머지된다.
+7. **닫기 경로를 빈 람다로 비워 두지 않는다** — 진입 경로가 있어도 나가는 경로가 없으면 화면이
+   막다른 길이 된다(선례: C-101-confirm 이후 세그멘테이션 3화면이 전부 `onClickClose = {}` TODO로
+   머지됐다가 벌어진 기간 동안 [OQ-P-055](../synthesis/open-questions.md)로 남았다). 닫기가 되돌아갈
+   대상 화면의 인자를 모르면(`groupId` 같은) `goToSingleClearTop` 대신 `popUpTo<T>()`를 쓴다 — 위
+   `popUpTo` 항목 참고. 배경 편집처럼 캔버스까지 튀면 안 되는 진입 경로가 섞여 있으면 그 경로만
+   `onBack`으로 분기한다(`returnResultOnly` 선례).
 
 > ⚠️ **이탈 사례(2026-08-01, PR #173)** — G-001 `featureGroupListEntryBuilder`는 엔트리 컨테이너를
 > `YGScaffold`가 아니라 `Box`(전면 배경 이미지)로 두고 `YGScaffold`를 Route 안으로 내렸으며, 그룹 추가

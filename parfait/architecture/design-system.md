@@ -138,7 +138,7 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 >   (`GroupListErrorScreen` 같은 전면 에러, 입력 자리 인라인 등).
 >
 > 이관은 화면별로 진행 중이다 — **develop 기준 5화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
-> 정보 · **S-101 그룹 설정**(#285) · **G-001 그룹 목록**(#297)), V1 잔여 6파일**(PR #267 · #285 · #297).
+> 정보 · S-101 그룹 설정(#285) · G-001 그룹 목록(#297)), V1 잔여 6파일**(PR #267 · #285 · #297).
 > S-101은 **API 결선 라운드에 이관이 딸려 온 첫 사례**다 — 로딩 오버레이와 실패 토스트를 채울 것이
 > 그때 생겼기 때문이고, OQ-P-204 ①("결선 라운드에 붙일지 이관 전용 라운드를 돌릴지")에 사례로 답한
 > 셈이다. G-001은 그 답을 넓힌다 — API 결선이 아니라 **재조회 라운드**였는데, 새로고침 실패를
@@ -146,6 +146,19 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > 즉 이관을 끌어오는 것은 결선 자체가 아니라 **채울 것(로딩·실패)이 생기는 시점**이다. `YGScaffold`는 `@Deprecated(WARNING)`이고 삭제 시점은 **모든 화면이
 > Route에서 스캐폴드를 소유하고 로딩·실패를 배선한 뒤**다 →
 > [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
+>
+> 📌 **한 라운드가 8개 엔트리를 한꺼번에 옮겼다(2026-08-18, `refactor/segmentation-logic`)** — 어차피
+> 세 모듈(`camera`·`gallery`·`segmentation`) 파일을 다 여는 라운드라 스캐폴드 이관을 같이 태웠다.
+> `camera`(`NavKeyCameraCustom`·`NavKeyCameraSystem`·`NavKeyPictureConfirm`) · `gallery`
+> (`NavKeyCustomGalleryPicker`·`NavKeySystemGalleryPicker`) · `segmentation`
+> (`NavKeySegmentation`·`NavKeySegmentationConfirm`·`NavKeyToppingEdit`) 8개 엔트리가 이번에 V2로
+> 옮겨 **develop 기준 이관 화면이 13개(파일)**가 됐다. `CustomCameraScreen`·
+> `CustomGalleryPickerScreen`이 직접 꽂고 있던 `YGToastHost`·`toastPolicy` 파라미터를 걷어 스캐폴드로
+> 옮겼고, 세 모듈 모두 `isLoading`은 쓰지 않는다(로딩이 전부 화면 고유 표현이라 V2가 흡수하지 않는
+> 갈래). 카메라 촬영 실패는 이번에 `showError` 토스트가 붙었다(전에는 조용히 뒤로 갔다). **V1
+> `YGScaffold` 잔여는 3파일까지 줄었다** — 전부 EntryBuilder(`feature/intro/impl`·
+> `feature/groups/enter/impl`·`feature/groups/canvas/impl`)이고 셋 다 그 모듈의 진입 화면을 만드는
+> 자리다 → [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md).
 >
 > **로딩 오버레이를 켜는 기준은 "네트워크 왕복인가"**다(세 사례에서 귀납한 것이고 디자인이 확정한
 > 규칙은 아니다 → OQ-P-205). 버튼 비활성은 "지금 눌러도 소용없다"만 말할 뿐 언제 끝날지 모르는 대기를

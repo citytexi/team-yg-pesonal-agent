@@ -68,3 +68,21 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 - 실패 표현은 여전히 완전하지 않다 — `foregroundConfidenceMask == null`은 `Result`를 타지 않고
   raw `error()`로 던진다(같은 항목).
 - 소비 화면은 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md).
+
+## As-built 갱신 (2026-08-18, `refactor/segmentation-logic`)
+
+[segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md) 구현.
+위 두 절이 남긴 것 셋을 여기서 닫는다.
+
+- **캐시 정리 정책이 정해졌다** — `cacheDir` 전용 하위 디렉토리(`SegmentationCacheDir.kt`)를 두고
+  `SegmentationViewModel`이 세그멘테이션 진입 시(디코드보다 먼저) 통째로 비운다.
+  `ClearSegmentationCacheUseCase`가 도메인 쪽 진입점이다. 누적 상한은 직전 흐름 1회분으로
+  줄었다. **"캐시 파일 정리 정책 필요"라던 트레이드오프와 "정리 정책은 더 급해졌다"는 경고를
+  여기서 닫는다.**
+- **`foregroundConfidenceMask == null`이 `Result.failure`를 타게 됐다** — 더는 raw `error()`가
+  아니다. **"실패 표현은 여전히 완전하지 않다"는 문장을 지운다.**
+- **마스크 루프가 `getPixels` 1회 + 배열 내 마스킹으로 바뀌었다** — 픽셀당 `Bitmap.getPixel` JNI
+  왕복이 사라지고, 같은 배열을 훑으며 객체가 아닌 자리를 지우고 bounding box를 넓힌다
+  (`SegmentationMask.kt#maskSubjectPixels`, `Bitmap` 비의존 순수 함수). 마스크 버퍼 용량이
+  `width * height`와 다르면 실패로 방어하는 것도 이때 붙었다 — 지금까지는 어긋나도 조용히
+  잘못 읽었다.

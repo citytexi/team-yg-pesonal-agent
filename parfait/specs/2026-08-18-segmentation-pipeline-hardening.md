@@ -1,11 +1,11 @@
 ---
 id: segmentation-pipeline-hardening
 title: 카메라·갤러리 → 세그멘테이션 파이프라인 보강 + YGScaffoldV2 이관 (segmentation pipeline hardening)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-08-18
-related_code: ImageSegmentationRepositoryImpl.kt#segmentImage, ImageSegmentationRepositoryImpl.kt#saveToCacheAsPng, SegmentationViewModel.kt#SegmentationViewModel, SegmentationRoute.kt#SegmentationRoute, PictureConfirmRoute.kt#PictureConfirmRoute, CustomCameraViewModel.kt#CustomCameraEffect, CanvasMainRoute.kt#CanvasMainRoute, CanvasMainViewModel.kt#handleCacheImage, Navigator.kt#Navigator, YGScaffoldV2.kt#YGScaffoldV2, EntryBuilder.kt#featureCameraEntryBuilder, EntryBuilder.kt#featureCustomGalleryEntryBuilder, EntryBuilder.kt#featureSegmentationEntryBuilder
+related_code: ImageSegmentationRepositoryImpl.kt#segmentImage, ImageSegmentationRepositoryImpl.kt#saveToCacheAsPng, SegmentationViewModel.kt#SegmentationViewModel, SegmentationRoute.kt#SegmentationRoute, PictureConfirmRoute.kt#PictureConfirmRoute, CustomCameraViewModel.kt#CustomCameraEffect, CanvasMainRoute.kt#CanvasMainRoute, CanvasMainViewModel.kt#handleCacheImage, Navigator.kt#Navigator, YGScaffoldV2.kt#YGScaffoldV2, EntryBuilder.kt#featureCameraEntryBuilder, EntryBuilder.kt#featureCustomGalleryEntryBuilder, EntryBuilder.kt#featureSegmentationEntryBuilder, SegmentationMask.kt#maskSubjectPixels, SegmentationCacheDir.kt#clearFiles, ClearSegmentationCacheUseCase.kt#ClearSegmentationCacheUseCase, Navigator.kt#popUpTo
 related_adr: ADR-0012, ADR-0011, ADR-0020
 related_spec: ygscaffold-v2-common-loading-error, c103-segmentation-topping-edit, c101-camera-picture-confirm, c102-custom-gallery-picker
 related_architecture: navigation-flow, data-layer, design-system, state-management
@@ -275,3 +275,33 @@ ML Kit 호출부는 유닛으로 못 잡는다. **실기기 육안 확인**으�
 - **PR #290 위에서 작업한다** — 이 브랜치는 develop에 `feature/topping-add-screen`을 머지해
   얹었다. #290이 develop에 먼저 들어가면 그 커밋들은 이 브랜치의 diff에서 저절로 사라진다.
   #290이 리뷰로 바뀌면 다시 머지해야 한다
+
+## as-built (2026-08-18 구현)
+
+브랜치 `refactor/segmentation-logic`, 커밋 11개. `./gradlew test ktlintCheck :app:assembleDebug` 통과.
+테스트 총량: 유닛 477 → 493건, 테스트 파일 55 → 58개. 신설 파일은 `SegmentationMaskTest`·
+`SegmentationCacheDirTest`·`SegmentationViewModelTest` — `feature:segmentation:impl`은 이 라운드
+전까지 테스트가 0건이었고, 이번에 `parfait.test.unit` 컨벤션 플러그인과 함께 첫 `src/test`
+소스셋을 얻었다.
+
+설계에서 **뒤집힌 결정 0건.**
+
+구현·리뷰가 더한 것:
+- **캐시 정리 호출도 감쌌다** — 스펙은 디코드가 던지는 것만 감싸라고 했는데, 리뷰가
+  `clearSegmentationCacheUseCase()`가 같은 `init` 코루틴의 첫 문장으로 무방비 상태인 것을
+  찾았다. 이 라운드가 닫으려는 것과 같은 크래시 부류라 `runCatching { }`으로 감쌌다 —
+  best-effort다. 정리가 실패해도 흐름은 멈추지 않는다. 남는 캐시 파일은 무해하고, 정리 실패를
+  이유로 세그멘테이션 자체를 거부하는 쪽이 그 지저분함보다 나쁘다고 판단했다. 테스트 1건이 잠근다.
+- **`CustomCameraEffect.CaptureFailed`가 별도 이펙트로 갈라져 나왔다** — 스펙은 촬영 실패에
+  에러 토스트만 요구했는데, 이전 태스크가 이미 촬영 실패를 `Cancel`(인자 없음)로 접어 놓아
+  그 값을 실어 나를 별도 이펙트가 필요해졌다.
+- **브랜치가 라운드 시작 시점에 컴파일이 안 됐다 — 이 라운드가 낸 문제는 아니다.** PR #290이
+  `NavKeyCanvasImageAdd`를 참조하는 `CanvasToppingPlaceRoute`를 더했는데, develop은 그 사이
+  같은 키를 `NavKeyCanvasMain`으로 이미 개명했다. 새 파일과 개명이 같은 줄을 공유하지 않아 git이
+  조용히 병합했다. 커밋 `a3660e58`의 머지 해결로 고쳤다. **관찰만 하고 고치지는 않은 것**:
+  그 호출부(`CanvasToppingPlaceRoute.kt`)가 #290 자신의 TODO 아래 `NavKeyCanvasMain(groupId = 0L)`을
+  하드코딩 그룹 id로 부른다.
+- **`CanvasMainViewModelTest`는 지울 케이스가 없었다** — 계획은 제거된 인텐트를 참조하는 케이스가
+  있다고 가정했지만 실제로는 없었고, mock 필드·그 import·생성자 인자만 걷혔다.
+
+실기기 확인: **없음.**
