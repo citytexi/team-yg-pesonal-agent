@@ -94,12 +94,20 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 이 API를 호출한다. 코틀린 리터럴이던 `TERM_CONTENT_LIST`(+`TermContent`)는 **삭제**됐고 제목·필수 여부·
 랜딩 URL이 전부 응답 값이다 → [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md).
 응답의 `termsId`는 그대로 `POST /api/v1/auth/signup`의 `agreements[].termsId`로 나간다([auth.md](auth.md)).
+**✅ 2026-08-18(PR #296) — 소비처가 둘이 됐고 `url`이 실제로 열린다.** S-001 앱 설정(`AppSettingViewModel`)이
+진입 시 같은 UseCase로 목록을 받아 두고, 약관 줄을 누르면 `title`·`url`을 `NavKeyWebView`에 실어 웹뷰를
+연다(온보딩 약관 화면의 화살표도 같은 목적지로 간다). **이 응답 두 필드가 목적지 인자가 된 것**이라
+NavKey 통합의 근거이기도 하다 → [navigation-flow](../architecture/navigation-flow.md).
 
 앱 동작 메모(코드 대조):
 
 - **정렬은 서버 순서 그대로** 화면 순서다(앱이 재정렬하지 않는다 — 위 "정렬은 서버가 고정한다"에 의존).
 - **빈 배열을 실패로 보지 않는다** — 화면은 조회 성공으로 처리하고 목록이 비면 확인 버튼이 비활성이라
   signup까지 가지 않는다. 다만 **조회 실패와 화면 표현이 다르다**(실패는 재시도 문구, 빈 배열은 그냥 빈 목록).
+- **설정 화면은 목록을 "여는 재료"로만 쓴다**(#296) — 약관 두 줄은 `strings.xml`로 고정돼 있어 조회가
+  실패해도 줄이 사라지지 않고, 대신 **눌러도 아무 일이 없다**(로그만 남는다). 찾는 종류가 목록에 없을 때
+  재조회하지 않는 것은 의도다 — 같은 요청이 같은 응답을 줄 것이므로 탭마다 요청만 는다. 사용자에게는
+  실패와 무반응이 구분되지 않는다 → [open-questions](../synthesis/open-questions.md).
 - **미동의 약관도 함께 보낸다** — `SignUpUseCase`가 화면에 노출한 목록 전체를 `agreed` 플래그와 묶는다.
 - 실패는 Repository 경계에서 `AppError`로 바뀌어 올라온다(`mapErrorToAppError`).
 
@@ -120,3 +128,5 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 
 - `policies[].url`이 `Tos.content`(LONGTEXT) 컬럼 재사용이라 값이 URL인지 약관 전문인지 스키마로는
   보장되지 않는다. 운영 데이터 투입 규약 확인 필요 → [open-questions](../synthesis/open-questions.md)
+  ⚠️ **2026-08-18(PR #296)부터 이 값이 실제로 웹뷰에 들어간다** — 링크가 아니면 로드에 실패해 재시도
+  화면이 뜬다(`NavKeyWebView` KDoc이 이 함정을 적어 둔다). 계약 공백이 화면 실패로 드러나는 자리가 생겼다.

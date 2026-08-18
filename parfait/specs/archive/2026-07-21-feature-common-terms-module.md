@@ -4,17 +4,12 @@ title: 약관/개인정보 화면 :feature:common:terms 모듈 분리 (feature/c
 status: implemented
 category: architecture-spec
 platforms: android
-verified: 2026-07-22
+verified: 2026-08-18
 related_code:
   - settings.gradle.kts
-  - NavKeyServiceTerms
-  - NavKeyPrivacyPolicy
-  - ServiceTermsRoute
-  - PrivacyPolicyRoute
-  - ServiceTermsScreen
-  - PrivacyPolicyScreen
-  - ServiceTermsViewModel
-  - PrivacyPolicyViewModel
+  - NavKeyWebView
+  - WebViewRoute
+  - WebViewScreen
   - NotionWebView
   - EntryBuilder#featureCommonTermsEntryBuilder
   - AppSettingRoute
@@ -30,6 +25,14 @@ tags: [spec, parfait, module, terms, common, s004, a003]
 # 약관/개인정보 화면 `:feature:common:terms` 모듈 분리
 
 > 상태·날짜·대상·관련은 frontmatter가 단일 출처. 본문은 설계에 집중.
+>
+> 🔁 **as-built 정정 (2026-08-18, develop 머지 #296) — 모듈이 예상한 재사용이 실제로 일어났고, 그 대가로
+> 내용물이 줄었다.** 이 분리의 명분("약관 동의 화면에서도 같은 항목을 세부 정보 뷰로 재사용")이 코드가
+> 됐다 — 온보딩 약관 동의 화면이 `feature/common/terms/api`만 물고 같은 목적지를 연다. 다만 옮겨 온
+> **NavKey 2 + Route/Screen/ViewModel 2세트가 `NavKeyWebView` + `WebViewRoute`/`WebViewScreen` 한 벌로
+> 합쳐졌고 ViewModel은 사라졌다**(제목·주소가 인자라 상태가 없다). 모듈 경계·`NotionWebView` 위치·
+> `featureCommonTermsEntryBuilder` 배선은 설계 그대로다 →
+> [s004 스펙 as-built](2026-07-20-s004-terms-privacy-webview.md).
 
 ## 목표
 

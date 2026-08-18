@@ -4,7 +4,7 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-17
+verified: 2026-08-18
 related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
@@ -67,6 +67,14 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 > [user-info-ssot 스펙](../specs/archive/2026-08-15-user-info-ssot.md).
 > ⚠️ **네트워크 실패도 로그인 화면으로 보낸다** — 오프라인에서 앱을 켜면 토큰이 남아 있어도 로그인
 > 화면이다(그룹 목록을 캐시로 그릴 수단이 아직 없다) → [open-questions](../synthesis/open-questions.md).
+> 📌 **떠나는 시점에 조건이 하나 더 붙었다(2026-08-18, PR #305)** — 스플래시가 로띠를 재생하게 되면서
+> **부트스트랩 응답과 애니메이션 종료가 모두 끝나야** 이동 이펙트가 나간다. 둘은 서로를 기다리지 않고
+> 각자 끝나므로 순서가 정해져 있지 않고, `SplashState(destination, isAnimationFinished)`에 각각 남겨
+> 나중에 끝난 쪽이 이동을 일으킨다. 화면은 "다음이 어디인가"를 여전히 모르고 **"내 애니메이션이
+> 끝났다"만 인텐트로 올린다**(`SplashIntent.AnimationFinished`). 같은 신호가 두 번 와도 첫 번만
+> 받아들인다 — 컴포지션이 다시 서면 백스택을 두 번 갈아 끼우게 된다. 로띠 **파싱 실패도 '끝'으로
+> 넘긴다**(그 신호가 없으면 스플래시를 벗어날 방법이 아예 없다). 대기 상한이 없고 실기기 확인도
+> 없다 → [open-questions](../synthesis/open-questions.md).
 
 - 이전에는 로그인이 `NavKeyGroupHome`(`ResultEventBus` 시연용 임시 화면)으로 갔고, `NavKeyTermAgree`·
   `NavKeyGroupList`는 entry만 등록된 **도달 불가 화면**이었다. 체크리스트 6번의 사례가 하나 닫힌 것.
@@ -342,7 +350,15 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 (`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupCreate`·
 `NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
-`NavKeyCanvasMain`(#268 승격 — `groupId`)·`NavKeyGroupSetting`(#285 승격 — `groupId`)).
+`NavKeyCanvasMain`(#268 승격 — `groupId`)·`NavKeyGroupSetting`(#285 승격 — `groupId`)·
+`NavKeyWebView`(#296 신설 — `title`·`url`)).
+**목적지 둘이 인자 하나로 합쳐진 첫 사례가 #296이다** — `NavKeyServiceTerms`·`NavKeyPrivacyPolicy`
+두 `data object`가 삭제되고 `NavKeyWebView(title, url)` 하나가 됐다. 두 화면은 상단바 제목과 여는
+주소만 달랐고 그 둘이 이제 서버 응답 값이라(`GET /api/v1/policies`의 `title`·`url`,
+[api/policy.md](../api/policy.md)) **화면을 종류별로 나눌 근거가 사라졌다.** 앞선 사례들이
+"같은 화면을 재사용하려고 인자를 붙인" 것이라면 이쪽은 **인자가 생겨서 화면이 하나로 줄어든** 방향이다.
+동반해 Route/Screen/ViewModel 2벌이 1벌로 줄고 **ViewModel은 아예 사라졌다**(상태가 인자뿐이고 부를
+API가 없다) → [s004-terms-privacy-webview 스펙](../specs/archive/2026-07-20-s004-terms-privacy-webview.md).
 **인자가 표시 값이 아니라 동작 플래그인 형태가 #231에서 처음 나왔다** — `showGuideToast`·
 `returnResultOnly`는 화면이 그릴 데이터가 아니라 호출자가 고르는 분기이고, 기본값이 있어 기존
 호출부는 `NavKeyCameraCustom()`처럼 생성자 호출만 바꾸면 됐다. 재사용 화면의 동작 차이를 NavKey에
@@ -356,6 +372,10 @@ NavKey는 `@Serializable`이라 도메인 타입을 직접 싣지 않는다.
 **여러 진입점이 한 화면을 공유하면 출처를 NavKey 인자(`@Serializable` enum)로 넘긴다** — 확인 화면은
 카메라·갤러리 공용이고 `PictureConfirmSource`로 문구만 가른다(#191). 이때 호출하는 feature는 대상
 feature의 `:api`만 참조한다(`feature/gallery/impl` → `feature/camera/api`).
+**반대로 출처를 안 넘기는 사례가 #296이다** — `NavKeyWebView`는 설정(S-001)과 온보딩 약관 동의
+(TermAgree) 양쪽에서 열리는데 화면이 출처에 따라 달라질 것이 없어(제목·주소가 이미 인자다) 출처
+인자를 두지 않았다. 즉 출처 인자는 "공유 화면이면 붙인다"가 아니라 **그려야 할 것이 갈릴 때만**
+붙는다. 여기서도 의존은 `:api`뿐이다(`feature/intro/impl` → `feature/common/terms/api`, #296 신설).
 **인자 값의 출처는 호출 화면의 상태다** — G-001이 `goTo(NavKeyGroupCreate(nickName = uiState.nickName))`로
 A-005를 연다(#222). 현재 그 `nickName`은 `GroupListUiState` 기본값 mock이라, 인자 결선과 값의 진위는
 별개 문제로 남아 있다 — **#243부터는 그 값이 실서버 그룹 생성 요청으로 나간다**

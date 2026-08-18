@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-18
-related_spec: user-info-ssot, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+related_spec: user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -579,8 +579,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-068
 - **출처**: `GET /api/v1/policies`([api/policy.md](../api/policy.md))의 `policies[].url`을 `TosAdapter`가 `url = it.content`로 채운다. `Tos.content`는 `@Lob` `LONGTEXT` 컬럼이라 약관 **전문**이 들어갈 수 있는 자리이며, URL 전용 컬럼은 추가되지 않았다(서버 커밋 메시지도 "별도 컬럼을 추가하지 않고 기존 `tos.content` 값을 그대로 재사용"이라고 명시).
 - **항목**: 운영 DB의 `tos.content`에 무엇을 넣기로 했는지(랜딩 URL / 약관 전문) 서버팀 확인. 전문이 들어가면 앱이 `url`을 브라우저·WebView로 열 수 없고, 컬럼 의미가 signup 흐름과 목록 조회 흐름에서 갈린다.
-- **상태**: 미해결 (서버팀 확인 필요)
+- **상태**: 미해결 (서버팀 확인 필요 — **2026-08-18부터 앱이 이 값을 실제로 연다**)
 - **해소 메모**: 확인 후 [api/policy.md](../api/policy.md) 응답 필드 표와 "미결"을 갱신한다.
+  > ⚠️ **위험이 가정에서 화면으로 내려왔다(2026-08-18, PR #296)** — 이 값이 `NavKeyWebView(title, url)`의
+  > 인자가 돼 `NotionWebView`가 그대로 로드한다. 링크가 아니면(전문이면) 로드에 실패해 재시도 화면이
+  > 뜨고, 사용자에게는 일시 장애와 구분되지 않는다. `NavKeyWebView` KDoc이 이 함정을 적어 두지만
+  > 코드에는 판별·폴백이 없다(예: 전문이면 웹뷰 대신 텍스트로 그리기).
 
 ### [2026-08-03] 온보딩 약관 화면이 서버 약관 목록을 쓰지 않음(리터럴 잔존)
 - **ID**: OQ-P-069
@@ -1165,6 +1169,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 이미지 에셋 소유 기준을 문자열과 같은 축(화면 전용 = feature / 여러 화면 공용 = `core:designsystem`)으로 못박을지, 아니면 "디자인이 준 것은 전부 DS"로 갈지. ② 버킷 세트를 채울지 — 세 장 다 같은 세트를 갖게 할지, 아니면 벡터·WebP로 갈지. ③ 기존 화면 에셋(갤러리 빈 상태 PNG 등)도 그 기준으로 재배치할지.
 - **상태**: 미해결 (①이 정해져야 ③의 범위가 정해진다)
 - **해소 메모**: 정하면 [module-structure](../architecture/module-structure.md) "규칙"에 이미지 축을 한 줄 추가하고 [design-system](../architecture/design-system.md) `res/drawable*` 노트를 갱신한다.
+  > 📌 **같은 갈림이 로띠에서 되풀이됐다(2026-08-18, PR #305)** — 로딩 로띠 2종은 `core:designsystem`
+  > `res/raw/`(모듈 최초의 raw 리소스)에 들어가 `YGLoadingLottie`가 감싸는데, 스플래시 로띠는
+  > `feature/intro/impl` `res/raw/`에 있고 화면이 `LottieAnimation`을 직접 부른다. 판단 자체는
+  > 설명 가능하다(하나는 여러 화면 공용, 하나는 그 화면 전용) — **그러나 기준이 문서에 없어 이번에도
+  > 사례로만 갈렸다.** ①의 범위에 raw 애니메이션이 포함되는지도 정해진 바 없다.
 
 ### [2026-08-11] 온보딩 3장의 문구·구성이 정책 소스 없이 코드로 확정됐다
 
@@ -2380,7 +2389,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 잔여 8파일을 화면별 API 결선 라운드에 붙일지, 이관만 하는 라운드를 따로 돌릴지.
   ② `ERROR` 승급·V1 파일 삭제 시점. ③ 공존 기간 동안 새로 생기는 화면이 규약(Route 소유)을 지키는지
   기계로 확인할 수단이 없다 — 지금은 리뷰가 유일한 관문이다.
-- **상태**: 미해결 (**8파일 → 7파일 → 6파일**)
+- **상태**: 미해결 (**8파일 → 7파일 → 6파일**, 이관 화면은 7개)
 - **해소 메모**: 이관이 끝나면 [design-system](../architecture/design-system.md) "화면 컨테이너"의
   V1 항목과 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번의 "(구 형태)" 서술을
   함께 지운다. OQ-P-167(실패 표현 갈래)과는 별개 축이다 — 이관해도 실패 표현이 통일되지는 않는다.
@@ -2396,6 +2405,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 다른 이유로 다시 왔다). 남은 것은 **6파일**(camera·gallery·groups canvas/enter·intro·segmentation).
   > 이 화면은 `isLoading`은 여전히 안 넘기고 오버레이용 두 번째 스캐폴드도 V2로 겹쳐 그린다(OQ-P-046)
   > → [screen-resume-refetch 스펙](../specs/archive/2026-08-17-screen-resume-refetch.md).
+  > 📌 **①의 답이 한 번 더 넓어졌다 — 이번엔 채울 것이 없는데도 옮겼다(2026-08-18, PR #296·#305)**.
+  > 약관 웹뷰는 그전까지 **머티리얼 `Scaffold`를 엔트리에서 직접** 부르던 자리(V1·V2 어느 쪽도 아닌
+  > 규약 이탈)라 화면을 고치는 김에 Route + V2로 갔고, 스플래시는 **로띠를 시스템바 밑까지 그리려고**
+  > `contentWindowInsets = WindowInsets(0)`을 주려다 V2를 쥐게 됐다. 둘 다 `isLoading`·`toastPolicy`를
+  > 안 넘긴다 — 즉 이관의 계기는 "로딩·실패를 채울 때"뿐 아니라 **그 파일을 어차피 여는 라운드**이기도
+  > 하다(같은 논리가 `refactor/segmentation-logic` 8엔트리 일괄 이관이다). **V1 잔여 파일 수는 6으로
+  > 그대로다** — 스플래시가 빠져도 `feature/intro/impl` EntryBuilder에 약관 동의 엔트리가 남는다.
+  > 이관 화면은 7개(A-002·S-003·S-002·S-101·G-001·스플래시·약관 웹뷰).
 
 ### [2026-08-17] 공통 로딩 오버레이가 임시 구현이고, 적용 기준도 사례에서 귀납한 것뿐이다
 
@@ -2408,9 +2425,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 로딩 UI 디자인 확정 시 이 파일과 `SegmentationLoadingScreen`을 함께 정리한다.
   ② 오버레이를 켜는 기준을 규약으로 승격할지 — 지금은 화면마다 "이건 왕복인가"를 다시 판단한다.
   ③ 화면 고유 로딩 화면(문구·닫기 버튼을 가진 것)을 V2가 흡수할 갈래인지 계속 별개로 둘지.
-- **상태**: 미해결
+  ④ **`YGLoadingTone`을 고르는 기준을 규약으로 둘지**(#305 신설) — 색을 화면 테마가 아니라 "얹히는
+  바탕"으로 고르게 해 놓아 호출자가 매번 판단한다. 지금 두 사례는 갈린다(Dim 위 `Light` / 흰 목록 `Dark`).
+- **상태**: 부분 해소 (**① 인디케이터만 해소** — 나머지 잔존)
 - **해소 메모**: 정해지면 [design-system](../architecture/design-system.md) "화면 컨테이너"에 적고
   [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)의 "임시" 표기를 걷는다.
+  > ✅ **인디케이터가 확정됐다(2026-08-18, PR #305)** — `CircularProgressIndicator` + `Cherry100`이
+  > 디자인 로띠(`YGLoadingLottie`, 애셋 원본 치수 `Size44`)로 교체되고 Dim이 `Black25` → **`Black75`**로
+  > 짙어졌다. 교체가 `YGLoadingOverlay.kt` 한 파일에서 끝난 것은 스펙이 파일을 나눈 이유가 그대로
+  > 맞았다는 뜻이다. **①의 절반은 여전히 열려 있다** — `SegmentationLoadingScreen`의
+  > `// TODO: 로띠 넣을 예정`은 그대로라, 로띠가 프로젝트에 들어온 뒤에도 그 화면만 자기 로딩 UI를
+  > 그린다(③과 같은 자리). Dim 농도·문구 유무의 근거도 여전히 없다(짙어진 것은 로띠 가독성 때문이고
+  > 디자인 수치가 아니다).
 
 ### [2026-08-17] 토스트가 떠 있는 2초 동안 상단 띠의 탭이 삼켜지는 것이 전 화면 공통이 됐다
 
@@ -2869,6 +2895,94 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)
   "주의 / 열린 질문"과 [ADR-0012](../adr/0012-mlkit-subject-segmentation.md)를 함께 갱신한다.
 
+### [2026-08-18] 앱 진입이 로띠 재생 길이에 묶였다 — 상한도 하한도 없다
+
+- **ID**: OQ-P-229
+- **출처**: `feature/intro/impl` `splash/SplashViewModel.kt`(`SplashState.isAnimationFinished`·
+  `navigateIfReady`)·`splash/SplashScreen.kt`(PR #305 develop 머지) — 부트스트랩 응답과 로띠 재생
+  종료가 **둘 다** 끝나야 이동한다. 서버가 빨라도 애니메이션이 끝날 때까지 기다리고, 반대로 느린
+  기기에서 재생이 늘어지면 진입도 그만큼 늦는다. [user-info-ssot 스펙](../specs/archive/2026-08-15-user-info-ssot.md)이
+  `SplashInitialUseCase`를 지우며 "최소 노출 시간 요구가 없다"고 적은 자리에 **다른 이유로 최소 노출이
+  되돌아온 것**이다. 재생 시간·기기별 프레임 드롭은 측정된 바 없고 실기기 확인도 없다.
+- **항목**: ① 대기 상한을 둘지(예: 응답이 끝났고 N초가 지나면 재생을 끊고 넘어간다). ② 반대로 최소
+  노출을 의도로 인정하고 그 값을 디자인·기획이 정할지 — 지금은 애셋 길이가 곧 정책이다.
+  ③ 저사양 기기에서 첫 프레임까지 로띠 파싱이 얼마나 걸리는지 실측 — 파싱 실패는 '끝'으로 넘기지만
+  **느린 파싱은 그냥 대기**다.
+- **상태**: 미해결 (실기기 측정 0건)
+- **해소 메모**: 정하면 [navigation-flow](../architecture/navigation-flow.md) "앱 진입 체인"과
+  [user-info-ssot 스펙](../specs/archive/2026-08-15-user-info-ssot.md)의 스플래시 항목을 함께 고친다.
+  OQ-P-187(구버전 콜드 스타트 첫 프레임)과 같은 회차에 실기기로 보는 것이 낫다.
+
+### [2026-08-18] 로띠 재생 관용구가 둘로 갈렸다 — 디자인시스템 표면 vs 화면 직접 호출
+
+- **ID**: OQ-P-230
+- **출처**: `core:designsystem` `component/ygloading/YGLoadingLottie.kt`(공용 표면, `progress` 유무로
+  반복·추종을 가른다) × `feature/intro/impl` `splash/SplashScreen.kt`(`rememberLottieComposition` +
+  `LottieAnimation`을 직접 호출, 모듈 `build.gradle.kts`에 `libs.lottie.compose`를 따로 단다) —
+  같은 PR(#305)이 공용 표면을 만들면서 스플래시는 그것을 쓰지 않았다. 이유는 설명 가능하다(스플래시는
+  **재생 종료 시점**과 **파싱 실패**를 알아야 하는데 `YGLoadingLottie`는 그 둘을 밖으로 내지 않는다).
+  결과적으로 로띠 의존이 두 모듈에 각각 선언돼 있고 `build-logic` `ComposeConfig`에는 없다
+  (haze·coil과 다른 배선 형태다).
+- **항목**: ① `YGLoadingLottie`에 종료·실패 콜백을 더해 스플래시도 흡수할지, 아니면 "로딩 표시"와
+  "연출 애니메이션"을 다른 갈래로 못박을지. ② 로띠 의존을 `ComposeConfig`로 올릴지, 쓰는 모듈이
+  각자 달게 둘지 — 지금은 후자이고 세 번째 화면이 생기면 같은 줄이 또 늘어난다.
+- **상태**: 미해결
+- **해소 메모**: 정하면 [design-system](../architecture/design-system.md) "로띠 의존" 절과
+  [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)에 적는다.
+  OQ-P-125(에셋 소유)와 같은 축이다 — 그쪽이 파일 위치, 이쪽이 호출 표면이다.
+
+### [2026-08-18] 설정 화면의 약관 탭이 조용히 아무 일도 하지 않는 경로를 갖는다
+
+- **ID**: OQ-P-231
+- **출처**: `feature/app/setting/impl` `viewmodel/AppSettingViewModel.kt`(`loadPolicies`·
+  `handleClickPolicy`, PR #296 develop 머지) — 약관 두 줄은 `strings.xml`로 고정돼 있어 조회가
+  실패해도 사라지지 않는데, 목록이 비었거나 그 종류가 없으면 **탭해도 로그만 남고 화면이 그대로다.**
+  재조회하지 않는 것은 의도이고 근거도 코드에 적혀 있다(같은 요청은 같은 응답이라 탭마다 요청만 는다).
+  문제는 **사용자에게 "실패"와 "반응 없음"이 구분되지 않는다**는 것이다 — 같은 화면의 로그아웃은
+  실패를 토스트로 알리는데(`YGScaffoldV2`가 이미 붙어 있다) 약관 쪽은 그 자리를 안 쓴다. 온보딩
+  약관 화면은 조회 실패에 재시도 문구가 있어 **같은 API의 실패 표현이 화면마다 갈린다**.
+- **항목**: ① 실패·누락 시 토스트를 띄울지(호스트는 이미 있다). ② 아니면 조회가 실패한 동안 두 줄을
+  비활성으로 보일지 — 문구가 고정이라 "누를 수 있어 보이는데 안 눌린다"가 현재 상태다.
+  ③ 같은 API 실패 표현을 두 화면에서 맞출지(OQ-P-167 실패 표현 갈래와 같은 축).
+- **상태**: 미해결
+- **해소 메모**: 고치면 [app-setting-s001 스펙](../specs/archive/2026-07-19-app-setting-s001.md)
+  as-built와 [api/policy.md](../api/policy.md) "앱 동작 메모"를 함께 갱신한다.
+
+### [2026-08-18] 웹뷰 목적지가 임의 `title`·`url`을 받는 범용 화면이 됐는데 출처 검증이 없다
+
+- **ID**: OQ-P-232
+- **출처**: `feature/common/terms/api` `NavKeyWebView.kt`·`impl` `WebViewRoute.kt`·
+  `component/NotionWebView.kt`(PR #296 develop 머지) — 목적지가 문자열 둘을 받아 그대로
+  `WebView.loadUrl`에 넣는다. `NotionWebView`는 JavaScript·DOM storage를 켜 두고(노션 렌더 때문),
+  스킴·호스트 화이트리스트나 리다이렉트 제한은 없다. 지금 호출자는 둘 다 서버 응답 값을 싣지만
+  (`GET /api/v1/policies`), 신뢰 경계는 **서버가 주는 문자열**까지 넓어졌고 NavKey는 `@Serializable`이라
+  그 값이 백스택 상태로 직렬화된다. 이름도 옛 전제를 이고 있다 — 여는 주소가 노션이라는 보장은 없다.
+- **항목**: ① 허용 스킴(`https`만)·호스트를 Route나 컴포넌트에서 검증할지. ② 리다이렉트를
+  `shouldOverrideUrlLoading`으로 가둘지. ③ `NotionWebView`를 이름·역할대로 일반 웹뷰로 정리할지
+  (그러면 JS 활성이 기본이어야 하는지도 다시 판단해야 한다).
+- **상태**: 미해결 (지금 실제 위험은 낮다 — 호출자 둘 다 서버 응답만 싣는다)
+- **해소 메모**: 정하면 [s004-terms-privacy-webview 스펙](../specs/archive/2026-07-20-s004-terms-privacy-webview.md)
+  as-built와 [module-structure](../architecture/module-structure.md) terms 모듈 행에 적는다.
+  OQ-P-068(응답 `url`이 링크가 아닐 수 있다)과 같은 파일에서 만난다.
+
+### [2026-08-18] 앱 버전이 `:app` 밖에서 카탈로그를 다시 읽는다 — 접미사·플레이버가 생기면 조용히 갈린다
+
+- **ID**: OQ-P-233
+- **출처**: `core/util/android/build.gradle.kts`(`buildFeatures.buildConfig = true` +
+  `buildConfigField("String", "APP_VERSION_NAME", libs.versions.appVersionName)`)·
+  `core/util/android/.../AppInfo.kt`(PR #295 develop 머지) — `versionName`은 애플리케이션 모듈
+  속성이라 라이브러리 `BuildConfig`에 없어서, `:app`이 쓰는 것과 **같은 카탈로그 항목을 이 모듈
+  빌드에도 심는다.** 출처가 하나라 지금은 어긋나지 않지만 `:app`이 `versionNameSuffix`나 플레이버로
+  버전을 갈아 끼우면 **설정 화면만 옛 값을 보여 준다.** KDoc이 이 함정과 대안(`PackageManager`로
+  설치된 패키지를 읽기)을 적어 두었으나 코드는 그대로다. 겸해서 `core:util:android`가 저장소에서
+  `buildConfig`를 켜는 첫 라이브러리 모듈이 됐다.
+- **항목**: ① 접미사·플레이버가 실제로 생길 때 `PackageManager` 읽기로 옮길지, 아니면 그런 빌드를
+  만들지 않기로 못박을지. ② 버전 노출이 `core:util:android`에 있을 일인지(`:app`이 DI로 내려주는
+  형태를 브랜치 안에서 한 번 거쳤다가 상수로 되돌아왔다 — 그 판단의 근거가 코드에만 있다).
+- **상태**: 미해결 (현재 값은 정확하다 — 갈릴 조건이 아직 없다)
+- **해소 메모**: 정하면 [module-structure](../architecture/module-structure.md) `core:util:android` 행과
+  [app-setting-s001 스펙](../specs/archive/2026-07-19-app-setting-s001.md) 버전 항목을 함께 고친다.
+
 <!--
 항목 추가 형식:
 
@@ -2879,4 +2993,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 229 -->
+<!-- oq-next: 234 -->
