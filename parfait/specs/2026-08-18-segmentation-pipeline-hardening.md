@@ -278,11 +278,13 @@ ML Kit 호출부는 유닛으로 못 잡는다. **실기기 육안 확인**으�
 
 ## as-built (2026-08-18 구현)
 
-브랜치 `refactor/segmentation-logic`, 커밋 11개. `./gradlew test ktlintCheck :app:assembleDebug` 통과.
-테스트 총량: 유닛 477 → 493건, 테스트 파일 55 → 58개. 신설 파일은 `SegmentationMaskTest`·
+브랜치 `refactor/segmentation-logic`, 커밋 14개. `./gradlew test ktlintCheck :app:assembleDebug`는
+커밋마다(특히 최종 전체 브랜치 리뷰가 낸 마지막 세 커밋 각각의 뒤에서도) 통과.
+테스트 총량: 유닛 477 → 494건, 테스트 파일 55 → 58개. 신설 파일은 `SegmentationMaskTest`·
 `SegmentationCacheDirTest`·`SegmentationViewModelTest` — `feature:segmentation:impl`은 이 라운드
 전까지 테스트가 0건이었고, 이번에 `parfait.test.unit` 컨벤션 플러그인과 함께 첫 `src/test`
-소스셋을 얻었다.
+소스셋을 얻었다(마지막 리뷰가 붙인 테스트 1건은 새 파일이 아니라 기존 `SegmentationMaskTest`에
+케이스를 더한 것이다).
 
 설계에서 **뒤집힌 결정 0건.**
 
@@ -298,10 +300,45 @@ ML Kit 호출부는 유닛으로 못 잡는다. **실기기 육안 확인**으�
 - **브랜치가 라운드 시작 시점에 컴파일이 안 됐다 — 이 라운드가 낸 문제는 아니다.** PR #290이
   `NavKeyCanvasImageAdd`를 참조하는 `CanvasToppingPlaceRoute`를 더했는데, develop은 그 사이
   같은 키를 `NavKeyCanvasMain`으로 이미 개명했다. 새 파일과 개명이 같은 줄을 공유하지 않아 git이
-  조용히 병합했다. 커밋 `a3660e58`의 머지 해결로 고쳤다. **관찰만 하고 고치지는 않은 것**:
-  그 호출부(`CanvasToppingPlaceRoute.kt`)가 #290 자신의 TODO 아래 `NavKeyCanvasMain(groupId = 0L)`을
-  하드코딩 그룹 id로 부른다.
+  조용히 병합했다. 커밋 `a3660e58`의 머지 해결로 고쳤다.
 - **`CanvasMainViewModelTest`는 지울 케이스가 없었다** — 계획은 제거된 인텐트를 참조하는 케이스가
   있다고 가정했지만 실제로는 없었고, mock 필드·그 import·생성자 인자만 걷혔다.
+- **캐시 정리의 안전 논거가, 참이 되려면 리뷰가 낸 수정 하나가 필요했다(`ea278cce`).**
+  `CanvasToppingPlaceRoute`의 배치 완료 이펙트가 `NavKeyCanvasMain(groupId = 0L)`을 `goTo`로
+  **새로 쌓고** 있었다 — 앞서 "관찰만 하고 고치지 않는다"고 적었던 그 하드코딩이다. 이게 왜 사소한
+  정리가 아니었냐면: 위 "캐시 PNG 정리" 절이 "새 흐름은 캔버스에서만 시작하고, 그러려면 이전 흐름
+  화면들이 이미 백스택에서 걷혀 있다"를 안전 근거로 들었는데, **이 줄이 살아 있는 동안 그 전제가
+  거짓이었다.** 배치를 마쳐도 방금 끝난 흐름의 화면들이 새 캔버스 밑에 그대로 쌓여 있었고, 다음
+  흐름이 시작되며 캐시를 비우면 그 살아 있는 화면들이 가리키던 PNG가 지워졌다 — 뒤로 가면 빈
+  이미지와 아무 반응 없는 버튼만 남았다. `navigator.popUpTo<NavKeyCanvasMain>()`으로 바꿔 흐름
+  전체를 걷어내면서 안전 논거가 비로소 참이 됐고, 하드코딩된 `groupId = 0L`도 이때 함께 없어졌다.
+- **`segmentImage`의 캐시 저장 경로는 이번 라운드 안에서도 뒤늦게 닫혔다(`7877cc31`).** `withContext(Dispatchers.Default)`
+  블록 전체가 ML Kit 실패를 매핑하는 `try` 밖에 있다는 문제는 스펙이 처음부터 알고 있었고, OQ-P-004 ②는
+  그중 **마스크 null·마스크 크기 불일치 두 경로만** 닫았다고 적었다. **`saveToCacheAsPng`가 던지는
+  `IOException`(같은 블록 안, 세 번째 경로)은 이 커밋 전까지 계속 `Result`를 새어나가 호출부
+  (`SegmentationViewModel`의 `init` 코루틴)를 그대로 죽였고, 그 와중에 전체 해상도 `subjectBitmap`의
+  `recycle()`도 건너뛰었다.** 이제 저장 구간이 `try`로 감싸여 `SegmentationException.Process`로
+  접히고, `recycle()`은 `finally`로 옮겨 실패해도 반드시 돈다. **이 블록이 완전히 방어되는 것은 이
+  커밋부터다.** 같은 커밋이 마스크 크기 가드도 `capacity()`(버퍼 전체 용량)에서 `remaining()`
+  (`get(index)`가 실제로 경계로 삼는 값)으로 고쳤다 — 절대 인덱스 읽기는 `limit`을 넘으면
+  `IndexOutOfBoundsException`이라 `capacity()` 비교로는 놓치는 경우가 있었다. 테스트 1건(기존
+  `SegmentationMaskTest`에 추가)이 이 경계를 잠근다.
+- **그 방어가 취소까지 삼켰다(`bc6642f8`).** 위 `try`가 일반 `Exception`을 잡는데
+  `CancellationException`도 `Exception`이라, 세그멘테이션 코루틴이 취소되면 그 취소가 상위로
+  전파되는 대신 "세그멘테이션 실패"로 보고됐다. 일반 `catch` 앞에 재던지는 분기를 하나 앞세웠다 —
+  `BaseViewModel.launch`가 이미 하는 것과 같은 관용구다.
+
+**남은 위험 — 관찰됐으나 이 라운드가 손대지 않은 것:**
+- **다운샘플 없음이 실측으로 위험하다.** 리뷰가 12MP 사진 기준으로 살아 있는 비트맵 피크를 쟀다 —
+  `segmentImage` 내부에서 약 244MB, 토핑 편집 화면까지 이어지면(스택 아래 `SegmentationState.originBitmap`이
+  같이 살아 있는 채로 겹쳐) 약 390MB. 앱은 `largeHeap`을 선언하지 않는다. 스펙은 고화질 보존을 택해
+  다운샘플을 범위 밖에 뒀는데, 리뷰는 그 판단이 틀렸다고 본다. `ToppingBorderOutline.kt`는 이미 자기
+  작업 치수를 캡핑하고 있어 코드베이스가 이 판단에서 일관되지 않다. → [OQ-P-228](../synthesis/open-questions.md)로 새로 남긴다.
+- **캐시 정리는 세그멘테이션 한 곳만 닫혔다.** `FileCameraCacheLocalDataSourceImpl`이 쓰는 카메라
+  캐시 서브디렉토리는 파일명이 초 단위(`yyyyMMdd_HHmmss`)라 같은 초에 두 번 찍으면 파일이 충돌하고,
+  지우는 경로 자체가 없다 — 이 라운드의 범위 밖이다. OQ-P-003 ③을 "캐시 정리가 다 끝났다"로 읽으면 안 된다.
+- **주차만 해 둔 것 둘**: 두 번째 `saveToCacheAsPng`(trimmed) 호출이 던지면 `trimmedBitmap`이
+  회수되지 않는다(이 라운드 이전부터 있던 상태, 안 건드림). `Tasks.await`를 감싸는 기존
+  `try/catch`도 `bc6642f8` 이전의 새 `try`와 같은 방식으로 `CancellationException`을 삼킨다.
 
 실기기 확인: **없음.**

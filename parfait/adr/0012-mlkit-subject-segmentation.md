@@ -85,4 +85,13 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
   왕복이 사라지고, 같은 배열을 훑으며 객체가 아닌 자리를 지우고 bounding box를 넓힌다
   (`SegmentationMask.kt#maskSubjectPixels`, `Bitmap` 비의존 순수 함수). 마스크 버퍼 용량이
   `width * height`와 다르면 실패로 방어하는 것도 이때 붙었다 — 지금까지는 어긋나도 조용히
-  잘못 읽었다.
+  잘못 읽었다. 그 가드는 라운드 안에서 한 번 더 손을 탔다(아래).
+- **`segmentImage`의 저장 구간까지 방어가 마저 닫혔다** — 위 null 마스크·크기 불일치 두 경로를
+  닫은 뒤에도 같은 `withContext(Dispatchers.Default)` 블록 안, `saveToCacheAsPng`가 던지는
+  `IOException`은 여전히 `Result` 밖으로 새어나가 호출부(`SegmentationViewModel`의 `init`
+  코루틴)를 죽였고 `subjectBitmap.recycle()`도 건너뛰었다. 저장 구간을 `try`로 마저 감싸고
+  `recycle()`을 `finally`로 옮겨 실패해도 항상 돌게 했다 — **이 블록이 완전히 방어되는 것은 이
+  시점부터다.** 같은 김에 마스크 크기 가드를 `capacity()`(버퍼 전체 용량)에서 `remaining()`
+  (`get(index)`가 실제로 경계로 삼는 `limit` 기준 값)으로 정정했다. 그 방어가 `Exception`을
+  통째로 잡던 탓에 `CancellationException`까지 삼켜 취소된 흐름을 실패로 보고하던 것도, 재던지는
+  분기를 앞세워 갈랐다(`BaseViewModel.launch`와 같은 관용구).

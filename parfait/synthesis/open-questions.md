@@ -58,8 +58,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 먼저) 그 디렉토리를 통째로 비운다(`ClearSegmentationCacheUseCase`). 새 흐름은 캔버스에서만 시작하고
   > 그러려면 이전 흐름 화면들이 이미 백스택에서 걷혀 있어 진행 중인 흐름을 지울 위험이 없다 — 누적 상한이
   > 직전 흐름 1회분이 된다. 리뷰가 정리 호출 자체가 `init` 코루틴의 무방비 첫 문장이던 것을 찾아
-  > `runCatching`으로 감쌌다(best-effort, 정리 실패가 세그멘테이션을 막지 않는다). **①(재시도 경로 없음)은
-  > 그대로 잔존한다** — 이 라운드는 캐시만 다뤘다 → [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md).
+  > `runCatching`으로 감쌌다(best-effort, 정리 실패가 세그멘테이션을 막지 않는다).
+  > ⚠️ **위 안전 근거는 같은 라운드 막바지까지 거짓이었다** — `CanvasToppingPlaceRoute`의 배치 완료
+  > 이펙트가 `goTo(NavKeyCanvasMain(groupId = 0L))`로 캔버스를 **새로 쌓아** 방금 끝난 흐름의 화면들을
+  > 백스택에 남기고 있었다. 그 상태에서 다음 흐름이 캐시를 비우면 남아 있던 화면들이 가리키던 PNG가
+  > 지워져 뒤로 가면 빈 이미지·먹통 버튼이 됐다. 최종 리뷰가 `navigator.popUpTo<NavKeyCanvasMain>()`으로
+  > 바꿔(이전 흐름을 걷어내는 쪽으로) 안전 근거를 참으로 만들었다. **①(재시도 경로 없음)은 그대로
+  > 잔존한다** — 이 라운드는 캐시만 다뤘다. **세그멘테이션 캐시만 닫혔다는 점도 분명히 한다** — 카메라
+  > 캐시(`FileCameraCacheLocalDataSourceImpl`)는 여전히 정리 경로가 없고 초 단위 파일명이라 충돌도
+  > 남는다. 원본 다운샘플 부재로 인한 메모리 위험은 OQ-P-228(신규 항목, 아래)로 갈랐다 →
+  > [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md).
 - **해소 메모**: 정식(GA) 승급 시 버전 고정·문서 갱신. ③ 캐시 정리는 위에서 해소됨 —
   [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절에 반영 완료. ①(재시도 동선)은
   실행을 `init`에서 꺼내는 구조 변경과 재시도 버튼 디자인이 확정돼야 다룰 수 있다.
@@ -70,6 +78,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① `Tasks.await` 예외를 `SegmentationException`으로 통합할지, ② null 마스크를 `Result.failure`로 바꿀지.
 - **상태**: 해소됨 (① **PR #221 develop 머지, 2026-08-14** — `toSegmentationException()`이 `ExecutionException`을 한 겹 벗겨 `MlKitException.UNAVAILABLE`이면 `ModuleNotReady`, 그 외는 `Process`로 매핑하고 `Result.failure`로 반환한다. / ② **2026-08-18, `refactor/segmentation-logic` 구현으로 해소** — `foregroundConfidenceMask == null`이 더는 `error("…")` raw throw가 아니라 `Result.failure(SegmentationException.Process)`를 탄다)
 - **해소 메모**: ②는 `segmentImage`가 픽셀 마스킹을 `SegmentationMask.kt#maskSubjectPixels`로 뽑아내며 함께 정리됐다 — [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절과 [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)에 반영 완료.
+  **정확히는 같은 라운드 안에서 두 단계였다** — 위 커밋은 null 마스크·마스크 크기 불일치 두 경로만
+  `Result`로 접었고, 같은 `withContext` 블록의 세 번째 경로(`saveToCacheAsPng`의 `IOException`)는
+  여전히 새어나가고 있었다. 그 경로는 라운드 막바지 리뷰가 별도로 잡아 `try`로 마저 감쌌다 —
+  블록 전체가 방어된 것은 그 시점부터다.
 
 ### [2026-07-12] 디자인시스템 컴포넌트 컨벤션 분기
 - **ID**: OQ-P-005
@@ -2837,6 +2849,26 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [api/conventions.md](../api/conventions.md) 직렬화 규약 절과
   [data-layer](../architecture/data-layer.md)에 반영한다.
 
+### [2026-08-18] 원본 다운샘플 미적용 — 세그멘테이션 실측 메모리 피크가 largeHeap 없이 위험 구간
+- **ID**: OQ-P-228
+- **출처**: `ImageSegmentationRepositoryImpl.kt#segmentImage`(원본 해상도 그대로 처리, 다운샘플
+  없음) × 독립 코드 리뷰(2026-08-18, `refactor/segmentation-logic` 최종 리뷰) — 12MP 사진 기준
+  실측: `segmentImage` 내부에 살아 있는 비트맵 총량이 피크에서 약 244MB, 토핑 편집 화면까지
+  이어지면(스택 아래 `SegmentationState.originBitmap`이 겹쳐 살아 있는 채) 약 390MB. `app` 모듈
+  매니페스트는 `largeHeap`을 선언하지 않는다.
+  [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)이
+  "고화질 보존을 택했다"며 다운샘플을 의도적으로 범위 밖에 뒀는데, 리뷰는 그 판단이 틀렸다고 본다.
+  같은 저장소의 `ToppingBorderOutline.kt`는 이미 자기 작업 치수를 캡핑하고 있어(원본 그대로 돌리지
+  않는다), 다운샘플 여부 판단이 코드베이스 안에서 화면마다 갈린다.
+- **항목**: ① 원본 디코드에 다운샘플 상한을 둘지, 둔다면 어느 화면(세그멘테이션만 vs 디코드 공통
+  경로)·어느 치수부터 적용할지. ② 다운샘플 대신 `largeHeap` 선언으로 버틸지(저사양 기기에서 여전히
+  위험할 수 있다). ③ `ToppingBorderOutline`이 쓰는 치수 캡 관용구를 세그멘테이션 파이프라인 전체의
+  표준으로 승격할지.
+- **상태**: 미해결
+- **해소 메모**: 다운샘플 도입 또는 `largeHeap` 채택 시
+  [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)
+  "주의 / 열린 질문"과 [ADR-0012](../adr/0012-mlkit-subject-segmentation.md)를 함께 갱신한다.
+
 <!--
 항목 추가 형식:
 
@@ -2847,4 +2879,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 228 -->
+<!-- oq-next: 229 -->
