@@ -2746,6 +2746,25 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ②③을 하면 OQ-P-140·OQ-P-210의 잔여 항목이 함께 닫히고
   [api/parfait.md](../api/parfait.md)·[api/parfait-group.md](../api/parfait-group.md) Android 매핑 절을 고친다.
 
+### [2026-08-18] 상세 조회가 빈 캐시로 실패하면 S-101이 "정원이 찼어요"로 거짓말한다
+
+- **ID**: OQ-P-225
+- **출처**: `GroupSettingUiState.remainingCount`(기본값 `0`) × `GroupSettingScreen`의 `<= 0` 분기 ×
+  `YGInviteCard`(`status != Active`면 복사 버튼 비활성) — 서버 delta 반영 라운드에서 정원이 실데이터가
+  되면서 mock 상수 `1`이 사라졌고 기본값이 `0`이 됐다. `loadGroupDetail`의 `finally`가 실패 경로에서도
+  `isLoadingDetail`을 내리므로, **캐시가 빈 채로 상세 조회가 실패하면** 로딩 덮개가 걷히고 화면이
+  "정원이 찼어요" + 죽은 초대코드 복사 버튼을 띄운다. 전에는 mock `1` 덕에 우연히 Active로 보였다.
+  화면 나머지도 비어 있어 노출은 작지만, **비어 있는 것과 "가득 찼다"고 말하는 것은 다르다.**
+- **항목**: ① `remainingCount`를 널 허용으로 바꿔 "모른다"를 표현할지, 아니면 상세가 도착하기 전까지
+  초대 카드를 아예 안 그릴지. ② 상세 조회 실패가 지금 토스트 하나로 끝나는데(화면은 그대로 서 있다)
+  실패한 화면을 어떤 상태로 둘지 — 재시도 동선이 없다는 기존 미결(OQ-P-218)과 같은 자리다.
+  ③ 정원과 멤버 수가 어긋나 음수가 나오는 경우는 `coerceAtLeast(0)`로 접었는데, 그 값도 "가득 찼다"와
+  같은 표현을 탄다(0이 두 가지를 뜻한다).
+- **상태**: 미해결
+- **해소 메모**: 최종 브랜치 리뷰가 Minor로 짚었고 컨트롤러가 park했다 — 실패 표현은 이 라운드 스펙의
+  범위 밖이다. 정하면 [api/parfait-group.md](../api/parfait-group.md) Android 매핑과
+  [s101 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md) 드리프트 표에 반영한다.
+
 <!--
 항목 추가 형식:
 
@@ -2756,4 +2775,4 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 225 -->
+<!-- oq-next: 226 -->
