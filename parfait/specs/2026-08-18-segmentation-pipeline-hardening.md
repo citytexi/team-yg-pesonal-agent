@@ -84,7 +84,11 @@ tags: [spec, parfait]
 현행은 `cacheDir` 바로 밑에 타임스탬프 이름으로 떨구고 지우는 곳이 없다. 세그멘테이션 1회에
 subject·trimmed 2장, 편집을 마칠 때마다 알맹이·최종본 2장이 더 는다.
 
-- 저장 위치를 `cacheDir` 하위 **세그멘테이션 전용 디렉토리**로 옮긴다
+- 저장 위치를 `cacheDir` 하위 **세그멘테이션 전용 디렉토리**로 옮긴다. `cacheDir`를 쓰는 다른
+  소비자(카메라 캐시)는 이미 자기 서브디렉토리를 쓰고 최근 이미지는 `filesDir`에 있어, 이 디렉토리만
+  비우면 남의 것을 건드리지 않는다
+- 파일 이름을 밀리초 대신 `File.createTempFile`이 짓게 한다 — 한 번의 세그멘테이션이 subject와
+  trimmed를 연달아 저장해서 같은 밀리초에 두 번 떨어질 수 있고, 그러면 뒤엣것이 앞엣것을 덮는다
 - **세그멘테이션 진입 시 그 디렉토리를 통째로 비운다** — 리포지토리에 `clearSegmentationCache`,
   도메인에 `ClearSegmentationCacheUseCase`를 두고 `SegmentationViewModel`이 디코드보다 먼저 부른다
 
@@ -155,15 +159,20 @@ reified 버전은 호출부 편의고, `KClass` 버전이 실제 구현이자 �
 
 ### 닫기 버튼 결선
 
+닫기 콜백을 가진 Route는 셋이다. `ToppingEditRoute`는 닫기 버튼 없이 뒤로만 있어 대상이 아니다.
+
 | 화면 | 닫기 동작 |
 |---|---|
 | `PictureConfirmRoute` (`returnResultOnly = false`) | `popUpTo<NavKeyCanvasMain>()` |
 | `PictureConfirmRoute` (`returnResultOnly = true`) | `onBack` 2회 — 확인 버튼과 같은 백 처리 |
-| `SegmentationRoute` · `SegmentationConfirmRoute` · `ToppingEditRoute` | `popUpTo<NavKeyCanvasMain>()` |
+| `SegmentationRoute` · `SegmentationConfirmRoute` | `popUpTo<NavKeyCanvasMain>()` |
 
 `returnResultOnly = true`는 캔버스 배경 편집(C-301)에서 들어오는 경로다. 여기서 캔버스까지 튀면
-편집 중이던 배경이 날아가므로 갈라야 한다. 세그멘테이션 3화면은 배경 편집 경로를 타지 않아
+편집 중이던 배경이 날아가므로 갈라야 한다. 세그멘테이션 화면들은 배경 편집 경로를 타지 않아
 분기가 없다.
+
+`SegmentationRoute`의 닫기는 로딩·에러·본 화면 셋이 같은 콜백을 공유하므로 한 곳만 채우면
+세 화면 모두 출구를 얻는다.
 
 OQ-P-055 ②를 닫는다.
 
@@ -194,6 +203,11 @@ V2 스펙이 그것을 흡수하지 않겠다고 명시했다. 이관의 실익�
 파라미터로 받아 자기 레이아웃에 `YGToastHost`를 꽂고 있다. 파라미터와 호스트를 지우고 프리뷰도
 따라 고친다. 정책 객체는 Route가 만들어 스캐폴드에 넘긴다.
 
+**토스트 위치가 바뀐다(카메라만)** — `CustomCameraScreen`의 `YGToastHost`는 화면 상단이 아니라
+**뷰파인더 Box 안**에 얹혀 있다. V2로 옮기면 상태바 인셋 아래 상단으로 올라간다. 눈에 보이는
+변화지만 위키 Toast 공통 정책이 "위→아래 노출"이라 V2 쪽이 정책에 맞고 지금이 이탈이다.
+갤러리는 이미 컨텐츠 영역 상단 정렬이라 사실상 그대로다.
+
 **카메라 촬영 실패**는 지금 조용히 뒤로 간다. 이관하면서 `showError`를 붙인다 — 실패를 알리고
 끝나는 종류라 V2가 다루는 갈래에 정확히 든다.
 
@@ -212,6 +226,9 @@ PR #290이 `SegmentationConfirmRoute`의 다음 화면을 `NavKeyCanvasToppingPl
 |---|---|---|
 | `data/.../ImageSegmentationRepositoryImpl.kt` | 수정 | `segmentImage` 재작성, 캐시 디렉토리 이동, `clearSegmentationCache` 추가 |
 | `data/.../repository/image/SegmentationMask.kt` | 신설 | 마스크 → 픽셀 마스킹·bounding box 순수 함수. `Bitmap` 없이 도는 부분을 여기로 뽑아 JVM 테스트 대상으로 만든다 |
+| `data/.../repository/image/SegmentationCacheDir.kt` | 신설 | 전용 디렉토리 이름 + 비우기. 같은 이유로 `Context` 없이 도는 부분만 담는다 |
+| `feature/camera/impl/build.gradle.kts` | 수정 | `feature:groups:canvas:api` 의존 추가 — 닫기가 `NavKeyCanvasMain`을 가리킨다 |
+| `feature/segmentation/impl/build.gradle.kts` | 수정 | `parfait.test.unit` 플러그인 추가 — 이 모듈에 테스트가 처음 생긴다 |
 | `domain/.../repository/image/ImageSegmentationRepository.kt` | 수정 | `clearSegmentationCache` 선언, `decodeImage` 던짐 KDoc |
 | `domain/.../usecase/image/ClearSegmentationCacheUseCase.kt` | 신설 | 캐시 정리 진입점 |
 | `core/navigation/.../Navigator.kt` | 수정 | `popUpTo` |
