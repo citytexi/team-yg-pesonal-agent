@@ -2,8 +2,8 @@
 id: parfait-image
 title: 토핑 배치(배치 확정·위치/크기/각도 수정·테두리 수정·삭제)
 server_module: http/parfaitimage
-server_commit: 22717fe
-verified: 2026-08-16
+server_commit: 08df1bf
+verified: 2026-08-18
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017

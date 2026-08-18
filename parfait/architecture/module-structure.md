@@ -82,6 +82,12 @@ app / app-preview
 - **`core:util:jvm`의 `Char.isKorean()`은 삭제됐다**(2026-08-15, PR #243) — 이름 유효성 검사가 서버 정규식과
   같은 문자 집합(`가-힣A-Za-z0-9` + 스페이스)을 직접 쓰게 되며 유일한 사용처가 사라졌다.
 - **여러 feature가 공유하는 화면**은 특정 도메인 feature 밑이 아니라 `feature/common/*`에 둔다([[0015-feature-common-shared-layer]]). 단, **2개 이상 소비처가 확정된 경우에만**(단일 소비면 소유 feature 유지).
+- **feature `impl` 안의 화면 아닌 헬퍼는 `util` 패키지**(단수)에 둔다 — 도메인 값을 디자인시스템 타입으로
+  옮기는 변환, 기하 계산, 플랫폼 헬퍼 따위다. 컴포저블 파일 바닥에 두면 화면 파일이 상태·인텐트·문구
+  상수에 더해 변환까지 이고, 자기 테스트 파일을 가진 `internal` 함수가 화면 파일에 사는 모양이 된다.
+  적용 모듈은 `camera`·`login`·`groups/canvas`·`groups/list`·`groups/setting` 다섯이고 SoT는 코드다.
+  **컴포저블만 읽는 레이아웃 상수는 옮기지 않는다** — 그건 화면 소관이다.
+  `core:designsystem`만 `utils`(복수)를 쓰는데 그쪽이 예외다(2026-08-18 기준 이름을 맞추지 않았다).
 - **표시 문자열은 `strings.xml` + `stringResource`**(코틀린 리터럴 금지). 화면 전용 정적 라벨은 그 화면의 `feature/*/impl` `res/values/strings.xml`
   (같은 모듈의 여러 화면이 한 파일 공용), **여러 feature가 공유하는 문구**(유효성 에러 등)는 `core:ui` `res/values/strings.xml`([[0016-domain-result-presentation-string-mapping]]).
   `domain`은 표시 문자열을 보유하지 않는다. 미착수 화면에 잔존한 리터럴은 [open-questions](../synthesis/open-questions.md) [2026-07-26]에서 추적.

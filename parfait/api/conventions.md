@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: 22717fe
-verified: 2026-08-16
+server_commit: 08df1bf
+verified: 2026-08-18
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -267,15 +267,25 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
 
-⚠️ **2026-08-15 기준 1건.**
+⚠️ **2026-08-18 기준 2건.**
 
 | 항목 | 계약(서버) | Android | 영향 |
 |---|---|---|---|
 | `MyParfaitGroupResponse.recentImageUploadedAt` 파싱 | `LocalDateTime` — 오프셋 없는 `yyyy-MM-ddTHH:mm:ss`(컨트롤러 테스트가 검증) | `data/source/group/mapper/VOMapper.kt`가 `kotlin.time.Instant::parse`(오프셋 필수) | 최근 이미지가 있는 그룹이 하나라도 있으면 매퍼가 던져 **G-001 목록 조회 전체가 실패**(→ `AppError.Unexpected`) → [open-questions](../synthesis/open-questions.md) [2026-08-15] |
+| "오늘"의 경계 | `ParfaitDay.current()` — **03:00** 기준(위키 [[캔버스-마감-스케줄]]의 마감 시각과 같다). 오늘 조회·그룹 생성·회전 가드가 쓴다 | `domain/model/ParfaitDay.kt`의 `parfaitToday()` — **KST 자정** 기준 | 00:00~03:00 KST에 `GetTodayParfaitUseCase`가 정상 응답을 어긋난 것으로 보고 **오늘 조회를 두 번 부른다**(부작용 있는 GET이 두 배). 화면은 캘린더 오늘(D) 아래 D−1 캔버스를 그린다 → [parfait.md](parfait.md) "하루 경계" · [open-questions](../synthesis/open-questions.md) [2026-08-18] |
 
 앱 쪽 변경 의도는 "벽시계가 아니라 절대 시점으로 든다"이고 방향은 타당하다 — 어긋난 것은 **서버가 아직
 오프셋을 싣지 않는다는 점**이다. 어느 쪽을 고칠지(서버가 오프셋 포함 포맷으로 바꾸거나, 앱이
 `LocalDateTime` + 고정 타임존으로 읽거나)는 미결이다.
+
+두 번째는 방향이 분명하다 — **서버가 정책(03시 마감)에 맞고 앱이 자정에 머물러 있다.** 다만 서버도
+과거 목록의 `to` 기본값만 자정 기준으로 남겨 두어 **서버 안에서도 두 기준이 공존한다**
+→ [parfait.md](parfait.md) "하루 경계".
+
+> **필드가 늘어난 것은 불일치가 아니다.** 2026-08-18 delta가 그룹 상세·목록·캔버스 응답에 필드 넷을
+> 더했는데(`groupName`·`memberLimit`·`nametagChip`·`lastPlacedByNametagChip`) 앱은 아직 읽지 않는다.
+> `JsonModule`이 `ignoreUnknownKeys = true`라 역직렬화가 깨지지 않으므로 이 표의 대상이 아니다 —
+> **계약이 앱보다 넓은 것**이고, 각 도메인 문서의 Android 매핑 절이 기회로 적는다.
 
 ✅ 오래 걸려 있던 로그인 판별자 키 불일치(응답 키가 `isNewUser`인데 Android가
 `@SerialName("newUser")`를 붙였던 건)는 **PR #241로 정정됐고 와이어 계약 테스트가 잠갔다**
@@ -298,6 +308,9 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 > 화면까지** 이었다. 같은 날 **PR #250**이 남은 5 엔드포인트의 표면까지 채웠다. 그럼에도 **실서버 요청
 > 검증은 여전히 0건**이다(실기기 미수행) — 위 표의 시각 파싱 불일치도 그래서 아직 코드 대조로만 드러난
 > 상태다 → [open-questions](../synthesis/open-questions.md).
+
+**2026-08-18 delta는 엔드포인트를 늘리지 않았다**(28 + 테스트 전용 1 유지) — 바뀐 것은 응답 필드 넷과
+"오늘"의 정의다. 아래 표면 셈은 그대로 유효하다.
 
 **2026-08-16 기준 서버 엔드포인트는 28개(+테스트 전용 1)고 Android 표면은 27개다.** 분모에서 빠지는 것은
 애플 로그인 1건(`해당 없음`)과 테스트 전용 회전 1건이라 **27/27, 공백 0**이다. 서버 delta가 벌린 공백 2

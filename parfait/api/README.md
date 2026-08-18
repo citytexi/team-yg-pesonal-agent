@@ -8,7 +8,7 @@
 > 추적 브랜치는 서버 **`main`** — 기준 커밋과 갱신 절차는 [server-baseline.md](server-baseline.md).
 
 ## 전역 계약
-- [conventions.md](conventions.md) — 응답 envelope(**204 예외 2건**)·성공/에러 코드 체계·인증·URL 규약·직렬화 규약·**Android 불일치**(2026-08-15 기준 1건 — 그룹 목록 업로드 시각 파싱)
+- [conventions.md](conventions.md) — 응답 envelope(**204 예외 2건**)·성공/에러 코드 체계·인증·URL 규약·직렬화 규약·**Android 불일치**(2026-08-18 기준 2건 — 그룹 목록 업로드 시각 파싱 · "오늘"의 경계 03시 vs 자정)
 
 ## 팀 명세 원문
 - [spec/](spec/README.md) — 서버팀이 작성한 **API 명세**를 텍스트로 옮긴 것. 이 디렉토리의 도메인 문서가
@@ -26,12 +26,13 @@
 | [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | **결선됨**(애플 해당 없음, 나머지 4 전부 호출부 있음) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | **결선됨**(8 전부 호출부 있음, 목록 1건 ⚠️불일치) |
-| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음, 연도·오늘·과거·상세 4건은 **결선됨**, 배경 변경만 미소비) |
+| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음, 연도·오늘·과거·상세 4건은 **결선됨**, 배경 변경만 미소비) — **오늘 조회 1건 ⚠️불일치**(하루 경계) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 구현됨(조회·닉네임 변경은 **결선됨**, 탈퇴 미소비) |
 | [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨 |
 
-**총 28 엔드포인트 + 테스트 전용 1**(2026-08-16, 서버 `22717fe`). **Android 표면은 27/27, 공백 0이다** —
+**총 28 엔드포인트 + 테스트 전용 1**(2026-08-18, 서버 `08df1bf` — 직전 라운드에서 **증감 0**).
+**Android 표면은 27/27, 공백 0이다** —
 분모에서 애플 로그인 1(`해당 없음`)을 뺀 값이 27이고, 테스트 전용 회전 1은 총계에서 이미 분리했다.
 서버 delta가 벌린 공백 2(파르페 상세 조회·배경 변경)를 **같은 날 PR #266이 닫았다**
 ([spec](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md)).
@@ -118,6 +119,18 @@
 > 19건**이다. `done`은 소비 여부만 뜻한다 — 목록의 `recentImageUploadedAt` 파싱 불일치는 **그대로**다
 > ([conventions.md](conventions.md) "Android 불일치") → [parfait-group.md](parfait-group.md) Android 매핑 ·
 > [스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
+>
+> 🔁 **2026-08-18 서버 delta(`08df1bf`) — 엔드포인트 증감 0인데 응답이 넓어지고 "오늘"이 바뀌었다.**
+> ① **Nametag-Chip 부여 주체가 서버가 됐다** — 그룹 참여·생성 시 그룹 안에서 겹치지 않는 타입을 뽑고
+> 탈퇴 시 `RELEASED`로 반납한다. 응답 필드 셋이 늘었다(그룹 상세 `members[].nametagChip`, 그룹 목록
+> `lastPlacedByNametagChip`, 캔버스 `placedBy.nametagChip`). **앱은 세 화면이 각자 인덱스로 색을
+> 돌리고 있어** 그 규칙을 버릴 수 있게 됐다 → [parfait-group.md](parfait-group.md) "Nametag-Chip 배정 규칙".
+> ② **그룹 상세가 `groupName`·`memberLimit`을 싣는다** — 앱이 목록을 한 번 더 읽어 이름을 붙이던 조합과
+> "N명 남음" mock 1이 **둘 다 서버에서 닫혔다**(OQ-P-139·OQ-P-216).
+> ③ ⚠️ **"오늘"이 자정이 아니라 03시 경계가 됐다**(`ParfaitDay`). 앱은 자정 기준이라 00:00~03:00 KST에
+> 오늘 조회가 두 번 돌고 화면이 D−1 캔버스를 D 아래 그린다 — **불일치 2건째**
+> → [parfait.md](parfait.md) "하루 경계".
+> 새로 읽어야 할 필드가 넷이지만 **`http/` 요청 모음의 커버는 그대로 25/27**이다(엔드포인트가 안 늘었다).
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만
