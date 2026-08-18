@@ -1,7 +1,7 @@
 ---
 id: server-delta-nametag-chip-day-boundary
 title: 서버 delta 08df1bf 반영 — Nametag-Chip 서버 배정·그룹 상세 확장·하루 경계 03시
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified:
@@ -17,6 +17,24 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 # Spec: 서버 delta 08df1bf 반영
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+
+> ⚙️ **구현 완료·미머지(2026-08-18, 브랜치 `feature/#294-group-ssot` = PR #299 위 커밋 18개)** — 계획 8 Task가
+> 전부 들어왔다. **뒤집힌 결정 1건**(아래 결정 5 참고: 호출부 무변경을 테스트 이음매 금지로까지 읽은 것이
+> 과했다), as-built 차이 2건, park 2건.
+>
+> **as-built 차이 ①** — `YGColorChipType.Default`를 이 브랜치에서 자체 신설했다. 열린 PR #298이 같은 타입을
+> 추가하지만 develop에 없어 여기서 쓸 수 없다. 이름·토큰·KDoc·위치를 #298과 글자까지 맞춰 머지 충돌이 한
+> 블록을 지우는 것으로 끝나게 뒀다.
+> **as-built 차이 ②** — 스펙이 "호출부는 안 바뀐다"고 적으며 감사한 목록이 **`parfaitToday()`를 이미 부르는
+> 곳만** 셌다. 불러야 했는데 안 부르던 두 곳(`GroupListViewModel.updateToday()`·`CustomCameraScreen`의
+> 날짜 라벨)이 기기 자정으로 오늘을 세고 있어, 이 브랜치가 00:00~03:00에 **목록 헤더 D / 캔버스 D−1**이라는
+> 회귀를 만들었다. 최종 리뷰가 잡았고 둘 다 `parfaitToday()`로 바꿨다.
+>
+> **park 2건** — 상세 조회가 빈 캐시로 실패할 때 `remainingCount = 0`이 "정원이 찼어요"로 읽히는 것
+> (OQ-P-225, 실패 표현은 이 스펙 범위 밖) · 캔버스 상단 멤버 칩이 여전히 인덱스 순환인 것
+> (OQ-P-224 ①, 서버가 `groupMembers`에 칩을 안 준다).
+>
+> 실기기·실서버 확인은 하지 않았다 — 이 저장소의 모든 계약 라운드와 같이 코드 대조까지다.
 
 서버 `main`이 `22717fe` → `08df1bf`로 오면서 **엔드포인트는 안 늘고 응답 필드 넷과 "오늘"의 정의가
 바뀌었다**([api/server-baseline.md](../api/server-baseline.md) 9회차). 이 스펙은 그 delta를 앱에 반영한다.
@@ -119,6 +137,16 @@ Figma의 Nametag-Chip `Default`는 글자가 닉네임 첫 글자가 아니라 *
 - `GetTodayParfaitUseCase`·`GetParfaitYearsUseCase`·`CanvasMainViewModel`은 **코드가 안 바뀐다** —
   전부 `parfaitToday()`를 통과하므로 재시도 조건·달력 기준이 저절로 맞아진다.
 
+  🔁 **정정(as-built)** — 이 문장을 "테스트 이음매도 열지 않는다"로 읽은 것이 과했다. `GetTodayParfaitUseCase`가
+  `parfaitToday()`를 기본 시계로 부르는 한 **이 브랜치의 핵심 동작(03시 이전에 재조회가 안 나간다)을 어떤
+  테스트도 잠그지 못한다** — 테스트가 검증 대상과 같은 함수로 기대값을 만들어 경계를 자정으로 되돌려도
+  전부 통과한다. `invoke`에 `clock: Clock = Clock.System`을 더했다(`parfaitToday`·`DayWindow.current`가
+  이미 쓰는 이 저장소의 관용구, Hilt 바인딩 불필요). **운영 호출부는 그대로**이므로 위 문장의 취지는 살아 있다.
+
+  🔁 **정정(as-built)** — 위 목록이 감사 범위였는데 그 범위가 틀렸다. `parfaitToday()`를 **부르지 않던**
+  두 곳(`GroupListViewModel.updateToday()`·`CustomCameraScreen`)이 기기 자정으로 오늘을 세고 있었고,
+  브랜치 이전에는 KST 기기에서 우연히 값이 같았다. 둘 다 `parfaitToday()`로 바꿨다.
+
 > 서버 안에서도 두 기준이 공존한다 — 과거 목록의 `to` 기본값만 자정이다. 앱은 항상 범위를 명시해
 > 부르므로 지금은 안 물린다.
 
@@ -155,7 +183,7 @@ TDD로 간다. 매퍼 단독 테스트는 만들지 않는다(규약) — 판단
 | 대상 | 잠글 것 |
 |---|---|
 | `ParfaitDayTest`(신설) | 02:59 → 전날 · 03:00 → 당일 · 00:00 → 전날 · 23:59 → 당일 |
-| `GetTodayParfaitUseCaseTest` | 00:00~03:00 응답(D−1)을 **재호출 없이** 받는다 |
+| `GetTodayParfaitUseCaseTest` | 00:00~03:00 응답(D−1)을 **재호출 없이** 받는다(고정 시계 주입) · 이틀 전 캔버스는 그때도 재조회한다 |
 | `GetGroupDetailUseCaseTest` | `myGroups` 없이 상세만으로 `groupName`이 나온다 |
 | 그룹 DataSource 테스트 | 신규 필드 4종 · `RELEASED` · `null` · 미지 문자열 → `null` |
 | `GroupSettingViewModelTest` | 칩이 서버 값을 따른다 · `remainingCount` 계산 · 음수 클램프 |
