@@ -162,6 +162,9 @@ Figma의 Nametag-Chip `Default`는 글자가 닉네임 첫 글자가 아니라 *
 **`TYPE1`~`TYPE12`만 그 짝으로 보내고 `RELEASED`는 `DEFAULT`로 간다** — `ordinal` 산술 하나로 12종과
 `RELEASED`를 같이 다루면 `RELEASED`가 범위를 넘으므로, 분기를 먼저 두고 산술은 그 안에서 한다.
 S-101(12→12)과 G-001(12→6)은 규칙이 달라 **공용 변환을 만들지 않는다** — 각 feature impl에 확장 함수로 둔다.
+자리는 그 모듈의 **`util` 패키지**다(`setting/impl/util/ColorChipType.kt`·`list/impl/util/GrouptagChipType.kt`) —
+화면 파일 바닥이 아니라. 같은 라운드에 G-001의 `toToppingImage`와 이미 빠져 있던 `GroupTimestamp.kt`도
+그 자리로 모았고, 규칙은 [module-structure](../architecture/module-structure.md)에 올렸다.
 
 `remainingCount`가 실데이터가 되면 **음수가 날 수 있다**(정원을 줄이는 경로는 없지만 캐시와 서버가
 어긋난 순간). `coerceAtLeast(0)`으로 접는다.
