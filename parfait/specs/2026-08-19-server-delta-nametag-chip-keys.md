@@ -39,7 +39,14 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 [2026-08-18-server-delta-nametag-chip-day-boundary](2026-08-18-server-delta-nametag-chip-day-boundary.md)의
 **직접 후속**이다. 그 라운드가 "서버 요청 대상"·"범위 밖"으로 미뤄 둔 둘을 이번 서버 delta가 닫아 주었고,
 동시에 **그 라운드가 짠 코드를 조용히 무력화하는 변경**을 함께 들여왔다. 작업 대상 브랜치는
-`feature/#300-sync-backend-api-250819`(선행 라운드를 develop 위로 rebase한 것)다.
+`feature/#300-sync-backend-api-250819`(PR #310)이고 선행 라운드 브랜치
+`feature/#300-sync-backend-api-250818`(PR #308) 위에 얹혀 있다.
+
+> 🔁 **"선행 라운드를 develop 위로 rebase한 것"이라 적었던 것은 더 이상 사실이 아니다.**
+> 2026-08-20에 선행 라운드가 `refactor/#294-group-data-using-ssot`(PR #307) 위로 다시 얹히면서
+> 이 브랜치의 base가 재작성됐다. ⚠️ 이 브랜치는 아직 **옛 선행 라운드 커밋을 품고 있어**
+> 새 PR #308의 자손이 아니다(고유 커밋 11개). PR #308을 푸시하기 전에 이 브랜치도 새 #308 위로
+> 리베이스해야 PR #310의 diff가 엉키지 않는다.
 
 ## 서버가 바꾼 것
 

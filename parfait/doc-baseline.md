@@ -322,14 +322,24 @@
   ⚠️ 그 리베이스가 **텍스트 충돌 없이 컴파일을 깨뜨렸다** — #306이 들여온 `WithdrawUseCaseTest`가
   `LogoutUseCase`를 직접 생성하는데 이 브랜치가 그 생성자에 `ParfaitGroupRepository`를 더해
   `:domain:compileTestKotlin`이 실패했다. 서로 다른 파일이라 `git rebase`는 조용히 끝난다.
-  **아래 두 브랜치를 리베이스할 때도 머지 후가 아니라 리베이스 직후에 `./gradlew test`를 돌려야
+  **아래 브랜치들을 리베이스할 때도 머지 후가 아니라 리베이스 직후에 `./gradlew test`를 돌려야
   같은 종류를 잡는다**),
-  `feature/#300-sync-backend-api-250819`(서버 delta 반영,
-  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md). base는 `86f0f6b0`. develop 대조 시
-  `nameTagChip` 키가 없다).
-  **리베이스가 남은 것은 `refactor/segmentation-develop`·`feature/#300-sync-backend-api-250819`
-  둘이다**(#294는 위와 같이 해소됐다) — 세 브랜치 모두
-  `origin`에 올라와 있으므로 확인은 `git merge-base --is-ancestor origin/develop origin/<브랜치>`로 한다.
+  `feature/#300-sync-backend-api-250818`(서버 delta 반영 1차, PR #308 —
+  [스펙](specs/2026-08-18-server-delta-nametag-chip-day-boundary.md)·[플랜](plans/2026-08-18-server-delta-nametag-chip-day-boundary.md)
+  선반영 완료. **base가 develop이 아니라 PR #307 브랜치다.** 2026-08-20에 #294를 따라
+  `refactor/#294-group-data-using-ssot` 위로 다시 얹었다 — 옛 #294 커밋 10개를 품고 있어 단순
+  리베이스가 아니라 옛 #294 tip을 잘라내는 `--onto`가 필요했고, 옮긴 뒤 유닛 532건이 통과했다.
+  develop 대조 시 `toColorChipType` 심볼이 없다),
+  `feature/#300-sync-backend-api-250819`(서버 delta 반영 2차, PR #310,
+  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md). **base는 PR #308 브랜치다** —
+  🔁 직전 회차의 "base는 `86f0f6b0`"은 develop만 놓고 잰 값이었다. develop 대조 시
+  `nameTagChip` 키가 없다. ⚠️ **아직 옛 #308 커밋을 품고 있어 새 #308의 자손이 아니다**(고유 커밋
+  11개) — #308을 푸시하기 전에 이 브랜치도 새 #308 위로 옮겨야 PR diff가 엉키지 않는다).
+  **PR 스택은 `develop ← #307 ← #308 ← #310` 한 줄이다** — 서로 독립한 갈래가 아니므로 머지도
+  그 순서고, 위쪽을 리베이스하면 아래가 전부 따라 움직인다. 남은 리베이스는
+  `refactor/segmentation-develop`(develop 위)과 `feature/#300-sync-backend-api-250819`(#308 위)
+  둘이다 — 네 브랜치 모두 `origin`에 올라와 있으므로 확인은
+  `git merge-base --is-ancestor origin/<base> origin/<브랜치>`로 한다(base가 develop이 아닌 것이 둘이다).
   ⚠️ **문서 전제 오류 정정 이월**: [design-system](architecture/design-system.md)의 8엔트리 일괄 이관
   수치는 여전히 브랜치 기준 표기이고 develop 값(6파일)을 병기한 상태다.
 

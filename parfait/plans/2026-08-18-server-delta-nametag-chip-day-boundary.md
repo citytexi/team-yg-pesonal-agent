@@ -10,7 +10,7 @@
 
 **Spec:** [`parfait/specs/2026-08-18-server-delta-nametag-chip-day-boundary.md`](../specs/2026-08-18-server-delta-nametag-chip-day-boundary.md)
 
-**작업 저장소·브랜치:** `TJYG-Android`(경로는 `wiki/personal-private/project-paths.md`), 브랜치 **`feature/#294-group-ssot`**(PR #299) 위. 워크트리를 새로 만들지 않는다.
+**작업 저장소·브랜치:** `TJYG-Android`(경로는 `wiki/personal-private/project-paths.md`). 계획을 쓸 당시 브랜치는 **`feature/#294-group-ssot`**(PR #299) 위였으나, 그 PR이 닫히면서 산출물은 **`feature/#300-sync-backend-api-250818`**(PR #308)로 갈렸고 **`refactor/#294-group-data-using-ssot`**(PR #307) 위에 얹혀 있다. 워크트리를 새로 만들지 않는다.
 
 ## Global Constraints
 
