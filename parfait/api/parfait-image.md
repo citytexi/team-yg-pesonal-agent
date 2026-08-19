@@ -343,11 +343,13 @@ nullable 5파라미터다. PATCH 요청 DTO의 5필드가 전부 `= null` 기본
 `encodeDefaults = true`라 **안 바꾸는 필드도 `"positionX": null`로 실려 나간다.** 서버 `ParfaitImage.update`가
 `?:` 병합이라 키 부재와 동치이므로 동작은 정확하다.
 
-⚠️ **2026-08-19 서버 delta로 두 자리가 어긋났다.** ① POST 응답 `placedBy`에 `nameTagChip`이 생겼는데
-앱 DTO(`response/parfaitimage/PlacedByResponse`)·VO(`PlacedToppingVO`)에 필드가 없다 — 안 읽는 것뿐이라
-`⚠️불일치`는 아니다(`ignoreUnknownKeys = true`). ② 서버가 그 중첩 클래스를
-`PlaceParfaitImagePlacedByResponse`로 개명해, 앱의 `PlacedByResponse`가 **더는 서버 이름의 거울이 아니다**
-(같은 이름을 두 패키지에 두던 근거가 "서버가 그렇다"였는데 그 사실이 사라졌다)
+✅ **2026-08-19 서버 delta로 어긋났던 두 자리는 2026-08-20에 맞춰졌다**(PR #310 develop 머지).
+① POST 응답 `placedBy.nameTagChip`을 앱 DTO가 **거울로 받되 VO(`PlacedToppingVO`)에는 안 올렸다** —
+읽는 화면이 0건인 상태로 도메인 모양을 굳히지 않는 규약이고, 안 읽는 것뿐이라 `⚠️불일치`도 아니다
+(`ignoreUnknownKeys = true`). ② 중첩 클래스를 서버 개명에 맞춰 `PlaceParfaitImagePlacedByResponse`로
+바꿨다 — **거울 규약을 복원한 것**이고, 이름이 길어진 대가로 같은 이름 두 개를 두 패키지에 두던
+모양이 사라졌다(캔버스 응답 쪽은 `PlacedByResponse` 그대로). 두 DTO를 "통일해야 하나" 오해하지
+않도록 양쪽 KDoc에 서로를 가리키는 한 줄이 붙어 있다
 → [open-questions](../synthesis/open-questions.md) [2026-08-19].
 
 **POST·위치 PATCH 응답 VO에는 여전히 테두리 필드가 없다** — 두 응답이 테두리를 돌려주지 않아서다.

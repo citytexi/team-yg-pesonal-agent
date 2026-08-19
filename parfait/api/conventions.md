@@ -274,39 +274,38 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
 
-⚠️ **2026-08-19 기준 2건**(건수는 그대로이고 첫 항목의 사정거리가 넓어졌다).
+✅ **2026-08-20 기준 0건.** 오래 걸려 있던 두 건이 PR #308·#310 머지로 같은 날 닫혔다.
 
-| 항목 | 계약(서버) | Android | 영향 |
-|---|---|---|---|
-| `MyParfaitGroupResponse.recentImageUploadedAt` 파싱 | `LocalDateTime` — 오프셋 없는 `yyyy-MM-ddTHH:mm:ss`(컨트롤러 테스트가 검증). **2026-08-19부터 비널**(토핑이 없으면 그룹 생성 시각) | `data/source/group/mapper/VOMapper.kt`가 `kotlin.time.Instant::parse`(오프셋 필수) | ⚠️ **그룹이 하나라도 있으면** 매퍼가 던져 **G-001 목록 조회 전체가 실패**(→ `AppError.Unexpected`). 그전에는 앱 매퍼의 `?.let`이 널을 건너뛰어 토핑 0건 그룹만 있는 계정은 살아 있었는데, 서버 `COALESCE`가 그 우회로를 없앴다 → [open-questions](../synthesis/open-questions.md) [2026-08-15] |
-| "오늘"의 경계 | `ParfaitDay.current()` — **03:00** 기준(위키 [[캔버스-마감-스케줄]]의 마감 시각과 같다). 오늘 조회·그룹 생성·회전 가드가 쓴다 | `domain/model/ParfaitDay.kt`의 `parfaitToday()` — **KST 자정** 기준 | 00:00~03:00 KST에 `GetTodayParfaitUseCase`가 정상 응답을 어긋난 것으로 보고 **오늘 조회를 두 번 부른다**(부작용 있는 GET이 두 배). 화면은 캘린더 오늘(D) 아래 D−1 캔버스를 그린다 → [parfait.md](parfait.md) "하루 경계" · [open-questions](../synthesis/open-questions.md) [2026-08-18] |
+| 항목 | 무엇이었나 | 어떻게 닫혔나 |
+|---|---|---|
+| `MyParfaitGroupResponse.recentImageUploadedAt` 파싱 | 계약은 오프셋 없는 `yyyy-MM-ddTHH:mm:ss`(컨트롤러 테스트가 검증)인데 `data/source/group/mapper/VOMapper.kt`가 `kotlin.time.Instant::parse`(오프셋 필수)로 읽었다. 2026-08-19 서버 `COALESCE` 비널화로 **그룹이 하나라도 있으면** G-001 목록 조회가 통째로 실패하는 상태까지 갔다 | PR #310이 `LocalDateTime::parse` → `toInstant(PARFAIT_TIME_ZONE)`로 고쳤다. **근거는 계약 사실**이다 — 서버 DB 커넥션 세 환경이 `serverTimezone=Asia/Seoul`이라 그 벽시계는 KST다. 이 버그를 초록으로 지켜 온 `MyParfaitGroupVOMapperTest`(오프셋 붙은 입력을 스스로 지어 넣었다)를 지우고 커버리지를 `ParfaitGroupRemoteDataSourceImplTest`로 옮겼다 |
+| "오늘"의 경계 | 서버는 `ParfaitDay.current()` — **03:00** 기준(위키 [[캔버스-마감-스케줄]]의 마감 시각), 앱 `parfaitToday()`는 **KST 자정** 기준이라 00:00~03:00 KST에 부작용 있는 오늘 조회가 두 번 돌고 화면이 D 아래 D−1 캔버스를 그렸다 | PR #308이 앱 경계를 03시로 옮겼다. 방향이 분명했던 쪽(**서버가 정책에 맞고 앱이 자정에 머물러 있었다**)이라 앱만 고쳤다 → [parfait.md](parfait.md) "하루 경계" |
 
-앱 쪽 변경 의도는 "벽시계가 아니라 절대 시점으로 든다"이고 방향은 타당하다 — 어긋난 것은 **서버가 아직
-오프셋을 싣지 않는다는 점**이다. 어느 쪽을 고칠지(서버가 오프셋 포함 포맷으로 바꾸거나, 앱이
-`LocalDateTime` + 고정 타임존으로 읽거나)는 미결이다.
-
-두 번째는 방향이 분명하다 — **서버가 정책(03시 마감)에 맞고 앱이 자정에 머물러 있다.**
-✅ **2026-08-19에 서버 쪽 잔여가 정리됐다** — 과거 목록의 `to` 기본값만 자정으로 남아 "서버 안에서도 두
-기준이 공존한다"던 자리가 `ParfaitDay.current()`로 통일됐다. **어긋남은 이제 앱 하나뿐이다**
-→ [parfait.md](parfait.md) "하루 경계".
+⚠️ **재발 방지 수단은 둘 다 안 생겼다.** 첫 항목을 잡은 것은 계약 문서 감사이고, 앱 테스트는 자기
+DTO를 자기가 만들어 넣어 `@SerialName` 문자열도 날짜 포맷도 서버 원본과 대조하지 않는다. 와이어 계약
+테스트 선례(`KakaoLoginResponseSerializationTest`)는 있으나 이 부류에 아직 안 붙었다 → OQ-P-234 ③.
+둘째 항목은 앱이 서버 상수를 **복제**해 맞춘 것이라(계약이 경계 시각을 내려주지 않는다) 서버가 배치
+시각을 바꾸면 다시 갈린다 — 그 조건은 `DayWindow.DAY_BOUNDARY_HOUR` KDoc에 적혀 있다.
 
 > **필드가 늘어난 것은 불일치가 아니다.** 2026-08-18~19 delta가 그룹 상세·목록·생성·캔버스·토핑 배치
-> 응답에 필드를 더했는데(`groupName`·`memberLimit`·`nameTagChip` 세 자리·`lastPlacedByNameTagChip` ·
-> 생성 응답의 `recentImageUrl`·`recentImageUploadedAt`) develop은 아직 읽지 않는다.
-> `JsonModule`이 `ignoreUnknownKeys = true`라 역직렬화가 깨지지 않으므로 이 표의 대상이 아니다 —
-> **계약이 앱보다 넓은 것**이고, 각 도메인 문서의 Android 매핑 절이 기회로 적는다.
+> 응답에 필드를 더했고, `JsonModule`이 `ignoreUnknownKeys = true`라 앱이 안 읽어도 역직렬화가 깨지지
+> 않으므로 이 표의 대상이 아니다 — **계약이 앱보다 넓은 것**이고, 각 도메인 문서의 Android 매핑 절이
+> 기회로 적는다.
 >
-> ⚠️ **다만 키 이름이 바뀐 것은 다른 문제다.** 2026-08-19에 응답 JSON 키가 `nametagChip` →
-> `nameTagChip`, `lastPlacedByNametagChip` → `lastPlacedByNameTagChip`으로 바뀌었다(서버 코어
-> 프로퍼티명은 그대로, HTTP DTO 경계에서만). develop에는 이 필드를 읽는 코드가 없어 계약 표에 오르지
-> 않지만, **미머지 브랜치 `feature/#294-group-ssot`은 옛 키로 읽고 있어 값이 조용히 `null`이 된다**
-> — 기본값이 있어 `MissingFieldException`도 안 난다(OQ-P-227이 경고한 "큰 소리로 깨지는" 쪽이 아니라
-> 반대 극단이다) → [open-questions](../synthesis/open-questions.md) [2026-08-19].
+> ✅ **그 기회 대부분이 2026-08-20에 소비됐다**(PR #308·#310 develop 머지) — 그룹 상세의
+> `groupName`·`memberLimit`, 상세 `members[].nameTagChip`, 목록 `lastPlacedByNameTagChip`, 캔버스
+> `groupMembers[].nameTagChip`이 전부 VO를 얻고 화면까지 닿았다. **남은 것은 둘**이고 성격이 다르다 —
+> 토핑 배치·캔버스의 `placedBy.nameTagChip`은 읽는 화면이 0건이라 **DTO에서 멈춰 세운 것**이고(도메인
+> 모양을 소비자 없이 굳히지 않는다), 그룹 **생성** 응답의 `recentImageUrl`·`recentImageUploadedAt`·
+> `lastPlacedByNameTagChip`은 DTO에 거울로 두었지만 `CreatedGroupVO`가 그 셋을 갖지 않는다
+> (생성 직후 화면이 쓰지 않고, 같은 이름 필드가 목록 응답과 **다른 컬럼에서 나온다**).
 >
-> ✅ **키는 맞춰졌다(2026-08-19, `feature/#300-sync-backend-api-250819`, 미머지)** — 그 브랜치가 세 DTO를
-> `nameTagChip` 계열로 고쳤다. **남은 것은 재발 방지 수단**이다 — 이 부류를 잡은 것은 이번에도 계약 문서
-> 감사였고, 앱 테스트는 자기 DTO를 자기가 만들어 넣어 `@SerialName` 문자열을 검증하지 않는다
-> → OQ-P-234 ③.
+> ⚠️ **키 이름이 바뀐 것은 다른 문제였다.** 2026-08-19에 응답 JSON 키가 `nametagChip` → `nameTagChip`,
+> `lastPlacedByNametagChip` → `lastPlacedByNameTagChip`으로 바뀌었다(서버 코어 프로퍼티명은 그대로,
+> HTTP DTO 경계에서만). 그 필드를 옛 키로 읽던 코드는 예외 없이 **조용히 `null`**이 됐다 — 기본값이
+> 있어 `MissingFieldException`도 안 난다(OQ-P-227이 경고한 "큰 소리로 깨지는" 쪽의 반대 극단이다).
+> ✅ **PR #310이 키를 맞춘 상태로 머지됐고**, 남은 것은 **재발 방지 수단**이다 — 이 부류를 잡은 것은
+> 두 번 다 계약 문서 감사였다 → OQ-P-234 ③.
 
 ✅ 오래 걸려 있던 로그인 판별자 키 불일치(응답 키가 `isNewUser`인데 Android가
 `@SerialName("newUser")`를 붙였던 건)는 **PR #241로 정정됐고 와이어 계약 테스트가 잠갔다**
@@ -315,6 +314,8 @@ TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote
 > ⚠️ **다만 `http/auth.http`는 아직 `newUser`를 가르친다** — 정정이 앱 DTO와 `http/README.md`에는
 > 닿았고 요청 모음 파일 하나에 안 닿았다. 계약 표에 남길 불일치는 아니지만 그 파일로 실서버 응답을
 > 확인하려는 사람이 조용히 잘못된 분기를 탄다 → [open-questions](../synthesis/open-questions.md).
+
+**아래는 그보다 앞선 회차의 해소 기록이다.**
 
 **2026-08-04 기준 남은 항목 없음.** 오래 걸려 있던 3건(Android `ApiResponse`에 `success`·`errorDetail`
 부재 / `isSuccess`가 `code == "SUCCESS"` 단일 비교 / `TokenProvider`가 항상 null)은
@@ -327,8 +328,8 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 > 나머지 6개는 2026-08-12 PR #230으로 develop에 들어왔고, **2026-08-15에 다섯 라운드**(PR #241·#242·
 > #243·#244·#248)가 카카오 로그인·약관 조회·회원가입·그룹 목록/생성/참여/닉네임 변경 **8 엔드포인트를
 > 화면까지** 이었다. 같은 날 **PR #250**이 남은 5 엔드포인트의 표면까지 채웠다. 그럼에도 **실서버 요청
-> 검증은 여전히 0건**이다(실기기 미수행) — 위 표의 시각 파싱 불일치도 그래서 아직 코드 대조로만 드러난
-> 상태다 → [open-questions](../synthesis/open-questions.md).
+> 검증은 여전히 0건**이다(실기기 미수행) — 위에서 닫은 시각 파싱 불일치도 처음부터 끝까지 **코드·계약
+> 대조로만** 드러나고 사라졌다 → [open-questions](../synthesis/open-questions.md).
 
 **2026-08-18·2026-08-19 delta 둘 다 엔드포인트를 늘리지 않았다**(28 + 테스트 전용 1 유지) — 바뀐 것은
 응답 필드·JSON 키·"오늘"의 정의·전역 405다. 아래 표면 셈은 그대로 유효하다.

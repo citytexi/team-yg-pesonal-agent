@@ -117,7 +117,7 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
     사용자가 무엇을 바꿨는지 알 수 없다.
   - **낙관적 갱신을 하지 않는다.** 변경 성공 시에도 State에 직접 쓰지 않고 SSoT 구독이 새 값을
     되돌려준다 — 직접 쓰면 저장이 실패해도 화면만 바뀐 상태가 된다.
-  - **그룹 정보도 같은 규약을 탄다**(2026-08-17, 브랜치 `feature/#294-group-ssot`, **미머지**).
+  - **그룹 정보도 같은 규약을 탄다**(2026-08-20, PR #307 develop 머지).
     G-001·C-001·S-101이 `GetMyGroupsFlowUseCase`·`GetGroupDetailUseCase`를 `init`에서 수집하고,
     서버 조회는 `Enter`(화면이 앞에 설 때)·`Refresh`가 따로 부른다 — 갱신 함수가 `Result<Unit>`이라
     화면이 조회 결과를 State에 넣을 길 자체가 없다([ADR-0023](../adr/0023-group-in-memory-ssot.md)).

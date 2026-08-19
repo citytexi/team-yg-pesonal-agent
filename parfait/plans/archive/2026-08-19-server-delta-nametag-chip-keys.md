@@ -1,5 +1,15 @@
 # 서버 delta 57529ec 반영 Implementation Plan
 
+> ✅ **완료·develop 머지(PR #310 `feature/#300-sync-backend-api-250819` → `750cc2dd`, 2026-08-20)** —
+> 7 Task 전량이 develop에 있다. 체크박스는 실행 기록을 이 블록에 모으는 관례대로 미체크로 둔다.
+>
+> 스택 셋(#307 → #308 → #310)이 순서대로 머지돼 develop HEAD가 이 브랜치 팁과 같아졌고, 머지
+> 커밋에 충돌 해소 편집이 0건이다. **머지 전 코드리뷰가 Task 3의 결론을 한 번 더 뒤집었다** —
+> 모르는 칩 문자열과 값 없음을 모두 `NametagChipType.DEFAULT`로 접어 이 축의 널 허용을 없앴고
+> (매퍼 · VO 셋 · 색 변환 셋), 근거는 [ADR-0024](../../adr/0024-nametag-chip-unknown-fold.md)에 있다.
+> 같은 리뷰가 `:data`의 칩 매퍼 두 사본을 `source/common/mapper`의 `internal` 하나로 합쳤다.
+> 유닛 532 → 538건.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 서버 `57529ec`가 바꾼 응답 JSON 키·필드·값 이름을 앱에 반영해, 직전 라운드가 붙인 Nametag-Chip 결선을 실제로 동작시키고 G-001 목록을 깨뜨리는 시각 파싱을 고친다.
@@ -8,7 +18,7 @@
 
 **Tech Stack:** Kotlin, kotlinx-serialization, kotlinx-datetime 0.8.0(`kotlin.time.Instant`), Hilt, MockK, kotlin.test, Gradle
 
-**Spec:** [parfait/specs/2026-08-19-server-delta-nametag-chip-keys.md](../specs/2026-08-19-server-delta-nametag-chip-keys.md)
+**Spec:** [parfait/specs/2026-08-19-server-delta-nametag-chip-keys.md](../../specs/archive/2026-08-19-server-delta-nametag-chip-keys.md)
 
 ## Global Constraints
 

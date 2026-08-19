@@ -37,7 +37,7 @@ delta가 `groupMembers`에도 `nameTagChip`을 실어 캔버스 상단 멤버 �
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
 | GET | `/api/v1/groups/{groupId}/parfaits/year` | 필요 | path `groupId` Long | `ParfaitYearsResponse` | 구현됨 |
-| GET | `/api/v1/groups/{groupId}/parfaits/today` | 필요 | path `groupId` Long | `GetTodayParfaitResponse` | 결선됨·⚠️불일치[^dayboundary] |
+| GET | `/api/v1/groups/{groupId}/parfaits/today` | 필요 | path `groupId` Long | `GetTodayParfaitResponse` | 결선됨[^dayboundary] |
 | GET | `/api/v1/groups/{groupId}/parfaits` | 필요 | query `from`·`to`(선택) | `PastParfaitsResponse` | 구현됨 |
 | GET | `/api/v1/groups/{groupId}/parfaits/{parfaitId}` | 필요 | path `groupId`·`parfaitId` Long | `GetTodayParfaitResponse`(**재사용**) | 구현됨 |
 | PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/background` | 필요 | `ChangeParfaitBackgroundRequest` | `ChangeParfaitBackgroundResponse` | 구현됨 |
@@ -47,11 +47,13 @@ delta가 `groupMembers`에도 `nameTagChip`을 실어 캔버스 상단 멤버 �
 `SecurityConfig.WHITELIST_PATHS` 양쪽에 "프로덕션 오픈 전 함께 제거할 것"이라는 TODO가 달려 있다.
 앱이 붙일 대상이 아니다 → [미결](#미결).
 
-[^dayboundary]: **2026-08-18** — 서버가 "오늘"을 `ParfaitDay`(03시 경계)로 세는데 앱
-    `parfaitToday()`(`domain/model/ParfaitDay.kt`)는 **KST 자정 경계**다. 00:00~03:00 KST에는 서버가
-    전날 캔버스를 주고, `GetTodayParfaitUseCase`가 그것을 어긋난 응답으로 보고 **한 번 더 부른 뒤
-    같은 값을 그대로 쓴다** → 아래 [하루 경계](#하루-경계) ·
-    [conventions.md](conventions.md) "Android 불일치" ·
+[^dayboundary]: ✅ **해소됨(2026-08-20, PR #308 develop 머지).** 2026-08-18~19 동안은 서버가 "오늘"을
+    `ParfaitDay`(03시 경계)로 세는데 앱 `parfaitToday()`(`domain/model/ParfaitDay.kt`)가 **KST 자정
+    경계**여서, 00:00~03:00 KST에 서버가 전날 캔버스를 주면 `GetTodayParfaitUseCase`가 그것을 어긋난
+    응답으로 보고 **한 번 더 부른 뒤 같은 값을 그대로 썼다**(부작용 있는 GET이 두 배). 앱이 경계를
+    03시로 옮겨 어긋남이 사라졌고, 경계 값은 `DayWindow.DAY_BOUNDARY_HOUR` 하나만 쓴다 —
+    **다만 시간대는 공유하지 않는다**(`parfaitToday()`는 고정 KST, `DayWindow.current()`는 기기 시간대).
+    → 아래 [하루 경계](#하루-경계) · [conventions.md](conventions.md) "Android 불일치"(이제 0건) ·
     [open-questions](../synthesis/open-questions.md) [2026-08-18].
 
 경로 주의: 그룹을 `groups`로 부르는 유일한 경로다(다른 그룹 API는 `parfait-groups`) —
@@ -437,6 +439,10 @@ Service·DataSource 함수가 있다.
 방침대로 소비자와 함께 올라왔다(`ParfaitRepository#getYears`). 남은 하나는 **배경 변경**이고,
 `android_status`는 여전히 `partial`이다 — 표면·계약이 아니라 **소비처가 다섯 중 넷**이라는 뜻이다.
 
+✅ **2026-08-20(PR #308·#310 develop 머지) — 소비처 수는 그대로 넷이고 `android_status`도 `partial`이다.**
+이 라운드가 바꾼 것은 갈래 수가 아니라 **오늘 조회 응답을 얼마나 읽는가**다(멤버 칩 결선 + 하루 경계
+정정). 배경 변경은 여전히 소비처 0건이라 Repository 인터페이스에 없다.
+
 **계약의 두 성질이 소비 방식을 갈랐다.**
 ① `today`는 **부작용이 있다**(행 생성). 그럼에도 쓰는 이유는 토핑을 얹으려면 `parfaitId`가 있어야 하고,
 **부작용 없는 두 경로는 없는 날을 만들어 주지 않기** 때문이다. 호출 시점은 처음엔 진입 1회였고
@@ -462,30 +468,31 @@ Service·DataSource 함수가 있다.
 **KST**(`PARFAIT_TIME_ZONE`)다 — 캔버스 행이 KST 날짜를 키로 저장되기 때문이고, 기기 시간대로 세면
 해외 기기에서 재시도가 하루 한 번이 아니라 **로드마다** 돈다.
 
-⚠️ **그 검증이 2026-08-18 서버 delta로 어긋났다.** 앱 `parfaitToday()`는 **KST 자정** 경계이고 서버는
-**03시** 경계다([하루 경계](#하루-경계)). 00:00~03:00 KST에는 서버가 전날 캔버스를 주는 것이
-정상인데 앱은 그것을 "자정을 걸친 요청"으로 보고 **매번 한 번 더 부른다** — 두 번째 응답도 같으므로
-그대로 쓰지만, 그 구간 동안 오늘 조회가 **요청 2회**가 되고 **부작용 있는 GET이 두 배로 돈다.**
-표시도 어긋난다 — `CanvasMainUiState.today`는 캘린더 오늘(D)인데 그 아래 그려지는 캔버스는 D−1이고,
-`syncToday()`가 자정에 화면을 비우고 다시 불러도 03시까지는 계속 D−1이 온다. 달력이 고른 "오늘"과
-활성 캔버스 날짜도 그 구간에는 다르다. **정책상 옳은 쪽은 서버다**(위키 [[캔버스-마감-스케줄]]의 03시)
-→ [conventions.md](conventions.md) "Android 불일치" · [open-questions](../synthesis/open-questions.md) [2026-08-18].
-
-⚠️ **칩 필드 둘을 아직 아무도 안 읽는다.** 캔버스 상단 멤버 칩은 `groupMembers`에서 오는데
-develop의 `CanvasMainViewModel`이 여전히 7종 팔레트를 인덱스로 돌리고, 토핑 작성자 칩은 `placedBy`에서
-올 수 있는데 앱 DTO가 필드를 두지 않았다. ✅ **서버 쪽 선행은 2026-08-19에 닫혔다** — `groupMembers`에도
-`nameTagChip`이 실려 **"이 화면만 계약 밖"이라는 조건이 사라졌다**. 응답 필드를 안 읽는 것뿐이라
-`⚠️불일치`는 아니다(앱 JSON은 `ignoreUnknownKeys = true`) →
+✅ **그 어긋남은 닫혔다(2026-08-20, PR #308 develop 머지).** 2026-08-18~19 동안은 앱 `parfaitToday()`가
+**KST 자정** 경계, 서버가 **03시** 경계여서([하루 경계](#하루-경계)) 00:00~03:00 KST에 서버가 전날
+캔버스를 주는 정상 응답을 앱이 "자정을 걸친 요청"으로 보고 **매번 한 번 더 불렀다** — 부작용 있는
+GET이 두 배로 돌고, 표시도 어긋났다(`CanvasMainUiState.today`는 캘린더 오늘 D인데 그 아래 캔버스는
+D−1). **정책상 옳은 쪽이 서버였으므로 앱을 옮겼다**(위키 [[캔버스-마감-스케줄]]의 03시). 고친 것은
+`parfaitToday()` 한 함수이고 **재시도 조건·달력 활성 조건·`syncToday()`가 그 값을 읽으므로 저절로
+따라왔다** → [conventions.md](conventions.md) "Android 불일치"(이제 0건) ·
 [open-questions](../synthesis/open-questions.md) [2026-08-18].
 
-⚠️ **미머지 브랜치가 쓰는 키가 바뀌었다** — `feature/#294-group-ssot`의
-`GetTodayParfaitResponse`가 `@SerialName("nametagChip")`(`String? = null`)로 `placedBy` 칩을 받아 두는데
-서버 키가 `nameTagChip`이 됐다. 기본값이 있어 깨지지는 않고 **조용히 `null`이 된다**. 같은 브랜치의
-KDoc이 "탈퇴했으면 `RELEASED`"라고 적은 것도 이제 `DEFAULT`다
-→ [open-questions](../synthesis/open-questions.md) [2026-08-19].
-✅ **같은 날 닫혔다(미머지)** — `feature/#300-sync-backend-api-250819`가 키를 맞췄고, 같은 라운드가
-**C-001 상단 멤버 칩을 서버 값으로 결선**했다(팔레트 인덱스 순환이 사라졌다)
-→ [plan](../plans/2026-08-19-server-delta-nametag-chip-keys.md) Task 2·5. **develop 머지는 아직이다.**
+✅ **칩 필드 하나는 결선됐고 하나는 여전히 아무도 안 읽는다**(2026-08-20, PR #308·#310 develop 머지).
+캔버스 상단 멤버 칩은 `groupMembers[].nameTagChip`을 `CanvasMemberVO.nametagChip`으로 올려 그린다 —
+7종 팔레트 인덱스 순환(`NAMETAG_CHIP_PALETTE`)이 사라졌고, 같은 사람이 S-101과 C-001에서 같은 색이다
+(서버가 같은 행에서 두 값을 준다). ⚠️ **토핑 작성자 칩(`placedBy.nameTagChip`)은 DTO까지만이다** —
+`PlacedByResponse`가 필드를 두지만 `ToppingPlacerVO`에는 안 올렸다. 읽는 화면이 0건인 상태로 도메인
+모양을 굳히지 않으려는 판단이고, **C-202 Spotlight는 이 필드가 아니라 `groupMembers` 조인을 쓰므로**
+그 화면이 붙어도 여기가 자동으로 필요해지지는 않는다. 응답 필드를 안 읽는 것뿐이라 `⚠️불일치`는
+아니다(앱 JSON은 `ignoreUnknownKeys = true`) → [open-questions](../synthesis/open-questions.md) [2026-08-18].
+
+✅ **키 어긋남도 develop에서 닫혔다** — 2026-08-19 서버 delta가 응답 키를 `nameTagChip` 계열로 바꾼 뒤
+그 필드를 옛 키로 읽던 브랜치가 잠시 있었으나(기본값이 있어 예외 없이 **조용히 `null`**이 되는 부류),
+PR #310이 세 DTO의 키를 맞추고 반납 값 이름도 `RELEASED` → `DEFAULT`로 따라간 상태로 머지됐다.
+**재발 방지 수단은 여전히 없다** — 이 부류를 잡은 것은 두 번 다 계약 문서 감사였고, 앱 테스트는 자기
+DTO를 자기가 만들어 넣어 `@SerialName` 문자열을 검증하지 않는다
+→ [server-delta 스펙](../specs/archive/2026-08-19-server-delta-nametag-chip-keys.md) ·
+[open-questions](../synthesis/open-questions.md) [2026-08-19].
 
 ⚠️ **과거 목록은 이제 연 단위로 부른다**(2026-08-17, PR #279) — 1월 1일 ~ 12월 31일을 한 번에 받아
 화면이 연도별로 캐시한다. 근거는 계약이다 — **페이지네이션도 범위 상한도 없어**(→ [미결](#미결))
