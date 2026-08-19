@@ -4,7 +4,7 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-17
+verified: 2026-08-19
 related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: state-management
@@ -420,6 +420,13 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   실행한다(위 "네트워킹 → 응답 계약" 참고) — `.map { }`으로 밖에서 잇지 않는다. data 전용 중간 모델
   (구 `model.dto`)은 두지 않는다 — Response 복제본이라 변환 단계만 늘기 때문. 접미사 규약(`…VO` vs
   기존 무접미사)은 미결 → [open-questions](../synthesis/open-questions.md).
+
+  **여러 도메인이 같은 변환을 쓰면 `source.common.mapper`로 올린다**(2026-08-19). 첫 사례는
+  `NametagChipTypeMapper.kt`의 `String?.toNametagChipType()`으로, group·parfait 두 매퍼가 각각
+  `private` 사본을 갖고 있던 것을 `internal` 하나로 합쳤다. 기준은 **소비처가 둘 이상**이라는 것뿐이다 —
+  `:data` 안에서 닫히는 변환이라 feature 쪽 복제를 묶어 두는 모듈 가시성 문제가 여기엔 없다
+  ([module-structure](module-structure.md)). 도메인 하나만 쓰는 변환은 그대로 `source.<도메인>.mapper`에
+  둔다. 플랫폼 헬퍼(`FileProvider`·로거 따위)는 `data/utils` 소관이라 여기 오지 않는다.
 
   **매퍼는 단독 테스트하지 않는다(2026-08-11 규약).** 매퍼의 유일한 호출자가 DataSource라
   `XxxRemoteDataSourceImplTest`가 이미 매퍼를 통과시킨다 — 별도 `XxxVOMapperTest`는 같은 것을 두 번
