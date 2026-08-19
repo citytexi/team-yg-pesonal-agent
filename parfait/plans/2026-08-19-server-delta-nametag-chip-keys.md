@@ -90,7 +90,7 @@
     }
 ```
 
-import 두 줄을 파일 상단 import 블록에 추가한다.
+import 한 줄을 파일 상단 import 블록에 추가한다(`runTest`·`coEvery`·`assertEquals`는 이미 있다).
 
 ```kotlin
 import kotlin.time.Instant
@@ -122,7 +122,7 @@ internal fun MyParfaitGroupResponse.toMyParfaitGroupVO(): MyParfaitGroupVO = MyP
 )
 ```
 
-import을 갈아 끼운다 — `kotlin.time.Instant`를 지우고 셋을 넣는다.
+import을 갈아 끼운다 — `kotlin.time.Instant`를 지우고 셋을 넣는다. **ktlint가 사전순을 요구하므로** `...domain.model.PARFAIT_TIME_ZONE`이 `...domain.model.group.*`보다 앞이다.
 
 ```kotlin
 import com.teamyg.parfait.domain.model.PARFAIT_TIME_ZONE
@@ -325,6 +325,8 @@ lastPlacedByNametagChip -> lastPlacedByNameTagChip 으로 바꿨다. 앱은 옛 
 
 **Files:**
 - Modify: `domain/src/main/java/com/teamyg/parfait/domain/model/group/NametagChipType.kt`
+- Modify: `domain/src/main/java/com/teamyg/parfait/domain/model/group/MyParfaitGroupVO.kt` (KDoc 링크만)
+- Modify: `domain/src/main/java/com/teamyg/parfait/domain/model/group/ParfaitGroupMemberVO.kt` (KDoc 링크만)
 - Modify: `feature/groups/setting/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/setting/impl/util/ColorChipType.kt`
 - Modify: `feature/groups/list/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/list/impl/util/GrouptagChipType.kt`
 - Test: `feature/groups/setting/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/setting/impl/util/ColorChipTypeTest.kt`
@@ -350,7 +352,16 @@ lastPlacedByNametagChip -> lastPlacedByNameTagChip 으로 바꿨다. 앱은 옛 
     }
 ```
 
-`GrouptagChipTypeTest.kt` — 같은 파일의 `RELEASED` 케이스를 같은 방식으로 바꾼다(단언 대상은 `YGGrouptagChipType.DEFAULT`).
+`GrouptagChipTypeTest.kt` — 테스트 이름까지 함께 바꾼다.
+
+```kotlin
+    @Test
+    fun toGrouptagChipType_defaultFallsBackToDefault() {
+        // Given 마지막 토퍼가 그룹을 나갔다
+        // When/Then 나간 사람 색을 계속 쓰지 않고 중립으로 간다
+        assertEquals(YGGrouptagChipType.DEFAULT, NametagChipType.DEFAULT.toGrouptagChipType())
+    }
+```
 
 `ParfaitGroupRemoteDataSourceImplTest.kt`
 
@@ -442,22 +453,40 @@ enum class NametagChipType {
  */
 ```
 
-- [ ] **Step 6: 테스트가 통과하는 것을 확인한다**
+- [ ] **Step 6: 도메인 VO 두 곳의 KDoc 링크를 바꾼다**
+
+`[NametagChipType.RELEASED]`가 두 VO의 KDoc에 남아 있다. **KDoc 링크라 컴파일은 안 깨지지만 Step 8의 게이트가 반드시 걸린다.** 여기서는 **링크 이름만** 바꾼다 — 이 두 KDoc의 서술 자체가 이번 delta로 거짓이 된 것은 Task 7이 문장째 다시 쓴다.
+
+`MyParfaitGroupVO.kt`
+
+```kotlin
+     * 그 사람이 이미 그룹을 나갔으면 [NametagChipType.DEFAULT], 토핑이 하나도 없으면
+```
+
+`ParfaitGroupMemberVO.kt`
+
+```kotlin
+     * 상세 응답은 탈퇴자를 빼고 주므로 실제로는 [NametagChipType.DEFAULT] 도 `null` 도
+```
+
+- [ ] **Step 7: 테스트가 통과하는 것을 확인한다**
 
 Run: `./gradlew :domain:test :data:testDebugUnitTest :feature:groups:setting:impl:testDebugUnitTest :feature:groups:list:impl:testDebugUnitTest`
 
 Expected: PASS
 
-- [ ] **Step 7: 남은 `RELEASED` 참조가 없는지 확인한다**
+- [ ] **Step 8: 남은 `RELEASED` 참조가 없는지 확인한다**
 
 Run: `git grep -n "RELEASED"`
 
-Expected: 결과 0건. 하나라도 남으면 그 파일을 고치고 Step 6을 다시 돌린다.
+Expected: 결과 0건. 하나라도 남으면 그 파일을 고치고 **Files 목록에 없던 파일이면 아래 `git add`에도 더한 뒤** Step 7을 다시 돌린다.
 
-- [ ] **Step 8: 커밋**
+- [ ] **Step 9: 커밋**
 
 ```bash
 git add domain/src/main/java/com/teamyg/parfait/domain/model/group/NametagChipType.kt \
+        domain/src/main/java/com/teamyg/parfait/domain/model/group/MyParfaitGroupVO.kt \
+        domain/src/main/java/com/teamyg/parfait/domain/model/group/ParfaitGroupMemberVO.kt \
         data/src/main/java/com/teamyg/parfait/data/source/group/mapper/VOMapper.kt \
         data/src/test/java/com/teamyg/parfait/data/source/group/remote/ParfaitGroupRemoteDataSourceImplTest.kt \
         feature/groups/setting/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/setting/impl/util/ColorChipType.kt \
@@ -490,7 +519,7 @@ enum·KDoc·두 변환 분기가 존재하지 않는 계약 값을 가리키고 
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
-`ParfaitRemoteDataSourceImplTest.kt`의 `todaySuccess` 픽스처가 `groupMembers`를 리터럴로 들고 있다. 칩을 파라미터로 열어 기본값을 준다(기존 호출부 다섯은 그대로 컴파일된다).
+`ParfaitRemoteDataSourceImplTest.kt`의 `todaySuccess` 픽스처가 `groupMembers`를 리터럴로 들고 있다. 칩을 파라미터로 열어 기본값을 준다(기존 호출부는 전부 명명 인자라 그대로 컴파일된다).
 
 ```kotlin
     private fun todaySuccess(
@@ -593,7 +622,7 @@ data class CanvasMemberVO(
 
 import을 추가한다: `import com.teamyg.parfait.domain.model.group.NametagChipType`
 
-`data/.../source/parfait/mapper/VOMapper.kt` — 변환 함수를 이 파일에 둔다. group 매퍼의 같은 함수는 `private`이라 재사용할 수 없고, 그것을 `internal`로 넓히면 두 도메인 매퍼가 서로를 보게 된다.
+`data/.../source/parfait/mapper/VOMapper.kt` — 변환 함수를 이 파일에 **새로 추가**한다. group 매퍼의 같은 함수는 `private`이라 재사용할 수 없고, 그것을 `internal`로 넓히면 두 도메인 매퍼가 서로를 보게 된다.
 
 ```kotlin
 /**
@@ -605,7 +634,11 @@ import을 추가한다: `import com.teamyg.parfait.domain.model.group.NametagChi
  */
 private fun String?.toNametagChipType(): NametagChipType? =
     this?.let { raw -> NametagChipType.entries.firstOrNull { it.name == raw } }
+```
 
+⚠️ **`toCanvasMemberVO`는 이 파일에 이미 있다. 새로 선언하지 말고 본문에 한 줄을 더하라** — 그대로 붙여 넣으면 `Conflicting overloads`로 깨진다.
+
+```kotlin
 private fun GroupMemberResponse.toCanvasMemberVO(): CanvasMemberVO = CanvasMemberVO(
     groupMemberId = GroupMemberId(id),
     nickname = GroupNickname(nickname),
@@ -831,7 +864,26 @@ Expected: PASS
     }
 ```
 
-> ⚠️ **두 번째 테스트가 이 태스크의 핵심이다.** "앞사람이 빠져도 남은 사람 색이 그대로"가 인덱스 규칙과 서버 값을 가르는 **유일한 관찰**이다. 첫 테스트만 있으면 팔레트 순서와 우연히 맞는 배정에서 통과할 수 있다.
+```kotlin
+    @Test
+    fun enter_memberWithoutAChip_getsTheNeutralColour() = runTest(mainDispatcherRule.dispatcher) {
+        // Given 서버가 앱이 모르는 값을 줘 매퍼가 접었다
+        coEvery { getTodayParfait(any()) } returns Result.success(
+            canvas(TODAY_PARFAIT_ID, today, members = listOf(member("모카", nametagChip = null))),
+        )
+
+        // When 화면에 들어간다
+        val viewModel = enteredViewModel()
+
+        // Then 아무 색이나 돌리지 않는다
+        assertEquals(
+            listOf(YGColorChipType.Default),
+            viewModel.state.value.memberChips.map(GroupMemberChip::colorChipType),
+        )
+    }
+```
+
+> ⚠️ **두 번째 테스트가 이 태스크의 핵심이다.** "앞사람이 빠져도 남은 사람 색이 그대로"가 인덱스 규칙과 서버 값을 가르는 **유일한 관찰**이다. 첫 테스트만 있으면 팔레트 순서와 우연히 맞는 배정에서 통과할 수 있다. 세 번째는 변환 함수가 아니라 **ViewModel 결선**이 널을 중립으로 흘리는지를 잠근다(스펙 테스트 표의 항목이다).
 
 `enteredViewModel()`이 `getTodayParfait`을 부르는 시점보다 `coEvery`가 **먼저** 와야 한다 — 위 순서를 지켜라. `GroupMemberChip`은 이 파일이 이미 import하고 있다.
 
@@ -865,7 +917,11 @@ Expected: FAIL — 팔레트가 인덱스로 색을 고르므로 첫 테스트�
     }
 ```
 
-companion object에서 `NAMETAG_CHIP_PALETTE` 선언을 통째로 지운다. 그 결과 `YGColorChipType` import이 이 파일에서 안 쓰이면 함께 지운다. `toColorChipType` import을 추가한다.
+companion object에서 `NAMETAG_CHIP_PALETTE` 선언을 통째로 지운다.
+
+⚠️ **`YGColorChipType` import은 지우지 마라.** 같은 파일의 톱레벨 `data class GroupMemberChip`이 `colorChipType: YGColorChipType`를 들고 있어 계속 쓰인다.
+
+`toColorChipType` import을 추가한다.
 
 ```kotlin
 import com.teamyg.parfait.feature.groups.canvas.impl.util.toColorChipType
@@ -883,7 +939,30 @@ Expected: PASS
 
 - [ ] **Step 10: 기존 두 변환의 KDoc을 갱신한다**
 
-`setting/impl/util/ColorChipType.kt`와 `list/impl/util/GrouptagChipType.kt`가 서로를 "짝이 되는 변환"(단수)으로 부른다. 이제 셋이므로 두 파일의 그 문장을 고친다 — 각각 나머지 **둘**을 가리키고, Step 3의 KDoc이 적은 컴파일러 한계를 같은 문장으로 담는다.
+두 파일이 서로를 "짝이 되는 변환"(단수)으로 부른다. 이제 셋이므로 각각 나머지 둘을 가리키게 하고, Step 3이 적은 컴파일러 한계를 같은 문장으로 담는다.
+
+`setting/impl/util/ColorChipType.kt` — "G-001 목록에도 짝이 되는 변환이 있지만…"으로 시작하는 문단을 아래로 바꾼다.
+
+```kotlin
+ * **같은 규칙의 변환이 저장소에 셋이다** — C-001 캔버스 상단 칩(12종 1:1, 이 파일과 글자까지
+ * 같다)과 G-001 목록(12종을 6종으로 짝지어 접는다). 공용화하지 않은 이유는 자리가 없어서가
+ * 아니라 `core:ui` 의 `implementation`/`api` 가시성이 팀 결정 대상으로 열려 있어서다.
+ *
+ * ⚠️ **컴파일러가 잡아 주는 것은 앱이 [NametagChipType] 에 상수를 더할 때의 arm 누락뿐이다.**
+ * 서버에 새 타입이 생기면 매퍼가 `null` 로 접어 컴파일이 안 깨지고, 셋 중 하나에서 색만
+ * 바꾸는 것도 못 잡는다. 색을 고칠 때는 셋을 함께 본다.
+```
+
+`list/impl/util/GrouptagChipType.kt` — "S-101 그룹 설정에도 짝이 되는 변환이 있지만…"으로 시작하는 문단을 아래로 바꾼다.
+
+```kotlin
+ * **같은 규칙의 변환이 저장소에 셋이다** — S-101 그룹 설정과 C-001 캔버스 상단 칩은 12종을
+ * 1:1로 옮기고(둘은 서로 글자까지 같다) 이 파일만 6종으로 접는다. 공용화하지 않은 이유는
+ * 자리가 없어서가 아니라 `core:ui` 의 `implementation`/`api` 가시성이 팀 결정 대상이어서다.
+ *
+ * ⚠️ **컴파일러가 잡아 주는 것은 앱이 [NametagChipType] 에 상수를 더할 때의 arm 누락뿐이다.**
+ * 서버에 새 타입이 생기면 매퍼가 `null` 로 접어 컴파일이 안 깨진다.
+```
 
 - [ ] **Step 11: 커밋**
 
@@ -913,7 +992,10 @@ implementation/api 가시성이 팀 결정 대상으로 열려 있다."
 **Files:**
 - Modify: `data/src/main/java/com/teamyg/parfait/data/service/model/response/parfaitimage/PlaceParfaitImageResponse.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/source/parfaitimage/mapper/VOMapper.kt`
+- Modify: `data/src/test/java/com/teamyg/parfait/data/source/parfaitimage/remote/ParfaitImageRemoteDataSourceImplTest.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/service/model/response/group/CreateParfaitGroupResponse.kt`
+
+⚠️ **`PlacedByResponse`(parfaitimage)를 참조하는 곳은 셋이다** — 선언 파일, 매퍼, **그리고 테스트**다. 셋을 한 커밋에 고쳐야 `:data`가 붙는다.
 
 **Interfaces:**
 - Produces: 없음(도메인·화면에 노출되는 변화가 없다)
@@ -959,7 +1041,23 @@ private fun PlaceParfaitImagePlacedByResponse.toToppingPlacerVO(): ToppingPlacer
 
 import도 새 이름으로 바꾼다.
 
-- [ ] **Step 3: 그룹 생성 응답에 3필드를 더한다**
+- [ ] **Step 3: 테스트의 참조를 고친다**
+
+`data/src/test/java/com/teamyg/parfait/data/source/parfaitimage/remote/ParfaitImageRemoteDataSourceImplTest.kt`가 이 클래스를 import하고 픽스처에서 생성한다. **이걸 빼면 `:data` 테스트 컴파일이 깨진다.**
+
+import을 바꾼다.
+
+```kotlin
+import com.teamyg.parfait.data.service.model.response.parfaitimage.PlaceParfaitImagePlacedByResponse
+```
+
+픽스처의 생성자 호출을 바꾼다(칩은 안 넘긴다 — 기본값 `null`이고 이 테스트는 칩을 검증하지 않는다).
+
+```kotlin
+            placedBy = PlaceParfaitImagePlacedByResponse(groupMemberId = 10L, nickname = "연경이"),
+```
+
+- [ ] **Step 4: 그룹 생성 응답에 3필드를 더한다**
 
 `CreateParfaitGroupResponse.kt`
 
@@ -977,17 +1075,18 @@ import도 새 이름으로 바꾼다.
 
 `CreatedGroupVO`와 `toCreatedGroupVO`는 **건드리지 않는다** — A-005는 생성 직후 목록으로 돌아가며 목록을 다시 읽으므로 소비할 값이 없다.
 
-- [ ] **Step 4: 테스트와 린트를 돌린다**
+- [ ] **Step 5: 테스트와 린트를 돌린다**
 
 Run: `./gradlew :data:testDebugUnitTest ktlintCheck`
 
-Expected: PASS. 새 필드는 전부 기본값이 있어 기존 픽스처가 그대로 컴파일된다. 개명은 컴파일이 검증한다.
+Expected: PASS. 새 필드는 전부 기본값이 있어 기존 픽스처가 그대로 컴파일된다. 개명은 컴파일이 검증한다 — Step 1~3 중 하나라도 빠지면 여기서 깨진다.
 
-- [ ] **Step 5: 커밋**
+- [ ] **Step 6: 커밋**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/service/model/response/parfaitimage/PlaceParfaitImageResponse.kt \
         data/src/main/java/com/teamyg/parfait/data/source/parfaitimage/mapper/VOMapper.kt \
+        data/src/test/java/com/teamyg/parfait/data/source/parfaitimage/remote/ParfaitImageRemoteDataSourceImplTest.kt \
         data/src/main/java/com/teamyg/parfait/data/service/model/response/group/CreateParfaitGroupResponse.kt
 git commit -m "chore(data): mirror the remaining server response fields
 
@@ -1009,16 +1108,55 @@ git commit -m "chore(data): mirror the remaining server response fields
 
 - [ ] **Step 1: `MyParfaitGroupVO`의 두 KDoc을 고친다**
 
-- `lastPlacedByNametagChip` — "토핑이 하나도 없으면 `null`"이 거짓이다. 서버가 `COALESCE`로 **그룹 생성자의 칩**을 넣는다. 그래서 **토핑이 0건인 그룹도 사람 색을 얻는다**(중립이 아니다).
-- `recentImageUploadedAt` — "오프셋이 붙은 절대 시점"이 거짓이다. 서버는 오프셋 없는 로컬 날짜시각을 주고 **오프셋은 앱 매퍼가 부여한다**(Task 1). 그리고 토핑이 없으면 그 값은 **그룹 생성 시각**이다 — "마지막 활동"이 아니다.
+`recentImageUploadedAt` — "오프셋이 붙은 절대 시점"이 거짓이다. 서버는 오프셋 없는 로컬 날짜시각을 주고 오프셋은 앱 매퍼가 부여한다(Task 1). 토핑이 없으면 그 값은 그룹 생성 시각이라 "마지막 활동"도 아니다.
+
+```kotlin
+    /**
+     * 마지막으로 토핑이 올라온 시각. **토핑이 하나도 없으면 그룹이 만들어진 시각**이 오므로
+     * "활동이 있었다"는 뜻이 아니다 — 그것을 가르려면 [recentImageUrl] 이 `null` 인지 함께 본다.
+     *
+     * 서버는 오프셋 없는 로컬 날짜시각을 주고 매퍼가 Asia/Seoul 을 부여해 절대 시점으로 만든다.
+     */
+    val recentImageUploadedAt: Instant?,
+```
+
+`lastPlacedByNametagChip` — "토핑이 하나도 없으면 `null`"이 거짓이다. 서버가 `COALESCE`로 **그룹 생성자의 칩**을 넣어, 토핑이 0건인 그룹도 중립이 아니라 사람 색을 얻는다.
+
+```kotlin
+    /**
+     * 마지막으로 토핑을 올린 사람의 칩. **토핑이 하나도 없으면 그룹을 만든 사람의 칩**이 온다 —
+     * 그 경우 이 값은 "마지막으로 바꾼 사람"이 아니라 "만든 사람"을 가리킨다.
+     * 그 사람이 이미 그룹을 나갔으면 [NametagChipType.DEFAULT] 다.
+     *
+     * `null` 은 앱이 모르는 타입 문자열이 와서 매퍼가 접었다는 뜻이다.
+     */
+    val lastPlacedByNametagChip: NametagChipType?,
+```
 
 - [ ] **Step 2: `ParfaitGroupMemberVO`의 KDoc을 고친다**
 
-`nametagChip`의 "계약 타입이 널 허용이라"가 거짓이다. **서버는 비널로 좁혔고 앱만 널 허용을 유지한다** — 구버전 서버를 만나도 화면이 통째로 실패하지 않게 하려는 결정이다.
+"계약 타입이 널 허용이라"가 거짓이다. 서버는 비널로 좁혔고 **앱만** 널 허용을 유지한다.
+
+```kotlin
+    /**
+     * 서버가 이 그룹 안에서 배정한 칩. 상세 응답은 탈퇴자를 빼고 주므로
+     * [NametagChipType.DEFAULT] 는 오지 않는다.
+     *
+     * **서버 계약은 비널인데 여기가 널 허용인 것은 의도다** — 구버전 서버를 만나거나 앱이 모르는
+     * 타입 문자열이 왔을 때 매퍼가 `null` 로 접어, 화면이 통째로 실패하는 대신 중립 색으로 그린다.
+     */
+    val nametagChip: NametagChipType?,
+```
 
 - [ ] **Step 3: `ParfaitService`의 과거 목록 KDoc을 고친다**
 
-`getGroupsByGroupIdParfaits`의 KDoc이 서버 기본값을 "`to` = 오늘"로 적는데, 그 "오늘"이 이제 자정이 아니라 **03시 경계**(`ParfaitDay.current()`)다. **동작은 안 바뀐다** — 유일한 프로덕션 호출부 `GetParfaitHistoriesUseCase`가 항상 범위를 명시한다. 기술만 낡았다.
+`getGroupsByGroupIdParfaits`의 KDoc이 서버 기본값의 "오늘"을 자정 기준으로 기술한다. 그 "오늘"이 이제 **03시 경계**(`ParfaitDay.current()`)다. 파일을 열어 그 문장을 찾아 아래 취지로 고친다 — **동작은 안 바뀐다**(유일한 프로덕션 호출부 `GetParfaitHistoriesUseCase`가 항상 범위를 명시한다). 기술만 낡았다.
+
+```
+`from`·`to` 를 비우면 서버 기본값이 산다 — `to` 는 서버 기준 오늘, `from` 은 그로부터 30일 전이다.
+그 "오늘"은 자정이 아니라 **03시에 넘어간다**(서버 `ParfaitDay.current()`). 앱은 항상 범위를
+명시해 부르므로 이 기본값에 물리지 않는다.
+```
 
 - [ ] **Step 4: 남은 옛 키 참조가 없는지 확인한다**
 
@@ -1028,9 +1166,10 @@ Expected: 결과 0건. `:data`의 wire DTO에는 옛 표기가 남으면 안 된
 
 - [ ] **Step 5: 전체 빌드와 테스트를 돌린다**
 
-Run: `./gradlew testDebugUnitTest ktlintCheck assembleDebug`
+Run: `./gradlew testDebugUnitTest :domain:test ktlintCheck assembleDebug`
 
-Expected: PASS
+Expected: PASS.
+⚠️ **`:domain:test`를 빼면 안 된다** — `:domain`은 Kotlin JVM 모듈이라 `testDebugUnitTest`가 없어서, 그것만 돌리면 `domain/src/test`가 최종 검증에서 통째로 빠진다.
 
 - [ ] **Step 6: 커밋**
 
@@ -1052,7 +1191,7 @@ git commit -m "docs(group,parfait): correct KDoc the server delta made false
 ## 실행 후 확인
 
 - [ ] `git grep -n "RELEASED"` → 0건
-- [ ] `./gradlew testDebugUnitTest ktlintCheck assembleDebug` → PASS
+- [ ] `./gradlew testDebugUnitTest :domain:test ktlintCheck assembleDebug` → PASS
 - [ ] `git log --oneline origin/develop..HEAD` → 이 계획의 커밋 7개가 브랜치 위에 얹혀 있다
 
 **실기기·실서버 확인은 이 계획의 범위 밖이다**(이 저장소의 모든 계약 라운드와 같이 코드 대조까지). 다만 Task 1이 고치는 버그는 **실서버에 한 번만 쏴 봤으면 즉시 드러났을 종류**라는 점은 기록해 둔다 — `http/parfait-group.http`의 목록 요청이 그 수단이다.
