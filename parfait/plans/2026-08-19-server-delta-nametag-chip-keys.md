@@ -512,6 +512,7 @@ enum·KDoc·두 변환 분기가 존재하지 않는 계약 값을 가리키고 
 - Modify: `domain/src/main/java/com/teamyg/parfait/domain/model/canvas/CanvasMemberVO.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/source/parfait/mapper/VOMapper.kt`
 - Test: `data/src/test/java/com/teamyg/parfait/data/source/parfait/remote/ParfaitRemoteDataSourceImplTest.kt`
+- Modify (픽스처): `feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/viewmodel/CanvasMainViewModelTest.kt` — `CanvasMemberVO`에 필수 파라미터가 늘어 이 파일의 `member()` 헬퍼가 깨진다(Step 5가 처리)
 
 **Interfaces:**
 - Consumes: `NametagChipType.DEFAULT`(Task 3), `toNametagChipType()`은 group 매퍼의 **private** 함수라 여기서 쓸 수 없다 — 아래 Step 3이 parfait 매퍼에 자기 것을 둔다
