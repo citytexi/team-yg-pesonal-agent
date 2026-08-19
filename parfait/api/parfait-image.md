@@ -2,8 +2,8 @@
 id: parfait-image
 title: 토핑 배치(배치 확정·위치/크기/각도 수정·테두리 수정·삭제)
 server_module: http/parfaitimage
-server_commit: 08df1bf
-verified: 2026-08-18
+server_commit: 57529ec
+verified: 2026-08-19
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
@@ -92,7 +92,20 @@ tags: [api, parfait, server-contract, parfait-image]
 | `positionX` · `positionY` | Double | 아니오 | 저장된 값 |
 | `positionZ` | Int | 아니오 | |
 | `scale` · `rotation` | Double | 아니오 | |
-| `placedBy` | 객체 | 아니오 | `groupMemberId`(Long) · `nickname`(String) |
+| `placedBy` | 객체 | 아니오 | `groupMemberId`(Long) · `nickname`(String) · `nameTagChip`(String(enum), **2026-08-19 신설**) |
+
+  🔁 **2026-08-19 — `placedBy`가 칩을 싣고, 그 중첩 타입이 개명됐다**(`fix: placedBy 스키마 이름 충돌 해소
+  및 nameTagChip 필드명을 스펙에 맞게 통일`). 이 응답의 `PlacedByResult`/`PlacedByResponse`가 캔버스 조회
+  응답([parfait.md](parfait.md))의 동명 클래스와 겹쳐 **springdoc이 두 스키마를 같은 것으로 취급했고**,
+  그 탓에 캔버스 쪽에 추가한 칩 필드가 스웨거에 안 나왔다. 토핑 배치 쪽을
+  `PlaceParfaitImagePlacedByResult`/`PlaceParfaitImagePlacedByResponse`로 개명해 충돌을 없앴다.
+  값은 **이미 조회한 `groupMember`에서 바로 꺼내므로 추가 쿼리가 없고**, 방금 배치한 사람의 칩을
+  재조회 없이 쓸 수 있다. 값 집합·배정 규칙은 [parfait-group.md](parfait-group.md) "Nametag-Chip 배정 규칙".
+  근거: `PlaceParfaitImageControllerTest`가 `placedBy.nameTagChip`(`"TYPE6"`)을 `jsonPath`로 단언한다.
+
+  ⚠️ **응답 DTO 이름이 계층마다 갈렸다** — 서버 HTTP DTO는 `PlaceParfaitImagePlacedByResponse`인데
+  앱 `data/service/model/response/parfaitimage/`는 아직 `PlacedByResponse`다. "wire DTO는 서버의 거울"이라는
+  규약과 어긋난 자리다 → [Android 매핑](#android-매핑).
 
   ⚠️ **요청에 보낸 `borderType`·`borderColor`·`borderWidth`가 응답에 없다.** 저장은 되지만
   `PlaceParfaitImageResponse`에 필드가 없어 되돌려 받지 못한다. 다만 **되읽을 자리는 생겼다** —
@@ -329,6 +342,13 @@ tags: [api, parfait, server-contract, parfait-image]
 nullable 5파라미터다. PATCH 요청 DTO의 5필드가 전부 `= null` 기본값인데 `@RemoteJson`이
 `encodeDefaults = true`라 **안 바꾸는 필드도 `"positionX": null`로 실려 나간다.** 서버 `ParfaitImage.update`가
 `?:` 병합이라 키 부재와 동치이므로 동작은 정확하다.
+
+⚠️ **2026-08-19 서버 delta로 두 자리가 어긋났다.** ① POST 응답 `placedBy`에 `nameTagChip`이 생겼는데
+앱 DTO(`response/parfaitimage/PlacedByResponse`)·VO(`PlacedToppingVO`)에 필드가 없다 — 안 읽는 것뿐이라
+`⚠️불일치`는 아니다(`ignoreUnknownKeys = true`). ② 서버가 그 중첩 클래스를
+`PlaceParfaitImagePlacedByResponse`로 개명해, 앱의 `PlacedByResponse`가 **더는 서버 이름의 거울이 아니다**
+(같은 이름을 두 패키지에 두던 근거가 "서버가 그렇다"였는데 그 사실이 사라졌다)
+→ [open-questions](../synthesis/open-questions.md) [2026-08-19].
 
 **POST·위치 PATCH 응답 VO에는 여전히 테두리 필드가 없다** — 두 응답이 테두리를 돌려주지 않아서다.
 대신 **되읽을 두 자리가 실제로 생겼다**: 테두리 PATCH 응답(`UpdatedToppingBorderVO` —

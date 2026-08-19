@@ -2,8 +2,8 @@
 id: auth
 title: 인증(카카오·애플 로그인·회원가입·토큰 재발급·로그아웃)
 server_module: http/auth
-server_commit: 08df1bf
-verified: 2026-08-18
+server_commit: 57529ec
+verified: 2026-08-19
 android_status: done
 related_spec: a002-kakao-login-api, session-token-refresh-infra
 related_adr: ADR-0017
@@ -107,6 +107,11 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
   `accessToken`·`refreshToken`·`expiresIn`, `registrationToken`은 `null`. `KakaoLoginResult.NewUser`(신규) →
   `isNewUser=true` + `registrationToken`, 나머지 셋은 `null`. 서버 설정이
   `spring.jackson.default-property-inclusion: always`라 **채워지지 않는 쪽도 키는 `null`로 실려 온다.**
+
+  ✅ **2026-08-19 — 탈퇴한 계정으로 다시 가입하는 경로가 고쳐졌다.** 계약은 안 바뀌었고 바뀐 것은
+  성공 여부다 — 탈퇴 시 `provider_user_id`를 tombstone 값으로 덮는 UPDATE가 같은 트랜잭션의 delete
+  때문에 DB에 안 닿아, **같은 계정으로 재가입하면 유니크 제약 위반 500**이 났다([member.md](member.md)
+  탈퇴 절). 이 신규 가입 분기(`isNewUser=true` → `signup`)가 그 수정의 수혜자다.
 
 - **에러 코드**
 
