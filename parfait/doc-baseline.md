@@ -364,7 +364,7 @@
 - **미머지 제외 항목**: **`refactor/segmentation-develop` 하나만 남았다**(세그멘테이션 파이프라인 하드닝 +
   스캐폴드 8엔트리 일괄 이관 + `popUpTo<T>()`, [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md)
   선반영 완료). ✅ **2026-08-20에 리베이스해 뒤처짐이 0이 됐다** — base가 develop `86f0f6b0`에서
-  **`750cc2dd`(이 기준선과 동일)**로 올라갔고 head는 `1181eedf`, 커밋 **14개**다. 확인은
+  **`750cc2dd`(이 기준선과 동일)**로 올라갔고 head는 `63ec2989`, 커밋 **15개**다. 확인은
   `git merge-base --is-ancestor origin/develop refactor/segmentation-develop`이고 지금은 참이다
   (리모트는 아직 옛 히스토리라 force push가 필요한 상태다).
   리베이스 결과·수치·뒤집힌 결정은
@@ -378,6 +378,9 @@
   **③ OQ-P-238을 같이 닫았다**(`CanvasToppingPlaceRoute`의 `goTo(NavKeyCanvasMain(groupId = 0L))` →
   `popUpTo<NavKeyCanvasMain>()`) — 이 브랜치의 캐시 정리 안전 근거를 참으로 만드는 수정이라 여기서
   닫았고, 함께 권고됐던 OQ-P-239(`NavKeyCanvasMove` 삭제)는 **#290이 남긴 잔해라 열어 뒀다.**
+  **④ PR #309 코드리뷰 대응 1건**(`63ec2989`) — `PictureConfirmRoute`의 배경 편집 복귀가 `onBack()`
+  2회로 흐름 깊이를 가정하던 것을 `popUpTo<NavKeyCanvasBGEdit>()`로 바꿨다. 리뷰가 함께 요청한
+  "백스택 포함 여부 확인 로직"은 `popUpTo`의 반환값이 이미 그 역할을 해서 새로 만들지 않았다.
   수치는 develop `750cc2dd` 대비 재측정: 유닛 **538 → 560건**(클래스 61 → 64), `YGScaffoldV2` 채택
   **10 → 18개 파일**, `YGScaffold`(V1) 잔존 **6 → 3개 파일**(전부 엔트리 빌더).
   develop 대조 시 `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`이고 `popUpTo`도 없다.

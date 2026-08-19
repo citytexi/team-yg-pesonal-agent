@@ -164,7 +164,7 @@ reified 버전은 호출부 편의고, `KClass` 버전이 실제 구현이자 �
 | 화면 | 닫기 동작 |
 |---|---|
 | `PictureConfirmRoute` (`returnResultOnly = false`) | `popUpTo<NavKeyCanvasMain>()` |
-| `PictureConfirmRoute` (`returnResultOnly = true`) | `onBack` 2회 — 확인 버튼과 같은 백 처리 |
+| `PictureConfirmRoute` (`returnResultOnly = true`) | `onBack` 2회 — 확인 버튼과 같은 백 처리 <br>📌 **정정(2026-08-20)** — 코드리뷰 대응으로 `popUpTo<NavKeyCanvasBGEdit>()`가 됐다 → [재정정 절](#코드리뷰-대응--되돌아가기를-깊이-대신-타입으로) |
 | `SegmentationRoute` · `SegmentationConfirmRoute` | `popUpTo<NavKeyCanvasMain>()` |
 
 `returnResultOnly = true`는 캔버스 배경 편집(C-301)에서 들어오는 경로다. 여기서 캔버스까지 튀면
@@ -459,7 +459,7 @@ develop `86f0f6b0` 기준)는 이제 **한 세대 뒤처진 기준선 위에 있
 | 항목 | 값 |
 |---|---|
 | 기준선 | develop **`750cc2dd`**(현행 `origin/develop`, [doc-baseline](../doc-baseline.md) 기준선과 동일) |
-| 브랜치 | `refactor/segmentation-develop`, head **`1181eedf`**, 커밋 **14개** |
+| 브랜치 | `refactor/segmentation-develop`, head **`63ec2989`**, 커밋 **15개**(리베이스 13 + OQ-P-238 수정 1 + 코드리뷰 대응 1) |
 | 검증 | `./gradlew test ktlintCheck` BUILD SUCCESSFUL (2026-08-20) |
 | 유닛 테스트 | **538 → 560건**(+22), 테스트 클래스 **61 → 64개**(+3) |
 | `YGScaffoldV2` 채택 | **10 → 18개 파일**(정의 파일 `YGScaffoldV2.kt` 제외한 사용처 기준) |
@@ -508,6 +508,32 @@ develop `86f0f6b0` 기준)는 이제 **한 세대 뒤처진 기준선 위에 있
   목록이 아니므로 원본이 맞는 대상이다. C-106이 짊어질 몫은 그대로 남아 있다면 그것은 다른 목록이다.
   디코드가 성공한 뒤에 기록하는 이유는 열리지 않는 이미지가 아홉 자리 중 하나를 먹고 멀쩡한 항목을
   밀어내지 않게 하려는 것이고, 호출은 가드돼 있다 — 부수 기록이 세그멘테이션 실행 여부를 정하면 안 된다.
+
+### 코드리뷰 대응 — 되돌아가기를 깊이 대신 타입으로
+
+PR #309 리뷰가 `PictureConfirmRoute`의 `returnResultOnly = true` 경로를 짚었다 — `onBack()` 두 번
+대신 이 라운드가 만든 pop API를 쓰는 편이 낫겠고, 그러려면 백스택에 특정 NavKey가 있는지 확인하는
+로직도 필요할 것 같다는 [Nit]이었다.
+
+**절반은 이미 있었다.** `Navigator.popUpTo(type)`은 대상을 못 찾으면 **아무것도 걷어내지 않고
+`false`를 돌려준다**(`Navigator.kt#popUpTo`). 별도 확인 API 없이 반환값이 그 역할을 한다.
+
+**나머지 절반은 맞는 지적이라 고쳤다**(`63ec2989`). `onBack()` 2회는 흐름 깊이가 정확히 2라고
+가정한다 — `// PictureConfirm` `// Camera/Gallery` 주석이 그 가정을 설명하고 있었다는 것 자체가
+신호다. 지금은 참이지만(진입 둘 다 촬영 또는 선택 화면 한 장을 거친다) 그 모양을 붙들어 두는 것이
+없어서, 사이에 화면이 하나 끼는 날 조용히 어긋난다. `popUpTo<NavKeyCanvasBGEdit>()`로 바꿔 깊이를
+가정하지 않게 했다. 확인·닫기 두 콜백이 같은 처리라 둘 다 옮겼다.
+
+목적지를 `NavKeyCanvasBGEdit`로 특정한 근거는 **호출자가 하나이기 때문**이다 —
+`returnResultOnly = true`를 주는 곳은 `CanvasBGEditRoute` 두 줄(카메라 경로·갤러리 경로)이 전부이고
+`PictureConfirmResult`를 받는 곳도 거기 하나다. `data object`라 백스택에 최대 한 장이므로 타입
+매칭이 엉뚱한 인스턴스를 집을 여지도 없다.
+
+> 대가는 **카메라가 자기를 부른 화면을 이름으로 안다**는 것이다. 둘째 호출자가 생기면 이 분기를
+> 고쳐야 한다. 호출자 비종속으로 가려면 "대상을 포함해 걷어내는" `popUpTo` 변형을 만들고 `source`로
+> 갈라야 하는데(그러면 `feature:camera:impl`이 `feature:gallery:api`까지 알아야 한다), 쓰이지 않을
+> 일반화라 하지 않았다. `feature:camera:impl`은 닫기 결선 때문에 이미 `NavKeyCanvasMain`을 알고
+> 있어 **결합의 종류가 새로 생기는 것은 아니고 같은 방향이 하나 는다.**
 
 ### 드롭됐던 것 둘의 처리 — 하나만 되살렸다
 

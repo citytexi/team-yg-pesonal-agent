@@ -15,7 +15,7 @@
 - **작업 저장소는 `TJYG-Android`다.** 이 계획 문서가 사는 위키 저장소가 아니다. 절대경로는 `wiki/personal-private/project-paths.md`에 있다.
 - ⚠️ **이 계획은 실행이 끝났다(2026-08-18). 아래 브랜치 전제는 두 번의 리베이스로 낡았다 —
   다시 실행하지 마라.** 현행 브랜치는 **`refactor/segmentation-develop`**(develop `750cc2dd` 기준,
-  head `1181eedf`, 커밋 14개)이고, 무엇이 어떻게 갈렸는지는
+  head `63ec2989`, 커밋 15개)이고, 무엇이 어떻게 갈렸는지는
   [스펙의 as-built 재정정 절](../specs/2026-08-18-segmentation-pipeline-hardening.md#as-built-재정정-2026-08-20-두-번째-리베이스)이 정본이다.
   - ~~**작업 브랜치는 `refactor/segmentation-logic`이다.** 이미 `develop` + `origin/feature/topping-add-screen`(PR #290) 머지 상태로 준비돼 있다. 새 브랜치를 만들지 마라 — #290이 고친 자리를 이어서 고치는 것이 이 라운드의 전제다.~~ (#290은 2026-08-19에 develop으로 머지됐고, 이 계획이 얹혀 있던 로컬 머지 브랜치는 폐기됐다)
 - **`git commit`은 확인 없이 해도 된다. `git push`·`gh pr create`·`gh pr merge`는 사용자 확인 없이 실행하지 마라.**
