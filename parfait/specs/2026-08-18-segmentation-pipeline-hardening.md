@@ -275,6 +275,9 @@ ML Kit 호출부는 유닛으로 못 잡는다. **실기기 육안 확인**으�
 - **PR #290 위에서 작업한다** — 이 브랜치는 develop에 `feature/topping-add-screen`을 머지해
   얹었다. #290이 develop에 먼저 들어가면 그 커밋들은 이 브랜치의 diff에서 저절로 사라진다.
   #290이 리뷰로 바뀌면 다시 머지해야 한다
+  > 📌 **정정(2026-08-19)** — #290이 계속 미머지 상태로 남아 이 전제가 반대로 뒤집혔다. #290을
+  > 실은 채로는 이 라운드 자체가 리뷰·머지될 수 없어, **작업을 plain develop 위로 다시 만들었다.**
+  > 아래 [as-built 정정](#as-built-정정-2026-08-19-리베이스) 절 참고.
 
 ## as-built (2026-08-18 구현)
 
@@ -342,3 +345,76 @@ ML Kit 호출부는 유닛으로 못 잡는다. **실기기 육안 확인**으�
   `try/catch`도 `bc6642f8` 이전의 새 `try`와 같은 방식으로 `CancellationException`을 삼킨다.
 
 실기기 확인: **없음.**
+
+## as-built 정정 (2026-08-19, 리베이스)
+
+위 "as-built (2026-08-18 구현)" 절은 `refactor/segmentation-logic` 브랜치 — develop에 아직
+머지되지 않은 PR #290(`feature/topping-add-screen`)을 **로컬 머지로 얹은** 브랜치 — 기준으로
+쓰였다. #290이 미머지인 채로는 이 브랜치를 독립적으로 리뷰·머지할 수 없어, 같은 작업을
+**`refactor/segmentation-develop`**(develop `86f0f6b0` 기준, head `44205b12`, **커밋 11개**,
+옛 14개에서 #290 관련 3건 제외)으로 **plain develop 위에 다시 만들었다.** 옛 브랜치는
+`backup/segmentation-on-290`(`bc6642f8`)으로 로컬에 보존돼 있다 — #290이 나중에 머지되면 거기서
+드롭된 작업을 되살릴 수 있다.
+
+아래는 위 as-built 절과 갈리는 지점만 적는다. 원문은 그대로 두고 정정만 여기 모은다.
+
+| 원 서술 | 정정 |
+|---|---|
+| 브랜치 `refactor/segmentation-logic`, 커밋 14개 | 브랜치 **`refactor/segmentation-develop`**(develop `86f0f6b0` + 커밋 **11개**, head `44205b12`) — #290 위가 아니라 plain develop 위 |
+| `./gradlew test ktlintCheck :app:assembleDebug`가 커밋마다 통과 | 새 브랜치에서 **독립적으로 재실행**해 재확인(2026-08-19) — `./gradlew test ktlintCheck :app:assembleDebug` BUILD SUCCESSFUL |
+| 유닛 총량 477 → 494건, 테스트 파일 55 → 58개 | develop `86f0f6b0` 대비 재측정: 유닛 **474 → 491건**, 테스트 파일 **53 → 56개**. 옛 수치(477→494 / 55→58)는 #290을 실은 트리를 기준선으로 잰 것이라 더 이상 옳은 비교가 아니다 — develop이 그 사이 움직여 기준선 자체가 바뀌었다 |
+| `YGScaffoldV2` 이관 8개 엔트리(develop 기준 실측 없음) | develop `86f0f6b0` 대비 재측정: `YGScaffoldV2` 채택 **7 → 15개 파일**, `YGScaffold`(V1) 잔존 **6 → 3개 파일**(전부 엔트리 빌더 — `feature/intro/impl`·`feature/groups/enter/impl`·`feature/groups/canvas/impl`, 이전과 같은 세 파일) |
+
+### 드롭된 커밋 셋 — 지금은 무슨 뜻인가
+
+옛 브랜치 14개 중 3개는 develop 위에서 재현할 때 **의도적으로 빠졌다.** 나머지 11개는 이름은
+같지만 해시가 새로 붙었다(예: `bc6642f8`→`44205b12`, `7877cc31`→`d43ea0fa`) — 같은 작업을
+develop 위에서 다시 커밋했기 때문이다.
+
+- **`a3660e58`(`fix(canvas): finish the merge that renamed the canvas destination`)** —
+  #290을 로컬 머지할 때 생긴 충돌(#290이 쓰던 `NavKeyCanvasImageAdd`를 develop이 그 사이
+  `NavKeyCanvasMain`으로 이미 개명해 둔 것과 부딪힌 것) 해결 커밋. **develop 위에서는 그 머지
+  자체가 없으니 이 커밋이 고칠 것도 없다.** 사라진 게 아니라 애초에 존재할 이유가 없어졌다.
+- **`f5ed87d5`(`chore(canvas): delete the move screen nothing navigates to`)** — **삭제가
+  일어나지 말았어야 했다.** `NavKeyCanvasMove`·`CanvasMoveRoute`·`CanvasMoveScreen`은 develop에
+  살아 있는 코드다 — `SegmentationConfirmRoute.onClickNext`가 지금도 `NavKeyCanvasMove`로 이동한다.
+  "아무도 호출하지 않는 죽은 화면"이라던 원래 판단은 **#290이 그 호출을 끊어 놓은 상태에서만
+  참**이었다. develop 위 재현에서는 이 삭제를 빼, `CanvasMoveRoute`·`CanvasMoveScreen`이 그대로
+  남아 있다. 위 as-built 본문·아래 "파일 구성" 표에 이 삭제가 적혀 있다면 이번 라운드가 한 일이
+  **아니다.**
+- **`ea278cce`(`fix(canvas): clear the topping flow instead of stacking a canvas on it`)** —
+  #290이 들여온 `CanvasToppingPlaceRoute`(배치 완료 이펙트가 `NavKeyCanvasMain(groupId = 0L)`을
+  `goTo`로 새로 쌓던 화면)를 고친 커밋이라 #290과 함께 빠졌다. **이게 "캐시 정리는 안전하다"는
+  스펙 주장의 근거를 뒤집는다.** 지난 as-built는 그 안전 근거가 "같은 라운드 막바지까지 거짓이었고,
+  이 커밋이 참으로 만들었다"고 적었다 — 그건 **`CanvasToppingPlaceRoute`가 존재하는 트리에서만
+  맞는 이야기다.** plain develop에는 그 화면이 없다. 흐름은 `SegmentationConfirmRoute` →
+  `NavKeyCanvasMove`(`CanvasMoveScreen`, 스텁 — 완료 이벤트가 없다)에서 끝나고, 캔버스로
+  돌아가는 유일한 수단은 `onBack`이며 뒤로 갈 때마다 백스택이 하나씩 걷힌다. 즉 **캔버스를 새로
+  쌓아 이전 흐름 화면을 살려 두는 코드 자체가 develop에 없다** — 원 스펙의 안전 근거("새 흐름은
+  캔버스에서만 시작하고, 그러려면 이전 흐름 화면들이 이미 백스택에서 걷혀 있다")는 **아무 수정
+  없이도 develop에서 참이다.**
+  > ⚠️ **다만 이 문제는 #290이 develop에 머지되는 순간 되돌아온다.** `CanvasToppingPlaceRoute`가
+  > 다시 생기고 그 배치 완료 이펙트가 캔버스를 다시 쌓으면, 캐시 정리 안전 근거가 다시 거짓이
+  > 된다. 그때 필요한 처방은 이미 알려져 있다 — 배치 완료 이펙트를 이 라운드가 새로 만든
+  > `Navigator.popUpTo<NavKeyCanvasMain>()`(`Navigator.kt#popUpTo`)로 바꾸면 된다. **이건 이
+  > 라운드가 아니라 #290 쪽이 짊어질 몫이다.**
+
+### 메모리 실측 정정 — OQ-P-228
+
+위 "남은 위험" 절이 적은 **약 244MB(`segmentImage` 내부)·약 390MB(토핑 편집까지)** 실측치는
+전부 #290을 실은 트리에서 잰 값이라 지금은 틀렸다.
+
+- **`segmentImage`(`ImageSegmentationRepositoryImpl.kt#segmentImage`) 재도출** — #290이 만들던
+  trimmed 비트맵(`trimTransparentBounds`)이 develop에는 없어서, 이 함수가 동시에 살려 두는
+  전체 해상도 버퍼는 **넷**이다 — 원본 비트맵, ML Kit `foregroundConfidenceMask`(픽셀당 4바이트
+  `FloatBuffer`), 픽셀 `IntArray`, subject 비트맵. 넷 다 4바이트/픽셀이라 12MP(예: 4032×3024 =
+  12,192,768픽셀) 기준 16바이트 × 12,192,768 ≈ **195MB**. 옛 244MB는 여기에 trimmed 비트맵(다섯
+  번째 전체 해상도 버퍼)까지 얹은 값이었다.
+- **토핑 편집 화면(`ToppingEditViewModel.completeEdit`) 값은 재도출하지 않는다.** 옛 390MB는
+  #290의 `trimTransparentBounds` 경로를 포함해 잰 값이라 그 자체로 지금 트리에 안 맞고, 이
+  화면은 `originBitmap`·`segmentationBitmap`·`buildCutoutBitmap`의 `cutout`·
+  `withBorders`의 `edited`까지 겹치는 구간이 있어 정확한 피크를 추정하려면 `ToppingBorderOutline`
+  쪽 치수 캡핑까지 따라가야 한다 — 이번 정정 작업에서 그 도출을 하지 않았다. **현재 트리 기준
+  토핑 편집 피크는 재측정되지 않은 채로 남아 있다.**
+- **위험 자체는 그대로다** — 다운샘플 상한은 여전히 없고 `app` 모듈은 여전히 `largeHeap`을
+  선언하지 않는다. [open-questions OQ-P-228](../synthesis/open-questions.md)은 열어 둔다.

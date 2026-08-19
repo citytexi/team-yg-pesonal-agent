@@ -71,6 +71,12 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 
 ## As-built 갱신 (2026-08-18, `refactor/segmentation-logic`)
 
+> 📌 **정정(2026-08-19)** — 이 브랜치는 develop에 미머지인 PR #290(`feature/topping-add-screen`)을
+> 로컬 머지해 얹은 것이라 그 자체로 리뷰·머지될 수 없었다. 같은 작업이 plain develop 위
+> **`refactor/segmentation-develop`**로 다시 만들어졌다(브랜치명만 달라졌을 뿐, 아래 서술하는
+> `segmentImage` 재작성·캐시 정리·예외 처리 내용은 새 브랜치에서도 동일하게 확인됨). 상세는
+> [segmentation-pipeline-hardening 스펙의 "as-built 정정" 절](../specs/2026-08-18-segmentation-pipeline-hardening.md#as-built-정정-2026-08-19-리베이스).
+
 [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md) 구현.
 위 두 절이 남긴 것 셋을 여기서 닫는다.
 
