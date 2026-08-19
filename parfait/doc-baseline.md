@@ -366,7 +366,7 @@
   선반영 완료). ✅ **2026-08-20에 리베이스해 뒤처짐이 0이 됐다** — base가 develop `86f0f6b0`에서
   **`750cc2dd`(이 기준선과 동일)**로 올라갔고 head는 `63ec2989`, 커밋 **15개**다. 확인은
   `git merge-base --is-ancestor origin/develop refactor/segmentation-develop`이고 지금은 참이다
-  (리모트는 아직 옛 히스토리라 force push가 필요한 상태다).
+  (리모트 `origin/refactor/segmentation-develop`도 2026-08-20에 같은 히스토리로 갱신됐다).
   리베이스 결과·수치·뒤집힌 결정은
   [스펙 as-built 재정정 절](specs/2026-08-18-segmentation-pipeline-hardening.md#as-built-재정정-2026-08-20-두-번째-리베이스)이
   정본이다 — 요지는 셋이다. **① 예고와 달리 충돌이 3건 났다**(스펙은 "그대로 얹히는지만 확인하면
