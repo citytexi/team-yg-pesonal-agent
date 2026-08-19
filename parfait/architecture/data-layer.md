@@ -8,7 +8,7 @@ verified: 2026-08-19
 related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase
+related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -149,7 +149,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `AuthRepository` | `loginWithKakao(idToken, nonce)` · `signUp(registrationToken, agreements)` · `saveSession(session)` · **`logout()`**(#260) | `LoginWithKakaoUseCase` → A-002 · `SignUpUseCase` → 온보딩 약관 · `LogoutUseCase` → S-001 앱 설정 |
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
 | `ParfaitGroupRepository`(#285, #287, 그룹 SSoT 라운드) | **읽기** `myGroups: Flow<List<MyParfaitGroupVO>?>` · `groupDetail(groupId): Flow<ParfaitGroupDetailVO?>` / **갱신** `refreshMyGroups` · `refreshGroupDetail`(둘 다 `Result<Unit>`) / **정리** `clearGroups`(non-suspend) / **명령** `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` · `leaveGroup`(#287) · `reportGroup`(#287) | `GetMyGroupsFlowUseCase`·`RefreshMyGroupsUseCase`(G-001·C-001) · `GetGroupDetailUseCase`·`RefreshGroupDetailUseCase`(S-101) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102·S-101) · `LeaveGroupUseCase`·`ReportGroupUseCase`(S-101 Danger Zone) · `LogoutUseCase`(`clearGroups`) |
-| `MemberRepository`(#263) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` |
+| `MemberRepository`(#263, #306) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` · **`withdraw`**(#306) | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` · `WithdrawUseCase`(S-001 Danger Zone) |
 | `ParfaitRepository`(#268, #279) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) |
 
 **`ParfaitRepository`는 DataSource가 가진 다섯 갈래 중 넷을 연다** — 남은 배경 변경은 소비자가
@@ -199,11 +199,16 @@ Repository 경계를 뚫어 소비자가 미포착 예외로 크래시한다(ADR
 회전시키고 인증기는 **헤더만 갈아끼워 같은 본문을 재전송**하므로 그대로 두면 로컬만 정리되고 갓
 발급된 서버 세션이 refresh token 수명만큼 살아남는다.
 
-UseCase는 대개 Repository 위임 한 줄이고, 규칙을 더 얹는 것은 셋이다(#285로 하나 늘었다 —
+UseCase는 대개 Repository 위임 한 줄이고, 규칙을 더 얹는 것은 넷이다(#285·#306으로 하나씩 늘었다 —
 `GetGroupDetailUseCase`가 호출 둘을 조합하고 그중 하나의 실패를 삼킨다) — `CreateGroupUseCase`가
 응답 `groupId > 0`을 성공 조건으로 못 박고, `SignUpUseCase`가 필수 약관 미동의를 도메인 예외
 (`SignUpException.RequiredPolicyNotAgreed`)로 되돌린 뒤 성공 시 **세션 저장까지** 한다
 (`LoginWithKakaoUseCase`와 같은 이유 — 저장 전에 이동하면 다음 화면 첫 요청이 토큰 없이 나간다).
+**`WithdrawUseCase`(#306)가 얹는 규칙은 순서다** — 서버가 탈퇴를 받아 준 뒤에만 `LogoutUseCase`로
+기기를 정리하고, 거절당하면 아무것도 지우지 않는다. 로그아웃과 반대 방향인데, 서버가 거절했는데
+로컬만 지우면 계정이 살아 있는 채로 사용자만 탈퇴했다고 믿게 되기 때문이다. 정리를 직접 하지 않고
+`LogoutUseCase`에 맡긴 것은 **"무엇을 지우는가"를 한 자리에 두려는 판단의 연장**이고, 그 UseCase의
+호출자는 이로써 셋이 됐다(S-001 로그아웃 · `BootstrapSessionUseCase` · `WithdrawUseCase`).
 
 두 구현 다 하는 일은 DataSource 위임 + `mapErrorToAppError()`뿐이다. 위임만 하는 층처럼 보여도
 이 변환 때문에 필요하다 — 없으면 `ApiException`이 domain·feature까지 새어 나간다.
@@ -291,6 +296,10 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > ([api/parfait-group.md](../api/parfait-group.md) `android_status: done`). Repository가 0건인 도메인은
 > 그대로 **둘**(image·parfait-image)이다
 > → [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
+> ✅ **2026-08-19 — member 도메인의 마지막 공백이 닫혔다**(PR #306). `MemberRepository.withdraw`와
+> `WithdrawUseCase`가 붙어 S-001 Danger Zone의 탈퇴가 실제 요청을 보낸다
+> ([api/member.md](../api/member.md) `android_status: done`). 표면만 있고 소비처가 없는 도메인은
+> 그대로 **둘**(image·parfait-image)이다.
 > ⚙️ **2026-08-17 — 그룹 정보가 두 번째 로컬 SSoT를 얻었다**(브랜치 `feature/#294-group-ssot`, **미머지**).
 > `GroupLocalDataSource`(인메모리)가 목록·상세를 들고 `ParfaitGroupRepository`가 읽기를 `Flow`로만
 > 노출한다 — G-001·C-001·S-101 세 화면이 조회 결과를 자기 State에 넣지 않고 구독한다. 부수적으로

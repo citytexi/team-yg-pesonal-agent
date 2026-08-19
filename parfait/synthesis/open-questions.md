@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-19
+verified: 2026-08-20
 related_spec: c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -1415,7 +1415,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-141
 - **출처**: `AppSettingViewModel.kt#handleConfirmWithdraw`·`GroupSettingViewModel.kt#handleConfirmLeaveGroup`·`#handleConfirmReportGroup`(PR #225 develop 머지) — 세 핸들러 모두 멱등 가드를 통과하면 **팝업을 먼저 닫고** TODO 로그만 남긴다. 실제 네트워크 호출을 넣으려면 지금 없는 것이 셋이다: ① 두 `UiState` 어디에도 in-flight·error 필드가 없고, ② 팝업을 먼저 닫아 진행 표시·실패 재시도를 얹을 자리가 사라지므로 "닫고 나서 요청" 순서를 뒤집어야 하며, ③ `YGModalPopup.isEnabledButton`이 좌우 공용 단일 플래그라 "요청 중엔 확인만 비활성, 취소는 살림"이 표현 불가능하다. 게다가 **회원 탈퇴는 서버에 엔드포인트 자체가 없다**. 현재 구조의 기본값은 실패해도 "성공한 것처럼 팝업만 닫힘"이다.
 - **항목**: ① 확인 핸들러의 순서를 "요청 → 결과 → 닫기"로 뒤집을지, ② `isEnabledButton`을 좌우 개별 플래그로 재분리할지(`YGModalPopup` 변경 — [ygmodalpopup 스펙](../specs/archive/2026-07-15-ygmodalpopup.md)이 이미 "개별 비활성 불가"를 미결로 안고 있다), ③ 회원 탈퇴 엔드포인트를 서버에 요청할지, ④ 탈퇴·나가기 성공 후 이동할 화면(로그인 / 그룹 목록)을 정할지 — SideEffect 신설이 필요하다.
-- **상태**: 미해결 (**셋 중 둘 해소** — 회원 탈퇴만 stub으로 남았고, 그쪽은 이제 "무해"하지 않다)
+- **상태**: 해소됨 (2026-08-19 PR #306 — 셋 다 결선. ②·③은 채택이 아니라 **불필요해져서** 닫혔다)
 - **해소 메모**: [Danger Zone 팝업 스펙](../specs/archive/2026-08-09-setting-danger-zone-popups.md) "API 연동" 열린 질문의 develop 확정판이다. 연동 시 [state-management](../architecture/state-management.md)의 로딩·에러 표현 규약과 함께 본다.
   > ✅ **그룹 나가기·신고가 결선됐다(2026-08-17, PR #287)** — 세 구멍 중 **①만 채우고 나머지 둘은
   > 필요 없게 만들었다.** ① `isSubmittingDialogAction` 신설(+ 첫 조회·닉네임 왕복과 따로 들고
@@ -1429,6 +1429,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ⚠️ **회원 탈퇴(S-003)만 그대로 stub이다** — 서버 엔드포인트(`DELETE /api/v1/users/me`)도 앱 표면도
   > 있는데 확인 핸들러가 로그 한 줄이다. 같은 화면의 로그아웃은 결선돼 있어 **한 Danger Zone 안에서
   > 하나는 동작하고 하나는 안 한다**(OQ-P-186).
+  > ✅ **마지막 하나도 결선됐다(2026-08-19, PR #306)** — S-001 탈퇴 확인이 `WithdrawUseCase`를 부르고
+  > **S-101이 확정한 형태를 그대로 따랐다**: 팝업을 먼저 닫고 `YGScaffoldV2` 로딩 오버레이가 덮으며,
+  > 실패는 공통 토스트가 말한다. ①은 `isWithdrawing` 신설(`isLoading`이 `isLoggingOut`과의 OR),
+  > ②·③은 이번에도 손대지 않았다. ④ 목적지는 **로그인**으로 확정(`replaceAll(NavKeyLogin)` — 탈퇴는
+  > 세션 자체가 끝나므로 그룹 목록으로 갈 자리가 없다). 연타 방어는 `launch(key)`이고 테스트가
+  > "요청 중 다시 눌러도 API 1회"를 잠근다 — **되돌릴 수 없는 요청이라 나가기·신고보다 이 잠금이
+  > 무겁다**. 남은 물음은 이 항목이 아니라 **성공 뒤 정리 경로**로 옮겨 간다(OQ-P-242).
 
 ### [2026-08-13] `core:ui`의 표시 매핑 확장이 숨은 `:domain` 의존 위에 서 있다
 
@@ -1643,7 +1650,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-162
 - **출처**: 서버 `MemberController.withdraw`(`@ResponseStatus(NO_CONTENT)` + `Unit` → **204, 본문 없음**) vs `DeleteParfaitImageController.delete`(**200 + `data: null`**) vs 나머지 전부(`ApiResponse` envelope). 같은 delta에 들어온 두 DELETE가 서로 다르다 → [api/member.md](../api/member.md), [api/parfait-image.md](../api/parfait-image.md), [api/conventions.md](../api/conventions.md).
 - **항목**: ① 서버가 통일할지(`logout`도 같은 204라 선례가 둘이다) — 통일한다면 어느 쪽으로인지. ② 앱 `ApiCaller`는 envelope 파싱을 전제하므로 **204를 받는 진입점이 따로 필요하다**(`safeApiCallWithoutData`가 死코드로 남아 있다는 지적이 OQ-P-132에 있다 — 이 엔드포인트가 그 자리의 첫 소비처가 될 수 있다). ③ 탈퇴는 **회원이 없어도 204**(멱등)이고 도메인 에러가 없다 — 앱이 "이미 탈퇴됨"을 구분할 방법이 없다는 뜻인데, 구분이 필요한지 판단한다.
-- **상태**: 부분 해소 (②는 닫혔다 — ①은 서버팀, ③은 소비처가 생길 때 결정)
+- **상태**: 부분 해소 (②·③은 닫혔다 — ①만 서버팀 몫으로 남는다)
   > ✅ **②가 새 진입점 없이 풀렸다(2026-08-15, PR #250)** — `MemberService.deleteUsersMe`가 `ApiResponse`가
   > 아니라 `Unit`을 반환하고 DataSource가 기존 `safeApiCallNoContent`로 호출한다(`logout` 선례). 짝인
   > 토핑 삭제는 200 + `data: null`이라 `safeApiCallWithoutData`로 갈렸고, 그 진입점이 死코드에서 벗어났다
@@ -1651,6 +1658,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 진입점 두 개로 그대로 받아냈다.
   > 📌 **③은 소비처가 없어 아직 물음이 서지 않는다** — 탈퇴를 부르는 화면이 0건이라 "이미 탈퇴됨"을
   > 구분할 필요가 생기는 자리가 없다.
+  > 📌 **소비처가 생겼는데 ③은 물음이 서지 않은 채로 닫혔다(2026-08-19, PR #306)** — S-001이 탈퇴를
+  > 부르지만 **204를 성공 하나로 받는다**. 이미 탈퇴된 계정이어도 화면이 할 일이 같기 때문이다
+  > (토큰·계정 정보를 지우고 로그인으로 보낸다). 구분이 필요해지는 자리는 "탈퇴 완료" 안내처럼
+  > **결과를 문구로 말하는 화면**이 생길 때이고 지금은 없다. ①(서버 안에서 성공 표현이 셋으로 갈린 것)만
+  > 서버팀 몫으로 남는다.
 - **해소 메모**: 결정 시 [api/conventions.md](../api/conventions.md) "envelope를 쓰지 않는 응답" 절과 [api/member.md](../api/member.md) 미결을 갱신한다.
 
 ### [2026-08-15] 탈퇴 회원이 남긴 토핑이 `(알수없음)`으로 캔버스에 계속 보인다
@@ -2060,7 +2072,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① `YGActionItem` 비활성 색을 디자인에서 받을지, 아니면 진행 표시(스피너·문구)로 대신할지.
   ② 탈퇴 결선을 어느 라운드에 둘지 — 탈퇴는 로그아웃과 달리 **되돌릴 수 없어** 실패 표현이 필요하고,
   애플 연동 해제 수단 부재(OQ-P-164)와도 얽힌다.
-- **상태**: 미해결
+- **상태**: 부분 해소 (②는 닫혔다 — ①의 비활성 색은 그대로 미결)
 - **해소 메모**: ①은 [design-system](../architecture/design-system.md) `YGActionItem` 항목과
   [ygactionitem 스펙](../specs/archive/2026-07-12-ygactionitem.md)에 반영한다. ②는 결선 시
   [api/member.md](../api/member.md) Android 매핑을 함께 갱신한다.
@@ -2068,6 +2080,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 같은 성질의 되돌릴 수 없는 동작을 결선하며 **덮개는 `YGScaffoldV2` 로딩 오버레이, 실패는 공통
   > 토스트**라는 형태를 확정했다(①이 물은 "비활성 색이냐 진행 표시냐"에 진행 표시 쪽 사례다).
   > ②의 탈퇴는 그대로 stub이라, 이제 develop에서 **되돌릴 수 없는 확인 셋 중 둘만 동작한다**.
+  > ✅ **②가 닫혔다(2026-08-19, PR #306)** — 옆 화면이 만든 답을 그대로 가져와, 탈퇴도 로딩 오버레이 +
+  > 실패 토스트로 결선됐다. **한 Danger Zone 안에서 하나만 동작하던 상태가 끝났다.** 되돌릴 수 없다는
+  > 성질에 대한 답은 **실패 표현(토스트)과 연타 잠금**이었고, 애플 연동 해제(OQ-P-164)는 이번에도
+  > 다루지 않았다 — 탈퇴는 서버 계약대로만 나가고 앱은 애플 쪽을 모른다.
+  > ⚠️ **①은 그대로다** — 로그아웃 항목은 여전히 `enabled`만 꺼지고 색이 안 바뀐다. 오히려 이번에
+  > **같은 화면에 진행 표시 두 갈래가 공존**하게 됐다: 탈퇴는 화면 전체를 덮고, 로그아웃은 그 오버레이가
+  > 뜨는 동안에도 항목 비활성이라는 별도 신호를 함께 낸다(`isLoggingOut`이 `YGActionItem`에 남아 있다).
 
 ### [2026-08-16] 런처 아이콘 교체가 스플래시 테마 속성을 함께 지웠다 — 구버전 콜드 스타트 미검증
 
@@ -3285,4 +3304,28 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 조작 절과 드리프트 ⑤를
   갱신한다.
 
-<!-- oq-next: 242 -->
+### [2026-08-20] 탈퇴가 끝난 계정으로 로그아웃이 한 번 더 나가고, 그 401이 재발급까지 깨운다
+
+- **ID**: OQ-P-242
+- **출처**: `WithdrawUseCase`(PR #306) → `LogoutUseCase` → `AuthRepository.logout()` — 서버가 탈퇴를
+  받아 준 **뒤에** 로컬을 정리하는데, 그 정리를 맡은 `LogoutUseCase`가 서버 로그아웃부터 부른다. 그
+  계정은 방금 지워졌으므로 서버는 401 `MEMBER_NOT_FOUND`를 준다([api/member.md](../api/member.md)).
+  `logout`은 화이트리스트 밖이라 그 401이 `TokenAuthenticator`를 깨우고, 재발급에 쓸 refresh token은
+  **탈퇴가 서버에서 이미 지운 것**이라 재발급도 거절된다. 거절은 세션 사망 경로라
+  `SessionEvent.ForcedLogout`이 발행되고 `MainRoute`가 `replaceAll(NavKeyLogin)` 한다 — 같은 시각
+  ViewModel도 `NavigateToLogin`을 쏘므로 **이동을 두 곳이 일으킨다**. 종착지가 같아 사용자 눈에는
+  드러나지 않지만, 되돌릴 수 없는 동작 뒤에 **반드시 실패할 왕복이 둘 붙고** 로그에는 "재발급 거절 —
+  세션 종료"가 결함처럼 남는다.
+- **항목**: ① `WithdrawUseCase`가 `LogoutUseCase` 대신 **로컬 정리만** 부르게 할지 — 그러면 "무엇을
+  지우는가"의 단일 자리(`LogoutUseCase`)가 깨지므로, 정리 부분만 따로 뽑아 둘이 공유하는 형태가
+  필요하다. ② 아니면 서버 로그아웃 호출은 그대로 두고 **탈퇴 직후임을 아는 경로**에서 재발급을
+  건너뛸지(`TokenAuthenticator`가 볼 수 있는 신호가 지금은 없다). ③ 이동 주체를 하나로 좁힐지 —
+  `ForcedLogout`과 화면 이펙트가 같은 목적지로 겹치는 첫 사례다.
+- **상태**: 미해결 (실기기·실서버 확인 없음 — 위 연쇄는 계약과 코드 대조로 얻은 것이고 관측한 것이
+  아니다. 오프라인이면 첫 401 자체가 안 나므로 연쇄도 없다)
+- **해소 메모**: 정하면 [data-layer](../architecture/data-layer.md) UseCase 절과
+  [api/member.md](../api/member.md) Android 매핑, [ADR-0021](../adr/0021-token-refresh-forced-logout.md)
+  세션 종료 경로를 함께 갱신한다. OQ-P-198(같은 코드에 처분이 갈린다)과 같은 자리다 — 그쪽은 화면이
+  세션 사망을 **안 알리는** 쪽이고, 이쪽은 앱이 스스로 죽인 세션을 **다시 확인받는** 쪽이다.
+
+<!-- oq-next: 243 -->

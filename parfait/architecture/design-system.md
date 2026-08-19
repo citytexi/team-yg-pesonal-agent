@@ -175,6 +175,11 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > **로딩 오버레이를 켜는 기준은 "네트워크 왕복인가"**다(세 사례에서 귀납한 것이고 디자인이 확정한
 > 규칙은 아니다 → OQ-P-205). 버튼 비활성은 "지금 눌러도 소용없다"만 말할 뿐 언제 끝날지 모르는 대기를
 > 표현하지 못하고, 그동안 입력 필드가 살아 있어 요청이 나간 뒤에도 값을 고칠 수 있다.
+>
+> 📌 **S-001이 토스트 호스트를 얻었다(2026-08-19, PR #306)** — 회원 탈퇴 결선으로 실패를 말할 자리가
+> 처음 필요해졌고, 이미 V2를 쓰던 Route가 `rememberYGToastPolicy()`를 만들어 넘기는 것으로 끝났다.
+> **이관이 끝난 화면은 채울 것이 생겨도 컨테이너를 손대지 않는다**는 것이 이 라운드가 보여 준 것이고,
+> 그래서 이관 수치(8화면·V1 잔여 6파일)도 그대로다.
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.

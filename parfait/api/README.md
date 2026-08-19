@@ -28,7 +28,7 @@
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | **결선됨**(8 전부 호출부 있음, 목록 1건 ⚠️불일치) |
 | [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음, 연도·오늘·과거·상세 4건은 **결선됨**, 배경 변경만 미소비) — **오늘 조회 1건 ⚠️불일치**(하루 경계) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
-| [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 구현됨(조회·닉네임 변경은 **결선됨**, 탈퇴 미소비) |
+| [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | **결선됨**(3 전부 호출부 있음) |
 | [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨 |
 
 **총 28 엔드포인트 + 테스트 전용 1**(2026-08-19, 서버 `57529ec` — **두 라운드 연속 증감 0**).
@@ -148,6 +148,13 @@
 > ③ **전역 405가 생겼다**(`CommonErrorCode.METHOD_NOT_ALLOWED`) — 그전에는 메서드 불일치가 500이었다.
 > ④ **탈퇴 후 재가입 500 수정**(`provider_user_id` tombstone rename이 flush를 못 타던 버그,
 > [member.md](member.md)). 엔드포인트·화이트리스트·`ApiResponse`는 불변이고 **표면 셈도 27/27·25/27 그대로**다.
+>
+> ✅ **2026-08-19 — `member.md`가 `done`이 됐다**(PR #306). S-001 앱 설정의 탈퇴 확인이
+> `WithdrawUseCase`를 불러 **3 엔드포인트 전부 호출부를 얻었다**. **소비처를 얻은 엔드포인트는 20건**
+> 이고, 표면만 있고 소비처가 0인 도메인은 여전히 **둘**(image·parfait-image)이다. 이 도메인에 남는
+> 물음은 소비 여부가 아니라 **성공 뒤 정리 경로**다 — 탈퇴 직후의 로그아웃 요청이 죽은 토큰으로 나가
+> 재발급·강제 로그아웃까지 깨운다 → [member.md](member.md) Android 매핑 ·
+> [open-questions](../synthesis/open-questions.md) OQ-P-242.
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만

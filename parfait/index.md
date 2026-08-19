@@ -81,7 +81,7 @@ parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부).
 목록을 한 번 더 부르고**(그 실패는 삼킨다), 나가기·신고 성공은 `replaceAll(NavKeyGroupList)`다
 (백스택이 전부 떠난 그룹 것이라 되돌아가면 403). ⚠️ 남은 것은 계약 공백과 임시 상수다 —
 `remainingCount` mock 1(정원이 생성 응답에만 있다)·컬러칩 인덱스 순환·**신고 사유 하드코딩 하나**,
-그리고 403/404가 일시 장애와 같은 문구다. **회원 탈퇴는 그대로 stub**
+그리고 403/404가 일시 장애와 같은 문구다. ~~회원 탈퇴는 그대로 stub~~ → **#306으로 닫혔다**
 ([s101-group-setting-api 스펙](specs/archive/2026-08-17-s101-group-setting-api.md)).
 **2026-08-17 — 화면이 앞에 설 때마다 다시 묻는다**(#288, PR #297 develop 머지). G-001 목록·C-001 캔버스에
 `Enter` 인텐트가 생기고 Route의 `LifecycleResumeEffect`가 그것을 보낸다 — `init` 조회는 ViewModel 수명에
@@ -93,6 +93,14 @@ parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부).
 자정을 넘긴 경우는 `syncToday()`가 맡는다. ⚠️ 관용구일 뿐 규약이 아니고(OQ-P-221) C-001 조회 실패는
 여전히 로그뿐인데 **실패할 기회만 늘었다**
 ([screen-resume-refetch 스펙](specs/archive/2026-08-17-screen-resume-refetch.md)).
+**2026-08-19 — 되돌릴 수 없는 문 셋이 다 열렸다**(#306). S-001 앱 설정의 회원 탈퇴가 마지막 stub이었고
+`WithdrawUseCase`로 결선되며 **member 도메인이 `android_status: done`**(3 엔드포인트 전부 호출부)이 됐다.
+UseCase가 얹는 규칙은 **순서**다 — 서버가 받아 준 뒤에만 기기를 정리하고, 거절당하면 아무것도 지우지
+않는다(로그아웃과 반대인데, 서버가 거절했는데 로컬만 지우면 계정이 살아 있는 채로 사용자만 탈퇴했다고
+믿는다). 형태는 S-101 나가기·신고가 확정한 것을 그대로 따랐다 — 팝업을 먼저 닫고 로딩 오버레이가 덮으며
+실패는 토스트다. 성공은 `replaceAll(NavKeyLogin)`. ⚠️ **끝난 뒤가 깨끗하지 않다** — 정리를 위임받은
+`LogoutUseCase`가 죽은 토큰으로 서버 로그아웃을 부르고, 그 401이 재발급을 깨워 `ForcedLogout`까지
+발행돼 **이동을 두 곳이 일으킨다**(OQ-P-242). 실기기 확인은 없다.
 
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |
@@ -136,7 +144,7 @@ parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부).
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `f12870a8`(2026-08-19 검증, #290까지 — **C-106 토핑 배치 화면 신설**로 토핑 생성 플로우의 마지막 자리채움(`NavKeyCanvasMove`)이 실물 `NavKeyCanvasToppingPlace`로 바뀌고 위키 C-106 초기 배치 규칙 넷(40%·정중앙·48 하한·이탈 허용)이 처음 코드에 들어옴. 단 **배치 확정이 서버로 가지 않고** `NavKeyCanvasMain(groupId = 0L)`로 이동한다. 세그멘테이션 결과가 `trimmedSubjectImagePath`로 두 벌이 됨. 스캐폴드 이관 8화면·V1 잔여 6파일).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `c36cad49`(2026-08-20 검증, #306까지 — **회원 탈퇴 결선**으로 S-001 Danger Zone의 마지막 stub이 닫히고 member 도메인이 `android_status: done`이 됨. `WithdrawUseCase`가 얹는 규칙은 **서버 성공 뒤에만 로컬을 정리한다**는 순서이고, 정리는 `LogoutUseCase`에 위임한다. 단 그 위임 때문에 **죽은 토큰으로 로그아웃이 한 번 더 나가 재발급·`ForcedLogout`까지 깨운다**(OQ-P-242). 직전 기준선 `f12870a8`은 #290 C-106 토핑 배치 화면).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md

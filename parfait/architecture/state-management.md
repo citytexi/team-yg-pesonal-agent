@@ -88,6 +88,11 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
   따로 두고 `isLoading`이 파생이다. 합쳐 하나로 두면 "첫 조회 중"과 "왕복 중"을 가르지 못해 버튼
   활성 기준(`isConfirmEnabled`)을 만들 수 없다. 셋 다 `finally`에서 내려 **예외·취소 어느 경로로
   빠져나가도 로딩이 걸린 채 남지 않는다** → [s101-group-setting-api 스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
+  - 📌 **같은 형태가 S-001에도 생겼다(2026-08-19, PR #306)** — `AppSettingState`가 `isLoggingOut`·
+    `isWithdrawing`을 따로 들고 `isLoading`이 둘의 OR다. **화면을 덮는 기준은 하나여도 항목 비활성
+    기준은 원인별로 갈리기 때문에** 합칠 수 없다 — `YGActionItem(enabled = !isLoggingOut)`은 로그아웃
+    항목 하나만 가리키므로, 필드가 하나면 탈퇴 왕복이 엉뚱한 항목을 비활성으로 만든다. 둘 다
+    `finally`에서 내려 예외·취소로 빠져나가도 가드가 걸린 채 남지 않는다.
 - **도메인 VO 보유는 허용**하되 강제는 아니다. S-101(`GroupSettingUiState`, #223 develop 머지)이 `GroupName`·`GroupNickname`·`InviteCode`를 State에 들인 첫 사례다. 단 **편집 중 입력값처럼 유효성이 보장되지 않는 값은 원시 타입으로 둔다** — VO로 감싸면 "타입은 맞는데 유효하지 않다"는 모순이 생긴다.
 - 표시 규칙에 따른 분기(문구 선택·상태 enum 산출)는 화면의 private 헬퍼가 갖는다. State가 계산 프로퍼티로 들 이유가 없다.
   - ⚠️ **이탈 사례(2026-08-16, PR #259)** — C-201 캘린더의 `CanvasMainUiState.selectableMonths`가
