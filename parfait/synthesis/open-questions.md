@@ -81,6 +81,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > `popUpTo<NavKeyCanvasMain>()`(`Navigator.kt#popUpTo`, 이 라운드가 신설)을 쓰도록 바꾸는 것이
   > 처방이고, 이건 이 라운드가 아니라 #290 쪽이 짊어질 몫이다. 옛 브랜치는
   > `backup/segmentation-on-290`으로 로컬 보존돼 있다.
+  > 🔧 **재정정(2026-08-20)** — #290이 머지돼(develop `f12870a8`) 위 위험이 예고대로 되돌아왔고,
+  > **결국 이 라운드가 짊어졌다.** `refactor/segmentation-develop`을 develop `750cc2dd` 위로
+  > 리베이스하면서 `1181eedf`가 그 처방을 그대로 적용했다(`goTo(NavKeyCanvasMain(groupId = 0L))` →
+  > `popUpTo<NavKeyCanvasMain>()`, OQ-P-238 ① 해소). "#290 쪽 몫"이라던 판단을 뒤집은 이유는
+  > **위험이 이 브랜치의 캐시 정리에서 나오기 때문**이다 — 고칠 도구(`popUpTo`)도 이 브랜치에만 있다.
+  > 즉 ③의 안전 근거는 **`refactor/segmentation-develop` 머지 시점부터 다시 참이고**, 그전까지
+  > develop 단독으로는 거짓이다.
 - **해소 메모**: 정식(GA) 승급 시 버전 고정·문서 갱신. ③ 캐시 정리는 위에서 해소됨 —
   [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절에 반영 완료. ①(재시도 동선)은
   실행을 `init`에서 꺼내는 구조 변경과 재시도 버튼 디자인이 확정돼야 다룰 수 있다.
@@ -3286,19 +3293,21 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   같은 이유로 그 값을 안 들고 다닌다(`refactor/segmentation-develop` 스펙이 "다섯 NavKey에 groupId를
   싣는 대안은 배경 편집처럼 무의미한 경로까지 오염된다"고 이미 기각했다). 게다가 `goTo`라
   **흐름 화면 전부가 백스택에 남은 채** 캔버스가 한 장 더 쌓인다.
-- **항목**: ① 그룹 id를 어떻게 전할지 — 미머지 브랜치가 만든 `Navigator.popUpTo<NavKeyCanvasMain>()`은
-  기존 엔트리로 되감으므로 id를 아예 안 실어도 되지만, 그 확장이 develop에 없다.
-  ② 배치 확정을 서버에 보내기 전까지 이 이동을 어떻게 둘지 — 지금은 **저장 없이 화면만 바뀐다.**
-  ③ 흐름을 중간에 닫는 경로(각 화면 `onClickClose`가 여전히 빈 람다)와 같은 자리에서 정할지.
-- **상태**: 미해결
-  > ⚠️ **이것이 미머지 스펙의 안전 근거를 되돌린다** —
-  > [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)의
-  > 캐시 정리(진입 시 통째로 비움)는 "새 흐름은 캔버스에서만 시작하고 그러려면 이전 화면이 이미
-  > 백스택에서 걷혀 안전하다"에 기대는데, 이 줄이 캔버스를 **새로 쌓아** 이전 흐름 화면을 남기는 한
-  > 거짓이다(다음 정리가 그 화면들이 쓰던 PNG를 지워 뒤로 가면 빈 이미지). 그 스펙은 #290 머지를
-  > 예상하고 처방까지 적어 뒀다 — **배치 완료 이펙트를 `popUpTo<NavKeyCanvasMain>()`으로 바꾸는 것**.
-- **해소 메모**: 고치면 [navigation-flow](../architecture/navigation-flow.md) 토핑 생성 플로우 절과
-  [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 드리프트 ①②를 지운다.
+- **항목**: ~~① 그룹 id를 어떻게 전할지~~ — **해소.** ② 배치 확정을 서버에 보내기 전까지 이 이동을
+  어떻게 둘지 — 지금은 **저장 없이 화면만 바뀐다.** ③ 흐름을 중간에 닫는 경로(각 화면
+  `onClickClose`)와 같은 자리에서 정할지 — 세그멘테이션 쪽 셋은
+  `refactor/segmentation-develop`이 이미 결선했고, `CanvasToppingPlaceScreen`의 닫기는 아직 남았다.
+- **상태**: ① 해소됨(2026-08-20) · ②③ 미해결
+- **해소 메모**: ①은 `refactor/segmentation-develop`의 `1181eedf`가
+  `navigator.goTo(NavKeyCanvasMain(groupId = 0L))`을 `navigator.popUpTo<NavKeyCanvasMain>()`으로
+  바꿔 닫았다. 되감기는 이미 백스택에 있는 엔트리를 찾으므로 **그룹 id를 실어 나를 필요 자체가
+  없어졌고** 하드코딩 `0L`도 함께 사라졌다. 같은 커밋이
+  [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)의
+  캐시 정리 안전 근거("새 흐름은 캔버스에서만 시작하고 그러려면 이전 화면이 이미 백스택에서 걷혀
+  있다")를 **참으로 만든다** — 그 브랜치가 스스로 들여온 결함이라 그 브랜치에서 닫는 것이 맞다고 봤다.
+  ⚠️ **아직 develop에는 없다** — `refactor/segmentation-develop`이 머지돼야 반영된다.
+  ②③이 정해지면 [navigation-flow](../architecture/navigation-flow.md) 토핑 생성 플로우 절과
+  [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 드리프트 ①②를 함께 본다.
   OQ-P-209 ②③과 한 라운드에 정해지는 것이 자연스럽다.
 
 ### [2026-08-19] `NavKeyCanvasMove` 계열이 호출자를 잃고 도달 불가로 남았다
@@ -3313,10 +3322,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 셋을 지울지 — 지우면 도달 불가 화면 목록에서 하나가 빠진다. ② 같은 부류
   (`NavKeyCameraSystem`·`NavKeySystemGalleryPicker`)와 묶어 한 번에 정리할지.
 - **상태**: 미해결
+  > 📌 **2026-08-20 — `refactor/segmentation-develop`이 되살리지 않기로 했다.** 그 브랜치가 두 번째
+  > 리베이스에서 같이 처리할 후보였으나(아래 해소 메모의 옛 권고), **이 잔해는 그 라운드가 만든 것이
+  > 아니라 #290이 남긴 것**이라 리뷰 대상 diff를 넓힐 값이 없다고 판단했다
+  > ([재정정 절](../specs/2026-08-18-segmentation-pipeline-hardening.md#드롭됐던-것-둘의-처리--하나만-되살렸다)).
+  > 코드 현황은 그대로다 — `goTo` 호출부 0건, `feature/groups/canvas/impl`의 엔트리 등록만 잔존.
 - **해소 메모**: 지우면 [navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지" 목록과
-  토핑 생성 플로우 절의 도달 불가 표기를 함께 걷는다. 미머지
-  [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)이
-  범위에 넣어 두었던 항목이라 그 브랜치가 되살리는 쪽이 자연스럽다.
+  토핑 생성 플로우 절의 도달 불가 표기를 함께 걷는다. ②와 묶어 도달 불가 화면 셋을 한 라운드에
+  정리하는 쪽이 남았다.
 
 ### [2026-08-19] 배치 화면이 보여 주는 캔버스가 실제 캔버스가 아니다
 

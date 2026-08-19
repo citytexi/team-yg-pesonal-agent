@@ -4,8 +4,8 @@ title: 카메라·갤러리 → 세그멘테이션 파이프라인 보강 + YGSc
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-18
-related_code: ImageSegmentationRepositoryImpl.kt#segmentImage, ImageSegmentationRepositoryImpl.kt#saveToCacheAsPng, SegmentationViewModel.kt#SegmentationViewModel, SegmentationRoute.kt#SegmentationRoute, PictureConfirmRoute.kt#PictureConfirmRoute, CustomCameraViewModel.kt#CustomCameraEffect, CanvasMainRoute.kt#CanvasMainRoute, CanvasMainViewModel.kt#handleCacheImage, Navigator.kt#Navigator, YGScaffoldV2.kt#YGScaffoldV2, EntryBuilder.kt#featureCameraEntryBuilder, EntryBuilder.kt#featureCustomGalleryEntryBuilder, EntryBuilder.kt#featureSegmentationEntryBuilder, SegmentationMask.kt#maskSubjectPixels, SegmentationCacheDir.kt#clearFiles, ClearSegmentationCacheUseCase.kt#ClearSegmentationCacheUseCase, Navigator.kt#popUpTo
+verified: 2026-08-20
+related_code: ImageSegmentationRepositoryImpl.kt#segmentImage, ImageSegmentationRepositoryImpl.kt#saveToCacheAsPng, SegmentationViewModel.kt#SegmentationViewModel, SegmentationRoute.kt#SegmentationRoute, PictureConfirmRoute.kt#PictureConfirmRoute, CustomCameraViewModel.kt#CustomCameraEffect, CanvasMainRoute.kt#CanvasMainRoute, CanvasMainViewModel.kt#handleCacheImage, Navigator.kt#Navigator, YGScaffoldV2.kt#YGScaffoldV2, EntryBuilder.kt#featureCameraEntryBuilder, EntryBuilder.kt#featureCustomGalleryEntryBuilder, EntryBuilder.kt#featureSegmentationEntryBuilder, SegmentationMask.kt#maskSubjectPixels, SegmentationCacheDir.kt#clearFiles, ClearSegmentationCacheUseCase.kt#ClearSegmentationCacheUseCase, Navigator.kt#popUpTo, CanvasToppingPlaceRoute.kt#CanvasToppingPlaceRoute, DecodeImageUseCase.kt#DecodeImageUseCase
 related_adr: ADR-0012, ADR-0011, ADR-0020
 related_spec: ygscaffold-v2-common-loading-error, c103-segmentation-topping-edit, c101-camera-picture-confirm, c102-custom-gallery-picker
 related_architecture: navigation-flow, data-layer, design-system, state-management
@@ -164,7 +164,7 @@ reified 버전은 호출부 편의고, `KClass` 버전이 실제 구현이자 �
 | 화면 | 닫기 동작 |
 |---|---|
 | `PictureConfirmRoute` (`returnResultOnly = false`) | `popUpTo<NavKeyCanvasMain>()` |
-| `PictureConfirmRoute` (`returnResultOnly = true`) | `onBack` 2회 — 확인 버튼과 같은 백 처리 |
+| `PictureConfirmRoute` (`returnResultOnly = true`) | `onBack` 2회 — 확인 버튼과 같은 백 처리 <br>📌 **정정(2026-08-20)** — 코드리뷰 대응으로 `popUpTo<NavKeyCanvasBGEdit>()`가 됐다 → [재정정 절](#코드리뷰-대응--되돌아가기를-깊이-대신-타입으로) |
 | `SegmentationRoute` · `SegmentationConfirmRoute` | `popUpTo<NavKeyCanvasMain>()` |
 
 `returnResultOnly = true`는 캔버스 배경 편집(C-301)에서 들어오는 경로다. 여기서 캔버스까지 튀면
@@ -270,6 +270,8 @@ ML Kit 호출부는 유닛으로 못 잡는다. **실기기 육안 확인**으�
   수단이 없다. 이번 라운드 밖
 - **최근 이미지 공급자 0건** — `AddRecentImageUseCase` 호출부가 사라진다. 갤러리 피커의 "최근"
   영역은 계속 비어 있고, C-106이 업로드 확정 시점에 테두리 적용 전 알맹이로 채운다
+  > 📌 **정정(2026-08-20)** — 같은 라운드가 나중에 공급자를 만들었다. `SegmentationViewModel`이
+  > 디코드 성공 뒤 원본 uri를 기록한다 → [재정정 절](#설계에서-뒤집힌-결정-2건).
 - **도달 불가 화면 2종** — `NavKeyCameraSystem`·`NavKeySystemGalleryPicker`. 커스텀 카메라·갤러리가
   자리를 대신한 뒤 남은 것으로 보이나 삭제 판단은 이 라운드 밖이다. 스캐폴드 이관만 한다
 - **PR #290 위에서 작업한다** — 이 브랜치는 develop에 `feature/topping-add-screen`을 머지해
@@ -290,6 +292,9 @@ ML Kit 호출부는 유닛으로 못 잡는다. **실기기 육안 확인**으�
 케이스를 더한 것이다).
 
 설계에서 **뒤집힌 결정 0건.**
+
+> 📌 **정정(2026-08-20)** — 이 문장은 이 절이 쓰인 시점(커밋 11개)까지만 참이다. 그 뒤 붙은 커밋
+> 둘이 스펙 본문을 뒤집었다 → [재정정 절](#설계에서-뒤집힌-결정-2건).
 
 구현·리뷰가 더한 것:
 - **캐시 정리 호출도 감쌌다** — 스펙은 디코드가 던지는 것만 감싸라고 했는데, 리뷰가
@@ -445,3 +450,104 @@ develop `86f0f6b0` 기준)는 이제 **한 세대 뒤처진 기준선 위에 있
 > develop 기준 피크는 세그멘테이션·토핑 편집 **둘 다 미측정으로 남긴다.** 토핑 편집은 부담이 한 겹 더
 > 늘었다(`completeEdit`이 `trimmedEdited`를 하나 더 만들고, "테두리가 없으면 같은 파일을 두 번 떨구지
 > 않는다" 최적화가 #290에서 사라져 저장도 항상 두 번이다).
+
+## as-built 재정정 (2026-08-20, 두 번째 리베이스)
+
+위 ⚠️ 블록이 예고한 리베이스를 실행했다. **이 절의 수치가 현행이고, 위 두 as-built 절의 수치는
+전부 폐기다** — 그쪽은 각각 #290을 실은 트리와 develop `86f0f6b0`에서 잰 값이라 지금 트리에 안 맞는다.
+
+| 항목 | 값 |
+|---|---|
+| 기준선 | develop **`750cc2dd`**(현행 `origin/develop`, [doc-baseline](../doc-baseline.md) 기준선과 동일) |
+| 브랜치 | `refactor/segmentation-develop`, head **`63ec2989`**, 커밋 **15개**(리베이스 13 + OQ-P-238 수정 1 + 코드리뷰 대응 1) |
+| 검증 | `./gradlew test ktlintCheck` BUILD SUCCESSFUL (2026-08-20) |
+| 유닛 테스트 | **538 → 560건**(+22), 테스트 클래스 **61 → 64개**(+3) |
+| `YGScaffoldV2` 채택 | **10 → 18개 파일**(정의 파일 `YGScaffoldV2.kt` 제외한 사용처 기준) |
+| `YGScaffold`(V1) 잔존 | **6 → 3개 파일** — 전부 엔트리 빌더(`feature/intro/impl`·`feature/groups/enter/impl`·`feature/groups/canvas/impl`). 세 파일이 이전 라운드와 같다 |
+
+> 측정 기준을 여기 적어 둔다 — 유닛 총량은 `testDebugUnitTest`(안드로이드 모듈)와 `test`(순수 JVM
+> 모듈) 리포트의 합이고 release variant는 같은 테스트의 중복이라 뺐다. 이전 절들이 어느 기준으로
+> 셌는지 적어 두지 않아 세대 간 비교가 불가능했다.
+
+### 예측이 빗나갔다 — 충돌 3건
+
+위 ⚠️ 블록은 겹치는 범위(`segmentImage`·`SegmentationViewModel`)에 대해 "충돌 해소가 아니라
+**그대로 얹히는지**만 확인하면 된다"고 적었다. 실제로는 **세 자리에서 충돌했고 그중 하나는
+결합 판단이 필요했다.**
+
+| 파일 | 무엇이 부딪혔나 | 해소 |
+|---|---|---|
+| `CanvasMainViewModel.kt`·`CanvasMainViewModelTest.kt` | import 구간만. develop이 더한 `GetMyGroupsFlowUseCase`·`RefreshMyGroupsUseCase`와 이 라운드가 걷어내는 `AddRecentImageUseCase`가 같은 자리 | develop 것 유지 + `AddRecentImageUseCase`만 제거 |
+| `SegmentationRoute.kt`·`SegmentationConfirmRoute.kt` | 같은 호출을 양쪽이 고쳤다 — develop은 인자(`trimmedSubjectImagePath` 전달, `NavKeyCanvasMove`→`NavKeyCanvasToppingPlace`), 이 라운드는 감싸개(`YGScaffoldV2`)와 닫기 결선 | develop의 인자 위에 이 라운드의 스캐폴드·닫기를 얹었다 |
+| `ImageSegmentationRepositoryImpl.kt` | **같은 블록을 두고 부딪혔다.** 이 라운드가 저장 구간을 `try`/`finally`로 감쌌고, develop은 같은 구간에 trimmed 비트맵 생성을 넣었다 | trimmed 생성을 `try` 안으로 옮겨 `finally`의 `recycle()` 보호를 받게 하고, develop 쪽 명시적 `recycle()` 호출은 이중 호출이 되므로 제거 |
+
+마지막 줄이 이 리베이스에서 **유일하게 새 판단이 든 자리다.** 두 변경 다 `subjectBitmap`의 수명을
+다루는데 방식이 달라서(한쪽은 `finally`, 한쪽은 본문 끝 호출) 그냥 이어 붙이면 회수가 두 번 돈다.
+
+리베이스 뒤 컴파일이 두 곳에서 깨졌고 각각 원 커밋에 흡수시켰다(별도 커밋으로 남기지 않았다) —
+`CanvasMainViewModel`의 `androidx.lifecycle.viewModelScope` import가 자동 병합에서 유실된 것과,
+`SegmentationViewModelTest`의 픽스처가 develop에서 필수가 된 `trimmedSubjectImagePath`를 안 채운 것이다.
+
+### 설계에서 뒤집힌 결정 2건
+
+위 as-built 절이 "뒤집힌 결정 **0건**"이라 적었는데, **그 뒤에 붙은 커밋 둘이 스펙 본문을 뒤집었다.**
+
+- **`decodeImage` 계약을 `Result`로 넓혔다**(`4113db0a`). 스펙 [디코드 실패 흡수](#디코드-실패-흡수) 절은
+  이 대안을 명시적으로 기각했다 — "호출부 둘 중 하나만 구멍이었고, 계약을 `Result`로 넓히면 이미
+  방어하는 쪽까지 고쳐야 한다". 뒤집은 근거는 **이미 방어하던 쪽도 실은 틀렸다**는 것이다: 두 호출부가
+  모두 stdlib `runCatching`을 썼는데 그것이 `CancellationException`까지 삼켜, 사용자가 이미 떠난
+  화면이 "디코드 실패"로 자기를 보고했다(`44205b12`가 잡은 것과 같은 부류가 두 곳 더 있었다).
+  `DecodeImageUseCase`가 `Result`를 돌려주면 두 곳이 한 번에 닫히고 다음 호출부가 같은 실수를
+  되풀이할 자리가 없어진다. 옆의 `SegmentImageUseCase`가 이미 이 모양이라 관용구도 맞는다.
+  캐시 정리 가드도 같은 이유로 `runSuspendCatching`으로 옮겼다.
+- **최근 이미지 저장을 이 라운드가 했다**(`ef6b3692`). 스펙 [범위](#범위)가 "제외"로 못 박고
+  [주의](#주의--열린-질문)가 "공급자 0건 — 갤러리 최근 영역은 계속 비어 있다"고 적은 그 항목이다.
+  **다만 제외했던 설계를 한 것은 아니다** — 제외 사유는 "저장 시점이 업로드 확정(C-106)이고 저장
+  대상이 테두리 적용 전 알맹이"였는데, 이 커밋이 기록하는 것은 **사용자가 고른 원본 uri**이고 시점은
+  세그멘테이션 진입 직후(디코드 성공 뒤)다. 갤러리의 "최근"은 **다시 고를 사진 목록**이지 결과물
+  목록이 아니므로 원본이 맞는 대상이다. C-106이 짊어질 몫은 그대로 남아 있다면 그것은 다른 목록이다.
+  디코드가 성공한 뒤에 기록하는 이유는 열리지 않는 이미지가 아홉 자리 중 하나를 먹고 멀쩡한 항목을
+  밀어내지 않게 하려는 것이고, 호출은 가드돼 있다 — 부수 기록이 세그멘테이션 실행 여부를 정하면 안 된다.
+
+### 코드리뷰 대응 — 되돌아가기를 깊이 대신 타입으로
+
+PR #309 리뷰가 `PictureConfirmRoute`의 `returnResultOnly = true` 경로를 짚었다 — `onBack()` 두 번
+대신 이 라운드가 만든 pop API를 쓰는 편이 낫겠고, 그러려면 백스택에 특정 NavKey가 있는지 확인하는
+로직도 필요할 것 같다는 [Nit]이었다.
+
+**절반은 이미 있었다.** `Navigator.popUpTo(type)`은 대상을 못 찾으면 **아무것도 걷어내지 않고
+`false`를 돌려준다**(`Navigator.kt#popUpTo`). 별도 확인 API 없이 반환값이 그 역할을 한다.
+
+**나머지 절반은 맞는 지적이라 고쳤다**(`63ec2989`). `onBack()` 2회는 흐름 깊이가 정확히 2라고
+가정한다 — `// PictureConfirm` `// Camera/Gallery` 주석이 그 가정을 설명하고 있었다는 것 자체가
+신호다. 지금은 참이지만(진입 둘 다 촬영 또는 선택 화면 한 장을 거친다) 그 모양을 붙들어 두는 것이
+없어서, 사이에 화면이 하나 끼는 날 조용히 어긋난다. `popUpTo<NavKeyCanvasBGEdit>()`로 바꿔 깊이를
+가정하지 않게 했다. 확인·닫기 두 콜백이 같은 처리라 둘 다 옮겼다.
+
+목적지를 `NavKeyCanvasBGEdit`로 특정한 근거는 **호출자가 하나이기 때문**이다 —
+`returnResultOnly = true`를 주는 곳은 `CanvasBGEditRoute` 두 줄(카메라 경로·갤러리 경로)이 전부이고
+`PictureConfirmResult`를 받는 곳도 거기 하나다. `data object`라 백스택에 최대 한 장이므로 타입
+매칭이 엉뚱한 인스턴스를 집을 여지도 없다.
+
+> 대가는 **카메라가 자기를 부른 화면을 이름으로 안다**는 것이다. 둘째 호출자가 생기면 이 분기를
+> 고쳐야 한다. 호출자 비종속으로 가려면 "대상을 포함해 걷어내는" `popUpTo` 변형을 만들고 `source`로
+> 갈라야 하는데(그러면 `feature:camera:impl`이 `feature:gallery:api`까지 알아야 한다), 쓰이지 않을
+> 일반화라 하지 않았다. `feature:camera:impl`은 닫기 결선 때문에 이미 `NavKeyCanvasMain`을 알고
+> 있어 **결합의 종류가 새로 생기는 것은 아니고 같은 방향이 하나 는다.**
+
+### 드롭됐던 것 둘의 처리 — 하나만 되살렸다
+
+[#290 머지 절](#-290이-머지됐다-2026-08-19-develop-f12870a8)이 "이 브랜치에서 같이 고치는 편이
+자연스럽다"고 권한 두 건 중 **OQ-P-238만 했다.**
+
+- ✅ **OQ-P-238 — 배치 완료 이펙트를 `popUpTo`로**(`1181eedf`). `CanvasToppingPlaceRoute`가
+  `navigator.goTo(NavKeyCanvasMain(groupId = 0L))`로 캔버스를 **새로 쌓던** 것을
+  `navigator.popUpTo<NavKeyCanvasMain>()`으로 바꿨다. **이 라운드가 스스로 만든 결함이라 여기서
+  닫는 것이 맞다** — 캐시 정리(진입 시 통째로 비움)의 안전 근거가 "새 흐름은 캔버스에서만 시작하고
+  그러려면 이전 흐름 화면이 이미 백스택에서 걷혀 있다"인데, 저 줄이 살아 있는 한 거짓이었다.
+  하드코딩 `groupId = 0L`도 함께 사라졌다(`popUpTo`는 이미 있는 엔트리로 되감으므로 id가 필요 없다).
+- ❌ **OQ-P-239 — `NavKeyCanvasMove` 계열 삭제는 하지 않았다.** #290이 호출자를 끊어 지금
+  develop에서 도달 불가인 것은 맞지만(`goTo` 호출부 0건, 엔트리 등록만 잔존), **이 라운드가 만든
+  결함이 아니라 #290이 남긴 잔해다.** 리뷰 대상 diff를 그만큼 넓힐 값이 없다고 봤다. OQ-P-239는
+  열린 채로 두고, 같은 부류(`NavKeyCameraSystem`·`NavKeySystemGalleryPicker`)와 묶어 정리하는 쪽이
+  낫다 — 그 묶음 판단은 이 스펙이 처음부터 [범위 밖](#범위)에 뒀다.
