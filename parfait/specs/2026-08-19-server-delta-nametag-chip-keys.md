@@ -5,7 +5,7 @@ status: draft
 category: behavior-spec
 platforms: android
 verified:
-related_code: MyParfaitGroupResponse, ParfaitGroupMemberResponse, CreateParfaitGroupResponse, GetTodayParfaitResponse, GroupMemberResponse, PlacedByResponse, PlaceParfaitImageResponse, NametagChipType, CanvasMemberVO, MyParfaitGroupVO, CanvasMainViewModel, ColorChipType, GrouptagChipType, PARFAIT_TIME_ZONE
+related_code: MyParfaitGroupResponse, ParfaitGroupMemberResponse, CreateParfaitGroupResponse, GetTodayParfaitResponse, GroupMemberResponse, PlacedByResponse, PlaceParfaitImageResponse, NametagChipType, CanvasMemberVO, MyParfaitGroupVO, ParfaitGroupMemberVO, CanvasMainViewModel, ColorChipType, GrouptagChipType, PARFAIT_TIME_ZONE, MyParfaitGroupVOMapperTest, ParfaitGroupRemoteDataSourceImplTest, ParfaitRemoteDataSourceImplTest, ParfaitService
 related_adr: ADR-0017, ADR-0023
 related_spec: server-delta-nametag-chip-day-boundary, group-ssot, s101-group-setting-api, c001-canvas-today-detail
 related_architecture: data-layer, design-system, module-structure
@@ -21,7 +21,7 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 [2026-08-18-server-delta-nametag-chip-day-boundary](2026-08-18-server-delta-nametag-chip-day-boundary.md)의
 **직접 후속**이다. 그 라운드가 "서버 요청 대상"·"범위 밖"으로 미뤄 둔 둘을 이번 서버 delta가 닫아 주었고,
 동시에 **그 라운드가 짠 코드를 조용히 무력화하는 변경**을 함께 들여왔다. 작업 대상 브랜치는
-`feature/#300-sync-backend-api-250819`(선행 라운드 30커밋을 develop 위로 rebase한 것)다.
+`feature/#300-sync-backend-api-250819`(선행 라운드를 develop 위로 rebase한 것)다.
 
 ## 서버가 바꾼 것
 
@@ -39,6 +39,11 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 | ⑦ | 과거 목록 `to` 기본값도 `ParfaitDay.current()` | 앱은 항상 범위를 명시해 부르므로 안 물린다 |
 
 **①과 ④가 이 스펙의 이유다.** 나머지는 그 김에 정리하는 것이다.
+
+**앱 영향이 없음을 확인한 서버 변경 셋**(감사 흔적으로 남긴다): 전역 405 신설(`CommonErrorCode.METHOD_NOT_ALLOWED`) —
+`AppErrorMapper`에 서버 에러코드 열거가 없어 앱 분기에 닿지 않는다 · 탈퇴 후 재가입 500 수정 — 계약이
+아니라 서버 내부 flush 순서다 · Discord 알림 큐 필터 — 서버 운영. ⑦도 여기 속하지만 표에 남긴 이유는
+앱 KDoc 하나가 그 기본값을 기술하기 때문이다(결정 7 아래 참고).
 
 ### ①이 왜 위험한가
 
@@ -65,6 +70,11 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 `@SerialName`과 Kotlin 프로퍼티명을 **둘 다** 서버 이름으로 바꾼다. wire DTO는 서버의 거울이라는 규약
 ([data-layer](../architecture/data-layer.md))이 프로퍼티명에도 걸린다 — `@SerialName`만 고치면 코드를
 읽는 사람에게 서버 이름이 안 보인다.
+
+**고칠 자리는 정확히 셋이다** — `MyParfaitGroupResponse.lastPlacedByNametagChip`(그룹 목록) ·
+`ParfaitGroupMemberResponse.nametagChip`(그룹 상세 멤버) · **`GetTodayParfaitResponse.kt`의
+`PlacedByResponse.nametagChip`**(캔버스 토핑 작성자). 세 번째를 빠뜨리기 쉬우니 파일까지 적는다.
+앱 `CreateParfaitGroupResponse`에는 아직 이 필드가 없어(결정 7이 새로 넣는다) 이 셋에 안 들어간다.
 
 **개명은 `:data`의 wire DTO에서 멈춘다.** `:domain`은 `NametagChipType`·`MyParfaitGroupVO.lastPlacedByNametagChip`·
 `ParfaitGroupMemberVO.nametagChip`의 표기를 **그대로 둔다** — 도메인은 거울이 아니라 제품 언어이고
@@ -106,6 +116,22 @@ recentImageUploadedAt?.let(LocalDateTime::parse)?.toInstant(PARFAIT_TIME_ZONE)
 주석은 "왜 KST인가"(위 계약 근거)로 갈아 끼운다. 지금 주석은 결론만 적고 근거가 없어 다음 사람이
 같은 실수를 되풀이할 수 있다.
 
+#### `MyParfaitGroupVOMapperTest`를 지운다
+
+**이 파일이 버그를 초록으로 지켜 왔다.** 두 테스트(`uploadedAtWithZuluOffset_isParsedAsThatInstant`·
+`uploadedAtWithNumericOffset_isTheSameInstantAsItsUtcForm`)가 **오프셋이 붙은 문자열**을 Given으로 넣고
+`Instant` 동치를 단언한다. Given 주석("서버가 UTC 오프셋(`Z`)을 붙여 보낸다")이 매퍼 주석과 똑같은
+허구이고, 테스트가 자기 입력을 자기가 만들어 넣으니 **서버가 실제로 무엇을 보내는지와 무관하게 통과한다.**
+셋째 테스트(`uploadedAtMissing_isNull`)가 검증하는 `null` 입력은 이제 계약상 발생하지 않는다.
+
+- 결정 2를 적용하면 앞의 둘은 **파싱 예외로 실패한다.** 고쳐서 살리는 선택지는 없다 — 살리려면 다시
+  오프셋 있는 입력을 지어내야 하고 그것이 애초의 병이다.
+- **파일을 지우고** 커버리지를 `ParfaitGroupRemoteDataSourceImplTest`로 옮긴다. 매퍼 단독 테스트를
+  만들지 않는 규약과 일관되고, 이 파일은 그 규약의 마지막 예외였다.
+- 선행 스펙이 이 파일을 "규약 예외로 남아 있는 파일이라 늘리지도 손대지도 않는다 · 신규 필드가 널 허용이라
+  그대로 컴파일된다"로 park했다. **그 판단은 그 라운드에서는 옳았고 이번 라운드가 뒤집는다** — 그때는
+  필드가 늘기만 했고 이번엔 변환 자체가 바뀐다.
+
 ### 3. C-001 상단 멤버 칩을 서버 값으로 바꾼다
 
 선행 라운드가 **범위 밖**으로 둔 항목이고 사유는 "서버 `groupMembers`에 필드가 없다" 하나였다.
@@ -115,6 +141,9 @@ recentImageUploadedAt?.let(LocalDateTime::parse)?.toInstant(PARFAIT_TIME_ZONE)
   **이쪽은 VO까지 올린다** — 읽는 화면(C-001)이 같은 라운드에 있다.
 - `CanvasMainViewModel.toMemberChips`가 `member.nametagChip.toColorChipType()`을 쓰고,
   `NAMETAG_CHIP_PALETTE`와 "서버가 이 목록에는 값을 안 준다"는 KDoc을 함께 걷는다.
+- **칩 안의 글자는 안 바꾼다** — `Default`가 떠도 `nickname.take(1)` 그대로다(S-101 `GroupMemberList`와
+  같다). Figma의 `Default` 변형은 글자가 `-`지만, 여기서 `Default`가 뜨는 것은 **계약이 어긋났다는 뜻**이라
+  첫 글자가 오히려 단서가 된다. 선행 라운드가 세운 논리를 그대로 잇는다.
 
 **이것으로 닫히는 것이 둘 더 있다.**
 - **같은 사람이 S-101과 C-001에서 다른 색**이던 문제(OQ-P-224 ①). 선행 라운드가 한쪽만 정본으로 만들면서
@@ -128,24 +157,32 @@ recentImageUploadedAt?.let(LocalDateTime::parse)?.toInstant(PARFAIT_TIME_ZONE)
 C-001의 규칙은 S-101과 **같다**(12종 1:1, 없으면 `Default`). 선행 라운드는 "S-101(12→12)과 G-001(12→6)은
 규칙이 달라 공용 변환을 만들지 않는다"고 적었는데, 이번에 **처음으로 규칙이 같은 두 화면**이 생긴다.
 
-그래도 복제한다. 근거는 둘이다.
+그래도 복제한다. **다만 흔히 드는 두 논거는 여기서 성립하지 않으므로 쓰지 않는다.**
 
-- **공용화에 모듈 간선이 필요하다.** 변환의 입력은 `:domain`의 `NametagChipType`, 출력은
-  `:core:designsystem`의 `YGColorChipType`이다. 둘 다 의존하는 모듈이 지금 **없다** — `core:ui`가
-  `:domain`은 보지만 `:core:designsystem`은 안 본다. 올리려면 `core:ui → core:designsystem` 간선을
-  새로 여는 셈이고, 그것은 이 라운드가 아니라 자기 결정이 필요한 변경이다
-  ([module-structure](../architecture/module-structure.md)).
-- **컴파일러가 드리프트를 막는다.** 두 변환 모두 `NametagChipType`에 대한 exhaustive `when`이고
-  `else`가 없다. 13번째 타입이 서버에 생기면 **양쪽 다 컴파일이 깨진다** — 한쪽만 고쳐지는 사고가
-  구조적으로 불가능하다. 중복이 위험한 이유(한쪽만 갱신)가 여기서는 성립하지 않는다.
+- ❌ **"공용 자리가 없다"가 아니다.** `core:ui`의 `text/LoginProviderUiText.kt`·`text/NameValidResultUiText.kt`가
+  "도메인 enum → UI 표현" 매핑의 선례이고, `core:ui → :domain` 간선은 **정확히 같은 이유로 이미 열려 있다**
+  (#223, [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)). `:core:designsystem`은
+  `:core:ui`를 모르므로 순환도 없다. 즉 자리는 있고, 새 간선 한 줄이면 된다.
+- ❌ **"컴파일러가 막아 준다"도 아니다.** 두 변환이 `else` 없는 exhaustive `when`인 것은 맞지만, 그것이
+  잡는 것은 **arm 누락뿐**이고 그 조건은 **앱이 `NametagChipType`에 상수를 더할 때**다. 서버에 13번째
+  타입이 생겨도 매퍼(`toNametagChipType`)가 `entries.firstOrNull`로 **모르는 문자열을 `null`로 접으므로
+  컴파일은 안 깨진다.** 그리고 진짜 드리프트 위험은 arm 누락이 아니라 **arm 몸통이 갈리는 것**
+  (한쪽에서 같은 타입을 다른 색으로 고침)인데 컴파일러는 그것을 전혀 못 잡는다.
+
+**진짜 이유는 하나다 — 그 간선을 여는 것이 이 라운드에 끼울 결정이 아니다.** `core:ui → :domain`이
+`implementation`이라 **public 시그니처에 도메인 타입이 노출되는데 의존은 숨어 있는** 상태이고
+(소비 feature가 컨벤션 플러그인으로 `:domain`을 직접 갖고 있어 지금 컴파일될 뿐이다), `api` 승격은
+저장소에 선언이 0건이고 컨벤션 플러그인에 확장 함수조차 없어 **팀 결정 대상으로 이미 추적 중**이다
+([module-structure](../architecture/module-structure.md) · [open-questions](../synthesis/open-questions.md)
+[2026-08-13]). 같은 형태의 매핑을 두 번째로 올리면서 그 미결을 조용히 굳힐 수 없다.
 
 자리는 선행 라운드가 세운 규약대로 그 모듈의 `util` 패키지다 —
-`feature/groups/canvas/impl/.../util/ColorChipType.kt`. KDoc에 "S-101과 규칙이 같은데 공용 자리가 없어
-복제했다 · 타입이 늘면 양쪽이 함께 깨진다"를 박고 → OQ에 남긴다.
+`feature/groups/canvas/impl/.../util/ColorChipType.kt`(S-101 것과 파일명·함수명·12갈래가 **글자까지 같다**).
 
-> `core:ui`의 `text/LoginProviderUiText.kt`·`text/NameValidResultUiText.kt`가 "도메인 enum → UI 표현"의
-> 선례이므로, 공용화를 결정한다면 자리는 그쪽이다. 다만 그 둘은 문자열로 가고 이것은 디자인시스템
-> 타입으로 간다 — 같은 자리로 묶이는지가 그 결정의 실제 질문이다.
+KDoc에 셋을 박는다: ① 이 라운드로 칩 변환이 **세 벌**이 됐고 둘은 규칙이 같다, ② 컴파일러가 잡아 주는
+것은 **앱이 enum 상수를 늘릴 때의 arm 누락뿐**이고 색을 한쪽만 바꾸는 것은 못 잡는다, ③ 세 파일이
+서로를 가리키는 상호 참조. 기존 두 파일의 KDoc이 서로를 "짝이 되는 변환"(단수)으로 부르고 있으므로
+그 문장도 함께 고친다. → OQ에 남긴다.
 
 ### 5. 토핑 배치 응답 칩은 DTO까지만 받는다
 
@@ -156,23 +193,42 @@ C-001의 규칙은 S-101과 **같다**(12종 1:1, 없으면 `Default`). 선행 �
 **그럼에도 이번 라운드는 DTO까지만 받는다.** 남은 사유는 하나이고 그것은 여전히 유효하다 —
 `placedBy`를 읽는 화면이 0건이다. 소비자 없이 도메인 모양을 굳히면 그 화면이 붙을 때 되돌려야 한다.
 
-- 앱 중첩 DTO도 서버를 따라 `PlaceParfaitImagePlacedByResponse`로 개명한다. 앱이 두 패키지에 같은 이름
-  `PlacedByResponse`를 둔 근거가 **"서버가 그렇다"**였는데(그 KDoc이 그렇게 적혀 있다) 서버가 한쪽을
-  개명해 그 근거가 사라졌다. 거울을 유지한다.
-- 캔버스 쪽 `PlacedByResponse`는 이름을 그대로 둔다(서버가 안 바꿨다).
+- `response/parfaitimage/PlaceParfaitImageResponse.kt`의 `PlacedByResponse`를 서버를 따라
+  **`PlaceParfaitImagePlacedByResponse`로 개명**한다(서버·앱 모두 상위 응답과 한 파일에 있는 톱레벨
+  클래스다 — 중첩 선언이 아니다). 앱이 두 패키지에 같은 이름을 둔 근거가 **"서버가 그렇다"**였는데
+  (그 KDoc이 그렇게 적혀 있다) 서버가 한쪽을 개명해 그 근거가 사라졌다. 거울을 유지한다.
+- ⚠️ **캔버스 쪽(`response/parfait/GetTodayParfaitResponse.kt`)의 `PlacedByResponse`는 `클래스 이름`만
+  그대로 둔다**(서버가 안 바꿨다). **필드 키는 반드시 `nameTagChip`으로 바꾼다** — 결정 1의 세 자리 중
+  하나가 바로 이 클래스다. 두 문장이 붙어 있으니 "이 파일은 손대지 않는다"로 읽지 말 것.
 
 > **C-202 Spotlight(PR #298)가 이 결정에 물리지 않는다.** 선행 라운드가 확인한 대로 그쪽은 칩을
 > `placedBy`가 아니라 `groupMembers`에서 `GroupMemberId`로 조인해 찾는데, **결정 3이 그 경로를
 > 채워 준다.** 즉 이 보류가 C-202를 막지 않는다.
 
+그래서 정확히 말하면 이 값은 "소비 화면이 생길 때 올린다"가 아니라 **"올릴 계획이 지금 없다"**이다 —
+알려진 유일한 소비자가 다른 경로를 쓴다. 계약 대조용으로 DTO에만 두는 상태를 언제까지 둘지가
+OQ-P-236 ②의 질문이고, 이 스펙은 그 질문을 닫지 않는다.
+
 ### 6. `RELEASED` → `DEFAULT`
 
-도메인 enum 값·KDoc·두 util의 분기·테스트를 함께 바꾼다. 지금은 서버가 보내는 `"DEFAULT"`가
-매퍼의 "모르는 문자열" 갈래로 빠져 `null`이 되고, `null`과 반납 값의 화면 표현이 같아서 **결과가 우연히
-맞는다.** 우연이 근거가 되면 안 되고, enum·KDoc이 존재하지 않는 계약 값을 가리키는 상태를 남길 수 없다.
+도메인 enum 값·KDoc·두 util의 분기·테스트를 함께 바꾼다.
+
+**지금 결과가 맞는 것은 우연이고, 그 우연이 두 겹이다.** ① 키가 어긋나 `"DEFAULT"`는 매퍼에 **도달조차
+못 한다**(필드가 통째로 `null`이다). ② 결정 1로 키를 고치면 그제서야 도달하는데, 그때는 `"DEFAULT"`가
+매퍼의 "모르는 문자열" 갈래로 빠져 다시 `null`이 된다. 두 경우 다 화면 표현이 반납 값과 같아서 안 드러난다.
+우연이 근거가 되면 안 되고, enum·KDoc이 존재하지 않는 계약 값을 가리키는 상태를 남길 수 없다.
 
 KDoc에 서버가 이번에 명시한 성질을 싣는다 — **`DEFAULT`는 `TYPE1`~`TYPE12`와 달리 유일성 제약이 없어
 한 그룹 안에서 여럿이 동시에 가질 수 있다.** "값이 없다(`null`)와 뜻이 다르다"는 기존 문장은 그대로 살린다.
+
+**함께 고칠 KDoc은 넷이다**(전부 이번 delta로 거짓이 된 서술이다).
+
+| 자리 | 지금 적힌 것 | 왜 거짓인가 |
+|---|---|---|
+| `MyParfaitGroupVO.lastPlacedByNametagChip` | "토핑이 하나도 없으면 `null`" | 이제 **생성자의 칩**이 온다 |
+| `MyParfaitGroupVO.recentImageUploadedAt` | "오프셋이 붙은 절대 시점" | 오프셋은 서버가 아니라 **앱이 부여**한다(결정 2) |
+| `ParfaitGroupMemberVO.nametagChip` | "계약 타입이 널 허용이라" | 서버는 **비널로 좁혔고** 앱만 널 허용을 유지한다(결정 1) |
+| 캔버스 `PlacedByResponse` | "서버가 그쪽엔 이 값을 주지 않아서다" | 이제 **준다**(결정 5가 보류 사유를 갈아 끼운다) |
 
 ### 7. 그룹 생성 응답 3필드는 DTO에만 받는다
 
@@ -183,17 +239,27 @@ KDoc에 서버가 이번에 명시한 성질을 싣는다 — **`DEFAULT`는 `TY
 (목록은 `parfait_group.created_at`, 생성은 `updatedAt`). 지금은 읽지 않으니 무해하지만, 읽게 되는 날
 두 값이 같다고 가정하면 안 된다 → OQ-P-235 ③.
 
+**⑦이 남기는 문서 드리프트 하나를 함께 고친다** — `ParfaitService.getGroupsByGroupIdParfaits`의 KDoc이
+서버 기본값을 "`to` = 오늘, `from` = `to` − 30일"로 적는데, 그 "오늘"이 이제 자정이 아니라
+`ParfaitDay.current()`(03시 경계)다. 동작은 안 바뀐다(유일한 프로덕션 호출부 `GetParfaitHistoriesUseCase`가
+항상 범위를 명시한다) — **기술만 낡았다.** 선행 라운드가 03시 경계를 앱 코드에 새긴 직후라 더 눈에 띈다.
+
 ## 화면 반영
 
 | 자리 | 지금(선행 라운드 결과) | 바꿈 |
 |---|---|---|
 | S-101 멤버 칩 | `member.nametagChip` → 12종 1:1 | **동작은 같고 키만 살아난다**(지금은 `null`이라 전부 `Default`) |
-| G-001 그룹 칩 | `lastPlacedByNametagChip` → 짝 묶음 | 동상 |
+| G-001 그룹 칩 | `lastPlacedByNametagChip` → 짝 묶음 | 키가 살아나고, ⚠️ **토핑 0건 그룹의 색이 바뀐다**(아래) |
 | G-001 경과시간 | 매퍼가 던져 **목록 전체 실패** | KST 부여로 복구 |
 | C-001 상단 멤버 칩 | `NAMETAG_CHIP_PALETTE[index % 7]` | `member.nametagChip` → 12종 1:1, 없으면 `Default` |
 
-앞의 둘이 "바꿈"에 코드 변경이 없는 것이 이 라운드의 성격을 보여 준다 — **선행 라운드의 코드는 옳았고
-키만 어긋나 있었다.**
+S-101은 코드 변경 없이 키만 고치면 되는데, **G-001은 그렇지 않다.** 서버 `COALESCE`의 두 번째 폴백이
+**그룹 생성자의 칩**이라, 토핑이 0건인 그룹의 칩이 중립 `DEFAULT`에서 **생성자 색**으로 바뀐다. 앱 코드는
+안 바뀌지만 **화면에 보이는 값이 바뀐다** — "마지막으로 그룹을 바꾼 사람"이라는 칩의 의미가 그 그룹에서는
+"만든 사람"이 되는 셈이고, 그것을 앱이 구분할 수단은 `recentImageUrl`이 `null`인지뿐이다(→ OQ-P-235).
+이 라운드는 서버가 준 값을 그대로 그린다.
+
+같은 이유로 "선행 라운드의 코드는 옳았고 키만 어긋나 있었다"는 **S-101과 C-001에만** 해당한다.
 
 ## 범위 밖
 
@@ -215,8 +281,8 @@ TDD로 간다. 매퍼 단독 테스트는 만들지 않는다(규약) — 판단
 
 | 대상 | 잠글 것 |
 |---|---|
-| `ParfaitGroupRemoteDataSourceImplTest` | 오프셋 없는 `"2026-08-01T12:00:00"`이 **KST 기준 `Instant`**가 된다 · `"DEFAULT"` · `null` · 미지 문자열 → `null` |
-| 파르페 DataSource 테스트 | `groupMembers[].nameTagChip`이 `CanvasMemberVO`로 온다 · 없으면 `null` |
+| `ParfaitGroupRemoteDataSourceImplTest` | 오프셋 없는 `"2026-08-01T12:00:00"`이 **KST 기준 `Instant`**가 된다 · `"DEFAULT"` · `null` · 미지 문자열 → `null`. **지우는 `MyParfaitGroupVOMapperTest`의 커버리지가 여기로 온다** |
+| `ParfaitRemoteDataSourceImplTest` | `groupMembers[].nameTagChip`이 `CanvasMemberVO`로 온다 · 없으면 `null` |
 | `ColorChipType`(canvas, 신설) | 12갈래 전부 · `DEFAULT` → `Default` · `null` → `Default` |
 | 기존 두 util 테스트 | `RELEASED` 케이스를 `DEFAULT`로 |
 | `CanvasMainViewModelTest` | 상단 칩이 **인덱스가 아니라 서버 값**에서 온다 · 칩이 없는 멤버는 `Default` · **멤버 하나가 빠져도 남은 사람 색이 안 밀린다**(선행 인덱스 규칙의 실패 모드를 직접 잠근다) |
@@ -230,8 +296,11 @@ TDD로 간다. 매퍼 단독 테스트는 만들지 않는다(규약) — 판단
 ## 열린 질문
 
 - **키 리네임을 계약 문서 감사 말고 잡을 수단이 없다** → OQ-P-234.
-- **`recentImageUploadedAt`이 두 뜻을 겸한다** — 토핑이 없으면 그룹 생성 시각이라, G-001이 활동 0건 그룹에도
-  경과시간을 그린다. 가르려면 `recentImageUrl`이 `null`인지를 함께 봐야 한다 → OQ-P-235.
-- **같은 규칙의 칩 변환이 두 벌** → 결정 4. 공용화 자리와 모듈 간선 결정이 남는다.
-- **`ToppingPlacerVO` 칩 승격 시점** → 결정 5. 서버 쪽 선행 조건은 이번에 사라졌다.
+- **토핑 0건 그룹이 시각·칩 **둘 다** 거짓말한다** — 시각은 그룹 생성 시각, 칩은 생성자 색이 온다.
+  G-001이 활동 0건 그룹에도 경과시간과 사람 색을 그린다. 가르려면 `recentImageUrl`이 `null`인지를 함께
+  봐야 한다 → OQ-P-235.
+- **같은 규칙의 칩 변환이 세 벌** → 결정 4. 공용화 자리는 있고(`core:ui`), 막는 것은
+  `implementation`/`api` 가시성 미결이다.
+- **`ToppingPlacerVO` 칩 승격 시점** → 결정 5 · OQ-P-236 ②. 서버 쪽 선행 조건은 이번에 사라졌는데
+  **알려진 소비자가 다른 경로를 쓴다** — "언제 올리나"가 아니라 "올릴 일이 있나"가 질문이다.
 - **칩 배정 규칙이 정책 문서에 없다** — `DEFAULT`도 정책 밖이다 → OQ-P-223.
