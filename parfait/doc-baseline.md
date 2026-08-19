@@ -333,13 +333,17 @@
   `feature/#300-sync-backend-api-250819`(서버 delta 반영 2차, PR #310,
   [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md). **base는 PR #308 브랜치다** —
   🔁 직전 회차의 "base는 `86f0f6b0`"은 develop만 놓고 잰 값이었다. develop 대조 시
-  `nameTagChip` 키가 없다. ⚠️ **아직 옛 #308 커밋을 품고 있어 새 #308의 자손이 아니다**(고유 커밋
-  11개) — #308을 푸시하기 전에 이 브랜치도 새 #308 위로 옮겨야 PR diff가 엉키지 않는다).
+  `nameTagChip` 키가 없다. 2026-08-20에 #308을 따라 새 #308 위로 옮겼다 — 여기도 옛 #308 커밋을
+  품고 있어 `--onto`로 옛 tip을 잘라냈고, 고유 커밋 11개를 옮긴 뒤 유닛 540건이 통과했다),
   **PR 스택은 `develop ← #307 ← #308 ← #310` 한 줄이다** — 서로 독립한 갈래가 아니므로 머지도
-  그 순서고, 위쪽을 리베이스하면 아래가 전부 따라 움직인다. 남은 리베이스는
-  `refactor/segmentation-develop`(develop 위)과 `feature/#300-sync-backend-api-250819`(#308 위)
-  둘이다 — 네 브랜치 모두 `origin`에 올라와 있으므로 확인은
-  `git merge-base --is-ancestor origin/<base> origin/<브랜치>`로 한다(base가 develop이 아닌 것이 둘이다).
+  그 순서고, 위쪽을 리베이스하면 아래가 전부 따라 움직인다. 2026-08-20에 셋을 그 순서대로 옮겨
+  **스택 전체가 이 기준선 위에 정렬됐다**(각 단계마다 `--onto`로 옛 부모 tip을 잘라냈다 — 자식이
+  부모의 옛 커밋을 품고 있어 단순 리베이스로는 중복이 되살아난다). **남은 리베이스는
+  `refactor/segmentation-develop` 하나**(develop 위)다 — 네 브랜치 모두 `origin`에 올라와 있으므로
+  확인은 `git merge-base --is-ancestor origin/<base> origin/<브랜치>`로 한다(base가 develop이 아닌
+  것이 둘이므로 `<base>`를 갈아 넣어야 한다).
+  ⚠️ **푸시는 스택 아래에서 위로**(#307 → #308 → #310) 해야 한다. 부모를 먼저 올리지 않으면
+  자식 PR의 diff에 부모 커밋이 남의 것처럼 섞인다.
   ⚠️ **문서 전제 오류 정정 이월**: [design-system](architecture/design-system.md)의 8엔트리 일괄 이관
   수치는 여전히 브랜치 기준 표기이고 develop 값(6파일)을 병기한 상태다.
 

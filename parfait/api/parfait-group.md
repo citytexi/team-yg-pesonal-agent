@@ -551,7 +551,7 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   보내지 않는 문자열이라 `DEFAULT`가 오면 매핑에서 `null`이 된다. develop에는 이 코드가 없어 계약 표의
   `⚠️불일치` 대상은 아니지만 **머지 전에 고쳐야 한다**
   → [open-questions](../synthesis/open-questions.md) [2026-08-19].
-  ✅ **같은 날 닫혔다(미머지)** — 그 작업을 develop 위로 rebase한 `feature/#300-sync-backend-api-250819`가
+  ✅ **같은 날 닫혔다(미머지)** — 그 작업 위에 얹힌 `feature/#300-sync-backend-api-250819`(PR #310)가
   세 DTO의 키를 `nameTagChip` 계열로 맞추고 `RELEASED`를 `DEFAULT`로 바꿨다
   ([plan](../plans/2026-08-19-server-delta-nametag-chip-keys.md) Task 2·3). **develop 머지는 아직이다.**
 - ⚠️ **신고 사유가 하드코딩 상수 하나**다(`GROUP_REPORT_REASON`) — 사유 선택 UI가 없는데 서버는
