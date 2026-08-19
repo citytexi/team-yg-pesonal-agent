@@ -76,6 +76,17 @@ tags: [architecture, parfait]
 **결과 전달이 "메모리 비트맵 + 파일 경로" 이원에서 경로 단일로 정리됐다** — 비트맵이 도메인 모델을
 타고 화면까지 실려 가지 않는다(대신 화면이 경로를 다시 디코드한다).
 
+> 📌 **경로가 둘이 됐다(2026-08-19, PR #290)** — `trimmedSubjectImagePath`가 붙어 세 값이다.
+> 같은 객체를 **두 가지 크기로** 들고 다녀야 하기 때문이다: 수동 편집(C-104/C-105)은 원본과 픽셀
+> 단위로 겹쳐 그려야 해 **원본 캔버스 크기**를 유지하고, C-106 배치·미리보기는 40%·48dp 계산이
+> 여백까지 세면 어긋나므로 **여백 없는 실제 객체 크기**가 필요하다. `:data`는 이미 구한
+> `subjectBounds`로 바로 잘라 두 번째 PNG를 떨구고(bounds가 `null`이면 원본 경로를 그대로 쓴다),
+> 편집을 거친 경우는 `ToppingEditMask.trimTransparentBounds()`가 알파 있는 픽셀의 최소 사각형을
+> 구한다. **대가는 캐시 파일과 메모리 버퍼가 각각 하나씩 는 것**이다 — `ToppingEditViewModel`의
+> "테두리가 없으면 같은 파일을 두 번 떨구지 않는다" 최적화도 이때 사라졌다
+> ([open-questions](../synthesis/open-questions.md) OQ-P-003 ③·OQ-P-228) →
+> [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md).
+
 **메서드 3개**로 늘었다 — `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
 `saveEditedImage(bitmapWrapper)`(손편집 결과를 캐시에 PNG로 떨구고 절대 경로 반환).
 `saveEditedImage`는 **넘겨받은 비트맵을 recycle하지 않는다**(수명은 넘겨준 쪽 몫, 코드 주석에 명시).

@@ -39,7 +39,7 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
     소비처는 `PictureConfirmRoute`(`returnResultOnly = false`)·`SegmentationRoute`·
     `SegmentationConfirmRoute`의 닫기 → `popUpTo<NavKeyCanvasMain>()`
     ([segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)).
-- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasMain`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`·`NavKeyCanvasBGEdit`(#231), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
+- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasMain`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`(#290 이후 도달 불가)·`NavKeyCanvasBGEdit`(#231)·`NavKeyCanvasToppingPlace`(#290), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
 - **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`ImageAdd`·`BGEdit`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
   - `rememberSaveableStateHolderNavEntryDecorator` — 엔트리별 상태 보존.
@@ -169,10 +169,13 @@ NavKeyCameraCustom ─┐
                     ├─▶ NavKeyPictureConfirm(uri, source) ══▶ NavKeySegmentation(sourceImageUri)
 NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다)          │
                                                                               ▼
-                                             NavKeySegmentationConfirm(sourceImageUri, subjectImagePath)
+                          NavKeySegmentationConfirm(sourceImageUri, subjectImagePath, trimmedSubjectImagePath)
                                                     │  ▲ ToppingEditResult(ResultEventBus)  │
                                                     ▼  │                                    ▼
-                                    NavKeyToppingEdit(source, segmentation, borderLayers)   NavKeyCanvasMove(imageUri)
+                                    NavKeyToppingEdit(source, segmentation, borderLayers)   NavKeyCanvasToppingPlace(imageUri)
+                                                                                             │ goTo(NavKeyCanvasMain(groupId = 0L))
+                                                                                             ▼
+                                                                                        C-001 캔버스 (⚠️ 아래 참고)
 ```
 
 - 확인 화면(C-101-confirm) → C-103은 **`goToAndPopCurrent`**다. 확인 화면이 걷히므로 세그멘테이션에서
@@ -190,6 +193,21 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
   뒤로가기 말고는 출구가 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 - 엔트리 3개는 규약 기본형(`YGScaffold { innerPadding -> …padding(innerPadding) }`)이고
   빌더 하나(`featureSegmentationEntryBuilder`)가 세 entry를 등록한다.
+
+> 📌 **마지막 목적지가 실물로 바뀌었다(2026-08-19, PR #290)** — 확인 화면의 "다음"이 자리채움이던
+> `NavKeyCanvasMove`를 버리고 **`NavKeyCanvasToppingPlace(imageUri)`**로 간다. 넘기는 값도 파일
+> 경로가 아니라 `File(...).toUri()`로 감싼 `file` 스킴 uri이고(배치 화면이 Coil로 읽는다), 그 대상은
+> 여백을 걷어낸 **트리밍본**이다(확인 화면이 `key.trimmedSubjectImagePath`로 초기화한다) →
+> [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md).
+>
+> ⚠️ **끝이 아직 흐름을 닫지 못한다.** 배치 확정은 서버로 가지 않고 이펙트만 쏘며, Route가
+> **`goTo(NavKeyCanvasMain(groupId = 0L))`**로 이동한다 — 그룹 id가 하드코딩(NavKey가 `imageUri`만
+> 싣는다)이고 `goTo`라 촬영·세그멘테이션·편집 화면이 **백스택에 그대로 쌓인다**. `popUpTo<T>()`가
+> 필요한 자리인데 그 확장은 아직 develop에 없다(미머지 `refactor/segmentation-develop`) →
+> [open-questions](../synthesis/open-questions.md) OQ-P-238.
+>
+> ⚠️ **`NavKeyCanvasMove`·`CanvasMoveRoute`·`CanvasMoveScreen`은 호출자를 잃은 채 남았다** — 엔트리도
+> 등록돼 있어 컴파일은 되지만 도달할 수 없다 → OQ-P-239.
 
 ## 캔버스 배경 편집 플로우 (2026-08-15, PR #231)
 
@@ -351,7 +369,7 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 `NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
 `NavKeyCanvasMain`(#268 승격 — `groupId`)·`NavKeyGroupSetting`(#285 승격 — `groupId`)·
-`NavKeyWebView`(#296 신설 — `title`·`url`)).
+`NavKeyWebView`(#296 신설 — `title`·`url`)·`NavKeyCanvasToppingPlace`(#290 신설 — `imageUri`)).
 **목적지 둘이 인자 하나로 합쳐진 첫 사례가 #296이다** — `NavKeyServiceTerms`·`NavKeyPrivacyPolicy`
 두 `data object`가 삭제되고 `NavKeyWebView(title, url)` 하나가 됐다. 두 화면은 상단바 제목과 여는
 주소만 달랐고 그 둘이 이제 서버 응답 값이라(`GET /api/v1/policies`의 `title`·`url`,

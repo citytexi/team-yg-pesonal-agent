@@ -5,8 +5,46 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `86f0f6b0` (`Merge pull request #305 from mash-up-kr/feature/#254-group-list-refresh-lottie`)
-- **요약**: **화면 둘이 하나로 줄었고, 자리채움 둘이 실물로 바뀌었다**(delta 3건).
+- **커밋**: `f12870a8` (`Merge pull request #290 from mash-up-kr/feature/topping-add-screen`)
+- **요약**: **경로의 끝이 채워졌는데, 끝에서 아무것도 저장되지 않는다**(delta 1건).
+  **#290**(`feature/topping-add-screen`): 토핑 생성 플로우의 마지막 자리채움
+  (`NavKeyCanvasMove` → 아무것도 안 하는 `CanvasMoveScreen`)이 **C-106 배치 화면**으로 바뀌었다.
+  목적지 `NavKeyCanvasToppingPlace(imageUri)` 한 벌이 생기고, 위키 [[C-106-토핑-배치-정책-v0.1]]의
+  초기 배치 규칙 **넷이 처음으로 코드에 들어왔다** — 긴 변 = 캔버스 너비 40%·정중앙·짧은 변 48 하한·
+  이탈 허용 + 클리핑. OQ-P-200이 "코드 어디에도 없다"고 적던 자리가 닫혔다. 들어온 방식이 두 가지를
+  말한다: 40% 상수를 `internal`로 열어 **읽기(서버 배치를 그리는 `CanvasToppingLayer`)와 쓰기(신규
+  배치)가 같은 값을 공유**하게 했고(③의 답이 "양쪽 다"로 났다), 48은 **dp로 굳었다**(②의 답, 정책은
+  px — C-104 브러시 굵기가 이미 같은 방식으로 갈렸다). 계산 자리는 ViewModel이다 — 캔버스 실측과
+  토핑 원본 크기가 서로 다른 시점에 오므로 화면이 인텐트 둘로 올려 주고 어느 쪽이 먼저 오든 다시
+  시도하되 **사용자가 한 번 손대면 멈춘다**.
+  **한계값도 고정 배율이 아니라 역산이라는 것이 이 화면의 판단**이다 — 리사이즈 하한은 48dp 최소 터치
+  영역에서, 상한은 캔버스 긴 변의 1.5배에서 각각 원본 크기로 되돌려 계산한다(고정값이면 큰 원본
+  사진이 "처음 크기로 못 줄고" "아무리 키워도 캔버스를 못 벗어난다"). 회전은 무제한이고, **정책이
+  회전을 아예 다루지 않아** 감도·상한이 전부 코드 판단이다(OQ-P-241 신설). 그리기는 `center`와
+  `sizeAfterScale`을 **한 번만 계산해 이미지·스트로크·핸들 셋에 그대로 넘긴다** — 같은 배율을 서로
+  다른 modifier로 표현하면 그 둘이 실제로 같은 값을 내는지가 Compose 내부 구현에 달리기 때문이고,
+  클리핑만 셋이 갈린다(스트로크는 안 잘린다).
+  겸해 **세그멘테이션 결과가 두 벌이 됐다** — 수동 편집은 원본과 픽셀로 겹쳐야 해 원본 크기를
+  유지하고, 배치·미리보기는 여백이 붙으면 40%·48dp 계산이 어긋나 실제 객체 크기가 필요하다.
+  `trimmedSubjectImagePath`가 신설되고 `NavKeySegmentationConfirm`도 두 경로를 다 싣는다. **대가는
+  캐시 파일과 메모리 버퍼가 각각 하나씩 는 것**이고, "테두리가 없으면 같은 파일을 두 번 떨구지
+  않는다" 최적화가 사라져 편집 경로도 항상 두 번 저장한다(OQ-P-228 재도출 무효).
+  `CanvasBGEditScreen`의 private 컴포저블 3종은 모듈 `component/`로 올라가 두 화면이 공유하고
+  (`toppingId: Long` → `key: Any?`), 그 과정의 `size` → `requiredSize` 이관이 **C-301 편집 탭 토핑에도
+  적용됐다**(기존 화면에 남긴 유일한 동작 변경). `YGScaffoldV2`는 Route가 소유해 **이관 8화면째**
+  이지만 이건 이관이 아니라 신규 화면이 규약을 지킨 것이고, V1 잔여는 6파일 그대로다.
+  ⚠️ **끝이 흐름을 닫지 못한다** — 확인 버튼은 위치·크기·각도 넷을 다 만들어 놓고 이펙트로만
+  흘리고(서버 계약에 좌표·배율·회전이 없다), Route는 `goTo(NavKeyCanvasMain(groupId = 0L))`로
+  이동한다. 그룹 id가 하드코딩이고 `goTo`라 흐름 화면이 백스택에 그대로 쌓인다(OQ-P-238 신설) —
+  **이것이 미머지 세그멘테이션 스펙의 캐시 정리 안전 근거를 다시 거짓으로 만든다**(그 스펙은 #290
+  머지를 예상하고 처방까지 적어 뒀다). 호출자를 잃은 `NavKeyCanvasMove` 계열은 도달 불가로
+  남았고(OQ-P-239 신설), 배치 화면이 보여 주는 캔버스는 **흰 바탕에 자기 토핑 하나뿐**이라 겹침을
+  못 보고 자리를 고른다(OQ-P-240 신설). 규약 이탈도 복사됐다 — `60.dp`·`14.dp` 리터럴과 "공통에
+  없음" 주석이 그대로 옮겨졌고(OQ-P-203 ③), 드래그 핸들 접근성 공백은 공용화되면서 **두 화면**으로
+  번졌다(OQ-P-202 ③).
+  테스트: 유닛 474 → **484건**(`ToppingGeometryTest` 4 · `CanvasToppingPlaceViewModelTest` 6).
+  ⚠️ **실기기 확인 없음.**
+  직전 회차 요약: **화면 둘이 하나로 줄었고, 자리채움 둘이 실물로 바뀌었다**(delta 3건).
   **#296**(`feature/#281-policy-detail-webview`): 약관 종류마다 있던 목적지가 사라졌다.
   `NavKeyServiceTerms`·`NavKeyPrivacyPolicy` 두 `data object`와 Route/Screen/ViewModel 2벌이
   **`NavKeyWebView(title, url)` 한 벌**로 합쳐지고 **ViewModel은 아예 없어졌다** — 이 화면의 상태는
@@ -242,14 +280,21 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-18 (33회차)
-- **미머지 제외 항목**: `refactor/segmentation-logic`(세그멘테이션 파이프라인 하드닝 + 스캐폴드 8엔트리
-  일괄 이관 + `popUpTo<T>()` — **로컬 브랜치이고 리모트에도 없다**.
-  [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md) 선반영 완료. develop 대조 시
-  `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`인 것으로 확인된다),
-  `feature/#294-group-ssot`(그룹 목록·상세 인메모리 SSoT — 이 기준선 위 커밋 10개,
+- **검증일**: 2026-08-19 (34회차)
+- **미머지 제외 항목**: `refactor/segmentation-develop`(세그멘테이션 파이프라인 하드닝 + 스캐폴드 8엔트리
+  일괄 이관 + `popUpTo<T>()` — **로컬 브랜치이고 리모트에도 없다**. develop `86f0f6b0` 기준이라 이번
+  delta로 **한 세대 뒤처졌다**. [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md) 선반영 완료.
+  develop 대조 시 `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`이고 `popUpTo`도
+  없는 것으로 확인된다. ⚠️ 리베이스 시 드롭했던 커밋 둘 — `NavKeyCanvasMove` 계열 삭제와 배치 완료
+  이펙트 `popUpTo` 전환 — 이 **되살아날 자리가 됐다**),
+  `feature/#294-group-ssot`(그룹 목록·상세 인메모리 SSoT,
   [스펙](specs/2026-08-17-group-ssot.md)·[플랜](plans/2026-08-17-group-ssot.md)·[ADR-0023](adr/0023-group-in-memory-ssot.md)
-  선반영 완료). 그 브랜치는 이번 delta의 `Enter` 인텐트를 **전제로** 쓰고 대상만 캐시 구독으로 바꾼다.
+  선반영 완료. develop 대조 시 `GroupLocalDataSource` 심볼이 없다),
+  `feature/#300-sync-backend-api-250819`(서버 delta 반영,
+  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md). develop 대조 시 `nameTagChip` 키가 없다).
+  **셋 다 이번 delta 이전 커밋을 base로 두고 있어 머지 전에 리베이스가 필요하다.**
+  ⚠️ **문서 전제 오류 정정 이월**: [design-system](architecture/design-system.md)의 8엔트리 일괄 이관
+  수치는 여전히 브랜치 기준 표기이고 develop 값(6파일)을 병기한 상태다.
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
@@ -317,3 +362,4 @@
 | 2026-08-17 | `2d15cd9f` | Merge #287 (#277 group-leave-report-api) | delta 2건(#285·#287) — **S-101 그룹 설정 결선 라운드**. **#285**: 상세 조회로 mock 기본값 5종이 사라지고 화면이 서버를 본다. 계약에 그룹명이 없어 `GetGroupDetailUseCase`가 `getMyGroups()`를 **한 번 더 불러 이름만 붙이고**(그 실패는 실패로 치지 않는다 — 빈 제목 + 나머지 표시), 조합 결과가 서버 응답에 1:1 대응하지 않는 유일한 그룹 VO `GroupDetailVO`다. `isMe`는 닉네임 중복 허용 이후라 **`memberId`** 로 판별(계정 SSoT 구독). **진입도 이때 열렸다** — `NavKeyGroupSetting`이 `data class(groupId)`가 되고 C-001 상단 메뉴가 호출자가 돼 OQ-P-138(4일간 도달 불가) 해소. 컨테이너도 `YGScaffold`(엔트리) → `YGScaffoldV2`(Route)로 이관돼 **결선 라운드에 스캐폴드 이관이 딸려 온 첫 사례**(V1 잔여 8→7파일, OQ-P-204 ①에 사례로 답). **#287**: `leaveGroup`·`reportGroup`이 올라와 **DataSource 8함수 전량 = Repository 8함수**가 됐고 parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부). OQ-P-141의 셋 중 **①만 채우고 둘은 필요 없게 만들었다** — in-flight 필드 신설, 순서는 뒤집지 않고 스캐폴드 오버레이가 덮음, 그래서 `YGModalPopup` 좌우 플래그 분리 불필요. 나가기·신고는 결과가 같아 한 함수로 모으고 성공 시 **`replaceAll(NavKeyGroupList)`**(백스택이 전부 떠난 그룹 것이라 되돌아가면 403). 조치: 사후 스펙 1건 신규(`2026-08-17-s101-group-setting-api`, implemented·archive + README 등록), s101·Danger Zone 아카이브 스펙에 결선 노트, api/parfait-group(`android_status: done`·엔드포인트 표 결선됨·Repository 표 3행·Android 매핑 5건)·api/README(도메인 표·라운드 노트, 소비 19건), data-layer(Repository 인벤토리·방침 종결·UseCase 조합 첫 사례)·navigation-flow(진입·이탈 절 신설·리셋 관용구 4번째·Assisted 목록·구 형태 7파일)·module-structure(feature 간 `:api` 의존 2건)·state-management(in-flight 분리 규약)·design-system(V2 4화면·잔여 7파일) 갱신. open-questions: **OQ-P-138 해소됨**, OQ-P-139·140·141·167·186·204 갱신, **신규 3건**(OQ-P-216 상세 2회 호출·217 신고 사유 상수·218 403/404가 일시 장애와 같은 문구). 유닛 436 → **456건**. 미머지: 없음 |
 | 2026-08-18 | `8730ffa3` | Merge #297 (#288 group-list-refresh) | delta 1건(#297). **화면이 앞에 설 때마다 다시 묻기 시작했다** — G-001·C-001에 `Enter` 인텐트 + Route `LifecycleResumeEffect`. `init` 조회는 화면 수명이 아니라 ViewModel 수명에 걸린 것이라 백스택 아래에서 살아남아 낡았고, 그것이 닫혔다(**OQ-P-169 해소**). 복귀 관용구(`goToSingleClearTop`)는 손대지 않았다 — 재조회가 필요한 이유가 복귀가 아니라 **남이 바꾸기 때문**이라서다(OQ-P-136과 분리). **실패 규칙이 뒤집혔다**: 목록이 남아 있으면 화면 유지 + 당긴 새로고침 실패만 토스트(`ShowRefreshError`), 목록이 비면 종전대로 에러 화면. 토스트 호스트 때문에 G-001 Route가 **`YGScaffoldV2`**로 이관 — **결선 아닌 라운드가 이관을 끌어온 첫 사례**(V1 잔여 7 → **6파일**, OQ-P-204 ①). C-001은 `syncToday()` 뒤 **오늘을 볼 때만** 오늘 캔버스 + **올해** 달력 기록을 재조회(연도 목록·지난 캔버스는 그대로), 부작용 GET을 재진입마다 부르되 ViewModel 생성만으로는 캔버스가 안 생기게 됐다. `syncToday()`가 열어 둔 채 자정을 넘긴 경우를 맡는다. 문서: 사후 스펙 1건 신규(`2026-08-17-screen-resume-refetch`, implemented·archive + README 등록), g001·c001-today-detail·c201-calendar-server 아카이브 스펙에 갱신 노트, state-management(재진입 재조회 절 신설)·navigation-flow(`goToSingleClearTop`·생성 참여 복귀)·design-system(V2 5화면·잔여 6파일) 갱신. open-questions: **OQ-P-169 해소됨**, OQ-P-046·204 갱신, **신규 1건**(OQ-P-221 재진입 재조회가 규약 아님 + 실패 표현 편차). 범위 밖 정정 1건: g001 스펙의 토핑 클릭 미결선 서술이 #268 이후 stale이라 함께 고쳤다. 유닛 456 → **467건**. 미머지: `feature/#294-group-ssot`(스펙·플랜 등록됨) |
 | 2026-08-18 | `86f0f6b0` | Merge #305 (#254 group-list-refresh-lottie) | delta 3건(#296·#295·#305). **#296**(약관 웹뷰): `NavKeyServiceTerms`·`NavKeyPrivacyPolicy` + Route/Screen/ViewModel 2벌 → **`NavKeyWebView(title, url)` 1벌**, **ViewModel 삭제**(상태가 인자뿐·부를 API 없음), 엔트리 머티리얼 `Scaffold` → Route `YGScaffoldV2`. 온보딩 약관의 마지막 stub(`NavigateToUrl`) 해소 — `ClickTermDetail(policy)`·`NavigateToPolicyDetail(title, url)`로 개명. 설정 화면이 `GetPoliciesUseCase` **두 번째 소비처**(policy 도메인 `done` 유지). **#295**(버전 정보): `core:util:android`에 `AppInfo#APP_VERSION_NAME`(모듈 `buildConfig` 첫 활성 + `:app`과 같은 카탈로그 항목 재기입) → S-001 버전 placeholder 해소, 표시 `v` 접두는 포맷 리소스. `YGListItem` 두 오버로드 줄 높이를 컴포넌트가 `heightIn`으로 정렬. **#305**(로띠): `YGLoadingLottie`(+`YGLoadingTone`) 신설·`YGLoadingOverlay` 인디케이터 교체(Dim `Black25`→`Black75`), G-001 당겨서 새로고침 커스텀 인디케이터, 스플래시 로띠 + **부트스트랩·재생 종료 둘 다 대기**(`SplashState` 2필드). 조치: architecture 3건(design-system 트리·컴포넌트 표·화면 컨테이너·로띠 의존·`YGListItem` 노트 / module-structure terms·`core:util:android` 행 / navigation-flow NavKey 통합·출처 인자 비적용·스플래시 진입 조건) + api 2건(policy.md Android 매핑·앱 동작 메모·미결 경고, README 도메인 표 주석 — `android_status`·`verified` 불변) + 아카이브 스펙 6건 as-built(s004·feature-common-terms-module·intro-term-agree·app-setting-s001·ygscaffold-v2·user-info-ssot). **문서 전제 오류 1건 정정**: design-system이 `refactor/segmentation-logic`(로컬 전용 브랜치) 수치를 "develop 기준 13화면·V1 3파일"로 적고 있어 브랜치 기준으로 표기 + develop 값(6파일) 병기, 미머지 추적에 추가. open-questions: **부분 해소 1건**(OQ-P-205 ① 인디케이터), 마커 3건(OQ-P-204 이관 계기 확장·OQ-P-068 계약 공백이 화면으로·OQ-P-125 로띠 애셋 소유), **신규 5건**(OQ-P-229 스플래시 대기 상한·OQ-P-230 로띠 호출 관용구 갈림·OQ-P-231 약관 탭 무반응·OQ-P-232 웹뷰 출처 검증·OQ-P-233 버전 상수 이중 출처). 신규 spec 작성 0건(신규 화면 없음, `YGLoadingLottie`는 ygscaffold-v2 스펙 as-built로 흡수). 테스트 467 → **474건**. 미머지: `refactor/segmentation-logic`·`feature/#294-group-ssot` |
+| 2026-08-19 | `f12870a8` | Merge #290 (feature/topping-add-screen) | delta 1건(#290). **C-106 토핑 배치 화면 신설** — 자리채움 `NavKeyCanvasMove`(아무것도 안 하는 `CanvasMoveScreen`)를 대신해 `NavKeyCanvasToppingPlace(imageUri)` + Route/Screen/ViewModel 한 벌이 들어와 토핑 생성 플로우의 마지막 자리가 채워졌다. 위키 [[C-106-토핑-배치-정책-v0.1]]의 초기 배치 규칙 **넷이 처음으로 코드에 들어왔다**(긴 변 = 캔버스 너비 40%·정중앙·짧은 변 48 하한·이탈 허용 + 클리핑) → **OQ-P-200 종결**. 40% 상수를 `internal`로 열어 읽기·쓰기가 공유(③ = 양쪽 다), 48은 **dp로 굳음**(② 확정, 정책은 px). 계산은 ViewModel 소유 — 캔버스 실측·토핑 원본 크기가 서로 다른 시점에 오므로 인텐트 둘로 받아 매번 재시도하되 사용자가 손대면 멈춘다. **리사이즈 한계는 고정 배율이 아니라 역산**(하한 = 48dp 최소 터치, 상한 = 캔버스 긴 변 1.5배). 그리기는 `center`·`sizeAfterScale`을 한 번만 계산해 이미지·스트로크·핸들에 공유하고 클리핑만 셋이 갈린다. 세그멘테이션 결과가 **두 벌**로 갈림(`trimmedSubjectImagePath` 신설 — 편집은 원본 크기 유지, 배치는 여백 없는 실제 크기) → 캐시 PNG·메모리 버퍼 각 1 증가, "테두리 없으면 한 번만 떨군다" 최적화 소멸. `CanvasBGEditScreen` private 컴포저블 3종이 모듈 `component/`로 승격돼 두 화면 공유(`toppingId: Long` → `key: Any?`), 그 과정의 `size` → `requiredSize`가 C-301 토핑에도 적용. `YGScaffoldV2` 이관 **8화면째**(V1 잔여 6파일 불변). 조치: 신규 as-built 스펙 1건(c106-topping-place, archive) + specs README 등록·c103 아카이브 스펙 목적지/모델 정정, navigation-flow(NavKey 목록·토핑 생성 플로우 다이어그램·도달 불가 표기)·design-system(이관 8화면·`YGFloatingBarEdit` 두 번째 화면·핸들 관용구 공용화)·data-layer(`SegmentationResult` 3필드)·module-structure(화면 간 공유 컴포저블은 모듈 `component/`) 갱신, open-questions: **OQ-P-200 해소** · OQ-P-209 부분 해소(①) · OQ-P-202/203/204/207/228 사례 갱신 · **신규 4건**(OQ-P-238 `groupId = 0L` 하드코딩 + 백스택 누적 / OQ-P-239 `NavKeyCanvasMove` 도달 불가 / OQ-P-240 배치 화면이 실제 캔버스가 아님 / OQ-P-241 회전·리사이즈 한계에 정책 근거 없음). 미머지 세그멘테이션 스펙의 캐시 정리 안전 근거가 **다시 거짓**이 됨을 그 스펙에 기록. 유닛 474 → **484건**. 미머지: `refactor/segmentation-develop`·`feature/#294-group-ssot`·`feature/#300-sync-backend-api-250819`(셋 다 리베이스 필요) |

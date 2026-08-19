@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-18
-related_spec: user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+verified: 2026-08-19
+related_spec: c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -2342,17 +2342,31 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 초기 배치 계산을 어디에 둘지 — 화면·`domain`·`core:designsystem` 중 어디가 소유하는가
   (캔버스 폭이 필요하므로 측정 결과에 붙는다). ② 최소 터치 방어의 단위(정책은 px, 코드 좌표계는 dp)를
   확정. ③ 이 규격을 새 배치에만 적용할지, 서버에서 받은 기존 토핑에도 적용할지.
-- **상태**: 미해결 (**초기 크기 40%만 자리를 얻었다** — 2026-08-17)
-  > 📌 **규격 셋 중 하나가 코드에 들어왔다(2026-08-17, PR #268)** — `CanvasToppingLayer`의
+- **상태**: 해소됨 (**규격 넷 전부 코드에 들어왔다** — 2026-08-19, PR #290. 단 이 배치가 저장으로
+  이어지지 않는 것은 OQ-P-209·OQ-P-238이 이어받는다)
+  > ✅ **남은 셋이 한꺼번에 들어왔다(2026-08-19, PR #290)** — C-106 배치 화면이 생기면서
+  > `CanvasToppingPlaceViewModel#applyInitialPlacementIfNeeded`가 **정중앙**(`(canvas - base) / 2`)과
+  > **48 하한**(`MIN_TOPPING_SHORT_SIDE`로 역산한 배율과 40% 배율 중 큰 쪽)을 계산하고, 좌표를
+  > clamp하지 않아 이탈 허용도 그대로다. 항목별 답:
+  > - ① **초기 배치 계산은 ViewModel이 소유**한다 — 캔버스 실측과 토핑 원본 크기가 서로 다른 시점에
+  >   비동기로 오므로 화면이 인텐트 둘(`OnCanvasMeasured`·`OnToppingBaseSizeMeasured`)로 올려 주고,
+  >   어느 쪽이 먼저 오든 다시 시도하되 **사용자가 한 번 손대면 멈춘다**(`hasUserAdjustedPlacement`).
+  >   `domain`·`core:designsystem` 어느 쪽도 아니다.
+  > - ② **단위는 dp로 굳었다.** 정책 문서는 여전히 px이고, C-104 브러시 굵기가 이미 같은 방식으로
+  >   갈렸다(값은 같고 단위만 다르다).
+  > - ③ **양쪽 다에 적용된다.** 40% 상수를 `internal`로 열어 읽기(`CanvasToppingLayer`)와
+  >   쓰기(신규 배치)가 **같은 값을 공유**한다.
+  >
+  > 📌 **직전 기록 — 규격 셋 중 하나가 먼저 들어왔다(2026-08-17, PR #268)** — `CanvasToppingLayer`의
   > `TOPPING_BASE_LONG_SIDE_RATIO`가 **`scale = 1.0`의 뜻을 "긴 변이 Canvas-Area 너비의 40%"로** 못
   > 박았다(정사각 박스 + `ContentScale.Fit`이라 원본 크기를 몰라도 성립한다). 이탈 허용 + 클리핑도
   > 그대로 일치한다. **다만 이것은 서버에서 받은 배치를 그리는 규칙**이고, **초기 위치(정중앙)·최소
   > 터치 방어(48px)는 여전히 코드에 없다** — 새로 얹는 경로 자체가 없기 때문이다(OQ-P-209).
   > ③(새 배치에만 적용할지, 받은 토핑에도 적용할지)은 **받은 토핑에 적용하는 쪽으로 먼저 굳었다**:
   > 서버가 `scale`의 단위를 말하지 않아 그 해석이 곧 40% 규칙이 됐다(OQ-P-207).
-- **해소 메모**: 남은 둘은 OQ-P-199 ①·OQ-P-209와 같은 라운드에서 정해진다. 정하면
-  [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md) 정책 대조 표와
-  [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md) 정책 대조 표를 갱신한다.
+- **해소 메모**: 규격 자체는 [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md)
+  정책 대조 표가 정본이다. **② 단위(px↔dp)는 정책 문서 쪽이 아직 안 맞았고**, 정책이 다루지 않는
+  회전·리사이즈 한계를 코드가 새로 정한 것은 OQ-P-241로 갈렸다.
 
 ### [2026-08-16] 편집하러 간 토핑이 누구인지를 Route의 `rememberSaveable`이 기억한다
 
@@ -2382,7 +2396,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   타인 토핑 탭의 규칙을 정책에 명시해야 한다(위키 소관). ② 본인 토핑의 "탭 = 편집 진입" vs
   "탭 = 선택 후 버튼"을 정책 쪽에 맞출지 코드 쪽으로 정책을 고칠지. ③ 드래그 조작의 접근성 대체 수단
   (증분 버튼·semantics 커스텀 액션)을 둘지.
-- **상태**: 미해결
+- **상태**: 미해결 (**③은 화면 둘로 번졌다** — 2026-08-19)
+  > 📌 **핸들이 공용 컴포저블이 되면서 문제도 같이 옮겨 갔다(2026-08-19, PR #290)** — 같은 조합을 감싼
+  > `ToppingDragHandleButton`이 `groups/canvas/impl`의 `component/`로 올라가 C-301 편집 탭과 C-106 배치
+  > 화면이 공유한다. **공용화는 접근성을 고치지 않았다** — 여전히 `onClick = {}` + `Modifier.dragBy`라
+  > 스크린리더에는 눌리는 버튼인데 눌러도 아무 일이 없고, 이제 그런 자리가 두 화면에 있다.
+  > 고칠 자리가 한 곳으로 모인 것은 이득이다.
 - **해소 메모**: ①②는 위키 [[open-questions]]의 "에딧 모드 삭제 비고 vs C-301~C-306 잔존" 미결과
   같은 자리다. 정하면
   [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md) 정책 대조 표를 갱신한다.
@@ -2402,7 +2421,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   드래그·선택 토글도 예외로 두지 않는다(무리플이라 시각은 그대로, 스로틀만 얹힌다).
   ③ 편집 화면용 치수(60·14·2·7.5·9·7dp)를 토큰 스케일에 올릴지 — A-002·C-201이 남긴 "스케일 공백"
   지적과 같은 자리다.
-- **상태**: 미해결
+- **상태**: 부분 해소 (② 해소, ①③ 잔존 — **③은 두 번째 화면으로 복제됐다**)
+  > 📌 **③이 복사됐다(2026-08-19, PR #290)** — C-106 배치 화면이 캔버스 영역에 **같은 값**
+  > (상단 60dp·하단 14dp)을 리터럴로 다시 적고 **"공통에 없음" 주석까지 그대로 옮겼다.** 리터럴이 두
+  > 화면에 흩어졌으므로 토큰으로 올릴 때 고칠 자리도 둘이다. ①(회전 가능한 점선 테두리)은 이번에
+  > `dashedBorder()`로 흡수되는 대신 **화면 밖 `component/` 패키지로 올라가 두 화면이 공유**하는
+  > 형태가 됐다 — 디자인시스템으로 가지 않았으니 물음 자체는 남는다.
 - **해소 메모**: ①은 [design-system](../architecture/design-system.md) "그리기 프리미티브 소유"
   항목(현재 네 곳 + 이번 예외)과 함께 정한다. ②③은 [2026-08-04]·[2026-08-16] 규약 이탈 항목과 묶인다.
 
@@ -2418,7 +2442,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 잔여 8파일을 화면별 API 결선 라운드에 붙일지, 이관만 하는 라운드를 따로 돌릴지.
   ② `ERROR` 승급·V1 파일 삭제 시점. ③ 공존 기간 동안 새로 생기는 화면이 규약(Route 소유)을 지키는지
   기계로 확인할 수단이 없다 — 지금은 리뷰가 유일한 관문이다.
-- **상태**: 미해결 (**8파일 → 7파일 → 6파일**, 이관 화면은 7개)
+- **상태**: 미해결 (**8파일 → 7파일 → 6파일**, 이관 화면은 8개)
 - **해소 메모**: 이관이 끝나면 [design-system](../architecture/design-system.md) "화면 컨테이너"의
   V1 항목과 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번의 "(구 형태)" 서술을
   함께 지운다. OQ-P-167(실패 표현 갈래)과는 별개 축이다 — 이관해도 실패 표현이 통일되지는 않는다.
@@ -2442,6 +2466,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 하다(같은 논리가 `refactor/segmentation-logic` 8엔트리 일괄 이관이다). **V1 잔여 파일 수는 6으로
   > 그대로다** — 스플래시가 빠져도 `feature/intro/impl` EntryBuilder에 약관 동의 엔트리가 남는다.
   > 이관 화면은 7개(A-002·S-003·S-002·S-101·G-001·스플래시·약관 웹뷰).
+  > 📌 **③이 처음으로 시험대에 올랐고 통과했다(2026-08-19, PR #290)** — C-106 토핑 배치가 공존 기간에
+  > **새로 생긴 화면**인데 이관 대상이 아니라 처음부터 Route에서 V2를 소유했다. 다만 통과 여부를 가른
+  > 것은 리뷰이고, ③이 묻는 **기계 확인 수단은 여전히 없다.** 이 화면은 부를 API가 없어
+  > `isLoading`·`toastPolicy`를 안 넘긴다. **V1 잔여는 6파일 그대로**이고(같은 모듈 EntryBuilder의 옛
+  > 엔트리들이 남는다) 이관 화면은 **8개**가 됐다 →
+  > [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md).
 
 ### [2026-08-17] 공통 로딩 오버레이가 임시 구현이고, 적용 기준도 사례에서 귀납한 것뿐이다
 
@@ -2497,7 +2527,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ② 40%를 서버가 아는 값으로 볼지(그러면 `scale`은 그 배수라는 뜻이 계약에 들어간다) 앱 표현 규칙으로
   볼지. ③ `rotation`의 단위(도 vs 라디안)·기준축은 아직 아무도 적지 않았다 — 코드는 `rotationZ`에
   그대로 넣어 **도**로 쓴다.
-- **상태**: 미해결 (읽기만 있어 아직 충돌하지 않는다)
+- **상태**: 미해결 (읽기만 있어 아직 충돌하지 않는다 — 그러나 **쓰는 쪽 값이 화면에서 만들어지기
+  시작했다**, 2026-08-19)
+  > 📌 **앱이 정한 해석이 이제 쓰기 값을 만든다(2026-08-19, PR #290)** — C-106 배치 화면이
+  > `offsetX`·`offsetY`(dp)·`scale`·`rotationDegrees`(도)를 만들어 이펙트로 내보낸다. 아직 서버로
+  > 가지 않아 충돌은 안 났지만, **①이 말한 "쓰기 경로가 붙는 순간"이 한 칸 가까워졌다.** 특히
+  > `scale`은 읽기 쪽 40% 규칙과 **같은 상수를 공유**하게 됐고(`TOPPING_BASE_LONG_SIDE_RATIO`가
+  > `internal`로 열렸다), `rotation`은 여전히 도 단위로만 쓰인다(③ 그대로). 좌표는 아직
+  > **정규화되지 않은 dp**라 그대로 보내면 읽기 쪽 해석(0~1 정규화)과 어긋난다 — 저장 결선 때 변환이
+  > 필요한 자리다.
 - **해소 메모**: 정하면 [api/parfait.md](../api/parfait.md) 응답 필드 표에 단위 열을 더하고
   [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md) 드리프트 1을 지운다.
   서버 변경이 필요하면 `sync-teamyg-server-api` 쪽 요청이 선행이다.
@@ -2526,12 +2564,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   (OQ-P-087) 카메라·갤러리로 들어가도 캔버스로 돌아오지 못한다. 즉 화면이 **남이 올린 토핑을 보는
   용도로만** 동작한다. `today` 조회를 쓰는 근거("토핑을 얹으려면 `parfaitId`가 필요하다")도 아직
   실현되지 않았다 — `parfaitId`는 받아 놓고 쓰는 데가 없어 상태에서 **제거**됐다.
-- **항목**: ① 배치 결선 라운드에서 좌표·배율·회전을 어떻게 만들지 — C-106 초기 위치(정중앙)·최소 터치
-  방어(48px)가 그때 처음 코드에 들어온다(OQ-P-200). ② 서버 수정 표면이 **테두리만** 받으므로 이동·크기·
+- **항목**: ① ~~배치 결선 라운드에서 좌표·배율·회전을 어떻게 만들지~~ → ✅ **해소(2026-08-19, PR #290)**.
+  C-106 배치 화면이 생겨 사용자가 드래그·리사이즈·회전으로 만들고, 초기값은 정중앙·40%·48dp 하한이다
+  (OQ-P-200 종결). ② 서버 수정 표면이 **테두리만** 받으므로 이동·크기·
   회전을 저장할 계약 확장이 선행이다(OQ-P-199 ②). ③ 얹은 직후 화면 갱신을 재조회로 할지 로컬 반영으로
   할지 — 재조회면 부작용 있는 `today`를 다시 부르게 된다.
-- **상태**: 미해결
-- **해소 메모**: OQ-P-199·OQ-P-200과 한 라운드다. 정해지면
+- **상태**: 부분 해소 (① 해소, ②③ 잔존 — **값은 만들어졌는데 보낼 곳이 없다**)
+  > 📌 **경로가 화면까지 왔고 거기서 멈췄다(2026-08-19, PR #290)** — 확인 버튼이
+  > `CanvasToppingPlaceEffect.ToppingPlaced(imageUri, offsetX, offsetY, scale, rotationDegrees)`를
+  > 쏘고, Route는 `// TODO` 한 줄 뒤에 캔버스로 이동한다. **네 값이 다 만들어졌는데 실어 보낼 계약이
+  > 없어 그대로 버려진다** — ②가 이제 사용자 경로 위에 올라왔다는 뜻이다. ③은 손도 못 댔다(보낸 것이
+  > 없으니 갱신할 것도 없다). 이동 방식 자체의 문제는 OQ-P-238로 갈렸다.
+- **해소 메모**: OQ-P-199 ②와 한 라운드다. 정해지면
   [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md) 드리프트 2와
   [api/parfait-image.md](../api/parfait-image.md) Android 매핑을 함께 고친다.
 
@@ -2955,6 +2999,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   >   미측정으로 남는다.** 재측정 없이 옛 390MB를 새 수치인 것처럼 쓰지 않는다.
   > - 위험 자체(다운샘플 상한 없음, `largeHeap` 미선언)는 안 바뀐다. 항목 ①~③과 상태는 그대로
   >   둔다.
+  >
+  > 🔧 **위 정정의 전제가 하루 만에 사라졌다(2026-08-19, PR #290 머지)** — 정정이 "develop에는 없다"고
+  > 적은 trimmed 비트맵(`trimTransparentBounds`·`:data`의 bounding box 절단)이 **develop에 들어왔다.**
+  > 즉 `segmentImage`의 동시 생존 전체 해상도 버퍼는 넷이 아니라 **다섯**이고, 위 195MB 도출은 지금
+  > 트리에 맞지 않는다. 옛 244MB 쪽이 다시 맞는 모양이지만 **그 값도 다른 트리에서 잰 것이라 그대로
+  > 되살리지 않는다** — 현재 develop 기준 피크는 세그멘테이션·토핑 편집 **둘 다 미측정으로 남긴다.**
+  > 토핑 편집은 부담이 한 겹 더 늘었다: `ToppingEditViewModel.completeEdit`이 `cutout`·`edited`에
+  > 더해 `trimmedEdited`까지 만들고, **"테두리가 없으면 같은 파일을 두 번 떨구지 않는다" 최적화가
+  > 사라져** 파일 저장도 항상 두 번이다.
 - **항목**: ① 원본 디코드에 다운샘플 상한을 둘지, 둔다면 어느 화면(세그멘테이션만 vs 디코드 공통
   경로)·어느 치수부터 적용할지. ② 다운샘플 대신 `largeHeap` 선언으로 버틸지(저사양 기기에서 여전히
   위험할 수 있다). ③ `ToppingBorderOutline`이 쓰는 치수 캡 관용구를 세그멘테이션 파이프라인 전체의
@@ -3154,4 +3207,82 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [api/parfait-group.md](../api/parfait-group.md) Android 매핑과 [data-layer](../architecture/data-layer.md)에
   반영한다. OQ-P-165(시각 파싱 불일치)의 후속이고 OQ-P-234 ②와 한 축이다.
 
-<!-- oq-next: 238 -->
+### [2026-08-19] 배치를 끝낸 뒤 돌아가는 곳이 `groupId = 0L`이고, 흐름 화면이 백스택에 남는다
+
+- **ID**: OQ-P-238
+- **출처**: `CanvasToppingPlaceRoute.kt#CanvasToppingPlaceRoute`(PR #290) — 배치 확정 이펙트를 받으면
+  `navigator.goTo(NavKeyCanvasMain(groupId = 0L))`이다. 그룹 id가 하드코딩인 이유는
+  `NavKeyCanvasToppingPlace`가 `imageUri`만 싣기 때문이고, 촬영·갤러리·세그멘테이션·편집 NavKey도
+  같은 이유로 그 값을 안 들고 다닌다(`refactor/segmentation-develop` 스펙이 "다섯 NavKey에 groupId를
+  싣는 대안은 배경 편집처럼 무의미한 경로까지 오염된다"고 이미 기각했다). 게다가 `goTo`라
+  **흐름 화면 전부가 백스택에 남은 채** 캔버스가 한 장 더 쌓인다.
+- **항목**: ① 그룹 id를 어떻게 전할지 — 미머지 브랜치가 만든 `Navigator.popUpTo<NavKeyCanvasMain>()`은
+  기존 엔트리로 되감으므로 id를 아예 안 실어도 되지만, 그 확장이 develop에 없다.
+  ② 배치 확정을 서버에 보내기 전까지 이 이동을 어떻게 둘지 — 지금은 **저장 없이 화면만 바뀐다.**
+  ③ 흐름을 중간에 닫는 경로(각 화면 `onClickClose`가 여전히 빈 람다)와 같은 자리에서 정할지.
+- **상태**: 미해결
+  > ⚠️ **이것이 미머지 스펙의 안전 근거를 되돌린다** —
+  > [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)의
+  > 캐시 정리(진입 시 통째로 비움)는 "새 흐름은 캔버스에서만 시작하고 그러려면 이전 화면이 이미
+  > 백스택에서 걷혀 안전하다"에 기대는데, 이 줄이 캔버스를 **새로 쌓아** 이전 흐름 화면을 남기는 한
+  > 거짓이다(다음 정리가 그 화면들이 쓰던 PNG를 지워 뒤로 가면 빈 이미지). 그 스펙은 #290 머지를
+  > 예상하고 처방까지 적어 뒀다 — **배치 완료 이펙트를 `popUpTo<NavKeyCanvasMain>()`으로 바꾸는 것**.
+- **해소 메모**: 고치면 [navigation-flow](../architecture/navigation-flow.md) 토핑 생성 플로우 절과
+  [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 드리프트 ①②를 지운다.
+  OQ-P-209 ②③과 한 라운드에 정해지는 것이 자연스럽다.
+
+### [2026-08-19] `NavKeyCanvasMove` 계열이 호출자를 잃고 도달 불가로 남았다
+
+- **ID**: OQ-P-239
+- **출처**: `NavKeyCanvasMove.kt` · `CanvasMoveRoute.kt` · `CanvasMoveScreen.kt` ·
+  `feature/groups/canvas/impl/navigation/EntryBuilder.kt`(PR #290) — 유일한 호출자였던
+  `SegmentationConfirmRoute.onClickNext`가 `NavKeyCanvasToppingPlace`로 갈아탔는데 목적지·Route·Screen과
+  엔트리 등록은 그대로다. `CanvasMoveRoute`는 `navigator`를 받아 놓고 쓰지도 않는다(자리채움이었다).
+  미머지 브랜치가 이 셋을 지우는 커밋(`f5ed87d5`)을 만들었다가 **develop에서는 아직 호출자가 있다는
+  이유로 되돌렸는데**, 그 이유가 #290 머지로 사라졌다.
+- **항목**: ① 셋을 지울지 — 지우면 도달 불가 화면 목록에서 하나가 빠진다. ② 같은 부류
+  (`NavKeyCameraSystem`·`NavKeySystemGalleryPicker`)와 묶어 한 번에 정리할지.
+- **상태**: 미해결
+- **해소 메모**: 지우면 [navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지" 목록과
+  토핑 생성 플로우 절의 도달 불가 표기를 함께 걷는다. 미머지
+  [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)이
+  범위에 넣어 두었던 항목이라 그 브랜치가 되살리는 쪽이 자연스럽다.
+
+### [2026-08-19] 배치 화면이 보여 주는 캔버스가 실제 캔버스가 아니다
+
+- **ID**: OQ-P-240
+- **출처**: `CanvasToppingPlaceViewModel.kt#CanvasToppingPlaceUiState`(PR #290) — 배경은
+  `YGAtomicColors.Gray.White` 기본값 고정에 `TODO`가 붙어 있고, **이미 올라간 토핑도 그리지 않는다.**
+  C-001 캔버스는 서버에서 배경색·기존 토핑을 받아 그리는데(`GetTodayParfaitUseCase`) 배치 화면은
+  그 조회를 안 한다. 사용자는 **흰 바탕에 자기 토핑만 놓고** 자리를 고른 뒤 실제 캔버스로 돌아간다.
+- **항목**: ① 배경·기존 토핑을 어디서 받을지 — 캔버스 상세를 다시 부를지, C-001이 이미 들고 있는
+  것을 NavKey나 공유 캐시로 넘길지(전자면 부작용 있는 `today`를 또 부르게 될 수 있다).
+  ② 기존 토핑을 그린다면 배치 중인 토핑과 시각적으로 어떻게 가를지(지금은 배경 전체에 `Black25` 딤을
+  깔아 배치 대상만 도드라지게 한다 — 남의 토핑도 그 딤 아래로 갈지).
+  ③ 겹침 규칙(z 순서)이 정책에도 코드에도 없다.
+- **상태**: 미해결
+- **해소 메모**: OQ-P-209 ③(얹은 직후 화면 갱신)과 같은 조회를 쓰게 될 가능성이 높다. 정하면
+  [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 드리프트 ④와
+  [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md)을 함께 본다.
+
+### [2026-08-19] 회전과 리사이즈 한계를 정책이 말한 적이 없고 코드가 정했다
+
+- **ID**: OQ-P-241
+- **출처**: `CanvasToppingPlaceViewModel.kt`(`TOPPING_DRAG_PX_PER_SCALE`·`TOPPING_DRAG_DEGREES_PER_PX`·
+  `TOPPING_MAX_OVERFLOW_RATIO`·`minScaleForTouchTarget`·`maxScaleToOverflowCanvas`, PR #290) ×
+  위키 [[C-106-토핑-배치-정책-v0.1]] — 정책은 **초기 배치와 이탈 허용만** 규정하고 조작 이후를 다루지
+  않는다. 그래서 앱이 넷을 정했다: 리사이즈 하한은 **48dp 최소 터치 영역에서 역산**(고정 배율이면 큰
+  원본 사진이 처음 크기로 못 돌아온다), 상한은 **캔버스 긴 변의 1.5배**를 역산(고정 배율이면 큰 원본이
+  캔버스를 못 벗어난다), 회전은 **무제한**, 드래그 감도 둘은 리터럴 상수다. 위키 [[누끼-편집]]이
+  C-104 확대 배율(1~3배)을 규정한 것과 대비된다 — 같은 종류의 규칙이 한 화면엔 있고 한 화면엔 없다.
+- **항목**: ① 이 넷을 정책으로 끌어올릴지(위키 소관, 수집 요청 선행) 앱 표현 규칙으로 둘지.
+  ② 최소 터치 방어를 **초기 배치에만** 적용할지 리사이즈 하한으로도 쓸지 — 코드는 후자를 골랐는데,
+  정책 문구("스케일링된 토핑의 짧은 쪽이 48px 미만이면")는 초기 렌더링 절에 있다.
+  ③ 회전 스냅(0·90·180·270 근처 흡착)이나 상한이 필요한지.
+- **상태**: 미해결 (실기기 확인 없음 — 감도 상수는 손으로 만져 본 적이 없다)
+- **해소 메모**: ①은 위키 정책 수집 요청이 선행이다(코드가 먼저 확정한 넷째 사례 — 앞의 셋은
+  C-104 확대 상한·C-105 테두리 색 팔레트·토핑 테두리 렌더 규칙). 정하면
+  [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 조작 절과 드리프트 ⑤를
+  갱신한다.
+
+<!-- oq-next: 242 -->
