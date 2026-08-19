@@ -1,10 +1,10 @@
 ---
 id: server-delta-nametag-chip-keys
 title: 서버 delta 57529ec 반영 — 칩 JSON 키 정정·C-001 상단 칩 결선·업로드 시각 파싱 복구
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified:
+verified: 2026-08-19
 related_code: MyParfaitGroupResponse, ParfaitGroupMemberResponse, CreateParfaitGroupResponse, GetTodayParfaitResponse, GroupMemberResponse, PlacedByResponse, PlaceParfaitImageResponse, NametagChipType, CanvasMemberVO, MyParfaitGroupVO, ParfaitGroupMemberVO, CanvasMainViewModel, ColorChipType, GrouptagChipType, PARFAIT_TIME_ZONE, MyParfaitGroupVOMapperTest, ParfaitGroupRemoteDataSourceImplTest, ParfaitRemoteDataSourceImplTest, ParfaitService
 related_adr: ADR-0017, ADR-0023
 related_spec: server-delta-nametag-chip-day-boundary, group-ssot, s101-group-setting-api, c001-canvas-today-detail
@@ -17,6 +17,20 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 # Spec: 서버 delta 57529ec 반영
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
+
+> ⚙️ **구현 완료·미머지(2026-08-19, 브랜치 `feature/#300-sync-backend-api-250819` 위 커밋 8개)** —
+> 계획 7 Task + 최종 리뷰 fix 1회가 전부 들어왔다. `testDebugUnitTest :domain:test ktlintCheck
+> assembleDebug` 통과. **뒤집힌 결정 0건.** 최종 리뷰(opus)가 서버 원본과 DTO 10개를 키 단위로 대조해
+> 전부 일치를 확인했고 "머지 전 필수 수정 없음"으로 판정했다.
+> **결정 3·5가 닫은 것** — OQ-P-224(칩 필드 소비)가 세 갈래 모두 해소됐고, `NAMETAG_CHIP_PALETTE`가
+> 사라지며 **OQ-P-210 ②(팔레트 7종 근거 없음)도 함께 소멸**했다. 같은 사람이 S-101과 C-001에서 같은
+> 색이 된다(서버가 같은 행에서 두 값을 준다 — 최종 리뷰가 서버 코드로 확인).
+> **감수한 것 두 가지가 그대로 남는다** — ① 와이어 계약 테스트를 안 붙였다(결정 1의 경고 그대로,
+> 이번에도 키 어긋남을 잡은 것은 계약 문서 감사였다 → OQ-P-234 ③, 최종 리뷰가 다음 라운드 최우선으로
+> 권했다). ② 파싱 실패가 목록 전체를 죽이는 반경은 손대지 않았다 — 스펙이 실패 처리를 정하지 않아
+> 드라이브바이로 굳힐 수 없다고 판단했다 → **OQ-P-237 신규**.
+> **실제 중복은 넷이었다**(결정 4는 셋을 셌다) — 색 변환 3벌 외에 `String? → NametagChipType` 매퍼가
+> group·parfait 두 곳에 있다. 후자의 KDoc이 그 사실을 적고 있어 은폐는 아니다.
 
 [2026-08-18-server-delta-nametag-chip-day-boundary](2026-08-18-server-delta-nametag-chip-day-boundary.md)의
 **직접 후속**이다. 그 라운드가 "서버 요청 대상"·"범위 밖"으로 미뤄 둔 둘을 이번 서버 delta가 닫아 주었고,

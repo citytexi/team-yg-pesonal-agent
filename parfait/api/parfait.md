@@ -483,6 +483,9 @@ develop의 `CanvasMainViewModel`이 여전히 7종 팔레트를 인덱스로 돌
 서버 키가 `nameTagChip`이 됐다. 기본값이 있어 깨지지는 않고 **조용히 `null`이 된다**. 같은 브랜치의
 KDoc이 "탈퇴했으면 `RELEASED`"라고 적은 것도 이제 `DEFAULT`다
 → [open-questions](../synthesis/open-questions.md) [2026-08-19].
+✅ **같은 날 닫혔다(미머지)** — `feature/#300-sync-backend-api-250819`가 키를 맞췄고, 같은 라운드가
+**C-001 상단 멤버 칩을 서버 값으로 결선**했다(팔레트 인덱스 순환이 사라졌다)
+→ [plan](../plans/2026-08-19-server-delta-nametag-chip-keys.md) Task 2·5. **develop 머지는 아직이다.**
 
 ⚠️ **과거 목록은 이제 연 단위로 부른다**(2026-08-17, PR #279) — 1월 1일 ~ 12월 31일을 한 번에 받아
 화면이 연도별로 캐시한다. 근거는 계약이다 — **페이지네이션도 범위 상한도 없어**(→ [미결](#미결))

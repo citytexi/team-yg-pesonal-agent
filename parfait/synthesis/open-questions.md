@@ -2846,7 +2846,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   덕에 깨지지 않고 **조용히 안 쓰이는 중**이다. ③ 서버 enum 문자열(`TYPE1`~`TYPE12`·`RELEASED`)을
   앱 `YGColorChipType`에 매핑하는 자리를 어디로 둘지(디자인시스템 타입은 `:core:designsystem`이고
   응답 매핑은 `:data`다 — 지금 둘 사이에 다리가 없다).
-- **상태**: 미해결
+- **상태**: 해소됨 (2026-08-19, 미머지 — 서버가 ①을 닫고 앱이 ②③을 읽는다)
 - **해소 메모**: ①은 다음 `sync-teamyg-server-api` 라운드 전에 서버팀에 요청해야 확인된다.
   ②③을 하면 OQ-P-140·OQ-P-210의 잔여 항목이 함께 닫히고
   [api/parfait.md](../api/parfait.md)·[api/parfait-group.md](../api/parfait-group.md) Android 매핑 절을 고친다.
@@ -2863,6 +2863,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 사라져** C-001 상단 칩을 계약으로 정할 수 있다 — 남은 것은 앱이 읽는 일이다.
   > ⚠️ **다만 그 delta가 JSON 키를 함께 바꿔(`nametagChip` → `nameTagChip`) ②에서 해소했다고 적은
   > 미머지 브랜치의 `@SerialName`이 전부 옛 키다** → OQ-P-234. **머지 전에 고쳐야 한다.**
+  >
+  > ✅ **①②③ 전부 해소 — 이 항목은 닫힌다(2026-08-19, `feature/#300-sync-backend-api-250819`, 미머지).**
+  > 앱이 `CanvasMemberVO.nametagChip`을 읽고 `CanvasMainViewModel.toMemberChips`가 서버 값으로 색을
+  > 정한다. **`NAMETAG_CHIP_PALETTE`가 삭제돼 팔레트 인덱스 순환이라는 개념 자체가 사라졌고, 그래서
+  > OQ-P-210 ②(팔레트가 12종 중 7종만 도는 근거 없음)도 함께 소멸**했다. 최종 리뷰가 서버 코드로
+  > 확인한 바, S-101과 C-001이 같은 `parfait_group_member.nametag_chip` 행에서 값을 받으므로
+  > **같은 사람이 두 화면에서 같은 색**이 된다 — 이 항목이 열린 이유였던 모순이 사라졌다.
+  > 옛 키 문제도 같은 라운드가 닫았다(OQ-P-234 ①). **develop 머지는 아직이다.**
 
 ### [2026-08-18] 상세 조회가 빈 캐시로 실패하면 S-101이 "정원이 찼어요"로 거짓말한다
 
@@ -3063,10 +3071,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   아니면 "표시용 부가 필드는 널 허용"이라는 예외를 명시할지. ③ 키 이름 변경을 **계약 문서 대조 말고
   다른 수단으로 잡을 방법**이 있는지 — 이번에도 잡은 것은 서버 delta 감사이고, 앱 테스트는 자기 DTO를
   자기가 만들어 넣으므로 절대 못 잡는다(와이어 계약 테스트가 있는 곳은 `isNewUser` 하나뿐이다).
-- **상태**: 미해결 (브랜치 미머지 — 머지되면 실서버에서 조용히 틀린 색이 나온다)
+- **상태**: ①② 해소(2026-08-19, 미머지) / **③ 미해결**
 - **해소 메모**: 고치면 [api/parfait-group.md](../api/parfait-group.md)·[api/parfait.md](../api/parfait.md)
   Android 매핑의 경고를 걷고 OQ-P-224를 닫는다. ②는 [api/conventions.md](../api/conventions.md)
   직렬화 규약과 [data-layer](../architecture/data-layer.md)에 적는다(OQ-P-227과 한 자리).
+  > ✅ **①② 해소(2026-08-19, 브랜치 `feature/#300-sync-backend-api-250819`, 미머지)** — 세 DTO의 키를
+  > `nameTagChip` 계열로 맞추고 `NametagChipType.RELEASED`를 `DEFAULT`로 바꿨다
+  > ([plan](../plans/2026-08-19-server-delta-nametag-chip-keys.md) Task 2·3). ②(널 기본값 방침)는
+  > **널 허용을 유지하기로 답했다** — 구버전 서버·롤백을 만나도 화면이 통째로 실패하지 않는 쪽을 골랐고,
+  > 그 결정을 지키는 테스트(`getMyGroups_missingUploadedAt_isNull`)를 같은 라운드가 붙였다.
+  > ⚠️ **③은 그대로다.** 이번에도 키 어긋남을 잡은 것은 `sync-teamyg-server-api` 감사였다.
+  > 최종 리뷰가 "비용 대비 이득이 심하게 기울어 있다 — 파일 하나에 세 DTO의 JSON 디코드 단언이면
+  > 끝이고 선례(`KakaoLoginResponseSerializationTest`)까지 있다"며 **다음 라운드 최우선**으로 권했다.
 
 ### [2026-08-19] `recentImageUploadedAt`이 비널이 되면서 두 가지를 뜻하게 됐다
 
@@ -3117,4 +3133,25 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 해소 시 어느 ADR/architecture에 반영했는지
 -->
 
-<!-- oq-next: 237 -->
+### [2026-08-19] 시각 하나가 예상 밖 모양이면 G-001 목록이 통째로 빈다
+
+- **ID**: OQ-P-237
+- **출처**: `data/source/group/mapper/VOMapper.kt#toMyParfaitGroupVO`(`LocalDateTime::parse`가 던진다) ×
+  `data/network/ApiCaller.kt#runCatchingApi`(`transform`을 `try` 블록 **안에서** 부르고 마지막
+  `catch (e: Exception)`이 `ApiException.Unknown`으로 접는다) × 최종 리뷰(2026-08-19) — 그룹 열둘 중
+  **하나**의 `recentImageUploadedAt`만 예상 밖 모양이어도 목록 전체가 `AppError.Unexpected`가 돼
+  화면이 빈다. 카드 한 장이 아니라 목록이 실패 단위다.
+  같은 라운드가 **같은 응답의 다른 필드에는 정반대 태도**를 취했다 — DTO 널 허용을 유지한 이유가
+  "구버전 서버를 만나도 화면이 통째로 실패하지 않게"였는데(OQ-P-234 ②), 포맷에는 그 방어가 없다.
+- **항목**: ① 매퍼가 파싱 실패를 `null`로 접을지 — 접으면 "시각을 못 읽었다"와 "시각이 없다"가
+  뭉개지고(그 둘을 가르려 널 허용을 유지한 것과 충돌), 안 접으면 필드 하나가 화면을 지운다.
+  ② 아니면 실패 단위를 목록에서 **카드로** 낮출지(`ApiCaller`가 아니라 매퍼가 원소별로 방어).
+  ③ 이 결정을 시각 필드 하나가 아니라 **매핑 실패 일반의 방침**으로 세울지 — 지금은 매퍼마다 다르다.
+- **상태**: 미해결 (현재 서버 계약으로는 발화하지 않는다 — 아래)
+- **해소 메모**: 지금 안 터지는 근거는 최종 리뷰가 kotlinx-datetime 0.8.0 소스까지 열어 확인했다 —
+  `LocalDateTime.Formats.ISO`가 초를 선택으로 두어 Jackson이 초 0일 때 줄여 쓰는 `...T12:00` 형태도
+  받는다. 롤백도 안전하다(구버전 서버는 `null`을 주고 `?.let`이 건너뛴다). 정하면
+  [api/parfait-group.md](../api/parfait-group.md) Android 매핑과 [data-layer](../architecture/data-layer.md)에
+  반영한다. OQ-P-165(시각 파싱 불일치)의 후속이고 OQ-P-234 ②와 한 축이다.
+
+<!-- oq-next: 238 -->

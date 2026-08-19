@@ -302,6 +302,11 @@ TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote
 > 않지만, **미머지 브랜치 `feature/#294-group-ssot`은 옛 키로 읽고 있어 값이 조용히 `null`이 된다**
 > — 기본값이 있어 `MissingFieldException`도 안 난다(OQ-P-227이 경고한 "큰 소리로 깨지는" 쪽이 아니라
 > 반대 극단이다) → [open-questions](../synthesis/open-questions.md) [2026-08-19].
+>
+> ✅ **키는 맞춰졌다(2026-08-19, `feature/#300-sync-backend-api-250819`, 미머지)** — 그 브랜치가 세 DTO를
+> `nameTagChip` 계열로 고쳤다. **남은 것은 재발 방지 수단**이다 — 이 부류를 잡은 것은 이번에도 계약 문서
+> 감사였고, 앱 테스트는 자기 DTO를 자기가 만들어 넣어 `@SerialName` 문자열을 검증하지 않는다
+> → OQ-P-234 ③.
 
 ✅ 오래 걸려 있던 로그인 판별자 키 불일치(응답 키가 `isNewUser`인데 Android가
 `@SerialName("newUser")`를 붙였던 건)는 **PR #241로 정정됐고 와이어 계약 테스트가 잠갔다**
