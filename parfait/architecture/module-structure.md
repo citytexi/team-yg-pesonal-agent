@@ -4,7 +4,7 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-18
+verified: 2026-08-19
 related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
 related_architecture:
@@ -102,8 +102,13 @@ app / app-preview
   ⚠️ **컴파일러는 앱이 그 enum에 상수를 더할 때의 arm 누락만 잡는다.** 서버에 새 타입이 생기면 매퍼가
   모르는 문자열을 `null`로 접어 컴파일이 안 깨지고, 셋 중 하나에서 색만 바꾸는 것도 못 잡는다.
   **색을 고칠 때는 셋을 함께 본다.**
-  같은 축의 중복이 하나 더 있다 — `String? → NametagChipType` 매퍼가 `data`의 group·parfait 두 곳에
-  각각 `private`으로 있다. 서로 보게 만드는 것보다 낫다고 판단한 결과다.
+- **`data` 쪽 같은 축의 중복은 걷었다**(2026-08-19, 리뷰 지적) — `String? → NametagChipType`이
+  group·parfait 매퍼에 각각 `private`으로 있던 것을 `source/common/mapper/NametagChipTypeMapper.kt`
+  `internal` 하나로 모았다. **바로 위 셋과 결론이 갈리는 이유는 가시성 미결이 여기엔 안 걸려서다** —
+  입출력이 `:data`·`:domain` 안에서 닫히므로 새 모듈 간선이 0개고, 따라서 `implementation`/`api`
+  결정을 조용히 굳힐 위험도 없다. 막는 것이 없으면 복제를 유지할 이유도 없다.
+  `source/*`가 데이터소스 도메인별로만 쪼개져 있어 `source/common/mapper`가 새 슬롯이다 —
+  **여러 데이터소스가 공유하는 wire→도메인 변환만** 여기 둔다(플랫폼 헬퍼는 `data/utils` 소관).
 
 ## 현재 수치가 필요하면 코드에서 측정
 ```bash
