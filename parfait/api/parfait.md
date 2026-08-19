@@ -2,8 +2,8 @@
 id: parfait
 title: 파르페(캔버스) 조회·배경·회전
 server_module: http/parfait
-server_commit: 08df1bf
-verified: 2026-08-18
+server_commit: 57529ec
+verified: 2026-08-19
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server
 related_adr: ADR-0017
@@ -27,6 +27,10 @@ tags: [api, parfait, server-contract, canvas]
 03:00에 넘어간다** — 자정~03시 사이에는 전날이 아직 진행 중이다. 오늘 조회·그룹 생성·회전 가드가 전부
 이 기준을 쓴다. **앱은 여전히 자정 기준**이라 이 구간에서 계약과 어긋난다 → 아래
 [하루 경계](#하루-경계) · [Android 매핑](#android-매핑).
+
+✅ **2026-08-19 — 서버 안에서 갈려 있던 기준이 합쳐졌다.** 과거 목록의 `to` 기본값만 `LocalDate.now()`
+(자정)로 남아 있던 것이 `ParfaitDay.current()`로 바뀌어, **이 도메인의 "오늘"이 한 값이 됐다.** 같은
+delta가 `groupMembers`에도 `nameTagChip`을 실어 캔버스 상단 멤버 칩이 계약 안으로 들어왔다.
 
 ## 엔드포인트
 
@@ -137,21 +141,23 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 | `date` | LocalDate | 아니오 | 캔버스 날짜 |
 | `status` | String(enum) | 아니오 | `ACTIVE` · `CLOSED` · `EMPTY` |
 | `lastClosedDate` | LocalDate? | 예 | 그 그룹의 **마지막 `CLOSED` 캔버스 날짜**. 아래 참고 |
-| `groupMembers` | List<객체> | 아니오 | 원소: `id`(Long, **groupMemberId**) · `nickname`(String) |
+| `groupMembers` | List<객체> | 아니오 | 원소: `id`(Long, **groupMemberId**) · `nickname`(String) · `nameTagChip`(String(enum), **2026-08-19 신설**) |
 | `background` | 객체? | 예 | `type`(`COLOR`·`IMAGE`) · `value`(String) |
 | `images` | List<객체>? | **예** | 배치된 토핑. **0건이면 빈 배열이 아니라 `null`** |
 
   토핑 원소(`TodayParfaitImageResponse`) 필드: `parfaitImageId` · `imageId` · `imageUrl` ·
   `positionX`/`positionY`(Double) · `positionZ`(Int) · `scale`/`rotation`(Double) ·
   `borderType`(`NONE`·`SOLID`) · `borderColor`(String?) · `borderWidth`(Double?) ·
-  `placedBy`(`groupMemberId`·`nickname`·`nametagChip`) · `createdAt`(LocalDateTime).
+  `placedBy`(`groupMemberId`·`nickname`·`nameTagChip`) · `createdAt`(LocalDateTime).
 
-  ⚠️ **`nametagChip`은 `placedBy`에만 붙었고 `groupMembers`에는 없다**(2026-08-18 신설). 값 집합·배정
+  ✅ **`nameTagChip`이 두 목록 모두에 있다**(`placedBy` 2026-08-18 · `groupMembers` 2026-08-19). 값 집합·배정
   규칙은 [parfait-group.md](parfait-group.md) "Nametag-Chip 배정 규칙"이 정본이고, JSON에는 enum 이름
-  문자열(`"TYPE6"`)로 실린다. 널 허용이며 **탈퇴한 멤버가 남긴 토핑에는 `RELEASED`가 온다**(`placedBy`
-  조회에 탈퇴 필터가 없다 — 아래 참고). 즉 **캔버스 상단 멤버 칩은 여전히 계약으로 색을 정할 수 없고,
-  토핑 작성자 표시만 정할 수 있다** → [미결](#미결).
-  근거: `ParfaitControllerTest`가 `images[0].placedBy.nametagChip`(`"TYPE6"`)을 `jsonPath`로 단언한다.
+  문자열(`"TYPE6"`)로 실린다. **비널**이며(2026-08-19에 도메인 타입에서 널이 빠졌다) **탈퇴한 멤버가 남긴
+  토핑에는 `DEFAULT`가 온다**(`placedBy` 조회에 탈퇴 필터가 없다 — 아래 참고). `groupMembers`는 탈퇴자를
+  거르므로 그쪽에는 `DEFAULT`가 오지 않는다. 즉 **캔버스 상단 멤버 칩도 이제 계약으로 색을 정할 수 있다.**
+  🔁 **JSON 키가 `nametagChip`에서 `nameTagChip`으로 바뀌었다**(2026-08-19) — 서버 코어 프로퍼티명은
+  그대로이고 HTTP 응답 DTO 경계에서만 바뀌었다.
+  근거: `ParfaitControllerTest`가 `images[0].placedBy.nameTagChip`(`"TYPE6"`)을 `jsonPath`로 단언한다.
 
   ⚠️ **`lastClosedDate`는 `EMPTY`를 세지 않는다.** `ParfaitAdapter.findLastClosedDateByGroupId`가
   `status = CLOSED` 행만 최신순으로 하나 집는다. 토핑 0건으로 마감된 날은 `EMPTY`라 여기 잡히지 않으므로,
@@ -193,7 +199,7 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 | 필드 | 타입 | 필수 | 비고 |
 |---|---|---|---|
 | `from` | LocalDate | 선택(query) | 생략 시 `to - 30일` |
-| `to` | LocalDate | 선택(query) | 생략 시 **서버 기준 오늘** |
+| `to` | LocalDate | 선택(query) | 생략 시 **서버 기준 오늘**(2026-08-19부터 `ParfaitDay.current()` — 03시 경계) |
 
   **기본 범위는 30일이다**(`GetPastParfaitsService.DEFAULT_RANGE_DAYS`). `to`만 주면 그 날부터 30일 전까지,
   둘 다 생략하면 오늘부터 30일 전까지다. 상한이 없어 **범위를 크게 주면 그만큼 다 내려온다** — 페이지네이션이
@@ -364,14 +370,16 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
   적용한 것이다.
 - **타임존은 서버 로컬 시간**이다 — `LocalDateTime.now()`를 그대로 쓰고 `ZoneId`를 명시하지 않는다.
   서버·DB가 `Asia/Seoul`로 맞춰져 있어([parfait-group.md](parfait-group.md) 타임존 절) 실질은 KST다.
-- **쓰는 곳은 셋**이다 — 오늘 조회(`GetTodayParfaitService`), **그룹 생성 시 최초 캔버스**
-  (`ParfaitGroupService.create`의 `ensure`), 회전 가드(`ParfaitCanvasRotator.rotateOne`).
+- **쓰는 곳은 넷**이다 — 오늘 조회(`GetTodayParfaitService`), **그룹 생성 시 최초 캔버스**
+  (`ParfaitGroupService.create`의 `ensure`), 회전 가드(`ParfaitCanvasRotator.rotateOne`),
+  **과거 목록의 `to` 기본값**(`GetPastParfaitsService`, 2026-08-19에 합류).
   그전까지 앞의 둘은 `LocalDate.now()`(자정 기준)를 썼고, 그래서 **자정~03시에 앱을 켜거나 그룹을
   만들면 아직 안 끝난 전날 대신 당일 날짜 캔버스가 생기고 뒤이은 배치가 그것을 또 하루 밀었다.**
 - **계약에 드러나는 결과**: 00:00~03:00 사이 `today` 응답의 `date`는 **캘린더상 어제**다. `status`는
   그 시각에도 `ACTIVE`이므로 **그 캔버스에 계속 토핑을 올리는 것이 정상 동작**이다.
-- **과거 목록은 이 기준을 쓰지 않는다** — `GetPastParfaitsService`의 `to` 기본값은 여전히
-  `LocalDate.now()`다. 즉 00:00~03:00에는 목록의 기본 상한이 **활성 캔버스 날짜보다 하루 앞선다.**
+- ✅ **2026-08-19 — 서버 안의 두 기준이 하나가 됐다.** 직전 판본이 "과거 목록만 자정 기준"이라고 적던
+  자리다(`fix: 이전 파르페 목록 조회가 자정이 아닌 새벽 3시 기준으로 오늘을 판단하도록 통일`). 이제
+  00:00~03:00에도 목록의 기본 상한과 활성 캔버스 날짜가 같다. **남은 어긋남은 앱 쪽 하나**다.
 
 ## 캔버스 회전(마감·재생성) 규칙
 
@@ -463,11 +471,21 @@ Service·DataSource 함수가 있다.
 활성 캔버스 날짜도 그 구간에는 다르다. **정책상 옳은 쪽은 서버다**(위키 [[캔버스-마감-스케줄]]의 03시)
 → [conventions.md](conventions.md) "Android 불일치" · [open-questions](../synthesis/open-questions.md) [2026-08-18].
 
-⚠️ **`placedBy.nametagChip`을 아직 아무도 안 읽는다**(2026-08-18 서버 delta) — 캔버스 상단 멤버 칩은
-`groupMembers`에서 오는데 그쪽에는 필드가 없고(`CanvasMainViewModel`이 7종 팔레트를 인덱스로 돌린다),
-토핑 작성자 칩은 `placedBy`에서 올 수 있는데 앱 DTO가 필드를 두지 않았다. 응답 필드를 안 읽는 것뿐이라
+⚠️ **칩 필드 둘을 아직 아무도 안 읽는다.** 캔버스 상단 멤버 칩은 `groupMembers`에서 오는데
+develop의 `CanvasMainViewModel`이 여전히 7종 팔레트를 인덱스로 돌리고, 토핑 작성자 칩은 `placedBy`에서
+올 수 있는데 앱 DTO가 필드를 두지 않았다. ✅ **서버 쪽 선행은 2026-08-19에 닫혔다** — `groupMembers`에도
+`nameTagChip`이 실려 **"이 화면만 계약 밖"이라는 조건이 사라졌다**. 응답 필드를 안 읽는 것뿐이라
 `⚠️불일치`는 아니다(앱 JSON은 `ignoreUnknownKeys = true`) →
 [open-questions](../synthesis/open-questions.md) [2026-08-18].
+
+⚠️ **미머지 브랜치가 쓰는 키가 바뀌었다** — `feature/#294-group-ssot`의
+`GetTodayParfaitResponse`가 `@SerialName("nametagChip")`(`String? = null`)로 `placedBy` 칩을 받아 두는데
+서버 키가 `nameTagChip`이 됐다. 기본값이 있어 깨지지는 않고 **조용히 `null`이 된다**. 같은 브랜치의
+KDoc이 "탈퇴했으면 `RELEASED`"라고 적은 것도 이제 `DEFAULT`다
+→ [open-questions](../synthesis/open-questions.md) [2026-08-19].
+✅ **같은 날 닫혔다(미머지)** — `feature/#300-sync-backend-api-250819`가 키를 맞췄고, 같은 라운드가
+**C-001 상단 멤버 칩을 서버 값으로 결선**했다(팔레트 인덱스 순환이 사라졌다)
+→ [plan](../plans/2026-08-19-server-delta-nametag-chip-keys.md) Task 2·5. **develop 머지는 아직이다.**
 
 ⚠️ **과거 목록은 이제 연 단위로 부른다**(2026-08-17, PR #279) — 1월 1일 ~ 12월 31일을 한 번에 받아
 화면이 연도별로 캐시한다. 근거는 계약이다 — **페이지네이션도 범위 상한도 없어**(→ [미결](#미결))
@@ -524,7 +542,11 @@ DTO가 함께 새로 생겼다. **DI 등록 줄은 한 줄도 늘지 않았다**
   ⚠️ **중첩 응답은 상위 응답 파일 안에 함께 둔다** — `:data`의 "선언당 파일 하나" 규약의 명시적 예외이고
   근거는 "서버가 한 파일에 담은 것을 앱도 한 파일에 담아야 계약 문서와 눈으로 대조된다"이다
   ([data-layer](../architecture/data-layer.md)). `PlacedByResponse`라는 이름이
-  `response/parfait`·`response/parfaitimage` **두 패키지에 각각 존재**하는 것도 같은 이유다(서버가 그렇다).
+  `response/parfait`·`response/parfaitimage` **두 패키지에 각각 존재**하는 것도 같은 이유였다(서버가 그랬다).
+  🔁 **2026-08-19에 그 근거가 사라졌다** — 서버가 토핑 배치 쪽을 `PlaceParfaitImagePlacedByResponse`로
+  개명해 이름 충돌을 없앴다(springdoc이 두 스키마를 같은 것으로 취급해 `nameTagChip` 추가가 스웨거에
+  안 보이던 문제 때문이다, [parfait-image.md](parfait-image.md)). 앱은 두 이름을 그대로 두고 있어
+  **더는 서버의 거울이 아니다** → [open-questions](../synthesis/open-questions.md) [2026-08-19].
 - **domain VO**: `domain/model/canvas/`에 일곱(`CanvasVO`·`PastCanvasVO`·`CanvasStatus`·
   `CanvasBackground`·`CanvasBackgroundEdit`·`CanvasMemberVO`·`CanvasToppingVO`). 이름은 제품 언어라 서버
   `parfait`가 `Canvas`, 응답 필드 `imageCount`가 `toppingCount`다 — 다만 **id 타입은 서버 언어 유지**
@@ -584,10 +606,10 @@ DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조
 - 상세 조회가 상태를 거르지 않아 "이전 파르페 상세"라는 이름과 달리 오늘의 `ACTIVE` 캔버스도 조회된다.
   같은 캔버스를 `today`와 상세 두 경로로 얻을 수 있고 **한쪽만 부작용이 있다**
   → [open-questions](../synthesis/open-questions.md)
-- **하루 경계가 서버 안에서도 갈렸다** — 오늘 조회·그룹 생성·회전 가드는 `ParfaitDay`(03시)를 쓰는데
-  과거 목록의 `to` 기본값은 `LocalDate.now()`(자정)다. 앱과의 어긋남은 그 위에 얹힌 것이다
-  → [open-questions](../synthesis/open-questions.md)
-- **`nametagChip`이 `placedBy`에만 있고 `groupMembers`에는 없다** — 캔버스 상단 멤버 칩 색을 계약으로
-  정할 수단이 여전히 없다 → [open-questions](../synthesis/open-questions.md)
 - **테스트 전용 회전이 오늘 캔버스를 강제로 마감한다**(2026-08-18) — 호출 뒤 `today`가 `CLOSED` 캔버스를
   돌려주는 상태를 아무나 만들 수 있다 → [open-questions](../synthesis/open-questions.md)
+
+✅ **2026-08-19 해소 2건** — ① 하루 경계가 서버 안에서 갈려 있던 것(과거 목록 `to` 기본값만 자정)이
+`ParfaitDay.current()`로 통일됐다. ② `nameTagChip`이 `placedBy`에만 있고 `groupMembers`에는 없어
+캔버스 상단 멤버 칩을 계약으로 정할 수 없던 것이 닫혔다. **남은 것은 앱이 03시 경계와 칩 필드를
+따라오는 일**이다 → [open-questions](../synthesis/open-questions.md).

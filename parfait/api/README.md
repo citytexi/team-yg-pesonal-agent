@@ -8,7 +8,7 @@
 > 추적 브랜치는 서버 **`main`** — 기준 커밋과 갱신 절차는 [server-baseline.md](server-baseline.md).
 
 ## 전역 계약
-- [conventions.md](conventions.md) — 응답 envelope(**204 예외 2건**)·성공/에러 코드 체계·인증·URL 규약·직렬화 규약·**Android 불일치**(2026-08-18 기준 2건 — 그룹 목록 업로드 시각 파싱 · "오늘"의 경계 03시 vs 자정)
+- [conventions.md](conventions.md) — 응답 envelope(**204 예외 2건**)·성공/에러 코드 체계(전역 405 포함)·인증·URL 규약·직렬화 규약·**Android 불일치**(2026-08-19 기준 2건 — 그룹 목록 업로드 시각 파싱 · "오늘"의 경계 03시 vs 자정)
 
 ## 팀 명세 원문
 - [spec/](spec/README.md) — 서버팀이 작성한 **API 명세**를 텍스트로 옮긴 것. 이 디렉토리의 도메인 문서가
@@ -31,7 +31,7 @@
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | 구현됨(조회·닉네임 변경은 **결선됨**, 탈퇴 미소비) |
 | [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨 |
 
-**총 28 엔드포인트 + 테스트 전용 1**(2026-08-18, 서버 `08df1bf` — 직전 라운드에서 **증감 0**).
+**총 28 엔드포인트 + 테스트 전용 1**(2026-08-19, 서버 `57529ec` — **두 라운드 연속 증감 0**).
 **Android 표면은 27/27, 공백 0이다** —
 분모에서 애플 로그인 1(`해당 없음`)을 뺀 값이 27이고, 테스트 전용 회전 1은 총계에서 이미 분리했다.
 서버 delta가 벌린 공백 2(파르페 상세 조회·배경 변경)를 **같은 날 PR #266이 닫았다**
@@ -124,7 +124,9 @@
 > 🔁 **2026-08-18 서버 delta(`08df1bf`) — 엔드포인트 증감 0인데 응답이 넓어지고 "오늘"이 바뀌었다.**
 > ① **Nametag-Chip 부여 주체가 서버가 됐다** — 그룹 참여·생성 시 그룹 안에서 겹치지 않는 타입을 뽑고
 > 탈퇴 시 `RELEASED`로 반납한다. 응답 필드 셋이 늘었다(그룹 상세 `members[].nametagChip`, 그룹 목록
-> `lastPlacedByNametagChip`, 캔버스 `placedBy.nametagChip`). **앱은 세 화면이 각자 인덱스로 색을
+> `lastPlacedByNametagChip`, 캔버스 `placedBy.nametagChip`).
+> 🔁 **이 문단의 필드 키와 반납 값 이름은 2026-08-19에 바뀌었다 — 아래 항목이 정본이다.**
+> **앱은 세 화면이 각자 인덱스로 색을
 > 돌리고 있어** 그 규칙을 버릴 수 있게 됐다 → [parfait-group.md](parfait-group.md) "Nametag-Chip 배정 규칙".
 > ② **그룹 상세가 `groupName`·`memberLimit`을 싣는다** — 앱이 목록을 한 번 더 읽어 이름을 붙이던 조합과
 > "N명 남음" mock 1이 **둘 다 서버에서 닫혔다**(OQ-P-139·OQ-P-216).
@@ -132,6 +134,20 @@
 > 오늘 조회가 두 번 돌고 화면이 D−1 캔버스를 D 아래 그린다 — **불일치 2건째**
 > → [parfait.md](parfait.md) "하루 경계".
 > 새로 읽어야 할 필드가 넷이지만 **`http/` 요청 모음의 커버는 그대로 25/27**이다(엔드포인트가 안 늘었다).
+>
+> 🔁 **2026-08-19 서버 delta(`57529ec`) — 직전 라운드의 뒷정리 둘이 들어왔고, 그 과정에서 JSON 키가 바뀌었다.**
+> ① **Nametag-Chip 정합성** — `groupMembers[].nameTagChip`(C-001 상단 멤버 칩이 계약 안으로)·토핑 배치 응답
+> `placedBy.nameTagChip`이 더해지고, 목록의 `recentImageUploadedAt`·`lastPlacedByNameTagChip`이
+> `COALESCE`로 **비널**이 됐다(토핑 0건 그룹은 생성 시각·생성자 칩). 반납 값 이름이 `RELEASED` → `DEFAULT`.
+> 그룹 **생성** 응답도 목록의 세 필드를 얻었다.
+> ⚠️ **응답 JSON 키가 `nametagChip` → `nameTagChip`, `lastPlacedByNametagChip` → `lastPlacedByNameTagChip`으로
+> 바뀌었다**(서버 코어 프로퍼티명은 그대로, HTTP DTO 경계에서만) — develop은 이 필드를 안 읽어 무해하지만
+> **미머지 브랜치는 옛 키로 읽어 값이 조용히 `null`이 된다**.
+> ② **하루 경계가 서버 안에서 통일됐다** — 과거 목록의 `to` 기본값도 `ParfaitDay.current()`가 됐다.
+> 앱과의 불일치는 그대로다.
+> ③ **전역 405가 생겼다**(`CommonErrorCode.METHOD_NOT_ALLOWED`) — 그전에는 메서드 불일치가 500이었다.
+> ④ **탈퇴 후 재가입 500 수정**(`provider_user_id` tombstone rename이 flush를 못 타던 버그,
+> [member.md](member.md)). 엔드포인트·화이트리스트·`ApiResponse`는 불변이고 **표면 셈도 27/27·25/27 그대로**다.
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만

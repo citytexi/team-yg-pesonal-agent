@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: 08df1bf
-verified: 2026-08-18
+server_commit: 57529ec
+verified: 2026-08-19
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -42,8 +42,9 @@ tags: [api, parfait, server-contract, conventions]
 
 ### `errorDetail`은 계약에만 있고 채워지지 않는다
 
-`GlobalExceptionHandler`의 네 핸들러(`BusinessException`·`ParfaitGroupException`·bad-request 4종·`Exception`)가
-모두 `errorDetail` 인자 없이 `ApiResponse.error(errorCode)`를 호출한다. 검증 실패
+`GlobalExceptionHandler`의 **다섯** 핸들러(`BusinessException`·`ParfaitGroupException`·bad-request 4종·
+`HttpRequestMethodNotSupportedException`·`Exception`)가 모두 `errorDetail` 인자 없이
+`ApiResponse.error(errorCode)`를 호출한다. 검증 실패
 (`MethodArgumentNotValidException`)도 필드별 상세 없이 `CommonErrorCode.INVALID_REQUEST` 하나로 뭉개진다.
 
 ## 에러 코드 체계
@@ -53,7 +54,7 @@ tags: [api, parfait, server-contract, conventions]
 
 | enum | 위치 | 종수 |
 |---|---|---|
-| `CommonErrorCode` | `common/error` | 2 |
+| `CommonErrorCode` | `common/error` | 3 (2026-08-19 `METHOD_NOT_ALLOWED` 신설로 2 → 3) |
 | `AuthErrorCode` | `core/auth/exception` | 14 |
 | `ParfaitGroupApiErrorCode` | `http/parfaitgroup` | 10 (2026-08-15 `GROUP_NICKNAME_ALREADY_USED` 삭제로 11 → 10) |
 | `ImageErrorCode` | `core/image/exception` | 4 |
@@ -66,7 +67,13 @@ tags: [api, parfait, server-contract, conventions]
 | HTTP | code | 의미 |
 |---|---|---|
 | 400 | `INVALID_REQUEST` | 요청 형식이 올바르지 않습니다 |
+| 405 | `METHOD_NOT_ALLOWED` | 지원하지 않는 HTTP 메서드입니다 |
 | 500 | `INTERNAL_SERVER_ERROR` | 서버 내부 오류가 발생했습니다 |
+
+🔁 **2026-08-19 — 405가 생겼다.** 그전에는 `HttpRequestMethodNotSupportedException` 전용 핸들러가 없어
+**catch-all로 떨어져 500**이 나갔다(POST 전용 API에 GET을 보낸 사례가 500으로 잘못 보고된 것이 계기다).
+지금은 전용 핸들러가 405를 낸다 — **경로별 도메인 코드가 아니라 전역 코드**이므로 모든 엔드포인트에서
+날 수 있고, 도메인 문서의 에러 표에는 401·`INVALID_REQUEST`와 같은 이유로 반복하지 않는다.
 
 `ParfaitGroupApiErrorCode`는 core 계층 `ParfaitGroupError`와 **이름이 1:1**이다(`from(error) = valueOf(error.name)`).
 
@@ -267,25 +274,39 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
 
-⚠️ **2026-08-18 기준 2건.**
+⚠️ **2026-08-19 기준 2건**(건수는 그대로이고 첫 항목의 사정거리가 넓어졌다).
 
 | 항목 | 계약(서버) | Android | 영향 |
 |---|---|---|---|
-| `MyParfaitGroupResponse.recentImageUploadedAt` 파싱 | `LocalDateTime` — 오프셋 없는 `yyyy-MM-ddTHH:mm:ss`(컨트롤러 테스트가 검증) | `data/source/group/mapper/VOMapper.kt`가 `kotlin.time.Instant::parse`(오프셋 필수) | 최근 이미지가 있는 그룹이 하나라도 있으면 매퍼가 던져 **G-001 목록 조회 전체가 실패**(→ `AppError.Unexpected`) → [open-questions](../synthesis/open-questions.md) [2026-08-15] |
+| `MyParfaitGroupResponse.recentImageUploadedAt` 파싱 | `LocalDateTime` — 오프셋 없는 `yyyy-MM-ddTHH:mm:ss`(컨트롤러 테스트가 검증). **2026-08-19부터 비널**(토핑이 없으면 그룹 생성 시각) | `data/source/group/mapper/VOMapper.kt`가 `kotlin.time.Instant::parse`(오프셋 필수) | ⚠️ **그룹이 하나라도 있으면** 매퍼가 던져 **G-001 목록 조회 전체가 실패**(→ `AppError.Unexpected`). 그전에는 앱 매퍼의 `?.let`이 널을 건너뛰어 토핑 0건 그룹만 있는 계정은 살아 있었는데, 서버 `COALESCE`가 그 우회로를 없앴다 → [open-questions](../synthesis/open-questions.md) [2026-08-15] |
 | "오늘"의 경계 | `ParfaitDay.current()` — **03:00** 기준(위키 [[캔버스-마감-스케줄]]의 마감 시각과 같다). 오늘 조회·그룹 생성·회전 가드가 쓴다 | `domain/model/ParfaitDay.kt`의 `parfaitToday()` — **KST 자정** 기준 | 00:00~03:00 KST에 `GetTodayParfaitUseCase`가 정상 응답을 어긋난 것으로 보고 **오늘 조회를 두 번 부른다**(부작용 있는 GET이 두 배). 화면은 캘린더 오늘(D) 아래 D−1 캔버스를 그린다 → [parfait.md](parfait.md) "하루 경계" · [open-questions](../synthesis/open-questions.md) [2026-08-18] |
 
 앱 쪽 변경 의도는 "벽시계가 아니라 절대 시점으로 든다"이고 방향은 타당하다 — 어긋난 것은 **서버가 아직
 오프셋을 싣지 않는다는 점**이다. 어느 쪽을 고칠지(서버가 오프셋 포함 포맷으로 바꾸거나, 앱이
 `LocalDateTime` + 고정 타임존으로 읽거나)는 미결이다.
 
-두 번째는 방향이 분명하다 — **서버가 정책(03시 마감)에 맞고 앱이 자정에 머물러 있다.** 다만 서버도
-과거 목록의 `to` 기본값만 자정 기준으로 남겨 두어 **서버 안에서도 두 기준이 공존한다**
+두 번째는 방향이 분명하다 — **서버가 정책(03시 마감)에 맞고 앱이 자정에 머물러 있다.**
+✅ **2026-08-19에 서버 쪽 잔여가 정리됐다** — 과거 목록의 `to` 기본값만 자정으로 남아 "서버 안에서도 두
+기준이 공존한다"던 자리가 `ParfaitDay.current()`로 통일됐다. **어긋남은 이제 앱 하나뿐이다**
 → [parfait.md](parfait.md) "하루 경계".
 
-> **필드가 늘어난 것은 불일치가 아니다.** 2026-08-18 delta가 그룹 상세·목록·캔버스 응답에 필드 넷을
-> 더했는데(`groupName`·`memberLimit`·`nametagChip`·`lastPlacedByNametagChip`) 앱은 아직 읽지 않는다.
+> **필드가 늘어난 것은 불일치가 아니다.** 2026-08-18~19 delta가 그룹 상세·목록·생성·캔버스·토핑 배치
+> 응답에 필드를 더했는데(`groupName`·`memberLimit`·`nameTagChip` 세 자리·`lastPlacedByNameTagChip` ·
+> 생성 응답의 `recentImageUrl`·`recentImageUploadedAt`) develop은 아직 읽지 않는다.
 > `JsonModule`이 `ignoreUnknownKeys = true`라 역직렬화가 깨지지 않으므로 이 표의 대상이 아니다 —
 > **계약이 앱보다 넓은 것**이고, 각 도메인 문서의 Android 매핑 절이 기회로 적는다.
+>
+> ⚠️ **다만 키 이름이 바뀐 것은 다른 문제다.** 2026-08-19에 응답 JSON 키가 `nametagChip` →
+> `nameTagChip`, `lastPlacedByNametagChip` → `lastPlacedByNameTagChip`으로 바뀌었다(서버 코어
+> 프로퍼티명은 그대로, HTTP DTO 경계에서만). develop에는 이 필드를 읽는 코드가 없어 계약 표에 오르지
+> 않지만, **미머지 브랜치 `feature/#294-group-ssot`은 옛 키로 읽고 있어 값이 조용히 `null`이 된다**
+> — 기본값이 있어 `MissingFieldException`도 안 난다(OQ-P-227이 경고한 "큰 소리로 깨지는" 쪽이 아니라
+> 반대 극단이다) → [open-questions](../synthesis/open-questions.md) [2026-08-19].
+>
+> ✅ **키는 맞춰졌다(2026-08-19, `feature/#300-sync-backend-api-250819`, 미머지)** — 그 브랜치가 세 DTO를
+> `nameTagChip` 계열로 고쳤다. **남은 것은 재발 방지 수단**이다 — 이 부류를 잡은 것은 이번에도 계약 문서
+> 감사였고, 앱 테스트는 자기 DTO를 자기가 만들어 넣어 `@SerialName` 문자열을 검증하지 않는다
+> → OQ-P-234 ③.
 
 ✅ 오래 걸려 있던 로그인 판별자 키 불일치(응답 키가 `isNewUser`인데 Android가
 `@SerialName("newUser")`를 붙였던 건)는 **PR #241로 정정됐고 와이어 계약 테스트가 잠갔다**
@@ -309,8 +330,8 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 > 검증은 여전히 0건**이다(실기기 미수행) — 위 표의 시각 파싱 불일치도 그래서 아직 코드 대조로만 드러난
 > 상태다 → [open-questions](../synthesis/open-questions.md).
 
-**2026-08-18 delta는 엔드포인트를 늘리지 않았다**(28 + 테스트 전용 1 유지) — 바뀐 것은 응답 필드 넷과
-"오늘"의 정의다. 아래 표면 셈은 그대로 유효하다.
+**2026-08-18·2026-08-19 delta 둘 다 엔드포인트를 늘리지 않았다**(28 + 테스트 전용 1 유지) — 바뀐 것은
+응답 필드·JSON 키·"오늘"의 정의·전역 405다. 아래 표면 셈은 그대로 유효하다.
 
 **2026-08-16 기준 서버 엔드포인트는 28개(+테스트 전용 1)고 Android 표면은 27개다.** 분모에서 빠지는 것은
 애플 로그인 1건(`해당 없음`)과 테스트 전용 회전 1건이라 **27/27, 공백 0**이다. 서버 delta가 벌린 공백 2

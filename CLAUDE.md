@@ -100,6 +100,10 @@
 > `parfait/`는 저장소 루트의 별도 디렉토리다(`raw/`·`wiki/`와 형제). TJYG-Android 구현
 > 문서(ADR·architecture·specs·plans) 전용이며, LLM 위키(`wiki/`) 스키마의 적용을 받지 않는다.
 
+**코드 주석·KDoc 규약은 [`parfait/CLAUDE.md`](parfait/CLAUDE.md)에 있다**(해당 디렉토리 파일을 열면
+자동 로드됨). ⚠️ 그 파일은 **TJYG-Android에서 일하는 서브에이전트에게 자동으로 닿지 않으므로**
+구현·리뷰 디스패치의 전역 제약과 계획의 Global Constraints에 요지를 실어 나른다.
+
 - 파일명 `YYYY-MM-DD-kebab-topic.md`, 구현 완료분은 `specs/archive/`로 이동.
 - 형식·인덱스 등록 규칙은 [`parfait/specs/README.md`](parfait/specs/README.md).
 - 스펙이 새 아키텍처 결정을 유발하면 대응 ADR을 `parfait/adr/`에 함께 만든다.

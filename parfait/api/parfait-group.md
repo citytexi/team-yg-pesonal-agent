@@ -2,8 +2,8 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: 08df1bf
-verified: 2026-08-18
+server_commit: 57529ec
+verified: 2026-08-19
 android_status: done
 related_spec: s101-group-setting-api
 related_adr: ADR-0017
@@ -32,8 +32,10 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | POST | `/api/parfait-groups/{groupId}/reports` | 필요 | `ReportParfaitGroupRequest` | `ReportParfaitGroupResponse` | 구현됨·결선됨 |
 
 [^uploadedat]: **2026-08-15** — Service·DataSource·DTO는 계약과 맞지만 매퍼가 `recentImageUploadedAt`을
-    `kotlin.time.Instant::parse`(오프셋 필수)로 읽는다. 이 응답의 값은 오프셋 없는 로컬 날짜시간이라
-    최근 이미지가 있는 그룹이 있으면 목록 조회가 통째로 실패한다 →
+    `kotlin.time.Instant::parse`(오프셋 필수)로 읽는다. 이 응답의 값은 오프셋 없는 로컬 날짜시간이다.
+    ⚠️ **2026-08-19에 사정거리가 넓어졌다** — 서버가 이 필드를 `COALESCE`로 비널화해 **그룹이 하나라도
+    있으면** 매퍼가 던진다(그전에는 토핑 0건 그룹만 `null`이라 앱 매퍼의 `?.let`이 파싱을 건너뛰었고,
+    그래서 토핑이 하나도 없는 계정에서는 목록이 떴다) →
     [conventions.md](conventions.md) "Android 불일치" · [open-questions](../synthesis/open-questions.md) [2026-08-15].
 
 요청 DTO(`ParfaitGroupRequest.kt`)에는 Bean Validation 애노테이션이 없다 — auth 도메인과 달리 `@NotBlank`/`@Valid`가
@@ -56,23 +58,38 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | `groupId` | Long | 아니오 | |
 | `groupName` | String | 아니오 | |
 | `recentImageUrl` | String? | 예 | 최근 업로드 이미지 없으면 `null` |
-| `recentImageUploadedAt` | LocalDateTime? | 예 | 아래 직렬화 포맷 참고. `recentImageUrl`과 함께 `null` 가능 |
-| `lastPlacedByNametagChip` | String(enum)? | 예 | **2026-08-18 신설.** 마지막 토핑을 올린 사람의 Nametag-Chip 타입 → 아래 [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙) |
+| `recentImageUploadedAt` | LocalDateTime | **아니오**(2026-08-19 변경) | 아래 직렬화 포맷 참고. 토핑이 없으면 **그룹 생성 시각**으로 대체된다 |
+| `lastPlacedByNameTagChip` | String(enum) | **아니오**(2026-08-19 변경) | 마지막 토핑을 올린 사람의 Nametag-Chip 타입. 토핑이 없으면 **그룹 생성자의 칩** → 아래 [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙) |
 
-  **`lastPlacedByNametagChip`의 출처와 함정**: `recentImageUrl`·`recentImageUploadedAt`과 같은 네이티브
-  쿼리(`findMyGroupSummaries`)의 **별개 상관 서브쿼리**이고, 정렬 기준(`parfait_date` → `created_at` → `id`
+  🔁 **2026-08-19 — 뒤의 두 필드가 널을 버렸다**(`[Fix] 그룹 Nametag-Chip 정합성 및 재가입·알림 버그 수정`).
+  네이티브 쿼리(`findMyGroupSummaries`)의 두 서브쿼리에 `COALESCE`가 붙어, 토핑이 0건인 그룹은
+  `recentImageUploadedAt`이 `parfait_group.created_at`으로, `lastPlacedByNameTagChip`이 **가장 먼저 참여한
+  멤버(=생성자)의 칩**으로 대체된다. Kotlin 타입(`MyParfaitGroupSummary`·`MyParfaitGroupResult`·
+  `MyParfaitGroupResponse`)과 프로젝션이 전부 비널로 좁혀졌다.
+  ⚠️ **그래서 `recentImageUploadedAt`이 두 가지를 뜻한다** — "마지막 토핑 시각"이거나 "그룹 생성 시각"이고,
+  소비 측이 둘을 가르는 수단은 `recentImageUrl`이 `null`인지뿐이다(그 필드만 널을 유지했다)
+  → [미결](#미결).
+
+  🔁 **2026-08-19 — JSON 키가 `lastPlacedByNametagChip` → `lastPlacedByNameTagChip`으로 바뀌었다**
+  (`fix: placedBy 스키마 이름 충돌 해소 및 nameTagChip 필드명을 스펙에 맞게 통일`). 서버 코어·도메인·영속성
+  계층의 내부 프로퍼티명은 `nametagChip` 그대로이고 **HTTP 응답 DTO 경계에서만** 바뀌었다 — 계약 문서가
+  보는 것은 후자다.
+
+  **`lastPlacedByNameTagChip`의 출처와 함정**: `recentImageUrl`·`recentImageUploadedAt`과 같은 네이티브
+  쿼리의 **별개 상관 서브쿼리**이고, 정렬 기준(`parfait_date` → `created_at` → `id`
   내림차순)이 같아 같은 토핑을 가리킨다. 조인 대상은 **배치 당시가 아니라 지금의 `parfait_group_member`
-  행**이라, 그 사람이 이미 탈퇴했으면 `RELEASED`가 내려온다(서버 쿼리 주석이 `left_at IS NULL` 필터를
-  붙이지 말라고 명시한다). 토핑이 하나도 없는 그룹은 `null`이고, 그때는 `recentImageUrl`도 함께 `null`이다.
-  근거: `ParfaitGroupControllerTest`가 값 있는 케이스(`"TYPE7"`)와 `null` 케이스를 각각 `jsonPath`로 단언한다.
+  행**이라, 그 사람이 이미 탈퇴했으면 `DEFAULT`가 내려온다(서버 쿼리 주석이 `left_at IS NULL` 필터를
+  붙이지 말라고 명시한다).
+  근거: `ParfaitGroupControllerTest`가 토핑 있는 케이스(`"TYPE7"`)와 토핑 0건 케이스(`recentImageUrl`은
+  `null`인데 시각·칩은 값이 있음, `"TYPE3"`)를 각각 `jsonPath`로 단언한다.
 
   응답은 `List<MyParfaitGroupResponse>`. nullable 필드도 값이 없다고 생략되지 않고 `null`로 내려온다
-  (`jackson.default-property-inclusion: always`, `bootstrap/application.yaml`) — `ParfaitGroupControllerTest`의
-  "최근 이미지가 없는 그룹도 nullable 필드를 생략하지 않고 null로 응답한다" 테스트로 확인.
+  (`jackson.default-property-inclusion: always`, `bootstrap/application.yaml`) — 이제 이 응답에서 널이 될 수
+  있는 필드는 `recentImageUrl` 하나다.
 
   **`recentImageUploadedAt`의 출처**: 애플리케이션 코드가 만든 값이 아니라, `persistence`
   모듈의 `ParfaitGroupMemberRepository.findMyGroupSummaries`(네이티브 쿼리, `MyParfaitGroupSummaryProjection`)가
-  `parfait_image` 테이블의 `created_at` 컬럼을 그대로 프로젝션한 값이다.
+  `parfait_image.created_at`을, 그것이 없으면 `parfait_group.created_at`을 프로젝션한 값이다.
 
   **직렬화 포맷(확인됨, 단 아래 한계 참고)**: `ParfaitGroupControllerTest`가
   `LocalDateTime.of(2026, 8, 1, 12, 0)` → 응답 문자열 `"2026-08-01T12:00:00"`을 `jsonPath`로 직접 검증한다.
@@ -109,12 +126,12 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | `groupNickname` | String | 아니오 | 인증 회원 본인의 그룹 닉네임 |
 | `inviteCode` | String | 아니오 | |
 | `memberLimit` | Int | 아니오 | **2026-08-18 신설.** 그룹 정원(`GroupMemberLimit`, 1~12) |
-| `members` | List<`ParfaitGroupMemberResponse`> | 아니오 | 원소: `memberId` Long · `groupNickname` String · `nametagChip` String(enum)?(**2026-08-18 신설**) |
+| `members` | List<`ParfaitGroupMemberResponse`> | 아니오 | 원소: `memberId` Long · `groupNickname` String · `nameTagChip` String(enum)(**2026-08-18 신설**, 2026-08-19에 키가 `nametagChip`에서 바뀌고 비널이 됐다) |
 
   **`members`는 탈퇴하지 않은 멤버만**이다(`findAllByParfaitGroupIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc` —
-  참여 순). 따라서 원소의 `nametagChip`에는 `RELEASED`가 오지 않고 `TYPE1`~`TYPE12` 중 하나이며,
+  참여 순). 따라서 원소의 `nameTagChip`에는 `DEFAULT`가 오지 않고 `TYPE1`~`TYPE12` 중 하나이며,
   **같은 응답 안에서 값이 겹치지 않는다** → 아래 [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙).
-  근거: `ParfaitGroupControllerTest`가 `groupName`·`memberLimit`·`members[0].nametagChip`(`"TYPE3"`)을
+  근거: `ParfaitGroupControllerTest`가 `groupName`·`memberLimit`·`members[0].nameTagChip`(`"TYPE3"`)을
   `jsonPath`로 단언한다.
 
   ✅ **2026-08-18 — 앱이 메우던 계약 공백 둘이 서버에서 닫혔다.** 그룹명(상세 응답에 없어
@@ -231,6 +248,16 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | `groupName` | String | 아니오 | |
 | `inviteCode` | String | 아니오 | 서버가 자동 생성 |
 | `memberLimit` | Int | 아니오 | |
+| `recentImageUrl` | String? | 예 | **2026-08-19 신설.** 갓 만든 그룹이라 **항상 `null`**(서비스가 리터럴로 넣는다) |
+| `recentImageUploadedAt` | LocalDateTime | 아니오 | **2026-08-19 신설.** 방금 저장한 그룹의 `updatedAt` |
+| `lastPlacedByNameTagChip` | String(enum) | 아니오 | **2026-08-19 신설.** 생성자에게 방금 배정된 칩 |
+
+  🔁 **2026-08-19 — 생성 응답이 목록 응답의 세 필드를 얻었다.** 목록 카드를 그리는 데 필요한 값을
+  생성 직후에도 갖게 하려는 변경이고, 그래서 `ParfaitGroupService.create`가 칩을 먼저 뽑아
+  (`creatorNametagChip`) 멤버십 저장과 응답 양쪽에 쓴다.
+  ⚠️ **같은 필드의 출처가 두 엔드포인트에서 다르다** — 생성은 `savedGroup.updatedAt`, 목록은
+  `parfait_group.created_at`이다. 생성 직후에는 두 값이 같지만 그룹 행이 갱신되면 갈린다
+  → [미결](#미결).
 
 - **에러 코드**
 
@@ -307,8 +334,8 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   근거: `ParfaitGroupService.leave`가 `findGroupByIdForUpdate`(→ `GROUP_NOT_FOUND`) →
   `findMembership`(→ `GROUP_NOT_JOINED`) → `ParfaitGroupMemberLeavePort.leave` 순서로 실행한다. 탈퇴 시
   `groupNickname`은 `GroupNickname.unknown()`("(알수없음)")으로 대체되고 `leftAt`이 기록된다(`ParfaitGroupMember.leave`).
-  **2026-08-18부터 `nametagChip`도 같은 전이에서 `RELEASED`로 반납된다** → 아래
-  [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙).
+  **2026-08-18부터 `nameTagChip`도 같은 전이에서 반납된다**(반납 값의 이름은 2026-08-19에 `RELEASED`에서
+  `DEFAULT`로 바뀌었다) → 아래 [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙).
 
   **2026-08-15 — 같은 전이를 부르는 두 번째 경로가 생겼다.** 회원 탈퇴(`DELETE /api/v1/users/me`,
   [member.md](member.md))가 그 회원의 **모든 그룹 멤버십에 같은 `leave()`를 적용**한다. 즉 이 그룹 API를
@@ -353,24 +380,35 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 주체가 서버가 됐다.** 그전까지 응답에 타입 필드가 없어 앱이 목록 인덱스로 돌려 쓰던 자리다
 ([open-questions](../synthesis/open-questions.md) OQ-P-140·OQ-P-210).
 
-- **값 집합**: `NameTagChipType`(`core/parfaitgroup/domain`) — `TYPE1`~`TYPE12` + `RELEASED`.
+- **값 집합**: `NameTagChipType`(`core/parfaitgroup/domain`) — `TYPE1`~`TYPE12` + `DEFAULT`.
   JSON에는 **enum 이름 문자열 그대로** 실린다(`"TYPE7"`). 위키 [[nametag-chip]]의 12종과 개수가 같고,
-  `RELEASED`는 그 12종 밖의 **반납 표식**이다(정책 문서에 대응 항목이 없다 → [미결](#미결)).
+  `DEFAULT`는 그 12종 밖의 **반납 표식**이다(정책 문서에 대응 항목이 없다 → [미결](#미결)).
+  🔁 **2026-08-19에 이 값의 이름이 `RELEASED`에서 `DEFAULT`로 바뀌었다**(마이그레이션 V15가 기존 행을
+  갱신하고 컬럼을 `NOT NULL DEFAULT 'DEFAULT'`로 좁혔다). **`TYPE1`~`TYPE12`와 달리 유일성 제약이 없어
+  같은 그룹 안에서 여러 명이 동시에 가질 수 있다**(서버 enum 주석이 이 성질을 명시한다).
+- **널이 될 수 없다**(2026-08-19) — 도메인 `ParfaitGroupMember.nametagChip`·응답 DTO·JPA 컬럼이 전부
+  비널로 좁혀졌다. "가입 시 항상 배정되고 탈퇴 시 항상 `DEFAULT`로 채워진다"는 불변식을 타입으로 옮긴
+  것이다. 소비 측은 이 필드에서 `null`을 볼 일이 없다.
 - **부여 시점**: 그룹 **생성**과 **참여** 두 경로 모두 `ParfaitGroupService.assignNametagChip`이
-  `NameTagChipType.assignRandom`으로 뽑는다. 후보는 `ASSIGNABLE`(= 전체 − `RELEASED`)에서 **그 그룹의
+  `NameTagChipType.assignRandom`으로 뽑는다. 후보는 `ASSIGNABLE`(= 전체 − `DEFAULT`)에서 **그 그룹의
   탈퇴하지 않은 멤버가 이미 쓰는 값을 뺀 나머지**이고 그중 무작위다.
 - **유일성 범위**: **그룹 안 · 활동 중인 멤버 사이에서만** 겹치지 않는다. 그룹이 다르면 같은 회원이 다른
   타입을 받고, 같은 타입이 다른 그룹에서 다른 사람에게 갈 수 있다. **계정 공통이 아니다** — 닉네임 초기값이
   계정 공통인 것과 반대다(위키 [[닉네임-자동-생성]]).
-- **반납**: `ParfaitGroupMember.leave()`가 `RELEASED`로 바꾼다. 그룹 탈퇴와 **회원 탈퇴**
+- **반납**: `ParfaitGroupMember.leave()`가 `DEFAULT`로 바꾼다. 그룹 탈퇴와 **회원 탈퇴**
   (`DELETE /api/v1/users/me`, [member.md](member.md)) 양쪽이 같은 전이를 부른다. 반납된 값은 후보에서
   빠지므로 **뒤에 들어오는 사람이 그 타입을 다시 받을 수 있다.**
+- **응답에 실리는 자리는 넷**이다 — 그룹 상세 `members[].nameTagChip` · 그룹 목록·생성
+  `lastPlacedByNameTagChip` · 캔버스 조회 `groupMembers[].nameTagChip`·`images[].placedBy.nameTagChip`
+  ([parfait.md](parfait.md)) · 토핑 배치 응답 `placedBy.nameTagChip`([parfait-image.md](parfait-image.md)).
+  뒤의 둘은 2026-08-19에 더해졌다.
 - **닉네임 변경은 칩을 바꾸지 않는다**(`changeNickname`이 값을 그대로 넘긴다).
 - **재배정 경로가 없다.** 한번 받은 타입을 바꾸는 API도, 다시 뽑는 내부 경로도 없다 — 그룹을 나갔다
   다시 들어오면 새로 뽑힌다.
 - **기존 행**: 마이그레이션 `V14__add_nametag_chip_to_parfait_group_member.sql`이 활동 중인 멤버에게
-  그룹별 무작위 순번으로 `TYPE1`~`TYPE12`를, 이미 탈퇴한 행에는 `RELEASED`를 채웠다. 컬럼은 널 허용이고
-  응답 타입도 널 허용이지만, **이 마이그레이션 이후 값이 비는 경로는 없다.**
+  그룹별 무작위 순번으로 `TYPE1`~`TYPE12`를, 이미 탈퇴한 행에는 반납 값을 채웠고,
+  `V15__rename_nametag_chip_released_to_default.sql`이 그 값을 `DEFAULT`로 갱신하며 컬럼을
+  `NOT NULL DEFAULT 'DEFAULT'`로 바꿨다.
 - **정원과의 결속**: 배정 가능 타입 12종과 `GroupMemberLimit.MAX`(12)가 같아야 마지막 멤버까지 배정된다
   (서버 코드가 주석으로 이 전제를 적는다). 후보가 비면 `check()`가 `IllegalStateException`을 던지므로
   도메인 에러 코드가 아니라 **500**이다 — 참여는 정원 검사(`GROUP_MEMBER_LIMIT_REACHED`)를 먼저 통과하므로
@@ -481,8 +519,14 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 - **A-005가 보내는 `groupNickname`이 아직 mock**이다(G-001 UiState 기본값 리터럴).
 - ⚠️ **`recentImageUploadedAt` 파싱이 이 문서의 직렬화 포맷과 어긋난다** — 앱 매퍼가
-  `kotlin.time.Instant::parse`(오프셋 필수)를 쓰는데 서버는 오프셋 없는 로컬 날짜시간을 내려준다
-  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+  `kotlin.time.Instant::parse`(오프셋 필수)를 쓰는데 서버는 오프셋 없는 로컬 날짜시간을 내려준다.
+  ⚠️ **2026-08-19 서버 delta로 이 실패가 항상 난다** — 앱 매퍼는 `recentImageUploadedAt?.let(Instant::parse)`라
+  값이 `null`일 때만 파싱을 건너뛰었는데, 서버가 `COALESCE`로 비널화해 **그 우회로가 사라졌다.**
+  즉 이제 **그룹이 하나라도 있으면 G-001 목록 조회가 통째로 실패**한다(그전에는 토핑 0건 그룹만 있는
+  계정이 우연히 살아 있었다) → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- ⚠️ **`recentImageUploadedAt`이 이제 "그룹 생성 시각"일 수도 있다** — `GroupListScreen`이 이 값으로
+  경과 시간을 그리므로, 토핑이 0건인 그룹도 **활동이 있었던 것처럼 보인다.** 앱이 "토핑 없음"을 가르려면
+  `recentImageUrl`이 `null`인지를 함께 봐야 한다 → [open-questions](../synthesis/open-questions.md) [2026-08-19].
 - ✅ **상세 조회 한 화면에 요청이 둘이던 이유가 서버에서 사라졌다**(2026-08-18 서버 delta) — 상세 응답에
   **그룹명이 없어** `GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 읽어 붙이던 자리다(그룹 SSoT
   라운드에서 HTTP 호출은 이미 사라지고 인메모리 캐시 `combine`으로 바뀌었으나, **조합 자체와
@@ -493,12 +537,23 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   "N명 남음"이 mock 1로 남아 있던 자리다. 상세 응답이 `memberLimit`을 실으므로
   `memberLimit - members.size`로 바꿀 수 있다(앱 `GroupSettingViewModel`의 TODO가 그 식을 적어 두었다)
   → [open-questions](../synthesis/open-questions.md) [2026-08-13].
-- ⚠️ **칩 타입을 서버가 주기 시작했는데 앱은 아직 인덱스로 돌린다**(2026-08-18 서버 delta) —
+- ⚠️ **칩 타입을 서버가 주기 시작했는데 develop은 아직 인덱스로 돌린다**(2026-08-18 서버 delta) —
   `GroupSettingViewModel`이 `NAMETAG_CHIP_TYPES[index % 12]`로, `GroupListScreen`이
-  `YGGrouptagChipType.entries`를 순환으로 쓴다. 계약이 `members[].nametagChip`·
-  `lastPlacedByNametagChip`을 주므로 **"멤버가 빠지면 남은 사람 색이 밀린다"는 성질을 없앨 수 있다**.
+  `YGGrouptagChipType.entries`를 순환으로 쓴다. 계약이 `members[].nameTagChip`·
+  `lastPlacedByNameTagChip`을 주므로 **"멤버가 빠지면 남은 사람 색이 밀린다"는 성질을 없앨 수 있다**.
   응답 필드를 안 읽는 것뿐이라 `⚠️불일치`는 아니다(앱 JSON은 `ignoreUnknownKeys = true`)
   → [open-questions](../synthesis/open-questions.md) [2026-08-18].
+- ⚠️ **그 필드를 읽는 미머지 브랜치가 2026-08-19 서버 delta로 조용히 어긋났다.** 브랜치
+  `feature/#294-group-ssot`의 `MyParfaitGroupResponse`·`ParfaitGroupMemberResponse`가
+  `@SerialName("lastPlacedByNametagChip")`·`@SerialName("nametagChip")`(둘 다 `String? = null`)로 읽는데
+  **서버 키가 `nameTagChip` 계열로 바뀌었다.** 기본값이 있어 역직렬화는 안 깨지고 **전부 `null`로
+  떨어진다** — 칩이 조용히 폴백으로 그려진다. 같은 브랜치의 `NametagChipType.RELEASED`도 서버가 더는
+  보내지 않는 문자열이라 `DEFAULT`가 오면 매핑에서 `null`이 된다. develop에는 이 코드가 없어 계약 표의
+  `⚠️불일치` 대상은 아니지만 **머지 전에 고쳐야 한다**
+  → [open-questions](../synthesis/open-questions.md) [2026-08-19].
+  ✅ **같은 날 닫혔다(미머지)** — 그 작업을 develop 위로 rebase한 `feature/#300-sync-backend-api-250819`가
+  세 DTO의 키를 `nameTagChip` 계열로 맞추고 `RELEASED`를 `DEFAULT`로 바꿨다
+  ([plan](../plans/2026-08-19-server-delta-nametag-chip-keys.md) Task 2·3). **develop 머지는 아직이다.**
 - ⚠️ **신고 사유가 하드코딩 상수 하나**다(`GROUP_REPORT_REASON`) — 사유 선택 UI가 없는데 서버는
   사유를 필수로 받으므로(빈 값이면 400 `INVALID_GROUP_REPORT_REASON`) 화면이 대신 채운다. 결과적으로
   **모든 신고가 같은 문자열로 저장된다** → [open-questions](../synthesis/open-questions.md) [2026-08-17].
@@ -580,8 +635,16 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
 
 - **Nametag-Chip 배정 규칙이 서버 코드에만 있다.** 위키 [[nametag-chip]]은 "타입은 유저별 고정"이라고만
   적고 부여 주체·유일성 범위를 정하지 않았는데, 서버가 **그룹별 무작위·활동 멤버 사이 유일**로 구현했다
-  (계정 공통이 아니다). `RELEASED`라는 13번째 값도 정책에 없다 →
+  (계정 공통이 아니다). `DEFAULT`라는 13번째 값도 정책에 없다 →
   [open-questions](../synthesis/open-questions.md)
-- **`RELEASED`를 받는 소비 측 처리가 정해지지 않았다.** 그룹 상세 `members`에는 안 오지만
-  **목록의 `lastPlacedByNametagChip`에는 온다**(마지막 토퍼가 탈퇴한 경우). 앱 `YGColorChipType`은
-  12종 + `NametagChipPlus`뿐이라 대응 값이 없다 → [open-questions](../synthesis/open-questions.md)
+- **`DEFAULT`를 받는 소비 측 처리가 정해지지 않았다.** 그룹 상세 `members`에는 안 오지만
+  **목록·생성의 `lastPlacedByNameTagChip`에는 온다**(마지막 토퍼가 탈퇴한 경우). 앱 `YGColorChipType`은
+  12종 + `NametagChipPlus` + `Default`뿐이고 그 `Default`의 색 구분·대비도 미결이다
+  → [open-questions](../synthesis/open-questions.md)
+
+2026-08-19 서버 delta로 새로 열린 것 둘:
+
+- **`recentImageUploadedAt`이 두 뜻을 겸한다** — 토핑이 없으면 그룹 생성 시각으로 대체돼, "마지막 활동"
+  표시가 활동 없는 그룹에도 나온다 → [open-questions](../synthesis/open-questions.md)
+- **같은 필드가 목록과 생성에서 다른 컬럼에서 나온다**(`parfait_group.created_at` vs `updatedAt`)
+  → [open-questions](../synthesis/open-questions.md)

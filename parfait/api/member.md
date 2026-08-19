@@ -2,8 +2,8 @@
 id: member
 title: 회원(내 계정 조회·전역 닉네임 변경·탈퇴)
 server_module: http/member
-server_commit: 08df1bf
-verified: 2026-08-18
+server_commit: 57529ec
+verified: 2026-08-19
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-15-user-info-ssot
 related_adr: ADR-0017, ADR-0022
@@ -148,8 +148,15 @@ tags: [api, parfait, server-contract, member]
   안에서 S3를 지운다([parfait-image.md](parfait-image.md)) — **한 저장소 안에서 판단이 갈렸다.**
 
   ⚠️ **회원 행은 하드 삭제다.** `MemberAdapter.deleteById`가 `providerUserId`를 `withdrawn_<memberId>`로
-  덮어 저장한 뒤 `delete`한다(같은 트랜잭션이라 실제로 남는 것은 삭제 결과뿐이다 — 유니크 제약을 비우려는
-  의도로 읽히나 코드에 설명이 없다). 회원 이력은 남지 않는다.
+  덮어 저장한 뒤 `delete`한다. 회원 이력은 남지 않는다.
+
+  🔁 **2026-08-19 — 그 rename이 실제로는 DB에 안 닿고 있었다**(`fix: 회원 탈퇴 후 재가입 시 유니크 제약
+  위반으로 500 발생하는 문제 수정`). 같은 트랜잭션에서 rename과 delete가 한 번에 flush되면 Hibernate가
+  **곧 삭제될 엔티티라는 이유로 그 UPDATE를 dirty-check에서 건너뛴다.** `provider_user_id`가 원래 값
+  그대로 남아, **같은 계정으로 다시 가입하면 유니크 제약 위반으로 500**이 났다. 지금은 rename 직후
+  `memberRepository.flush()`로 삭제보다 먼저 반영한다. **계약(요청·응답·상태 코드)은 안 바뀌었고
+  바뀐 것은 재가입 성공 여부**다 — 카카오·애플 로그인의 신규 가입 경로([auth.md](auth.md))가 이 수정의
+  수혜자다. 근거: `SignupAfterWithdrawIntegrationTest`가 단일 트랜잭션 안에서 재현·검증한다.
 
   ⚠️ **탈퇴해도 올려 둔 토핑은 남는다.** 그룹 멤버십은 `leftAt`이 찍히고 `groupNickname`이
   `GroupNickname.unknown()`(`(알수없음)`)으로 바뀌지만, 그 멤버가 배치한 `parfait_image` 행은 그대로다.
