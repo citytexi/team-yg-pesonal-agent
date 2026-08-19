@@ -76,6 +76,12 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 > **`refactor/segmentation-develop`**로 다시 만들어졌다(브랜치명만 달라졌을 뿐, 아래 서술하는
 > `segmentImage` 재작성·캐시 정리·예외 처리 내용은 새 브랜치에서도 동일하게 확인됨). 상세는
 > [segmentation-pipeline-hardening 스펙의 "as-built 정정" 절](../specs/2026-08-18-segmentation-pipeline-hardening.md#as-built-정정-2026-08-19-리베이스).
+>
+> 📌 **재정정(2026-08-20)** — 그 브랜치를 develop `750cc2dd` 위로 한 번 더 리베이스했다.
+> **아래 세 항목의 결론은 그대로 유효하다.** 다만 `segmentImage`는 리베이스에서 develop과 충돌해
+> 이 ADR이 다루는 저장 구간의 모양이 조금 달라졌다 — 이 라운드가 넣은 `try`/`finally` 안으로
+> develop의 trimmed 비트맵 생성이 들어와, `finally`의 `recycle()`이 두 비트맵의 수명을 함께 닫는다.
+> 상세는 [스펙의 "as-built 재정정" 절](../specs/2026-08-18-segmentation-pipeline-hardening.md#as-built-재정정-2026-08-20-두-번째-리베이스).
 
 [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md) 구현.
 위 두 절이 남긴 것 셋을 여기서 닫는다.

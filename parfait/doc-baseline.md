@@ -363,15 +363,23 @@
 - **검증일**: 2026-08-20 (36회차)
 - **미머지 제외 항목**: **`refactor/segmentation-develop` 하나만 남았다**(세그멘테이션 파이프라인 하드닝 +
   스캐폴드 8엔트리 일괄 이관 + `popUpTo<T>()`, [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md)
-  선반영 완료). ⚠️ **뒤처짐이 두 세대에서 다섯 세대로 늘었다** — base는 여전히 develop `86f0f6b0`이고
-  그 뒤 develop에 #290·#306·#307·#308·#310이 들어갔다. 확인은
-  `git merge-base --is-ancestor origin/develop origin/refactor/segmentation-develop`이고 지금은 거짓이다.
-  ⚠️ **브랜치가 커밋 둘을 더 얻었다**(11개 → 13개) — `refactor(segmentation): let the decode use case own
-  its failure`(양쪽 호출부의 stdlib `runCatching`이 `CancellationException`까지 삼켜 이미 떠난 화면이
-  디코드 실패로 보고되던 것을 UseCase가 `Result`를 반환하게 고쳤다)와 `feat(segmentation): fill the
-  gallery's recent row from the cutout flow`(`AddRecentImageUseCase`를 부르는 곳이 트리에 없어 갤러리 최근
-  줄이 영영 빌 수밖에 없던 것을 세그멘테이션 경로가 채운다). **뒤의 것은 스펙이 "C-106 몫"이라며 범위 밖으로
-  둔 항목이라** 스펙이 자기 브랜치보다 뒤처졌다 — 머지 라운드에 스펙 대조가 필요하다.
+  선반영 완료). ✅ **2026-08-20에 리베이스해 뒤처짐이 0이 됐다** — base가 develop `86f0f6b0`에서
+  **`750cc2dd`(이 기준선과 동일)**로 올라갔고 head는 `1181eedf`, 커밋 **14개**다. 확인은
+  `git merge-base --is-ancestor origin/develop refactor/segmentation-develop`이고 지금은 참이다
+  (리모트는 아직 옛 히스토리라 force push가 필요한 상태다).
+  리베이스 결과·수치·뒤집힌 결정은
+  [스펙 as-built 재정정 절](specs/2026-08-18-segmentation-pipeline-hardening.md#as-built-재정정-2026-08-20-두-번째-리베이스)이
+  정본이다 — 요지는 셋이다. **① 예고와 달리 충돌이 3건 났다**(스펙은 "그대로 얹히는지만 확인하면
+  된다"고 적었으나 `ImageSegmentationRepositoryImpl`은 두 변경이 같은 블록에서 `subjectBitmap` 수명을
+  서로 다르게 다뤄 결합 판단이 필요했다). **② 스펙 본문을 뒤집은 커밋이 둘 있다**(`decodeImage` 계약을
+  `Result`로 넓힌 것 — 스펙이 명시적으로 기각했던 대안이고, 이미 방어하던 쪽도 `CancellationException`을
+  삼키고 있었다는 것이 뒤집은 근거다 / 최근 이미지 공급자를 만든 것 — 스펙이 "C-106 몫"이라며 범위 밖에
+  뒀으나 기록 대상이 결과물이 아니라 **사용자가 고른 원본 uri**라 제외했던 설계와는 다르다).
+  **③ OQ-P-238을 같이 닫았다**(`CanvasToppingPlaceRoute`의 `goTo(NavKeyCanvasMain(groupId = 0L))` →
+  `popUpTo<NavKeyCanvasMain>()`) — 이 브랜치의 캐시 정리 안전 근거를 참으로 만드는 수정이라 여기서
+  닫았고, 함께 권고됐던 OQ-P-239(`NavKeyCanvasMove` 삭제)는 **#290이 남긴 잔해라 열어 뒀다.**
+  수치는 develop `750cc2dd` 대비 재측정: 유닛 **538 → 560건**(클래스 61 → 64), `YGScaffoldV2` 채택
+  **10 → 18개 파일**, `YGScaffold`(V1) 잔존 **6 → 3개 파일**(전부 엔트리 빌더).
   develop 대조 시 `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`이고 `popUpTo`도 없다.
   리베이스 시 드롭했던 커밋 둘(`NavKeyCanvasMove` 계열 삭제·배치 완료 이펙트 `popUpTo` 전환)이 되살아날
   자리는 그대로다(OQ-P-238·OQ-P-239).
