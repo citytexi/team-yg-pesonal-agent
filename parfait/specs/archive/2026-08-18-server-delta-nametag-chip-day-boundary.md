@@ -4,7 +4,7 @@ title: 서버 delta 08df1bf 반영 — Nametag-Chip 서버 배정·그룹 상세
 status: implemented
 category: behavior-spec
 platforms: android
-verified:
+verified: 2026-08-20
 related_code: NametagChipType, MyParfaitGroupDetailResponse, ParfaitGroupMemberResponse, MyParfaitGroupResponse, PlacedByResponse, ParfaitGroupDetailVO, ParfaitGroupMemberVO, MyParfaitGroupVO, GroupDetailVO, GetGroupDetailUseCase, ParfaitGroupRepository, GroupSettingViewModel, GroupListScreen, YGColorChipType, YGGrouptagChipType, ParfaitDay, parfaitToday, GetTodayParfaitUseCase, GetParfaitYearsUseCase, CanvasMainViewModel
 related_adr: ADR-0023, ADR-0017
 related_spec: group-ssot, s101-group-setting-api, c001-canvas-today-detail, c201-canvas-calendar-server
@@ -18,7 +18,13 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 
-> ⚙️ **구현 완료·미머지(2026-08-18, 브랜치 `feature/#300-sync-backend-api-250818` = PR #308, `refactor/#294-group-data-using-ssot`(PR #307) 위 커밋 20개)** — 계획 8 Task가
+> ✅ **develop 머지 완료(2026-08-20, PR #308 `feature/#300-sync-backend-api-250818` → develop `412991ea`)** —
+> 선행 PR #307이 먼저 들어간 직후 같은 순서로 머지됐고 머지 커밋에 충돌 해소 편집이 0건이다.
+> 유닛 테스트는 511 → 532건. **as-built 차이 ①의 전제가 이 머지로 사라졌다** — `YGColorChipType.Default`는
+> 이제 develop에 있으므로 PR #298이 같은 타입을 다시 더할 자리가 없다(그 PR이 열려 있다면 그 블록은
+> 충돌로 드러난다).
+>
+> ⚙️ **구현 완료 시점 기록(2026-08-18, 브랜치 `feature/#300-sync-backend-api-250818` = PR #308, `refactor/#294-group-data-using-ssot`(PR #307) 위 커밋 20개)** — 계획 8 Task가
 > 전부 들어왔다. **뒤집힌 결정 1건**(아래 결정 5 참고: 호출부 무변경을 테스트 이음매 금지로까지 읽은 것이
 > 과했다), as-built 차이 2건, park 2건.
 >
@@ -37,7 +43,7 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 > 실기기·실서버 확인은 하지 않았다 — 이 저장소의 모든 계약 라운드와 같이 코드 대조까지다.
 
 서버 `main`이 `22717fe` → `08df1bf`로 오면서 **엔드포인트는 안 늘고 응답 필드 넷과 "오늘"의 정의가
-바뀌었다**([api/server-baseline.md](../api/server-baseline.md) 9회차). 이 스펙은 그 delta를 앱에 반영한다.
+바뀌었다**([api/server-baseline.md](../../api/server-baseline.md) 9회차). 이 스펙은 그 delta를 앱에 반영한다.
 
 작업 브랜치는 **`feature/#300-sync-backend-api-250818`**(PR #308)이고 그룹 SSoT 브랜치
 **`refactor/#294-group-data-using-ssot`**(PR #307) 위에 얹혀 있다. 그룹 상세·목록을 인메모리 SSoT로 옮긴
@@ -60,7 +66,7 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 
 칩 배정 규칙은 서버 소관이 됐다 — 참여·생성 시 **그 그룹의 활동 멤버가 안 쓰는 값 중 무작위**,
 탈퇴 시 `RELEASED` 반납, 재배정 경로 없음. 유일성은 **그룹 안에서만** 성립해 계정 공통이 아니다
-([api/parfait-group.md](../api/parfait-group.md) "Nametag-Chip 배정 규칙").
+([api/parfait-group.md](../../api/parfait-group.md) "Nametag-Chip 배정 규칙").
 
 ## 결정
 
@@ -113,7 +119,7 @@ Figma의 Nametag-Chip `Default`는 글자가 닉네임 첫 글자가 아니라 *
 칩을 `placedBy`가 아니라 `groupMembers`에서 `GroupMemberId`로 조인해 찾는다.
 
 > 서버 `groupMembers`에는 칩이 없어 **C-001 상단 멤버 칩은 이 라운드로 안 닫힌다.** 서버 요청 대상이다
-> ([open-questions](../synthesis/open-questions.md) OQ-P-224 ①).
+> ([open-questions](../../synthesis/open-questions.md) OQ-P-224 ①).
 
 ### 4. `GroupDetailVO`를 삭제한다
 
@@ -169,7 +175,7 @@ Figma의 Nametag-Chip `Default`는 글자가 닉네임 첫 글자가 아니라 *
 S-101(12→12)과 G-001(12→6)은 규칙이 달라 **공용 변환을 만들지 않는다** — 각 feature impl에 확장 함수로 둔다.
 자리는 그 모듈의 **`util` 패키지**다(`setting/impl/util/ColorChipType.kt`·`list/impl/util/GrouptagChipType.kt`) —
 화면 파일 바닥이 아니라. 같은 라운드에 G-001의 `toToppingImage`와 이미 빠져 있던 `GroupTimestamp.kt`도
-그 자리로 모았고, 규칙은 [module-structure](../architecture/module-structure.md)에 올렸다.
+그 자리로 모았고, 규칙은 [module-structure](../../architecture/module-structure.md)에 올렸다.
 
 `remainingCount`가 실데이터가 되면 **음수가 날 수 있다**(정원을 줄이는 경로는 없지만 캐시와 서버가
 어긋난 순간). `coerceAtLeast(0)`으로 접는다.
@@ -205,7 +211,7 @@ TDD로 간다. 매퍼 단독 테스트는 만들지 않는다(규약) — 판단
 
 - **칩 배정 규칙이 정책 문서에 없다** — 위키 [[nametag-chip]]은 "타입은 유저별 고정"이라고만 적고
   부여 주체·유일성 범위를 정하지 않았는데 서버가 그룹 단위로 구현했다. `RELEASED`도 정책 밖이다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-223.
+  → [open-questions](../../synthesis/open-questions.md) OQ-P-223.
 - **`groupMembers`에 칩이 없다** → OQ-P-224 ①.
 - **03시 값을 앱이 복제한다** — 계약에 그 값이 없어 서버가 배치 시각을 바꾸면 조용히 갈린다
   → OQ-P-222 ②.

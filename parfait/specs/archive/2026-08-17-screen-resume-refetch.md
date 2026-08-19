@@ -63,7 +63,7 @@ tags: [spec, parfait, groups, group-list, canvas, state, g-001, c-001]
 
 - 폴링·푸시 기반 갱신. 화면이 앞에 서는 순간만 트리거다.
 - 공유 캐시. 두 화면은 여전히 각자 조회하고 각자 `UiState`에 담는다 —
-  그것을 캐시 구독으로 바꾸는 것은 [group-ssot 스펙](../2026-08-17-group-ssot.md)이다.
+  그것을 캐시 구독으로 바꾸는 것은 [group-ssot 스펙](2026-08-17-group-ssot.md)이다.
 - C-001의 실패 표현. 캔버스 조회 실패는 이 라운드에서도 로그뿐이다.
 
 ## API / 인터페이스
@@ -182,7 +182,7 @@ Route에 있는 이유는 **ViewModel이 자기 화면이 앞에 섰는지 모�
   03:00 경계 미적용은 그대로다.
 - **관용구가 규약이 아니다** — 두 화면이 같은 형태를 쓰지만 `LifecycleResumeEffect`로 재조회하라는
   규약은 없고, 새로 생기는 화면이 이것을 따르는지 확인할 수단도 없다 → OQ-P-221.
-- **후속 브랜치와의 관계** — 미머지 `feature/#294-group-ssot`가 이 자리의 **대상을 캐시로 바꾼다**
+- **후속 라운드와의 관계** — PR #307(2026-08-20 develop 머지)이 이 자리의 **대상을 캐시로 바꿨다**
   (`Enter` → `RefreshMyGroupsUseCase`, 표시는 `Flow` 구독). 재진입 재조회 자체는 그 뒤에도 남고,
-  실패 판정만 `isNullOrEmpty()`가 된다 → [group-ssot 스펙](../2026-08-17-group-ssot.md).
+  실패 판정만 `isNullOrEmpty()`가 된다 → [group-ssot 스펙](2026-08-17-group-ssot.md).
 - **실기기·실서버 확인 없음** — 재진입 재조회·자정 넘김·토스트 노출은 유닛 테스트로 덮은 범위까지다.

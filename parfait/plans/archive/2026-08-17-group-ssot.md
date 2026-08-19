@@ -1,5 +1,14 @@
 # 그룹 목록·상세 인메모리 SSoT Implementation Plan
 
+> ✅ **완료·develop 머지(PR #307 `refactor/#294-group-data-using-ssot` → `8ca3329a`, 2026-08-20)** —
+> 7 Task 전량이 develop에 있다. 체크박스는 실행 기록을 이 블록에 모으는 관례대로 미체크로 둔다.
+>
+> 계획이 쓰인 브랜치(`feature/#294-group-ssot`)는 PR #299가 닫히면서 SSoT 몫만
+> `refactor/#294-group-data-using-ssot`로 갈렸고, 그 브랜치가 develop `c36cad49` 위로 리베이스된 뒤
+> 머지됐다. 머지 커밋에 충돌 해소 편집은 0건이라 브랜치 팁이 그대로 develop 사실이다.
+> 리베이스가 Global Constraints 하나를 넓혔다 — **세션 정리를 부르는 경로가 셋이 됐다**(#306이
+> 들여온 `WithdrawUseCase`가 `LogoutUseCase`에 정리를 위임한다). 유닛 490 → 511건.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 그룹 목록과 그룹 상세를 `:data`의 인메모리 저장소 한 벌에 두고, 세 화면(G-001 목록·C-001 캔버스·S-101 설정)이 그것을 `Flow`로 구독하게 만든다.
@@ -8,7 +17,7 @@
 
 **Tech Stack:** Kotlin, Coroutines/Flow, Hilt, JUnit4 + kotlin-test + MockK + Turbine
 
-**Spec:** [`parfait/specs/2026-08-17-group-ssot.md`](../specs/2026-08-17-group-ssot.md)
+**Spec:** [`parfait/specs/2026-08-17-group-ssot.md`](../../specs/archive/2026-08-17-group-ssot.md)
 
 ## Global Constraints
 

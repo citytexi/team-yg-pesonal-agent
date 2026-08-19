@@ -186,10 +186,15 @@ Repository 경계를 뚫어 소비자가 미포착 예외로 크래시한다(ADR
 ([spec](../specs/archive/2026-08-17-s101-group-setting-api.md)).
 
 **UseCase 하나가 Repository를 두 번 부르는 첫 사례도 여기서 나왔다** — `GetGroupDetailUseCase`가
-`getGroupDetail` + `getMyGroups`다. 상세 응답에 그룹명이 없어 목록에서 이름만 집어 붙이는 것이고,
-**이름 조회 실패는 실패로 치지 않는다**(빈 이름 + 나머지 표시). 서버 응답 하나에 대응하지 않는 VO
-(`GroupDetailVO`)가 그래서 `:data` 매퍼가 아니라 UseCase에서 만들어진다
-→ [open-questions](../synthesis/open-questions.md) [2026-08-17].
+`getGroupDetail` + `getMyGroups`였다. 상세 응답에 그룹명이 없어 목록에서 이름만 집어 붙이는 것이었고,
+**이름 조회 실패는 실패로 치지 않았다**(빈 이름 + 나머지 표시). 서버 응답 하나에 대응하지 않는 VO
+(`GroupDetailVO`)가 그래서 `:data` 매퍼가 아니라 UseCase에서 만들어졌다.
+✅ **둘 다 사라졌다(2026-08-20, PR #307·#308 develop 머지)** — 서버 상세 응답이 `groupName`을 싣게 되면서
+`GroupDetailVO`는 삭제됐고 이름을 얻으려던 두 번째 호출도 걷혔다. 지금 `GetGroupDetailUseCase`는
+`ParfaitGroupDetailVO` 캐시 하나를 구독한다. 즉 **이 사례는 "서버가 필드를 주면 소멸하는 종류"였다** —
+합성 자리를 `:data`가 아니라 UseCase에 둔 판단이 그 소멸을 한 줄 삭제로 끝나게 했다
+→ [group-ssot 스펙](../specs/archive/2026-08-17-group-ssot.md) ·
+[server-delta 스펙](../specs/archive/2026-08-18-server-delta-nametag-chip-day-boundary.md).
 
 **`logout()`은 실패를 전파하지 않는다**(#260) — 서버 호출이 실패해도 `TokenStore.clear()` 후
 `Result.success`다. 사용자가 눌렀으면 이 기기에서는 나가는 것이 기대 동작이라는 근거이고, 화면이
@@ -300,12 +305,17 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > `WithdrawUseCase`가 붙어 S-001 Danger Zone의 탈퇴가 실제 요청을 보낸다
 > ([api/member.md](../api/member.md) `android_status: done`). 표면만 있고 소비처가 없는 도메인은
 > 그대로 **둘**(image·parfait-image)이다.
-> ⚙️ **2026-08-17 — 그룹 정보가 두 번째 로컬 SSoT를 얻었다**(브랜치 `feature/#294-group-ssot`, **미머지**).
+> ✅ **2026-08-20 — 그룹 정보가 두 번째 로컬 SSoT를 얻었다**(PR #307 develop 머지, `8ca3329a`).
 > `GroupLocalDataSource`(인메모리)가 목록·상세를 들고 `ParfaitGroupRepository`가 읽기를 `Flow`로만
 > 노출한다 — G-001·C-001·S-101 세 화면이 조회 결과를 자기 State에 넣지 않고 구독한다. 부수적으로
-> **그룹명 하나 때문에 목록을 다시 부르던 두 번째 HTTP 호출이 사라졌다**(`GetGroupDetailUseCase`가
-> 두 캐시를 `combine`한다, OQ-P-216 ③ 해소) → [group-ssot 스펙](../specs/2026-08-17-group-ssot.md).
-> **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
+> **그룹명 하나 때문에 목록을 다시 부르던 두 번째 HTTP 호출이 사라졌다**(OQ-P-216 ③ 해소)
+> → [group-ssot 스펙](../specs/archive/2026-08-17-group-ssot.md).
+> **`combine`은 오래 안 살았다** — 그 자리를 만든 이유(계약에 그룹명이 없다)가 다음 라운드에 사라져
+> PR #308이 `combine`째 걷었다(위 "UseCase 하나가 Repository를 두 번 부르는" 항목).
+> 계정 정보(영속)와 갈리는 점은 **프로세스 수명**이다 — 세션 종료 시 비우는 경로가 셋이고
+> (`LogoutUseCase`·`TokenAuthenticator`·`WithdrawUseCase` 위임), 캐시 clear를 계정 정보 clear **앞에** 둔다
+> (뒤에 두면 DataStore IO가 던질 때 그룹 캐시가 안 지워진다) → [ADR-0023](../adr/0023-group-in-memory-ssot.md).
+> **실서버 요청 검증은 여전히 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
 매핑 지점도 확정(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.
@@ -453,12 +463,13 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   검증한다. 판단이 든 변환(문자열→enum 매핑과 미지 값 폴백, nullable 처리, 기본값, 단위 변환, 같은
   타입 필드의 배선)은 **DataSource 테스트의 케이스로** 잠근다. 규약 본문과 개정 경위는
   [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "테스트 규약" 11번.
-  develop의 `XxxRemoteDataSourceImplTest`는 **image·member·parfait·parfaitimage·policy 다섯**이다
+  develop의 `XxxRemoteDataSourceImplTest`는 **image·member·parfait·parfaitgroup·parfaitimage·policy 여섯**이다
   (PR #250이 parfait를 신설하고 member·parfaitimage를 보강, PR #266이 parfait를 15 → 25 케이스로 보강).
-  ⚠️ **`ParfaitGroupRemoteDataSourceImplTest`는
-  없다** — 그 도메인만 Repository 테스트로 대신하고 있어, 유일하게 남은 `MyParfaitGroupVOMapperTest`의
-  케이스를 "DataSource 테스트로 옮긴다"는 규약의 이행 대상 파일이 존재하지 않는다
-  → [open-questions](../synthesis/open-questions.md).
+  ✅ **마지막 예외가 닫혔다(2026-08-20, PR #308·#310 develop 머지)** — `ParfaitGroupRemoteDataSourceImplTest`가
+  신설되고 `MyParfaitGroupVOMapperTest`가 삭제돼 **저장소에 `XxxVOMapperTest`가 0개**다. 그 파일이 규약
+  예외로 살아 있던 동안 무엇을 했는지가 삭제 사유다 — 오프셋 붙은 입력을 스스로 지어 넣고 단언해
+  `recentImageUploadedAt` 파싱 버그를 초록으로 지켜 왔다([api/conventions.md](../api/conventions.md)의
+  "Android 불일치"가 2건에서 0건이 된 건 중 하나가 이것이다) → [server-delta 스펙](../specs/archive/2026-08-19-server-delta-nametag-chip-keys.md).
 - **요청 방향 변환도 같은 `VOMapper.kt`에 둔다.** 응답만 매퍼를 거치는 것이 아니다 — domain 타입이
   wire 형태보다 좁을 때 펴는 일도 매퍼가 한다. 선례는 `source.parfaitimage.mapper`의
   `ToppingTransform.toPlaceRequest(imageId, border)`로, sealed `ToppingBorder`(`None`/`Solid(color, width)`)를

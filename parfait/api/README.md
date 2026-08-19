@@ -25,8 +25,8 @@
 |---|---|---|---|
 | [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | **결선됨**(애플 해당 없음, 나머지 4 전부 호출부 있음) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
-| [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | **결선됨**(8 전부 호출부 있음, 목록 1건 ⚠️불일치) |
-| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음, 연도·오늘·과거·상세 4건은 **결선됨**, 배경 변경만 미소비) — **오늘 조회 1건 ⚠️불일치**(하루 경계) |
+| [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | **결선됨**(8 전부 호출부 있음, 불일치 0건) |
+| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음, 연도·오늘·과거·상세 4건은 **결선됨**, 배경 변경만 미소비, 불일치 0건) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | **결선됨**(3 전부 호출부 있음) |
 | [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨 |
@@ -77,7 +77,9 @@
 >
 > ⚠️ **새 불일치 1건**(2026-08-15) — 그룹 목록의 `recentImageUploadedAt`을 앱이 오프셋 필수 파서로 읽는데
 > 서버는 오프셋 없이 내려준다. 대응 심볼이 있는데 계약과 어긋나므로 `parfait-group.md`의 GET
-> `/api/parfait-groups` 행이 **`⚠️불일치`**다([conventions.md](conventions.md) "Android 불일치").
+> `/api/parfait-groups` 행이 **`⚠️불일치`**였다([conventions.md](conventions.md) "Android 불일치").
+> ✅ **2026-08-20에 닫혔다**(PR #310) — 매퍼가 `LocalDateTime::parse` + `toInstant(PARFAIT_TIME_ZONE)`로
+> 바뀌어 그 행은 `구현됨·결선됨`이 됐다.
 >
 > 🔁 **2026-08-15 2차 서버 delta(`e4ff23f`) — 엔드포인트 증감 0, 규칙 변경 3건.** 초대코드 자릿수 8 → 6
 > (앱은 처음부터 6이라 **드러나지 않던 불일치가 서버 쪽에서 닫혔다**), 닉네임 정규식에 자모 허용 추가,
@@ -142,9 +144,9 @@
 > 그룹 **생성** 응답도 목록의 세 필드를 얻었다.
 > ⚠️ **응답 JSON 키가 `nametagChip` → `nameTagChip`, `lastPlacedByNametagChip` → `lastPlacedByNameTagChip`으로
 > 바뀌었다**(서버 코어 프로퍼티명은 그대로, HTTP DTO 경계에서만) — develop은 이 필드를 안 읽어 무해하지만
-> **미머지 브랜치는 옛 키로 읽어 값이 조용히 `null`이 된다**.
+> 그 필드를 옛 키로 읽던 코드는 값이 조용히 `null`이 됐다(✅ 2026-08-20 PR #310 머지로 정정).
 > ② **하루 경계가 서버 안에서 통일됐다** — 과거 목록의 `to` 기본값도 `ParfaitDay.current()`가 됐다.
-> 앱과의 불일치는 그대로다.
+> ✅ 앱과의 불일치도 2026-08-20에 닫혔다(PR #308이 `parfaitToday()`를 03시로 옮겼다).
 > ③ **전역 405가 생겼다**(`CommonErrorCode.METHOD_NOT_ALLOWED`) — 그전에는 메서드 불일치가 500이었다.
 > ④ **탈퇴 후 재가입 500 수정**(`provider_user_id` tombstone rename이 flush를 못 타던 버그,
 > [member.md](member.md)). 엔드포인트·화이트리스트·`ApiResponse`는 불변이고 **표면 셈도 27/27·25/27 그대로**다.
@@ -155,6 +157,17 @@
 > 물음은 소비 여부가 아니라 **성공 뒤 정리 경로**다 — 탈퇴 직후의 로그아웃 요청이 죽은 토큰으로 나가
 > 재발급·강제 로그아웃까지 깨운다 → [member.md](member.md) Android 매핑 ·
 > [open-questions](../synthesis/open-questions.md) OQ-P-242.
+
+> ✅ **2026-08-20 — 계약 delta 없이 Android 쪽만 크게 움직였다**(PR #307·#308·#310 develop 머지).
+> 서버 기준선은 `57529ec` 그대로이고 **엔드포인트·화이트리스트·envelope 모두 불변**이다. 바뀐 것은
+> 앱이 그 계약을 얼마나 읽는가다 — ① **"Android 불일치"가 2건에서 0건이 됐다**(`recentImageUploadedAt`
+> 파싱 · 하루 경계 03시), ② 2026-08-18~19 delta가 더한 필드 대부분이 화면까지 닿았다
+> (`groupName`·`memberLimit`·칩 세 자리 중 둘), ③ 그룹 목록·상세 **읽기가 `Flow` 구독으로 바뀌었다**
+> (엔드포인트는 그대로, 응답을 두는 자리만 `:data` 캐시로 이동 — [ADR-0023](../adr/0023-group-in-memory-ssot.md)).
+> **`android_status`는 어느 도메인도 바뀌지 않았다** — 소비처 셈이 그대로이기 때문이다
+> (`parfait-group` `done` · `parfait`·`parfait-image` `partial`). 남은 미소비 필드는 둘이고 성격이 다르다:
+> `placedBy.nameTagChip`은 **읽는 화면이 없어 DTO에서 멈춰 세운 것**, 그룹 생성 응답 3필드는
+> **DTO 거울만 두고 VO를 안 늘린 것**이다.
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만

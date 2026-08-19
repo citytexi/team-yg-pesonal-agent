@@ -1686,7 +1686,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-165
 - **출처**: `data/source/group/mapper/VOMapper.kt#toMyParfaitGroupVO`(PR #248 develop 머지) — `recentImageUploadedAt`을 `kotlin.time.Instant::parse`로 읽고 주석이 "오프셋(`Z`)째로 읽는다"고 적는다. `MyParfaitGroupVOMapperTest`도 `…Z`·`+09:00` 문자열만 검증한다. 그런데 서버(`TEAMYG-SERVER` `main` `36ecd1c`)의 `MyParfaitGroupResponse.recentImageUploadedAt`은 `LocalDateTime`이고 `ParfaitGroupControllerTest`가 응답 문자열 `2026-08-01T12:00:00`(오프셋 없음)을 직접 검증한다 → [api/parfait-group.md](../api/parfait-group.md) 직렬화 포맷. **오프셋 없는 문자열은 `Instant.parse`가 받지 못하므로, 최근 이미지가 있는 그룹이 하나라도 있으면 매퍼가 던지고 G-001 목록 조회가 통째로 실패한다**(예외는 `ApiCaller`의 transform 가드에 잡혀 `AppError.Unexpected` → 에러 화면).
 - **항목**: ① 어느 쪽을 고칠지 — 서버가 오프셋 포함 포맷(`Instant`/`OffsetDateTime`)으로 바꾸거나, 앱이 `LocalDateTime` + 고정 타임존(Asia/Seoul)으로 읽는다. 앱 변경 의도("벽시계가 아니라 절대 시점")는 타당하므로 서버 쪽이 자연스럽다. ② 개발 서버 실응답이 실제로 어떤 포맷인지 먼저 확인한다 — 테스트 값이 실측처럼 보이지만(`2026-08-15T05:17:10.240Z`) `main` 코드로는 설명되지 않는다. ③ 고친 뒤 `MyParfaitGroupVOMapperTest`의 케이스를 DataSource 테스트로 옮긴다(OQ-P-168).
-- **상태**: 미해결 (코드 대조로만 드러남 — 실기기·실서버 미검증). ⚠️ **2026-08-19에 사정거리가 넓어졌다**
+- **상태**: 해소됨 (앱이 `LocalDateTime` + 고정 KST로 읽는다 — PR #310 develop 머지 2026-08-20)
 - **해소 메모**: 확정되면 [api/parfait-group.md](../api/parfait-group.md) 엔드포인트 표의 Android 열(`⚠️불일치`)과 각주, [api/conventions.md](../api/conventions.md) "Android 불일치" 표, [data-layer](../architecture/data-layer.md) 시각 노트를 함께 정리한다.
   > ⚠️ **악화(2026-08-19, 서버 `57529ec`)** — 서버가 이 필드를 `COALESCE`로 **비널화**했다(토핑 0건 그룹은
   > 그룹 생성 시각). 앱 매퍼는 `recentImageUploadedAt?.let(Instant::parse)`라 **값이 널일 때만** 파싱을
@@ -1694,6 +1694,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > **"그룹이 하나라도 있으면"** G-001 목록이 통째로 실패한다. 토핑을 한 번도 안 올린 계정이 우연히
   > 살아 있던 마지막 안전지대가 없어졌다. **우선순위를 올려야 한다.** 필드가 두 뜻을 겸하게 된 것은
   > 별개 항목(OQ-P-235)이다.
+  > ✅ **해소(2026-08-20, PR #310 develop 머지)** — ①의 두 선택지 중 **앱 쪽**을 골랐다.
+  > 매퍼가 `LocalDateTime::parse` → `toInstant(PARFAIT_TIME_ZONE)`로 읽어 벽시계에 KST를 붙인다.
+  > "서버 쪽이 자연스럽다"고 적었던 판단을 뒤집은 근거는 **계약 사실**이다 — 서버 DB 커넥션 세 환경이
+  > `serverTimezone=Asia/Seoul`이라 그 벽시계의 시간대가 KST로 확정돼 있고, 서버 포맷 변경을 기다리는
+  > 동안 G-001 목록이 계속 비어 있을 이유가 없었다. VO 타입(`Instant`)과 화면 계산은 그대로다.
+  > ②(개발 서버 실응답 포맷)는 **끝까지 확인하지 못했다** — 실서버 요청 검증은 여전히 0건이고, 판단
+  > 근거는 서버 코드·컨트롤러 테스트 대조뿐이다. ③은 OQ-P-168에서 함께 닫혔다.
+  > 남은 위험은 "예상 밖 모양이 오면 목록 전체가 빈다"는 실패 단위 문제이고 그것이 OQ-P-237이다.
 
 ### [2026-08-15] 그룹 참여가 두 요청으로 갈렸다 — 중간에 이탈하면 닉네임 없는 참여가 남는다
 
@@ -1754,7 +1762,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-168
 - **출처**: `data/src/test/.../group/mapper/MyParfaitGroupVOMapperTest.kt`(PR #248 develop 머지) — `*VOMapperTest`는 만들지 않고 케이스를 DataSource 테스트로 옮긴다는 규약([unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md))에 따라 `PolicyVOMapperTest`·`ImageVOMapperTest`가 삭제돼 develop `*VOMapperTest`가 0건이었는데, 이번 라운드가 새로 하나를 넣었다. 대응 `ParfaitGroupRemoteDataSourceImplTest`는 이미 있다.
 - **항목**: ① 케이스(오프셋 표기 2종·null)를 DataSource 테스트로 옮기고 파일을 지울지, ② 아니면 규약을 "판단이 있는 변환은 매퍼 테스트 허용"으로 개정할지 — 이번 건은 시각 파싱이라 판단이 있는 쪽에 가깝다(그리고 그 판단이 OQ-P-165로 틀렸을 가능성이 있다).
-- **상태**: 미해결 (규약 위반 1건 — **①의 이행 대상 파일이 없다는 사실이 드러났다**)
+- **상태**: 해소됨 (①을 이행 — PR #308이 옮길 파일을 만들고 #310이 매퍼 테스트를 지웠다, develop 머지 2026-08-20)
   > ⚠️ **출처 서술 정정(2026-08-15)** — 위의 "대응 `ParfaitGroupRemoteDataSourceImplTest`는 이미 있다"는
   > **사실이 아니다.** develop의 `XxxRemoteDataSourceImplTest`는 image·member·parfait·parfaitimage·policy
   > 다섯이고 **group은 없다** — 그 도메인만 `ParfaitGroupRepositoryImplTest`로 대신하고 있다. 즉 ①(케이스를
@@ -1763,6 +1771,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > (`images` null → 빈 목록 · 미지 배경 type → null · 미지 status → `UNKNOWN` · `SOLID` 불완전 → `None`)을
   > 전부 `ParfaitRemoteDataSourceImplTest`로 잠갔고 `*VOMapperTest`를 하나도 만들지 않았다. 규약 자체는
   > 작동하고, 어긋난 것은 group 도메인 하나다.
+  > ✅ **해소(2026-08-20, PR #308·#310 develop 머지)** — ①(케이스를 DataSource 테스트로 옮기고 파일을
+  > 지운다)을 골랐고, 없던 이행 대상 파일은 PR #308이 `ParfaitGroupRemoteDataSourceImplTest`로 신설했다.
+  > 그래서 develop의 `XxxRemoteDataSourceImplTest`는 **여섯**(image·member·parfait·parfaitgroup·
+  > parfaitimage·policy)이고 `*VOMapperTest`는 다시 **0건**이다.
+  > **규약 개정(②)은 하지 않았다** — 오히려 이 파일이 규약을 어긴 값을 보여 줬다. "판단이 든 변환"이라며
+  > 남겨 둔 그 테스트는 오프셋 붙은 입력을 **스스로 지어 넣어** OQ-P-165의 파싱 버그를 초록으로 지켜
+  > 왔다(Given 주석이 매퍼 주석과 같은 허구였다). 매퍼를 단독으로 두면 입력의 현실성을 아무도 검사하지
+  > 않는다는 것이 규약의 근거이고, 이 건이 그 사례다.
 - **해소 메모**: 어느 쪽이든 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)의 매퍼 항목 서술을 정본으로 맞춘다.
 
 ### [2026-08-15] 생성·참여 후 그룹 목록이 스스로 갱신되지 않는다
@@ -2728,8 +2744,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `GetGroupDetailUseCase`는 두 캐시를 `combine`할 뿐이라 이름 때문에 나가는 HTTP 호출이 사라졌다
   ([ADR-0023](../adr/0023-group-in-memory-ssot.md)). ①②는 그대로 남는다 — 서버 응답에 여전히
   그룹명이 없고, 빈 제목의 표현도 정하지 않았다.
-- **상태**: 미해결 (③ 해소, **①의 전제도 2026-08-18 서버 delta로 사라졌다** — 앱이 조합을 걷어내는
-  작업과 ②(빈 제목 표현)만 남음)
+- **상태**: 해소됨 (③은 그룹 SSoT가, ①은 서버 delta + PR #308이, ②는 조합 소멸로 — develop 머지 2026-08-20)
 - **해소 메모**: 서버가 필드를 실으면 [api/parfait-group.md](../api/parfait-group.md) Android 매핑과
   [data-layer](../architecture/data-layer.md)의 "UseCase가 Repository를 두 번 부르는 첫 사례" 서술을
   함께 걷는다. 같은 응답의 `memberLimit` 공백은 [2026-08-13] S-101 데이터 항목(OQ-P-139)이다.
@@ -2738,6 +2753,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 조건이 충족됐으므로, **`GroupDetailVO` 조합과 `GetGroupDetailUseCase`의 `combine`을 걷어내는 것은
   > 이제 앱 쪽 작업**이다(OQ-P-224 ②). ②(이름만 실패했을 때의 빈 제목 표현)는 조합이 사라지면 문제
   > 자체가 없어진다 — 상세 한 번으로 이름이 온다.
+  > ✅ **앱 쪽도 닫혔다(2026-08-20, PR #308 develop 머지)** — `GroupDetailVO`와 `combine`, 두
+  > `TODO(서버 응답 확장 대기)`가 함께 삭제됐다. ②는 예고대로 **문제 자체가 사라졌다** — 이름이 상세
+  > 응답에 실려 오므로 "이름만 실패한 상태"가 성립하지 않는다.
+  > [data-layer](../architecture/data-layer.md)의 "UseCase가 Repository를 두 번 부르는 첫 사례" 서술도
+  > 이 라운드에 고쳤다 — 지우지 않고 **소멸한 사례로 남겼다**(합성 자리를 `:data`가 아니라 UseCase에 둔
+  > 판단이 그 소멸을 한 줄 삭제로 끝나게 했다는 것이 남길 값이다).
 
 ### [2026-08-17] 모든 그룹 신고가 같은 사유 문자열로 저장된다
 
@@ -2775,7 +2796,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-219
 - **출처**: `GroupLocalDataSourceImpl#saveMyGroups`·`#removeGroup`(그룹 SSoT 라운드) ×
-  [specs/2026-08-17-group-ssot.md](../specs/2026-08-17-group-ssot.md) "갱신·무효화 규칙" — 목록 갱신은
+  [group-ssot 스펙](../specs/archive/2026-08-17-group-ssot.md) "갱신·무효화 규칙" — 목록 갱신은
   받은 응답으로 **통째 대입**이고 나가기·신고는 캐시에서 그 그룹을 지운다. 두 쓰기 사이에 순서 보장이
   없어서, `removeGroup` **뒤에** 도착하는 *그 이전에 출발한* 목록 응답이 나간 그룹을 되살린다.
   지금 트리거 배치(나가기 성공 → 목록 복귀 → `Enter` 재조회)로는 창이 사실상 닫혀 있지만, 같은 스펙이
@@ -2783,7 +2804,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 폴링 도입 시 세대 카운터(요청 시각·시퀀스)로 낡은 응답을 버릴지, tombstone(나간 그룹 id를
   잠시 기억)으로 막을지. ② 목록 갱신을 통째 대입이 아니라 병합으로 바꿀지 — 그러면 서버에서 사라진
   그룹을 앱이 스스로 못 지운다. ③ 나가기·신고 직후 진행 중인 목록 조회를 취소할지.
-- **상태**: 미해결 (폴링 전까지는 잠재)
+- **상태**: 미해결 (폴링 전까지는 잠재 — 코드는 2026-08-20 PR #307로 develop에 있다)
 - **해소 메모**: 폴링 설계에서 정하고 [ADR-0023](../adr/0023-group-in-memory-ssot.md) "갱신 시점"과
   스펙의 갱신 규칙 표에 함께 반영한다. 같은 라운드에서 생성·참여 직후 목록 조회가 두 번 나가는 것
   (저장소 재조회 + G-001 `Enter` 재조회)도 그때 같이 볼 자리다.
@@ -2792,7 +2813,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-220
 - **출처**: `ParfaitGroupRepositoryImpl#changeMyNickname`·`GroupSettingViewModel`(그룹 SSoT 라운드) ×
-  [specs/2026-08-17-group-ssot.md](../specs/2026-08-17-group-ssot.md) — 닉네임 변경 성공 뒤 저장소가
+  [group-ssot 스펙](../specs/archive/2026-08-17-group-ssot.md) — 닉네임 변경 성공 뒤 저장소가
   상세를 다시 받아 캐시에 넣고, 화면은 그 방출로 새 값을 얻는다(화면이 자기 상태를 손으로 고치지 않는
   것이 이 설계의 요점이다). 그런데 **그 후속 재조회가 실패하면** 변경 자체는 `success`로 남으므로
   화면은 편집을 닫지만 캐시는 옛 이름 그대로다. 결과로 `nicknameInput`(새 값)과 `myNickname`(옛 값)이
@@ -2803,9 +2824,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   확인 버튼만 비활성으로 둘지. ③ 응답이 주는 새 닉네임으로 캐시를 낙관적으로 갱신할지(그러면 재조회
   자체가 필요 없어지지만, 멤버 목록의 내 항목을 짚으려면 계정 id가 필요해 저장소가 계정 저장소를
   알게 된다 — 이 라운드가 피한 결합이다).
-- **상태**: 미해결
+- **상태**: 미해결 (코드는 2026-08-20 PR #307로 develop에 있다 — 잠재가 아니라 상시 재현 가능한 자리다)
 - **해소 메모**: 정하면 [ADR-0023](../adr/0023-group-in-memory-ssot.md) "트레이드오프"와
-  [specs/2026-08-17-group-ssot.md](../specs/2026-08-17-group-ssot.md) 열린 질문 절에 반영한다.
+  [group-ssot 스펙](../specs/archive/2026-08-17-group-ssot.md) 열린 질문 절에 반영한다.
 
 ### [2026-08-18] 재진입 재조회가 관용구일 뿐 규약이 아니고, 실패 표현이 화면마다 갈린다
 
@@ -2846,12 +2867,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   배치 시각을 바꿀 때 조용히 갈린다. ③ **서버 안에서도 두 기준이 공존한다** — 과거 목록의 `to`
   기본값만 `LocalDate.now()`(자정)라, 그 구간에 목록 기본 상한이 활성 캔버스 날짜보다 하루 앞선다.
   서버에 정렬을 요청할지, 앱이 항상 범위를 명시해 회피할지.
-- **상태**: 해소됨 (앱이 03시로 옮김 — 2026-08-18, 미머지 / ③은 2026-08-19 서버 delta가 닫음)
+- **상태**: 해소됨 (앱이 03시로 옮김 — PR #308 develop 머지 2026-08-20 / ③은 2026-08-19 서버 delta가 닫음)
 - **해소 메모**: 정책상 옳은 쪽은 서버다(03시는 위키 [[캔버스-마감-스케줄]]에 이미 있다). 고치면
   [api/parfait.md](../api/parfait.md) 엔드포인트 표의 `⚠️불일치` 각주와
   [api/conventions.md](../api/conventions.md) "Android 불일치" 2행을 함께 걷는다. ③은 서버 소관이라
   다음 `sync-teamyg-server-api` 라운드에서 확인한다.
-  > ✅ **①② 해소, ③ 잔존(2026-08-18, 브랜치 `feature/#294-group-ssot`, 미머지)** — `parfaitToday()`가
+  > ✅ **①② 해소, ③ 잔존(2026-08-18 구현, PR #308로 2026-08-20 develop 머지)** — `parfaitToday()`가
   > `DayWindow.DAY_BOUNDARY_HOUR`를 써서 03시에 넘어간다 — ②의 "복제할지"는 **복제하되 상수를 공유하고,
   > 시각만 공유하고 시간대는 공유하지 않는다는 것을 KDoc에 박는다**로 답했다. 같은 라운드가
   > `GetTodayParfaitUseCase.invoke`에 `clock` 기본 파라미터를 열어 경계 동작을 테스트로 잠갔다 —
@@ -2859,7 +2880,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ✅ **③도 해소(2026-08-19, 서버 `57529ec`)** — `GetPastParfaitsService`의 `to` 기본값이
   > `LocalDate.now()`에서 `ParfaitDay.current()`로 바뀌어 **서버 안의 두 기준이 하나가 됐다**
   > (`fix: 이전 파르페 목록 조회가 자정이 아닌 새벽 3시 기준으로 오늘을 판단하도록 통일`).
-  > 이 항목은 세 갈래 모두 닫혔다 — 남은 것은 앱 브랜치 머지뿐이다.
+  > 이 항목은 세 갈래 모두 닫혔고 **앱 쪽도 2026-08-20에 develop에 들어갔다**(`412991ea`) —
+  > [api/parfait.md](../api/parfait.md)의 `⚠️불일치` 각주와 [api/conventions.md](../api/conventions.md)
+  > "Android 불일치" 2행을 이 라운드에 함께 걷었다(그 표는 이제 0건이다).
+  > ⚠️ **다시 갈릴 조건은 남는다** — 앱은 계약이 내려주지 않는 03시를 상수로 복제했으므로 서버가 배치
+  > 시각을 바꾸면 조용히 어긋난다. 그 조건이 `DayWindow.DAY_BOUNDARY_HOUR` KDoc에 적혀 있다.
   > ⚠️ 이 라운드가 회귀 하나를 만들었다 다시 닫았다 — `parfaitToday()`를 **부르지 않던** G-001 헤더와
   > 카메라 날짜 라벨이 기기 자정을 써서 00:00~03:00에 목록 D / 캔버스 D−1이 됐다. 최종 리뷰가 잡았다.
 
@@ -2909,11 +2934,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   덕에 깨지지 않고 **조용히 안 쓰이는 중**이다. ③ 서버 enum 문자열(`TYPE1`~`TYPE12`·`RELEASED`)을
   앱 `YGColorChipType`에 매핑하는 자리를 어디로 둘지(디자인시스템 타입은 `:core:designsystem`이고
   응답 매핑은 `:data`다 — 지금 둘 사이에 다리가 없다).
-- **상태**: 해소됨 (2026-08-19, 미머지 — 서버가 ①을 닫고 앱이 ②③을 읽는다)
+- **상태**: 해소됨 (서버가 ①을 닫고 앱이 ②③을 읽는다 — PR #308·#310 develop 머지 2026-08-20)
 - **해소 메모**: ①은 다음 `sync-teamyg-server-api` 라운드 전에 서버팀에 요청해야 확인된다.
   ②③을 하면 OQ-P-140·OQ-P-210의 잔여 항목이 함께 닫히고
   [api/parfait.md](../api/parfait.md)·[api/parfait-group.md](../api/parfait-group.md) Android 매핑 절을 고친다.
-  > ✅ **②③ 해소, ① 잔존(2026-08-18, 브랜치 `feature/#294-group-ssot`, 미머지)** — 앱이 그룹 상세·목록의
+  > ✅ **②③ 해소, ① 잔존(2026-08-18 구현, PR #308로 머지)** — 앱이 그룹 상세·목록의
   > 칩과 `groupName`·`memberLimit`을 읽는다. ③(매핑 자리)의 답은 **feature impl의 확장 함수 둘**이고,
   > 두 화면의 규칙이 달라(S-101 12→12 · G-001 12→6) 공용화하지 않았다.
   > **①은 그대로다** — 서버가 `groupMembers`에 칩을 안 줘서 C-001 상단 멤버 칩만 아직 인덱스 순환이고,
@@ -2925,15 +2950,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ([api/parfait-image.md](../api/parfait-image.md)). **"한 응답 안에서 두 목록의 표현이 갈렸다"는 조건이
   > 사라져** C-001 상단 칩을 계약으로 정할 수 있다 — 남은 것은 앱이 읽는 일이다.
   > ⚠️ **다만 그 delta가 JSON 키를 함께 바꿔(`nametagChip` → `nameTagChip`) ②에서 해소했다고 적은
-  > 미머지 브랜치의 `@SerialName`이 전부 옛 키다** → OQ-P-234. **머지 전에 고쳐야 한다.**
+  > 그 브랜치의 `@SerialName`이 전부 옛 키였다** → OQ-P-234(다음 라운드가 머지 전에 고쳤다).
   >
-  > ✅ **①②③ 전부 해소 — 이 항목은 닫힌다(2026-08-19, `feature/#300-sync-backend-api-250819`, 미머지).**
+  > ✅ **①②③ 전부 해소 — 이 항목은 닫힌다(2026-08-19 구현, PR #310로 2026-08-20 develop 머지).**
   > 앱이 `CanvasMemberVO.nametagChip`을 읽고 `CanvasMainViewModel.toMemberChips`가 서버 값으로 색을
   > 정한다. **`NAMETAG_CHIP_PALETTE`가 삭제돼 팔레트 인덱스 순환이라는 개념 자체가 사라졌고, 그래서
   > OQ-P-210 ②(팔레트가 12종 중 7종만 도는 근거 없음)도 함께 소멸**했다. 최종 리뷰가 서버 코드로
   > 확인한 바, S-101과 C-001이 같은 `parfait_group_member.nametag_chip` 행에서 값을 받으므로
   > **같은 사람이 두 화면에서 같은 색**이 된다 — 이 항목이 열린 이유였던 모순이 사라졌다.
-  > 옛 키 문제도 같은 라운드가 닫았다(OQ-P-234 ①). **develop 머지는 아직이다.**
+  > 옛 키 문제도 같은 라운드가 닫았다(OQ-P-234 ①).
+  > ✅ **develop 확인(2026-08-20, `750cc2dd`)** — `git grep NAMETAG_CHIP_PALETTE origin/develop`이 0건이고
+  > 세 모듈의 `util/` 변환이 `NametagChipType`을 받는다. **`placedBy.nameTagChip`만 DTO에서 멈춰 있다** —
+  > 읽는 화면이 0건이라 남긴 것이고, C-202 Spotlight는 이 필드가 아니라 `groupMembers` 조인을 쓰므로
+  > 그 화면이 붙어도 자동으로 필요해지지는 않는다.
 
 ### [2026-08-18] 상세 조회가 빈 캐시로 실패하면 S-101이 "정원이 찼어요"로 거짓말한다
 
@@ -3148,18 +3177,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   아니면 "표시용 부가 필드는 널 허용"이라는 예외를 명시할지. ③ 키 이름 변경을 **계약 문서 대조 말고
   다른 수단으로 잡을 방법**이 있는지 — 이번에도 잡은 것은 서버 delta 감사이고, 앱 테스트는 자기 DTO를
   자기가 만들어 넣으므로 절대 못 잡는다(와이어 계약 테스트가 있는 곳은 `isNewUser` 하나뿐이다).
-- **상태**: ①② 해소(2026-08-19, 미머지) / **③ 미해결**
+- **상태**: ①② 해소(PR #310 develop 머지 2026-08-20) / **③ 미해결**
 - **해소 메모**: 고치면 [api/parfait-group.md](../api/parfait-group.md)·[api/parfait.md](../api/parfait.md)
   Android 매핑의 경고를 걷고 OQ-P-224를 닫는다. ②는 [api/conventions.md](../api/conventions.md)
   직렬화 규약과 [data-layer](../architecture/data-layer.md)에 적는다(OQ-P-227과 한 자리).
-  > ✅ **①② 해소(2026-08-19, 브랜치 `feature/#300-sync-backend-api-250819`, 미머지)** — 세 DTO의 키를
+  > ✅ **①② 해소(2026-08-19 구현, PR #310로 2026-08-20 develop 머지)** — 세 DTO의 키를
   > `nameTagChip` 계열로 맞추고 `NametagChipType.RELEASED`를 `DEFAULT`로 바꿨다
-  > ([plan](../plans/2026-08-19-server-delta-nametag-chip-keys.md) Task 2·3). ②(널 기본값 방침)는
+  > ([plan](../plans/archive/2026-08-19-server-delta-nametag-chip-keys.md) Task 2·3). ②(널 기본값 방침)는
   > **널 허용을 유지하기로 답했다** — 구버전 서버·롤백을 만나도 화면이 통째로 실패하지 않는 쪽을 골랐고,
   > 그 결정을 지키는 테스트(`getMyGroups_missingUploadedAt_isNull`)를 같은 라운드가 붙였다.
   > ⚠️ **③은 그대로다.** 이번에도 키 어긋남을 잡은 것은 `sync-teamyg-server-api` 감사였다.
   > 최종 리뷰가 "비용 대비 이득이 심하게 기울어 있다 — 파일 하나에 세 DTO의 JSON 디코드 단언이면
   > 끝이고 선례(`KakaoLoginResponseSerializationTest`)까지 있다"며 **다음 라운드 최우선**으로 권했다.
+  > ⚠️ **머지로 ③의 성격이 바뀌었다(2026-08-20)** — 그전까지 이 키들을 읽는 코드는 브랜치에만 있었고
+  > develop은 필드를 안 읽어 무해했다. 지금은 **develop이 네 자리에서 이 키로 색을 정한다**(S-101 멤버
+  > 칩 · G-001 그룹 칩 · C-001 상단 칩 · 목록 시각). 다음 키 변경은 브랜치가 아니라 **출시 가능한
+  > develop을 조용히 폴백 색으로 만든다.**
 
 ### [2026-08-19] `recentImageUploadedAt`이 비널이 되면서 두 가지를 뜻하게 됐다
 
@@ -3177,9 +3210,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   갱신되면 갈린다.
 - **상태**: 미해결
 - **해소 메모**: 정하면 [api/parfait-group.md](../api/parfait-group.md) 목록·생성 응답 절과 G-001
-  화면 쪽 표기 규칙에 반영한다. **이 변경이 기존 파싱 불일치를 상시화한 것은 별개 항목**이다 —
-  앱 매퍼의 `?.let`이 널일 때만 파싱을 건너뛰었는데 그 우회로가 사라져 **그룹이 하나라도 있으면
-  G-001 목록이 실패**한다([2026-08-15] 항목 · [api/conventions.md](../api/conventions.md) "Android 불일치").
+  화면 쪽 표기 규칙에 반영한다. **이 변경이 기존 파싱 불일치를 상시화한 것은 별개 항목이었고 닫혔다** —
+  앱 매퍼의 `?.let`이 널일 때만 파싱을 건너뛰었는데 그 우회로가 사라져 그룹이 하나라도 있으면 G-001
+  목록이 실패하던 것을 PR #310이 고쳤다([2026-08-15] 항목 · [api/conventions.md](../api/conventions.md)
+  "Android 불일치"는 이제 0건).
+  ⚠️ **이 항목 자체는 그대로 열려 있다** — 파싱이 고쳐졌다고 "한 필드가 두 뜻을 겸한다"가 해소되는
+  것은 아니다. **오히려 develop이 그 값을 실제로 그리기 시작해 사정거리가 넓어졌다**(2026-08-20,
+  PR #308·#310) — G-001이 이제 서버 시각과 서버 칩을 함께 쓰므로, 토핑 0건 그룹은 **생성 시각을 활동
+  시각처럼**, **생성자 칩을 마지막 토퍼 칩처럼** 보여 준다. 코드 변경 없이 화면 값이 바뀐 자리다.
 
 ### [2026-08-19] 서버가 `PlacedByResponse`를 개명해 앱 DTO 이름의 근거가 사라졌다
 
@@ -3196,9 +3234,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   사람의 칩을 재조회 없이 쓸 수 있게 하려는 것이 서버의 의도인데, 앱은 배치 후 캔버스를 다시 그리는
   경로가 아직 없다(토핑 배치 소비처 0건). ③ 이런 "이름만 바뀐 서버 변경"을 어느 계층까지 따라갈지 —
   wire DTO는 따라가야 계약 대조가 되지만 VO·도메인은 제품 언어라 따라가지 않는다.
-- **상태**: 미해결
+- **상태**: ① 해소(PR #310 develop 머지 2026-08-20) / **②③ 미해결**
 - **해소 메모**: 정하면 [api/parfait-image.md](../api/parfait-image.md)·[api/parfait.md](../api/parfait.md)
   응답 DTO 절과 [data-layer](../architecture/data-layer.md) "선언당 파일 하나" 예외 문단을 함께 고친다.
+  > ✅ **① 해소(2026-08-20, PR #310 develop 머지)** — 앱도 개명해 **거울을 유지하는 쪽**을 골랐다
+  > (`response/parfaitimage`의 것만 `PlaceParfaitImagePlacedByResponse`로, 캔버스 쪽은 그대로). 그래서
+  > `data-layer`의 근거 문장은 고칠 것이 없다. 이름이 길어진 대가로 두 패키지에 같은 이름을 두던 모양이
+  > 사라졌고, "통일해야 하나" 오해를 막으려 **양쪽 KDoc이 서로를 가리킨다**(그 두 줄은 주석 정리
+  > 커밋이 한 번 지웠다가 리뷰가 되살린 것이다).
+  > **②는 그대로다** — 칩 필드를 DTO까지만 받고 `PlacedToppingVO`에는 안 올렸다(읽는 화면 0건).
+  > ③(이름만 바뀐 서버 변경을 어느 계층까지 따라가는가)도 답이 안 적혔다 — 이번 사례가 "wire DTO는
+  > 따라간다"의 두 번째 선례가 됐을 뿐이다.
 
 <!--
 항목 추가 형식:
@@ -3333,4 +3379,25 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   세션 종료 경로를 함께 갱신한다. OQ-P-198(같은 코드에 처분이 갈린다)과 같은 자리다 — 그쪽은 화면이
   세션 사망을 **안 알리는** 쪽이고, 이쪽은 앱이 스스로 죽인 세션을 **다시 확인받는** 쪽이다.
 
-<!-- oq-next: 243 -->
+### [2026-08-20] 하루 경계 상수 하나가 뜻이 다른 두 하루를 동시에 정한다
+
+- **ID**: OQ-P-243
+- **출처**: `domain/model/DayWindow.kt`의 `DAY_BOUNDARY_HOUR` × `domain/model/ParfaitDay.kt`의
+  `parfaitToday()` × `GetRecentCacheImagesUseCase`·`GalleryRepositoryImpl` — PR #308이 앱의 하루 경계를
+  03시로 옮길 때 **경계 값을 두 곳에 적지 않으려고** 기존 `DayWindow.DAY_BOUNDARY_HOUR`를 재사용했다.
+  그 자체는 옳은 판단이지만, 지금 그 상수는 **성격이 다른 두 하루**를 정한다 — `parfaitToday()`의 하루는
+  **서버 마감 배치 시각의 거울**(고정 KST, 계약이 값을 내려주지 않아 앱이 복제한 것)이고,
+  `DayWindow.current()`의 하루는 **기기 기준 최근 사진 윈도우**(기기 시간대)다. KDoc은 "시각만 공유하고
+  시간대는 공유하지 않는다"까지 적었으나, **서버가 배치 시각을 바꿀 때 무엇을 해야 하는지**는 적히지
+  않았다. 그 경우 상수를 고치면 갤러리 윈도우가 함께 움직이고, 갈라 두면 "두 곳에 적으면 한쪽만
+  고쳐진다"던 원래 문제로 돌아간다.
+- **항목**: ① 서버 배치 시각이 바뀔 때 상수를 갈라 각자 갖게 할지, 아니면 갤러리 윈도우도 같이 움직이는
+  것이 의도라고 못박을지. ② 계약에 하루 경계를 내려주는 필드를 서버에 요청할지 — 있으면 복제가 사라져
+  이 결합 자체가 없어진다. ③ 갤러리 윈도우의 경계가 03시여야 하는 근거가 정책에 있는지(파르페 마감과
+  같은 값을 쓰는 것이 우연인지 의도인지 어디에도 안 적혀 있다).
+- **상태**: 미해결 (지금은 두 값이 같아야 맞는 상태라 발화하지 않는다)
+- **해소 메모**: 정하면 [api/parfait.md](../api/parfait.md) "하루 경계"와
+  [data-layer](../architecture/data-layer.md) 시각 노트에 반영한다. OQ-P-222 ②(경계 값을 복제할지)의
+  후속이고, 그 항목이 "복제하되 상수를 공유한다"로 답한 대가가 이것이다.
+
+<!-- oq-next: 244 -->

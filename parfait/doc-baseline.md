@@ -5,8 +5,63 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `c36cad49` (`Merge pull request #306 from mash-up-kr/feature/#236-withdraw-api`)
-- **요약**: **되돌릴 수 없는 문 셋이 다 열렸고, 마지막 문만 닫는 방식이 다르다**(delta 1건).
+- **커밋**: `750cc2dd` (`Merge pull request #310 from mash-up-kr/feature/#300-sync-backend-api-250819`)
+- **요약**: **미머지 스택이 한 번에 비었고, 계약과 앱이 처음으로 어긋난 데 없이 만났다**(delta 3건).
+  세 PR(#307 → #308 → #310)이 쓰인 순서대로 들어갔고 **머지 커밋 셋 모두 충돌 해소 편집이 0건**이라
+  브랜치 팁이 그대로 develop 사실이다. 그래서 이 라운드가 한 일의 대부분은 새 감사가 아니라
+  **"미머지"라고 적힌 문서를 사실로 바꾸는 것**이었다 — 셋 다 선작성 스펙·플랜이 있었고 as-built 기록도
+  이미 붙어 있었다(스펙 3건·플랜 3건 아카이브 이동, ADR-0023 `proposed` → `accepted`).
+  **가장 큰 결과는 문서 한 줄이 아니라 표 하나가 비었다는 것이다** — [api/conventions.md](api/conventions.md)의
+  "Android 불일치"가 **2건에서 0건**이 됐고 이 저장소에서 처음이다. 두 건이 닫힌 방식이 서로 다르다:
+  업로드 시각 파싱은 **앱이 서버 포맷 변경을 기다리지 않고** `LocalDateTime` + 고정 KST로 읽는 쪽을
+  골랐고(근거는 서버 DB 커넥션 세 환경이 `serverTimezone=Asia/Seoul`이라는 계약 사실이다 — "서버 쪽이
+  자연스럽다"던 OQ-P-165 ①의 판단을 뒤집었다), 하루 경계는 반대로 **정책상 옳은 쪽이 서버라 앱을
+  옮겼다**(03시). 후자는 `parfaitToday()` 한 함수를 고쳤을 뿐인데 재시도 조건·달력 활성 조건·`syncToday()`
+  트리거가 저절로 따라왔다 — 값을 읽는 자리를 하나로 모아 둔 것의 값이 여기서 드러났다.
+  **#307**(`refactor/#294-group-data-using-ssot`): 그룹 목록·상세가 `:data`의 인메모리 캐시 한 벌로
+  모이고 세 화면(G-001·C-001·S-101)이 그것을 구독한다. 계정 정보(ADR-0022)와 같은 형태이고 **다른 점은
+  영속하지 않는다는 것 하나**다([ADR-0023](adr/0023-group-in-memory-ssot.md), 이번에 `accepted`).
+  화면이 조회 결과를 State에 넣을 길 자체를 없앤 것이 이 설계의 방법이다 — 갱신 함수가 `Result<Unit>`이라
+  **값을 얻는 두 번째 경로가 애초에 없다**. 세션 정리를 부르는 경로는 셋이 됐고(로그아웃·강제 로그아웃·
+  탈퇴 위임) 캐시 clear를 계정 정보 clear **앞에** 둔다(뒤에 두면 DataStore IO가 던질 때 그룹 캐시가
+  안 지워진다). C-001의 하드코딩 그룹명도 이 캐시에서 왔다.
+  **#308**(`feature/#300-sync-backend-api-250818`): 2026-08-18 서버 delta 반영. **칩 배정 주체가 서버로
+  정해진 것이 이 라운드의 축**이고(그룹 안 활동 멤버 사이 유일·나가면 반납·재추첨 없음), 그래서 앱은
+  `:domain`에 중립 enum `NametagChipType`을 두고 feature가 디자인시스템 타입으로 옮긴다(`:domain`은
+  순수 JVM이라 `YGColorChipType`을 모른다). **`GroupDetailVO`가 삭제됐다** — 상세 응답에 `groupName`이
+  실리면서 "서버 응답 하나에 대응하지 않는 유일한 그룹 VO"의 존재 이유가 사라졌고, 합성 자리를 `:data`가
+  아니라 UseCase에 둔 판단이 그 소멸을 한 줄 삭제로 끝나게 했다. S-101의 "N명 남음"도 mock 1에서 실값이
+  됐다(`memberLimit - members.size`).
+  **#310**(`feature/#300-sync-backend-api-250819`): 2026-08-19 서버 delta 반영. 서버가 HTTP DTO 경계에서만
+  키를 `nameTagChip` 계열로 바꿔 **직전 라운드가 붙인 칩 결선을 조용히 무력화한 것**을 되살렸고, 같은
+  라운드가 C-001 상단 멤버 칩을 서버 값으로 결선해 `NAMETAG_CHIP_PALETTE`를 걷었다 — 팔레트 인덱스 순환이
+  개념째 사라지면서 **같은 사람이 S-101과 C-001에서 같은 색**이 됐다. 머지 전 코드리뷰가 결론 하나를 더
+  뒤집었다: 모르는 칩 문자열과 값 없음을 **모두 `DEFAULT`로 접어** 이 축의 널 허용을 없앴고
+  ([ADR-0024](adr/0024-nametag-chip-unknown-fold.md)), 대가는 "서버가 늘린 새 타입"과 "반납된 자리"가
+  앱에서 구분되지 않는 것이다(재검토 트리거를 ADR에 명시했다). 같은 리뷰가 `:data`의 칩 매퍼 두 사본을
+  `source/common/mapper`의 `internal` 하나로 합쳤다 — feature 쪽 색 변환 셋을 복제로 남긴 것과 결론이
+  갈리는 이유는 **가시성 미결이 여기엔 안 걸려서**다(입출력이 `:data`·`:domain` 안에서 닫혀 새 모듈
+  간선이 0개다).
+  **`MyParfaitGroupVOMapperTest`가 삭제돼 저장소의 `XxxVOMapperTest`가 0개가 됐다** — 규약 예외로 살아
+  있던 그 파일이 한 일이 삭제 사유다. 오프셋 붙은 입력을 **스스로 지어 넣어** 파싱 버그를 초록으로 지켜
+  왔고(Given 주석이 매퍼 주석과 같은 허구였다), 매퍼를 단독으로 두면 입력의 현실성을 아무도 검사하지
+  않는다는 규약의 근거가 그대로 사례가 됐다. 옮길 대상이던 `ParfaitGroupRemoteDataSourceImplTest`도
+  이번에 신설돼 `XxxRemoteDataSourceImplTest`가 여섯이 됐다(OQ-P-168 해소).
+  ⚠️ **재발 방지 수단은 이번에도 안 생겼고, 그 사이 위험 반경이 넓어졌다** — 키 어긋남을 잡은 것은 두 번
+  모두 계약 문서 감사였다(앱 테스트는 자기 DTO를 자기가 만들어 넣어 `@SerialName` 문자열을 검증하지
+  않는다). 그전까지 이 키를 읽는 코드는 브랜치에만 있었으므로 사고도 브랜치에 갇혀 있었는데, 지금은
+  **develop이 네 자리에서 이 키로 색을 정한다**(S-101 멤버 칩·G-001 그룹 칩·C-001 상단 칩·목록 시각) —
+  다음 키 변경은 출시 가능한 develop을 조용히 폴백 색으로 만든다(OQ-P-234 ③, 최종 리뷰가 다음 라운드
+  최우선으로 권한 것이 이것이다).
+  ⚠️ **코드 변경 없이 화면 값이 바뀐 자리도 이 라운드에 실물이 됐다** — 서버가 `COALESCE`로 채운 값
+  때문에 토핑 0건 그룹이 **생성 시각을 활동 시각처럼, 생성자 칩을 마지막 토퍼 칩처럼** 보여 준다
+  (OQ-P-235는 그대로 열려 있고 사정거리만 넓어졌다).
+  미결 정리: **해소 8건**(OQ-P-165·168·216·222·224·234 ①②·236 ①) · **소멸 1건**(OQ-P-210 ② — 팔레트
+  개념 자체가 사라졌다) · **신설 1건**(OQ-P-243 — 하루 경계 상수 하나가 뜻이 다른 두 하루를 동시에
+  정한다). 스캐폴드 이관 수치는 그대로다(8화면·V1 잔여 6파일) — 이 라운드는 UI 컨테이너를 안 건드렸다.
+  테스트: 유닛 490 → **538건**(#307 +21 · #308 +21 · #310 +6), 테스트 파일 56 → 61개.
+  ⚠️ **실기기·실서버 확인 없음** — 계약 정합이 처음으로 0건이 됐지만 그것을 확인한 것은 여전히 코드 대조뿐이다.
+  직전 회차 요약: **되돌릴 수 없는 문 셋이 다 열렸고, 마지막 문만 닫는 방식이 다르다**(delta 1건).
   **#306**(`feature/#236-withdraw-api`): S-001 앱 설정의 회원 탈퇴가 **로그 한 줄에서 실제 요청으로**
   바뀌었다. 표면은 2026-08-15부터 있었고 화면도 팝업까지 있었으므로 이번에 들어온 것은 그 사이를
   잇는 셋뿐이다 — `MemberRepository.withdraw`·`WithdrawUseCase`·ViewModel 분기. 그래서 이 라운드가
@@ -305,29 +360,25 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-20 (35회차)
-- **미머지 제외 항목**: `refactor/segmentation-develop`(세그멘테이션 파이프라인 하드닝 + 스캐폴드 8엔트리
-  일괄 이관 + `popUpTo<T>()` — 🔁 **직전 회차의 "로컬 브랜치이고 리모트에도 없다"는 더 이상 사실이
-  아니다**: 이제 `origin/refactor/segmentation-develop`으로 올라와 있다. base는 그대로 develop
-  `86f0f6b0`이라 **두 세대 뒤처졌다**(#290·#306). [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md) 선반영 완료.
-  develop 대조 시 `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`이고 `popUpTo`도
-  없는 것으로 확인된다. ⚠️ 리베이스 시 드롭했던 커밋 둘 — `NavKeyCanvasMove` 계열 삭제와 배치 완료
-  이펙트 `popUpTo` 전환 — 이 **되살아날 자리가 됐다**),
-  `feature/#300-sync-backend-api-250819`(서버 delta 반영 2차, PR #310,
-  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md)·[ADR-0024](adr/0024-nametag-chip-unknown-fold.md)
-  선반영 완료. base는 develop으로 돌아왔다. develop 대조 시 `nameTagChip` 키가 없고,
-  `NametagChipType`도 아직 널 허용으로 매핑된다).
-  🔁 **직전 회차가 적은 `develop ← #307 ← #308 ← #310` 스택은 해소됐다** — 2026-08-19에 **PR #307과
-  #308이 develop에 머지됐다**(develop `412991ea`). 그 둘에 걸려 있던 미머지 표기·리베이스 경고·
-  푸시 순서 주의는 전부 무효이고, 미머지로 남은 것은 위 둘뿐이다.
-  ⚠️ **그래서 이 기준선(`c36cad49`)은 두 세대 뒤처졌다.** 아래 "점검 절차"의 delta 감사를 돌려
-  #307·#308 머지분을 반영하고 기준선을 `412991ea`로 올려야 한다. 그때 함께 정리할 것 셋 —
-  [group-ssot 스펙](specs/2026-08-17-group-ssot.md)과
-  [2026-08-18 스펙](specs/2026-08-18-server-delta-nametag-chip-day-boundary.md)의 "구현 완료·미머지"
-  표기, [ADR-0023](adr/0023-group-in-memory-ssot.md)의 `status: proposed`, 그리고 두 스펙의
-  `archive/` 이동 여부.
-  **리베이스가 남은 것은 `refactor/segmentation-develop` 하나**(develop 위)다 — 두 브랜치 모두
-  `origin`에 올라와 있으므로 확인은 `git merge-base --is-ancestor origin/develop origin/<브랜치>`로 한다.
+- **검증일**: 2026-08-20 (36회차)
+- **미머지 제외 항목**: **`refactor/segmentation-develop` 하나만 남았다**(세그멘테이션 파이프라인 하드닝 +
+  스캐폴드 8엔트리 일괄 이관 + `popUpTo<T>()`, [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md)
+  선반영 완료). ⚠️ **뒤처짐이 두 세대에서 다섯 세대로 늘었다** — base는 여전히 develop `86f0f6b0`이고
+  그 뒤 develop에 #290·#306·#307·#308·#310이 들어갔다. 확인은
+  `git merge-base --is-ancestor origin/develop origin/refactor/segmentation-develop`이고 지금은 거짓이다.
+  ⚠️ **브랜치가 커밋 둘을 더 얻었다**(11개 → 13개) — `refactor(segmentation): let the decode use case own
+  its failure`(양쪽 호출부의 stdlib `runCatching`이 `CancellationException`까지 삼켜 이미 떠난 화면이
+  디코드 실패로 보고되던 것을 UseCase가 `Result`를 반환하게 고쳤다)와 `feat(segmentation): fill the
+  gallery's recent row from the cutout flow`(`AddRecentImageUseCase`를 부르는 곳이 트리에 없어 갤러리 최근
+  줄이 영영 빌 수밖에 없던 것을 세그멘테이션 경로가 채운다). **뒤의 것은 스펙이 "C-106 몫"이라며 범위 밖으로
+  둔 항목이라** 스펙이 자기 브랜치보다 뒤처졌다 — 머지 라운드에 스펙 대조가 필요하다.
+  develop 대조 시 `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`이고 `popUpTo`도 없다.
+  리베이스 시 드롭했던 커밋 둘(`NavKeyCanvasMove` 계열 삭제·배치 완료 이펙트 `popUpTo` 전환)이 되살아날
+  자리는 그대로다(OQ-P-238·OQ-P-239).
+  ✅ **직전 회차가 미머지로 적던 `feature/#300-sync-backend-api-250819`(PR #310)는 이 라운드에 머지됐다** —
+  #307·#308과 함께 develop에 들어가 기준선이 `750cc2dd`가 됐다. 그때 "함께 정리할 것 셋"으로 적어 둔
+  것(두 스펙의 "구현 완료·미머지" 표기 · ADR-0023의 `status: proposed` · 두 스펙의 `archive/` 이동)은
+  전부 이 라운드에서 처리했고, 세 스펙·세 플랜 모두 `archive/`로 옮겼다.
   ⚠️ **문서 전제 오류 정정 이월**: [design-system](architecture/design-system.md)의 8엔트리 일괄 이관
   수치는 여전히 브랜치 기준 표기이고 develop 값(6파일)을 병기한 상태다.
 
@@ -399,3 +450,4 @@
 | 2026-08-18 | `86f0f6b0` | Merge #305 (#254 group-list-refresh-lottie) | delta 3건(#296·#295·#305). **#296**(약관 웹뷰): `NavKeyServiceTerms`·`NavKeyPrivacyPolicy` + Route/Screen/ViewModel 2벌 → **`NavKeyWebView(title, url)` 1벌**, **ViewModel 삭제**(상태가 인자뿐·부를 API 없음), 엔트리 머티리얼 `Scaffold` → Route `YGScaffoldV2`. 온보딩 약관의 마지막 stub(`NavigateToUrl`) 해소 — `ClickTermDetail(policy)`·`NavigateToPolicyDetail(title, url)`로 개명. 설정 화면이 `GetPoliciesUseCase` **두 번째 소비처**(policy 도메인 `done` 유지). **#295**(버전 정보): `core:util:android`에 `AppInfo#APP_VERSION_NAME`(모듈 `buildConfig` 첫 활성 + `:app`과 같은 카탈로그 항목 재기입) → S-001 버전 placeholder 해소, 표시 `v` 접두는 포맷 리소스. `YGListItem` 두 오버로드 줄 높이를 컴포넌트가 `heightIn`으로 정렬. **#305**(로띠): `YGLoadingLottie`(+`YGLoadingTone`) 신설·`YGLoadingOverlay` 인디케이터 교체(Dim `Black25`→`Black75`), G-001 당겨서 새로고침 커스텀 인디케이터, 스플래시 로띠 + **부트스트랩·재생 종료 둘 다 대기**(`SplashState` 2필드). 조치: architecture 3건(design-system 트리·컴포넌트 표·화면 컨테이너·로띠 의존·`YGListItem` 노트 / module-structure terms·`core:util:android` 행 / navigation-flow NavKey 통합·출처 인자 비적용·스플래시 진입 조건) + api 2건(policy.md Android 매핑·앱 동작 메모·미결 경고, README 도메인 표 주석 — `android_status`·`verified` 불변) + 아카이브 스펙 6건 as-built(s004·feature-common-terms-module·intro-term-agree·app-setting-s001·ygscaffold-v2·user-info-ssot). **문서 전제 오류 1건 정정**: design-system이 `refactor/segmentation-logic`(로컬 전용 브랜치) 수치를 "develop 기준 13화면·V1 3파일"로 적고 있어 브랜치 기준으로 표기 + develop 값(6파일) 병기, 미머지 추적에 추가. open-questions: **부분 해소 1건**(OQ-P-205 ① 인디케이터), 마커 3건(OQ-P-204 이관 계기 확장·OQ-P-068 계약 공백이 화면으로·OQ-P-125 로띠 애셋 소유), **신규 5건**(OQ-P-229 스플래시 대기 상한·OQ-P-230 로띠 호출 관용구 갈림·OQ-P-231 약관 탭 무반응·OQ-P-232 웹뷰 출처 검증·OQ-P-233 버전 상수 이중 출처). 신규 spec 작성 0건(신규 화면 없음, `YGLoadingLottie`는 ygscaffold-v2 스펙 as-built로 흡수). 테스트 467 → **474건**. 미머지: `refactor/segmentation-logic`·`feature/#294-group-ssot` |
 | 2026-08-19 | `f12870a8` | Merge #290 (feature/topping-add-screen) | delta 1건(#290). **C-106 토핑 배치 화면 신설** — 자리채움 `NavKeyCanvasMove`(아무것도 안 하는 `CanvasMoveScreen`)를 대신해 `NavKeyCanvasToppingPlace(imageUri)` + Route/Screen/ViewModel 한 벌이 들어와 토핑 생성 플로우의 마지막 자리가 채워졌다. 위키 [[C-106-토핑-배치-정책-v0.1]]의 초기 배치 규칙 **넷이 처음으로 코드에 들어왔다**(긴 변 = 캔버스 너비 40%·정중앙·짧은 변 48 하한·이탈 허용 + 클리핑) → **OQ-P-200 종결**. 40% 상수를 `internal`로 열어 읽기·쓰기가 공유(③ = 양쪽 다), 48은 **dp로 굳음**(② 확정, 정책은 px). 계산은 ViewModel 소유 — 캔버스 실측·토핑 원본 크기가 서로 다른 시점에 오므로 인텐트 둘로 받아 매번 재시도하되 사용자가 손대면 멈춘다. **리사이즈 한계는 고정 배율이 아니라 역산**(하한 = 48dp 최소 터치, 상한 = 캔버스 긴 변 1.5배). 그리기는 `center`·`sizeAfterScale`을 한 번만 계산해 이미지·스트로크·핸들에 공유하고 클리핑만 셋이 갈린다. 세그멘테이션 결과가 **두 벌**로 갈림(`trimmedSubjectImagePath` 신설 — 편집은 원본 크기 유지, 배치는 여백 없는 실제 크기) → 캐시 PNG·메모리 버퍼 각 1 증가, "테두리 없으면 한 번만 떨군다" 최적화 소멸. `CanvasBGEditScreen` private 컴포저블 3종이 모듈 `component/`로 승격돼 두 화면 공유(`toppingId: Long` → `key: Any?`), 그 과정의 `size` → `requiredSize`가 C-301 토핑에도 적용. `YGScaffoldV2` 이관 **8화면째**(V1 잔여 6파일 불변). 조치: 신규 as-built 스펙 1건(c106-topping-place, archive) + specs README 등록·c103 아카이브 스펙 목적지/모델 정정, navigation-flow(NavKey 목록·토핑 생성 플로우 다이어그램·도달 불가 표기)·design-system(이관 8화면·`YGFloatingBarEdit` 두 번째 화면·핸들 관용구 공용화)·data-layer(`SegmentationResult` 3필드)·module-structure(화면 간 공유 컴포저블은 모듈 `component/`) 갱신, open-questions: **OQ-P-200 해소** · OQ-P-209 부분 해소(①) · OQ-P-202/203/204/207/228 사례 갱신 · **신규 4건**(OQ-P-238 `groupId = 0L` 하드코딩 + 백스택 누적 / OQ-P-239 `NavKeyCanvasMove` 도달 불가 / OQ-P-240 배치 화면이 실제 캔버스가 아님 / OQ-P-241 회전·리사이즈 한계에 정책 근거 없음). 미머지 세그멘테이션 스펙의 캐시 정리 안전 근거가 **다시 거짓**이 됨을 그 스펙에 기록. 유닛 474 → **484건**. 미머지: `refactor/segmentation-develop`·`feature/#294-group-ssot`·`feature/#300-sync-backend-api-250819`(셋 다 리베이스 필요) |
 | 2026-08-20 | `c36cad49` | Merge #306 (#236 withdraw-api) | delta 1건(#306). **되돌릴 수 없는 문 셋이 다 열렸다** — S-001 회원 탈퇴가 로그 한 줄에서 실제 요청이 됐다. 표면(#250)도 팝업(#225)도 이미 있어 이번에 들어온 것은 사이를 잇는 셋뿐이다(`MemberRepository.withdraw` · `WithdrawUseCase` · ViewModel 분기). **핵심은 순서다** — 서버가 받아 준 뒤에야 기기를 정리하고 거절당하면 아무것도 지우지 않는다(로그아웃과 반대. 서버가 거절했는데 로컬만 지우면 계정이 살아 있는 채로 사용자만 탈퇴했다고 믿는다). 정리는 새로 쓰지 않고 `LogoutUseCase`에 위임해 "무엇을 지우는가"의 단일 자리를 지켰다(호출자 셋). 화면은 **S-101 나가기·신고 형태를 그대로 복제**(팝업 먼저 닫고 로딩 오버레이 + 실패 토스트)했고 갈린 것은 목적지(`replaceAll(NavKeyLogin)` — 세션이 끝나 그룹 목록으로 갈 자리가 없다)와 **연타 잠금 테스트**뿐이다. `isWithdrawing`을 `isLoggingOut`과 합치지 않은 이유는 덮개가 아니라 `YGActionItem(enabled = !isLoggingOut)`이 로그아웃 줄 하나만 가리키기 때문. S-001이 토스트 호스트를 처음 얻었지만 이미 V2라 컨테이너는 불변(이관 8화면·V1 잔여 6파일 그대로). ⚠️ **끝난 뒤가 깨끗하지 않다** — 위임받은 로그아웃이 방금 지워진 계정의 토큰으로 나가 401 → 재발급 거절 → `ForcedLogout`까지 이어져 이동을 두 곳이 일으킨다(**OQ-P-242 신설**). 조치: 신규 스펙·플랜 없음(선작성 문서가 없던 소규모 결선 라운드), **api 4표면**(member.md `android_status: partial`→**`done`** · 엔드포인트 표 DELETE 열 `구현됨·결선됨` · Android 매핑 2블록 재작성 · README 도메인 표 member 행 **결선됨** + 소비처 20건 문단. `verified`·서버 계약 절 불변, conventions.md 불일치 표는 이 delta가 안 건드림), architecture 3건(data-layer `MemberRepository` 인벤토리 + UseCase 규칙 넷째 + 도메인 공백 문단 / state-management in-flight 분리 사례 둘째 / design-system 토스트 호스트 사례). open-questions: **해소 1건**(OQ-P-141 Danger Zone 확인 3종 — ②·③은 채택이 아니라 불필요해져서 닫힘), **부분 해소 2건**(OQ-P-162 ③이 물음이 서지 않은 채 닫힘 · OQ-P-186 ② 닫힘, ① 비활성 색은 잔존), **신규 1건**(OQ-P-242). 테스트 484 → **490건**. ⚠️ 실기기·실서버 확인 없음. 미머지 3건 재확인 — **`refactor/segmentation-develop`이 리모트에 올라와 있어 직전 회차의 "리모트에도 없다"를 정정**했고, 셋 다 base가 develop 뒤라 리베이스 필요 |
+| 2026-08-20 | `750cc2dd` | Merge #310 (#300 sync-backend-api-250819) | delta 3건(#307·#308·#310, 전부 선작성 스펙·플랜 보유). **미머지 스택이 한 번에 비었고 계약 정합이 처음으로 0건이 됐다** — [api/conventions.md](api/conventions.md) "Android 불일치"가 2건 → **0건**. 닫힌 방식이 서로 다르다: 업로드 시각 파싱은 **앱이 서버 포맷 변경을 기다리지 않고** `LocalDateTime` + 고정 KST로 읽는 쪽(OQ-P-165 ①의 "서버 쪽이 자연스럽다"를 뒤집었고 근거는 서버 DB 커넥션 세 환경의 `serverTimezone=Asia/Seoul`), 하루 경계는 **정책상 옳은 쪽이 서버라 앱을 03시로** 옮겼다(`parfaitToday()` 한 함수만 고쳐 재시도 조건·달력 활성 조건·`syncToday()` 트리거가 저절로 따라왔다). **#307**: 그룹 목록·상세가 `:data` 인메모리 캐시 한 벌로 모이고 세 화면이 구독한다 — 갱신 함수가 `Result<Unit>`이라 **값을 얻는 두 번째 경로가 없다**([ADR-0023](adr/0023-group-in-memory-ssot.md) `proposed` → `accepted`). 세션 정리 경로 셋(로그아웃·강제 로그아웃·탈퇴 위임), 캐시 clear를 계정 정보 clear **앞에**. **#308**: 칩 배정 주체가 **서버**로 정해져 `:domain` 중립 enum `NametagChipType` 신설 + feature가 디자인시스템 타입으로 옮긴다. **`GroupDetailVO` 삭제** — 상세에 `groupName`이 실려 존재 이유가 사라졌고, 합성 자리를 `:data`가 아니라 UseCase에 둔 판단이 소멸을 한 줄 삭제로 끝나게 했다. S-101 "N명 남음"도 실값. **#310**: 서버가 HTTP DTO 경계에서만 키를 `nameTagChip` 계열로 바꿔 직전 라운드의 칩 결선을 조용히 무력화한 것을 되살리고, C-001 상단 칩을 서버 값으로 결선해 `NAMETAG_CHIP_PALETTE`를 걷었다(팔레트 개념째 소멸 → **같은 사람이 S-101·C-001에서 같은 색**). 머지 전 리뷰가 결론 하나를 뒤집어 **모르는 값·값 없음을 모두 `DEFAULT`로 접고 널 허용을 없앴다**([ADR-0024](adr/0024-nametag-chip-unknown-fold.md), 대가는 "새 타입"과 "반납된 자리"의 구분 상실). `:data` 칩 매퍼 두 사본은 `source/common/mapper` `internal` 하나로 합쳤다(feature 색 변환 셋과 결론이 갈리는 이유는 가시성 미결이 여기엔 안 걸려서다). **`MyParfaitGroupVOMapperTest` 삭제로 `XxxVOMapperTest`가 0개** — 오프셋 붙은 입력을 스스로 지어 넣어 파싱 버그를 초록으로 지켜 온 파일이고, 옮길 대상 `ParfaitGroupRemoteDataSourceImplTest`도 이번에 신설(OQ-P-168 해소). ⚠️ **재발 방지 수단은 이번에도 없고 위험 반경은 넓어졌다** — 키 어긋남을 잡은 것은 두 번 다 계약 문서 감사였고, 그전까지 브랜치에 갇혀 있던 사고가 지금은 **develop 네 자리에서 색을 정한다**(OQ-P-234 ③). ⚠️ 서버 `COALESCE` 폴백 탓에 토핑 0건 그룹이 **생성 시각을 활동 시각처럼·생성자 칩을 마지막 토퍼 칩처럼** 보여 준다(OQ-P-235 사정거리 확대). 미결: **해소 8건**(OQ-P-165·168·216·222·224·234 ①②·236 ①) · **소멸 1건**(OQ-P-210 ②) · **신설 1건**(OQ-P-243 — 하루 경계 상수 하나가 뜻이 다른 두 하루를 정한다). 스펙 3건·플랜 3건 `archive/` 이동, 스캐폴드 이관 수치 불변(8화면·V1 잔여 6파일). 유닛 490 → **538건**(파일 56 → 61). ⚠️ 실기기·실서버 확인 없음. 미머지: `refactor/segmentation-develop`(다섯 세대 뒤처짐, 커밋 11 → 13개로 늘어 스펙이 자기 브랜치보다 뒤처졌다) |

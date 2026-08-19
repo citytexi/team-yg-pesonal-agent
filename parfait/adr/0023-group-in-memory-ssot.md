@@ -1,7 +1,7 @@
 ---
 id: ADR-0023
 title: 그룹 정보 인메모리 SSoT — 프로세스 수명 캐시 + Flow 구독
-status: proposed
+status: accepted
 date: 2026-08-17
 deciders: Parfait 팀
 supersedes:
@@ -16,6 +16,9 @@ tags: [adr, parfait, group, state, cache]
 # ADR-0023: 그룹 정보 인메모리 SSoT — 프로세스 수명 캐시 + Flow 구독
 
 > 상태·날짜·결정자·대체 관계는 위 frontmatter가 단일 출처. 본문은 결정 내용에 집중.
+
+> ✅ **2026-08-20 accepted** — 이 결정을 구현한 PR #307이 develop에 머지됐다(`8ca3329a`).
+> `proposed`로 있던 것은 코드가 아직 브랜치에만 있었기 때문이고, 결정 내용은 그때와 같다.
 
 ## 맥락
 

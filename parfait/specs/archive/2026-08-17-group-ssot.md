@@ -4,7 +4,7 @@ title: 그룹 목록·상세 인메모리 SSoT — Flow 구독 + 명시적 갱�
 status: implemented
 category: behavior-spec
 platforms: android
-verified:
+verified: 2026-08-20
 related_code: ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GroupLocalDataSource, GroupLocalDataSourceImpl, ParfaitGroupRemoteDataSource, MyParfaitGroupVO, ParfaitGroupDetailVO, GroupDetailVO, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, GetGroupDetailUseCase, RefreshGroupDetailUseCase, ChangeGroupNicknameUseCase, JoinGroupUseCase, CreateGroupUseCase, LeaveGroupUseCase, ReportGroupUseCase, GroupListViewModel, CanvasMainViewModel, GroupSettingViewModel, LogoutUseCase, WithdrawUseCase, TokenAuthenticator
 related_adr: ADR-0023, ADR-0022, ADR-0001, ADR-0009, ADR-0020
 related_spec: user-info-ssot, s101-group-setting-api, c001-canvas-today-detail
@@ -18,7 +18,11 @@ tags: [spec, parfait, group, state, cache]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 
-> ⚙️ **구현 완료·미머지(2026-08-17, 브랜치 `refactor/#294-group-data-using-ssot`, PR #307, `develop` `c36cad49` 위 커밋 12개)** — 계획 7 Task가
+> ✅ **develop 머지 완료(2026-08-20, PR #307 `refactor/#294-group-data-using-ssot` → develop `8ca3329a`)** —
+> 리베이스 뒤 브랜치 팁이 그대로 들어갔다(머지 커밋에 충돌 해소 편집 0건). 아래 as-built 서술은 그대로
+> develop 사실이다. 유닛 테스트는 490 → 511건.
+>
+> ⚙️ **구현 완료 시점 기록(2026-08-17, 브랜치 `refactor/#294-group-data-using-ssot`, `develop` `c36cad49` 위 커밋 12개)** — 계획 7 Task가
 > 전부 들어왔고 설계에서 뒤집힌 결정은 없다. **as-built 차이 둘**: ① 세션 정리에서 그룹 캐시 clear를
 > 계정 정보 clear **앞에** 둔다(두 경로 모두) — 계정 정보 정리는 DataStore IO라 던질 수 있고, 뒤에
 > 두면 그때 그룹 캐시가 지워지지 않아 이 스펙이 "실제 위험"이라 부른 상태가 된다. ② `GroupSettingViewModel`이
@@ -33,7 +37,7 @@ tags: [spec, parfait, group, state, cache]
 > 충돌 없이 `:domain:compileTestKotlin`을 깨뜨렸다 — develop이 함께 들여온
 > `WithdrawUseCaseTest`가 `LogoutUseCase`를 2-인자로 직접 생성하고 있었다.
 > 실기기·실서버 확인은 하지 않았다(아래 "검증 못 한 것" 참고). 미결 2건은
-> [open-questions](../synthesis/open-questions.md) OQ-P-219·OQ-P-220으로 등록했다.
+> [open-questions](../../synthesis/open-questions.md) OQ-P-219·OQ-P-220으로 등록했다.
 
 > **기준선** — 이 스펙은 `Enter` 인텐트(`LifecycleResumeEffect`, 화면이 앞에 설 때마다 재조회)가
 > 이미 있다는 전제로 쓴다. 그것은 선행 브랜치 `feature/#288-group-list-refresh`가 만들었고
@@ -63,9 +67,9 @@ tags: [spec, parfait, group, state, cache]
 > 계속 필요하다. 목록의 최근 사진은 다른 멤버가 올려도 바뀌므로 내 앱 안의 변경만 좇아서는
 > 최신이 되지 않는다.
 
-계정 정보는 이미 같은 문제를 로컬 SSoT로 풀었다([ADR-0022](../adr/0022-user-info-local-ssot.md)).
+계정 정보는 이미 같은 문제를 로컬 SSoT로 풀었다([ADR-0022](../../adr/0022-user-info-local-ssot.md)).
 이 스펙은 그 형태를 그룹에 적용하되, **영속하지 않는다**는 점만 다르다(근거는
-[ADR-0023](../adr/0023-group-in-memory-ssot.md)).
+[ADR-0023](../../adr/0023-group-in-memory-ssot.md)).
 
 ## 범위
 

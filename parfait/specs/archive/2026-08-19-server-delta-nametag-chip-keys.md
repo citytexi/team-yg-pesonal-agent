@@ -4,7 +4,7 @@ title: 서버 delta 57529ec 반영 — 칩 JSON 키 정정·C-001 상단 칩 결
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-19
+verified: 2026-08-20
 related_code: MyParfaitGroupResponse, ParfaitGroupMemberResponse, CreateParfaitGroupResponse, GetTodayParfaitResponse, GroupMemberResponse, PlacedByResponse, PlaceParfaitImageResponse, NametagChipType, CanvasMemberVO, MyParfaitGroupVO, ParfaitGroupMemberVO, CanvasMainViewModel, ColorChipType, GrouptagChipType, PARFAIT_TIME_ZONE, MyParfaitGroupVOMapperTest, ParfaitGroupRemoteDataSourceImplTest, ParfaitRemoteDataSourceImplTest, ParfaitService
 related_adr: ADR-0017, ADR-0023, ADR-0024
 related_spec: server-delta-nametag-chip-day-boundary, group-ssot, s101-group-setting-api, c001-canvas-today-detail
@@ -18,7 +18,13 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 
-> ⚙️ **구현 완료·미머지(2026-08-19, 브랜치 `feature/#300-sync-backend-api-250819` 위 커밋 8개)** —
+> ✅ **develop 머지 완료(2026-08-20, PR #310 `feature/#300-sync-backend-api-250819` → develop `750cc2dd`)** —
+> 스택 셋(#307 → #308 → #310)이 순서대로 들어가 develop HEAD가 이 브랜치 팁과 같아졌고 머지 커밋에
+> 충돌 해소 편집이 0건이다. 유닛 테스트는 532 → 538건. **이 라운드로 `api/conventions.md`의
+> "Android 불일치"가 2건에서 0건이 됐다** — `recentImageUploadedAt` 파싱은 이 브랜치가 고쳤고,
+> 하루 경계는 선행 #308이 옮겼다.
+>
+> ⚙️ **구현 완료 시점 기록(2026-08-19, 브랜치 `feature/#300-sync-backend-api-250819` 위 커밋 8개)** —
 > 계획 7 Task + 최종 리뷰 fix 1회가 전부 들어왔다. `testDebugUnitTest :domain:test ktlintCheck
 > assembleDebug` 통과. **뒤집힌 결정 0건.** 최종 리뷰(opus)가 서버 원본과 DTO 10개를 키 단위로 대조해
 > 전부 일치를 확인했고 "머지 전 필수 수정 없음"으로 판정했다.
@@ -32,7 +38,7 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 > **실제 중복은 넷이었다**(결정 4는 셋을 셌다) — 색 변환 3벌 외에 `String? → NametagChipType` 매퍼가
 > group·parfait 두 곳에 있었다. **넷째는 이후 리뷰 지적으로 걷었다** — `:data` 안에서 닫히는
 > 변환이라 색 변환 3벌을 막던 가시성 미결이 여기엔 없었다
-> ([architecture/module-structure](../architecture/module-structure.md) 참고).
+> ([architecture/module-structure](../../architecture/module-structure.md) 참고).
 > 드리프트는 이미 시작돼 있었다 — 두 사본의 KDoc이 갈라져 parfait 쪽이 `"DEFAULT"` 를 접지 않는다는
 > 계약 한 줄을 처음부터 빠뜨린 채 태어났다.
 
@@ -46,18 +52,18 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 > 2026-08-20에 선행 라운드가 `refactor/#294-group-data-using-ssot`(PR #307) 위로 다시 얹히면서
 > 이 브랜치의 base가 재작성됐고, 이 브랜치도 같은 날 새 #308 위로 따라 옮겼다. 그 뒤
 > **PR #307·#308이 develop에 머지됐고**(develop `412991ea`) 이 브랜치의 base도 develop으로
-> 돌아왔다. 남은 것은 이 브랜치 하나다.
+> 돌아왔다. ✅ **그 하나도 2026-08-20에 머지됐다**(`750cc2dd`) — 스택 전체가 develop에 있다.
 >
 > ⚙️ **이후 추가된 것(2026-08-20)** — 코드리뷰 지적을 받아 **모르는 칩 문자열과 값 없음을 모두
 > `NametagChipType.DEFAULT`로 접고 이 축의 널 허용을 없앴다**(매퍼 · VO 셋 · 색 변환 셋).
-> 결정과 대가는 [ADR-0024](../adr/0024-nametag-chip-unknown-fold.md)에 있다 — 이 스펙이 잡아 둔
+> 결정과 대가는 [ADR-0024](../../adr/0024-nametag-chip-unknown-fold.md)에 있다 — 이 스펙이 잡아 둔
 > "모르는 값은 `null`로 접는다"를 그것이 갱신한다. 서버가 타입을 늘리면 "반납된 자리"와
 > 구분되지 않는 것이 그 대가이고, 재검토 트리거를 ADR에 명시했다.
 
 ## 서버가 바꾼 것
 
 기준선 `08df1bf` → `57529ec`, 2커밋. **엔드포인트 증감 0**(28 + 테스트 전용 1). 계약 문서 갱신은
-[api/server-baseline.md](../api/server-baseline.md) 10회차 행에 있고, 여기서는 앱이 반응해야 하는 것만 본다.
+[api/server-baseline.md](../../api/server-baseline.md) 10회차 행에 있고, 여기서는 앱이 반응해야 하는 것만 본다.
 
 | # | 서버 변경 | 앱에 미치는 영향 |
 |---|---|---|
@@ -84,7 +90,7 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 
 이 부류를 앱 테스트가 못 잡는다는 점이 중요하다 — 테스트가 자기 DTO 객체를 자기가 만들어 넣으므로
 `@SerialName` 문자열은 어떤 단언도 통과하지 않는다. 이번에도 잡은 것은 계약 문서 감사였다
-([open-questions](../synthesis/open-questions.md) OQ-P-234).
+([open-questions](../../synthesis/open-questions.md) OQ-P-234).
 
 ### ④가 왜 지금 터지나
 
@@ -99,7 +105,7 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 ### 1. 키 셋을 서버에 맞추고, DTO는 널 허용을 유지한다
 
 `@SerialName`과 Kotlin 프로퍼티명을 **둘 다** 서버 이름으로 바꾼다. wire DTO는 서버의 거울이라는 규약
-([data-layer](../architecture/data-layer.md))이 프로퍼티명에도 걸린다 — `@SerialName`만 고치면 코드를
+([data-layer](../../architecture/data-layer.md))이 프로퍼티명에도 걸린다 — `@SerialName`만 고치면 코드를
 읽는 사람에게 서버 이름이 안 보인다.
 
 **고칠 자리는 정확히 셋이다** — `MyParfaitGroupResponse.lastPlacedByNametagChip`(그룹 목록) ·
@@ -135,7 +141,7 @@ recentImageUploadedAt?.let(LocalDateTime::parse)?.toInstant(PARFAIT_TIME_ZONE)
 
 - **왜 KST를 붙일 수 있나** — 서버 DB 커넥션이 dev·local·prod 세 환경 전부 `serverTimezone=Asia/Seoul`이고
   `hibernate.jdbc.time_zone`도 같다. 즉 이 문자열의 벽시계는 KST 기준이라는 것이 계약 사실이다
-  ([api/parfait-group.md](../api/parfait-group.md) 타임존 절).
+  ([api/parfait-group.md](../../api/parfait-group.md) 타임존 절).
 - **왜 VO를 `LocalDateTime`으로 안 바꾸나** — 화면이 하는 일이 경과시간 계산이라 절대 시점이 필요하다.
   벽시계를 그대로 들면 기준 시간대를 어딘가에서 다시 정해야 하고, 그 자리가 화면으로 내려가면 해외 기기에서
   숫자가 어긋난다. 기존 주석의 의도("벽시계가 아니라 절대 시점으로 든다")가 옳았고 **틀린 것은 변환 방법뿐**이다.
@@ -192,7 +198,7 @@ C-001의 규칙은 S-101과 **같다**(12종 1:1, 없으면 `Default`). 선행 �
 
 - ❌ **"공용 자리가 없다"가 아니다.** `core:ui`의 `text/LoginProviderUiText.kt`·`text/NameValidResultUiText.kt`가
   "도메인 enum → UI 표현" 매핑의 선례이고, `core:ui → :domain` 간선은 **정확히 같은 이유로 이미 열려 있다**
-  (#223, [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)). `:core:designsystem`은
+  (#223, [ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md)). `:core:designsystem`은
   `:core:ui`를 모르므로 순환도 없다. 즉 자리는 있고, 새 간선 한 줄이면 된다.
 - ❌ **"컴파일러가 막아 준다"도 아니다.** 두 변환이 `else` 없는 exhaustive `when`인 것은 맞지만, 그것이
   잡는 것은 **arm 누락뿐**이고 그 조건은 **앱이 `NametagChipType`에 상수를 더할 때**다. 서버에 13번째
@@ -204,7 +210,7 @@ C-001의 규칙은 S-101과 **같다**(12종 1:1, 없으면 `Default`). 선행 �
 `implementation`이라 **public 시그니처에 도메인 타입이 노출되는데 의존은 숨어 있는** 상태이고
 (소비 feature가 컨벤션 플러그인으로 `:domain`을 직접 갖고 있어 지금 컴파일될 뿐이다), `api` 승격은
 저장소에 선언이 0건이고 컨벤션 플러그인에 확장 함수조차 없어 **팀 결정 대상으로 이미 추적 중**이다
-([module-structure](../architecture/module-structure.md) · [open-questions](../synthesis/open-questions.md)
+([module-structure](../../architecture/module-structure.md) · [open-questions](../../synthesis/open-questions.md)
 [2026-08-13]). 같은 형태의 매핑을 두 번째로 올리면서 그 미결을 조용히 굳힐 수 없다.
 
 자리는 선행 라운드가 세운 규약대로 그 모듈의 `util` 패키지다 —

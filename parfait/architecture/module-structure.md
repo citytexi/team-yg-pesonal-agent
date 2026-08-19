@@ -99,17 +99,20 @@ app / app-preview
   (같은 모듈의 여러 화면이 한 파일 공용), **여러 feature가 공유하는 문구**(유효성 에러 등)는 `core:ui` `res/values/strings.xml`([[0016-domain-result-presentation-string-mapping]]).
   `domain`은 표시 문자열을 보유하지 않는다. 미착수 화면에 잔존한 리터럴은 [open-questions](../synthesis/open-questions.md) [2026-07-26]에서 추적.
 - **`core:ui` → `:domain` 의존**(#223 develop 머지, 2026-08-13) — 표시 매핑 확장(`NameValidResult.Error.toStringResource`)의 리시버가 도메인 타입이라 필요하다. 방향은 허용(ui → domain)이나 **`implementation`이라 public API 시그니처에 domain 타입이 노출되면서 의존은 숨어 있다** — 소비 feature가 컨벤션 플러그인으로 `:domain`을 직접 갖고 있어 지금은 컴파일된다. 저장소에 `api(...)` 선언이 0건이고 컨벤션 플러그인에 `api` 확장 함수 자체가 없어 승격은 팀 결정 대상 → [open-questions](../synthesis/open-questions.md) [2026-08-13].
-- **도메인 enum → 디자인시스템 타입 변환은 feature impl의 `util` 패키지에 둔다**(2026-08-19) — 지금 셋이다:
-  `setting/impl/util/ColorChipType.kt`(12종 1:1) · `canvas/impl/util/ColorChipType.kt`(같은 규칙, 앞의 것과
-  글자까지 같다) · `list/impl/util/GrouptagChipType.kt`(12종을 6종으로 접는다). **공용화하지 않은 이유는
+- **도메인 enum → 디자인시스템 타입 변환은 feature impl의 `util` 패키지에 둔다**(2026-08-19, PR #308·#310
+  develop 머지) — 지금 셋이다: `setting/impl/util/ColorChipType.kt`(12종 1:1 + `DEFAULT` → 중립) ·
+  `canvas/impl/util/ColorChipType.kt`(같은 규칙, 앞의 것과 글자까지 같다) ·
+  `list/impl/util/GrouptagChipType.kt`(12종을 6종으로 접고 `DEFAULT`는 별도 arm).
+  셋 다 `NametagChipType`의 모든 상수를 덮는 exhaustive `when`이라 **폴백 분기가 없다** — 그래서
+  "모르는 값"을 처리하는 자리는 여기가 아니라 `:data` 매퍼 하나다([ADR-0024](../adr/0024-nametag-chip-unknown-fold.md)). **공용화하지 않은 이유는
   자리가 없어서가 아니다** — 변환의 입력은 `:domain`, 출력은 `:core:designsystem`이고 `core:ui`가 이미
   `:domain`을 보므로 간선 하나면 된다(`:core:designsystem`은 `core:ui`를 모르니 순환도 없다). 막는 것은
   **바로 위 항목의 `implementation`/`api` 가시성 미결**이다. 같은 형태의 매핑을 두 번째로 올리면서 그
   결정을 조용히 굳힐 수 없어 복제를 택했다.
   ⚠️ **컴파일러는 앱이 그 enum에 상수를 더할 때의 arm 누락만 잡는다.** 서버에 새 타입이 생기면 매퍼가
-  모르는 문자열을 `null`로 접어 컴파일이 안 깨지고, 셋 중 하나에서 색만 바꾸는 것도 못 잡는다.
-  **색을 고칠 때는 셋을 함께 본다.**
-- **`data` 쪽 같은 축의 중복은 걷었다**(2026-08-19, 리뷰 지적) — `String? → NametagChipType`이
+  모르는 문자열을 `NametagChipType.DEFAULT`로 접어 컴파일이 안 깨지고(2026-08-19까지는 `null`로 접었고
+  결과는 같았다), 셋 중 하나에서 색만 바꾸는 것도 못 잡는다. **색을 고칠 때는 셋을 함께 본다.**
+- **`data` 쪽 같은 축의 중복은 걷었다**(2026-08-19 리뷰 지적, PR #310 develop 머지) — `String? → NametagChipType`이
   group·parfait 매퍼에 각각 `private`으로 있던 것을 `source/common/mapper/NametagChipTypeMapper.kt`
   `internal` 하나로 모았다. **바로 위 셋과 결론이 갈리는 이유는 가시성 미결이 여기엔 안 걸려서다** —
   입출력이 `:data`·`:domain` 안에서 닫히므로 새 모듈 간선이 0개고, 따라서 `implementation`/`api`

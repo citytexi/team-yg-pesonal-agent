@@ -22,7 +22,7 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | 결선됨·⚠️불일치[^uploadedat] |
+| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | 구현됨·결선됨[^uploadedat] |
 | GET | `/api/parfait-groups/{groupId}` | 필요 | path `groupId` Long | `MyParfaitGroupDetailResponse` | 구현됨·결선됨 |
 | GET | `/api/parfait-groups/join-preview` | 필요 | query `inviteCode` String | `PreviewParfaitGroupJoinResponse` | 구현됨·결선됨 |
 | POST | `/api/parfait-groups/join` | 필요 | `JoinParfaitGroupRequest` | `JoinParfaitGroupResponse` | 구현됨·결선됨 |
@@ -31,12 +31,16 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | DELETE | `/api/parfait-groups/{groupId}/members/me` | 필요 | path `groupId` Long | `LeaveParfaitGroupResponse` | 구현됨·결선됨 |
 | POST | `/api/parfait-groups/{groupId}/reports` | 필요 | `ReportParfaitGroupRequest` | `ReportParfaitGroupResponse` | 구현됨·결선됨 |
 
-[^uploadedat]: **2026-08-15** — Service·DataSource·DTO는 계약과 맞지만 매퍼가 `recentImageUploadedAt`을
-    `kotlin.time.Instant::parse`(오프셋 필수)로 읽는다. 이 응답의 값은 오프셋 없는 로컬 날짜시간이다.
-    ⚠️ **2026-08-19에 사정거리가 넓어졌다** — 서버가 이 필드를 `COALESCE`로 비널화해 **그룹이 하나라도
-    있으면** 매퍼가 던진다(그전에는 토핑 0건 그룹만 `null`이라 앱 매퍼의 `?.let`이 파싱을 건너뛰었고,
-    그래서 토핑이 하나도 없는 계정에서는 목록이 떴다) →
-    [conventions.md](conventions.md) "Android 불일치" · [open-questions](../synthesis/open-questions.md) [2026-08-15].
+[^uploadedat]: ✅ **해소됨(2026-08-20, PR #310 develop 머지).** 2026-08-15부터 매퍼가
+    `recentImageUploadedAt`을 `kotlin.time.Instant::parse`(오프셋 필수)로 읽어, 오프셋 없는 로컬
+    날짜시각을 주는 이 응답에서 던졌다. 2026-08-19 서버 `COALESCE` 비널화가 **마지막 우회로를
+    없애면서**(그전에는 토핑 0건 그룹만 `null`이라 앱 매퍼의 `?.let`이 파싱을 건너뛰었다) 그룹이
+    하나라도 있으면 G-001 목록 조회가 통째로 실패하는 상태가 됐고, 그 라운드가 매퍼를
+    `LocalDateTime::parse` → `toInstant(PARFAIT_TIME_ZONE)`로 고쳤다. **VO 타입과 화면 계산은 안 바뀌었다** —
+    바뀐 것은 벽시계에 어느 시간대를 붙이는가뿐이고, 근거는 서버 DB 커넥션 세 환경이
+    `serverTimezone=Asia/Seoul`이라는 계약 사실이다. 앱 DTO는 여전히 널 허용이라 서버가 비널로 좁힌 것에
+    앱이 물려 있지 않다 → [conventions.md](conventions.md) "Android 불일치"(이제 0건) ·
+    [open-questions](../synthesis/open-questions.md) [2026-08-15].
 
 요청 DTO(`ParfaitGroupRequest.kt`)에는 Bean Validation 애노테이션이 없다 — auth 도메인과 달리 `@NotBlank`/`@Valid`가
 없다. 필드는 Kotlin non-null 타입이라 요청 바디에 없거나 `null`이면 Jackson이 파싱 단계에서 거부한다(결과적으로
@@ -483,14 +487,22 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
 
 | Repository 함수 | 반환 | 대응 엔드포인트 | UseCase → 화면 |
 |---|---|---|---|
-| `getMyGroups()` | `Result<List<MyParfaitGroupVO>>` | GET `/api/parfait-groups` | `GetMyGroupsUseCase` → G-001(**재진입마다**·당김 재조회, #297) |
+| `myGroups` / `refreshMyGroups()`(#307) | `Flow<List<MyParfaitGroupVO>?>` / `Result<Unit>` | GET `/api/parfait-groups` | `GetMyGroupsFlowUseCase`(구독) · `RefreshMyGroupsUseCase`(갱신) → G-001(**재진입마다**·당김 재조회, #297) · C-001이 그룹명을 같은 캐시에서 읽는다 |
 | `previewJoin(inviteCode)` | `Result<GroupName>` | GET `/api/parfait-groups/join-preview` | `GetGroupJoinPreviewUseCase` → A-004(확인 버튼, 통과하면 S-102로 이동) |
 | `joinGroup(inviteCode)` | `Result<JoinedGroupVO>` | POST `/api/parfait-groups/join` | `JoinGroupUseCase` → **S-102(모달 확인)** — #261에서 A-004에서 이관 |
 | `createGroup(groupName, groupNickname, memberLimit)` | `Result<CreatedGroupVO>` | POST `/api/parfait-groups` | `CreateGroupUseCase` → A-005(모달 확인) |
 | `changeMyNickname(groupId, groupNickname)` | `Result<GroupNicknameVO>` | PATCH `/api/parfait-groups/{groupId}/nickname` | `ChangeGroupNicknameUseCase` → S-102 · **S-101(#285)** |
-| `getGroupDetail(groupId)`(#285) | `Result<ParfaitGroupDetailVO>` | GET `/api/parfait-groups/{groupId}` | `GetGroupDetailUseCase` → S-101(진입 1회) |
+| `groupDetail(groupId)` / `refreshGroupDetail(groupId)`(#285, #307) | `Flow<ParfaitGroupDetailVO?>` / `Result<Unit>` | GET `/api/parfait-groups/{groupId}` | `GetGroupDetailUseCase`(구독) · `RefreshGroupDetailUseCase`(갱신) → S-101 |
 | `leaveGroup(groupId)`(#287) | `Result<GroupId>` | DELETE `/api/parfait-groups/{groupId}/members/me` | `LeaveGroupUseCase` → S-101(나가기 확인 팝업) |
 | `reportGroup(groupId, reason)`(#287) | `Result<ReportedGroupVO>` | POST `/api/parfait-groups/{groupId}/reports` | `ReportGroupUseCase` → S-101(신고 확인 팝업) |
+| `clearGroups()`(#307) | `Unit`(non-suspend) | — | `LogoutUseCase`(탈퇴가 위임하는 자리 포함) · `TokenAuthenticator` 강제 로그아웃 |
+
+> ✅ **2026-08-20 — 읽기 두 갈래가 `Flow` 구독으로 바뀌었다**(PR #307 develop 머지). 엔드포인트·에러
+> 코드는 그대로이고 **같은 응답을 어디에 두는가**만 달라졌다 — 화면이 조회 결과를 자기 State에 넣지
+> 않고 `:data`의 인메모리 캐시를 구독한다. 갱신 함수가 `Result<Unit>`이라 **값을 얻는 두 번째 경로가
+> 애초에 없다**([ADR-0023](../adr/0023-group-in-memory-ssot.md)). 명령 다섯(참여·생성·닉네임 변경·
+> 나가기·신고)은 성공 시 캐시에 반영되므로 화면이 따로 재조회하지 않는다 — 단 닉네임 변경은 응답에
+> `memberId`가 없어 **캐시의 "내" 항목을 짚지 못해 상세를 한 번 더 부른다**(계약 쪽 개선 여지).
 
 앱 동작 메모(코드 대조):
 
@@ -529,31 +541,30 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   `recentImageUrl`이 `null`인지를 함께 봐야 한다 → [open-questions](../synthesis/open-questions.md) [2026-08-19].
 - ✅ **상세 조회 한 화면에 요청이 둘이던 이유가 서버에서 사라졌다**(2026-08-18 서버 delta) — 상세 응답에
   **그룹명이 없어** `GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 읽어 붙이던 자리다(그룹 SSoT
-  라운드에서 HTTP 호출은 이미 사라지고 인메모리 캐시 `combine`으로 바뀌었으나, **조합 자체와
-  `GroupDetailVO`는 남아 있다**). 앱 코드 두 곳(Repository KDoc·UseCase KDoc)의
-  `TODO(서버 응답 확장 대기)`가 예고한 조건이 충족됐다 — 걷어내는 것은 앱 쪽 작업이다
+  라운드에서 HTTP 호출이 먼저 사라져 인메모리 캐시 `combine`이 됐다). **앱 쪽도 닫혔다(2026-08-20,
+  PR #308 develop 머지)** — `combine`과 `GroupDetailVO`가 함께 삭제되고 두 `TODO(서버 응답 확장 대기)`도
+  걷혔다. 지금 `GetGroupDetailUseCase`는 상세 캐시 하나를 구독한다
   → [open-questions](../synthesis/open-questions.md) [2026-08-17].
-- ✅ **`memberLimit` 공백도 닫혔다**(2026-08-18 서버 delta) — 정원이 **그룹 생성 응답에만** 있어
-  "N명 남음"이 mock 1로 남아 있던 자리다. 상세 응답이 `memberLimit`을 실으므로
-  `memberLimit - members.size`로 바꿀 수 있다(앱 `GroupSettingViewModel`의 TODO가 그 식을 적어 두었다)
-  → [open-questions](../synthesis/open-questions.md) [2026-08-13].
-- ⚠️ **칩 타입을 서버가 주기 시작했는데 develop은 아직 인덱스로 돌린다**(2026-08-18 서버 delta) —
+- ✅ **`memberLimit` 공백도 닫혔다**(2026-08-18 서버 delta, 앱은 2026-08-20 PR #308 develop 머지) —
+  정원이 **그룹 생성 응답에만** 있어 "N명 남음"이 mock 1로 남아 있던 자리다. 상세 응답이 `memberLimit`을
+  실으면서 `GroupSettingViewModel`이 TODO에 적어 둔 식(`memberLimit - members.size`, 음수 클램프)으로
+  바뀌었다 → [open-questions](../synthesis/open-questions.md) [2026-08-13].
+- ✅ **칩 타입이 인덱스 순환을 완전히 대체했다**(2026-08-20, PR #308·#310 develop 머지). 그전까지는
   `GroupSettingViewModel`이 `NAMETAG_CHIP_TYPES[index % 12]`로, `GroupListScreen`이
-  `YGGrouptagChipType.entries`를 순환으로 쓴다. 계약이 `members[].nameTagChip`·
-  `lastPlacedByNameTagChip`을 주므로 **"멤버가 빠지면 남은 사람 색이 밀린다"는 성질을 없앨 수 있다**.
-  응답 필드를 안 읽는 것뿐이라 `⚠️불일치`는 아니다(앱 JSON은 `ignoreUnknownKeys = true`)
+  `YGGrouptagChipType.entries`를 순환으로 썼다. 지금은 S-101이 `members[].nameTagChip`,
+  G-001이 `lastPlacedByNameTagChip`을 읽고 각 모듈 `util/`의 변환이 색으로 옮긴다 —
+  **"멤버가 빠지면 남은 사람 색이 밀린다"는 성질이 사라졌다.** 값이 없거나 앱이 모르는 문자열은
+  `NametagChipType.DEFAULT`로 접혀 중립 색이 된다([ADR-0024](../adr/0024-nametag-chip-unknown-fold.md))
   → [open-questions](../synthesis/open-questions.md) [2026-08-18].
-- ⚠️ **그 필드를 읽는 미머지 브랜치가 2026-08-19 서버 delta로 조용히 어긋났다.** 브랜치
-  `feature/#294-group-ssot`의 `MyParfaitGroupResponse`·`ParfaitGroupMemberResponse`가
-  `@SerialName("lastPlacedByNametagChip")`·`@SerialName("nametagChip")`(둘 다 `String? = null`)로 읽는데
-  **서버 키가 `nameTagChip` 계열로 바뀌었다.** 기본값이 있어 역직렬화는 안 깨지고 **전부 `null`로
-  떨어진다** — 칩이 조용히 폴백으로 그려진다. 같은 브랜치의 `NametagChipType.RELEASED`도 서버가 더는
-  보내지 않는 문자열이라 `DEFAULT`가 오면 매핑에서 `null`이 된다. develop에는 이 코드가 없어 계약 표의
-  `⚠️불일치` 대상은 아니지만 **머지 전에 고쳐야 한다**
-  → [open-questions](../synthesis/open-questions.md) [2026-08-19].
-  ✅ **같은 날 닫혔다(미머지)** — 그 작업 위에 얹힌 `feature/#300-sync-backend-api-250819`(PR #310)가
-  세 DTO의 키를 `nameTagChip` 계열로 맞추고 `RELEASED`를 `DEFAULT`로 바꿨다
-  ([plan](../plans/2026-08-19-server-delta-nametag-chip-keys.md) Task 2·3). **develop 머지는 아직이다.**
+- ✅ **JSON 키 어긋남도 develop에서 닫혔다.** 2026-08-19 서버 delta가 키를 `nameTagChip` 계열로 바꿀 때
+  그 필드를 옛 키(`lastPlacedByNametagChip`·`nametagChip`, 둘 다 `String? = null`)로 읽던 코드가 잠시
+  있었다 — 기본값이 있어 역직렬화는 안 깨지고 **전부 `null`로 떨어지는**(칩이 조용히 폴백 색으로
+  그려지는) 부류였다. PR #310이 세 DTO의 키를 맞추고 `RELEASED`를 `DEFAULT`로 바꾼 상태로 머지됐고,
+  develop DTO는 이제 `MyParfaitGroupResponse.lastPlacedByNameTagChip` ·
+  `ParfaitGroupMemberResponse.nameTagChip` ·
+  `CreateParfaitGroupResponse.lastPlacedByNameTagChip`이다
+  → [server-delta 스펙](../specs/archive/2026-08-19-server-delta-nametag-chip-keys.md) ·
+  [open-questions](../synthesis/open-questions.md) [2026-08-19].
 - ⚠️ **신고 사유가 하드코딩 상수 하나**다(`GROUP_REPORT_REASON`) — 사유 선택 UI가 없는데 서버는
   사유를 필수로 받으므로(빈 값이면 400 `INVALID_GROUP_REPORT_REASON`) 화면이 대신 채운다. 결과적으로
   **모든 신고가 같은 문자열로 저장된다** → [open-questions](../synthesis/open-questions.md) [2026-08-17].
@@ -641,7 +652,7 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   **목록·생성의 `lastPlacedByNameTagChip`에는 온다**(마지막 토퍼가 탈퇴한 경우). 앱 `YGColorChipType`은
   12종 + `NametagChipPlus` + `Default`뿐이고 그 `Default`의 색 구분·대비도 미결이다
   → [open-questions](../synthesis/open-questions.md)
-  ✅ **앱 쪽 처리는 정해졌다(2026-08-20, `feature/#300-sync-backend-api-250819`, 미머지)** —
+  ✅ **앱 쪽 처리는 정해졌다(2026-08-20, PR #310 develop 머지)** —
   `DEFAULT`는 중립 색(`YGColorChipType.Default`·`YGGrouptagChipType.DEFAULT`)으로 그리고,
   **앱이 모르는 문자열과 값 없음도 같은 값으로 접는다**([ADR-0024](../adr/0024-nametag-chip-unknown-fold.md)).
   그 대가로 "서버가 늘린 새 타입"과 "반납된 자리"가 앱에서 구분되지 않는다.

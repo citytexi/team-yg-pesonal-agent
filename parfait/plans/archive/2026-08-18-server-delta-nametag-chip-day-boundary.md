@@ -1,5 +1,13 @@
 # 서버 delta 08df1bf 반영 Implementation Plan
 
+> ✅ **완료·develop 머지(PR #308 `feature/#300-sync-backend-api-250818` → `412991ea`, 2026-08-20)** —
+> 8 Task 전량이 develop에 있다. 체크박스는 실행 기록을 이 블록에 모으는 관례대로 미체크로 둔다.
+>
+> 선행 PR #307이 먼저 들어간 직후 같은 순서로 머지됐고 머지 커밋에 충돌 해소 편집이 0건이다.
+> Task 4가 자체 신설한 `YGColorChipType.Default`는 이 머지로 develop 소유가 됐다 — PR #298과
+> 글자를 맞춰 둔 이유(충돌 해소를 한 블록 삭제로 끝내려는 것)는 이제 #298 쪽 몫이다.
+> 유닛 511 → 532건.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 서버 `08df1bf`가 들여온 응답 필드 넷(Nametag-Chip 3종 + 그룹 상세 `groupName`·`memberLimit`)을 앱이 읽게 하고, "오늘"의 경계를 자정에서 03시로 옮긴다.
@@ -8,7 +16,7 @@
 
 **Tech Stack:** Kotlin, Jetpack Compose, Hilt, kotlinx-serialization, kotlinx-datetime, MockK, Turbine, kotlin.test, JUnit4
 
-**Spec:** [`parfait/specs/2026-08-18-server-delta-nametag-chip-day-boundary.md`](../specs/2026-08-18-server-delta-nametag-chip-day-boundary.md)
+**Spec:** [`parfait/specs/2026-08-18-server-delta-nametag-chip-day-boundary.md`](../../specs/archive/2026-08-18-server-delta-nametag-chip-day-boundary.md)
 
 **작업 저장소·브랜치:** `TJYG-Android`(경로는 `wiki/personal-private/project-paths.md`). 계획을 쓸 당시 브랜치는 **`feature/#294-group-ssot`**(PR #299) 위였으나, 그 PR이 닫히면서 산출물은 **`feature/#300-sync-backend-api-250818`**(PR #308)로 갈렸고 **`refactor/#294-group-data-using-ssot`**(PR #307) 위에 얹혀 있다. 워크트리를 새로 만들지 않는다.
 
