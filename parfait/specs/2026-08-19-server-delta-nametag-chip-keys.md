@@ -6,7 +6,7 @@ category: behavior-spec
 platforms: android
 verified: 2026-08-19
 related_code: MyParfaitGroupResponse, ParfaitGroupMemberResponse, CreateParfaitGroupResponse, GetTodayParfaitResponse, GroupMemberResponse, PlacedByResponse, PlaceParfaitImageResponse, NametagChipType, CanvasMemberVO, MyParfaitGroupVO, ParfaitGroupMemberVO, CanvasMainViewModel, ColorChipType, GrouptagChipType, PARFAIT_TIME_ZONE, MyParfaitGroupVOMapperTest, ParfaitGroupRemoteDataSourceImplTest, ParfaitRemoteDataSourceImplTest, ParfaitService
-related_adr: ADR-0017, ADR-0023
+related_adr: ADR-0017, ADR-0023, ADR-0024
 related_spec: server-delta-nametag-chip-day-boundary, group-ssot, s101-group-setting-api, c001-canvas-today-detail
 related_architecture: data-layer, design-system, module-structure
 supersedes:
@@ -44,10 +44,15 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 
 > 🔁 **"선행 라운드를 develop 위로 rebase한 것"이라 적었던 것은 더 이상 사실이 아니다.**
 > 2026-08-20에 선행 라운드가 `refactor/#294-group-data-using-ssot`(PR #307) 위로 다시 얹히면서
-> 이 브랜치의 base가 재작성됐고, 이 브랜치도 같은 날 새 #308 위로 따라 옮겼다(고유 커밋 11개,
-> 유닛 540건 통과). 옮길 때는 `--onto`로 옛 #308 tip을 잘라냈다 — 이 브랜치가 옛 #308 커밋을
-> 품고 있어 단순 리베이스로는 그것들이 중복으로 되살아난다.
-> 지금 스택은 `develop ← #307 ← #308 ← #310`이고 **푸시도 그 순서여야 한다.**
+> 이 브랜치의 base가 재작성됐고, 이 브랜치도 같은 날 새 #308 위로 따라 옮겼다. 그 뒤
+> **PR #307·#308이 develop에 머지됐고**(develop `412991ea`) 이 브랜치의 base도 develop으로
+> 돌아왔다. 남은 것은 이 브랜치 하나다.
+>
+> ⚙️ **이후 추가된 것(2026-08-20)** — 코드리뷰 지적을 받아 **모르는 칩 문자열과 값 없음을 모두
+> `NametagChipType.DEFAULT`로 접고 이 축의 널 허용을 없앴다**(매퍼 · VO 셋 · 색 변환 셋).
+> 결정과 대가는 [ADR-0024](../adr/0024-nametag-chip-unknown-fold.md)에 있다 — 이 스펙이 잡아 둔
+> "모르는 값은 `null`로 접는다"를 그것이 갱신한다. 서버가 타입을 늘리면 "반납된 자리"와
+> 구분되지 않는 것이 그 대가이고, 재검토 트리거를 ADR에 명시했다.
 
 ## 서버가 바꾼 것
 

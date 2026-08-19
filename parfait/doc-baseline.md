@@ -313,37 +313,21 @@
   develop 대조 시 `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`이고 `popUpTo`도
   없는 것으로 확인된다. ⚠️ 리베이스 시 드롭했던 커밋 둘 — `NavKeyCanvasMove` 계열 삭제와 배치 완료
   이펙트 `popUpTo` 전환 — 이 **되살아날 자리가 됐다**),
-  `refactor/#294-group-data-using-ssot`(그룹 목록·상세 인메모리 SSoT, PR #307 — 🔁 **직전 회차의
-  브랜치명 `feature/#294-group-ssot`과 "base가 develop `8730ffa3`이라 일곱 세대 뒤처졌다"는 더 이상
-  사실이 아니다**: PR이 열린 브랜치는 `refactor/#294-group-data-using-ssot`이고 2026-08-20 이
-  기준선 커밋 `c36cad49` 위로 리베이스됐다.
-  [스펙](specs/2026-08-17-group-ssot.md)·[플랜](plans/2026-08-17-group-ssot.md)·[ADR-0023](adr/0023-group-in-memory-ssot.md)
-  선반영 완료. develop 대조 시 `GroupLocalDataSource` 심볼이 없다.
-  ⚠️ 그 리베이스가 **텍스트 충돌 없이 컴파일을 깨뜨렸다** — #306이 들여온 `WithdrawUseCaseTest`가
-  `LogoutUseCase`를 직접 생성하는데 이 브랜치가 그 생성자에 `ParfaitGroupRepository`를 더해
-  `:domain:compileTestKotlin`이 실패했다. 서로 다른 파일이라 `git rebase`는 조용히 끝난다.
-  **아래 브랜치들을 리베이스할 때도 머지 후가 아니라 리베이스 직후에 `./gradlew test`를 돌려야
-  같은 종류를 잡는다**),
-  `feature/#300-sync-backend-api-250818`(서버 delta 반영 1차, PR #308 —
-  [스펙](specs/2026-08-18-server-delta-nametag-chip-day-boundary.md)·[플랜](plans/2026-08-18-server-delta-nametag-chip-day-boundary.md)
-  선반영 완료. **base가 develop이 아니라 PR #307 브랜치다.** 2026-08-20에 #294를 따라
-  `refactor/#294-group-data-using-ssot` 위로 다시 얹었다 — 옛 #294 커밋 10개를 품고 있어 단순
-  리베이스가 아니라 옛 #294 tip을 잘라내는 `--onto`가 필요했고, 옮긴 뒤 유닛 532건이 통과했다.
-  develop 대조 시 `toColorChipType` 심볼이 없다),
   `feature/#300-sync-backend-api-250819`(서버 delta 반영 2차, PR #310,
-  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md). **base는 PR #308 브랜치다** —
-  🔁 직전 회차의 "base는 `86f0f6b0`"은 develop만 놓고 잰 값이었다. develop 대조 시
-  `nameTagChip` 키가 없다. 2026-08-20에 #308을 따라 새 #308 위로 옮겼다 — 여기도 옛 #308 커밋을
-  품고 있어 `--onto`로 옛 tip을 잘라냈고, 고유 커밋 11개를 옮긴 뒤 유닛 540건이 통과했다),
-  **PR 스택은 `develop ← #307 ← #308 ← #310` 한 줄이다** — 서로 독립한 갈래가 아니므로 머지도
-  그 순서고, 위쪽을 리베이스하면 아래가 전부 따라 움직인다. 2026-08-20에 셋을 그 순서대로 옮겨
-  **스택 전체가 이 기준선 위에 정렬됐다**(각 단계마다 `--onto`로 옛 부모 tip을 잘라냈다 — 자식이
-  부모의 옛 커밋을 품고 있어 단순 리베이스로는 중복이 되살아난다). **남은 리베이스는
-  `refactor/segmentation-develop` 하나**(develop 위)다 — 네 브랜치 모두 `origin`에 올라와 있으므로
-  확인은 `git merge-base --is-ancestor origin/<base> origin/<브랜치>`로 한다(base가 develop이 아닌
-  것이 둘이므로 `<base>`를 갈아 넣어야 한다).
-  ⚠️ **푸시는 스택 아래에서 위로**(#307 → #308 → #310) 해야 한다. 부모를 먼저 올리지 않으면
-  자식 PR의 diff에 부모 커밋이 남의 것처럼 섞인다.
+  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md)·[ADR-0024](adr/0024-nametag-chip-unknown-fold.md)
+  선반영 완료. base는 develop으로 돌아왔다. develop 대조 시 `nameTagChip` 키가 없고,
+  `NametagChipType`도 아직 널 허용으로 매핑된다).
+  🔁 **직전 회차가 적은 `develop ← #307 ← #308 ← #310` 스택은 해소됐다** — 2026-08-19에 **PR #307과
+  #308이 develop에 머지됐다**(develop `412991ea`). 그 둘에 걸려 있던 미머지 표기·리베이스 경고·
+  푸시 순서 주의는 전부 무효이고, 미머지로 남은 것은 위 둘뿐이다.
+  ⚠️ **그래서 이 기준선(`c36cad49`)은 두 세대 뒤처졌다.** 아래 "점검 절차"의 delta 감사를 돌려
+  #307·#308 머지분을 반영하고 기준선을 `412991ea`로 올려야 한다. 그때 함께 정리할 것 셋 —
+  [group-ssot 스펙](specs/2026-08-17-group-ssot.md)과
+  [2026-08-18 스펙](specs/2026-08-18-server-delta-nametag-chip-day-boundary.md)의 "구현 완료·미머지"
+  표기, [ADR-0023](adr/0023-group-in-memory-ssot.md)의 `status: proposed`, 그리고 두 스펙의
+  `archive/` 이동 여부.
+  **리베이스가 남은 것은 `refactor/segmentation-develop` 하나**(develop 위)다 — 두 브랜치 모두
+  `origin`에 올라와 있으므로 확인은 `git merge-base --is-ancestor origin/develop origin/<브랜치>`로 한다.
   ⚠️ **문서 전제 오류 정정 이월**: [design-system](architecture/design-system.md)의 8엔트리 일괄 이관
   수치는 여전히 브랜치 기준 표기이고 develop 값(6파일)을 병기한 상태다.
 
