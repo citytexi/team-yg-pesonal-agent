@@ -30,7 +30,11 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 > 권했다). ② 파싱 실패가 목록 전체를 죽이는 반경은 손대지 않았다 — 스펙이 실패 처리를 정하지 않아
 > 드라이브바이로 굳힐 수 없다고 판단했다 → **OQ-P-237 신규**.
 > **실제 중복은 넷이었다**(결정 4는 셋을 셌다) — 색 변환 3벌 외에 `String? → NametagChipType` 매퍼가
-> group·parfait 두 곳에 있다. 후자의 KDoc이 그 사실을 적고 있어 은폐는 아니다.
+> group·parfait 두 곳에 있었다. **넷째는 이후 리뷰 지적으로 걷었다** — `:data` 안에서 닫히는
+> 변환이라 색 변환 3벌을 막던 가시성 미결이 여기엔 없었다
+> ([architecture/module-structure](../architecture/module-structure.md) 참고).
+> 드리프트는 이미 시작돼 있었다 — 두 사본의 KDoc이 갈라져 parfait 쪽이 `"DEFAULT"` 를 접지 않는다는
+> 계약 한 줄을 처음부터 빠뜨린 채 태어났다.
 
 [2026-08-18-server-delta-nametag-chip-day-boundary](2026-08-18-server-delta-nametag-chip-day-boundary.md)의
 **직접 후속**이다. 그 라운드가 "서버 요청 대상"·"범위 밖"으로 미뤄 둔 둘을 이번 서버 delta가 닫아 주었고,
