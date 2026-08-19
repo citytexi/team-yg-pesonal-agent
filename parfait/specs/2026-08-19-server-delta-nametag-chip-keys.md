@@ -6,7 +6,7 @@ category: behavior-spec
 platforms: android
 verified: 2026-08-19
 related_code: MyParfaitGroupResponse, ParfaitGroupMemberResponse, CreateParfaitGroupResponse, GetTodayParfaitResponse, GroupMemberResponse, PlacedByResponse, PlaceParfaitImageResponse, NametagChipType, CanvasMemberVO, MyParfaitGroupVO, ParfaitGroupMemberVO, CanvasMainViewModel, ColorChipType, GrouptagChipType, PARFAIT_TIME_ZONE, MyParfaitGroupVOMapperTest, ParfaitGroupRemoteDataSourceImplTest, ParfaitRemoteDataSourceImplTest, ParfaitService
-related_adr: ADR-0017, ADR-0023
+related_adr: ADR-0017, ADR-0023, ADR-0024
 related_spec: server-delta-nametag-chip-day-boundary, group-ssot, s101-group-setting-api, c001-canvas-today-detail
 related_architecture: data-layer, design-system, module-structure
 supersedes:
@@ -39,7 +39,20 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 [2026-08-18-server-delta-nametag-chip-day-boundary](2026-08-18-server-delta-nametag-chip-day-boundary.md)의
 **직접 후속**이다. 그 라운드가 "서버 요청 대상"·"범위 밖"으로 미뤄 둔 둘을 이번 서버 delta가 닫아 주었고,
 동시에 **그 라운드가 짠 코드를 조용히 무력화하는 변경**을 함께 들여왔다. 작업 대상 브랜치는
-`feature/#300-sync-backend-api-250819`(선행 라운드를 develop 위로 rebase한 것)다.
+`feature/#300-sync-backend-api-250819`(PR #310)이고 선행 라운드 브랜치
+`feature/#300-sync-backend-api-250818`(PR #308) 위에 얹혀 있다.
+
+> 🔁 **"선행 라운드를 develop 위로 rebase한 것"이라 적었던 것은 더 이상 사실이 아니다.**
+> 2026-08-20에 선행 라운드가 `refactor/#294-group-data-using-ssot`(PR #307) 위로 다시 얹히면서
+> 이 브랜치의 base가 재작성됐고, 이 브랜치도 같은 날 새 #308 위로 따라 옮겼다. 그 뒤
+> **PR #307·#308이 develop에 머지됐고**(develop `412991ea`) 이 브랜치의 base도 develop으로
+> 돌아왔다. 남은 것은 이 브랜치 하나다.
+>
+> ⚙️ **이후 추가된 것(2026-08-20)** — 코드리뷰 지적을 받아 **모르는 칩 문자열과 값 없음을 모두
+> `NametagChipType.DEFAULT`로 접고 이 축의 널 허용을 없앴다**(매퍼 · VO 셋 · 색 변환 셋).
+> 결정과 대가는 [ADR-0024](../adr/0024-nametag-chip-unknown-fold.md)에 있다 — 이 스펙이 잡아 둔
+> "모르는 값은 `null`로 접는다"를 그것이 갱신한다. 서버가 타입을 늘리면 "반납된 자리"와
+> 구분되지 않는 것이 그 대가이고, 재검토 트리거를 ADR에 명시했다.
 
 ## 서버가 바꾼 것
 

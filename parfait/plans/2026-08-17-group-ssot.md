@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **작업 대상 저장소는 `TJYG-Android`다.** 브랜치는 `feature/#294-group-ssot`이고 `feature/#288-group-list-refresh` 위에 리베이스돼 있다. 이 문서(`parfait/`)가 있는 저장소가 아니다.
+- **작업 대상 저장소는 `TJYG-Android`다.** 계획을 쓸 당시 브랜치는 `feature/#294-group-ssot`이었고 `feature/#288-group-list-refresh` 위에 리베이스돼 있었다. 실제로 PR이 열린 브랜치는 `refactor/#294-group-data-using-ssot`(PR #307)이고 지금은 `develop` 위로 리베이스돼 있다. 이 문서(`parfait/`)가 있는 저장소가 아니다.
 - **커밋하지 않는다.** 각 Task의 마지막 단계는 `git status`로 변경 파일을 확인하고 보고하는 것으로 갈음한다. 사용자가 명시적으로 요청할 때만 커밋한다.
 - **`Enter` 인텐트는 이미 있다.** `GroupListViewModel`·`CanvasMainViewModel` 모두 `LifecycleResumeEffect`가 화면 진입마다 `Enter`를 보낸다(#288). 새로 만들지 말고 그 안의 조회 호출만 갈아 끼운다.
 - **매퍼 단독 테스트를 만들지 않는다.** 변환 검증은 DataSource·Repository 테스트 케이스로 덮는다.

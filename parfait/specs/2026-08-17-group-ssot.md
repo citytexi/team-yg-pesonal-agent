@@ -5,7 +5,7 @@ status: implemented
 category: behavior-spec
 platforms: android
 verified:
-related_code: ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GroupLocalDataSource, GroupLocalDataSourceImpl, ParfaitGroupRemoteDataSource, MyParfaitGroupVO, ParfaitGroupDetailVO, GroupDetailVO, GetMyGroupsUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, GetGroupDetailUseCase, RefreshGroupDetailUseCase, ChangeGroupNicknameUseCase, JoinGroupUseCase, CreateGroupUseCase, LeaveGroupUseCase, ReportGroupUseCase, GroupListViewModel, CanvasMainViewModel, GroupSettingViewModel, LogoutUseCase, TokenAuthenticator
+related_code: ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GroupLocalDataSource, GroupLocalDataSourceImpl, ParfaitGroupRemoteDataSource, MyParfaitGroupVO, ParfaitGroupDetailVO, GroupDetailVO, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, GetGroupDetailUseCase, RefreshGroupDetailUseCase, ChangeGroupNicknameUseCase, JoinGroupUseCase, CreateGroupUseCase, LeaveGroupUseCase, ReportGroupUseCase, GroupListViewModel, CanvasMainViewModel, GroupSettingViewModel, LogoutUseCase, WithdrawUseCase, TokenAuthenticator
 related_adr: ADR-0023, ADR-0022, ADR-0001, ADR-0009, ADR-0020
 related_spec: user-info-ssot, s101-group-setting-api, c001-canvas-today-detail
 related_architecture: data-layer, state-management
@@ -18,7 +18,7 @@ tags: [spec, parfait, group, state, cache]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 
-> ⚙️ **구현 완료·미머지(2026-08-17, 브랜치 `feature/#294-group-ssot`, `develop` `8730ffa3` 위 커밋 10개)** — 계획 7 Task가
+> ⚙️ **구현 완료·미머지(2026-08-17, 브랜치 `refactor/#294-group-data-using-ssot`, PR #307, `develop` `c36cad49` 위 커밋 12개)** — 계획 7 Task가
 > 전부 들어왔고 설계에서 뒤집힌 결정은 없다. **as-built 차이 둘**: ① 세션 정리에서 그룹 캐시 clear를
 > 계정 정보 clear **앞에** 둔다(두 경로 모두) — 계정 정보 정리는 DataStore IO라 던질 수 있고, 뒤에
 > 두면 그때 그룹 캐시가 지워지지 않아 이 스펙이 "실제 위험"이라 부른 상태가 된다. ② `GroupSettingViewModel`이
@@ -26,6 +26,12 @@ tags: [spec, parfait, group, state, cache]
 > 옮기면서 이전에 있던 예외 가드를 잃어 DataStore 읽기 실패가 크래시가 됐다. develop 리베이스에서
 > 새로고침 실패 토스트(`ShowRefreshError`, PR #297)와 합쳤다 — 토스트 규칙은 그대로 두고 판정 기준만
 > 캐시 상태(`isNullOrEmpty()`)로 바꿨다.
+> 2026-08-20 `c36cad49` 위로 다시 리베이스하면서 **세션 정리를 부르는 경로가 하나 늘었다** —
+> develop이 #306으로 들여온 탈퇴(`WithdrawUseCase`)가 `LogoutUseCase`에 정리를 위임하므로
+> 탈퇴도 그룹 캐시를 비운다. 설계가 바뀐 것은 아니고 "무엇을 지우는가"를 한 자리에 모아 둔
+> 결정이 새 호출자를 공짜로 덮은 것이다(아래 "세션 종료 정리" 참고). 그 리베이스는 텍스트
+> 충돌 없이 `:domain:compileTestKotlin`을 깨뜨렸다 — develop이 함께 들여온
+> `WithdrawUseCaseTest`가 `LogoutUseCase`를 2-인자로 직접 생성하고 있었다.
 > 실기기·실서버 확인은 하지 않았다(아래 "검증 못 한 것" 참고). 미결 2건은
 > [open-questions](../synthesis/open-questions.md) OQ-P-219·OQ-P-220으로 등록했다.
 
@@ -135,6 +141,10 @@ ADR-0022의 닉네임 폴백과 같은 판단이다.
 정리를 여기에 더한다. 강제 로그아웃도 `TokenAuthenticator`가 토큰을 지우는 그 자리에서 함께
 지운다. 인메모리라 **프로세스가 살아 있는 채 계정이 바뀌면 이전 계정의 그룹이 남는 것**이 실제
 위험이다.
+
+그래서 `LogoutUseCase`를 부르는 쪽은 그룹 캐시를 따로 신경 쓰지 않는다. 탈퇴(`WithdrawUseCase`,
+#306)가 그 증거다 — 이 스펙이 쓰인 뒤에 develop에 들어왔고 정리를 `LogoutUseCase`에 위임하므로
+아무것도 더 붙이지 않고 그룹 캐시까지 비운다. **정리 대상이 또 늘면 고칠 자리는 여전히 하나다.**
 
 ## 화면
 

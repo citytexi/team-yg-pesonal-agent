@@ -313,14 +313,20 @@
   develop 대조 시 `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`이고 `popUpTo`도
   없는 것으로 확인된다. ⚠️ 리베이스 시 드롭했던 커밋 둘 — `NavKeyCanvasMove` 계열 삭제와 배치 완료
   이펙트 `popUpTo` 전환 — 이 **되살아날 자리가 됐다**),
-  `feature/#294-group-ssot`(그룹 목록·상세 인메모리 SSoT,
-  [스펙](specs/2026-08-17-group-ssot.md)·[플랜](plans/2026-08-17-group-ssot.md)·[ADR-0023](adr/0023-group-in-memory-ssot.md)
-  선반영 완료. base가 develop `8730ffa3`이라 **일곱 세대 뒤처졌다**. develop 대조 시
-  `GroupLocalDataSource` 심볼이 없다),
-  `feature/#300-sync-backend-api-250819`(서버 delta 반영,
-  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md). base는 `86f0f6b0`. develop 대조 시
-  `nameTagChip` 키가 없다).
-  **셋 다 이번 delta 이전 커밋을 base로 두고 있어 머지 전에 리베이스가 필요하다** — 셋 다
+  `feature/#300-sync-backend-api-250819`(서버 delta 반영 2차, PR #310,
+  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md)·[ADR-0024](adr/0024-nametag-chip-unknown-fold.md)
+  선반영 완료. base는 develop으로 돌아왔다. develop 대조 시 `nameTagChip` 키가 없고,
+  `NametagChipType`도 아직 널 허용으로 매핑된다).
+  🔁 **직전 회차가 적은 `develop ← #307 ← #308 ← #310` 스택은 해소됐다** — 2026-08-19에 **PR #307과
+  #308이 develop에 머지됐다**(develop `412991ea`). 그 둘에 걸려 있던 미머지 표기·리베이스 경고·
+  푸시 순서 주의는 전부 무효이고, 미머지로 남은 것은 위 둘뿐이다.
+  ⚠️ **그래서 이 기준선(`c36cad49`)은 두 세대 뒤처졌다.** 아래 "점검 절차"의 delta 감사를 돌려
+  #307·#308 머지분을 반영하고 기준선을 `412991ea`로 올려야 한다. 그때 함께 정리할 것 셋 —
+  [group-ssot 스펙](specs/2026-08-17-group-ssot.md)과
+  [2026-08-18 스펙](specs/2026-08-18-server-delta-nametag-chip-day-boundary.md)의 "구현 완료·미머지"
+  표기, [ADR-0023](adr/0023-group-in-memory-ssot.md)의 `status: proposed`, 그리고 두 스펙의
+  `archive/` 이동 여부.
+  **리베이스가 남은 것은 `refactor/segmentation-develop` 하나**(develop 위)다 — 두 브랜치 모두
   `origin`에 올라와 있으므로 확인은 `git merge-base --is-ancestor origin/develop origin/<브랜치>`로 한다.
   ⚠️ **문서 전제 오류 정정 이월**: [design-system](architecture/design-system.md)의 8엔트리 일괄 이관
   수치는 여전히 브랜치 기준 표기이고 develop 값(6파일)을 병기한 상태다.

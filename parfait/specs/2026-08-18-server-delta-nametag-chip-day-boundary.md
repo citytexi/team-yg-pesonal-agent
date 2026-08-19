@@ -18,7 +18,7 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 
-> ⚙️ **구현 완료·미머지(2026-08-18, 브랜치 `feature/#294-group-ssot` = PR #299 위 커밋 18개)** — 계획 8 Task가
+> ⚙️ **구현 완료·미머지(2026-08-18, 브랜치 `feature/#300-sync-backend-api-250818` = PR #308, `refactor/#294-group-data-using-ssot`(PR #307) 위 커밋 20개)** — 계획 8 Task가
 > 전부 들어왔다. **뒤집힌 결정 1건**(아래 결정 5 참고: 호출부 무변경을 테스트 이음매 금지로까지 읽은 것이
 > 과했다), as-built 차이 2건, park 2건.
 >
@@ -39,9 +39,14 @@ tags: [spec, parfait, group, canvas, server-contract, design-system]
 서버 `main`이 `22717fe` → `08df1bf`로 오면서 **엔드포인트는 안 늘고 응답 필드 넷과 "오늘"의 정의가
 바뀌었다**([api/server-baseline.md](../api/server-baseline.md) 9회차). 이 스펙은 그 delta를 앱에 반영한다.
 
-작업 브랜치는 **`feature/#294-group-ssot`**(PR #299) 위다. 그룹 상세·목록을 인메모리 SSoT로 옮긴
+작업 브랜치는 **`feature/#300-sync-backend-api-250818`**(PR #308)이고 그룹 SSoT 브랜치
+**`refactor/#294-group-data-using-ssot`**(PR #307) 위에 얹혀 있다. 그룹 상세·목록을 인메모리 SSoT로 옮긴
 [group-ssot](2026-08-17-group-ssot.md) 배선이 이 delta가 닫는 자리와 같은 파일이라, 그 위에 얹는 편이
 `combine` 제거·TODO 삭제까지 한 번에 끝난다.
+
+> 🔁 **작업 당시 이 둘은 한 브랜치 `feature/#294-group-ssot`(PR #299)였다.** 그 PR은 닫혔고 SSoT와
+> 계약 반영이 PR #307 → #308 스택으로 갈렸다. 2026-08-20에 #294가 develop `c36cad49` 위로
+> 리베이스되면서 이 브랜치도 그 위로 다시 얹혔다(고유 커밋 20개는 그대로).
 
 ## 서버가 바꾼 것
 
