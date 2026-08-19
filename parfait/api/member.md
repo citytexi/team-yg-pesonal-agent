@@ -4,7 +4,7 @@ title: 회원(내 계정 조회·전역 닉네임 변경·탈퇴)
 server_module: http/member
 server_commit: 57529ec
 verified: 2026-08-19
-android_status: partial
+android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-15-user-info-ssot
 related_adr: ADR-0017, ADR-0022
 tags: [api, parfait, server-contract, member]
@@ -30,7 +30,7 @@ tags: [api, parfait, server-contract, member]
 |---|---|---|---|---|---|
 | GET | `/api/v1/users/me` | 필요 | 없음 | `MyAccountResponse` | 구현됨·결선됨 |
 | PATCH | `/api/v1/users/me/nickname` | 필요 | `ChangeGlobalNicknameRequest` | `ChangeGlobalNicknameResponse` | 구현됨·결선됨 |
-| DELETE | `/api/v1/users/me` | 필요 | 없음 | **본문 없음(204)** | 구현됨 |
+| DELETE | `/api/v1/users/me` | 필요 | 없음 | **본문 없음(204)** | 구현됨·결선됨 |
 
 셋 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. memberId는 요청이 아니라
 토큰에서 나온다(`Authentication.memberId(): Long = name.toLong()`) — 남의 계정을 지정할 경로가 없다.
@@ -193,8 +193,8 @@ tags: [api, parfait, server-contract, member]
 
 ## Android 매핑
 
-**세 엔드포인트 전부 표면 있음**(2026-08-12 PR #230 두 건 + 2026-08-15 PR #250 탈퇴), **소비처는 조회·
-닉네임 변경 둘**(2026-08-16 PR #263). 탈퇴만 남았다.
+**세 엔드포인트 전부 표면이 있고 소비처도 전부 있다** — 표면은 2026-08-12 PR #230 두 건 + 2026-08-15
+PR #250(탈퇴), 소비처는 2026-08-16 PR #263(조회·닉네임 변경) + 2026-08-19 PR #306(탈퇴)이다.
 
 | 계약 | Android 심볼 |
 |---|---|
@@ -208,9 +208,20 @@ DataSource가 `ApiCaller.safeApiCallNoContent`로 호출한다 — `logout`에 �
 ([parfait-image.md](parfait-image.md)). 설계 근거는
 [specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md).
 
-⚠️ **소비처는 여전히 없다** — S-101·S-001 Danger Zone의 탈퇴 확인 팝업은 그대로 TODO 로그만 남긴다.
-회원이 없어도 204라 멱등이고 도메인 에러가 없어, 앱이 "이미 탈퇴됨"을 구분할 수단도 없다
-→ [open-questions](../synthesis/open-questions.md).
+✅ **탈퇴에도 소비처가 생겼다(2026-08-19, PR #306).** S-001 앱 설정의 탈퇴 확인 팝업이
+`WithdrawUseCase`를 부른다. **이 UseCase의 판단은 순서다** — 서버가 받아 준 뒤에야 기기를 정리하고,
+거절당하면 아무것도 지우지 않는다. 로그아웃과 반대인데(그쪽은 서버 호출이 실패해도 로컬을 지운다),
+탈퇴는 서버가 거절하면 계정이 살아 있어 로컬만 지우면 사용자가 탈퇴했다고 믿는 상태가 남기 때문이다.
+지우는 일 자체는 `LogoutUseCase`에 위임한다 — "무엇을 지우는가"가 거기 한 곳이다.
+
+회원이 없어도 204라 **멱등이고 도메인 에러가 없어서**, 앱은 "이미 탈퇴됨"을 성공과 구분하지 않는다
+(구분할 필요가 아직 서지 않았다 → [open-questions](../synthesis/open-questions.md) OQ-P-162 ③).
+실패는 401 계열과 네트워크·서버 장애뿐이라 화면이 문구 하나로 받는다.
+
+⚠️ **성공 뒤에 죽은 토큰으로 요청이 한 번 더 나간다** — 위임받은 `LogoutUseCase`가 서버 로그아웃을
+부르는데 그 계정은 방금 지워졌다. 서버는 401 `MEMBER_NOT_FOUND`를 주고, 그 401이 `TokenAuthenticator`의
+재발급을 깨우며, refresh token은 탈퇴가 이미 지웠으므로 재발급도 거절돼 `ForcedLogout`까지 발행된다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-242.
 
 wire DTO는 `service/model/{request,response}/member/`, 변환은 `source/member/mapper/VOMapper.kt`,
 domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider`)다. 설계 근거는
@@ -244,8 +255,16 @@ S-002는 둘을 표시용 갈래(`GlobalNicknameError.INVALID`·`ACCOUNT_GONE`)�
 지운다. 같은 코드에 처분이 갈리는 것은 의도다 — 화면이 세션을 파괴하는 경로를 새로 열지 않고, 죽은
 세션은 다음 앱 진입의 부트스트랩이 걷어낸다.
 
-⚠️ **탈퇴만 소비처가 없다** — S-001 Danger Zone은 여전히 TODO 로그만 남긴다
-→ [open-questions](../synthesis/open-questions.md).
+✅ **탈퇴가 셋째 소비처다(2026-08-19, PR #306).** 앞의 둘과 달리 **로컬 SSoT를 거치지 않는다** —
+읽어서 화면에 그릴 값이 없고 지우는 일만 남기 때문이다.
+
+| 계약 | 앱 쪽 경로 |
+|---|---|
+| `DELETE /api/v1/users/me` | S-001 탈퇴 확인 → `WithdrawUseCase` → 성공 시 `LogoutUseCase`(토큰·계정 정보 정리) → `replaceAll(NavKeyLogin)` / 실패 시 화면을 떠나지 않고 토스트 |
+
+요청 중에는 `YGScaffoldV2` 로딩 오버레이가 화면을 덮고(`AppSettingState.isLoading`이
+`isLoggingOut`·`isWithdrawing`의 OR), `launch(key)` 가드가 **되돌릴 수 없는 요청이 두 번 나가는 것**을
+막는다. 확인 팝업은 요청 전에 닫는다 — S-101 나가기·신고가 먼저 확정한 형태를 그대로 따른다.
 
 `http/users.http`가 세 요청을 덮는다(선행은 `auth.http`만). ⚠️ **마지막 요청이 탈퇴라 파일을 위에서부터
 통째로 돌리면 계정이 지워진다** — `http/README.md`가 이 경고를 담는다.

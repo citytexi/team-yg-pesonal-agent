@@ -5,8 +5,33 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `f12870a8` (`Merge pull request #290 from mash-up-kr/feature/topping-add-screen`)
-- **요약**: **경로의 끝이 채워졌는데, 끝에서 아무것도 저장되지 않는다**(delta 1건).
+- **커밋**: `c36cad49` (`Merge pull request #306 from mash-up-kr/feature/#236-withdraw-api`)
+- **요약**: **되돌릴 수 없는 문 셋이 다 열렸고, 마지막 문만 닫는 방식이 다르다**(delta 1건).
+  **#306**(`feature/#236-withdraw-api`): S-001 앱 설정의 회원 탈퇴가 **로그 한 줄에서 실제 요청으로**
+  바뀌었다. 표면은 2026-08-15부터 있었고 화면도 팝업까지 있었으므로 이번에 들어온 것은 그 사이를
+  잇는 셋뿐이다 — `MemberRepository.withdraw`·`WithdrawUseCase`·ViewModel 분기. 그래서 이 라운드가
+  말하는 것은 분량이 아니라 **순서**다. `WithdrawUseCase`는 서버가 탈퇴를 받아 준 **뒤에야** 기기를
+  정리하고, 거절당하면 아무것도 지우지 않는다 — 로그아웃과 정확히 반대이고(그쪽은 서버 호출이
+  실패해도 로컬을 지운다), 이유는 서버가 거절했는데 로컬만 지우면 **계정이 살아 있는 채로 사용자만
+  탈퇴했다고 믿기** 때문이다. 지우는 일 자체는 새로 쓰지 않고 `LogoutUseCase`에 위임했다("무엇을
+  지우는가"의 단일 자리를 깨지 않으려는 선택이고, 그 UseCase의 호출자가 셋이 됐다).
+  화면 쪽은 **S-101 나가기·신고가 확정한 형태를 그대로 복제**했다 — 팝업을 먼저 닫고 `YGScaffoldV2`
+  로딩 오버레이가 덮으며, 실패는 공통 토스트다(OQ-P-141의 ①만 채우고 ②·③은 이번에도 불필요했다).
+  갈린 것은 목적지와 잠금이다: 성공은 `replaceAll(NavKeyLogin)`이고(탈퇴는 세션 자체가 끝나 그룹
+  목록으로 갈 자리가 없다), `launch(key)` 가드에 **"요청 중 다시 눌러도 API 1회"를 잠그는 테스트**가
+  붙었다 — 나가기·신고에는 없던 무게다. in-flight도 `isWithdrawing`으로 따로 들었는데 `isLoggingOut`과
+  합치지 않은 이유는 덮개가 아니라 **항목 비활성**이다(`YGActionItem(enabled = !isLoggingOut)`이 로그아웃
+  줄 하나만 가리킨다). S-001은 이 라운드에 **토스트 호스트를 처음 얻었지만** 이미 V2를 쓰고 있어
+  컨테이너는 손대지 않았고, 스캐폴드 이관 수치(8화면·V1 잔여 6파일)도 그대로다.
+  ⚠️ **끝난 뒤가 깨끗하지 않다** — 위임받은 `LogoutUseCase`가 **방금 지워진 계정의 토큰으로** 서버
+  로그아웃을 부른다. `logout`은 화이트리스트 밖이라 401이 `TokenAuthenticator`를 깨우고, refresh token은
+  탈퇴가 서버에서 이미 지운 것이라 재발급도 거절돼 `ForcedLogout`까지 발행된다 — `MainRoute`와
+  ViewModel이 **같은 목적지로 이동을 두 번** 일으키고 로그에는 "재발급 거절"이 결함처럼 남는다
+  (OQ-P-242 신설). 계약 쪽 물음 하나는 **서지 않은 채로 닫혔다** — 서버가 회원 부재에도 204를 주지만
+  화면이 할 일이 같아 앱은 "이미 탈퇴됨"을 성공과 구분하지 않는다(OQ-P-162 ③).
+  테스트: 유닛 484 → **490건**(`WithdrawUseCaseTest` 2 · `AppSettingViewModelTest` +4).
+  ⚠️ **실기기·실서버 확인 없음** — 되돌릴 수 없는 동작인데 한 번도 실제로 눌러 본 적이 없다.
+  직전 회차 요약: **경로의 끝이 채워졌는데, 끝에서 아무것도 저장되지 않는다**(delta 1건).
   **#290**(`feature/topping-add-screen`): 토핑 생성 플로우의 마지막 자리채움
   (`NavKeyCanvasMove` → 아무것도 안 하는 `CanvasMoveScreen`)이 **C-106 배치 화면**으로 바뀌었다.
   목적지 `NavKeyCanvasToppingPlace(imageUri)` 한 벌이 생기고, 위키 [[C-106-토핑-배치-정책-v0.1]]의
@@ -280,19 +305,23 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-19 (34회차)
+- **검증일**: 2026-08-20 (35회차)
 - **미머지 제외 항목**: `refactor/segmentation-develop`(세그멘테이션 파이프라인 하드닝 + 스캐폴드 8엔트리
-  일괄 이관 + `popUpTo<T>()` — **로컬 브랜치이고 리모트에도 없다**. develop `86f0f6b0` 기준이라 이번
-  delta로 **한 세대 뒤처졌다**. [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md) 선반영 완료.
+  일괄 이관 + `popUpTo<T>()` — 🔁 **직전 회차의 "로컬 브랜치이고 리모트에도 없다"는 더 이상 사실이
+  아니다**: 이제 `origin/refactor/segmentation-develop`으로 올라와 있다. base는 그대로 develop
+  `86f0f6b0`이라 **두 세대 뒤처졌다**(#290·#306). [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md) 선반영 완료.
   develop 대조 시 `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`이고 `popUpTo`도
   없는 것으로 확인된다. ⚠️ 리베이스 시 드롭했던 커밋 둘 — `NavKeyCanvasMove` 계열 삭제와 배치 완료
   이펙트 `popUpTo` 전환 — 이 **되살아날 자리가 됐다**),
   `feature/#294-group-ssot`(그룹 목록·상세 인메모리 SSoT,
   [스펙](specs/2026-08-17-group-ssot.md)·[플랜](plans/2026-08-17-group-ssot.md)·[ADR-0023](adr/0023-group-in-memory-ssot.md)
-  선반영 완료. develop 대조 시 `GroupLocalDataSource` 심볼이 없다),
+  선반영 완료. base가 develop `8730ffa3`이라 **일곱 세대 뒤처졌다**. develop 대조 시
+  `GroupLocalDataSource` 심볼이 없다),
   `feature/#300-sync-backend-api-250819`(서버 delta 반영,
-  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md). develop 대조 시 `nameTagChip` 키가 없다).
-  **셋 다 이번 delta 이전 커밋을 base로 두고 있어 머지 전에 리베이스가 필요하다.**
+  [스펙](specs/2026-08-19-server-delta-nametag-chip-keys.md). base는 `86f0f6b0`. develop 대조 시
+  `nameTagChip` 키가 없다).
+  **셋 다 이번 delta 이전 커밋을 base로 두고 있어 머지 전에 리베이스가 필요하다** — 셋 다
+  `origin`에 올라와 있으므로 확인은 `git merge-base --is-ancestor origin/develop origin/<브랜치>`로 한다.
   ⚠️ **문서 전제 오류 정정 이월**: [design-system](architecture/design-system.md)의 8엔트리 일괄 이관
   수치는 여전히 브랜치 기준 표기이고 develop 값(6파일)을 병기한 상태다.
 
@@ -363,3 +392,4 @@
 | 2026-08-18 | `8730ffa3` | Merge #297 (#288 group-list-refresh) | delta 1건(#297). **화면이 앞에 설 때마다 다시 묻기 시작했다** — G-001·C-001에 `Enter` 인텐트 + Route `LifecycleResumeEffect`. `init` 조회는 화면 수명이 아니라 ViewModel 수명에 걸린 것이라 백스택 아래에서 살아남아 낡았고, 그것이 닫혔다(**OQ-P-169 해소**). 복귀 관용구(`goToSingleClearTop`)는 손대지 않았다 — 재조회가 필요한 이유가 복귀가 아니라 **남이 바꾸기 때문**이라서다(OQ-P-136과 분리). **실패 규칙이 뒤집혔다**: 목록이 남아 있으면 화면 유지 + 당긴 새로고침 실패만 토스트(`ShowRefreshError`), 목록이 비면 종전대로 에러 화면. 토스트 호스트 때문에 G-001 Route가 **`YGScaffoldV2`**로 이관 — **결선 아닌 라운드가 이관을 끌어온 첫 사례**(V1 잔여 7 → **6파일**, OQ-P-204 ①). C-001은 `syncToday()` 뒤 **오늘을 볼 때만** 오늘 캔버스 + **올해** 달력 기록을 재조회(연도 목록·지난 캔버스는 그대로), 부작용 GET을 재진입마다 부르되 ViewModel 생성만으로는 캔버스가 안 생기게 됐다. `syncToday()`가 열어 둔 채 자정을 넘긴 경우를 맡는다. 문서: 사후 스펙 1건 신규(`2026-08-17-screen-resume-refetch`, implemented·archive + README 등록), g001·c001-today-detail·c201-calendar-server 아카이브 스펙에 갱신 노트, state-management(재진입 재조회 절 신설)·navigation-flow(`goToSingleClearTop`·생성 참여 복귀)·design-system(V2 5화면·잔여 6파일) 갱신. open-questions: **OQ-P-169 해소됨**, OQ-P-046·204 갱신, **신규 1건**(OQ-P-221 재진입 재조회가 규약 아님 + 실패 표현 편차). 범위 밖 정정 1건: g001 스펙의 토핑 클릭 미결선 서술이 #268 이후 stale이라 함께 고쳤다. 유닛 456 → **467건**. 미머지: `feature/#294-group-ssot`(스펙·플랜 등록됨) |
 | 2026-08-18 | `86f0f6b0` | Merge #305 (#254 group-list-refresh-lottie) | delta 3건(#296·#295·#305). **#296**(약관 웹뷰): `NavKeyServiceTerms`·`NavKeyPrivacyPolicy` + Route/Screen/ViewModel 2벌 → **`NavKeyWebView(title, url)` 1벌**, **ViewModel 삭제**(상태가 인자뿐·부를 API 없음), 엔트리 머티리얼 `Scaffold` → Route `YGScaffoldV2`. 온보딩 약관의 마지막 stub(`NavigateToUrl`) 해소 — `ClickTermDetail(policy)`·`NavigateToPolicyDetail(title, url)`로 개명. 설정 화면이 `GetPoliciesUseCase` **두 번째 소비처**(policy 도메인 `done` 유지). **#295**(버전 정보): `core:util:android`에 `AppInfo#APP_VERSION_NAME`(모듈 `buildConfig` 첫 활성 + `:app`과 같은 카탈로그 항목 재기입) → S-001 버전 placeholder 해소, 표시 `v` 접두는 포맷 리소스. `YGListItem` 두 오버로드 줄 높이를 컴포넌트가 `heightIn`으로 정렬. **#305**(로띠): `YGLoadingLottie`(+`YGLoadingTone`) 신설·`YGLoadingOverlay` 인디케이터 교체(Dim `Black25`→`Black75`), G-001 당겨서 새로고침 커스텀 인디케이터, 스플래시 로띠 + **부트스트랩·재생 종료 둘 다 대기**(`SplashState` 2필드). 조치: architecture 3건(design-system 트리·컴포넌트 표·화면 컨테이너·로띠 의존·`YGListItem` 노트 / module-structure terms·`core:util:android` 행 / navigation-flow NavKey 통합·출처 인자 비적용·스플래시 진입 조건) + api 2건(policy.md Android 매핑·앱 동작 메모·미결 경고, README 도메인 표 주석 — `android_status`·`verified` 불변) + 아카이브 스펙 6건 as-built(s004·feature-common-terms-module·intro-term-agree·app-setting-s001·ygscaffold-v2·user-info-ssot). **문서 전제 오류 1건 정정**: design-system이 `refactor/segmentation-logic`(로컬 전용 브랜치) 수치를 "develop 기준 13화면·V1 3파일"로 적고 있어 브랜치 기준으로 표기 + develop 값(6파일) 병기, 미머지 추적에 추가. open-questions: **부분 해소 1건**(OQ-P-205 ① 인디케이터), 마커 3건(OQ-P-204 이관 계기 확장·OQ-P-068 계약 공백이 화면으로·OQ-P-125 로띠 애셋 소유), **신규 5건**(OQ-P-229 스플래시 대기 상한·OQ-P-230 로띠 호출 관용구 갈림·OQ-P-231 약관 탭 무반응·OQ-P-232 웹뷰 출처 검증·OQ-P-233 버전 상수 이중 출처). 신규 spec 작성 0건(신규 화면 없음, `YGLoadingLottie`는 ygscaffold-v2 스펙 as-built로 흡수). 테스트 467 → **474건**. 미머지: `refactor/segmentation-logic`·`feature/#294-group-ssot` |
 | 2026-08-19 | `f12870a8` | Merge #290 (feature/topping-add-screen) | delta 1건(#290). **C-106 토핑 배치 화면 신설** — 자리채움 `NavKeyCanvasMove`(아무것도 안 하는 `CanvasMoveScreen`)를 대신해 `NavKeyCanvasToppingPlace(imageUri)` + Route/Screen/ViewModel 한 벌이 들어와 토핑 생성 플로우의 마지막 자리가 채워졌다. 위키 [[C-106-토핑-배치-정책-v0.1]]의 초기 배치 규칙 **넷이 처음으로 코드에 들어왔다**(긴 변 = 캔버스 너비 40%·정중앙·짧은 변 48 하한·이탈 허용 + 클리핑) → **OQ-P-200 종결**. 40% 상수를 `internal`로 열어 읽기·쓰기가 공유(③ = 양쪽 다), 48은 **dp로 굳음**(② 확정, 정책은 px). 계산은 ViewModel 소유 — 캔버스 실측·토핑 원본 크기가 서로 다른 시점에 오므로 인텐트 둘로 받아 매번 재시도하되 사용자가 손대면 멈춘다. **리사이즈 한계는 고정 배율이 아니라 역산**(하한 = 48dp 최소 터치, 상한 = 캔버스 긴 변 1.5배). 그리기는 `center`·`sizeAfterScale`을 한 번만 계산해 이미지·스트로크·핸들에 공유하고 클리핑만 셋이 갈린다. 세그멘테이션 결과가 **두 벌**로 갈림(`trimmedSubjectImagePath` 신설 — 편집은 원본 크기 유지, 배치는 여백 없는 실제 크기) → 캐시 PNG·메모리 버퍼 각 1 증가, "테두리 없으면 한 번만 떨군다" 최적화 소멸. `CanvasBGEditScreen` private 컴포저블 3종이 모듈 `component/`로 승격돼 두 화면 공유(`toppingId: Long` → `key: Any?`), 그 과정의 `size` → `requiredSize`가 C-301 토핑에도 적용. `YGScaffoldV2` 이관 **8화면째**(V1 잔여 6파일 불변). 조치: 신규 as-built 스펙 1건(c106-topping-place, archive) + specs README 등록·c103 아카이브 스펙 목적지/모델 정정, navigation-flow(NavKey 목록·토핑 생성 플로우 다이어그램·도달 불가 표기)·design-system(이관 8화면·`YGFloatingBarEdit` 두 번째 화면·핸들 관용구 공용화)·data-layer(`SegmentationResult` 3필드)·module-structure(화면 간 공유 컴포저블은 모듈 `component/`) 갱신, open-questions: **OQ-P-200 해소** · OQ-P-209 부분 해소(①) · OQ-P-202/203/204/207/228 사례 갱신 · **신규 4건**(OQ-P-238 `groupId = 0L` 하드코딩 + 백스택 누적 / OQ-P-239 `NavKeyCanvasMove` 도달 불가 / OQ-P-240 배치 화면이 실제 캔버스가 아님 / OQ-P-241 회전·리사이즈 한계에 정책 근거 없음). 미머지 세그멘테이션 스펙의 캐시 정리 안전 근거가 **다시 거짓**이 됨을 그 스펙에 기록. 유닛 474 → **484건**. 미머지: `refactor/segmentation-develop`·`feature/#294-group-ssot`·`feature/#300-sync-backend-api-250819`(셋 다 리베이스 필요) |
+| 2026-08-20 | `c36cad49` | Merge #306 (#236 withdraw-api) | delta 1건(#306). **되돌릴 수 없는 문 셋이 다 열렸다** — S-001 회원 탈퇴가 로그 한 줄에서 실제 요청이 됐다. 표면(#250)도 팝업(#225)도 이미 있어 이번에 들어온 것은 사이를 잇는 셋뿐이다(`MemberRepository.withdraw` · `WithdrawUseCase` · ViewModel 분기). **핵심은 순서다** — 서버가 받아 준 뒤에야 기기를 정리하고 거절당하면 아무것도 지우지 않는다(로그아웃과 반대. 서버가 거절했는데 로컬만 지우면 계정이 살아 있는 채로 사용자만 탈퇴했다고 믿는다). 정리는 새로 쓰지 않고 `LogoutUseCase`에 위임해 "무엇을 지우는가"의 단일 자리를 지켰다(호출자 셋). 화면은 **S-101 나가기·신고 형태를 그대로 복제**(팝업 먼저 닫고 로딩 오버레이 + 실패 토스트)했고 갈린 것은 목적지(`replaceAll(NavKeyLogin)` — 세션이 끝나 그룹 목록으로 갈 자리가 없다)와 **연타 잠금 테스트**뿐이다. `isWithdrawing`을 `isLoggingOut`과 합치지 않은 이유는 덮개가 아니라 `YGActionItem(enabled = !isLoggingOut)`이 로그아웃 줄 하나만 가리키기 때문. S-001이 토스트 호스트를 처음 얻었지만 이미 V2라 컨테이너는 불변(이관 8화면·V1 잔여 6파일 그대로). ⚠️ **끝난 뒤가 깨끗하지 않다** — 위임받은 로그아웃이 방금 지워진 계정의 토큰으로 나가 401 → 재발급 거절 → `ForcedLogout`까지 이어져 이동을 두 곳이 일으킨다(**OQ-P-242 신설**). 조치: 신규 스펙·플랜 없음(선작성 문서가 없던 소규모 결선 라운드), **api 4표면**(member.md `android_status: partial`→**`done`** · 엔드포인트 표 DELETE 열 `구현됨·결선됨` · Android 매핑 2블록 재작성 · README 도메인 표 member 행 **결선됨** + 소비처 20건 문단. `verified`·서버 계약 절 불변, conventions.md 불일치 표는 이 delta가 안 건드림), architecture 3건(data-layer `MemberRepository` 인벤토리 + UseCase 규칙 넷째 + 도메인 공백 문단 / state-management in-flight 분리 사례 둘째 / design-system 토스트 호스트 사례). open-questions: **해소 1건**(OQ-P-141 Danger Zone 확인 3종 — ②·③은 채택이 아니라 불필요해져서 닫힘), **부분 해소 2건**(OQ-P-162 ③이 물음이 서지 않은 채 닫힘 · OQ-P-186 ② 닫힘, ① 비활성 색은 잔존), **신규 1건**(OQ-P-242). 테스트 484 → **490건**. ⚠️ 실기기·실서버 확인 없음. 미머지 3건 재확인 — **`refactor/segmentation-develop`이 리모트에 올라와 있어 직전 회차의 "리모트에도 없다"를 정정**했고, 셋 다 base가 develop 뒤라 리베이스 필요 |
