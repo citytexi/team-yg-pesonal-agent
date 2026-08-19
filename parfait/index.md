@@ -136,7 +136,7 @@ parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부).
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `86f0f6b0`(2026-08-18 검증, #305까지 — 약관 목적지 2종을 `NavKeyWebView(title, url)` 하나로 통합(#296, ViewModel 삭제), 앱 버전 실값 `APP_VERSION_NAME`(#295), 로딩 인디케이터 로띠 확정 + 스플래시가 부트스트랩·재생 종료를 함께 대기(#305). 스캐폴드 이관 7화면·V1 잔여 6파일).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `f12870a8`(2026-08-19 검증, #290까지 — **C-106 토핑 배치 화면 신설**로 토핑 생성 플로우의 마지막 자리채움(`NavKeyCanvasMove`)이 실물 `NavKeyCanvasToppingPlace`로 바뀌고 위키 C-106 초기 배치 규칙 넷(40%·정중앙·48 하한·이탈 허용)이 처음 코드에 들어옴. 단 **배치 확정이 서버로 가지 않고** `NavKeyCanvasMain(groupId = 0L)`로 이동한다. 세그멘테이션 결과가 `trimmedSubjectImagePath`로 두 벌이 됨. 스캐폴드 이관 8화면·V1 잔여 6파일).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md

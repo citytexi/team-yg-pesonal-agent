@@ -95,6 +95,10 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
   - `Navigator.goToAndPopCurrent(destination)` 신설(`core:navigation`).
   - 세그멘테이션 결과 모델 재편 — `SegmentationResult`가 `BitmapWrapper`를 버리고
     `subjectImagePath` + `subjectBounds: SegmentationBounds?` 2필드가 된다.
+    > 📌 **필드가 셋이 됐다(2026-08-19, PR #290)** — `trimmedSubjectImagePath`가 붙었다.
+    > 수동 편집은 원본과 픽셀로 겹쳐 그려야 해 원본 크기를 유지하고, C-106 배치·미리보기는 여백 없는
+    > 실제 크기가 필요해 갈렸다. `NavKeySegmentationConfirm`도 두 경로를 다 싣고 확인 화면은
+    > 트리밍본으로 초기화한다 → [c106-topping-place 스펙](2026-08-19-c106-topping-place.md).
   - ML Kit 모듈 준비 확인 — `ModuleInstall.areModulesAvailable`/`installModules`로 optional module을
     실제 사용 직전에 확인·설치하고, 실패를 `SegmentationException.ModuleNotReady`/`Process`로 가른다.
   - 편집 결과 저장 — `ImageSegmentationRepository.saveEditedImage(BitmapWrapper)` +
@@ -140,7 +144,11 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
   읽으므로 알맹이 파일 경로를 `File(...).toUri()`로 `file` 스킴 uri로 바꿔 넘긴다.
   **마스크로 넘기는 것은 최종본이 아니라 알맹이다** — 테두리가 구워진 이미지를 마스크로 주면
   그 색이 `SRC_IN` 단계에서 원본 픽셀로 덮여 테두리가 사라진다.
-- "다음" → `goTo(NavKeyCanvasMove(imageUri = subjectImagePath))`.
+- "다음" → ~~`goTo(NavKeyCanvasMove(imageUri = subjectImagePath))`~~.
+  > 📌 **목적지가 바뀌었다(2026-08-19, PR #290)** — `goTo(NavKeyCanvasToppingPlace(imageUri = …))`이고,
+  > 넘기는 값도 파일 경로가 아니라 `File(...).toUri()`로 감싼 `file` 스킴 uri다(배치 화면이 Coil로
+  > 읽는다). `NavKeyCanvasMove`는 호출자를 잃고 도달 불가로 남았다 →
+  > [c106-topping-place 스펙](2026-08-19-c106-topping-place.md).
 
 ### C-104/C-105 편집 (`NavKeyToppingEdit`)
 
@@ -272,7 +280,7 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
 | [[누끼-편집]] 브러시 2~50 / 테두리 2~50 | 값은 같으나 단위가 **dp**(정책은 px) | 값 일치·단위 갈림 |
 | [[누끼-편집]] 상/하단 UI ↔ 이미지 최소 여백 10px | 편집 영역 좌우 `padding7` + 위아래 리터럴 간격 | 대응 조항 없음 |
 | [[누끼-편집]] 확대 시 작업 공간 `Device Width − 40px` | 좌우 `padding7` 안에서만 그린다(`clipToBounds`) | 방향 일치(수치 미기재) |
-| [[토핑]] 편집 완료 후 캔버스 배치(C-106) | "다음" → `NavKeyCanvasMove(imageUri)` | 일치 |
+| [[토핑]] 편집 완료 후 캔버스 배치(C-106) | "다음" → ~~`NavKeyCanvasMove(imageUri)`~~ → **`NavKeyCanvasToppingPlace(imageUri)`**(#290) | 일치 |
 | C-105 테두리 색 팔레트 | 코드가 9종을 먼저 확정 | **정책 문서 없음** |
 
 ## 파일 구성
