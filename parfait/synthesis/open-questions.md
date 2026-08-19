@@ -68,6 +68,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 캐시(`FileCameraCacheLocalDataSourceImpl`)는 여전히 정리 경로가 없고 초 단위 파일명이라 충돌도
   > 남는다. 원본 다운샘플 부재로 인한 메모리 위험은 OQ-P-228(신규 항목, 아래)로 갈랐다 →
   > [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md).
+  > 🔧 **정정(2026-08-19)** — 위 ⚠️ 문단은 develop에 미머지인 PR #290(`feature/topping-add-screen`)을
+  > 로컬 머지해 얹은 `refactor/segmentation-logic` 브랜치 기준이다. `CanvasToppingPlaceRoute`는
+  > **#290이 들여오는 화면**이라 plain develop에는 애초에 없다. 같은 작업을 develop 위
+  > `refactor/segmentation-develop`(develop `86f0f6b0` + 커밋 11개)로 다시 만들면서 이 수정
+  > (`ea278cce`)도 #290과 함께 빠졌다 — **뺀 것이 맞다.** develop 기준 흐름은
+  > `SegmentationConfirmRoute`(`onClickNext`) → `NavKeyCanvasMove`(`CanvasMoveScreen`, 완료
+  > 이벤트가 없는 스텁)에서 끝나고, 캔버스로 돌아가는 유일한 수단이 `onBack`이라 뒤로 갈 때마다
+  > 백스택이 하나씩 걷힌다. 즉 **캔버스를 새로 쌓아 이전 흐름 화면을 살려 두는 코드가 develop에
+  > 없어**, 원 스펙의 안전 근거는 **아무 수정 없이 develop에서 참이다.** 위험이 사라진 게 아니라
+  > **#290이 머지되는 순간 되돌아온다** — `CanvasToppingPlaceRoute`의 배치 완료 이펙트가
+  > `popUpTo<NavKeyCanvasMain>()`(`Navigator.kt#popUpTo`, 이 라운드가 신설)을 쓰도록 바꾸는 것이
+  > 처방이고, 이건 이 라운드가 아니라 #290 쪽이 짊어질 몫이다. 옛 브랜치는
+  > `backup/segmentation-on-290`으로 로컬 보존돼 있다.
 - **해소 메모**: 정식(GA) 승급 시 버전 고정·문서 갱신. ③ 캐시 정리는 위에서 해소됨 —
   [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절에 반영 완료. ①(재시도 동선)은
   실행을 `init`에서 꺼내는 구조 변경과 재시도 버튼 디자인이 확정돼야 다룰 수 있다.
@@ -82,6 +95,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `Result`로 접었고, 같은 `withContext` 블록의 세 번째 경로(`saveToCacheAsPng`의 `IOException`)는
   여전히 새어나가고 있었다. 그 경로는 라운드 막바지 리뷰가 별도로 잡아 `try`로 마저 감쌌다 —
   블록 전체가 방어된 것은 그 시점부터다.
+  > 🔧 **정정(2026-08-19)** — `refactor/segmentation-logic`(PR #290을 로컬 머지해 얹은 브랜치)은
+  > 그 자체로 머지될 수 없어 plain develop 위 `refactor/segmentation-develop`로 다시 만들어졌다.
+  > 위에서 닫힌 것으로 적은 동작(null 마스크·크기 불일치 `Result.failure`, 저장 경로 `try` 방어)은
+  > 새 브랜치의 `ImageSegmentationRepositoryImpl.kt#segmentImage`에서도 그대로 확인된다 — **해소
+  > 판정 자체는 안 바뀐다.** 브랜치명만 정정한다.
 
 ### [2026-07-12] 디자인시스템 컴포넌트 컨벤션 분기
 - **ID**: OQ-P-005
@@ -485,6 +503,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 배경이 날아가므로 `onClickClose`가 `popUpTo` 대신 `onBack` 2회(확인 버튼과 같은 백 처리)다.
   > 세그멘테이션 화면들은 배경 편집 경로를 타지 않아 이 분기가 없다. `ToppingEditRoute`는 닫기 버튼
   > 자체가 없어(뒤로만) 대상이 아니다 → [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md).
+  > 🔧 **정정(2026-08-19)** — `refactor/segmentation-logic`(PR #290 로컬 머지 브랜치)은 develop
+  > 위 `refactor/segmentation-develop`로 다시 만들어졌다(사유는 OQ-P-003 ③ 정정 참고). `popUpTo`
+  > 신설과 `PictureConfirmRoute`·`SegmentationRoute`·`SegmentationConfirmRoute`의 닫기 결선은
+  > 새 브랜치에서도 코드로 확인된다(`Navigator.kt#popUpTo`, 각 Route의 `onClickClose`) — **해소
+  > 판정은 안 바뀐다.** 브랜치명만 정정한다.
 - **해소 메모**: [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)과
   [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)에
   반영 완료.
@@ -2878,14 +2901,31 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-18] 원본 다운샘플 미적용 — 세그멘테이션 실측 메모리 피크가 largeHeap 없이 위험 구간
 - **ID**: OQ-P-228
 - **출처**: `ImageSegmentationRepositoryImpl.kt#segmentImage`(원본 해상도 그대로 처리, 다운샘플
-  없음) × 독립 코드 리뷰(2026-08-18, `refactor/segmentation-logic` 최종 리뷰) — 12MP 사진 기준
+  없음) × 독립 코드 리뷰(2026-08-18, `refactor/segmentation-logic` 최종 리뷰) — ~~12MP 사진 기준
   실측: `segmentImage` 내부에 살아 있는 비트맵 총량이 피크에서 약 244MB, 토핑 편집 화면까지
-  이어지면(스택 아래 `SegmentationState.originBitmap`이 겹쳐 살아 있는 채) 약 390MB. `app` 모듈
+  이어지면(스택 아래 `SegmentationState.originBitmap`이 겹쳐 살아 있는 채) 약 390MB.~~ `app` 모듈
   매니페스트는 `largeHeap`을 선언하지 않는다.
   [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)이
   "고화질 보존을 택했다"며 다운샘플을 의도적으로 범위 밖에 뒀는데, 리뷰는 그 판단이 틀렸다고 본다.
   같은 저장소의 `ToppingBorderOutline.kt`는 이미 자기 작업 치수를 캡핑하고 있어(원본 그대로 돌리지
   않는다), 다운샘플 여부 판단이 코드베이스 안에서 화면마다 갈린다.
+  > 🔧 **수치 정정(2026-08-19)** — 위 취소선 두 수치는 develop에 미머지인 PR #290을 로컬 머지해
+  > 얹은 트리에서 잰 값이라 지금은 틀렸다. 같은 작업을 plain develop 위
+  > `refactor/segmentation-develop`로 다시 만들면서 재도출했다.
+  > - **`segmentImage`(`ImageSegmentationRepositoryImpl.kt#segmentImage`) — 약 195MB로 정정.**
+  >   #290이 만들던 trimmed 비트맵(`trimTransparentBounds`)이 develop에는 없어, 동시에 살아 있는
+  >   전체 해상도 버퍼가 다섯이 아니라 **넷**이다 — 원본 비트맵, ML Kit
+  >   `foregroundConfidenceMask`(픽셀당 4바이트 `FloatBuffer`), 픽셀 `IntArray`, subject 비트맵.
+  >   넷 다 4바이트/픽셀이라 12MP(예: 4032×3024 = 12,192,768픽셀) 기준 16바이트 × 12,192,768 ≈
+  >   195MB. 옛 244MB는 다섯 번째 trimmed 버퍼(#290 전용)를 더한 값이었다.
+  > - **토핑 편집 화면(`ToppingEditViewModel.completeEdit`) 값은 재도출하지 않는다.** 옛 390MB는
+  >   #290의 `trimTransparentBounds` 경로를 포함해 잰 값이라 그대로 못 쓰고, 이 화면은
+  >   `originBitmap`·`segmentationBitmap`에 `buildCutoutBitmap`의 `cutout`·`withBorders`의
+  >   `edited`까지 겹치는 구간이 있어 정확한 피크를 내려면 `ToppingBorderOutline`의 치수 캡핑까지
+  >   따라가야 한다 — 이번 정정에서는 그 도출을 하지 않았다. **현재 트리 기준 토핑 편집 피크는
+  >   미측정으로 남는다.** 재측정 없이 옛 390MB를 새 수치인 것처럼 쓰지 않는다.
+  > - 위험 자체(다운샘플 상한 없음, `largeHeap` 미선언)는 안 바뀐다. 항목 ①~③과 상태는 그대로
+  >   둔다.
 - **항목**: ① 원본 디코드에 다운샘플 상한을 둘지, 둔다면 어느 화면(세그멘테이션만 vs 디코드 공통
   경로)·어느 치수부터 적용할지. ② 다운샘플 대신 `largeHeap` 선언으로 버틸지(저사양 기기에서 여전히
   위험할 수 있다). ③ `ToppingBorderOutline`이 쓰는 치수 캡 관용구를 세그멘테이션 파이프라인 전체의
