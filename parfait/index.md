@@ -141,5 +141,6 @@ parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부).
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md
 - **라인번호·변동수치 금지** — 근거·규칙은 [adr/README.md](adr/README.md)
+- **코드 주석·KDoc** — [CLAUDE.md](CLAUDE.md). 코드가 이미 말하는 것은 안 쓰고, 고정 틀을 쓰지 않으며, **다른 곳의 현재 상태는 낡으니 단정하지 않는다**. 아키텍처 결정은 코드가 아니라 `architecture/`·`adr/`에.
 - 새 아키텍처 결정 = 새 ADR([adr/template.md](adr/template.md)), 코드와 같은 커밋. 구조 변경 시 같은 PR에서 wiki 갱신(drift 금지).
 - 새 기능·컴포넌트 = 구현 전 [specs/](specs/README.md)에 설계 스펙 확정([specs/template.md](specs/template.md)) 후 코드 작성.
