@@ -69,21 +69,24 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
   raw `error()`로 던진다(같은 항목).
 - 소비 화면은 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md).
 
-## As-built 갱신 (2026-08-18, `refactor/segmentation-logic`)
+## As-built 갱신 (2026-08-20, PR #309 develop 머지)
 
 > 📌 **정정(2026-08-19)** — 이 브랜치는 develop에 미머지인 PR #290(`feature/topping-add-screen`)을
 > 로컬 머지해 얹은 것이라 그 자체로 리뷰·머지될 수 없었다. 같은 작업이 plain develop 위
 > **`refactor/segmentation-develop`**로 다시 만들어졌다(브랜치명만 달라졌을 뿐, 아래 서술하는
 > `segmentImage` 재작성·캐시 정리·예외 처리 내용은 새 브랜치에서도 동일하게 확인됨). 상세는
-> [segmentation-pipeline-hardening 스펙의 "as-built 정정" 절](../specs/2026-08-18-segmentation-pipeline-hardening.md#as-built-정정-2026-08-19-리베이스).
+> [segmentation-pipeline-hardening 스펙의 "as-built 정정" 절](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md#as-built-정정-2026-08-19-리베이스).
+>
+> ✅ **머지됨(2026-08-20, PR #309 — develop `cf357937`)** — 아래 서술은 이제 브랜치가 아니라
+> develop 코드다. 브랜치 팁이 충돌 해소 편집 없이 그대로 들어갔다.
 >
 > 📌 **재정정(2026-08-20)** — 그 브랜치를 develop `750cc2dd` 위로 한 번 더 리베이스했다.
 > **아래 세 항목의 결론은 그대로 유효하다.** 다만 `segmentImage`는 리베이스에서 develop과 충돌해
 > 이 ADR이 다루는 저장 구간의 모양이 조금 달라졌다 — 이 라운드가 넣은 `try`/`finally` 안으로
 > develop의 trimmed 비트맵 생성이 들어와, `finally`의 `recycle()`이 두 비트맵의 수명을 함께 닫는다.
-> 상세는 [스펙의 "as-built 재정정" 절](../specs/2026-08-18-segmentation-pipeline-hardening.md#as-built-재정정-2026-08-20-두-번째-리베이스).
+> 상세는 [스펙의 "as-built 재정정" 절](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md#as-built-재정정-2026-08-20-두-번째-리베이스).
 
-[segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md) 구현.
+[segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md) 구현.
 위 두 절이 남긴 것 셋을 여기서 닫는다.
 
 - **캐시 정리 정책이 정해졌다** — `cacheDir` 전용 하위 디렉토리(`SegmentationCacheDir.kt`)를 두고

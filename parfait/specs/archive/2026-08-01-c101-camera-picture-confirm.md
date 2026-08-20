@@ -45,7 +45,7 @@ tags: [spec, parfait, camera, c101]
   - ~~확인 화면 이후 경로~~ — **"다음"은 #221(2026-08-14)에서 결선됐다**: `navigator.goToAndPopCurrent(NavKeySegmentation(sourceImageUri = uri))`.
     `goTo`가 아니라 `goToAndPopCurrent`라 확인 화면은 백스택에서 걷히고, 세그멘테이션에서 뒤로 가면 촬영/갤러리로 돌아간다.
     `feature/camera/impl` → `feature/segmentation/api` 의존이 함께 추가됐다(규약대로 `:api`만).
-    **닫기(C-001 캔버스)는 여전히 `onClickClose = {}` TODO다.**
+    ~~**닫기(C-001 캔버스)는 여전히 `onClickClose = {}` TODO다.**~~ → ✅ **#309(2026-08-20)로 결선됐다**: `navigator.popUpTo<NavKeyCanvasMain>()`(배경 편집 경로는 `popUpTo<NavKeyCanvasBGEdit>()`).
   - 줌 UI — 상태·인텐트는 살아 있으나 화면에 노출되는 컨트롤이 없다(아래 "잔존").
   - 시스템 카메라 화면(`SystemCameraScreen`)의 디자인 정합 — 맨 Material3 위젯 그대로.
 
@@ -136,6 +136,11 @@ tags: [spec, parfait, camera, c101]
 - **화면 컨테이너**: 카메라 entry는 `YGScaffold { CustomCameraRoute(...) }`로 **`innerPadding`을 화면에
   적용하지 않는다**(피드가 시스템 바 아래까지 덮어야 하므로, 인셋은 컨트롤 `Column`이
   `windowInsetsPadding`으로 직접 처리). 의도적 예외이고 코드 주석에 근거가 있다.
+  > 📌 **스캐폴드가 Route로 내려갔다(2026-08-20, PR #309)** — `YGScaffoldV2`를 Route가 소유하고
+  > **인셋을 무시하는 예외는 그대로 유지**한다. 같은 라운드가 `CustomCameraScreen`이 뷰파인더 Box
+  > 안에 얹고 있던 `YGToastHost`를 걷어 스캐폴드로 옮겼다 — **토스트가 상태바 인셋 아래 상단으로
+  > 올라가 눈에 보이는 위치가 바뀌었고**, 위키 Toast 공통 정책("위→아래 노출")에는 이쪽이 맞는다.
+  > 조용히 뒤로 가던 촬영 실패에도 `showError` 토스트가 붙었다.
   화면 최외곽 `YGScreen`은 카메라·확인 화면 모두 쓰지 않는다(G-001과 같은 이탈 → [navigation-flow](../../architecture/navigation-flow.md)).
 - **문자열**: 카메라·갤러리 모두 feature `strings.xml` 신설로 [module-structure](../../architecture/module-structure.md) 규약을 따랐다.
   단 갤러리 **빈 상태 문구만 코틀린 리터럴**로 남았다(#191로 해소).
@@ -171,8 +176,9 @@ tags: [spec, parfait, camera, c101]
 
 ## 주의 / 열린 질문
 - **다음 경로**: "다음"은 #221에서 C-103(`NavKeySegmentation`)으로 결선됐고 → [c103 스펙](2026-08-15-c103-segmentation-topping-edit.md).
-  **닫기는 여전히 빈 람다 + TODO**(C-001 캔버스)이고, 세그멘테이션 3화면의 닫기도 같은 상태라 토핑 생성 경로에는 아직 출구가 없다.
-  현재 확인 화면에서 앞으로 나갈 수 없다. **#191로 갤러리 경로가 같은 화면에 합류해 영향 범위가
+  ~~**닫기는 여전히 빈 람다 + TODO**(C-001 캔버스)이고, 세그멘테이션 3화면의 닫기도 같은 상태라 토핑 생성 경로에는 아직 출구가 없다.~~
+  → ✅ **#309(2026-08-20)로 넷 다 결선됐다** — `Navigator.popUpTo<T>()`로 캔버스까지 되감고, 배경 편집에서
+  들어온 경로(`returnResultOnly = true`)만 부른 화면으로 돌아간다(확인 버튼도 같은 처리다) → OQ-P-152. **#191로 갤러리 경로가 같은 화면에 합류해 영향 범위가
   두 진입점으로 늘었다**(갤러리는 결과 반환도 끊겨 이 화면이 유일한 출구다).
 - **줌 死코드**: `CameraZoomIndicatorComponent`·`controls/ZoomLevelRow`가 참조 0건이고,
   `CameraControlComponent`는 `zoomRatio`·`zoomRange`·`onClickZoomLevel`을 받기만 하고 쓰지 않는다.

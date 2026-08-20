@@ -4,8 +4,8 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-18
-related_spec: designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
+verified: 2026-08-20
+related_spec: segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0007, ADR-0010, ADR-0018
 related_architecture:
 related_code: core:designsystem, YGTheme
@@ -138,9 +138,10 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > - **재시도 동선이 필요한 실패는 V2가 다루지 않는다.** 그건 화면이 자기 UI로 표현한다
 >   (`GroupListErrorScreen` 같은 전면 에러, 입력 자리 인라인 등).
 >
-> 이관은 화면별로 진행 중이다 — **develop 기준 8화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
+> 이관은 화면별로 진행 중이다 — **develop 기준 16화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
 > 정보 · S-101 그룹 설정(#285) · G-001 그룹 목록(#297) · 스플래시(#305) · 약관 웹뷰(#296) ·
-> C-106 토핑 배치(#290)), V1 잔여 6파일**(PR #267 · #285 · #290 · #296 · #297 · #305).
+> C-106 토핑 배치(#290) · 카메라 3 · 갤러리 2 · 세그멘테이션 3(#309)), V1 잔여 3파일**
+> (PR #267 · #285 · #290 · #296 · #297 · #305 · #309).
 > **여덟째는 이관이 아니라 신규 화면이다** — #290의 `CanvasToppingPlaceRoute`가 처음부터 Route에서
 > V2를 소유해 규약을 지켰다(`isLoading`도 토스트도 안 쓴다 — 이 화면은 부를 API가 없다). 잔여 파일
 > 수가 안 준 것도 같은 이유다: `feature/groups/canvas/impl` EntryBuilder에는 옛 엔트리들이 그대로
@@ -158,20 +159,6 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > Route에서 스캐폴드를 소유하고 로딩·실패를 배선한 뒤**다 →
 > [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
 >
-> 📌 **한 라운드가 8개 엔트리를 한꺼번에 옮겼다(2026-08-18, `refactor/segmentation-logic` — ⚠️ 아직
-> develop 미머지, 아래 수치는 그 브랜치 기준이다)** — 어차피
-> 세 모듈(`camera`·`gallery`·`segmentation`) 파일을 다 여는 라운드라 스캐폴드 이관을 같이 태웠다.
-> `camera`(`NavKeyCameraCustom`·`NavKeyCameraSystem`·`NavKeyPictureConfirm`) · `gallery`
-> (`NavKeyCustomGalleryPicker`·`NavKeySystemGalleryPicker`) · `segmentation`
-> (`NavKeySegmentation`·`NavKeySegmentationConfirm`·`NavKeyToppingEdit`) 8개 엔트리가 이번에 V2로
-> 옮겨 **그 브랜치 기준 이관 화면이 13개(파일)**가 됐다. `CustomCameraScreen`·
-> `CustomGalleryPickerScreen`이 직접 꽂고 있던 `YGToastHost`·`toastPolicy` 파라미터를 걷어 스캐폴드로
-> 옮겼고, 세 모듈 모두 `isLoading`은 쓰지 않는다(로딩이 전부 화면 고유 표현이라 V2가 흡수하지 않는
-> 갈래). 카메라 촬영 실패는 이번에 `showError` 토스트가 붙었다(전에는 조용히 뒤로 갔다). **그 브랜치에서 V1
-> `YGScaffold` 잔여는 3파일까지 줄었다**(develop은 여전히 6파일) — 전부 EntryBuilder(`feature/intro/impl`·
-> `feature/groups/enter/impl`·`feature/groups/canvas/impl`)이고 셋 다 그 모듈의 진입 화면을 만드는
-> 자리다 → [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md).
->
 > **로딩 오버레이를 켜는 기준은 "네트워크 왕복인가"**다(세 사례에서 귀납한 것이고 디자인이 확정한
 > 규칙은 아니다 → OQ-P-205). 버튼 비활성은 "지금 눌러도 소용없다"만 말할 뿐 언제 끝날지 모르는 대기를
 > 표현하지 못하고, 그동안 입력 필드가 살아 있어 요청이 나간 뒤에도 값을 고칠 수 있다.
@@ -179,7 +166,20 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > 📌 **S-001이 토스트 호스트를 얻었다(2026-08-19, PR #306)** — 회원 탈퇴 결선으로 실패를 말할 자리가
 > 처음 필요해졌고, 이미 V2를 쓰던 Route가 `rememberYGToastPolicy()`를 만들어 넘기는 것으로 끝났다.
 > **이관이 끝난 화면은 채울 것이 생겨도 컨테이너를 손대지 않는다**는 것이 이 라운드가 보여 준 것이고,
-> 그래서 이관 수치(8화면·V1 잔여 6파일)도 그대로다.
+> 그래서 그때는 이관 수치(8화면·V1 잔여 6파일)도 그대로였다.
+>
+> 📌 **한 라운드가 8개 엔트리를 한꺼번에 옮겼다(2026-08-20, PR #309 develop 머지)** — 어차피
+> 세 모듈(`camera`·`gallery`·`segmentation`) 파일을 다 여는 라운드라 스캐폴드 이관을 같이 태웠다.
+> `camera`(`NavKeyCameraCustom`·`NavKeyCameraSystem`·`NavKeyPictureConfirm`) · `gallery`
+> (`NavKeyCustomGalleryPicker`·`NavKeySystemGalleryPicker`) · `segmentation`
+> (`NavKeySegmentation`·`NavKeySegmentationConfirm`·`NavKeyToppingEdit`) 8개 엔트리가 이번에 V2로
+> 옮겨 **이관 화면이 16개**가 됐다. `CustomCameraScreen`·
+> `CustomGalleryPickerScreen`이 직접 꽂고 있던 `YGToastHost`·`toastPolicy` 파라미터를 걷어 스캐폴드로
+> 옮겼고, 세 모듈 모두 `isLoading`은 쓰지 않는다(로딩이 전부 화면 고유 표현이라 V2가 흡수하지 않는
+> 갈래). 카메라 촬영 실패는 이번에 `showError` 토스트가 붙었다(전에는 조용히 뒤로 갔다). **V1
+> `YGScaffold` 잔여가 처음으로 줄어 3파일이 됐다** — 전부 EntryBuilder(`feature/intro/impl`·
+> `feature/groups/enter/impl`·`feature/groups/canvas/impl`)이고 셋 다 그 모듈의 진입 화면을 만드는
+> 자리다 → [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md).
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.

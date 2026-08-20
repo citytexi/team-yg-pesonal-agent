@@ -116,6 +116,10 @@ tags: [spec, parfait, gallery, c102]
 - **화면 컨테이너**: `featureCustomGalleryEntryBuilder`는 `YGScaffold { innerPadding }`을 정상 적용한다
   (카메라의 의도적 예외와 다름). 이번 PR이 화면 안의 `windowInsetsPadding(systemBars)`을 걷어내
   **인셋 이중 적용이 사라졌다**. 화면 최외곽 `YGScreen`은 쓰지 않는다(G-001·C-101과 같은 이탈).
+  > 📌 **컨테이너가 Route로 내려갔다(2026-08-20, PR #309)** — 스캐폴드가 EntryBuilder의 `YGScaffold`에서
+  > Route의 `YGScaffoldV2`가 됐고, `CustomGalleryPickerScreen`이 파라미터로 받아 직접 꽂던
+  > `YGToastHost`·`toastPolicy`도 그때 걷혔다(정책 객체는 Route가 만들어 스캐폴드에 넘긴다).
+  > 갤러리 토스트는 이미 컨텐츠 영역 상단 정렬이라 보이는 위치는 사실상 그대로다.
 - **문자열**: 목록 헤더·빈 상태·재선택 버튼·가이드 토스트가 모두 `feature/gallery/impl` `strings.xml`로
   갔다 — [2026-07-26 문자열 리소스화 항목](../../synthesis/open-questions.md)이 지적한 갤러리 리터럴
   1건이 닫혔다. 단 **가이드 토스트 문구가 카메라 쪽과 문자 그대로 같은데 두 모듈에 각각 정의**된다.

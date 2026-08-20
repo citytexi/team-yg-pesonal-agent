@@ -4,11 +4,11 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-18
-related_spec: designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
+verified: 2026-08-20
+related_spec: segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
-related_code: core:navigation, Navigator
+related_code: core:navigation, Navigator, Navigator.kt#popUpTo
 tags: [architecture, parfait]
 ---
 # 내비게이션 흐름 (Navigation3 + Navigator)
@@ -29,16 +29,19 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
   - `goToAndPopCurrent(destination)`(#221 신설) — 지금 화면을 대상으로 **치환**한다(마지막 칸에 덮어쓰기).
     백스택 깊이가 늘지 않고 뒤로 가면 지금 화면을 건너뛴다. 스택이 비어 있으면 그냥 쌓는다.
     확인·경유 화면처럼 되돌아올 이유가 없는 자리에 쓴다(첫 사용처: C-101-confirm → C-103).
-  - `popUpTo<T>()` / `popUpTo(type: KClass<out NavKey>)`(`Navigator.kt#popUpTo`, 세그멘테이션 라운드
-    신설, 2026-08-18) — 백스택에서 `T` 타입 키를 뒤에서부터 찾아 있으면 그 위를 전부 걷어내고
+  - `popUpTo<T>()` / `popUpTo(type: KClass<out NavKey>)`(`Navigator.kt#popUpTo`, PR #309 develop 머지,
+    2026-08-20) — 백스택에서 `T` 타입 키를 뒤에서부터 찾아 있으면 그 위를 전부 걷어내고
     `true`를, 없으면 아무것도 하지 않고 `false`를 준다. **`goToSingleClearTop` 대신 이것을 쓰는 경우는
     호출부가 목적지 키의 인자를 모를 때다** — `goToSingleClearTop`은 키 동등성 비교라 `NavKeyCanvasMain`의
     `groupId`를 알아야 하는데, 카메라·세그멘테이션 쪽 닫기 콜백은 그 값을 들고 있지 않다. NavKey 다섯
     개에 `groupId`를 실어 나르는 대안은 배경 편집처럼 그 값이 무의미한 경로에도 인자를 붙이게 돼
-    기각했다. reified 버전은 호출부 편의이고 `KClass` 버전이 실제 구현·테스트 대상이다. 첫
-    소비처는 `PictureConfirmRoute`(`returnResultOnly = false`)·`SegmentationRoute`·
-    `SegmentationConfirmRoute`의 닫기 → `popUpTo<NavKeyCanvasMain>()`
-    ([segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)).
+    기각했다. reified 버전은 호출부 편의이고 `KClass` 버전이 실제 구현·테스트 대상이다.
+    **대상을 못 찾으면 아무것도 걷지 않고 `false`를 주므로 "백스택에 있는지" 확인이 반환값으로 끝난다** —
+    별도 조회 API를 두지 않은 이유다. 소비처는 Route 넷이다: `PictureConfirmRoute`(`returnResultOnly = false`)·
+    `SegmentationRoute`·`SegmentationConfirmRoute`의 닫기 → `popUpTo<NavKeyCanvasMain>()`,
+    `PictureConfirmRoute`(`returnResultOnly = true`)의 확인·닫기 → `popUpTo<NavKeyCanvasBGEdit>()`,
+    `CanvasToppingPlaceRoute`의 배치 완료 → `popUpTo<NavKeyCanvasMain>()`
+    ([segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)).
 - **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasMain`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`(#290 이후 도달 불가)·`NavKeyCanvasBGEdit`(#231)·`NavKeyCanvasToppingPlace`(#290), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
 - **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`ImageAdd`·`BGEdit`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
@@ -173,7 +176,7 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
                                                     │  ▲ ToppingEditResult(ResultEventBus)  │
                                                     ▼  │                                    ▼
                                     NavKeyToppingEdit(source, segmentation, borderLayers)   NavKeyCanvasToppingPlace(imageUri)
-                                                                                             │ goTo(NavKeyCanvasMain(groupId = 0L))
+                                                                                             │ popUpTo<NavKeyCanvasMain>()
                                                                                              ▼
                                                                                         C-001 캔버스 (⚠️ 아래 참고)
 ```
@@ -189,10 +192,11 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
   [open-questions](../synthesis/open-questions.md) [2026-08-10].
 - 재편집을 위해 확인 화면이 **최종본과 "테두리 전 알맹이"를 따로** 들고 있다가 알맹이 쪽을 마스크로
   넘긴다. 최종본을 넘기면 테두리 색이 원본 픽셀로 덮여 사라진다.
-- ⚠️ **플로우를 나가는 경로가 없다** — 세 화면 + C-101-confirm의 `onClickClose`가 전부 빈 람다다.
-  뒤로가기 말고는 출구가 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
-- 엔트리 3개는 규약 기본형(`YGScaffold { innerPadding -> …padding(innerPadding) }`)이고
-  빌더 하나(`featureSegmentationEntryBuilder`)가 세 entry를 등록한다.
+- ✅ **플로우를 나가는 경로가 생겼다(2026-08-20, PR #309)** — 세 화면 + C-101-confirm의 `onClickClose`가
+  전부 빈 람다이던 것이 `popUpTo<NavKeyCanvasMain>()`으로 결선됐다(OQ-P-152 해소). 세그멘테이션 쪽은
+  로딩·에러·본문 세 화면이 콜백 하나를 공유해 **한 자리를 채우자 셋이 함께 출구를 얻었다.**
+- 엔트리 3개는 Route를 부르기만 하고 **스캐폴드(`YGScaffoldV2`)는 Route가 소유한다**(2026-08-20,
+  PR #309 이관). 빌더 하나(`featureSegmentationEntryBuilder`)가 세 entry를 등록하는 것은 그대로다.
 
 > 📌 **마지막 목적지가 실물로 바뀌었다(2026-08-19, PR #290)** — 확인 화면의 "다음"이 자리채움이던
 > `NavKeyCanvasMove`를 버리고 **`NavKeyCanvasToppingPlace(imageUri)`**로 간다. 넘기는 값도 파일
@@ -200,11 +204,15 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 > 여백을 걷어낸 **트리밍본**이다(확인 화면이 `key.trimmedSubjectImagePath`로 초기화한다) →
 > [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md).
 >
-> ⚠️ **끝이 아직 흐름을 닫지 못한다.** 배치 확정은 서버로 가지 않고 이펙트만 쏘며, Route가
-> **`goTo(NavKeyCanvasMain(groupId = 0L))`**로 이동한다 — 그룹 id가 하드코딩(NavKey가 `imageUri`만
-> 싣는다)이고 `goTo`라 촬영·세그멘테이션·편집 화면이 **백스택에 그대로 쌓인다**. `popUpTo<T>()`가
-> 필요한 자리인데 그 확장은 아직 develop에 없다(미머지 `refactor/segmentation-develop`) →
-> [open-questions](../synthesis/open-questions.md) OQ-P-238.
+> ✅ **되돌아가는 방식이 고쳐졌다(2026-08-20, PR #309)** — 배치 확정 이펙트가
+> `goTo(NavKeyCanvasMain(groupId = 0L))`에서 **`popUpTo<NavKeyCanvasMain>()`**으로 바뀌었다. 이미 있는
+> 엔트리로 되감으므로 그룹 id를 실어 나를 필요가 없어져 하드코딩 `0L`도 사라졌고, 촬영·세그멘테이션·
+> 편집 화면이 백스택에 쌓인 채 남지도 않는다. **이 되감기가 세그멘테이션 캐시 정리의 안전 근거이기도
+> 하다** — 진입 시 캐시를 통째로 비우는데, 이전 흐름 화면이 살아 있으면 그 화면들이 가리키던 PNG가
+> 지워진다(OQ-P-003 ③).
+>
+> ⚠️ **그래도 끝이 흐름을 닫지는 못한다.** 배치 확정은 여전히 서버로 가지 않고 이펙트만 쏜다 —
+> 화면만 바뀌고 아무것도 저장되지 않는다 → [open-questions](../synthesis/open-questions.md) OQ-P-238 ②③.
 >
 > ⚠️ **`NavKeyCanvasMove`·`CanvasMoveRoute`·`CanvasMoveScreen`은 호출자를 잃은 채 남았다** — 엔트리도
 > 등록돼 있어 컴파일은 되지만 도달할 수 없다 → OQ-P-239.
@@ -220,7 +228,7 @@ NavKeyCanvasMain ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showG
                                             └─▶ NavKeyCustomGalleryPicker(동일 인자) ───────────────────────────┤
                                                                                                                  ▼
                                                         NavKeyPictureConfirm(uri, source, returnResultOnly=true)
-                                                             │ sendResult(PictureConfirmResult) + onBack ×2
+                                                             │ sendResult(PictureConfirmResult) + popUpTo<NavKeyCanvasBGEdit>()
                                                              ▼
                                                         NavKeyCanvasBGEdit (ResultEffect<PictureConfirmResult>)
 ```
@@ -229,11 +237,15 @@ NavKeyCanvasMain ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showG
   `goToAndPopCurrent(NavKeySegmentation)`으로 전진하고, true면 결과를 돌려주고 물러난다.
   `showGuideToast`도 같은 부류로, 카메라·갤러리 가이드 토스트를 토핑 생성 경로에서만 띄운다.
   즉 **화면이 그릴 값이 아니라 호출자가 고르는 동작 플래그가 백스택 키에 실린 첫 사례**다.
-- **복귀가 `onBack()` 2회 하드코딩**이다(확인 화면 → 카메라/갤러리). 스택 깊이를 가정하므로 중간에
-  화면이 하나 끼면 어긋난다 — `goToSingleClearTop`·`goToAndPopCurrent` 같은 명시적 관용구를 쓰지 않았다.
-- 카메라 실패·취소 경로는 여전히 `sendResult(uri: String?)`라 `ResultEffect<PictureConfirmResult>`인
-  배경 편집 화면은 **실패를 받지 못한다**(C-001의 死 `ResultEffect`와 같은 부류)
-  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- ~~**복귀가 `onBack()` 2회 하드코딩**이다~~ → ✅ **깊이 대신 타입이 됐다(2026-08-20, PR #309)**.
+  확인·닫기 두 콜백 모두 `popUpTo<NavKeyCanvasBGEdit>()`라 사이에 화면이 몇 장 끼든 부른 화면으로
+  되감는다. 목적지를 타입으로 특정할 수 있는 근거는 `returnResultOnly = true`를 주는 곳이
+  `CanvasBGEditRoute` 하나뿐이라는 것이고, **대가는 `feature:camera:impl`이 자기를 부른 화면을 이름으로
+  안다는 결합**이다(닫기 결선 때문에 이미 `NavKeyCanvasMain`을 알고 있어 방향이 새로 생기지는 않았다).
+- 카메라 실패·취소가 결과를 **보내지 않게 됐다**(2026-08-20, PR #309) — `CustomCameraEffect.ReturnResult(uri: String?)`가
+  인자 없는 `Cancel`로 좁혀지면서 한 플로우에 반환 타입이 둘이던 상태가 없어졌다. 다만 배경 편집
+  화면이 **실패를 아는 수단은 여전히 없다** — 이제는 아무 결과도 오지 않는다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-178 ③.
 - ~~⚠️ **플로우 전체가 도달 불가다**~~ → ✅ **닫혔다(2026-08-17, PR #268)**. G-001 그룹 카드의 토핑
   클릭이 `goTo(NavKeyCanvasMain(groupId))`로 이어져 진입 화면 C-001에 호출자가 생겼고, 이 플로우
   전체가 함께 도달 가능해졌다
