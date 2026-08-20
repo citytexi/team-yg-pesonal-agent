@@ -1,7 +1,7 @@
 ---
 id: c106-pr1-image-upload-transport
 title: C-106 결선 PR1 — 이미지 업로드 전송 계층 (presigned 발급·S3 PUT·확인)
-status: draft
+status: done
 type: work-order
 created: 2026-08-20
 updated: 2026-08-20
@@ -25,7 +25,7 @@ related_code:
   - AppErrorMapper.kt#mapErrorToAppError
   - RemoteDataSourceModule.kt
   - RepositoryModule.kt
-archived_reason:
+archived_reason: 구현 완료·미머지(2026-08-20). 브랜치 feature/#270-image-upload-transport 에 커밋 6개.
 tags: [plan, parfait, image, upload, network]
 ---
 
@@ -40,6 +40,18 @@ tags: [plan, parfait, image, upload, network]
 **Tech Stack:** Kotlin · OkHttp 5 · Hilt · kotlinx-coroutines-test · MockWebServer 3 · MockK · kotlin.test
 
 **Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../specs/2026-08-20-c106-topping-place-api.md)
+
+> ✅ **실행 완료·미머지(2026-08-20)** — subagent-driven-development 로 3 태스크 + fix 라운드 2회 +
+> 브랜치 최종 리뷰 1회 + fix 웨이브 1회. 신규 테스트 **22건**(계획 예상 20건 + fix 웨이브 2건),
+> `:domain:test` + `:data:testDebugUnitTest` **334건 전부 통과**.
+>
+> ⚠️ **아래 Global Constraints 의 브랜치 항목은 낡았다.** 실제 작업은
+> `feature/#270-c-106-topping-add-api`(팁 `34e1a803`) **위에 새로 만든 `feature/#270-image-upload-transport`**
+> 에서 했고 커밋 6개(`34e1a803..0ea4d9e9`)다. **머지·push 모두 안 했다** — 다음 PR 은 이 브랜치 위에 쌓는다.
+>
+> 실행 중 계획을 뒤집은 판정 둘: ① 업로드 클라이언트의 로깅 인터셉터를 통째로 제거(Task 1 각주 참고)
+> ② `ImageUploadRepositoryImpl` 주석에서 세그멘테이션 캐시 정리 시점을 단정하던 절을 삭제.
+> 미룬 것 둘은 **PR5 선행**으로 [OQ-P-109·OQ-P-246](../synthesis/open-questions.md)에 등록했다.
 
 ## Global Constraints
 

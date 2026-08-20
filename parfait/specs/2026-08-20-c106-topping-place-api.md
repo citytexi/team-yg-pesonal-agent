@@ -282,13 +282,23 @@ positionZ = draft.nextPositionZ
 
 | # | 브랜치 성격 | 내용 | 사용자에게 보이는 변화 |
 |---|---|---|---|
-| 1 | 업로드 전송 계층 | `@UploadClient` · `PresignedUploadDataSource` · `ImageUploadRepository`/Impl · DI | **없음**(소비자 0) |
+| 1 | 업로드 전송 계층 | `@UploadClient` · `PresignedUploadDataSource` · `ImageUploadRepository`/Impl · DI | **없음**(소비자 0) — ✅ **완료·미머지**, 브랜치 `feature/#270-image-upload-transport` |
 | 2 | 배치 계층 | `ToppingRepository`/Impl(`place`만) · `AddToppingUseCase` | **없음**(소비자 0) |
 | 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 |
 | 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** |
-| 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·되감기 · 성공 시 초안 비우기 | **토핑이 서버에 올라간다** |
+| 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** |
 
 1과 2는 소비자가 없어 리뷰가 각각 **S3 서명**과 **계약 매핑** 한 가지에만 집중할 수 있다.
+
+⚠️ **PR5는 선행 미결 둘을 함께 닫는다.** PR1이 만든 계층에 **처음으로 소비자가 붙는 라운드**라
+그때까지 잠들어 있던 두 결함이 동시에 살아난다. PR5 계획을 쓸 때 태스크로 실어야 한다.
+
+- [**OQ-P-109**](../synthesis/open-questions.md) — 메인 클라이언트가 발급 **응답 본문**을
+  `Level.BODY`로 찍는다. 그 본문에 presigned `uploadUrl`이 실려 오고 그것이 곧 자격증명이다.
+  PR1은 `ImageUploadRepository`를 만들었을 뿐 부르는 코드가 0건이라 아직 아무것도 새지 않는다.
+- [**OQ-P-246**](../synthesis/open-questions.md) — `PresignedUploadDataSourceImpl#put`이 블로킹
+  `execute()`를 쓰고 `Call.cancel()`을 코루틴 취소에 잇지 않아, 취소돼도 업로드가 `callTimeout`까지
+  계속 돈다. PR5는 로딩 오버레이와 `popUpTo` 되감기가 있어 취소가 흔한 화면이다.
 
 **3과 4의 경계에 주의한다.** 초안에 이미지를 채우는 것과 굽기를 그만두는 것은 **떼면 안 된다** —
 3에서 확인 화면이 초안을 읽게 하면서 4에서야 굽기를 멈추면, 그사이 초안의 `subjectImagePath`가
