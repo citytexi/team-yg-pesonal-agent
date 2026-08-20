@@ -283,7 +283,7 @@ positionZ = draft.nextPositionZ
 | # | 브랜치 성격 | 내용 | 사용자에게 보이는 변화 |
 |---|---|---|---|
 | 1 | 업로드 전송 계층 | `@UploadClient` · `PresignedUploadDataSource` · `ImageUploadRepository`/Impl · DI | **없음**(소비자 0) — ✅ **완료·미머지**, 브랜치 `feature/#270-image-upload-transport` |
-| 2 | 배치 계층 | `ToppingRepository`/Impl(`place`만) · `AddToppingUseCase` | **없음**(소비자 0) |
+| 2 | 배치 계층 | `ToppingRepository`/Impl(`place`만) · `AddToppingUseCase` | **없음**(소비자 0) — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-place-domain`(PR1 위) |
 | 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 |
 | 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** |
 | 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** |
