@@ -5,8 +5,8 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-20
-related_spec: c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
+related_spec: c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
 tags: [meta, parfait]
@@ -3532,5 +3532,27 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [api/parfait-image.md](../api/parfait-image.md) Android 매핑의 ⚠️도 함께 걷는다. ②는 C-106 결선 스펙에
   적는다. ③은 OQ-P-234 ③(와이어 계약 테스트 부재)과 같은 성격이지만 대상이 **주석**이라 테스트로는
   안 잡힌다 — 문서 감사 주기가 유일한 수단이라는 사실 자체를 기록해 둔다.
+  > 📌 **②는 답이 났다(2026-08-20, [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md))** —
+  > `PARFAIT_ALREADY_CLOSED`만 토스트 후 캔버스로 되감고 나머지 실패는 화면에 머문다. 마감된 캔버스에는
+  > 다시 눌러도 영원히 실패하므로 잔류시키면 사용자가 할 수 있는 일이 실패 반복뿐이기 때문이다.
+  > 상수 부재도 그 라운드의 선행 커밋이 닫았다. ①③은 그대로 열려 있다.
 
-<!-- oq-next: 245 -->
+### [2026-08-20] 테두리 굵기 거동이 편집 화면과 캔버스에서 다르다
+
+- **ID**: OQ-P-245
+- **출처**: [ADR-0025](../adr/0025-topping-border-as-server-field.md)가 테두리를 픽셀에 굽지 않고 서버
+  필드로 보내기로 하면서 드러난 차이다. 구운 테두리는 이미지의 일부라 **토핑을 키우면 함께 굵어졌다.**
+  서버 `borderWidth`를 받아 그리는 `CanvasToppingLayer`는 그 값을 **화면 dp로 고정**해 8방향 스탬프를
+  찍으므로 토핑을 키워도 굵기가 그대로다. 편집 화면(`ToppingEditViewModel`)은 또 다르게 — `originPxPerDp`로
+  dp를 원본 픽셀 좌표계에 환산해 굽는다. 즉 **같은 "굵기 N dp"가 세 자리에서 서로 다른 그림**이 될 수 있다.
+  위키 정책([[토핑]]·C-104 편집 정책)은 브러시·테두리 범위만 정하고 배율에 따른 거동을 다루지 않는다.
+- **항목**: ① 토핑을 키울 때 테두리가 함께 굵어져야 하는가(정책 확정 필요 — 지금은 서버 계약이 dp 고정
+  쪽으로 사실상 정해 버린 상태다). ② 편집 화면 미리보기를 캔버스와 같은 거동으로 맞출지, 아니면 편집은
+  원본 좌표계 그대로 두고 차이를 받아들일지. ③ 굵기 값의 단위를 계약 문서에 명시할지 —
+  [api/parfait-image.md](../api/parfait-image.md)는 타입만 적고 단위를 말하지 않아 앱이 dp로 정했다.
+- **상태**: 미해결 (정책 근거 없음 — 코드가 먼저 정했다)
+- **해소 메모**: 정하면 [ADR-0025](../adr/0025-topping-border-as-server-field.md) "트레이드오프"와
+  [design-system](../architecture/design-system.md) 토핑 절에 반영한다. C-301 테두리 재편집 라운드가
+  같은 값을 다시 만지므로 그 전에 정하는 편이 싸다.
+
+<!-- oq-next: 246 -->
