@@ -20,9 +20,8 @@ tags: [adr, parfait, topping, state, datastore, navigation]
 ## 맥락
 
 토핑 만들기는 화면 다섯을 지난다 — 캔버스 → 카메라·갤러리 → 세그멘테이션 → 확인 → 배치.
-그 사이 흐름 상태가 세 군데에 흩어져 있다. NavKey 인자(`NavKeySegmentationConfirm`이 경로 셋),
-`SegmentationConfirmRoute`의 `rememberSaveable` 셋, 그리고 편집 결과를 되돌려 주는
-`TOPPING_EDIT_RESULT_KEY`다.
+그 사이 편집을 거쳐 확정된 흐름 결과가 `SegmentationConfirmRoute`의 `rememberSaveable` 셋에만
+살아서, **그 화면을 벗어나면 다음 화면이 볼 길이 NavKey 인자뿐**이다.
 
 배치 API를 결선하려면 여기에 넷이 더 붙는다 — `groupId`·`parfaitId`·`nextPositionZ`와
 테두리 값([ADR-0025](0025-topping-border-as-server-field.md)). 전부 NavKey에 실으면
@@ -42,8 +41,15 @@ tags: [adr, parfait, topping, state, datastore, navigation]
   **새로 덮어쓰고** 이미지·테두리를 비운다. 낡은 초안이 다음 흐름에 따라붙는 문제가 이 규칙 하나로
   닫히므로 별도 만료·정리 경로를 두지 않는다.
 - 채우는 곳은 세그멘테이션 완료와 편집 완료, 읽는 곳은 배치 화면, 비우는 곳은 배치 성공이다.
-- `SegmentationConfirmRoute`의 `rememberSaveable` 셋과 `TOPPING_EDIT_RESULT_KEY`는 걷는다.
-  같은 값을 두 곳이 들고 있으면 SSOT가 아니다.
+- 걷는 것은 `SegmentationConfirmRoute`의 `rememberSaveable` 셋**뿐**이다.
+- ⚠️ **`TOPPING_EDIT_RESULT_KEY`는 걷지 않는다.** 그 결과 키의 소비자가 둘이다 —
+  `SegmentationConfirmRoute`와 **`CanvasBGEditRoute`**(C-301에서 이미 놓인 토핑을 `borderOnly`로
+  다시 손보는 경로). 편집 화면이 결과 키 대신 초안에 쓰도록 바꾸면 배경 편집 쪽은 편집을 마쳐도
+  아무것도 반영되지 않고 **컴파일은 통과한다.** 결과 키는 전달 수단으로 남기고, 그것을 받은
+  `SegmentationConfirmRoute`가 초안에 옮겨 적는다.
+- **`NavKeySegmentationConfirm`의 경로 셋도 그대로 둔다.** 그것은 화면을 여는 인자이고 초안은
+  흐름의 결과물이다. 두 값이 겹치는 구간에서는 **초안이 정본**이다 — 편집을 거치면 NavKey의 값이
+  낡는다.
 - `NavKeyCanvasToppingPlace`는 인자가 없어진다.
 
 **영속을 고른 이유**는 프로세스 사망 복원이다. NavKey와 `rememberSaveable`은 직렬화돼 복원되므로,
@@ -70,8 +76,8 @@ tags: [adr, parfait, topping, state, datastore, navigation]
 
 **긍정**
 
-- 흐름 상태의 출처가 하나가 된다. 지금 셋으로 갈린 것(NavKey·`rememberSaveable`·result key)이
-  한 자리로 모인다.
+- 흐름의 결과물에 **정본이 생긴다.** 지금은 확정된 편집 결과가 한 화면의 `rememberSaveable`에만
+  살아 다음 화면이 볼 길이 없다.
 - `camera`·`segmentation` 모듈이 캔버스 개념과 무관해진다. NavKey는 한 줄도 안 바뀐다.
 - 프로세스 사망 복원 범위가 오히려 넓어진다 — 지금은 `SegmentationConfirmRoute`를 벗어나면
   편집 결과가 NavKey에 없어 되살아나지 않는다.
@@ -86,9 +92,15 @@ tags: [adr, parfait, topping, state, datastore, navigation]
 **위험·방어**
 
 - `CanvasMainUiState.todayCanvas`가 없으면 `parfaitId`도 `nextPositionZ`도 없다. 그 상태에서는
-  **토핑 추가 진입 자체를 막는다** — 열어 두면 촬영·누끼·편집을 다 마친 뒤에야 올릴 데가 없음을
-  알게 된다.
-- 초안이 비어 있으면 배치 화면은 확인을 비활성한다(좌표 실측 가드와 같은 자리).
+  **토핑 추가 버튼을 비활성한다** — 열어 두면 촬영·누끼·편집을 다 마친 뒤에야 올릴 데가 없음을
+  알게 된다. 서버는 오늘 조회 때 캔버스를 만들어 주므로 "서버에 없다"는 경우는 없고, 없는 것은
+  **앱이 아직 못 받은 경우**다(로딩 구간과 조회 실패). 그 실패가 화면에 아무 표현이 없던 것도
+  이 라운드가 함께 연다 — 안 그러면 버튼이 왜 안 눌리는지가 보이지 않는다.
+- 초안이 비어 있으면 배치 화면은 확인을 비활성한다.
+- **초안이 가리키는 파일이 이미 없을 수 있다.** DataStore는 영속되지만 그것이 가리키는 것은
+  `cacheDir` 하위 파일이고, 세그멘테이션 진입이 그 디렉토리를 통째로 비운다
+  (`SegmentationCacheDir#clearFiles`). OS도 저장 공간 압박 시 회수한다. 초안을 읽을 때
+  **"경로는 있는데 파일이 없다"를 빈 초안과 같이 취급한다.**
 - 덮어쓰기·비우기를 단위 테스트로 고정한다. 이 결정의 안전성이 전부 그 두 규칙에 걸려 있다.
 - 초안에 담기는 것은 캐시 파일 경로와 id·색·수치뿐이다. 개인 식별 정보가 아니라
   `EncryptedPreferences`(ADR-0019) 대상이 아니다.
