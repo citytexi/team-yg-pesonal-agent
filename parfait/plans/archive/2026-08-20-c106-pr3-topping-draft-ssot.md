@@ -1,10 +1,11 @@
 ---
 id: c106-pr3-topping-draft-ssot
 title: C-106 결선 PR3 — 토핑 초안 SSOT + C-001 정비 (ToppingDraft·YGScaffoldV2·추가 버튼 가드)
-status: todo
+status: done
 type: work-order
 created: 2026-08-20
 updated: 2026-08-20
+archived_reason: 구현 완료·미머지(2026-08-20). 브랜치 feature/#270-topping-draft-ssot 에 커밋 9개.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0026, ADR-0025
@@ -37,11 +38,39 @@ tags: [plan, parfait, topping, canvas, datastore, state]
 
 **Goal:** 토핑 만들기 흐름의 상태를 담을 DataStore 초안 한 벌을 만들고, `CanvasMain`이 흐름에 들어설 때 그 초안을 캔버스 식별값으로 새로 쓰게 한다. 함께 C-001을 `YGScaffoldV2`로 옮겨 오늘 캔버스 조회 실패를 화면에 드러내고, 올릴 캔버스가 없을 때 토핑 추가 버튼을 비활성한다.
 
-**Architecture:** 초안은 `:data`의 기존 `DataStore<Preferences>` 위에 JSON 한 줄로 산다([ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)). 계층은 셋이다 — 직렬화·영속만 아는 `ToppingDraftLocalDataSource`, 흐름 규칙(진입 시 덮어쓰기·사라진 캐시 경로 정규화)을 아는 `ToppingDraftRepository`, 그리고 그 규칙을 부르는 `CanvasMainViewModel`. **이 PR에서 초안을 읽는 화면은 아직 없다** — 이미지·테두리를 채우는 것은 PR4, 읽어서 올리는 것은 PR5다. 사용자에게 보이는 변화는 셋이다: **토핑 추가 버튼 가드 · 오늘 캔버스 조회 실패 토스트 · 초안 쓰기 실패 토스트.** 스펙 PR 표는 앞의 둘만 적었고 셋째는 이 계획이 더한 방어다(아래 Task 5, 스펙 「토핑 초안 SSOT」에도 같은 문장을 실어 두었다).
+**Architecture:** 초안은 `:data`의 기존 `DataStore<Preferences>` 위에 JSON 한 줄로 산다([ADR-0026](../../adr/0026-topping-draft-datastore-ssot.md)). 계층은 셋이다 — 직렬화·영속만 아는 `ToppingDraftLocalDataSource`, 흐름 규칙(진입 시 덮어쓰기·사라진 캐시 경로 정규화)을 아는 `ToppingDraftRepository`, 그리고 그 규칙을 부르는 `CanvasMainViewModel`. **이 PR에서 초안을 읽는 화면은 아직 없다** — 이미지·테두리를 채우는 것은 PR4, 읽어서 올리는 것은 PR5다. 사용자에게 보이는 변화는 셋이다: **토핑 추가 버튼 가드 · 오늘 캔버스 조회 실패 토스트 · 초안 쓰기 실패 토스트.** 스펙 PR 표는 앞의 둘만 적었고 셋째는 이 계획이 더한 방어다(아래 Task 5, 스펙 「토핑 초안 SSOT」에도 같은 문장을 실어 두었다).
 
 **Tech Stack:** Kotlin · Hilt · DataStore Preferences · kotlinx.serialization · Jetpack Compose · kotlinx-coroutines-test · MockK · Turbine · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **3번 행**, 「토핑 초안 SSOT」·「표시·제어 규칙」·「C-001 오늘 캔버스 조회 실패 표현」 절
+**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **3번 행**, 「토핑 초안 SSOT」·「표시·제어 규칙」·「C-001 오늘 캔버스 조회 실패 표현」 절
+
+> ✅ **실행 완료·미머지(2026-08-20)** — subagent-driven-development로 5 태스크. 브랜치
+> `feature/#270-topping-draft-ssot`(PR2 브랜치 `feature/#270-topping-place-domain` 위), 커밋 **9개**
+> (`ba8707a1`..`b916eeec`). 신규 테스트 **20건**(계획 예상 18건 + 최종 리뷰가 요구한 2건),
+> 검증 명령 `:domain:test :data:testDebugUnitTest :feature:groups:canvas:impl:testDebugUnitTest
+> ktlintCheck :app:assembleDebug` 전부 통과. **머지·push 안 했다.**
+>
+> 태스크 리뷰는 Task 2에서 fix 라운드 1회(정규화 테스트가 safe-call 단언이라 초안 전체가 `null`이
+> 되는 회귀를 못 잡던 것), 나머지 넷은 지적 0건 통과.
+>
+> **최종 브랜치 리뷰(opus)가 잡은 진짜 결함 하나** — 지난 날짜를 보는 동안 파르페 하루 경계를 넘기면
+> `syncToday`의 else 분기가 `todayCanvas`를 어제 것인 채로 남기고, `handleClickGoToToday`가 재조회를
+> 하지 않아 **어제 `parfaitId`가 초안에 못 박히는** 경로가 있었다. PR5에서 촬영·누끼·편집을 다 마친
+> 뒤 409를 맞는 시나리오이고, 버튼 가드가 막으려던 바로 그 실패다. 이 PR 이전부터 있던 표시 결함인데
+> 초안이 그 값을 "못 박히는 값"으로 승격시켜 무거워졌다. 두 자리를 고치고 테스트 둘로 잠갔다
+> (`fe476ca8`). 함께 닫은 것 셋: 성공 경로의 내비게이션 이펙트 미단언, DataSource 의 dedupe·decode
+> 순서, 같은 결정 설명 3중복.
+>
+> **계획 텍스트와 갈린 것 둘:**
+> - **이 문서의 코드 블록에 적힌 KDoc·주석은 최종 형태가 아니다.** 실행 뒤 주석이 코드의 어려움에
+>   비해 과하다는 지적을 받아 6파일에서 23줄을 걷었다(`b916eeec`). 걷은 것은 코드가 이미 말하는 것,
+>   두 계층에 겹쳐 적힌 dedupe 설명, 다른 파일의 현재 상태를 단정하던 주석이다. **코드가 정본이다.**
+> - `ToppingDraftLocalDataSourceImpl.draft` 가 계획과 달리 원문 단계에서 `distinctUntilChanged` 한 뒤
+>   decode 하고, Repository 쪽 중복 dedupe 는 지웠다(`67efb99b`). 이웃 `EncryptedPreferences.observe` 가
+>   같은 이유로 같은 순서를 쓴다.
+>
+> **아직 안 한 것**: 아래 「완료 조건」의 실기기 확인 5항목. 비활성 버튼 표현과 토스트 노출은
+> `:core:designsystem`에 호스트 테스트 소스셋이 없어 사람 눈이 유일한 감지선이다.
 
 ## Global Constraints
 
@@ -56,7 +85,7 @@ tags: [plan, parfait, topping, canvas, datastore, state]
   - 아키텍처 결정 설명을 코드에 복사하지 않는다. 포인터 한 줄만 둔다.
 - **초안이 담는 이미지 경로는 파일 시스템 절대경로**다. `file://` uri가 아니다.
 - **이 PR은 초안에 이미지·테두리를 채우지 않는다.** 모델에 자리는 만들되 쓰는 곳은 PR4다. `SegmentationConfirmRoute`·`ToppingEditRoute`·`NavKey` 세 가지는 **한 줄도 건드리지 않는다.**
-- **`TOPPING_EDIT_RESULT_KEY`를 걷지 않는다.** 소비자가 `SegmentationConfirmRoute`와 `CanvasBGEditRoute` 둘이라 걷으면 배경 편집 쪽이 조용히 죽는다([ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)). 이 PR의 범위 밖이지만, 초안을 만들었다는 이유로 손대고 싶어지는 자리라 미리 못 박는다.
+- **`TOPPING_EDIT_RESULT_KEY`를 걷지 않는다.** 소비자가 `SegmentationConfirmRoute`와 `CanvasBGEditRoute` 둘이라 걷으면 배경 편집 쪽이 조용히 죽는다([ADR-0026](../../adr/0026-topping-draft-datastore-ssot.md)). 이 PR의 범위 밖이지만, 초안을 만들었다는 이유로 손대고 싶어지는 자리라 미리 못 박는다.
 - 매퍼 단독 테스트(`XxxEntityMapperTest`)는 만들지 않는다. 변환 판단은 DataSource 테스트 케이스로 잠근다.
 - 검증 명령(태스크마다 해당하는 것을 전부 통과해야 한다):
   ```bash
@@ -1397,6 +1426,6 @@ git commit -m "feat(canvas): 흐름 진입에서 토핑 초안을 쓰고 추가 
 - **C-106 확인 버튼 가드**(PR5) — 스펙 「표시·제어 규칙」 표는 두 행이고 이 PR이 여는 것은 **첫째 행(C-001 토핑 추가 버튼)뿐**이다. 둘째 행의 판정 근거(토핑 이미지 painter 가 `Success` 인지)는 초안을 읽어 그리는 화면이 선 뒤에야 성립한다
 - **`NavKeyCanvasToppingPlace` 인자 제거**(PR4) — 초안이 정본이 되는 것은 그 라운드부터다
 - **`TOPPING_EDIT_RESULT_KEY` 정리** — 걷지 않는다. 소비자가 둘이라 걷으면 `CanvasBGEditRoute` 가 컴파일은 통과한 채 조용히 죽는다
-- **나머지 캔버스 화면의 `YGScaffoldV2` 이관** — `EntryBuilder` 의 다른 엔트리는 구판을 그대로 쓴다. 이관은 화면별 API 결선 라운드에 묶어 점진 진행한다는 것이 [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)의 결정이다
+- **나머지 캔버스 화면의 `YGScaffoldV2` 이관** — `EntryBuilder` 의 다른 엔트리는 구판을 그대로 쓴다. 이관은 화면별 API 결선 라운드에 묶어 점진 진행한다는 것이 [ygscaffold-v2 스펙](../../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)의 결정이다
 - **C-001 로딩 오버레이** — `YGScaffoldV2` 의 `isLoading` 은 넘기지 않는다. 오늘 캔버스 조회는 화면을 막을 만큼 긴 작업이 아니고, 이 라운드가 여는 것은 실패 표현이다
 - **PR5 선행 미결 둘**(OQ-P-109 발급 응답 본문 로깅 · OQ-P-246 업로드가 코루틴 취소를 안 따라감) — 스펙 PR 표 5번 행이 정본이다
