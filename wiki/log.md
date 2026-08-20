@@ -138,3 +138,5 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-07-31] lint | 점검 완료 — 기계 검사(lint.py 68건·check-status.py 36건) 위반 0건, 민감 데이터 0건, 신규 모순 0건. 직전 회차(2026-07-29) 이후 위키·raw 변경 0건(작업은 parfait 구현 문서 쪽) → stale 0건·데이터 공백 5건 전부 이월(툴팁 문구·조회 실패 에셋·토핑-정책 v0.2 미수집·금칙어/중복·참조명 불일치 2건). 하류 반영 1건: TJYG-Android develop #165가 `NametagChipPlus`를 '멤버 5명 이상 + 집계 칩'(색 타입 아님)으로 확정 → nametag-chip ⚠️ 마커·open-questions [2026-07-18] 쟁점을 '정책 12종 vs 코드 13종'으로 정정(상충은 미해결 유지). Grouptag-Chip 그레이 타임스탬프 색(Figma Gray-200 vs 위키 White) 위키 등록은 해당 코드 develop 머지 시점까지 보류 유지. 보고서 wiki/synthesis/lint-2026-07-31.md
 
 ## [2026-08-01] query | parfait develop 기준선 점검(#183·#185·#186)의 하류 반영 — 보류하던 Grouptag-Chip 그레이 타입 Timestamp 색 상충을 위키에 등록. 예약 조건(해당 코드 develop 머지)이 #186 머지로 충족됨. open-questions [2026-08-01] 신규 1건(정책 White vs 디자인 파일 Gray-200, 나머지 5행 일치) + nametag-chip ② 표에 ⚠️ 마커. 위키 정책 자체 변경 없음(디자인 파일과의 상충 기록만), 판본·소스 변경 0건.
+
+## [2026-08-20] lint | parfait 허브 포인터의 ADR 개수를 16건 → 26건으로 정정(구현 문서 라운드 누적분 반영)

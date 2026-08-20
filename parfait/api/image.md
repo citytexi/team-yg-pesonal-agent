@@ -186,13 +186,26 @@ wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlReques
 `domain` 쪽은 `image`라는 이름이 이미 기기 이미지 뜻으로 선점돼 있다
 → [open-questions](../synthesis/open-questions.md).
 
-**소비처는 0건이다.** Repository·UseCase·화면이 이 DataSource를 호출하지 않고 실서버 요청도 0건이라
-`android_status`가 `done`이 아니라 `partial`이다. 특히 **S3 PUT을 수행하는 앱 코드가 통째로 없다** —
-발급받은 `uploadUrl`로 바이트를 올리는 경로가 없으므로 confirm까지의 2단계가 실제로 이어진 적이 없다.
-그 라운드의 선행 결정(업로드 전용 `OkHttpClient` 분리·타임아웃·재시도·`expiresIn` 만료 판정)은
-→ [open-questions](../synthesis/open-questions.md) `[2026-07-30]`·`[2026-08-10]`에 걸려 있다. 그중
-**전용 클라이언트 분리는 성능 선택이 아니라 기능 전제**다 — `AuthInterceptor`의 `@NoAuth` 판정이 Retrofit
-`Invocation` 태그를 읽어서, 태그가 없는 raw OkHttp 요청에는 `Authorization`이 붙고 presigned URL을 S3가 거절한다.
+**소비처는 여전히 0건이다.** 화면이 이 경로를 부르지 않고 실서버 요청도 0건이라 `android_status`가
+`done`이 아니라 `partial`이다.
+
+✅ **다만 3단계가 처음으로 이어졌다**(2026-08-20, 브랜치 `feature/#270-image-upload-transport` — **미머지**).
+`data/source/image/remote/PresignedUploadDataSource`가 S3 PUT을 수행하고,
+`domain/repository/image/ImageUploadRepository`가 발급 → PUT → confirm 셋을 하나로 닫아 확정된
+`ImageId`를 돌려준다. 이전 판의 "S3 PUT을 수행하는 앱 코드가 통째로 없다"는 그것으로 닫혔다.
+
+그 경로가 지키는 것 셋:
+
+- **전용 클라이언트 분리는 성능 선택이 아니라 기능 전제**다 — `AuthInterceptor`의 `@NoAuth` 판정이
+  Retrofit `Invocation` 태그를 읽어서, 태그가 없는 raw OkHttp 요청에는 `Authorization`이 붙고
+  presigned URL을 S3가 거절한다. `@UploadClient`가 그 표면이고 **로깅 인터셉터를 아예 달지 않는다**
+  (presigned URL은 서명을 쿼리 스트링에 싣는 방식이라 요청 라인만 남겨도 자격증명이 샌다).
+- **`contentType`을 Repository가 한 번만 정해 발급 요청과 PUT 헤더 양쪽에 넘긴다** — 위 ⚠️의
+  서명 불일치를 구조적으로 불가능하게 만든다.
+- **`expiresIn` 만료를 판정하지 않는다** — 만료는 실패 후 발급부터 전량 재시도로만 풀린다.
+
+설계 근거는 [specs/2026-08-20-c106-topping-place-api](../specs/2026-08-20-c106-topping-place-api.md),
+선행 결정의 판정은 [open-questions](../synthesis/open-questions.md) `OQ-P-030`·`OQ-P-110`(둘 다 해소).
 
 `http/images.http`가 두 요청 + S3 PUT을 덮는다(요청 모음 20/20 회복).
 

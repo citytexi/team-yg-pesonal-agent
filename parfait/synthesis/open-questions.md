@@ -321,7 +321,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-030
 - **출처**: `data/di/NetworkModule.kt#provideOkHttpClient`(PR #174 develop 머지, 2026-08-01) — 단일 `OkHttpClient`가 connect/read/write 타임아웃을 모든 호출에 공통 적용하고 `callTimeout`은 설정하지 않는다(=전체 소요 무제한). 코드리뷰에서 30초가 과하다는 지적을 받아 값을 낮췄으나, 토핑 사진 업로드(누끼 PNG) API는 아직 없어 실제 전송·서버 처리 시간을 모른 채 정한 값이다. OkHttp의 read/write는 전체 전송 시간이 아니라 바이트 간 유휴 상한이라, 업로드가 느린 것 자체는 이 값으로 잡히지 않는다.
 - **항목**: ① 업로드 API 확정 후 전체 소요 상한(`callTimeout`)을 둘지 — 두면 스피너·취소 UX와 값이 묶인다. ② 업로드 전용 `OkHttpClient`(`@Qualifier`)를 분리해 read/write만 늘릴지, 아니면 단일 클라이언트 값을 상향할지. ③ 실패 시 재시도(멱등성 확인 필요)를 어디에 둘지 — 인터셉터 vs 호출부.
-- **상태**: 미해결 (실측 대기 — **보류 사유였던 "업로드 API 미구현"은 2026-08-10 해소됐다**)
+- **상태**: 해소됨 (2026-08-20, PR1 `feature/#270-image-upload-transport` — **미머지**)
+  > ✅ **셋 다 정해졌다.** ① `callTimeout`을 **업로드 표면에만** 둔다 — `writeTimeout`은 바이트 사이
+  > 유휴 상한이라 전송 전체가 느린 것을 못 잡는다. 메인·재발급 클라이언트는 종전대로 3종만 쓴다.
+  > ② 업로드 전용 `OkHttpClient`(`@UploadClient`)를 **분리했다.** 예상대로 선택이 아니라 전제였다.
+  > ③ 재시도는 인터셉터가 아니라 **호출부**다 — 실패하면 발급부터 전량 재시도한다
+  > ([스펙](../specs/2026-08-20-c106-topping-place-api.md) "결정된 것"). 만료 판정을 따로 하지 않으므로
+  > `expiresIn` 선행 조건도 함께 사라졌다. 대가는 고아 S3 객체이고 그 정리 경로 부재는 별개 미결이다.
+  > 수치는 규율대로 문서에 적지 않는다 — 구조만 기록한다.
   > 📌 **전제가 사라졌다(2026-08-10, 서버 `5bb2a3a`)** — 업로드 API가 [api/image.md](../api/image.md)로 들어왔고, 형태가 예상과 다르다. **바이트가 서버를 지나지 않는다**(S3 presigned PUT 직접 업로드). 그래서 타임아웃 결정 대상이 `YG_BASE_URL` 호출이 아니라 **S3로 나가는 PUT**이다 — 이 요청은 Retrofit 서비스가 아니므로 ②의 "업로드 전용 `OkHttpClient` 분리"는 선택이 아니라 사실상 전제가 되고, ③ 재시도는 `expiresIn` 만료 시 URL 재발급이 선행돼야 한다(만료된 presigned URL은 재시도해도 실패한다). ①의 `callTimeout`도 서버 API가 아니라 이 PUT에 걸 값이다.
   > 📌 **클라이언트 분리의 진짜 강제 사유는 타임아웃이 아니다(2026-08-10 최종 코드리뷰).** `AuthInterceptor`가 `request.tag(Invocation::class.java)?.method()`로 **Retrofit 메서드 애노테이션**을 읽어 `@NoAuth`를 판정한다. 발급받은 `uploadUrl`로 raw OkHttp `Request`를 만들어 쏘면 `Invocation` 태그가 없어 `skipAuth = false`가 되고, 토큰이 있는 한 `Authorization: Bearer …`가 **무조건 붙는다.** presigned URL 요청에 이 헤더가 실리면 S3가 인증 수단 중복으로 거절한다. 즉 공유 `OkHttpClient`를 그대로 쓰면 업로드가 **아예 동작하지 않는다** — 분리는 성능 선택이 아니라 기능 전제다. `writeTimeout`이 이미지 업로드에 짧다는 것도 같은 결정에 묶인다.
 - **해소 메모**: 업로드 엔드포인트 붙일 때 실측 후 결정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅"·타임아웃 서술과 [data-layer](../architecture/data-layer.md) 네트워킹 섹션에 반영. 파르페 규율상 문서에 수치는 적지 않고 구조(클라이언트 분리 여부·callTimeout 유무)만 기록한다.
@@ -1080,7 +1087,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-110
 - **출처**: `image-api-service-layer` 라운드 최종 코드리뷰. `data/source/image/`는 `remote`/`local` 하위 구분이 출처를 갈라 문제가 없지만(저장소 규칙이 "폴더=도메인, 하위=출처"), **`domain/`에는 출처 축이 없다.** 그리고 거기서 `image`는 이미 기기 이미지 뜻이다 — `domain/repository/image/`에 `RecentImageRepository`(기기 캐시)·`ImageSegmentationRepository`(누끼 분할), `domain/usecase/image/`에 `DecodeImageUseCase`·`SegmentImageUseCase`·`AddRecentImageUseCase`·`GetRecentCacheImagesUseCase`가 있고 넷 다 기기 측이다. 이번에 `domain/model/image/`(서버 업로드)가 그 옆에 들어왔다. [image-api-service-layer 스펙](../specs/archive/2026-08-10-image-api-service-layer.md)은 `GalleryImageGroup`만 검토했고 이 두 패키지는 짚지 못했다.
 - **항목**: 다음 라운드가 `ImageRepository`·`UploadImageUseCase`를 만들면 **기기 이미지 심볼들과 같은 패키지에 앉는다.** ① 서버 업로드 쪽을 다른 이름으로 가를지(`imageupload`·`upload`), ② 기기 쪽을 `gallery`·`localimage`로 개명할지(카메라·갤러리 feature가 소비 중이라 파급이 크다), ③ 그대로 두고 클래스명으로만 구분할지. **다음 라운드가 이름을 정하기 전에 결정돼야 한다** — 나중에 바꾸면 소비자가 늘어난 뒤다.
-- **상태**: 미해결 (선행 결정 — S3 PUT·Repository 라운드의 첫 단계)
+- **상태**: 해소됨 (2026-08-20, PR1 — **미머지**)
+  > ✅ **③으로 정해졌다** — 폴더를 가르지 않고 클래스명으로 구분한다. 서버 업로드 Repository는
+  > `domain/repository/image/ImageUploadRepository`로, 기기 쪽 심볼들과 같은 패키지에 앉는다.
+  > 근거: `domain/model/image/`가 이미 서버 업로드 모델을 담고 있어 그쪽과 이름이 맞고
+  > `data/source/image/`와도 대칭이다. ①(`imageupload` 별도 폴더)은 같은 것을 부르는 이름이
+  > 계층마다 갈리고, ②(기기 쪽 개명)는 카메라·갤러리 feature 소비처가 많아 이 라운드 밖이다.
+  > **요청의 `ImageType`이 `NUKKI`·`BACKGROUND` 둘이라 이름에 `Topping`을 붙이지 않았다** —
+  > C-301 배경 업로드가 같은 Repository를 쓴다.
 - **해소 메모**: 기존 `RecentImageLocalDataSource` 이름이 부정확하다는 지적(같은 라운드 스펙 미결)이 이 항목의 부분집합이다. 결정 시 [module-structure](../architecture/module-structure.md)와 [data-layer](../architecture/data-layer.md)에 반영한다.
 
 ### [2026-08-10] `ImageUploadUrlVO.expiresIn`이 상대값이라 만료 판정에 쓸 수 없다

@@ -39,7 +39,7 @@ tags: [plan, parfait, image, upload, network]
 
 **Tech Stack:** Kotlin · OkHttp 5 · Hilt · kotlinx-coroutines-test · MockWebServer 3 · MockK · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../specs/2026-08-20-c106-topping-place-api.md)
+**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md)
 
 > ✅ **실행 완료·미머지(2026-08-20)** — subagent-driven-development 로 3 태스크 + fix 라운드 2회 +
 > 브랜치 최종 리뷰 1회 + fix 웨이브 1회. 신규 테스트 **22건**(계획 예상 20건 + fix 웨이브 2건),
@@ -51,7 +51,7 @@ tags: [plan, parfait, image, upload, network]
 >
 > 실행 중 계획을 뒤집은 판정 둘: ① 업로드 클라이언트의 로깅 인터셉터를 통째로 제거(Task 1 각주 참고)
 > ② `ImageUploadRepositoryImpl` 주석에서 세그멘테이션 캐시 정리 시점을 단정하던 절을 삭제.
-> 미룬 것 둘은 **PR5 선행**으로 [OQ-P-109·OQ-P-246](../synthesis/open-questions.md)에 등록했다.
+> 미룬 것 둘은 **PR5 선행**으로 [OQ-P-109·OQ-P-246](../../synthesis/open-questions.md)에 등록했다.
 
 ## Global Constraints
 

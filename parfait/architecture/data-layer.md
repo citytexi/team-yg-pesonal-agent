@@ -454,7 +454,12 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 - **로깅**: `HttpLoggingInterceptor` 레벨은 `BuildConfig.DEBUG`로 게이팅(debug=`BODY`,
   release=`NONE`) — release에서 토큰·바디 노출 방지. 추가로 `redactHeader("Authorization")`를 걸어
   debug 빌드에서도 헤더 값을 가린다. 설정은 `NetworkModule`의 private `loggingInterceptor()` 한
-  자리에서 만들어 **두 클라이언트가 같은 처리를 받는다**(#260). **바디는 redact 대상이 아니다** —
+  자리에서 만들어 **두 클라이언트가 같은 처리를 받는다**(#260).
+  > 📌 **셋째 표면은 이 규칙 밖이다**(2026-08-20, 브랜치 `feature/#270-image-upload-transport` —
+  > **미머지**). S3 presigned PUT 전용 `@UploadClient` 클라이언트는 로깅 인터셉터를 아예 안 단다 —
+  > presigned URL은 서명을 쿼리 스트링에 싣는 방식이라 URL 자체가 자격증명이고 `redactHeader`로
+  > 가릴 수 없다. 같은 표면만 `callTimeout`을 추가로 둔다. 근거는 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅".
+  **바디는 redact 대상이 아니다** —
   `reissue`·`logout` 요청 바디의 refresh token은 debug logcat에 평문으로 남고, #260으로 두 요청
   **모두 실제 호출부를 얻었다**(이전에는 이론적 노출이었다) → [open-questions](../synthesis/open-questions.md).
 - **응답 매핑**: 원격 DataSource는 **도메인 모델을 반환**한다(`PolicyRemoteDataSource.getPolicies():
