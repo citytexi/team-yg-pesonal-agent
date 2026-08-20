@@ -37,6 +37,10 @@ tags: [architecture, parfait]
   `StateFlow<List<MyParfaitGroupVO>?>`이고 **`null`이 "아직 못 받음"**, `emptyList()`가 "그룹 0건"이다.
 - **암호화 DataStore 프록시** — `EncryptedPreferences`(`data/datastore/`, PR #263). 저장 형태가 값이 아니라 **암호문**인 저장소들이 공유한다(`EncryptedTokenStore`·`UserInfoLocalDataSourceImpl`) — 아래 "토큰·계정 정보 저장 경로" 참고.
 - **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근).
+- **원격(raw HTTP)** — **`PresignedUploadDataSource`**(#322). 저장소에서 **Retrofit을 거치지 않고 raw
+  OkHttp `Request`를 만드는 유일한 자리**다(발급받은 presigned URL로 PUT). 그래서 `@NoAuth` 판정이
+  안 걸리고, 그 때문에 전용 `@UploadClient`가 기능 전제가 된다. 파일은 스트리밍 `RequestBody`로 태워
+  바이트를 힙에 통째로 올리지 않는다.
 
 > **표시 포맷은 data가 만들지 않는다**(2026-08-04, PR #191) — `GalleryImageGroup.date`가 문자열에서
 > `LocalDate`로 바뀌고 `GalleryMediaProvider`의 날짜 포맷이 삭제됐다. 포맷은 화면이
@@ -45,8 +49,9 @@ tags: [architecture, parfait]
 > 📌 **같은 원칙이 원격 시각에도 적용됐다(2026-08-15, PR #248)** — `MyParfaitGroupVO.recentImageUploadedAt`이
 > `kotlinx.datetime.LocalDateTime`(벽시계)에서 **`kotlin.time.Instant`(절대 시점)**로 바뀌었고, 상대시간
 > 문구는 화면(`GroupTimestamp`)이 만든다. 벽시계 숫자로 들고 있으면 기기 타임존에 따라 다른 시점이 된다는 것이 근거다.
-> ⚠️ **다만 매퍼가 `Instant::parse`를 쓰는데 서버는 오프셋 없는 문자열을 내려준다**
-> ([api/parfait-group.md](../api/parfait-group.md) 직렬화 포맷) → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+> ~~⚠️ 다만 매퍼가 `Instant::parse`를 쓰는데 서버는 오프셋 없는 문자열을 내려준다~~ → ✅ **닫혔다**
+> (2026-08-20, PR #310) — 매퍼가 `LocalDateTime::parse` 뒤 `toInstant(PARFAIT_TIME_ZONE)`로 KST를
+> 부여한다. VO 타입은 그대로 `Instant`다(OQ-P-165).
 
 ## DI 모듈 (data, `@InstallIn(SingletonComponent::class)`)
 `di/` **평면 배치, 역할당 파일 1개**(하위 패키지 없음). 도메인이 늘면 해당 역할 파일에 바인딩을
@@ -54,11 +59,11 @@ tags: [architecture, parfait]
 
 | 모듈 | 제공/바인딩 |
 |------|-------------|
-| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
-| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`·`ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`) |
+| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
+| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource`는 **미머지**(`feature/#270-topping-draft-ssot`)) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
-| `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) |
+| `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) + **`@UploadClient` `OkHttpClient`**(#322 — S3 presigned PUT 전용. Retrofit이 없는 유일한 표면이고 인터셉터를 하나도 안 단다) |
 | `SessionModule` | `SessionEventBus` → `SessionEventSource` 바인딩(#260 신설) |
 | `DataStoreModule` | `DataStore<Preferences>` 싱글톤 |
 | `JsonModule` | `@LocalJson`·`@RemoteJson` `Json` 2종(현재 설정 동일: `ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`) |
@@ -157,7 +162,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 > 매핑 분기를 함께 걷었다 — **"분기에 쓰는 코드만 둔다"를 유지하는 방향의 첫 삭제 사례**다
 > ([api/parfait-group.md](../api/parfait-group.md)).
 
-### 원격 Repository 인벤토리 (2026-08-15, 그룹·약관 결선 라운드 반영)
+### 원격 Repository 인벤토리 (2026-08-20, C-106 업로드·배치 계층 반영)
 
 | Repository | 메서드 | 소비 |
 |---|---|---|
@@ -166,15 +171,18 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `ParfaitGroupRepository`(#285, #287, 그룹 SSoT 라운드) | **읽기** `myGroups: Flow<List<MyParfaitGroupVO>?>` · `groupDetail(groupId): Flow<ParfaitGroupDetailVO?>` / **갱신** `refreshMyGroups` · `refreshGroupDetail`(둘 다 `Result<Unit>`) / **정리** `clearGroups`(non-suspend) / **명령** `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` · `leaveGroup`(#287) · `reportGroup`(#287) | `GetMyGroupsFlowUseCase`·`RefreshMyGroupsUseCase`(G-001·C-001) · `GetGroupDetailUseCase`·`RefreshGroupDetailUseCase`(S-101) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102·S-101) · `LeaveGroupUseCase`·`ReportGroupUseCase`(S-101 Danger Zone) · `LogoutUseCase`(`clearGroups`) |
 | `MemberRepository`(#263, #306) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` · **`withdraw`**(#306) | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` · `WithdrawUseCase`(S-001 Danger Zone) |
 | `ParfaitRepository`(#268, #279) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) |
+| `ImageUploadRepository`(#322) | `upload(filePath, imageType): Result<ImageId>` — 발급·S3 PUT·확인 3단계를 하나로 닫고 **이미 `COMPLETED`인 `imageId`**를 준다 | `AddToppingUseCase`(아직 화면 소비자 0) |
+| `ToppingRepository`(#322) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` | `AddToppingUseCase`(아직 화면 소비자 0) |
 
-> 📌 **위 표는 develop 기준이다.** 미머지 브랜치 둘이 Repository를 하나씩 더 얹어 뒀고, 머지될 때
-> 이 표로 들어온다(2026-08-20). `ImageUploadRepository.upload(filePath, imageType): Result<ImageId>`
-> — 발급·PUT·확인 3단계를 하나로 닫는다(`feature/#270-image-upload-transport`).
-> `ToppingRepository.place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>`
-> — DataSource가 가진 넷 중 배치 하나만 연다(`feature/#270-topping-place-domain`). 둘을 조율하는
-> `AddToppingUseCase`도 같은 브랜치에 있다. **셋 다 소비자가 0이라 아직 아무 화면도 부르지 않는다** —
-> 결선은 [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)의 PR5다.
-> 배치 말고 셋(수정·삭제·테두리)을 안 올린 것은 아래 `ParfaitRepository` 방침과 같은 이유다.
+> 📌 **위 표는 develop 기준이다.** 마지막 두 행은 2026-08-20 PR #322로 들어왔고 **소비자가 0이라
+> 아직 아무 화면도 부르지 않는다** — 결선은
+> [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)의 PR5다.
+> 그래서 이 둘에는 **Dagger가 잡아 주는 안전망이 없다**(엔트리포인트에서 도달 불가 + 저장소에
+> `dagger.fullBindingGraphValidation` 미설정). `ToppingRepositoryBindingTest`가 두 바인딩을
+> 리플렉션으로 단언하는 것이 유일한 감지선이다.
+> `ToppingRepository`가 DataSource의 넷 중 배치 하나만 연 것은 아래 `ParfaitRepository` 방침과
+> 같은 이유다. **`AddToppingUseCase`가 `ImageType`을 스스로 정하는 것**도 같은 계열의 판단이다 —
+> 파라미터로 열면 배경 타입으로 올라간 객체가 무증상으로 엉뚱한 S3 접두사에 앉는다.
 
 **`ParfaitRepository`는 DataSource가 가진 다섯 갈래 중 넷을 연다** — 남은 배경 변경은 소비자가
 생길 때 올린다(`ParfaitGroupRepository`와 같은 방침: 쓰지 않는 갈래를 미리 열면 어떤 실패를 어떻게
@@ -340,6 +348,11 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > (`LogoutUseCase`·`TokenAuthenticator`·`WithdrawUseCase` 위임), 캐시 clear를 계정 정보 clear **앞에** 둔다
 > (뒤에 두면 DataStore IO가 던질 때 그룹 캐시가 안 지워진다) → [ADR-0023](../adr/0023-group-in-memory-ssot.md).
 > **실서버 요청 검증은 여전히 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
+> ✅ **2026-08-20 — Repository가 0건인 도메인이 사라졌다**(PR #322 develop 머지, `da03c9b0`).
+> `ImageUploadRepository`(발급 → S3 PUT → 확인)와 `ToppingRepository.place`가 마지막 둘
+> (image·parfait-image)을 채웠고 `AddToppingUseCase`가 둘을 조율한다. **다만 "소비처가 0"은
+> 그대로다** — 부르는 화면이 없어 계층만 쌓였고, 결선은 C-106 스택의 PR5다
+> → [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
 매핑 지점도 확정(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.
@@ -461,7 +474,8 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   > 토큰 재발급 저장이 무관한 구독자(계정 정보를 보는 편집 중 입력 필드)를 흔들기 때문이고,
   > 복호화 뒤에 끊으면 이미 매번 Keystore를 두드린 뒤라 비용을 못 던다.
   >
-  > **평문 저장소도 같은 순서를 쓴다** — `ToppingDraftLocalDataSourceImpl.draft`가 원문 문자열
+  > **평문 저장소도 같은 순서를 쓴다**(⚠️ 아래는 **미머지** 브랜치 `feature/#270-topping-draft-ssot`
+  > 기준이다 — develop에는 이 파일이 아직 없다) — `ToppingDraftLocalDataSourceImpl.draft`가 원문 문자열
   > 단계에서 `distinctUntilChanged`를 건 뒤 JSON을 파싱한다. 비용의 종류만 다르고(Keystore 대신
   > 역직렬화) 이유는 같다: 파일을 공유하는 다른 키의 쓰기가 이 흐름을 재방출시킨다. 순서를
   > 뒤집으면 남의 쓰기마다 안 바뀐 JSON을 다시 파싱한다.
@@ -469,8 +483,8 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   release=`NONE`) — release에서 토큰·바디 노출 방지. 추가로 `redactHeader("Authorization")`를 걸어
   debug 빌드에서도 헤더 값을 가린다. 설정은 `NetworkModule`의 private `loggingInterceptor()` 한
   자리에서 만들어 **두 클라이언트가 같은 처리를 받는다**(#260).
-  > 📌 **셋째 표면은 이 규칙 밖이다**(2026-08-20, 브랜치 `feature/#270-image-upload-transport` —
-  > **미머지**). S3 presigned PUT 전용 `@UploadClient` 클라이언트는 로깅 인터셉터를 아예 안 단다 —
+  > 📌 **셋째 표면은 이 규칙 밖이다**(2026-08-20 develop 머지, PR #322).
+  > S3 presigned PUT 전용 `@UploadClient` 클라이언트는 로깅 인터셉터를 아예 안 단다 —
   > presigned URL은 서명을 쿼리 스트링에 싣는 방식이라 URL 자체가 자격증명이고 `redactHeader`로
   > 가릴 수 없다. 같은 표면만 `callTimeout`을 추가로 둔다. 근거는 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅".
   **바디는 redact 대상이 아니다** —

@@ -5,7 +5,7 @@ status: done
 type: work-order
 created: 2026-08-20
 updated: 2026-08-20
-archived_reason: 구현 완료·미머지(2026-08-20). 브랜치 feature/#270-topping-place-domain 에 커밋 3개.
+archived_reason: 구현 완료·develop 머지(PR #322 da03c9b0, 2026-08-20). 브랜치 feature/#270-topping-place-domain(PR1 커밋 포함).
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026

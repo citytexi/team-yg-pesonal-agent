@@ -245,7 +245,7 @@ domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider
 
 | 계약 | 앱 쪽 경로 |
 |---|---|
-| `GET /api/v1/users/me` | `MemberRepositoryImpl.refreshMyAccount()` → 암호화 로컬 저장 → `GetMyAccountFlowUseCase` 구독(S-001·S-002). 부트스트랩(`BootstrapSessionUseCase`)이 **세션 검증도 이 호출로 겸한다** |
+| `GET /api/v1/users/me` | `MemberRepositoryImpl.refreshMyAccount()` → 암호화 로컬 저장 → `GetMyAccountFlowUseCase` 구독(S-001·S-002·**G-001**(#312 — 그리지 않고 A-005로 넘길 인자로만 쓴다)). 부트스트랩(`BootstrapSessionUseCase`)이 **세션 검증도 이 호출로 겸한다** |
 | `PATCH /api/v1/users/me/nickname` | S-002 확인 → `ChangeGlobalNicknameUseCase` → 응답 값으로 로컬 갱신(낙관적 갱신 없음). 로컬이 비어 있으면 `GET`으로 폴백해 SSoT를 채운다 |
 
 **이 도메인의 에러 코드 둘이 앱에서 서로 다른 두 소비자에게 다르게 읽힌다.**

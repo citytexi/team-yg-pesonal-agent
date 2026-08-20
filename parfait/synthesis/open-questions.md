@@ -321,7 +321,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-030
 - **출처**: `data/di/NetworkModule.kt#provideOkHttpClient`(PR #174 develop 머지, 2026-08-01) — 단일 `OkHttpClient`가 connect/read/write 타임아웃을 모든 호출에 공통 적용하고 `callTimeout`은 설정하지 않는다(=전체 소요 무제한). 코드리뷰에서 30초가 과하다는 지적을 받아 값을 낮췄으나, 토핑 사진 업로드(누끼 PNG) API는 아직 없어 실제 전송·서버 처리 시간을 모른 채 정한 값이다. OkHttp의 read/write는 전체 전송 시간이 아니라 바이트 간 유휴 상한이라, 업로드가 느린 것 자체는 이 값으로 잡히지 않는다.
 - **항목**: ① 업로드 API 확정 후 전체 소요 상한(`callTimeout`)을 둘지 — 두면 스피너·취소 UX와 값이 묶인다. ② 업로드 전용 `OkHttpClient`(`@Qualifier`)를 분리해 read/write만 늘릴지, 아니면 단일 클라이언트 값을 상향할지. ③ 실패 시 재시도(멱등성 확인 필요)를 어디에 둘지 — 인터셉터 vs 호출부.
-- **상태**: 해소됨 (2026-08-20, PR1 `feature/#270-image-upload-transport` — **미머지**)
+- **상태**: 해소됨 (2026-08-20 develop 머지, PR #322)
   > ✅ **셋 다 정해졌다.** ① `callTimeout`을 **업로드 표면에만** 둔다 — `writeTimeout`은 바이트 사이
   > 유휴 상한이라 전송 전체가 느린 것을 못 잡는다. 메인·재발급 클라이언트는 종전대로 3종만 쓴다.
   > ② 업로드 전용 `OkHttpClient`(`@UploadClient`)를 **분리했다.** 예상대로 선택이 아니라 전제였다.
@@ -1087,7 +1087,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-110
 - **출처**: `image-api-service-layer` 라운드 최종 코드리뷰. `data/source/image/`는 `remote`/`local` 하위 구분이 출처를 갈라 문제가 없지만(저장소 규칙이 "폴더=도메인, 하위=출처"), **`domain/`에는 출처 축이 없다.** 그리고 거기서 `image`는 이미 기기 이미지 뜻이다 — `domain/repository/image/`에 `RecentImageRepository`(기기 캐시)·`ImageSegmentationRepository`(누끼 분할), `domain/usecase/image/`에 `DecodeImageUseCase`·`SegmentImageUseCase`·`AddRecentImageUseCase`·`GetRecentCacheImagesUseCase`가 있고 넷 다 기기 측이다. 이번에 `domain/model/image/`(서버 업로드)가 그 옆에 들어왔다. [image-api-service-layer 스펙](../specs/archive/2026-08-10-image-api-service-layer.md)은 `GalleryImageGroup`만 검토했고 이 두 패키지는 짚지 못했다.
 - **항목**: 다음 라운드가 `ImageRepository`·`UploadImageUseCase`를 만들면 **기기 이미지 심볼들과 같은 패키지에 앉는다.** ① 서버 업로드 쪽을 다른 이름으로 가를지(`imageupload`·`upload`), ② 기기 쪽을 `gallery`·`localimage`로 개명할지(카메라·갤러리 feature가 소비 중이라 파급이 크다), ③ 그대로 두고 클래스명으로만 구분할지. **다음 라운드가 이름을 정하기 전에 결정돼야 한다** — 나중에 바꾸면 소비자가 늘어난 뒤다.
-- **상태**: 해소됨 (2026-08-20, PR1 — **미머지**)
+- **상태**: 해소됨 (2026-08-20 develop 머지, PR #322)
   > ✅ **③으로 정해졌다** — 폴더를 가르지 않고 클래스명으로 구분한다. 서버 업로드 Repository는
   > `domain/repository/image/ImageUploadRepository`로, 기기 쪽 심볼들과 같은 패키지에 앉는다.
   > 근거: `domain/model/image/`가 이미 서버 업로드 모델을 담고 있어 그쪽과 이름이 맞고
@@ -2439,9 +2439,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: 이 화면을 SSoT에 붙일 라운드를 정한다. 붙이는 비용은 UseCase 구독 한 줄이라 작지만,
   G-001이 그리는 값이 **전역 닉네임인지 그룹 닉네임인지**를 먼저 확정해야 한다 — 서버는 둘을 다른
   컬럼으로 들고 전역 닉네임 변경이 그룹 닉네임을 바꾸지 않는다([api/member.md](../api/member.md)).
-- **상태**: 미해결
+- **상태**: 해소됨 (PR #312 develop 머지 2026-08-20)
 - **해소 메모**: 붙일 때 [g001 스펙](../specs/archive/2026-08-01-g001-group-list.md)과
   [api/member.md](../api/member.md) Android 매핑을 함께 갱신한다.
+  > ✅ **전역 닉네임으로 확정됐다(2026-08-20, PR #312)** — `GroupListViewModel`이 생성 시점에
+  > `GetMyAccountFlowUseCase`를 구독하고 mock 리터럴이 사라졌다. 구독을 `Enter`가 아니라 `init`에
+  > 둔 근거는 **목록과 성격이 다르다**는 것이다 — 계정 SSoT가 밀어 주는 값이라 화면에 설 때마다
+  > 끌어올 이유가 없고, 갱신은 로그인·가입·스플래시·닉네임 변경 쪽이 이미 맡는다.
+  > 이 값은 **화면에 그려지지 않는다** — A-005로 넘기는 인자로만 쓰이므로 "한 화면만 다른 이름을
+  > 보여준다"는 증상은 애초에 눈에 보이는 것이 아니었고, 실제 위험이던 "mock 이름이 그룹 생성
+  > 요청으로 서버에 나간다"가 닫혔다.
+  > 같은 라운드가 타입을 `String`에서 `String?`으로 넓혀 **아직 못 받은 상태를 값으로 표현**하고,
+  > 이펙트 `NavigateToCreateGroup`이 닉네임을 실어 보낸다(Route가 `uiState`를 다시 읽지 않는다).
+  > ⚠️ 그 대가가 새 미결이다 — 닉네임이 아직 없으면 그룹 만들기가 **조용히 안 열린다**(OQ-P-253).
 
 ### [2026-08-16] 같은 `MEMBER_NOT_FOUND`에 두 소비자의 처분이 갈린다 — 화면은 표시만 하고 세션은 그대로다
 
@@ -3107,6 +3117,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 세 모듈의 `util/` 변환이 `NametagChipType`을 받는다. **`placedBy.nameTagChip`만 DTO에서 멈춰 있다** —
   > 읽는 화면이 0건이라 남긴 것이고, C-202 Spotlight는 이 필드가 아니라 `groupMembers` 조인을 쓰므로
   > 그 화면이 붙어도 자동으로 필요해지지는 않는다.
+  > 📌 **그 예측대로 붙었다(2026-08-20, PR #298)** — Spotlight 토스트가 작성자 칩을 얻는 방법이
+  > `memberChips`에서 `groupMemberId`로 찾는 조인이고, 코드에 "서버 값이 도메인까지 오면 바꾼다"는
+  > `TODO`가 붙어 있다. 그래서 `placedBy.nameTagChip`은 **읽는 화면이 생긴 뒤에도 여전히 DTO에서
+  > 멈춰 있다** — 다만 조인은 목록에 없는 사람(탈퇴·이탈)을 `Default`로 떨어뜨려 정책과 갈린다
+  > → OQ-P-251.
 
 ### [2026-08-18] 상세 조회가 빈 캐시로 실패하면 S-101이 "정원이 찼어요"로 거짓말한다
 
@@ -3661,4 +3676,79 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   함께 맞춘다. ②는 화면마다 답이 다를 수 있다(덮을 것이 화면 전체인지 줄 하나인지) — 그렇다면
   "무엇을 가리는가로 고른다"를 규약으로 적는 편이 낫다.
 
-<!-- oq-next: 250 -->
+### [2026-08-20] 본인 토핑을 가려낼 방법이 없어 C-202의 본인 갈래가 통째로 비어 있다
+
+- **ID**: OQ-P-250
+- **출처**: `CanvasMainViewModel#handleOnClickTopping`의 `CanvasToppingVO.isMine()`이 **상수 `false`**다
+  (PR #298 develop 머지). 위키 [[C-202-토핑-편집자-확인-규칙-v0.1]]은 본인 토핑 탭을 Spotlight 대상에서
+  빼고 C-305 편집으로 보내라고 정하는데, 지금은 **본인 토핑도 Spotlight로 들어가고 자기 닉네임이
+  적힌 토스트가 뜬다.** 판정이 안 되는 이유는 캔버스 조회 응답이 "내 `groupMemberId`"를 알려 주지
+  않아서다 — 토핑의 `placedBy.groupMemberId`와 비교할 상대가 앱에 없다.
+- **항목**: ① 내 멤버십 행 id를 어디서 얻을지 — 서버에 캔버스 응답의 `groupMembers[]`에 "나" 표시를
+  요청할지, 아니면 그룹 상세(`ParfaitGroupDetailVO`)가 이미 아는 값을 캔버스가 가져다 쓸지
+  (S-101은 `memberId`로 `isMe`를 판별한다). ② 판정이 생길 때까지 본인 토핑을 Spotlight에 넣어 둘지,
+  아니면 탭을 무시할지 — 지금은 넣는 쪽이고 정책과 다르다. ③ C-305 목적지 자체가 없어 ①이 풀려도
+  갈 곳이 없다(그 라운드가 오면 함께 닫힌다).
+- **상태**: 미해결
+- **해소 메모**: ①을 서버 요청으로 풀면 다음 `sync-teamyg-server-api` 라운드에서 확인된다.
+  정해지면 [c202-canvas-spotlight 스펙](../specs/archive/2026-08-20-c202-canvas-spotlight.md)의
+  정책 대조 표와 [api/parfait.md](../api/parfait.md) Android 매핑을 함께 고친다.
+
+### [2026-08-20] Spotlight 작성자 정보가 서버 값이 아니라 화면 목록 조인이다
+
+- **ID**: OQ-P-251
+- **출처**: `CanvasMainViewModel#handleOnClickTopping`(PR #298 develop 머지) — 토스트의 닉네임 색은
+  `memberChips`에서 같은 `groupMemberId`를 찾아 얻는다. 서버는 `placedBy.nameTagChip`을 이미 주지만
+  앱 DTO에서 멈춰 있어(OQ-P-224 잔여) 도메인까지 오지 않아서다. 그 조인을 위해 `GroupMemberChip`에
+  `groupMemberId`가 붙었고 코드에 임시임을 밝히는 `TODO`가 있다. **목록에 없는 사람은 `Default`로
+  떨어지는데 서버도 그 경우 `DEFAULT`를 준다**(`groupMembers`는 탈퇴자를 거르고 `placedBy`는 안
+  거른다 — [api/parfait.md](../api/parfait.md)). 즉 두 경로의 결과가 **지금은 우연히 같아** 임시라는
+  사실이 화면에 안 드러난다.
+- **항목**: ① `placedBy.nameTagChip`을 VO까지 올려 조인을 걷을지 — 읽는 화면이 생겼으므로
+  "소비자 0이라 도메인 모양을 굳히지 않는다"던 보류 사유는 사라졌다. **결과가 같은 지금이 옮기기
+  좋은 시점이고, 서버가 두 목록의 배정 규칙을 갈라 놓으면 그때는 조용히 틀린 색이 된다.**
+  ② 탈퇴·이탈 토스트 문안 — 서버가 닉네임을 `(알수없음)`으로 바꿔 주므로 뜻은 맞지만 문장이
+  `(알수없음)님이 …`가 되어 정책 예시(`알 수 없는 사용자가 …`)와 형태가 다르다. 문안을 화면이
+  다시 쓸지, 정책 쪽을 서버 문자열에 맞출지. ③ 상대 시각 갈래 경계(1분·1시간·1일·7일)와 `오래전`
+  문구는 정책에 근거가 없다 — 코드가 정한 값을 정책으로 승격할지.
+- **상태**: 미해결 (**①은 지금 증상이 없다** — 위 우연한 일치 때문이다)
+- **해소 메모**: ①은 [api/parfait.md](../api/parfait.md)·[api/parfait-image.md](../api/parfait-image.md)의
+  Android 매핑과 함께 갱신한다. ②③은 기획 확인이 선행이고, 정해지면 위키 쪽 미결로도 올린다.
+
+### [2026-08-20] Spotlight 라운드가 판단이 몰린 순수 함수 둘을 테스트 없이 들여왔다
+
+- **ID**: OQ-P-252
+- **출처**: PR #298은 **신규 유닛 테스트가 0건**이다(머지 전후 develop 568건 그대로). 그런데 그
+  라운드가 들여온 `Instant.toElapsedTimeBucket`(경계 넷 + 미래 시각 클램프)과
+  `YGColorChipType.toSpotlightToastNameColor`(12타입 → 6색 접기)는 **판단이 몰린 순수 함수**이고,
+  이 저장소는 그런 자리를 유닛으로 잠가 왔다(`ToppingGeometryTest`·`SegmentationMaskTest` 선례,
+  [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)).
+  전자는 `core:util:jvm`에 있어 JVM 유닛으로 바로 덮이고, 후자는 `:feature:groups:canvas:impl`의
+  `internal` 확장이라 그 모듈 테스트 소스셋이 필요하다.
+- **항목**: ① 두 함수를 뒤늦게 덮을지, 아니면 다음에 이 자리를 고치는 라운드에 묶을지.
+  ② 경계값을 테스트가 잠그면 OQ-P-251 ③(갈래 경계에 정책 근거가 없다)의 값이 **코드가 정본**임을
+  명시적으로 굳히는 셈이라, 그 판단을 먼저 할지.
+- **상태**: 미해결
+- **해소 메모**: `toSpotlightToastNameColor`는 S-101·G-001·C-001의 칩 변환 셋과 같은 계열이라
+  (그쪽은 `util/ColorChipType.kt`) 함께 볼 자리다 — 공용화 미결은 OQ-P-234 ④와 같은 뿌리다.
+
+### [2026-08-20] 닉네임이 아직 없으면 그룹 만들기가 조용히 안 열린다
+
+- **ID**: OQ-P-253
+- **출처**: `GroupListViewModel#handleClickCreateNewGroup`(PR #312 develop 머지) — 계정 스트림이 첫
+  값을 내놓기 전에 "그룹 만들기"를 누르면 `viewModelLogger.w`만 남기고 **아무 일도 일어나지 않는다.**
+  근거는 "DataStore를 한 번 읽는 사이라 따로 알리지 않는다, 다시 누르면 열린다"이고, 화면에는
+  로딩도 토스트도 없다. 같은 오버레이의 "초대 코드로 참여"는 닉네임을 안 받아 이 가드가 없다 —
+  **같은 오버레이의 두 버튼이 서로 다르게 반응한다.**
+- **항목**: ① 이 구간을 사용자에게 알릴지(버튼 비활성 · 로딩 · 토스트) 아니면 지금처럼 둘지.
+  ② 알린다면 관용구를 무엇으로 할지 — 이 저장소의 "요청 중 표시"는 오버레이(약관 동의)와 항목
+  비활성(S-001 로그아웃)으로 이미 갈려 있다(OQ-P-249 ②). ③ 계정 정보가 **영영 없는** 경우
+  (부트스트랩 실패 후 로컬이 빈 상태)와 "아직 못 읽은" 경우를 구분하지 않는다 — 전자면 다시 눌러도
+  영원히 안 열린다.
+- **상태**: 미해결 (**발생 창이 좁다** — 로컬 DataStore 1회 읽기 구간이고, 그 사이 목록도 아직 비어 있다)
+- **해소 메모**: ③이 실제로 가능한지는 [ADR-0022](../adr/0022-user-info-local-ssot.md)의 부트스트랩
+  실패 처분과 함께 봐야 한다 — 인증 거절일 때만 세션을 파기하므로 "토큰은 있는데 계정 정보가 없는"
+  상태가 남을 수 있다. **OQ-P-196 ②가 S-002에서 지적한 것과 같은 뿌리**이고, 이 화면은 비활성
+  대신 무반응이라는 점만 다르다.
+
+<!-- oq-next: 254 -->

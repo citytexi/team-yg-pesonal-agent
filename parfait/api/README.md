@@ -180,6 +180,18 @@
 > (`parfait-group` `done` · `parfait`·`parfait-image` `partial`). 남은 미소비 필드는 둘이고 성격이 다르다:
 > `placedBy.nameTagChip`은 **읽는 화면이 없어 DTO에서 멈춰 세운 것**, 그룹 생성 응답 3필드는
 > **DTO 거울만 두고 VO를 안 늘린 것**이다.
+>
+> ✅ **2026-08-20 — 두 도메인이 처음으로 DataSource 위층을 얻었다**(PR #322 develop 머지, 계약 delta
+> 없음). `image`는 `ImageUploadRepository`(발급 → **S3 PUT** → 확인 3단계를 하나로), `parfait-image`는
+> `ToppingRepository.place` + `AddToppingUseCase`다. **`android_status`는 둘 다 `partial` 그대로다** —
+> 이 저장소의 셈은 "화면이 부르는가"이고 그 위가 아직 없다(결선은 C-106 PR5).
+> S3 PUT은 우리 서버 계약이 아니라 발급 응답이 준 URL로 나가므로 엔드포인트 셈(27/27)에 안 들어간다.
+> ⚠️ 그 경로가 **Retrofit 밖 raw OkHttp라 `@NoAuth` 판정을 못 받는다** — 전용 `@UploadClient`가
+> 성능이 아니라 **기능 전제**인 이유이고, 같은 클라이언트가 로깅 인터셉터를 아예 달지 않는다
+> (presigned URL은 쿼리 스트링이 곧 자격증명이다) → [image.md](image.md).
+> `placedBy.nameTagChip`은 **읽는 화면이 생긴 뒤에도 여전히 DTO에서 멈춰 있다** — C-202 Spotlight
+> (PR #298)가 그 필드 대신 `groupMembers` 조인으로 색을 정해서다
+> → [open-questions](../synthesis/open-questions.md) OQ-P-251.
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만
