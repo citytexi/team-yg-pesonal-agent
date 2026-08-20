@@ -73,7 +73,7 @@ C-106 확인 버튼을 누르면 토핑이 **실제로 서버에 올라가게 �
 |---|---|---|
 | 업로드 전송 포함 여부 | 전체 체인 한 라운드 | `imageId`를 얻을 경로가 없으면 배치만 붙여도 동작하지 않는다 |
 | 조율 위치 | `AddToppingUseCase` 하나 | 4단계 순서는 서버 계약이 정한 도메인 규칙이지 화면 관심사가 아니다. C-301 배경이 앞 3단계를 재사용한다 |
-| `positionZ` | 흐름 진입 시 캔버스의 최대 z + 1 | 새 토핑이 항상 맨 위. 서버 요청 DTO에 검증 애노테이션이 없고 유일성 제약도 없어 남과 겹쳐도 거부되지 않는다 |
+| `positionZ` | 흐름 진입 시 캔버스의 최대 z + 1, **토핑이 없으면 1** | 새 토핑이 항상 맨 위. 목록 크기로 세면 지워진 토핑이 있는 캔버스에서 겹친다. 서버 요청 DTO에 검증 애노테이션이 없고 유일성 제약도 없어 남과 겹쳐도 거부되지 않는다 |
 | 재시도 | 실패하면 토스트 후 **발급부터 전부 다시** | 만료된 presigned URL 문제가 자동으로 풀리고 상태 기계가 단순하다. 대가는 고아 S3 객체 |
 | 테두리 | 굽지 않고 서버 필드로 | [ADR-0025](../adr/0025-topping-border-as-server-field.md) |
 | 흐름 상태 위치 | DataStore 초안 SSOT | [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md) |
@@ -171,6 +171,10 @@ data class ToppingDraft(
 낡은 초안이 다음 흐름에 따라붙는 문제는 **진입 시 덮어쓰기 규칙 하나로** 닫힌다. 별도 만료·정리
 경로를 두지 않는다.
 
+**진입에서 초안을 쓰지 못하면 화면을 옮기지 않고 알린다.** 초안 없이 흐름에 들어가면 촬영·누끼·
+편집을 다 마친 뒤에야 올릴 데가 없다는 것을 알게 된다 — 토핑 추가 버튼 가드가 막으려는 것과 같은
+실패다. 되돌릴 것이 아직 없는 지점이라 알리고 제자리에 두는 것으로 끝난다.
+
 ⚠️ **`TOPPING_EDIT_RESULT_KEY`는 걷지 않는다.** 그 결과 키의 소비자가 둘이다 —
 `SegmentationConfirmRoute`(토핑 만들기)와 **`CanvasBGEditRoute`**(C-301에서 이미 놓인 토핑을
 `borderOnly`로 재편집하는 경로). 편집 화면이 결과 키 대신 초안에 쓰도록 바꾸면 배경 편집 쪽은
@@ -188,7 +192,9 @@ data class ToppingDraft(
 **초안이 가리키는 파일이 이미 없을 수 있다.** 초안은 DataStore에 영속되지만 그것이 가리키는 것은
 `cacheDir` 하위 파일이고, 세그멘테이션 진입이 그 디렉토리를 통째로 비운다
 (`SegmentationCacheDir#clearFiles`). OS도 저장 공간 압박 시 회수한다. 그래서 **초안을 읽을 때
-"경로는 있는데 파일이 없다"를 빈 초안과 같이 취급한다.**
+"경로는 있는데 파일이 없다"를 그 경로가 처음부터 없었던 것과 같이 취급한다** — 비우는 것은
+**이미지 경로 둘뿐**이고 캔버스 식별값과 테두리는 남긴다. 초안 전체를 버리면 흐름 진입 때 못 박은
+`parfaitId`까지 잃어, 이 배치가 지키려던 "진입 캔버스가 못 박힌다"가 함께 깨진다.
 
 ## 표시·제어 규칙
 
@@ -284,7 +290,7 @@ positionZ = draft.nextPositionZ
 |---|---|---|---|
 | 1 | 업로드 전송 계층 | `@UploadClient` · `PresignedUploadDataSource` · `ImageUploadRepository`/Impl · DI | **없음**(소비자 0) — ✅ **완료·미머지**, 브랜치 `feature/#270-image-upload-transport` |
 | 2 | 배치 계층 | `ToppingRepository`/Impl(`place`만) · `AddToppingUseCase` | **없음**(소비자 0) — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-place-domain`(PR1 위) |
-| 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 |
+| 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 · 초안 쓰기 실패도 알린다 |
 | 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** |
 | 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** |
 
