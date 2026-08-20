@@ -4,12 +4,13 @@ title: 온보딩 약관 동의 화면 (TermAgree)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-18
+verified: 2026-08-20
 related_code:
   - NavKeyTermAgree
   - TermAgreeRoute.kt#TermAgreeRoute
   - TermAgreeScreen.kt#TermAgreeScreen
   - TermAgreeViewModel.kt#TermAgreeViewModel
+  - TermAgreeError.kt#TermAgreeError
   - TermAgreeViewModelTest
   - GetPoliciesUseCase.kt#GetPoliciesUseCase
   - SignUpUseCase.kt#SignUpUseCase
@@ -21,8 +22,8 @@ related_code:
   - NavKeyWebView.kt#NavKeyWebView
   - feature/intro/impl/res/values/strings.xml
 related_adr: ADR-0005, ADR-0006, ADR-0016, ADR-0017, ADR-0019, ADR-0020
-related_spec: s004-terms-privacy-webview, a002-kakao-login-api, mvi-error-infrastructure
-related_architecture: state-management, navigation-flow, data-layer
+related_spec: s004-terms-privacy-webview, a002-kakao-login-api, mvi-error-infrastructure, ygscaffold-v2-common-loading-error
+related_architecture: state-management, navigation-flow, data-layer, design-system
 supersedes:
 superseded_by:
 tags: [spec, parfait, intro, terms, onboarding]
@@ -58,6 +59,16 @@ tags: [spec, parfait, intro, terms, onboarding]
 > `onClickTermLandingUrl(String)` → `onClickTermDetail(PolicyVO)`로 넓어져 `url`을 뽑는 자리가
 > ViewModel로 내려갔다. `feature/intro/impl` → `feature/common/terms/api` 의존이 이때 생겼다.
 > 조회 실패·가입 실패 표현은 여전히 임시다.
+>
+> ✅ **as-built 갱신(2026-08-20, #315 develop 머지)**: **실패 표현 둘이 임시에서 결정으로 바뀌었다.**
+> 가입 실패는 `TermAgreeError` 2갈래(`NETWORK`·`UNKNOWN`) + `ShowError` 이펙트 + 공통 토스트로 나가고
+> (A-002 `LoginError`·S-101 `GroupSettingError`와 같은 형태), 조회 실패는 **공용 에러화면으로 가지
+> 않기로 정해져** `TODO(공통 에러화면)` 둘이 근거 문장으로 바뀌었다 — 재시도라는 갈 곳이 화면 안에
+> 있어 흘려보내는 실패가 아니기 때문이다. 즉 같은 화면의 두 실패가 **처분이 갈리는 기준**을 보여 준다:
+> 사용자가 그 자리에서 할 수 있는 일이 있으면 화면에 남기고, 없으면 토스트로 알린다.
+> 컨테이너도 함께 옮겼다 — 엔트리의 `YGScaffold`가 걷히고 Route가 `YGScaffoldV2`를 소유하며
+> `isLoading`에 **조회와 가입을 함께** 넘긴다(`state.isLoading || state.isSigningUp`).
+> 확인 버튼이 `isSigningUp`을 안 보므로 응답을 기다리는 동안 눌리는 것을 그 오버레이가 막는다.
 
 - **대상 모듈**: `feature/intro/impl`(`termagree/`) + `feature/intro/api`(NavKey) + `domain`(UseCase·Repository·예외)
   + `data`(`PolicyRepositoryImpl`·`AuthRepositoryImpl#signUp`). `feature/groups/list/api` 의존(#220, 다음 목적지).
@@ -76,8 +87,8 @@ tags: [spec, parfait, intro, terms, onboarding]
 - 제외(구현 TODO 상태):
   - ~~**동의 결과 저장 로직**~~ — ✅ **해소(#242)**. `ClickNextButton` → `SignUpUseCase` → `POST /auth/signup` → 세션 저장 → `NavigateToNext`.
   - ~~**랜딩 URL 실값**~~ — ✅ **해소(#242 값 + #296 화면)**. 값은 서버가 주고(`PolicyVO.url`), 탭하면 `NavKeyWebView(title, url)`로 공용 웹뷰가 열린다.
-  - **조회 실패 화면** — 지금은 목록 자리에 문구 + "다시 시도" 텍스트 두 줄이고, 코드가 `TODO(공통 에러화면)`으로 공용 에러화면 대체를 예고한다.
-  - **가입 실패 표현** — 실패 갈래는 전부 열거돼 있으나 전부 로그뿐이다(아래 "실패 표현" 절).
+  - ~~**조회 실패 화면**~~ — ✅ **해소(#315)**. 공용 에러화면으로 바꾸지 **않기로** 정해졌다(목록 자리 유지, 아래 "실패 표현" 절).
+  - ~~**가입 실패 표현**~~ — ✅ **해소(#315)**. `TermAgreeError` 2갈래 + 공통 토스트.
 - 결선 완료(#220): **다음 화면 네비게이션** — `NavigateToNext`가 `clearBackStack()` 후 `NavKeyGroupList`로 `goTo`.
 
 ## API / 인터페이스
@@ -105,8 +116,8 @@ data class TermAgreeState(
     val policies: List<PolicyVO> = emptyList(),
     val agreedTermsIds: Set<TermsId> = emptySet(),
     val isLoading: Boolean = true,
-    val isLoadFailed: Boolean = false,      // TODO(공통 에러화면) — 서면 목록 대신 에러화면 예정
-    val isSigningUp: Boolean = false,
+    val isLoadFailed: Boolean = false,      // 목록 자리에 남긴다(#315 확정, 에러화면 대체 안 함)
+    val isSigningUp: Boolean = false,       // 오버레이만 켠다 — 확인 버튼은 이 값을 안 본다
 ) : UiState {
     val isAllSelected: Boolean          // 목록이 비지 않고 전 항목 동의
     val isAvailable: Boolean            // 목록이 비지 않고 필수 전건 동의(확인 버튼 활성 조건)
@@ -123,7 +134,12 @@ sealed interface TermAgreeIntent {
 sealed interface TermAgreeSideEffect {
     data class NavigateToPolicyDetail(val title: String, val url: String)  // 🔁 #296, 구 NavigateToUrl(String)
     data object NavigateToBack; data object NavigateToNext
+    data class ShowError(val error: TermAgreeError)                        // #315 신설 — 문구가 아니라 사유
 }
+
+// #315 신설 — 가입 실패 사유. 문구가 갈리는 지점에서만 나눈다
+enum class TermAgreeError { NETWORK, UNKNOWN }
+@Composable internal fun TermAgreeError.toStringResource(): String
 
 // ViewModel — 가입 토큰을 NavKey 인자로 받으므로 Assisted 주입(#242)
 @HiltViewModel(assistedFactory = TermAgreeViewModel.Factory::class)
@@ -164,13 +180,28 @@ class TermAgreeViewModel @AssistedInject constructor(
 | 상세 진입 | `ic_caret_right`(tint `Gray.Gray500`) 탭 → `onClickTermLandingUrl` |
 | 확인 버튼 | `YGButton` `YGButtonType.Large` |
 
-### 실패 표현 (#242)
+### 실패 표현 (#242 → 🔁 #315 확정)
 
-- **조회 실패**: `isLoadFailed`가 서면(참이면) 목록 자리에 "약관을 불러오지 못했어요" + "다시 시도"(탭 → `ClickRetryLoad`)를
-  띄운다. 코드가 `TODO(공통 에러화면)`으로 이 자리를 공용 에러화면으로 바꿀 것을 예고한다.
-- **가입 실패**: `SignUpException.RequiredPolicyNotAgreed`·`AppError.Network`·`AppError.Server`·그 외로
-  갈래를 전부 열거하지만 **전부 `viewModelLogger`뿐**이고 화면 표현이 없다(각 자리에 `TODO(에러 UX 미정)`).
-  세션 저장 실패도 마지막 갈래로 들어온다. 즉 실패하면 사용자에게는 아무 일도 일어나지 않는다.
+**두 실패의 처분이 갈린 기준은 "사용자가 그 자리에서 할 수 있는 일이 있는가"다.**
+
+- **조회 실패**(화면에 남긴다): `isLoadFailed`가 서면 목록 자리에 "약관을 불러오지 못했어요" +
+  "다시 시도"(탭 → `ClickRetryLoad`)를 띄운다. #315가 이 자리를 **공용 에러화면으로 바꾸지 않기로**
+  정했다 — 재시도 버튼이 화면 안에 있어 흘려보내면 갈 곳이 사라진다. `TODO(공통 에러화면)` 둘
+  (State 필드 KDoc·Screen)이 그 근거 문장으로 바뀌었다.
+- **가입 실패**(토스트로 알린다): `handleSignUpFailure`가 갈래 넷을 **`TermAgreeError` 둘로 접어**
+  `ShowError`를 쏘고 Route가 공통 토스트로 띄운다. `AppError.Network`만 `NETWORK`이고
+  `SignUpException.RequiredPolicyNotAgreed`·`AppError.Server`·그 외(세션 저장 실패 포함)는 전부
+  `UNKNOWN`이다 — **사용자가 할 수 있는 일이 "잠시 후 다시"로 같아서**이고, 갈래 구분은 로그가 남긴다
+  (`RequiredPolicyNotAgreed`는 화면 가드가 뚫린 것이라 로그 레벨이 결함이다).
+  재시도 동선을 따로 주지 않는 것도 같은 이유다 — 화면이 그대로 남아 확인 버튼이 그 자리에 있다.
+- 문구는 Route가 `TermAgreeError.entries.associateWith { it.toStringResource() }`로 **컴포지션에서
+  미리 뽑아 둔다**(이펙트 수집은 코루틴이라 `stringResource`를 부를 수 없다) —
+  [state-management](../../architecture/state-management.md) "서버 실패 갈래는 feature 로컬 enum".
+- **로딩 오버레이는 조회와 가입을 함께 덮는다**(`isLoading || isSigningUp`). 확인 버튼 활성 조건
+  `isAvailable`은 `isSigningUp`을 안 보므로 응답을 기다리는 동안에도 눌리고, 중복 요청은
+  `launch(key = KEY_SIGN_UP)` 가드가 막는다 — 즉 오버레이가 없으면 사용자에게는 아무 반응이 없다.
+  ⚠️ `requestSignUp` KDoc은 이 플래그를 "버튼을 잠그는 표시"라고 적는데 그 버튼이 없다
+  → [open-questions](../../synthesis/open-questions.md) [2026-08-20].
 
 
 ## 표시·제어 규칙
@@ -186,11 +217,12 @@ class TermAgreeViewModel @AssistedInject constructor(
 
 - `api/NavKeyTermAgree.kt` — 인자 있는 목적지 키(`registrationToken`).
 - `impl/termagree/TermAgreeScreen.kt` — stateless UI(`LazyColumn`) + 조회 실패 자리 + `PreviewParameterProvider` 4상태.
-- `impl/termagree/TermAgreeRoute.kt` — Assisted 팩토리로 VM 생성(#242) + state/effect collect, back→`navigator.onBack()`, next→`clearBackStack()`+`goTo(NavKeyGroupList)`(#220), url은 stub.
+- `impl/termagree/TermAgreeRoute.kt` — Assisted 팩토리로 VM 생성(#242) + state/effect collect, back→`navigator.onBack()`, next→`clearBackStack()`+`goTo(NavKeyGroupList)`(#220), url은 stub. **#315부터 `YGScaffoldV2`를 소유**하고 토스트 정책·실패 문구 맵을 든다.
 - `impl/termagree/TermAgreeViewModel.kt` — MVI State/Intent/SideEffect + `processIntent` + 조회·가입 job 키 2종.
+- `impl/termagree/TermAgreeError.kt` — 가입 실패 사유 enum + `@Composable toStringResource()`(#315 신설).
 - ~~`impl/termagree/model/TermContent.kt`~~ — **#242에서 삭제**(서버 `PolicyVO`가 대체).
-- `impl/res/values/strings.xml` — 화면 정적 라벨(제목·모두동의·(필수)·확인, #166 / 조회 실패·다시 시도, #242).
-- `impl/EntryBuilder.kt#featureTermAgreeEntryBuilder` — `entry<NavKeyTermAgree> { YGScaffold { TermAgreeRoute(registrationToken = RegistrationToken(navKey.registrationToken), …) } }`(nav 컨테이너 [YGScaffold](../archive/2026-07-20-designsystem-ygscreen-scaffold.md)).
+- `impl/res/values/strings.xml` — 화면 정적 라벨(제목·모두동의·(필수)·확인, #166 / 조회 실패·다시 시도, #242 / 가입 실패 2종, #315).
+- `impl/EntryBuilder.kt#featureTermAgreeEntryBuilder` — 🔁 **#315부터 Route를 부르기만 한다**(`entry<NavKeyTermAgree> { TermAgreeRoute(…, modifier = Modifier.fillMaxSize()) }`). 구 형태는 엔트리가 `YGScaffold`로 감싸던 것이고, 스캐폴드는 이제 Route가 소유한다 → [design-system](../../architecture/design-system.md) "화면 컨테이너".
 - `domain/usecase/policy/GetPoliciesUseCase.kt`·`domain/usecase/auth/SignUpUseCase.kt`·`domain/exception/SignUpException.kt`·
   `domain/repository/policy/PolicyRepository.kt` · `data/repository/policy/PolicyRepositoryImpl.kt`(#242 신설).
   `AuthRepository`에 `signUp`이 추가되고 `RepositoryModule`이 `PolicyRepository` 바인딩을 얻었다.
@@ -207,8 +239,10 @@ class TermAgreeViewModel @AssistedInject constructor(
   **전문이 내려올 수도 있다** → [api/policy.md](../../api/policy.md) 미결.
 - **빈 목록이어도 200이다** — 서버가 약관 0건을 정상 응답으로 내려주며(계약 문서 명시), 그 경우 이 화면은
   실패 표시 없이 **빈 목록 + 비활성 확인 버튼**으로 멈춘다. 조회 실패와 구분되는 상태이나 화면 표현은 같지 않다.
-- **가입 실패가 로그뿐**(#242) — 네트워크 단절·서버 에러·세션 저장 실패 어느 쪽이든 화면이 조용하다
-  → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
-- **조회 실패 자리가 임시**(#242) — 목록 안 텍스트 두 줄이고 코드가 공용 에러화면을 예고한다. G-001은 같은
-  성격의 실패를 전용 화면(`GroupListErrorScreen`)으로 그린다 — 저장소에 실패 표현이 두 형태다.
+- ~~**가입 실패가 로그뿐**(#242)~~ — ✅ **해소(#315)**. 공통 토스트로 나간다. 남은 것은 `UNKNOWN`이
+  이 화면에서도 "알 수 없는 오류" 문구를 다시 만든다는 것이다(화면 수만큼 복제되는 자리)
+  → [open-questions](../../synthesis/open-questions.md) [2026-08-15] OQ-P-167 ②.
+- ~~**조회 실패 자리가 임시**(#242)~~ — ✅ **결정됨(#315)**: 목록 자리에 남긴다. G-001이 같은 성격의
+  실패를 전용 화면(`GroupListErrorScreen`)으로 그리는 것은 그대로라 **저장소에 형태가 둘인 것은 변함없고**,
+  달라진 것은 그것이 임시가 아니라 선택이라는 점이다(재시도 동선의 유무가 갈랐다).
 - "모두 동의하기" 클릭 영역이 `clickable`(스로틀 `clickableYG` 미사용) — 캘린더 셀 등과 동일한 스로틀 규약 이탈 패턴(연타 방어 부재).

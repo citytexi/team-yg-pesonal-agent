@@ -393,13 +393,16 @@ nullable 5파라미터다. PATCH 요청 DTO의 5필드가 전부 `= null` 기본
 (`CanvasToppingVO`). `CanvasToppingVO`를 `PlacedToppingVO`와 합치지 않은 것도 같은 이유다 —
 POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"를 뭉개게 된다.
 
-⚠️ **2026-08-20 서버 delta가 실패 경로를 늘렸는데 앱에는 그 코드가 없다.** 네 엔드포인트가 모두
-409 `PARFAIT_ALREADY_CLOSED`를 낼 수 있게 됐지만 `ServerErrorCode`에 대응 상수가 없어 결선 시점에
-일반 오류로 뭉개진다. **지금은 소비처가 0건이라 도달하지 않는다** — 결선 라운드가 처음 마주칠 결정이고,
-"마감된 캔버스"는 03시 회전 직후 화면이 오래 열려 있을 때 실제로 나오는 상태다. 같은 라운드로
-`CanvasStatus` KDoc의 "서버가 그것을 강제하지 않는다 — 마감된 캔버스에도 배치·수정·삭제가 통과한다"가
-거짓이 됐다 → [parfait.md](parfait.md) Android 매핑 ·
-[open-questions](../synthesis/open-questions.md) [2026-08-20].
+✅ **늘어난 실패 경로를 앱이 같은 날 받았다**(2026-08-20, PR #318 develop 머지). 네 엔드포인트가 모두
+409 `PARFAIT_ALREADY_CLOSED`를 낼 수 있게 되자 앱이 **`ServerErrorCode.Parfait`** 를 신설해 그 코드를
+들었다. 소비처가 0건인데 상수를 먼저 둔 것은 "쓰지 않는 상수는 계약이 바뀌어도 아무도 고치지 않아
+거짓말이 된다"는 그 파일의 규약에 대한 **명시적 예외**이고, 근거는 **처분이 이미 정해졌다**는 것이다
+(→ [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md): 이 코드만 토스트 후
+캔버스로 되감고 나머지 실패는 화면에 머문다). 상수 KDoc이 결정과 함정을 함께 적어 소비처가 붙을 때
+같은 판단을 다시 하지 않게 한다 — 특히 **네 경로 전부 소유권 검사가 마감 검사보다 앞이라** 남의
+토핑을 마감된 캔버스에서 고치려 하면 409가 아니라 403 `PARFAIT_IMAGE_NOT_OWNED`가 먼저 온다.
+같은 PR이 `CanvasStatus` KDoc의 "서버가 그것을 강제하지 않는다"도 뒤집었다
+→ [parfait.md](parfait.md) Android 매핑 · [open-questions](../synthesis/open-questions.md) [2026-08-20].
 
 **소비처는 0건이다.** 캔버스 토핑 배치(C-106)는 여전히 화면 로컬 상태로만 동작한다. 다만 **"다시 그릴 수
 없다"는 사유도, 앱 표면 공백도 사라졌다** — `GET .../parfaits/today`가 배치 전량을 내려주고
@@ -426,5 +429,5 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 
 ✅ **2026-08-20 해소** — "네 엔드포인트 어디도 `parfait.status`를 보지 않아 마감된 캔버스도 편집된다"가
 서버 가드로 닫혔다(409 `PARFAIT_ALREADY_CLOSED`). **서버가 막을지 앱 책임으로 둘지**라는 물음에
-서버가 답한 것이고, 남은 것은 앱이 그 코드를 어떻게 보여줄지다 → [Android 매핑](#android-매핑) ·
-[open-questions](../synthesis/open-questions.md).
+서버가 답했고, "앱이 그 코드를 어떻게 보여줄지"도 같은 날 정해졌다(토스트 후 캔버스로 되감기, 상수
+신설까지 PR #318) → [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).

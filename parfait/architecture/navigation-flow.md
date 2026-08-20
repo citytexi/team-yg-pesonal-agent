@@ -300,9 +300,10 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
    > [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md).
 
    (구 형태) `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(modifier = Modifier.padding(innerPadding)) } }`. 화면 최외곽 컨테이너 `YGScreen`과의 역할 분리는 그대로 → [design-system](design-system.md) "화면 컨테이너".
-   **develop에는 두 형태가 공존한다** — 신형은 `featureAppSettingEntryBuilder`·`featureLoginEntryBuilder`·
-   `featureGroupSettingEntryBuilder`(#285) 4화면, 구 형태가 **7파일** 남았다
-   → [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
+   **develop에는 두 형태가 공존한다** — 신형이 **17화면**이고, 구 형태는 EntryBuilder **2파일**
+   (`feature/groups/enter/impl` 3곳 · `feature/groups/canvas/impl` 5곳, 2026-08-20 PR #315 기준)만
+   남았다. 수치의 정본은 [design-system](design-system.md) "화면 컨테이너"이고, 잔여 이관·V1 삭제
+   시점은 → [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
 3. 빌더를 Hilt 모듈(`NavigationModule`, ActivityRetainedComponent)의 `Set<...>` 멀티바인딩에 `@IntoSet`으로 제공.
 4. 이동 원하는 feature는 대상의 `:api`에 의존 추가(`settings.gradle.kts`/build 파일).
 5. 결과가 필요하면 `ResultEventBus` 데코레이터 경로 사용.
