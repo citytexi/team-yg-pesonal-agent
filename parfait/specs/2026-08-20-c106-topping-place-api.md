@@ -86,7 +86,10 @@ C-106 확인 버튼을 누르면 토핑이 **실제로 서버에 올라가게 �
 // domain/repository/image/
 interface ImageUploadRepository {
     /** 발급·전송·확인 3단계를 하나로 닫는다. 돌려주는 imageId 는 이미 COMPLETED 다. */
-    suspend fun upload(filePath: String, imageType: ImageType): Result<ImageId>
+    suspend fun upload(
+        filePath: String,
+        imageType: ImageType,
+    ): Result<ImageId>
 }
 
 // domain/repository/topping/

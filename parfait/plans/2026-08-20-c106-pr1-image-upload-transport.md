@@ -13,9 +13,12 @@ related_code:
   - NetworkModule.kt#provideUnauthenticatedOkHttpClient
   - NetworkModule.kt#loggingInterceptor
   - AuthInterceptor.kt#intercept
+  - ApiCaller.kt#safeApiCallNoContent
   - ImageRemoteDataSource.kt#issueUploadUrl
   - ImageRemoteDataSource.kt#confirmUpload
   - ImageRemoteDataSourceImpl.kt
+  - ImageUploadUrlVO.kt
+  - ImageStatus.kt
   - UnauthenticatedClient.kt
   - ApiException.kt
   - AppErrorMapper.kt#toAppError
@@ -43,10 +46,12 @@ tags: [plan, parfait, image, upload, network]
 - **작업 대상 저장소는 `TJYG-Android`**이고 이 문서가 사는 저장소가 아니다. 로컬 절대경로는 `wiki/personal-private/project-paths.md`에 있다.
 - **브랜치는 `feature/#270-c-106-topping-add-api`** 위에서 이어 간다. 그 브랜치에는 이미 사전 커밋 넷(`PARFAIT_ALREADY_CLOSED` 상수·`http/` 문서)이 있고 그대로 둔다.
 - **커밋은 태스크마다 한다.** `git push`·`gh pr create`·`gh pr merge`는 **하지 않는다** — 사용자 확인이 필요한 작업이다.
+- ⚠️ **ktlint가 파라미터 2개 이상인 함수 선언에 멀티라인을 강제한다**(`.editorconfig`의 `ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 2`). 이 계획의 코드 블록은 이미 그 형태로 적혀 있으니 **한 줄로 줄이지 말 것.**
 - **주석·KDoc 규약**(`parfait/CLAUDE.md`):
   - 코드가 이미 말하는 것은 쓰지 않는다.
   - `@return`·`@param`은 타입·이름이 말하지 못할 때만 쓴다.
-  - 다른 컴포넌트의 현재 상태를 단정하지 않는다(낡는다). 함정과 의도는 쓴다.
+  - **다른 컴포넌트의 현재 상태를 단정하지 않는다**(낡는다). 근거는 문서를 가리킨다. 함정과 의도는 쓴다.
+  - 아키텍처 결정 설명을 코드에 복사하지 않는다. 포인터 한 줄만 둔다.
 - **`contentType`은 한 곳에서만 정한다.** 발급 요청과 PUT 헤더 양쪽이 같은 값을 써야 한다 — 둘 다 S3 서명 대상이고, 어긋난 실패는 서버 로그에 남지 않는다.
 - **`filePath`는 파일 시스템 절대경로**다. `file://` uri가 아니다.
 - 매퍼 단독 테스트(`XxxVOMapperTest`)는 만들지 않는다. 변환 판단은 DataSource·Repository 테스트 케이스로 잠근다.
@@ -77,7 +82,7 @@ tags: [plan, parfait, image, upload, network]
 **Files:**
 - Create: `data/src/main/java/com/teamyg/parfait/data/model/qualifier/UploadClient.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/di/NetworkModule.kt`
-- Test: `data/src/test/java/com/teamyg/parfait/data/di/UploadClientTest.kt`
+- Test: `data/src/test/java/com/teamyg/parfait/data/di/UploadOkHttpClientTest.kt`
 
 **Interfaces:**
 - Consumes: 없음(이 PR의 첫 태스크)
@@ -85,7 +90,7 @@ tags: [plan, parfait, image, upload, network]
 
 - [ ] **Step 1: 실패 테스트 작성**
 
-`data/src/test/java/com/teamyg/parfait/data/di/UploadClientTest.kt`:
+`data/src/test/java/com/teamyg/parfait/data/di/UploadOkHttpClientTest.kt`:
 
 ```kotlin
 package com.teamyg.parfait.data.di
@@ -98,7 +103,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class UploadClientTest {
+class UploadOkHttpClientTest {
     @Test
     fun provideUploadOkHttpClient_hasNoAuthInterceptor() {
         // Given·When 업로드 전용 클라이언트를 만든다
@@ -122,7 +127,7 @@ class UploadClientTest {
         // Given·When 업로드 전용 클라이언트를 만든다
         val client = NetworkModule.provideUploadOkHttpClient()
 
-        // Then 본문 로깅이 없다 — 원본 해상도 PNG 가 매 업로드마다 문자열로 힙에 올라간다
+        // Then 본문 로깅이 없다 — 원본 해상도 이미지가 매 업로드마다 문자열로 힙에 올라간다
         val logging = client.interceptors.filterIsInstance<HttpLoggingInterceptor>()
         assertTrue(logging.none { it.level == HttpLoggingInterceptor.Level.BODY })
     }
@@ -132,7 +137,7 @@ class UploadClientTest {
 - [ ] **Step 2: 테스트를 돌려 실패를 확인한다**
 
 ```bash
-./gradlew :data:testDebugUnitTest --tests "com.teamyg.parfait.data.di.UploadClientTest"
+./gradlew :data:testDebugUnitTest --tests "com.teamyg.parfait.data.di.UploadOkHttpClientTest"
 ```
 
 Expected: 컴파일 실패 — `Unresolved reference: provideUploadOkHttpClient`
@@ -151,9 +156,13 @@ import javax.inject.Qualifier
  *
  * 자격증명을 붙이지 않고, 재발급 표면과 `Dispatcher` 를 공유하지 않으며, 본문을 로깅하지 않는다.
  * 이름은 사용처가 아니라 이 표면의 성질을 가리킨다.
+ *
+ * 이웃 [UnauthenticatedClient] 와 달리 리텐션이 `RUNTIME` 이다 — 이 한정자가 주입 자리에서
+ * 빠지는 것이 이 라운드의 핵심 실패 모드인데, 이 PR 에는 소비자가 없어 Dagger 가 그래프를
+ * 검증하지 않는다. 리플렉션 테스트가 유일한 감지선이라 런타임까지 남겨 둔다.
  */
 @Qualifier
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.RUNTIME)
 annotation class UploadClient
 ```
 
@@ -170,22 +179,15 @@ import com.teamyg.parfait.data.model.qualifier.UploadClient
 ```kotlin
     /**
      * S3 presigned PUT 전용. **자격증명을 붙이지 않는 것이 이 클라이언트의 존재 이유다** —
-     * `AuthInterceptor` 는 Retrofit `Invocation` 태그로 `@NoAuth` 를 판정하는데 raw OkHttp
-     * 요청에는 그 태그가 없어 `Authorization` 이 무조건 붙고, presigned URL 에 그 헤더가 실리면
-     * S3 가 서명 수단 중복으로 거절한다.
+     * presigned URL 에 `Authorization` 이 실리면 S3 가 거절해 업로드가 아예 동작하지 않는다.
+     * 재발급 표면([provideUnauthenticatedOkHttpClient])을 재사용하지 않는 이유를 포함한 근거는
+     * `specs/2026-08-20-c106-topping-place-api.md` 업로드 전송 절에 있다.
      *
-     * [provideUnauthenticatedOkHttpClient] 를 재사용하지 않는 이유는 그쪽이 토큰 재발급의 교착을
-     * 피하려고 자기 [Dispatcher] 를 들고 있기 때문이다. 업로드가 그 슬롯을 오래 점유하면 401 이
-     * 몰릴 때 재발급이 다시 굶는다.
+     * ⚠️ `newBuilder()` 로 파생하면 부모의 [Dispatcher] 를 물려받아 격리가 사라진다.
+     * 반드시 새 [OkHttpClient.Builder] 로 만든다.
      *
-     * ⚠️ `okHttpClient.newBuilder()` 로 파생하면 **부모의 [Dispatcher] 를 그대로 물려받아**
-     * 그 격리가 사라진다. 반드시 새 [OkHttpClient.Builder] 로 만든다.
-     *
-     * 본문 로깅을 붙이지 않는다 — 보내는 것이 원본 해상도 이미지라 디버그 빌드에서 매 업로드마다
-     * 그 크기가 문자열로 힙에 올라간다.
-     *
-     * `writeTimeout` 은 바이트 사이 유휴 상한이라 전송 전체가 느린 것을 잡지 못한다. 그래서 이
-     * 표면만 `callTimeout` 을 함께 둔다.
+     * 본문 로깅을 붙이지 않는 것과 이 표면만 `callTimeout` 을 두는 것이 의도다 —
+     * `writeTimeout` 은 바이트 사이 유휴 상한이라 전송 전체가 느린 것을 잡지 못한다.
      */
     @Provides
     @Singleton
@@ -229,13 +231,12 @@ Expected: PASS
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/model/qualifier/UploadClient.kt \
         data/src/main/java/com/teamyg/parfait/data/di/NetworkModule.kt \
-        data/src/test/java/com/teamyg/parfait/data/di/UploadClientTest.kt
+        data/src/test/java/com/teamyg/parfait/data/di/UploadOkHttpClientTest.kt
 git commit -m "feat(network): 업로드 전용 OkHttpClient 를 분리한다
 
-presigned URL 에 Authorization 이 실리면 S3 가 거절한다. AuthInterceptor 는
-Retrofit Invocation 태그로 @NoAuth 를 판정하므로 raw OkHttp 요청에는 헤더가
-무조건 붙는다. 재발급 전용 클라이언트를 재사용하지 않는 이유는 그쪽 Dispatcher 를
-업로드가 오래 점유하면 재발급이 다시 굶기 때문이다."
+presigned URL 에 Authorization 이 실리면 S3 가 거절한다. 재발급 전용
+클라이언트를 재사용하지 않는 이유는 그쪽 Dispatcher 를 업로드가 오래
+점유하면 재발급이 다시 굶기 때문이다."
 ```
 
 ---
@@ -265,6 +266,7 @@ package com.teamyg.parfait.data.source.image.remote
 import com.teamyg.parfait.data.di.NetworkModule
 import com.teamyg.parfait.data.model.exception.ApiException
 import com.teamyg.parfait.data.model.exception.PresignedUploadException
+import com.teamyg.parfait.data.model.qualifier.UploadClient
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -295,6 +297,21 @@ class PresignedUploadDataSourceImplTest {
     fun tearDown() {
         server.close()
         file.delete()
+    }
+
+    @Test
+    fun impl_injectsUploadQualifiedClient() {
+        // Given·When 생성자에 붙은 한정자를 본다
+        val qualifiers = PresignedUploadDataSourceImpl::class.java
+            .declaredConstructors
+            .single()
+            .parameterAnnotations
+            .single()
+            .map { annotation -> annotation.annotationClass }
+
+        // Then @UploadClient 다. 빠지면 공유 클라이언트가 주입돼 Authorization 이 붙고 업로드가
+        // 통째로 죽는데, 이 PR 은 소비자가 0 이라 컴파일도 assembleDebug 도 그것을 못 잡는다
+        assertTrue(UploadClient::class in qualifiers)
     }
 
     @Test
@@ -366,6 +383,21 @@ class PresignedUploadDataSourceImplTest {
         val unknown = assertIs<ApiException.Unknown>(result.exceptionOrNull())
         val cause = assertIs<PresignedUploadException>(unknown.cause)
         assertEquals(403, cause.statusCode)
+    }
+
+    @Test
+    fun put_malformedUploadUrl_failsInsteadOfThrowing() = runTest {
+        // Given 서버가 준 uploadUrl 이 http/https 가 아니다
+
+        // When 올린다
+        val result = dataSource.put(
+            uploadUrl = "not a url",
+            contentType = "image/png",
+            file = file,
+        )
+
+        // Then 예외로 새지 않고 Result 로 돌아온다. uploadUrl 은 서버가 주는 값이라 앱이 통제 못 한다
+        assertIs<ApiException.Unknown>(result.exceptionOrNull())
     }
 
     @Test
@@ -472,15 +504,15 @@ class PresignedUploadDataSourceImpl @Inject constructor(
         contentType: String,
         file: File,
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        // asRequestBody 는 파일을 스트리밍으로 읽는다. 바이트를 미리 배열에 담으면 원본 해상도
-        // 이미지가 통째로 힙에 올라간다
-        val request = Request
-            .Builder()
-            .url(uploadUrl)
-            .put(file.asRequestBody(contentType.toMediaType()))
-            .build()
-
         try {
+            // asRequestBody 는 파일을 스트리밍으로 읽는다. 바이트를 미리 배열에 담으면 원본
+            // 해상도 이미지가 통째로 힙에 올라간다
+            val request = Request
+                .Builder()
+                .url(uploadUrl)
+                .put(file.asRequestBody(contentType.toMediaType()))
+                .build()
+
             okHttpClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     Result.success(Unit)
@@ -492,10 +524,16 @@ class PresignedUploadDataSourceImpl @Inject constructor(
             throw e
         } catch (e: IOException) {
             Result.failure(ApiException.Network(e))
+        } catch (e: Exception) {
+            // uploadUrl·contentType 은 서버가 준 값이라 Request 조립 단계에서 예외가 날 수 있다.
+            // 여기서 안 잡으면 Result 를 돌려주기로 한 계약이 깨진 채 호출부까지 올라간다
+            Result.failure(ApiException.Unknown(e))
         }
     }
 }
 ```
+
+> `Request` 조립을 `try` **안에** 둔다. 밖에 두면 잘못된 `uploadUrl`이 그대로 예외로 새어 나간다. `ApiCaller#safeApiCallNoContent`가 같은 모양의 폴백을 이미 쓴다.
 
 - [ ] **Step 6: DI 바인딩을 더한다**
 
@@ -535,7 +573,8 @@ git add data/src/main/java/com/teamyg/parfait/data/model/exception/PresignedUplo
 git commit -m "feat(image): S3 presigned PUT 전송 경로를 추가한다
 
 파일을 스트리밍으로 태워 원본 해상도 이미지가 힙에 통째로 올라가지 않게 한다.
-S3 거절은 우리 서버를 거치지 않아 로그가 없으므로 상태 코드를 예외에 싣는다."
+S3 거절은 우리 서버를 거치지 않아 로그가 없으므로 상태 코드를 예외에 싣는다.
+uploadUrl 은 서버가 주는 값이라 조립 실패도 Result 로 접는다."
 ```
 
 ---
@@ -573,6 +612,7 @@ import com.teamyg.parfait.domain.model.image.ImageType
 import com.teamyg.parfait.domain.model.image.ImageUploadUrlVO
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.test.runTest
@@ -596,7 +636,7 @@ class ImageUploadRepositoryImplTest {
     private lateinit var file: File
 
     private val issued = ImageUploadUrlVO(
-        imageId = ImageId(7L),
+        imageId = ISSUED_IMAGE_ID,
         uploadUrl = "https://s3.example.com/upload",
         imageUrl = "https://cdn.example.com/image.png",
         expiresIn = 900.seconds,
@@ -616,9 +656,10 @@ class ImageUploadRepositoryImplTest {
     private fun givenAllStepsSucceed() {
         coEvery { imageRemoteDataSource.issueUploadUrl(any(), any(), any()) } returns Result.success(issued)
         coEvery { presignedUploadDataSource.put(any(), any(), any()) } returns Result.success(Unit)
+        // 확인 응답의 id 를 발급 id 와 다르게 둔다 — 같은 값이면 확인을 건너뛴 구현도 통과한다
         coEvery { imageRemoteDataSource.confirmUpload(any()) } returns Result.success(
             ConfirmedImageVO(
-                imageId = ImageId(7L),
+                imageId = CONFIRMED_IMAGE_ID,
                 imageUrl = "https://cdn.example.com/image.png",
                 status = ImageStatus.COMPLETED,
             ),
@@ -633,8 +674,39 @@ class ImageUploadRepositoryImplTest {
         // When 업로드한다
         val result = repository.upload(filePath = file.absolutePath, imageType = ImageType.NUKKI)
 
-        // Then 확인까지 마친 imageId 가 나온다
-        assertEquals(ImageId(7L), result.getOrNull())
+        // Then 발급 id 가 아니라 확인까지 마친 id 가 나온다
+        assertEquals(CONFIRMED_IMAGE_ID, result.getOrNull())
+        coVerify(exactly = 1) { imageRemoteDataSource.confirmUpload(ISSUED_IMAGE_ID) }
+    }
+
+    @Test
+    fun upload_allStepsSucceed_callsIssueThenPutThenConfirm() = runTest {
+        // Given 발급·전송·확인이 모두 성공한다
+        givenAllStepsSucceed()
+
+        // When 업로드한다
+        repository.upload(filePath = file.absolutePath, imageType = ImageType.NUKKI)
+
+        // Then 서버 계약이 정한 순서 그대로다 — 발급 전 PUT 은 서명이 없고, 전송 전 확인은 빈 객체를 굳힌다
+        coVerifyOrder {
+            imageRemoteDataSource.issueUploadUrl(any(), any(), any())
+            presignedUploadDataSource.put(any(), any(), any())
+            imageRemoteDataSource.confirmUpload(any())
+        }
+    }
+
+    @Test
+    fun upload_allStepsSucceed_putsToIssuedUploadUrl() = runTest {
+        // Given 발급·전송·확인이 모두 성공한다
+        givenAllStepsSucceed()
+        val putUrl = slot<String>()
+        coEvery { presignedUploadDataSource.put(capture(putUrl), any(), any()) } returns Result.success(Unit)
+
+        // When 업로드한다
+        repository.upload(filePath = file.absolutePath, imageType = ImageType.NUKKI)
+
+        // Then 표시용 imageUrl 이 아니라 서명된 uploadUrl 로 나간다. 둘 다 String 이라 컴파일러가 안 막는다
+        assertEquals(issued.uploadUrl, putUrl.captured)
     }
 
     @Test
@@ -707,6 +779,40 @@ class ImageUploadRepositoryImplTest {
     }
 
     @Test
+    fun upload_confirmFails_mapsToDomainError() = runTest {
+        // Given 발급·전송은 되고 확인이 업무 에러로 실패한다
+        givenAllStepsSucceed()
+        coEvery { imageRemoteDataSource.confirmUpload(any()) } returns Result.failure(
+            ApiException.Business(
+                code = "IMAGE_ALREADY_CONFIRMED",
+                serverMessage = "이미 확정된 이미지입니다",
+                statusCode = 409,
+                errorDetail = null,
+            ),
+        )
+
+        // When 업로드한다
+        val result = repository.upload(filePath = file.absolutePath, imageType = ImageType.NUKKI)
+
+        // Then ApiException 이 도메인까지 새지 않는다
+        val error = assertIs<AppError.Server>(result.exceptionOrNull())
+        assertEquals("IMAGE_ALREADY_CONFIRMED", error.code)
+    }
+
+    @Test
+    fun upload_fileMissing_failsWithoutCallingServer() = runTest {
+        // Given 초안이 가리키는 캐시 파일이 이미 지워졌다
+        val missing = File(file.parentFile, "gone.png")
+
+        // When 업로드한다
+        val result = repository.upload(filePath = missing.absolutePath, imageType = ImageType.NUKKI)
+
+        // Then 발급을 부르지 않는다 — 부르면 올릴 것도 없는데 PENDING 행과 S3 키만 남는다
+        assertIs<AppError.Unexpected>(result.exceptionOrNull())
+        coVerify(exactly = 0) { imageRemoteDataSource.issueUploadUrl(any(), any(), any()) }
+    }
+
+    @Test
     fun upload_unsupportedExtension_failsWithoutCallingServer() = runTest {
         // Given 서버가 받지 않는 확장자다
         val gif = File.createTempFile("topping", ".gif")
@@ -714,7 +820,7 @@ class ImageUploadRepositoryImplTest {
         // When 업로드한다
         val result = repository.upload(filePath = gif.absolutePath, imageType = ImageType.NUKKI)
 
-        // Then 서버를 부르기 전에 끊는다 — 발급을 부르면 PENDING 행과 S3 키만 남는다
+        // Then 서버를 부르기 전에 끊는다
         assertIs<AppError.Unexpected>(result.exceptionOrNull())
         coVerify(exactly = 0) { imageRemoteDataSource.issueUploadUrl(any(), any(), any()) }
         gif.delete()
@@ -722,6 +828,8 @@ class ImageUploadRepositoryImplTest {
 
     private companion object {
         const val FILE_SIZE = 16
+        val ISSUED_IMAGE_ID = ImageId(7L)
+        val CONFIRMED_IMAGE_ID = ImageId(99L)
     }
 }
 ```
@@ -749,12 +857,15 @@ interface ImageUploadRepository {
      * 발급·전송·확인 3단계를 하나로 닫는다. 돌려주는 [ImageId] 는 서버에서 확정까지 마친 것이라
      * 곧바로 배치에 쓸 수 있다.
      *
-     * 중간에서 실패하면 그 지점의 실패가 그대로 올라오고 **되돌리지 않는다** — 취소 API 가 없어
-     * 이미 만들어진 것을 지울 방법이 없다. 다시 부르면 발급부터 전부 다시 탄다.
+     * 중간에서 실패하면 그 지점의 실패가 그대로 올라오고 **되돌리지 않는다** — 서버에 정리
+     * 경로가 없다(`api/image.md`). 다시 부르면 발급부터 전부 다시 탄다.
      *
      * @param filePath 파일 시스템 절대경로다. `file://` uri 가 아니다.
      */
-    suspend fun upload(filePath: String, imageType: ImageType): Result<ImageId>
+    suspend fun upload(
+        filePath: String,
+        imageType: ImageType,
+    ): Result<ImageId>
 }
 ```
 
@@ -779,8 +890,16 @@ class ImageUploadRepositoryImpl @Inject constructor(
     private val imageRemoteDataSource: ImageRemoteDataSource,
     private val presignedUploadDataSource: PresignedUploadDataSource,
 ) : ImageUploadRepository {
-    override suspend fun upload(filePath: String, imageType: ImageType): Result<ImageId> {
+    override suspend fun upload(
+        filePath: String,
+        imageType: ImageType,
+    ): Result<ImageId> {
         val file = File(filePath)
+        // 발급을 먼저 부르면 올릴 것도 없는데 PENDING 행과 S3 키만 남고, 재시도해도 영원히
+        // 같은 자리에서 실패한다. 캐시 파일은 다음 흐름이 시작될 때 지워진다
+        if (file.isFile.not()) {
+            return Result.failure(IllegalStateException("업로드할 파일이 없다 - $filePath").toAppError())
+        }
         // 발급 요청과 PUT 헤더가 같은 값을 써야 한다 — 둘 다 S3 서명 대상이고 어긋난 실패는
         // 서버 로그에 남지 않는다. 그래서 여기서 한 번만 정해 양쪽에 넘긴다
         val contentType = contentTypeOf(file) ?: return Result.failure(
@@ -834,7 +953,9 @@ import com.teamyg.parfait.domain.repository.image.ImageUploadRepository
 ./gradlew :domain:test :data:testDebugUnitTest ktlintCheck :app:assembleDebug
 ```
 
-Expected: 전부 PASS. `:app:assembleDebug`가 Hilt 그래프까지 확인한다 — `@UploadClient` 제공자가 없거나 바인딩이 빠지면 여기서 깨진다.
+Expected: 전부 PASS.
+
+> ⚠️ **`:app:assembleDebug`는 이 PR의 DI 안전망이 아니다.** 저장소에 `dagger.fullBindingGraphValidation` 설정이 없고 Dagger는 기본값에서 **엔트리포인트로부터 도달 가능한 바인딩만** 검증한다. 이 PR에는 소비자가 0이라 `@UploadClient` 제공자가 없어도, `@Binds`를 빠뜨려도 통과한다. 그 구멍은 Task 2의 `impl_injectsUploadQualifiedClient`가 좁힌다. `assembleDebug`가 보는 것은 KSP·Hilt 코드 생성이 깨지지 않는지까지다.
 
 - [ ] **Step 7: 커밋**
 
@@ -846,8 +967,8 @@ git add domain/src/main/java/com/teamyg/parfait/domain/repository/image/ImageUpl
 git commit -m "feat(image): 발급·전송·확인을 하나로 닫는 ImageUploadRepository 를 추가한다
 
 contentType 을 한 곳에서 정해 발급 요청과 PUT 헤더가 어긋날 수 없게 한다.
-중간 실패는 되돌리지 않는다 — 취소 API 가 없어 지울 방법이 없고, 다시 부르면
-발급부터 전부 다시 탄다."
+파일이 없거나 서버가 안 받는 확장자면 발급 전에 끊는다 — 부르면 올릴 것도
+없는데 PENDING 행과 S3 키만 남는다."
 ```
 
 ---
@@ -855,13 +976,15 @@ contentType 을 한 곳에서 정해 발급 요청과 PUT 헤더가 어긋날 �
 ## 완료 조건
 
 - `./gradlew :domain:test :data:testDebugUnitTest ktlintCheck :app:assembleDebug` 전부 통과
-- 신규 테스트 **14건**(Task 1: 3 · Task 2: 5 · Task 3: 6)
+- 신규 테스트 **20건**(Task 1: 3 · Task 2: 7 · Task 3: 10)
 - 커밋 3개, push·PR 없음
 - 기존 파일 변경은 DI 모듈 셋(`NetworkModule`·`RemoteDataSourceModule`·`RepositoryModule`)뿐이고 **기존 동작은 한 줄도 바뀌지 않는다**
+- **스트리밍 전송 여부는 테스트가 아니라 리뷰가 본다.** `Content-Length` 단언은 `readBytes().toRequestBody()`로 바꿔도 그대로 통과한다 — `asRequestBody`를 쓰는지는 코드를 눈으로 확인한다.
 
 ## 이 PR에서 하지 않는 것
 
 - 화면 결선(PR5) · 배치 Repository와 UseCase(PR2) · 토핑 초안(PR3) · 테두리 계약 전환(PR4)
 - presigned URL 만료 판정 — 만료는 실패 후 전량 재시도로만 풀린다
 - 고아 `PENDING` 이미지·S3 객체 정리 — 서버에 경로가 없다
+- **`confirmUpload` 응답의 `status` 판정** — 서버가 `PENDING`인 것만 통과시키므로 성공 응답은 곧 `COMPLETED`다. 계약의 보장은 아니지만(`ImageStatus` KDoc) 앱이 달리 할 처분이 없다
 - 실기기·실서버 확인 — 이 PR에는 소비자가 없어 손으로 밟을 화면이 없다
