@@ -2,8 +2,8 @@
 id: parfait-image
 title: 토핑 배치(배치 확정·위치/크기/각도 수정·테두리 수정·삭제)
 server_module: http/parfaitimage
-server_commit: 57529ec
-verified: 2026-08-19
+server_commit: efbf98f
+verified: 2026-08-20
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
@@ -25,6 +25,13 @@ tags: [api, parfait, server-contract, parfait-image]
 
 **배치된 토핑을 되읽는 경로가 생겼다** — 이 도메인이 아니라 [parfait.md](parfait.md)의
 `GET .../parfaits/today`가 `images` 배열로 내려준다. 이 문서의 오래된 "다시 그릴 수 없다"는 그것으로 닫혔다.
+
+✅ **2026-08-20 — 네 엔드포인트가 전부 캔버스 마감 상태를 본다**(`fix: 마감된 파르페에 대한 편집 요청
+거부`, PR #109). 대상 파르페의 `status`가 `ACTIVE`가 아니면 **409 `PARFAIT_ALREADY_CLOSED`**
+(`ParfaitErrorCode` — 이 도메인 enum이 아니다)로 거부한다. 요청·응답 형태는 그대로이고 **실패 경로만
+늘었다.** 배치를 뺀 셋은 그 김에 **파르페 존재·그룹 소속 검사까지 처음 갖게 됐다**(404
+`PARFAIT_NOT_FOUND`) — 그전에는 경로의 `parfaitId`를 배치 행과 대조만 하고 `groupId`는 멤버십 확인에만
+썼다.
 
 ## 엔드포인트
 
@@ -134,21 +141,23 @@ tags: [api, parfait, server-contract, parfait-image]
 | 400 | `INVALID_BORDER` | `SOLID`인데 색·두께 없음(`ParfaitImageErrorCode`) |
 | 403 | `GROUP_NOT_JOINED` | 그 그룹의 멤버가 아님(`ParfaitGroupApiErrorCode`) |
 | 404 | `PARFAIT_NOT_FOUND` | `parfaitId`가 그 그룹의 파르페가 아님(`ParfaitImageErrorCode`) |
+| 409 | `PARFAIT_ALREADY_CLOSED` | 파르페 `status`가 `ACTIVE`가 아님(**`ParfaitErrorCode`**, 2026-08-20 신설) |
 | 404 | `IMAGE_NOT_FOUND` | `imageId` 부재(`ImageErrorCode`) |
 | 409 | `IMAGE_NOT_CONFIRMED` | 이미지가 `COMPLETED`가 아님(`ParfaitImageErrorCode`) |
 | 401 | `UNAUTHORIZED` 외 | 전역 인증(`AuthErrorCode`) |
 
-  **검사 순서**가 코드에 그대로 있다 — 그룹 참여 → 파르페 존재(`existsByIdAndGroupId`) → 이미지 존재 →
+  **검사 순서**가 코드에 그대로 있다 — 그룹 참여 → 파르페 존재 → **파르페 상태** → 이미지 존재 →
   이미지 상태 → 테두리 검증. 앞이 걸리면 뒤는 실행되지 않는다.
-  근거: `PlaceParfaitImageControllerTest`가 성공 201 포함 6케이스를 직접 검증한다.
+  근거: `PlaceParfaitImageControllerTest`가 성공 201 포함 6케이스를 검증하고, 마감 거부는
+  `PlaceParfaitImageServiceTest`("이미 마감된 파르페면 PARFAIT_ALREADY_CLOSED를 던진다")가 잠근다.
 
   ⚠️ **`PARFAIT_NOT_FOUND`는 "존재하지 않음"과 "다른 그룹 것"을 구분하지 않는다.**
-  `existsByIdAndGroupId(parfaitId, groupId)` 하나로 판정하므로, 남의 그룹 파르페를 지목해도 404다.
+  `findByIdAndGroupId(parfaitId, groupId)` 하나로 판정하므로, 남의 그룹 파르페를 지목해도 404다.
 
-  ⚠️ **파르페 상태를 보지 않는다(2026-08-15 확인).** 그 delta로 `parfait.status`(`ACTIVE`·`CLOSED`·`EMPTY`)가
-  생겼는데 이 검사 순서 어디에도 상태 조건이 없다 — **마감된 캔버스에도 토핑을 올릴 수 있다.**
-  테두리 수정·삭제도 마찬가지다. 마감 이후 편집을 막는 것은 현재 **앱 책임**이다
-  ([parfait.md](parfait.md) 회전 규칙) → [미결](#미결).
+  ✅ **파르페 상태를 본다**(2026-08-20). 존재 확인이 `existsByIdAndGroupId`(불리언)에서
+  `findByIdAndGroupId`(엔티티)로 바뀌면서 **같은 조회로 `status`까지 읽게 됐고**, `ACTIVE`가 아니면
+  409다. 쓰임이 사라진 `existsByIdAndGroupId`는 포트·어댑터·리포지토리에서 함께 걷혔다.
+  직전 판본이 "마감된 캔버스에도 토핑을 올릴 수 있다 · 막는 것은 앱 책임"이라고 적던 자리다.
 
 ### PATCH /api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}
 
@@ -189,13 +198,20 @@ tags: [api, parfait, server-contract, parfait-image]
 | 400 | `INVALID_REQUEST` | 바디 형식 오류 · 경로 변수가 Long이 아님(`CommonErrorCode`) |
 | 404 | `PARFAIT_IMAGE_NOT_FOUND` | `parfaitImageId` 부재이거나 그 배치의 `parfaitId`가 경로와 다름(`ParfaitImageErrorCode`) |
 | 403 | `PARFAIT_IMAGE_NOT_OWNED` | 본인이 배치한 토핑이 아님(`ParfaitImageErrorCode`) |
+| 404 | `PARFAIT_NOT_FOUND` | `parfaitId`가 그 그룹의 파르페가 아님(`ParfaitImageErrorCode`, **2026-08-20 신설**) |
+| 409 | `PARFAIT_ALREADY_CLOSED` | 파르페 `status`가 `ACTIVE`가 아님(**`ParfaitErrorCode`**, 2026-08-20 신설) |
 | 401 | `UNAUTHORIZED` 외 | 전역 인증(`AuthErrorCode`) |
+
+  **검사 순서**: 배치 존재 → 소유권 → **파르페 존재 → 파르페 상태**. 표의 순서가 아니라 이 순서다 —
+  뒤의 둘이 2026-08-20에 붙었고 **소유권 검사보다 뒤**라, 남의 토핑을 마감된 캔버스에서 고치려 하면
+  409가 아니라 403이 온다.
 
   ⚠️ **그룹 미참여도 `PARFAIT_IMAGE_NOT_OWNED`(403)로 나간다.** `UpdateParfaitImageService`는
   `findByGroupIdAndMemberId`가 `null`이든, 찾은 멤버가 배치자가 아니든 **같은 코드**를 던진다 —
   POST가 미참여를 `GROUP_NOT_JOINED`로 구분하는 것과 다르다. 앱이 "그룹에서 나갔다"와 "남의 토핑이다"를
   구분해 안내하려면 코드만으로는 안 된다.
-  근거: `UpdateParfaitImageControllerTest`가 성공 200 + 404 + 403 세 케이스를 검증한다.
+  근거: `UpdateParfaitImageControllerTest`가 성공 200 + 404 + 403 세 케이스를 검증하고, 신설 둘은
+  `UpdateParfaitImageServiceTest`가 잠근다.
 
   **POST와 PATCH의 권한 모델이 비대칭이다** — PATCH는 배치자 본인만, POST는 그룹 멤버 누구나
   남의 배치를 덮어쓸 수 있다(위 upsert 참고).
@@ -242,11 +258,14 @@ tags: [api, parfait, server-contract, parfait-image]
 | 400 | `INVALID_BORDER` | `SOLID`인데 색·두께 없음(`ParfaitImageErrorCode`) |
 | 404 | `PARFAIT_IMAGE_NOT_FOUND` | `parfaitImageId` 부재이거나 그 배치의 `parfaitId`가 경로와 다름 |
 | 403 | `PARFAIT_IMAGE_NOT_OWNED` | 본인이 배치한 토핑이 아님 · **그룹 미참여도 같은 코드** |
+| 404 | `PARFAIT_NOT_FOUND` | `parfaitId`가 그 그룹의 파르페가 아님(`ParfaitImageErrorCode`, **2026-08-20 신설**) |
+| 409 | `PARFAIT_ALREADY_CLOSED` | 파르페 `status`가 `ACTIVE`가 아님(**`ParfaitErrorCode`**, 2026-08-20 신설) |
 | 401 | `UNAUTHORIZED` 외 | 전역 인증(`AuthErrorCode`) |
 
   검사 순서와 코드 선택이 위치 PATCH와 문자 그대로 같다(`UpdateParfaitImageBorderService`가
-  `UpdateParfaitImageService`와 같은 두 검사를 같은 순서로 한다) — 그룹 미참여와 "남의 토핑"이 한 코드로
-  뭉개지는 것도 동일하다. 근거: `UpdateParfaitImageBorderControllerTest`.
+  `UpdateParfaitImageService`와 같은 네 검사를 같은 순서로 한다) — 그룹 미참여와 "남의 토핑"이 한 코드로
+  뭉개지는 것도, 마감 검사가 소유권 뒤인 것도 동일하다. 근거: `UpdateParfaitImageBorderControllerTest`와
+  신설 둘을 덮는 `UpdateParfaitImageBorderServiceTest`.
 
 ### DELETE /api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}
 
@@ -284,10 +303,14 @@ tags: [api, parfait, server-contract, parfait-image]
 | 400 | `INVALID_REQUEST` | 경로 변수가 Long이 아님(`CommonErrorCode`) |
 | 404 | `PARFAIT_IMAGE_NOT_FOUND` | `parfaitImageId` 부재이거나 그 배치의 `parfaitId`가 경로와 다름 |
 | 403 | `PARFAIT_IMAGE_NOT_OWNED` | 본인이 배치한 토핑이 아님 · **그룹 미참여도 같은 코드** |
+| 404 | `PARFAIT_NOT_FOUND` | `parfaitId`가 그 그룹의 파르페가 아님(`ParfaitImageErrorCode`, **2026-08-20 신설**) |
+| 409 | `PARFAIT_ALREADY_CLOSED` | 파르페 `status`가 `ACTIVE`가 아님(**`ParfaitErrorCode`**, 2026-08-20 신설) |
 | 401 | `UNAUTHORIZED` 외 | 전역 인증(`AuthErrorCode`) |
 
-  근거: `DeleteParfaitImageControllerTest`가 성공(200·`data` 널)·404·403 세 케이스를 검증한다.
-  **삭제는 멱등이 아니다** — 같은 `parfaitImageId`를 두 번 지우면 두 번째는 404다.
+  근거: `DeleteParfaitImageControllerTest`가 성공(200·`data` 널)·404·403 세 케이스를 검증하고, 신설 둘은
+  `DeleteParfaitImageServiceTest`가 잠근다. **삭제는 멱등이 아니다** — 같은 `parfaitImageId`를 두 번
+  지우면 두 번째는 404다. 검사 순서는 위치·테두리 PATCH와 같아 **마감 검사가 삭제 실행보다 앞**이므로
+  마감된 캔버스에서는 부수효과(참조 카운트 감소·S3 삭제)가 시작되지 않는다.
 
 ## 도메인 에러 코드 전수
 
@@ -296,13 +319,21 @@ tags: [api, parfait, server-contract, parfait-image]
 | HTTP | code | message | 귀속 |
 |---|---|---|---|
 | 400 | `INVALID_BORDER` | SOLID 테두리는 색상과 두께가 필요합니다 | POST · 테두리 PATCH |
-| 404 | `PARFAIT_NOT_FOUND` | 존재하지 않는 파르페입니다 | POST |
+| 404 | `PARFAIT_NOT_FOUND` | 존재하지 않는 파르페입니다 | **네 엔드포인트 전부**(2026-08-20에 POST 단독에서 넓어졌다) |
 | 404 | `PARFAIT_IMAGE_NOT_FOUND` | 존재하지 않는 배치입니다 | 위치 PATCH · 테두리 PATCH · DELETE |
 | 403 | `PARFAIT_IMAGE_NOT_OWNED` | 본인이 배치한 토핑이 아닙니다 | 위치 PATCH · 테두리 PATCH · DELETE |
 | 409 | `IMAGE_NOT_CONFIRMED` | 업로드가 확인되지 않은 이미지입니다 | POST |
 
 이 도메인은 자기 enum 밖의 코드도 던진다 — `ImageErrorCode.IMAGE_NOT_FOUND`(404),
-`ParfaitGroupApiErrorCode.GROUP_NOT_JOINED`(403). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
+`ParfaitGroupApiErrorCode.GROUP_NOT_JOINED`(403), 그리고 **2026-08-20부터
+`ParfaitErrorCode.PARFAIT_ALREADY_CLOSED`(409)가 네 엔드포인트 전부에서** 나간다
+([parfait.md](parfait.md) "도메인 에러 코드 전수"). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
+
+⚠️ **같은 문자열 `PARFAIT_NOT_FOUND`를 두 enum이 갖는다** — 이 도메인 것과
+`ParfaitErrorCode` 것이고, HTTP status(404)와 message가 같아 **와이어에서는 구분되지 않는다.**
+한 요청 안에서도 갈린다: 토핑 네 엔드포인트는 이 도메인 값을, 캔버스 상세 조회·배경 변경은
+`ParfaitErrorCode` 값을 던진다. 소비 측이 `code` 문자열로 분기하는 한 차이가 없어 실질 영향은 없지만,
+[conventions.md](conventions.md) "코드 문자열은 enum 간 유일하지 않다"의 사례가 하나 늘었다.
 
 ## Android 매핑
 
@@ -358,6 +389,14 @@ nullable 5파라미터다. PATCH 요청 DTO의 5필드가 전부 `= null` 기본
 (`CanvasToppingVO`). `CanvasToppingVO`를 `PlacedToppingVO`와 합치지 않은 것도 같은 이유다 —
 POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"를 뭉개게 된다.
 
+⚠️ **2026-08-20 서버 delta가 실패 경로를 늘렸는데 앱에는 그 코드가 없다.** 네 엔드포인트가 모두
+409 `PARFAIT_ALREADY_CLOSED`를 낼 수 있게 됐지만 `ServerErrorCode`에 대응 상수가 없어 결선 시점에
+일반 오류로 뭉개진다. **지금은 소비처가 0건이라 도달하지 않는다** — 결선 라운드가 처음 마주칠 결정이고,
+"마감된 캔버스"는 03시 회전 직후 화면이 오래 열려 있을 때 실제로 나오는 상태다. 같은 라운드로
+`CanvasStatus` KDoc의 "서버가 그것을 강제하지 않는다 — 마감된 캔버스에도 배치·수정·삭제가 통과한다"가
+거짓이 됐다 → [parfait.md](parfait.md) Android 매핑 ·
+[open-questions](../synthesis/open-questions.md) [2026-08-20].
+
 **소비처는 0건이다.** 캔버스 토핑 배치(C-106)는 여전히 화면 로컬 상태로만 동작한다. 다만 **"다시 그릴 수
 없다"는 사유도, 앱 표면 공백도 사라졌다** — `GET .../parfaits/today`가 배치 전량을 내려주고
 ([parfait.md](parfait.md)) 네 엔드포인트 전부 DataSource까지 와 있다. 남은 것은 Repository·UseCase·화면
@@ -377,8 +416,11 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
   이미지가 걸린다 → [open-questions](../synthesis/open-questions.md)
 - 삭제의 S3 호출이 트랜잭션 안에 있어 커밋 실패 시 DB와 S3가 갈린다
   → [open-questions](../synthesis/open-questions.md)
-- 네 엔드포인트 어디도 `parfait.status`를 보지 않아 **마감된 캔버스도 편집된다** — 서버가 막을지 앱 책임으로
-  둘지 → [open-questions](../synthesis/open-questions.md)
 
 ✅ **2026-08-15 해소** — ① 배치 **삭제** 엔드포인트 신설, ② 배치 후 **테두리 변경 경로** 신설,
 ③ 배치 **목록 조회** 부재는 [parfait.md](parfait.md) `GET .../parfaits/today`가 대신 닫았다.
+
+✅ **2026-08-20 해소** — "네 엔드포인트 어디도 `parfait.status`를 보지 않아 마감된 캔버스도 편집된다"가
+서버 가드로 닫혔다(409 `PARFAIT_ALREADY_CLOSED`). **서버가 막을지 앱 책임으로 둘지**라는 물음에
+서버가 답한 것이고, 남은 것은 앱이 그 코드를 어떻게 보여줄지다 → [Android 매핑](#android-매핑) ·
+[open-questions](../synthesis/open-questions.md).
