@@ -23,3 +23,6 @@
 # `--out` 기본값이 repo 루트에 떨어지므로 여기서 막는다.
 /oq-plan.json
 /oq-plan.json.applied
+
+# superpowers SDD 작업 공간(스크래치, 추적 제외)
+.superpowers/

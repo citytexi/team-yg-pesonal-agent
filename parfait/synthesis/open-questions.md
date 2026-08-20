@@ -5,8 +5,8 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-20
-related_spec: c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022
+related_spec: c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
 tags: [meta, parfait]
@@ -321,7 +321,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-030
 - **출처**: `data/di/NetworkModule.kt#provideOkHttpClient`(PR #174 develop 머지, 2026-08-01) — 단일 `OkHttpClient`가 connect/read/write 타임아웃을 모든 호출에 공통 적용하고 `callTimeout`은 설정하지 않는다(=전체 소요 무제한). 코드리뷰에서 30초가 과하다는 지적을 받아 값을 낮췄으나, 토핑 사진 업로드(누끼 PNG) API는 아직 없어 실제 전송·서버 처리 시간을 모른 채 정한 값이다. OkHttp의 read/write는 전체 전송 시간이 아니라 바이트 간 유휴 상한이라, 업로드가 느린 것 자체는 이 값으로 잡히지 않는다.
 - **항목**: ① 업로드 API 확정 후 전체 소요 상한(`callTimeout`)을 둘지 — 두면 스피너·취소 UX와 값이 묶인다. ② 업로드 전용 `OkHttpClient`(`@Qualifier`)를 분리해 read/write만 늘릴지, 아니면 단일 클라이언트 값을 상향할지. ③ 실패 시 재시도(멱등성 확인 필요)를 어디에 둘지 — 인터셉터 vs 호출부.
-- **상태**: 미해결 (실측 대기 — **보류 사유였던 "업로드 API 미구현"은 2026-08-10 해소됐다**)
+- **상태**: 해소됨 (2026-08-20, PR1 `feature/#270-image-upload-transport` — **미머지**)
+  > ✅ **셋 다 정해졌다.** ① `callTimeout`을 **업로드 표면에만** 둔다 — `writeTimeout`은 바이트 사이
+  > 유휴 상한이라 전송 전체가 느린 것을 못 잡는다. 메인·재발급 클라이언트는 종전대로 3종만 쓴다.
+  > ② 업로드 전용 `OkHttpClient`(`@UploadClient`)를 **분리했다.** 예상대로 선택이 아니라 전제였다.
+  > ③ 재시도는 인터셉터가 아니라 **호출부**다 — 실패하면 발급부터 전량 재시도한다
+  > ([스펙](../specs/2026-08-20-c106-topping-place-api.md) "결정된 것"). 만료 판정을 따로 하지 않으므로
+  > `expiresIn` 선행 조건도 함께 사라졌다. 대가는 고아 S3 객체이고 그 정리 경로 부재는 별개 미결이다.
+  > 수치는 규율대로 문서에 적지 않는다 — 구조만 기록한다.
   > 📌 **전제가 사라졌다(2026-08-10, 서버 `5bb2a3a`)** — 업로드 API가 [api/image.md](../api/image.md)로 들어왔고, 형태가 예상과 다르다. **바이트가 서버를 지나지 않는다**(S3 presigned PUT 직접 업로드). 그래서 타임아웃 결정 대상이 `YG_BASE_URL` 호출이 아니라 **S3로 나가는 PUT**이다 — 이 요청은 Retrofit 서비스가 아니므로 ②의 "업로드 전용 `OkHttpClient` 분리"는 선택이 아니라 사실상 전제가 되고, ③ 재시도는 `expiresIn` 만료 시 URL 재발급이 선행돼야 한다(만료된 presigned URL은 재시도해도 실패한다). ①의 `callTimeout`도 서버 API가 아니라 이 PUT에 걸 값이다.
   > 📌 **클라이언트 분리의 진짜 강제 사유는 타임아웃이 아니다(2026-08-10 최종 코드리뷰).** `AuthInterceptor`가 `request.tag(Invocation::class.java)?.method()`로 **Retrofit 메서드 애노테이션**을 읽어 `@NoAuth`를 판정한다. 발급받은 `uploadUrl`로 raw OkHttp `Request`를 만들어 쏘면 `Invocation` 태그가 없어 `skipAuth = false`가 되고, 토큰이 있는 한 `Authorization: Bearer …`가 **무조건 붙는다.** presigned URL 요청에 이 헤더가 실리면 S3가 인증 수단 중복으로 거절한다. 즉 공유 `OkHttpClient`를 그대로 쓰면 업로드가 **아예 동작하지 않는다** — 분리는 성능 선택이 아니라 기능 전제다. `writeTimeout`이 이미지 업로드에 짧다는 것도 같은 결정에 묶인다.
 - **해소 메모**: 업로드 엔드포인트 붙일 때 실측 후 결정하고 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅"·타임아웃 서술과 [data-layer](../architecture/data-layer.md) 네트워킹 섹션에 반영. 파르페 규율상 문서에 수치는 적지 않고 구조(클라이언트 분리 여부·callTimeout 유무)만 기록한다.
@@ -1064,7 +1071,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-109
 - **출처**: `data/di/NetworkModule.kt#provideOkHttpClient` × `data/service/ImageService.kt#postImages`(**2026-08-12 PR #230으로 develop 머지**) — 로깅 인터셉터가 `BuildConfig.DEBUG`에서 `Level.BODY`이고 `redactHeader("Authorization")`은 **헤더만** 가린다. 발급 응답 본문의 `uploadUrl`은 `X-Amz-Signature`를 포함한 **그 자체가 자격증명**이다(만료 전까지 누구나 그 버킷 키에 PUT할 수 있다). 응답 바디 전량이 logcat에 찍힌다. 기존 14 엔드포인트에는 본문에 자격증명을 싣는 응답이 없어 **이번에 처음 생긴 성질**이다.
 - **항목**: ① debug 로그 레벨을 `BODY`로 유지할지, 아니면 이미지 도메인만 응답 본문을 가릴지(OkHttp 로깅 인터셉터에는 바디 redact 기능이 없어 커스텀 인터셉터가 필요하다). ② 아니면 debug 빌드 한정 + `expiresIn` 만료라는 이중 제한으로 충분하다고 볼지.
-- **상태**: 미해결 (debug 빌드 한정이라 즉시 위험은 낮음 — 실연동 라운드에서 판정)
+- **상태**: 미해결 (**PR5 선행** — 아래 메모 참고)
+  > 📌 **마감이 정해졌다(2026-08-20, PR1 최종 리뷰)** — "실연동 라운드"가 가리키는 라운드는
+  > [c106-topping-place-api](../specs/2026-08-20-c106-topping-place-api.md) 스택의 **PR5**(화면 결선)다.
+  > PR1(업로드 전송 계층)은 `ImageUploadRepository`를 만들었지만 그것을 부르는 코드가 0건이라
+  > **런타임에 presigned URL을 실제로 받아 오는 첫 시점이 PR5**다. 그때까지 logcat에 찍히는 것은
+  > 지금과 같이 아무것도 없다. 커스텀 인터셉터(OkHttp 로깅 인터셉터에 바디 redact가 없다)는
+  > PR1 계획 범위 밖이라 미뤘고, **PR5 계획이 이 항목을 선행 조건으로 실어야 한다.**
+  > 참고: 같은 라운드가 **업로드 전용 클라이언트**에서는 로깅 인터셉터를 아예 제거했다
+  > ([ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절과 별개 표면).
 - **해소 메모**: 결정 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절에 반영한다.
 
 ### [2026-08-10] `image`라는 이름이 domain에서 기기 이미지 뜻으로 선점돼 있다
@@ -1072,7 +1087,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-110
 - **출처**: `image-api-service-layer` 라운드 최종 코드리뷰. `data/source/image/`는 `remote`/`local` 하위 구분이 출처를 갈라 문제가 없지만(저장소 규칙이 "폴더=도메인, 하위=출처"), **`domain/`에는 출처 축이 없다.** 그리고 거기서 `image`는 이미 기기 이미지 뜻이다 — `domain/repository/image/`에 `RecentImageRepository`(기기 캐시)·`ImageSegmentationRepository`(누끼 분할), `domain/usecase/image/`에 `DecodeImageUseCase`·`SegmentImageUseCase`·`AddRecentImageUseCase`·`GetRecentCacheImagesUseCase`가 있고 넷 다 기기 측이다. 이번에 `domain/model/image/`(서버 업로드)가 그 옆에 들어왔다. [image-api-service-layer 스펙](../specs/archive/2026-08-10-image-api-service-layer.md)은 `GalleryImageGroup`만 검토했고 이 두 패키지는 짚지 못했다.
 - **항목**: 다음 라운드가 `ImageRepository`·`UploadImageUseCase`를 만들면 **기기 이미지 심볼들과 같은 패키지에 앉는다.** ① 서버 업로드 쪽을 다른 이름으로 가를지(`imageupload`·`upload`), ② 기기 쪽을 `gallery`·`localimage`로 개명할지(카메라·갤러리 feature가 소비 중이라 파급이 크다), ③ 그대로 두고 클래스명으로만 구분할지. **다음 라운드가 이름을 정하기 전에 결정돼야 한다** — 나중에 바꾸면 소비자가 늘어난 뒤다.
-- **상태**: 미해결 (선행 결정 — S3 PUT·Repository 라운드의 첫 단계)
+- **상태**: 해소됨 (2026-08-20, PR1 — **미머지**)
+  > ✅ **③으로 정해졌다** — 폴더를 가르지 않고 클래스명으로 구분한다. 서버 업로드 Repository는
+  > `domain/repository/image/ImageUploadRepository`로, 기기 쪽 심볼들과 같은 패키지에 앉는다.
+  > 근거: `domain/model/image/`가 이미 서버 업로드 모델을 담고 있어 그쪽과 이름이 맞고
+  > `data/source/image/`와도 대칭이다. ①(`imageupload` 별도 폴더)은 같은 것을 부르는 이름이
+  > 계층마다 갈리고, ②(기기 쪽 개명)는 카메라·갤러리 feature 소비처가 많아 이 라운드 밖이다.
+  > **요청의 `ImageType`이 `NUKKI`·`BACKGROUND` 둘이라 이름에 `Topping`을 붙이지 않았다** —
+  > C-301 배경 업로드가 같은 Repository를 쓴다.
 - **해소 메모**: 기존 `RecentImageLocalDataSource` 이름이 부정확하다는 지적(같은 라운드 스펙 미결)이 이 항목의 부분집합이다. 결정 시 [module-structure](../architecture/module-structure.md)와 [data-layer](../architecture/data-layer.md)에 반영한다.
 
 ### [2026-08-10] `ImageUploadUrlVO.expiresIn`이 상대값이라 만료 판정에 쓸 수 없다
@@ -3532,5 +3554,51 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [api/parfait-image.md](../api/parfait-image.md) Android 매핑의 ⚠️도 함께 걷는다. ②는 C-106 결선 스펙에
   적는다. ③은 OQ-P-234 ③(와이어 계약 테스트 부재)과 같은 성격이지만 대상이 **주석**이라 테스트로는
   안 잡힌다 — 문서 감사 주기가 유일한 수단이라는 사실 자체를 기록해 둔다.
+  > 📌 **②는 답이 났다(2026-08-20, [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md))** —
+  > `PARFAIT_ALREADY_CLOSED`만 토스트 후 캔버스로 되감고 나머지 실패는 화면에 머문다. 마감된 캔버스에는
+  > 다시 눌러도 영원히 실패하므로 잔류시키면 사용자가 할 수 있는 일이 실패 반복뿐이기 때문이다.
+  > 상수 부재도 그 라운드의 선행 커밋이 닫았다. ①③은 그대로 열려 있다.
 
-<!-- oq-next: 245 -->
+### [2026-08-20] 테두리 굵기 거동이 편집 화면과 캔버스에서 다르다
+
+- **ID**: OQ-P-245
+- **출처**: [ADR-0025](../adr/0025-topping-border-as-server-field.md)가 테두리를 픽셀에 굽지 않고 서버
+  필드로 보내기로 하면서 드러난 차이다. 구운 테두리는 이미지의 일부라 **토핑을 키우면 함께 굵어졌다.**
+  서버 `borderWidth`를 받아 그리는 `CanvasToppingLayer`는 그 값을 **화면 dp로 고정**해 8방향 스탬프를
+  찍으므로 토핑을 키워도 굵기가 그대로다. 편집 화면(`ToppingEditViewModel`)은 또 다르게 — `originPxPerDp`로
+  dp를 원본 픽셀 좌표계에 환산해 굽는다. 즉 **같은 "굵기 N dp"가 세 자리에서 서로 다른 그림**이 될 수 있다.
+  위키 정책([[토핑]]·C-104 편집 정책)은 브러시·테두리 범위만 정하고 배율에 따른 거동을 다루지 않는다.
+- **항목**: ① 토핑을 키울 때 테두리가 함께 굵어져야 하는가(정책 확정 필요 — 지금은 서버 계약이 dp 고정
+  쪽으로 사실상 정해 버린 상태다). ② 편집 화면 미리보기를 캔버스와 같은 거동으로 맞출지, 아니면 편집은
+  원본 좌표계 그대로 두고 차이를 받아들일지. ③ 굵기 값의 단위를 계약 문서에 명시할지 —
+  [api/parfait-image.md](../api/parfait-image.md)는 타입만 적고 단위를 말하지 않아 앱이 dp로 정했다.
+- **상태**: 미해결 (정책 근거 없음 — 코드가 먼저 정했다)
+- **해소 메모**: 정하면 [ADR-0025](../adr/0025-topping-border-as-server-field.md) "트레이드오프"와
+  [design-system](../architecture/design-system.md) 토핑 절에 반영한다. C-301 테두리 재편집 라운드가
+  같은 값을 다시 만지므로 그 전에 정하는 편이 싸다.
+
+### [2026-08-20] S3 업로드가 코루틴 취소를 따라가지 않는다
+
+- **ID**: OQ-P-246
+- **출처**: `data/source/image/remote/PresignedUploadDataSourceImpl#put`(PR1 `feature/#270-image-upload-transport`) — `withContext(Dispatchers.IO)` 안에서 OkHttp `Call.execute()`를 블로킹으로 부르고 `Call.cancel()`을 코루틴 취소에 잇지 않는다. 그 블록에 중단점이 없어 **호출 코루틴이 취소돼도 업로드는 `callTimeout`까지 계속 돈다.** 브랜치 최종 리뷰가 잡았고 "되돌리는 비용은 지금이 가장 싸다"고 평가했다.
+- **항목**: ① `suspendCancellableCoroutine` + `enqueue` + `invokeOnCancellation { call.cancel() }`로 바꿀지, 아니면 ② 지금 형태를 두고 화면이 취소를 안 하도록 설계할지. ①이면 취소를 실제로 관측하는 테스트 설계가 따로 필요하다(느린 응답 + 취소).
+- **상태**: 미해결 (**PR5 선행 권고** — 소비자가 붙기 전에 고치는 편이 싸다)
+- **해소 메모**: PR1에서 미룬 이유는 전송 메서드의 모양을 바꾸는 변경이라 단일 fix 웨이브에 태우면 클린한 브랜치를 늦게 흔들 위험이 이득보다 컸다는 것이다. PR5는 로딩 오버레이·실패 시 `popUpTo` 되감기가 있어 `viewModelScope` 취소가 흔한 화면이므로 그 라운드가 판정한다. 다만 `BaseViewModel.launch(key)` 가드가 동시 실행을 1건으로 묶어 두어 최악이라도 유휴 업로드 하나가 `callTimeout`까지 남는 수준이다.
+
+### [2026-08-20] 서버가 200에 실패 봉투를 실으면 `AppError.Server.statusCode`가 null이다
+
+- **ID**: OQ-P-247
+- **출처**: `data/network/ApiCaller#runCatchingApi` — HTTP 200 + `success=false` 봉투는 `ApiException.Business(statusCode = null)`을 만들고(`ApiCaller.kt:60`), `HttpException` 경로만 `statusCode = e.code()`를 채운다(`:84`). 그 값이 `AppError.Server`까지 그대로 흘러간다. PR2 브랜치 최종 리뷰가 "이 브랜치가 지금 잠그지 못하는 것" 중 하나로 짚었다.
+- **항목**: [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)의 실패 처리 절은 되감기 판정을 **`code`와 `statusCode`를 함께 보고** 하라고 정한다 — 코드 문자열이 도메인 간 유일하지 않다는 `ServerErrorCode`의 전제 때문이다. 그런데 `statusCode`가 null로 오는 갈래에서 그 판정이 어떻게 되는지가 정해져 있지 않다. ① `code`만으로 판정하고 `statusCode`는 확증용으로만 쓸지, ② null을 "판정 불가"로 보고 잔류시킬지, ③ 서버가 실제로 200에 실패 봉투를 싣는 경로가 있는지부터 확인할지.
+- **상태**: 미해결 (**PR5가 판정한다** — 되감기 분기를 처음 쓰는 라운드다)
+- **해소 메모**: PR2는 `AppError`로 바꿔 올리기만 하고 코드를 보고 분기하는 자리가 없어 이 null이 문제가 되지 않는다. ③을 먼저 확인하면 ①·②가 필요 없어질 수도 있다 — `api/` 계약 스냅샷에 200 + `success=false` 사례가 있는지 대조하는 것이 가장 싸다.
+
+### [2026-08-20] 업로드 확정과 배치 사이에서 취소되면 고아 이미지가 남고 예외가 `Result` 밖으로 나간다
+
+- **ID**: OQ-P-248
+- **출처**: `domain/usecase/topping/AddToppingUseCase`(PR2 `feature/#270-topping-place-domain`) — 업로드가 `COMPLETED`까지 간 뒤 배치 전에 호출 코루틴이 취소되면 서버에는 확정된 이미지만 남는다. 게다가 `mapErrorToAppError`가 `CancellationException`을 **변환하지 않고 재던지므로**(`AppErrorMapper.kt`) 그 취소는 실패 `Result`가 아니라 예외로 호출부까지 올라간다. PR2 브랜치 최종 리뷰가 짚었다.
+- **항목**: ① 취소를 화면이 어떻게 받을지(예외로 올라오는 것이 정상 계약임을 호출부가 알고 있어야 한다). ② 고아 이미지를 감수할지 — 스펙의 재시도 결정이 이미 고아 S3 객체를 감수하기로 했으므로 같은 처분이면 문서에 그렇게 적으면 된다. ③ `positionZ`를 이미 소진한 흐름을 다시 타면 z가 겹치는지(서버가 유일성을 요구하지 않아 거부되지는 않는다).
+- **상태**: 미해결 (**PR5가 판정한다**)
+- **해소 메모**: OQ-P-246과 뿌리는 같지만 결과가 다르다 — 246은 취소돼도 전송이 계속 도는 것이고, 이쪽은 취소 시점이 두 단계 **사이**일 때 서버에 남는 것이다. PR5는 로딩 오버레이와 `popUpTo` 되감기가 있어 취소가 흔한 화면이므로 그 라운드가 함께 본다. 현재는 `AddToppingUseCase`를 부르는 코드가 0건이라 발생하지 않는다.
+
+<!-- oq-next: 249 -->
