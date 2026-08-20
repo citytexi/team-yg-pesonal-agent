@@ -38,12 +38,16 @@ tags: [plan, parfait, topping, canvas, domain]
 **Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **2번 행**
 
 > ✅ **실행 완료·미머지(2026-08-20)** — subagent-driven-development로 2 태스크, 태스크 리뷰 두 번 다
-> **지적 0건 통과**(fix 라운드 0회). 브랜치 `feature/#270-topping-place-domain`(PR1 팁 `0ea4d9e9` 위),
-> 커밋 3개(`0ea4d9e9..c75bea66`). 신규 테스트 **11건**(계획 예상과 같음), 검증 명령
+> **지적 0건 통과**(fix 라운드 0회). 브랜치 `feature/#270-topping-place-domain`(PR1 브랜치 위),
+> 커밋 3개. 신규 테스트 **11건**(계획 예상과 같음), 검증 명령
 > `:domain:test :data:testDebugUnitTest ktlintCheck :app:assembleDebug` 전부 통과. **머지·push 안 했다.**
 >
 > 최종 브랜치 리뷰(opus, base는 PR1 팁)는 **머지 가능 · Critical 0 · Important 0 · Minor 3**을 냈고,
-> 셋을 fix 웨이브 한 번(`c75bea66`)으로 닫았다. 그래서 계획이 예상한 커밋 2개가 아니라 3개다.
+> 셋을 fix 웨이브 한 번으로 닫았다. 그래서 계획이 예상한 커밋 2개가 아니라 3개다.
+>
+> 🔁 **2026-08-20 저녁, PR1 이 develop 위로 리베이스되면서 이 브랜치도 따라 옮겼다** —
+> `git rebase --onto feature/#270-image-upload-transport 0ea4d9e9`, 충돌 0건.
+> 커밋 3개는 `11c38113..4b780d17`(새 PR1 팁 `496d55f1` 위)이 됐다.
 >
 > **계획 텍스트와 갈린 것 셋:**
 > - `ToppingRepositoryImpl`에서 `.mapErrorToAppError()`의 줄바꿈 위치가 계획 코드 블록과 다르다 —

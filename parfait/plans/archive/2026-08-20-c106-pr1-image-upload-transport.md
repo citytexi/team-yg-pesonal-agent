@@ -47,7 +47,12 @@ tags: [plan, parfait, image, upload, network]
 >
 > ⚠️ **아래 Global Constraints 의 브랜치 항목은 낡았다.** 실제 작업은
 > `feature/#270-c-106-topping-add-api`(팁 `34e1a803`) **위에 새로 만든 `feature/#270-image-upload-transport`**
-> 에서 했고 커밋 6개(`34e1a803..0ea4d9e9`)다. **머지·push 모두 안 했다** — 다음 PR 은 이 브랜치 위에 쌓는다.
+> 에서 했고 커밋 6개였다. **머지·push 모두 안 했다** — 다음 PR 은 이 브랜치 위에 쌓는다.
+>
+> 🔁 **2026-08-20 저녁, develop(`36719e8e`) 위로 리베이스했다.** 커밋 6개는
+> `3467ffe5..496d55f1` 이 됐고 충돌은 0건이었다. **얹혀 있던 문서 커밋 넷은 리베이스가 걷어냈다** —
+> `PARFAIT_ALREADY_CLOSED` 상수·`http/` 문서가 그사이 develop 에 같은 내용으로 들어가(PR #318)
+> git 이 이미 적용된 것으로 판정했다. 그래서 이 브랜치는 이제 업로드 전송 계층 커밋만 담는다.
 >
 > 실행 중 계획을 뒤집은 판정 둘: ① 업로드 클라이언트의 로깅 인터셉터를 통째로 제거(Task 1 각주 참고)
 > ② `ImageUploadRepositoryImpl` 주석에서 세그멘테이션 캐시 정리 시점을 단정하던 절을 삭제.
