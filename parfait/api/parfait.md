@@ -342,11 +342,19 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
   **409 `PARFAIT_ALREADY_CLOSED`만 컨트롤러가 아니라 서비스 테스트가 잠근다**
   (`ChangeParfaitBackgroundServiceTest`의 "이미 마감된 파르페면 PARFAIT_ALREADY_CLOSED를 던진다").
 
+  **검사 순서**: 그룹 멤버십 → 파르페 존재 → **파르페 상태** → 배경 값 해석(`resolveValue`).
+  앞이 걸리면 뒤는 실행되지 않는다.
+
   ✅ **마감된 캔버스의 배경은 이제 바꿀 수 없다**(2026-08-20). `ChangeParfaitBackgroundService`가 파르페를
-  찾은 **직후** `status != ACTIVE`를 검사해 409로 끊는다 — 배경 값 해석(`resolveValue`)보다 앞이라
-  `CLOSED` 캔버스에 잘못된 HEX를 함께 보내도 `INVALID_BACKGROUND`가 아니라 `PARFAIT_ALREADY_CLOSED`가
-  온다. 토핑 네 엔드포인트도 같은 라운드에서 같은 가드를 얻었다([parfait-image.md](parfait-image.md)) —
-  직전 판본이 "마감 후 편집을 막는 서버 가드는 어디에도 없다"고 적던 자리다.
+  찾은 **직후** `status != ACTIVE`를 검사해 409로 끊는다 — 값 해석보다 앞이라 `CLOSED` 캔버스에 잘못된
+  HEX를 함께 보내도 `INVALID_BACKGROUND`가 아니라 `PARFAIT_ALREADY_CLOSED`가 온다. 토핑 네 엔드포인트도
+  같은 라운드에서 같은 가드를 얻었다([parfait-image.md](parfait-image.md)) — 직전 판본이 "마감 후 편집을
+  막는 서버 가드는 어디에도 없다"고 적던 자리다.
+
+  ⚠️ **다만 권한이 상태보다 앞이다.** 멤버십 검사가 첫 줄이라 **마감된 캔버스라도 그 그룹의 멤버가
+  아니면 409가 아니라 403 `GROUP_NOT_JOINED`**가 온다. 토핑 세 편집 경로가 소유권 뒤에 마감을 검사하는
+  것과 같은 모양이고([parfait-image.md](parfait-image.md)), 소비 측이 마감을 유일한 실패로 두고 분기하면
+  이 경우를 놓친다.
 
   ⚠️ **배경 이미지는 `image_meta.reference_count`를 올리지 않는다.** 증감 경로는 토핑 배치(+1)·토핑
   삭제(−1)뿐이고([parfait-image.md](parfait-image.md)) 이 API는 `ImageMetaQueryPort`로 **읽기만** 한다.
@@ -434,6 +442,10 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
   없었다**(경합 시에도 응답이 아니라 `failedCount`로 집계됐다). 지금은 **쓰기 다섯 경로가 직접 던진다** —
   배경 변경과 토핑 배치·수정·테두리·삭제다. 그 결과 **다른 도메인이 이 enum의 값을 내는 자리가 생겼다**:
   토핑 네 엔드포인트는 자기 enum(`ParfaitImageErrorCode`)이 아니라 이 코드로 마감을 알린다.
+
+  ⚠️ **다섯 경로 전부 권한 검사가 마감 검사보다 앞이다.** 마감된 캔버스라도 남의 토핑이거나 그 그룹의
+  멤버가 아니면 **409가 아니라 403**이 먼저 온다(수정·테두리·삭제는 `PARFAIT_IMAGE_NOT_OWNED`,
+  배치·배경 변경은 `GROUP_NOT_JOINED`). 소비 측이 "마감된 캔버스면 409"로 읽고 분기하면 그 경우가 빠진다.
 
 이 도메인은 자기 enum 밖의 코드도 던진다 — `ParfaitGroupApiErrorCode.GROUP_NOT_JOINED`(403),
 그리고 배경 변경의 `ImageErrorCode.IMAGE_NOT_FOUND`(404). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.

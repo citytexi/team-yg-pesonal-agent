@@ -329,6 +329,10 @@ tags: [api, parfait, server-contract, parfait-image]
 `ParfaitErrorCode.PARFAIT_ALREADY_CLOSED`(409)가 네 엔드포인트 전부에서** 나간다
 ([parfait.md](parfait.md) "도메인 에러 코드 전수"). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
 
+⚠️ **마감 거부는 권한 검사 뒤에 온다** — 네 엔드포인트 전부 그렇다. 마감된 캔버스라도 남의 토핑이면
+(수정·테두리·삭제) `PARFAIT_IMAGE_NOT_OWNED`, 그룹 멤버가 아니면(배치) `GROUP_NOT_JOINED`가 **먼저**다.
+"마감된 캔버스면 409"로 읽고 분기하면 그 경우가 빠진다 — 각 엔드포인트 절의 검사 순서를 볼 것.
+
 ⚠️ **같은 문자열 `PARFAIT_NOT_FOUND`를 두 enum이 갖는다** — 이 도메인 것과
 `ParfaitErrorCode` 것이고, HTTP status(404)와 message가 같아 **와이어에서는 구분되지 않는다.**
 한 요청 안에서도 갈린다: 토핑 네 엔드포인트는 이 도메인 값을, 캔버스 상세 조회·배경 변경은
