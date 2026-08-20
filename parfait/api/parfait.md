@@ -2,8 +2,8 @@
 id: parfait
 title: 파르페(캔버스) 조회·배경·회전
 server_module: http/parfait
-server_commit: 57529ec
-verified: 2026-08-19
+server_commit: efbf98f
+verified: 2026-08-20
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server
 related_adr: ADR-0017
@@ -31,6 +31,13 @@ tags: [api, parfait, server-contract, canvas]
 ✅ **2026-08-19 — 서버 안에서 갈려 있던 기준이 합쳐졌다.** 과거 목록의 `to` 기본값만 `LocalDate.now()`
 (자정)로 남아 있던 것이 `ParfaitDay.current()`로 바뀌어, **이 도메인의 "오늘"이 한 값이 됐다.** 같은
 delta가 `groupMembers`에도 `nameTagChip`을 실어 캔버스 상단 멤버 칩이 계약 안으로 들어왔다.
+
+✅ **2026-08-20 — 마감된 캔버스의 쓰기가 서버에서 막혔다**(`fix: 마감된 파르페에 대한 편집 요청 거부`,
+PR #109). 배경 변경과 토핑 네 엔드포인트([parfait-image.md](parfait-image.md))가 대상 파르페의
+`status`를 읽고 `ACTIVE`가 아니면 **409 `PARFAIT_ALREADY_CLOSED`**로 거부한다. 엔드포인트·요청·응답
+형태는 그대로이고 **실패 경로만 늘었다** — 그전에는 03시 회전 직후 마감된 캔버스에 쓰기가 200으로
+성공하고도 뒤이은 `today` 조회가 새 캔버스를 줘서 편집이 사라진 것처럼 보였다. 이로써
+`PARFAIT_ALREADY_CLOSED`가 **공개 경로를 처음 얻었다**(아래 [도메인 에러 코드 전수](#도메인-에러-코드-전수)).
 
 ## 엔드포인트
 
@@ -128,7 +135,9 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 
   ⚠️ **`ensure`는 상태가 아니라 날짜로 찾는다.** `findByGroupIdAndDate`라서, 오늘 날짜 캔버스가 이미
   `CLOSED`·`EMPTY`면 **그것을 그대로 돌려준다**(새로 만들지 않는다). 응답 `status`가 `ACTIVE`가 아닐 수 있고,
-  그때는 토핑을 더 올릴 수 없는 캔버스를 "오늘"로 받는다. **2026-08-18에 이 상태로 가는 지름길이 생겼다** —
+  그때는 토핑을 더 올릴 수 없는 캔버스를 "오늘"로 받는다 — **2026-08-20부터는 그 "올릴 수 없다"를 서버가
+  실제로 강제한다**(쓰기 다섯 경로가 409 `PARFAIT_ALREADY_CLOSED`). 그전까지는 쓰기가 200으로 성공하고
+  다음 `today` 조회에서 편집이 사라진 것처럼 보였다. **2026-08-18에 이 상태로 가는 지름길이 생겼다** —
   테스트 전용 회전이 오늘 캔버스를 강제로 마감하고 내일 날짜 캔버스를 만들므로, 그 뒤 `today`를 부르면
   방금 마감된 캔버스가 온다.
 
@@ -319,6 +328,7 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
 |---|---|---|
 | 400 | `INVALID_BACKGROUND` | 타입에 필요한 값 누락, 또는 HEX 형식 위반(`ParfaitErrorCode`) |
 | 404 | `PARFAIT_NOT_FOUND` | 파르페가 없거나 그 그룹 소속이 아님(`ParfaitErrorCode`) |
+| 409 | `PARFAIT_ALREADY_CLOSED` | 파르페 `status`가 `ACTIVE`가 아님(`ParfaitErrorCode`, **2026-08-20 신설 경로**) |
 | 404 | `IMAGE_NOT_FOUND` | `imageId`에 해당하는 이미지 메타 없음(`ImageErrorCode`) |
 | 409 | `BACKGROUND_IMAGE_NOT_CONFIRMED` | 이미지가 `COMPLETED`가 아님(`ParfaitErrorCode`) |
 | 403 | `GROUP_NOT_JOINED` | 그 그룹의 멤버가 아님(`ParfaitGroupApiErrorCode`) |
@@ -329,11 +339,14 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
   `ParfaitGroupApiErrorCode`). 이미지 미확인은 `ImageErrorCode`가 아니라 **parfait 쪽 enum**
   (`BACKGROUND_IMAGE_NOT_CONFIRMED`)이라는 점이 특히 갈린다 — 소비 측은 도메인별로 분기하면 놓친다.
   근거: `ChangeParfaitBackgroundControllerTest`가 성공 2·400·404 2·409·403 일곱 케이스를 직접 검증한다.
+  **409 `PARFAIT_ALREADY_CLOSED`만 컨트롤러가 아니라 서비스 테스트가 잠근다**
+  (`ChangeParfaitBackgroundServiceTest`의 "이미 마감된 파르페면 PARFAIT_ALREADY_CLOSED를 던진다").
 
-  ⚠️ **마감된 캔버스의 배경도 바꿀 수 있다.** `ChangeParfaitBackgroundService`가 `status`를 보지 않아
-  `CLOSED`·`EMPTY` 파르페에도 그대로 저장된다. 토핑 네 엔드포인트도 상태를 보지 않으므로
-  ([parfait-image.md](parfait-image.md)) **마감 후 편집을 막는 서버 가드는 지금 어디에도 없다** —
-  `PARFAIT_ALREADY_CLOSED`는 회전 로직 안에만 있다 → [미결](#미결).
+  ✅ **마감된 캔버스의 배경은 이제 바꿀 수 없다**(2026-08-20). `ChangeParfaitBackgroundService`가 파르페를
+  찾은 **직후** `status != ACTIVE`를 검사해 409로 끊는다 — 배경 값 해석(`resolveValue`)보다 앞이라
+  `CLOSED` 캔버스에 잘못된 HEX를 함께 보내도 `INVALID_BACKGROUND`가 아니라 `PARFAIT_ALREADY_CLOSED`가
+  온다. 토핑 네 엔드포인트도 같은 라운드에서 같은 가드를 얻었다([parfait-image.md](parfait-image.md)) —
+  직전 판본이 "마감 후 편집을 막는 서버 가드는 어디에도 없다"고 적던 자리다.
 
   ⚠️ **배경 이미지는 `image_meta.reference_count`를 올리지 않는다.** 증감 경로는 토핑 배치(+1)·토핑
   삭제(−1)뿐이고([parfait-image.md](parfait-image.md)) 이 API는 `ImageMetaQueryPort`로 **읽기만** 한다.
@@ -405,20 +418,22 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
 
 ## 도메인 에러 코드 전수
 
-`ParfaitErrorCode`(`core/parfait/exception`) 5종 전부. 2026-08-16 delta가 **2 → 5**로 늘렸다.
+`ParfaitErrorCode`(`core/parfait/exception`) 5종 전부. 2026-08-16 delta가 **2 → 5**로 늘렸고,
+2026-08-20 delta는 종수를 늘리지 않고 **귀속만 바꿨다**.
 
 | HTTP | code | message | 귀속 |
 |---|---|---|---|
 | 400 | `INVALID_DATE_RANGE` | 조회 시작일이 종료일보다 늦을 수 없습니다 | 과거 목록 조회 |
 | 404 | `PARFAIT_NOT_FOUND` | 존재하지 않는 파르페입니다 | 상세 조회 · 배경 변경 |
-| 409 | `PARFAIT_ALREADY_CLOSED` | 이미 마감된 파르페입니다 | **공개 경로 없음** — 아래 |
+| 409 | `PARFAIT_ALREADY_CLOSED` | 이미 마감된 파르페입니다 | 배경 변경 · **토핑 네 엔드포인트**([parfait-image.md](parfait-image.md)) — 아래 |
 | 400 | `INVALID_BACKGROUND` | 배경 정보가 올바르지 않습니다 | 배경 변경 |
 | 409 | `BACKGROUND_IMAGE_NOT_CONFIRMED` | 업로드가 확인되지 않은 이미지입니다 | 배경 변경 |
 
-  ⚠️ **`PARFAIT_ALREADY_CLOSED`에 도달하는 공개 엔드포인트가 없다.** `Parfait.close`·`markEmpty`가
-  `status != ACTIVE`일 때 던지는데, 두 메서드를 부르는 곳은 회전 로직뿐이고 회전은 `ACTIVE`만 골라 온다.
-  즉 이 코드는 **회전 배치가 동시 실행돼 경합할 때만** 나갈 수 있고, 그때도 응답이 아니라 `failedCount`로
-  집계된다. 앱이 이 코드를 받을 경로는 현재 없다.
+  🔁 **`PARFAIT_ALREADY_CLOSED`가 공개 경로를 얻었다**(2026-08-20). 직전 판본까지 이 코드를 던지는 곳은
+  `Parfait.close`·`markEmpty`뿐이었고 그 둘을 부르는 회전 로직은 `ACTIVE`만 골라 오므로 **앱이 받을 경로가
+  없었다**(경합 시에도 응답이 아니라 `failedCount`로 집계됐다). 지금은 **쓰기 다섯 경로가 직접 던진다** —
+  배경 변경과 토핑 배치·수정·테두리·삭제다. 그 결과 **다른 도메인이 이 enum의 값을 내는 자리가 생겼다**:
+  토핑 네 엔드포인트는 자기 enum(`ParfaitImageErrorCode`)이 아니라 이 코드로 마감을 알린다.
 
 이 도메인은 자기 enum 밖의 코드도 던진다 — `ParfaitGroupApiErrorCode.GROUP_NOT_JOINED`(403),
 그리고 배경 변경의 `ImageErrorCode.IMAGE_NOT_FOUND`(404). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
@@ -442,6 +457,16 @@ Service·DataSource 함수가 있다.
 ✅ **2026-08-20(PR #308·#310 develop 머지) — 소비처 수는 그대로 넷이고 `android_status`도 `partial`이다.**
 이 라운드가 바꾼 것은 갈래 수가 아니라 **오늘 조회 응답을 얼마나 읽는가**다(멤버 칩 결선 + 하루 경계
 정정). 배경 변경은 여전히 소비처 0건이라 Repository 인터페이스에 없다.
+
+⚠️ **2026-08-20 서버 delta로 앱 주석 일곱 곳이 거짓이 됐다.** "서버가 캔버스 상태를 보지 않아 마감된
+캔버스도 편집된다 · 막는 것은 화면 책임"이라는 서술이 `ParfaitService`·`ParfaitRemoteDataSource`(둘)·
+`ParfaitRepository`·`CanvasStatus`·`CanvasMainViewModel`·`CanvasMainScreen`에 흩어져 있는데 서버가
+그 전제를 닫았다. **동작은 안 깨진다** — 화면이 지난 캔버스의 편집 진입을 치워 두었으므로 그 방어가
+이제 서버 가드와 겹칠 뿐이고, 쓰기 다섯 경로는 소비처가 0건이라 409를 받을 코드가 아직 없다.
+남는 것은 ① 낡은 주석 정리와 ② 결선 시 `PARFAIT_ALREADY_CLOSED`를 어떤 문구로 보여줄지다 —
+앱 `ServerErrorCode`에 이 코드 상수가 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-20].
+이 부류는 [parfait/CLAUDE.md](../CLAUDE.md) "수명이 기준이다"가 경고한 **다른 컴포넌트의 현재 상태를
+단정한 주석**이고, 하루 만에 낡은 사례가 2026-08-19에 이어 두 번째다.
 
 **계약의 두 성질이 소비 방식을 갈랐다.**
 ① `today`는 **부작용이 있다**(행 생성). 그럼에도 쓰는 이유는 토핑을 얹으려면 `parfaitId`가 있어야 하고,
@@ -604,8 +629,6 @@ DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조
   → [open-questions](../synthesis/open-questions.md)
 - `images[].placedBy`가 탈퇴 멤버를 걸러내지 않아 `groupMembers`에 없는 `groupMemberId`와 `(알수없음)`
   닉네임이 섞인다 → [open-questions](../synthesis/open-questions.md)
-- 배경 변경이 캔버스 마감 상태를 보지 않아 `CLOSED`·`EMPTY` 캔버스의 배경도 바뀐다
-  → [open-questions](../synthesis/open-questions.md)
 - 배경 이미지가 `reference_count`를 올리지 않아 같은 이미지의 토핑을 지우면 배경이 깨질 수 있다
   → [open-questions](../synthesis/open-questions.md)
 - 배경 이미지를 요청은 `imageId`로 받고 응답·조회는 URL로만 내려줘 앱이 현재 배경의 이미지 id를 되짚을
@@ -619,4 +642,9 @@ DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조
 ✅ **2026-08-19 해소 2건** — ① 하루 경계가 서버 안에서 갈려 있던 것(과거 목록 `to` 기본값만 자정)이
 `ParfaitDay.current()`로 통일됐다. ② `nameTagChip`이 `placedBy`에만 있고 `groupMembers`에는 없어
 캔버스 상단 멤버 칩을 계약으로 정할 수 없던 것이 닫혔다. **남은 것은 앱이 03시 경계와 칩 필드를
-따라오는 일**이다 → [open-questions](../synthesis/open-questions.md).
+따라오는 일**이었고 그것도 2026-08-20에 닫혔다 → [open-questions](../synthesis/open-questions.md).
+
+✅ **2026-08-20 해소 1건** — 배경 변경이 마감 상태를 보지 않던 것을 서버가 409 `PARFAIT_ALREADY_CLOSED`로
+막았다(OQ-P-189). **앱이 "막는 것은 화면 책임"이라고 적어 둔 자리 일곱 곳이 그 순간 거짓이 됐다** —
+경로가 아니라 서술의 문제라 `⚠️불일치`는 아니지만 정리 대상이다 → [Android 매핑](#android-매핑) ·
+[open-questions](../synthesis/open-questions.md).

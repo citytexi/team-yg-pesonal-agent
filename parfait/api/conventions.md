@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: 57529ec
-verified: 2026-08-19
+server_commit: efbf98f
+verified: 2026-08-20
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -87,6 +87,11 @@ tags: [api, parfait, server-contract, conventions]
 `code`만으로 분기하면 서로 다른 네 상황(토큰의 회원 부재 vs 그룹 관련 회원 부재 vs 업로드 URL 발급 시
 회원 부재 vs 계정 조회·닉네임 변경 시 회원 부재)을 한 브랜치로 뭉갠다. **같은 문자열을 가진 enum이 넷**이
 됐다(2026-08-11 member 도메인 신설).
+
+📌 **반대로 status·message까지 같아 와이어에서 구분되지 않는 쌍도 있다.** `PARFAIT_NOT_FOUND`가
+`ParfaitErrorCode`와 `ParfaitImageErrorCode` 양쪽에 있고 둘 다 404·같은 메시지다 — 어느 enum이 던졌는지
+소비 측은 알 수 없고 알 필요도 없다. 2026-08-20 delta로 토핑 네 엔드포인트가 전부 이 코드를 내게 되면서
+사례가 넓어졌다([parfait-image.md](parfait-image.md)).
 
 ⚠️ **한 엔드포인트가 같은 `code`를 서로 다른 status로 낼 수도 있다.** `GET /api/v1/users/me`가 그렇다 —
 `JwtAuthFilter`가 던지면 **401**, `MemberService`가 던지면 **404**인데 문자열은 둘 다 `MEMBER_NOT_FOUND`다
