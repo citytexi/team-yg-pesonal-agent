@@ -45,8 +45,8 @@ tags: [plan, parfait, topping, canvas, datastore, state]
 **Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **3번 행**, 「토핑 초안 SSOT」·「표시·제어 규칙」·「C-001 오늘 캔버스 조회 실패 표현」 절
 
 > ✅ **실행 완료·미머지(2026-08-20)** — subagent-driven-development로 5 태스크. 브랜치
-> `feature/#270-topping-draft-ssot`(PR2 브랜치 `feature/#270-topping-place-domain` 위), 커밋 **9개**
-> (`ba8707a1`..`b916eeec`). 신규 테스트 **20건**(계획 예상 18건 + 최종 리뷰가 요구한 2건),
+> `feature/#270-topping-draft-ssot`(PR2 브랜치 `feature/#270-topping-place-domain` 위), 커밋 **10개**
+> (`99fd7a91`..`b5d8f1ce`, 아래 리베이스 뒤 기준). 신규 테스트 **20건**(계획 예상 18건 + 최종 리뷰가 요구한 2건),
 > 검증 명령 `:domain:test :data:testDebugUnitTest :feature:groups:canvas:impl:testDebugUnitTest
 > ktlintCheck :app:assembleDebug` 전부 통과. **머지·push 안 했다.**
 >
@@ -66,11 +66,25 @@ tags: [plan, parfait, topping, canvas, datastore, state]
 >   비해 과하다는 지적을 받아 6파일에서 23줄을 걷었다(`b916eeec`). 걷은 것은 코드가 이미 말하는 것,
 >   두 계층에 겹쳐 적힌 dedupe 설명, 다른 파일의 현재 상태를 단정하던 주석이다. **코드가 정본이다.**
 > - `ToppingDraftLocalDataSourceImpl.draft` 가 계획과 달리 원문 단계에서 `distinctUntilChanged` 한 뒤
->   decode 하고, Repository 쪽 중복 dedupe 는 지웠다(`67efb99b`). 이웃 `EncryptedPreferences.observe` 가
+>   decode 하고, Repository 쪽 중복 dedupe 는 지웠다. 이웃 `EncryptedPreferences.observe` 가
 >   같은 이유로 같은 순서를 쓴다.
 >
+> 🔁 **스택 셋을 develop `9b112e86` 위로 다시 쌓았다(2026-08-20 저녁)** — PR1·PR2는 충돌 0건이었고
+> **PR3만 develop 의 Spotlight 라운드(PR #298)와 부딪혔다.** 그 라운드가 C-001 에 작성자 토스트·
+> `LifecycleStartEffect`·토핑 탭 콜백을 더하면서 `CanvasMainRoute`·`CanvasMainViewModel` 을 같이 고쳤기
+> 때문이고, 커밋 셋에 걸쳐 해소했다. 양쪽 기능은 전부 살렸다.
+>
+> **그 과정에서 토스트 자리 하나를 다시 정했다**(계획에 없던 결정, 커밋 `b5d8f1ce`). Spotlight 토스트가
+> `YGCanvas` 의 `overlayContent`에 — 즉 **캔버스 프레임 상단**에 — 이미 못 박혀 있어서, 실패 토스트를
+> `YGScaffoldV2` 의 공통 자리로 보내면 같은 화면에서 토스트 자리가 둘로 갈리고 [[toast]] 공통 정책의
+> 스택(나중 것이 위로)이 큐마다 따로 논다. 그래서 **정책 하나를 화면 쪽 호스트에 넘기고 스캐폴드에는
+> 넘기지 않는다.** 스캐폴드는 이 화면에서 로딩 오버레이 자리로만 남는다(PR5 가 쓴다).
+> ygscaffold-v2 스펙이 정한 "공통 실패 자리는 스캐폴드"와 갈리는 첫 사례라
+> [open-questions OQ-P-167](../../synthesis/open-questions.md)에 근거를 남겼다.
+>
 > **아직 안 한 것**: 아래 「완료 조건」의 실기기 확인 5항목. 비활성 버튼 표현과 토스트 노출은
-> `:core:designsystem`에 호스트 테스트 소스셋이 없어 사람 눈이 유일한 감지선이다.
+> `:core:designsystem`에 호스트 테스트 소스셋이 없어 사람 눈이 유일한 감지선이고, 리베이스로 토스트가
+> 뜨는 자리가 바뀌었으므로 **조회 실패 토스트가 캔버스 프레임 상단에 뜨는지**도 함께 본다.
 
 ## Global Constraints
 
