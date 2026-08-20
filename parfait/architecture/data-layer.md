@@ -167,6 +167,15 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `MemberRepository`(#263, #306) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` · **`withdraw`**(#306) | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` · `WithdrawUseCase`(S-001 Danger Zone) |
 | `ParfaitRepository`(#268, #279) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) |
 
+> 📌 **위 표는 develop 기준이다.** 미머지 브랜치 둘이 Repository를 하나씩 더 얹어 뒀고, 머지될 때
+> 이 표로 들어온다(2026-08-20). `ImageUploadRepository.upload(filePath, imageType): Result<ImageId>`
+> — 발급·PUT·확인 3단계를 하나로 닫는다(`feature/#270-image-upload-transport`).
+> `ToppingRepository.place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>`
+> — DataSource가 가진 넷 중 배치 하나만 연다(`feature/#270-topping-place-domain`). 둘을 조율하는
+> `AddToppingUseCase`도 같은 브랜치에 있다. **셋 다 소비자가 0이라 아직 아무 화면도 부르지 않는다** —
+> 결선은 [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)의 PR5다.
+> 배치 말고 셋(수정·삭제·테두리)을 안 올린 것은 아래 `ParfaitRepository` 방침과 같은 이유다.
+
 **`ParfaitRepository`는 DataSource가 가진 다섯 갈래 중 넷을 연다** — 남은 배경 변경은 소비자가
 생길 때 올린다(`ParfaitGroupRepository`와 같은 방침: 쓰지 않는 갈래를 미리 열면 어떤 실패를 어떻게
 다룰지 정하지 않은 채 계약이 굳는다). #268에서는 셋이었고 **같은 ViewModel 안에서 층이 갈려 있었다**

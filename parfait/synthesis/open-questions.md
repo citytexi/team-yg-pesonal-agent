@@ -3585,4 +3585,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**PR5 선행 권고** — 소비자가 붙기 전에 고치는 편이 싸다)
 - **해소 메모**: PR1에서 미룬 이유는 전송 메서드의 모양을 바꾸는 변경이라 단일 fix 웨이브에 태우면 클린한 브랜치를 늦게 흔들 위험이 이득보다 컸다는 것이다. PR5는 로딩 오버레이·실패 시 `popUpTo` 되감기가 있어 `viewModelScope` 취소가 흔한 화면이므로 그 라운드가 판정한다. 다만 `BaseViewModel.launch(key)` 가드가 동시 실행을 1건으로 묶어 두어 최악이라도 유휴 업로드 하나가 `callTimeout`까지 남는 수준이다.
 
-<!-- oq-next: 247 -->
+### [2026-08-20] 서버가 200에 실패 봉투를 실으면 `AppError.Server.statusCode`가 null이다
+
+- **ID**: OQ-P-247
+- **출처**: `data/network/ApiCaller#runCatchingApi` — HTTP 200 + `success=false` 봉투는 `ApiException.Business(statusCode = null)`을 만들고(`ApiCaller.kt:60`), `HttpException` 경로만 `statusCode = e.code()`를 채운다(`:84`). 그 값이 `AppError.Server`까지 그대로 흘러간다. PR2 브랜치 최종 리뷰가 "이 브랜치가 지금 잠그지 못하는 것" 중 하나로 짚었다.
+- **항목**: [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)의 실패 처리 절은 되감기 판정을 **`code`와 `statusCode`를 함께 보고** 하라고 정한다 — 코드 문자열이 도메인 간 유일하지 않다는 `ServerErrorCode`의 전제 때문이다. 그런데 `statusCode`가 null로 오는 갈래에서 그 판정이 어떻게 되는지가 정해져 있지 않다. ① `code`만으로 판정하고 `statusCode`는 확증용으로만 쓸지, ② null을 "판정 불가"로 보고 잔류시킬지, ③ 서버가 실제로 200에 실패 봉투를 싣는 경로가 있는지부터 확인할지.
+- **상태**: 미해결 (**PR5가 판정한다** — 되감기 분기를 처음 쓰는 라운드다)
+- **해소 메모**: PR2는 `AppError`로 바꿔 올리기만 하고 코드를 보고 분기하는 자리가 없어 이 null이 문제가 되지 않는다. ③을 먼저 확인하면 ①·②가 필요 없어질 수도 있다 — `api/` 계약 스냅샷에 200 + `success=false` 사례가 있는지 대조하는 것이 가장 싸다.
+
+### [2026-08-20] 업로드 확정과 배치 사이에서 취소되면 고아 이미지가 남고 예외가 `Result` 밖으로 나간다
+
+- **ID**: OQ-P-248
+- **출처**: `domain/usecase/topping/AddToppingUseCase`(PR2 `feature/#270-topping-place-domain`) — 업로드가 `COMPLETED`까지 간 뒤 배치 전에 호출 코루틴이 취소되면 서버에는 확정된 이미지만 남는다. 게다가 `mapErrorToAppError`가 `CancellationException`을 **변환하지 않고 재던지므로**(`AppErrorMapper.kt`) 그 취소는 실패 `Result`가 아니라 예외로 호출부까지 올라간다. PR2 브랜치 최종 리뷰가 짚었다.
+- **항목**: ① 취소를 화면이 어떻게 받을지(예외로 올라오는 것이 정상 계약임을 호출부가 알고 있어야 한다). ② 고아 이미지를 감수할지 — 스펙의 재시도 결정이 이미 고아 S3 객체를 감수하기로 했으므로 같은 처분이면 문서에 그렇게 적으면 된다. ③ `positionZ`를 이미 소진한 흐름을 다시 타면 z가 겹치는지(서버가 유일성을 요구하지 않아 거부되지는 않는다).
+- **상태**: 미해결 (**PR5가 판정한다**)
+- **해소 메모**: OQ-P-246과 뿌리는 같지만 결과가 다르다 — 246은 취소돼도 전송이 계속 도는 것이고, 이쪽은 취소 시점이 두 단계 **사이**일 때 서버에 남는 것이다. PR5는 로딩 오버레이와 `popUpTo` 되감기가 있어 취소가 흔한 화면이므로 그 라운드가 함께 본다. 현재는 `AddToppingUseCase`를 부르는 코드가 0건이라 발생하지 않는다.
+
+<!-- oq-next: 249 -->
