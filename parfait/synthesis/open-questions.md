@@ -1064,7 +1064,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-109
 - **출처**: `data/di/NetworkModule.kt#provideOkHttpClient` × `data/service/ImageService.kt#postImages`(**2026-08-12 PR #230으로 develop 머지**) — 로깅 인터셉터가 `BuildConfig.DEBUG`에서 `Level.BODY`이고 `redactHeader("Authorization")`은 **헤더만** 가린다. 발급 응답 본문의 `uploadUrl`은 `X-Amz-Signature`를 포함한 **그 자체가 자격증명**이다(만료 전까지 누구나 그 버킷 키에 PUT할 수 있다). 응답 바디 전량이 logcat에 찍힌다. 기존 14 엔드포인트에는 본문에 자격증명을 싣는 응답이 없어 **이번에 처음 생긴 성질**이다.
 - **항목**: ① debug 로그 레벨을 `BODY`로 유지할지, 아니면 이미지 도메인만 응답 본문을 가릴지(OkHttp 로깅 인터셉터에는 바디 redact 기능이 없어 커스텀 인터셉터가 필요하다). ② 아니면 debug 빌드 한정 + `expiresIn` 만료라는 이중 제한으로 충분하다고 볼지.
-- **상태**: 미해결 (debug 빌드 한정이라 즉시 위험은 낮음 — 실연동 라운드에서 판정)
+- **상태**: 미해결 (**PR5 선행** — 아래 메모 참고)
+  > 📌 **마감이 정해졌다(2026-08-20, PR1 최종 리뷰)** — "실연동 라운드"가 가리키는 라운드는
+  > [c106-topping-place-api](../specs/2026-08-20-c106-topping-place-api.md) 스택의 **PR5**(화면 결선)다.
+  > PR1(업로드 전송 계층)은 `ImageUploadRepository`를 만들었지만 그것을 부르는 코드가 0건이라
+  > **런타임에 presigned URL을 실제로 받아 오는 첫 시점이 PR5**다. 그때까지 logcat에 찍히는 것은
+  > 지금과 같이 아무것도 없다. 커스텀 인터셉터(OkHttp 로깅 인터셉터에 바디 redact가 없다)는
+  > PR1 계획 범위 밖이라 미뤘고, **PR5 계획이 이 항목을 선행 조건으로 실어야 한다.**
+  > 참고: 같은 라운드가 **업로드 전용 클라이언트**에서는 로깅 인터셉터를 아예 제거했다
+  > ([ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절과 별개 표면).
 - **해소 메모**: 결정 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절에 반영한다.
 
 ### [2026-08-10] `image`라는 이름이 domain에서 기기 이미지 뜻으로 선점돼 있다
@@ -3555,4 +3563,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [design-system](../architecture/design-system.md) 토핑 절에 반영한다. C-301 테두리 재편집 라운드가
   같은 값을 다시 만지므로 그 전에 정하는 편이 싸다.
 
-<!-- oq-next: 246 -->
+### [2026-08-20] S3 업로드가 코루틴 취소를 따라가지 않는다
+
+- **ID**: OQ-P-246
+- **출처**: `data/source/image/remote/PresignedUploadDataSourceImpl#put`(PR1 `feature/#270-image-upload-transport`) — `withContext(Dispatchers.IO)` 안에서 OkHttp `Call.execute()`를 블로킹으로 부르고 `Call.cancel()`을 코루틴 취소에 잇지 않는다. 그 블록에 중단점이 없어 **호출 코루틴이 취소돼도 업로드는 `callTimeout`까지 계속 돈다.** 브랜치 최종 리뷰가 잡았고 "되돌리는 비용은 지금이 가장 싸다"고 평가했다.
+- **항목**: ① `suspendCancellableCoroutine` + `enqueue` + `invokeOnCancellation { call.cancel() }`로 바꿀지, 아니면 ② 지금 형태를 두고 화면이 취소를 안 하도록 설계할지. ①이면 취소를 실제로 관측하는 테스트 설계가 따로 필요하다(느린 응답 + 취소).
+- **상태**: 미해결 (**PR5 선행 권고** — 소비자가 붙기 전에 고치는 편이 싸다)
+- **해소 메모**: PR1에서 미룬 이유는 전송 메서드의 모양을 바꾸는 변경이라 단일 fix 웨이브에 태우면 클린한 브랜치를 늦게 흔들 위험이 이득보다 컸다는 것이다. PR5는 로딩 오버레이·실패 시 `popUpTo` 되감기가 있어 `viewModelScope` 취소가 흔한 화면이므로 그 라운드가 판정한다. 다만 `BaseViewModel.launch(key)` 가드가 동시 실행을 1건으로 묶어 두어 최악이라도 유휴 업로드 하나가 `callTimeout`까지 남는 수준이다.
+
+<!-- oq-next: 247 -->
