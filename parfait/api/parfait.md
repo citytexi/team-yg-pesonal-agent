@@ -525,7 +525,14 @@ D−1). **정책상 옳은 쪽이 서버였으므로 앱을 옮겼다**(위키 [
 (서버가 같은 행에서 두 값을 준다). ⚠️ **토핑 작성자 칩(`placedBy.nameTagChip`)은 DTO까지만이다** —
 `PlacedByResponse`가 필드를 두지만 `ToppingPlacerVO`에는 안 올렸다. 읽는 화면이 0건인 상태로 도메인
 모양을 굳히지 않으려는 판단이고, **C-202 Spotlight는 이 필드가 아니라 `groupMembers` 조인을 쓰므로**
-그 화면이 붙어도 여기가 자동으로 필요해지지는 않는다. 응답 필드를 안 읽는 것뿐이라 `⚠️불일치`는
+그 화면이 붙어도 여기가 자동으로 필요해지지는 않는다.
+📌 **그 Spotlight가 실제로 붙었고 예측대로 조인을 썼다**(2026-08-20, PR #298 develop 머지) — 토스트의
+닉네임 색을 `groupMembers`에서 같은 `groupMemberId`로 찾아 정하고, 못 찾으면 `Default`다. **탈퇴
+멤버에서도 서버가 `placedBy.nameTagChip = DEFAULT`를 주므로 두 경로의 결과가 우연히 같다** — 그래서
+이 필드를 안 읽는 것이 지금은 증상을 만들지 않는다. 서버가 두 목록의 배정 규칙을 갈라 놓는 순간
+조용히 틀린 색이 된다 → [open-questions](../synthesis/open-questions.md) OQ-P-251.
+닉네임 쪽은 반대로 **서버 문자열이 그대로 화면 문장이 된다** — 탈퇴 멤버 토핑은
+`(알수없음)님이 …에 쌓았어요`로 뜬다. 응답 필드를 안 읽는 것뿐이라 `⚠️불일치`는
 아니다(앱 JSON은 `ignoreUnknownKeys = true`) → [open-questions](../synthesis/open-questions.md) [2026-08-18].
 
 ✅ **키 어긋남도 develop에서 닫혔다** — 2026-08-19 서버 delta가 응답 키를 `nameTagChip` 계열로 바꾼 뒤
@@ -645,7 +652,8 @@ DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조
 - 테스트 전용 회전 엔드포인트가 인증 없이 전 그룹 캔버스를 마감한다(프로덕션 제거 TODO)
   → [open-questions](../synthesis/open-questions.md)
 - `images[].placedBy`가 탈퇴 멤버를 걸러내지 않아 `groupMembers`에 없는 `groupMemberId`와 `(알수없음)`
-  닉네임이 섞인다 → [open-questions](../synthesis/open-questions.md)
+  닉네임이 섞인다 — **2026-08-20부터 이 값을 실제로 읽는 화면이 생겼다**(C-202 Spotlight 토스트)
+  → [open-questions](../synthesis/open-questions.md)
 - 배경 이미지가 `reference_count`를 올리지 않아 같은 이미지의 토핑을 지우면 배경이 깨질 수 있다
   → [open-questions](../synthesis/open-questions.md)
 - 배경 이미지를 요청은 `imageId`로 받고 응답·조회는 URL로만 내려줘 앱이 현재 배경의 이미지 id를 되짚을

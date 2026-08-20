@@ -136,8 +136,8 @@ DataSource 배치 관례를 확립한다.
   다만 redact 대상은 헤더뿐이라 **요청 바디에 실리는 refresh token은 여전히 평문**이다
   → [open-questions](../synthesis/open-questions.md). `OkHttpClient`는 connect/read/write 타임아웃
   3종을 설정한다.
-  > 📌 **표면이 셋이 되면서 이 규칙에 예외가 생겼다**(2026-08-20, 브랜치
-  > `feature/#270-image-upload-transport` — **미머지**). S3 presigned PUT 전용 `@UploadClient`
+  > 📌 **표면이 셋이 되면서 이 규칙에 예외가 생겼다**(2026-08-20 develop 머지, PR #322).
+  > S3 presigned PUT 전용 `@UploadClient`
   > 클라이언트는 **로깅 인터셉터를 아예 달지 않는다.** presigned URL은 서명을 쿼리 스트링에 싣는
   > 방식이라 **URL 자체가 자격증명**이고, `HttpLoggingInterceptor`는 `HEADERS` 이상 모든 레벨에서
   > 요청 라인을 남기며 `redactHeader`로는 URL을 가릴 수 없다. 이 표면이 보내는 요청은 그 PUT

@@ -109,6 +109,11 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
   아니라 앱 수명 동안 하나뿐인 사실이라 `:data` SSoT에 살고, S-001·S-002는 `GetMyAccountFlowUseCase`를
   `init`에서 수집만 한다 — 화면 진입마다 다시 조회하지 않고, 한 화면의 닉네임 변경이 구독 중인 모든
   화면에 그대로 전파된다([ADR-0022](../adr/0022-user-info-local-ssot.md)).
+  - **세 번째 구독자 G-001이 그 경계를 다시 보여 준다**(2026-08-20, PR #312). 같은 ViewModel이
+    그룹 목록은 `Enter`(화면에 설 때마다)로, 닉네임은 `init`(한 번)으로 가져온다 — **남이 바꾸는
+    값과 앱 전역 사실이 갈리는 자리**다. 이 화면은 닉네임을 그리지도 않는다(A-005로 넘기는 인자).
+    ⚠️ 그래서 `null`을 로딩으로 다룰 화면 표현이 없고, 값이 아직 없으면 이동을 **조용히 건너뛴다**
+    → OQ-P-253.
   - **`null`은 빈 문자열이 아니라 로딩이다.** mock 문자열을 지우면 기본값이 없어지므로 State가
     nullable을 들고 화면이 그것을 다룬다 — S-002는 레이아웃을 그대로 두고 **입력 필드만 비활성**한다
     (자리를 다른 것으로 바꾸면 값이 도착할 때 화면이 튄다).
@@ -141,6 +146,10 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
     C-001은 `syncToday()`가 보던 캔버스까지 정리). 기준은 KST 자정이라 03:00 경계는 여전히 미적용이다.
   - ⚠️ 관용구일 뿐 규약이 아니다 — 새 화면이 이것을 따르는지 확인할 수단이 없다 → OQ-P-221 ·
     [screen-resume-refetch 스펙](../specs/archive/2026-08-17-screen-resume-refetch.md).
+  - **같은 화면에 두 번째 수명 이펙트가 붙었다**(2026-08-20, PR #298). C-001은 `LifecycleResumeEffect`로
+    재조회를 보내고 `LifecycleStartEffect`로 **Spotlight를 해제**한다 — 되묻는 것과 화면 상태를 되돌리는
+    것이 서로 다른 시점에 걸린다(C-202 정책이 "백그라운드 복귀 시 Default"를 규정한다)
+    → [c202-canvas-spotlight 스펙](../specs/archive/2026-08-20-c202-canvas-spotlight.md).
 - **서버 실패 갈래는 feature 로컬 enum**이다 — S-002의 `GlobalNicknameError` 4종. 형식 오류
   (`NameValidResult.Error`, 요청 전 검사)와 **별개 축**이라 State가 둘을 따로 들고 화면이
   `nicknameError ?: submitError` 순으로 보여준다. 문구 매핑은 같은 모듈의 `@Composable` 확장이 갖는다 —

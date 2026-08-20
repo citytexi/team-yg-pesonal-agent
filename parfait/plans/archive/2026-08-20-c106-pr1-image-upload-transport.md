@@ -25,7 +25,7 @@ related_code:
   - AppErrorMapper.kt#mapErrorToAppError
   - RemoteDataSourceModule.kt
   - RepositoryModule.kt
-archived_reason: 구현 완료·미머지(2026-08-20). 브랜치 feature/#270-image-upload-transport 에 커밋 6개.
+archived_reason: 구현 완료·develop 머지(PR #322 da03c9b0, 2026-08-20). PR2 브랜치가 이 커밋들을 업고 한 PR로 올라갔다.
 tags: [plan, parfait, image, upload, network]
 ---
 

@@ -224,6 +224,11 @@ data class ToppingDraft(
 - `CanvasMain`을 `YGScaffold`(V1, `EntryBuilder` 소유)에서 **`YGScaffoldV2`(Route 소유)**로 옮긴다.
   [ygscaffold-v2 스펙](archive/2026-08-16-ygscaffold-v2-common-loading-error.md)이 이관을
   "화면별 API 결선 라운드에 묶어 점진 진행"으로 정해 둔 그 경우다.
+- ⚠️ **토스트 자리는 `YGScaffoldV2`의 것이 아니다**(2026-08-20, PR #298 머지 후 확정). 같은 화면의
+  Spotlight 작성자 토스트가 `YGCanvas`의 `overlayContent`에 호스트를 못 박아 두었고, 큐를 둘로
+  나누면 [[toast]] 공통 정책의 스택이 큐마다 따로 논다. 조회 실패 토스트도 그 호스트로 보내고
+  스캐폴드는 **로딩 오버레이 자리로만** 쓴다(OQ-P-167 ·
+  [c202 스펙](archive/2026-08-20-c202-canvas-spotlight.md)).
 - **실패를 매번 알리지 않는다.** `screen-resume-refetch`가 화면이 앞에 설 때마다 재조회하게
   만들어 조회 빈도가 높다. 이미 받아 둔 `todayCanvas`가 있으면 화면을 유지하고 조용히 로그만 남기고,
   **보여 줄 캔버스가 없을 때만** 토스트로 알린다. G-001이 같은 스펙에서 정한 규칙의 C-001 대응물이다.
@@ -288,9 +293,9 @@ positionZ = draft.nextPositionZ
 
 | # | 브랜치 성격 | 내용 | 사용자에게 보이는 변화 |
 |---|---|---|---|
-| 1 | 업로드 전송 계층 | `@UploadClient` · `PresignedUploadDataSource` · `ImageUploadRepository`/Impl · DI | **없음**(소비자 0) — ✅ **완료·미머지**, 브랜치 `feature/#270-image-upload-transport` |
-| 2 | 배치 계층 | `ToppingRepository`/Impl(`place`만) · `AddToppingUseCase` | **없음**(소비자 0) — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-place-domain`(PR1 위) |
-| 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 · 초안 쓰기 실패도 알린다 — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-draft-ssot`(PR2 위) |
+| 1 | 업로드 전송 계층 | `@UploadClient` · `PresignedUploadDataSource` · `ImageUploadRepository`/Impl · DI | **없음**(소비자 0) — ✅ **develop 머지**(PR #322, 2026-08-20 `da03c9b0`) |
+| 2 | 배치 계층 | `ToppingRepository`/Impl(`place`만) · `AddToppingUseCase` | **없음**(소비자 0) — ✅ **develop 머지**(PR #322와 같은 머지 — PR2 브랜치가 PR1 커밋을 업고 올라갔다) |
+| 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 · 초안 쓰기 실패도 알린다 — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-draft-ssot`(이제 베이스가 develop에 들어왔다) |
 | 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** |
 | 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** |
 

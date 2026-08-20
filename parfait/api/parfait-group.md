@@ -529,13 +529,14 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   뒤에서 연달아 나가므로 중간 이탈로 "닉네임 없는 참여"가 남지 않는다. 다만 원자적이지는 않다 —
   **POST join이 성공하고 PATCH만 실패하면 참여는 유지되고 닉네임은 서버 초기값**이며 화면에 표시가 없다
   → [open-questions](../synthesis/open-questions.md) [2026-08-15].
-- **A-005가 보내는 `groupNickname`이 아직 mock**이다(G-001 UiState 기본값 리터럴).
-- ⚠️ **`recentImageUploadedAt` 파싱이 이 문서의 직렬화 포맷과 어긋난다** — 앱 매퍼가
-  `kotlin.time.Instant::parse`(오프셋 필수)를 쓰는데 서버는 오프셋 없는 로컬 날짜시간을 내려준다.
-  ⚠️ **2026-08-19 서버 delta로 이 실패가 항상 난다** — 앱 매퍼는 `recentImageUploadedAt?.let(Instant::parse)`라
-  값이 `null`일 때만 파싱을 건너뛰었는데, 서버가 `COALESCE`로 비널화해 **그 우회로가 사라졌다.**
-  즉 이제 **그룹이 하나라도 있으면 G-001 목록 조회가 통째로 실패**한다(그전에는 토핑 0건 그룹만 있는
-  계정이 우연히 살아 있었다) → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- ~~**A-005가 보내는 `groupNickname`이 아직 mock**이다~~ → ✅ **닫혔다**(2026-08-20, PR #312) —
+  G-001이 `GetMyAccountFlowUseCase`를 구독해 **전역 닉네임**을 넘긴다. 그 값이 그룹 내 닉네임의
+  초기값으로 서버에 저장되는 것은 위키 [[S-102-그룹-닉네임-생성-정책-v0.1]]의 "계정 공통 1개 값
+  재사용"과 방향이 같다 → [open-questions](../synthesis/open-questions.md) OQ-P-197.
+- ~~⚠️ `recentImageUploadedAt` 파싱이 이 문서의 직렬화 포맷과 어긋난다~~ → ✅ **닫혔다**(2026-08-20,
+  PR #310) — 매퍼가 `LocalDateTime::parse` 뒤 `toInstant(PARFAIT_TIME_ZONE)`로 KST를 부여한다.
+  앱이 서버 포맷 변경을 기다리지 않고 읽는 쪽을 고쳤고, 근거는 서버 DB 커넥션 세 환경이
+  `serverTimezone=Asia/Seoul`이라는 계약 사실이다 → [open-questions](../synthesis/open-questions.md) OQ-P-165.
 - ⚠️ **`recentImageUploadedAt`이 이제 "그룹 생성 시각"일 수도 있다** — `GroupListScreen`이 이 값으로
   경과 시간을 그리므로, 토핑이 0건인 그룹도 **활동이 있었던 것처럼 보인다.** 앱이 "토핑 없음"을 가르려면
   `recentImageUrl`이 `null`인지를 함께 봐야 한다 → [open-questions](../synthesis/open-questions.md) [2026-08-19].

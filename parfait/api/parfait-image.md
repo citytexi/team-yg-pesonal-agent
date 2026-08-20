@@ -404,10 +404,18 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 같은 PR이 `CanvasStatus` KDoc의 "서버가 그것을 강제하지 않는다"도 뒤집었다
 → [parfait.md](parfait.md) Android 매핑 · [open-questions](../synthesis/open-questions.md) [2026-08-20].
 
-**소비처는 0건이다.** 캔버스 토핑 배치(C-106)는 여전히 화면 로컬 상태로만 동작한다. 다만 **"다시 그릴 수
-없다"는 사유도, 앱 표면 공백도 사라졌다** — `GET .../parfaits/today`가 배치 전량을 내려주고
-([parfait.md](parfait.md)) 네 엔드포인트 전부 DataSource까지 와 있다. 남은 것은 Repository·UseCase·화면
-결선이다 → [open-questions](../synthesis/open-questions.md).
+**화면 소비처는 0건이다.** 캔버스 토핑 배치(C-106)는 여전히 화면 로컬 상태로만 동작한다. 다만
+**"다시 그릴 수 없다"는 사유도, 앱 표면 공백도 사라졌다** — `GET .../parfaits/today`가 배치 전량을
+내려주고([parfait.md](parfait.md)) 네 엔드포인트 전부 DataSource까지 와 있다.
+
+✅ **배치 하나는 Repository·UseCase까지 올라왔다**(2026-08-20 develop 머지, PR #322) —
+`ToppingRepository.place`가 DataSource의 넷 중 배치만 열고, `AddToppingUseCase`가 업로드
+([image.md](image.md))와 배치를 **이 순서로** 조율한다. 나머지 셋(위치·테두리 수정·삭제)을 안 올린
+것은 소비 화면이 C-301 라운드라서다 — 쓰지 않는 갈래를 미리 열면 계약이 바뀌어도 아무도 고치지
+않는다. Repository 층은 **에러 변환만 하고 좌표·테두리를 손대지 않는다**(테두리를 흘리면 서버는
+200을 주고 캔버스에서 테두리만 조용히 사라진다). 남은 것은 화면 결선(스펙의 PR5)이다
+→ [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) ·
+[open-questions](../synthesis/open-questions.md).
 
 `http/parfait-image.http`가 **네 요청을 전부** 덮는다(2026-08-15). **선행이 넷**이 됐다 —
 `auth.http` → `parfait-group.http` → `images.http`(발급·PUT·confirm) → `parfait.http`(오늘의 캔버스

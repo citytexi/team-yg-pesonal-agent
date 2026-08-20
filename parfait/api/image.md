@@ -186,10 +186,10 @@ wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlReques
 `domain` 쪽은 `image`라는 이름이 이미 기기 이미지 뜻으로 선점돼 있다
 → [open-questions](../synthesis/open-questions.md).
 
-**소비처는 여전히 0건이다.** 화면이 이 경로를 부르지 않고 실서버 요청도 0건이라 `android_status`가
-`done`이 아니라 `partial`이다.
+**화면 소비처는 여전히 0건이다.** 두 엔드포인트를 부르는 코드는 생겼지만(아래) 그 위가 화면까지
+닿지 않고 실서버 요청도 0건이라 `android_status`가 `done`이 아니라 `partial`이다.
 
-✅ **다만 3단계가 처음으로 이어졌다**(2026-08-20, 브랜치 `feature/#270-image-upload-transport` — **미머지**).
+✅ **3단계가 처음으로 이어졌다**(2026-08-20 develop 머지, PR #322).
 `data/source/image/remote/PresignedUploadDataSource`가 S3 PUT을 수행하고,
 `domain/repository/image/ImageUploadRepository`가 발급 → PUT → confirm 셋을 하나로 닫아 확정된
 `ImageId`를 돌려준다. 이전 판의 "S3 PUT을 수행하는 앱 코드가 통째로 없다"는 그것으로 닫혔다.
@@ -206,6 +206,11 @@ wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlReques
 
 설계 근거는 [specs/2026-08-20-c106-topping-place-api](../specs/2026-08-20-c106-topping-place-api.md),
 선행 결정의 판정은 [open-questions](../synthesis/open-questions.md) `OQ-P-030`·`OQ-P-110`(둘 다 해소).
+
+⚠️ **소비자가 붙는 순간 살아나는 결함 둘이 그대로 있다** — 메인 클라이언트가 발급 **응답 본문**을
+`Level.BODY`로 찍어 `uploadUrl`(=자격증명)이 debug logcat에 남는 것(OQ-P-109)과, PUT이 블로킹
+`execute()`라 코루틴 취소를 따라가지 않는 것(OQ-P-246)이다. 지금은 부르는 화면이 0건이라 둘 다
+잠들어 있고, 스펙이 PR5에서 함께 닫도록 태스크로 못 박아 두었다.
 
 `http/images.http`가 두 요청 + S3 PUT을 덮는다(요청 모음 20/20 회복).
 
