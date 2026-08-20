@@ -79,6 +79,12 @@ tags: [plan, parfait, image, upload, network]
 
 ### Task 1: 업로드 전용 OkHttp 클라이언트
 
+> 🔁 **as-built가 이 태스크 텍스트를 뒤집었다(fix round 1).** 아래 Step 4는 디버그 빌드에서
+> `HttpLoggingInterceptor.Level.HEADERS`를 켜라고 지시하지만, 태스크 리뷰가 "`HEADERS` 이상은
+> 요청 라인을 남기는데 presigned URL은 쿼리 스트링이 곧 자격증명"이라고 지적해 **로깅 인터셉터를
+> 통째로 제거**하는 것으로 판정됐다. 테스트도 `hasNoLoggingInterceptor`로 강화됐다.
+> 스펙 "업로드 전송" 절이 정본이다.
+
 **Files:**
 - Create: `data/src/main/java/com/teamyg/parfait/data/model/qualifier/UploadClient.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/di/NetworkModule.kt`
