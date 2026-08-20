@@ -146,8 +146,10 @@ tags: [spec, parfait, canvas, topping, c-106, ui]
 1. ⚠️ **배치 확정이 아무 데도 저장되지 않는다.** 확인 버튼은 `ToppingPlaced(imageUri, offset, scale,
    rotation)` 이펙트만 쏘고 Route는 `// TODO` 뒤에 캔버스로 이동한다. 서버 토핑 수정 표면은 테두리만
    받아 좌표·배율·회전 계약 자체가 없다(OQ-P-199 ②·OQ-P-209).
-2. ⚠️ **`NavKeyCanvasMain(groupId = 0L)` 하드코딩 + `goTo`.** 어느 그룹에서 시작했는지를 이 화면이
-   모르고(NavKey가 `imageUri`만 싣는다), `goTo`라 흐름 화면이 백스택에 그대로 쌓인다 → OQ-P-238.
+2. ~~⚠️ **`NavKeyCanvasMain(groupId = 0L)` 하드코딩 + `goTo`.**~~ → ✅ **해소(2026-08-20, PR #309)** —
+   배치 완료 이펙트가 `navigator.popUpTo<NavKeyCanvasMain>()`이다. 이미 백스택에 있는 엔트리로
+   되감으므로 그룹 id를 알 필요가 없어져 하드코딩도 사라졌고, 흐름 화면이 캔버스 밑에 쌓이지도
+   않는다. 세그멘테이션 라운드가 자기 캐시 정리의 안전 근거를 세우려고 함께 고쳤다 → OQ-P-238 ①.
 3. ⚠️ **`NavKeyCanvasMove` 계열이 도달 불가로 남았다** — 유일한 호출자였던
    `SegmentationConfirmRoute.onClickNext`가 새 목적지로 갈아탔는데 목적지·Route·Screen·엔트리는
    그대로다 → OQ-P-239.

@@ -180,7 +180,7 @@ OQ-P-055 ②를 닫는다.
 
 ### YGScaffoldV2 이관
 
-[ygscaffold-v2 스펙](archive/2026-08-16-ygscaffold-v2-common-loading-error.md)이 정한 대로
+[ygscaffold-v2 스펙](2026-08-16-ygscaffold-v2-common-loading-error.md)이 정한 대로
 **스캐폴드 소유를 EntryBuilder에서 Route 안으로 내린다.** 이름만 바꾸면 `isLoading`·`toastPolicy`를
 채울 방법이 없다.
 
@@ -341,7 +341,7 @@ ML Kit 호출부는 유닛으로 못 잡는다. **실기기 육안 확인**으�
   `segmentImage` 내부에서 약 244MB, 토핑 편집 화면까지 이어지면(스택 아래 `SegmentationState.originBitmap`이
   같이 살아 있는 채로 겹쳐) 약 390MB. 앱은 `largeHeap`을 선언하지 않는다. 스펙은 고화질 보존을 택해
   다운샘플을 범위 밖에 뒀는데, 리뷰는 그 판단이 틀렸다고 본다. `ToppingBorderOutline.kt`는 이미 자기
-  작업 치수를 캡핑하고 있어 코드베이스가 이 판단에서 일관되지 않다. → [OQ-P-228](../synthesis/open-questions.md)로 새로 남긴다.
+  작업 치수를 캡핑하고 있어 코드베이스가 이 판단에서 일관되지 않다. → [OQ-P-228](../../synthesis/open-questions.md)로 새로 남긴다.
 - **캐시 정리는 세그멘테이션 한 곳만 닫혔다.** `FileCameraCacheLocalDataSourceImpl`이 쓰는 카메라
   캐시 서브디렉토리는 파일명이 초 단위(`yyyyMMdd_HHmmss`)라 같은 초에 두 번 찍으면 파일이 충돌하고,
   지우는 경로 자체가 없다 — 이 라운드의 범위 밖이다. OQ-P-003 ③을 "캐시 정리가 다 끝났다"로 읽으면 안 된다.
@@ -442,7 +442,7 @@ develop `86f0f6b0` 기준)는 이제 **한 세대 뒤처진 기준선 위에 있
   쪽 치수 캡핑까지 따라가야 한다 — 이번 정정 작업에서 그 도출을 하지 않았다. **현재 트리 기준
   토핑 편집 피크는 재측정되지 않은 채로 남아 있다.**
 - **위험 자체는 그대로다** — 다운샘플 상한은 여전히 없고 `app` 모듈은 여전히 `largeHeap`을
-  선언하지 않는다. [open-questions OQ-P-228](../synthesis/open-questions.md)은 열어 둔다.
+  선언하지 않는다. [open-questions OQ-P-228](../../synthesis/open-questions.md)은 열어 둔다.
 
 > ⚠️ **이 재도출의 전제도 #290 머지로 사라졌다(develop `f12870a8`)** — "trimmed 비트맵이 develop에는
 > 없다"가 더 이상 참이 아니다. 동시 생존 버퍼는 다시 **다섯**이고 위 195MB는 지금 트리에 안 맞는다.
@@ -458,7 +458,7 @@ develop `86f0f6b0` 기준)는 이제 **한 세대 뒤처진 기준선 위에 있
 
 | 항목 | 값 |
 |---|---|
-| 기준선 | develop **`750cc2dd`**(현행 `origin/develop`, [doc-baseline](../doc-baseline.md) 기준선과 동일) |
+| 기준선 | develop **`750cc2dd`**(현행 `origin/develop`, [doc-baseline](../../doc-baseline.md) 기준선과 동일) |
 | 브랜치 | `refactor/segmentation-develop`, head **`63ec2989`**, 커밋 **15개**(리베이스 13 + OQ-P-238 수정 1 + 코드리뷰 대응 1) |
 | 검증 | `./gradlew test ktlintCheck` BUILD SUCCESSFUL (2026-08-20) |
 | 유닛 테스트 | **538 → 560건**(+22), 테스트 클래스 **61 → 64개**(+3) |
@@ -551,3 +551,18 @@ PR #309 리뷰가 `PictureConfirmRoute`의 `returnResultOnly = true` 경로를 �
   결함이 아니라 #290이 남긴 잔해다.** 리뷰 대상 diff를 그만큼 넓힐 값이 없다고 봤다. OQ-P-239는
   열린 채로 두고, 같은 부류(`NavKeyCameraSystem`·`NavKeySystemGalleryPicker`)와 묶어 정리하는 쪽이
   낫다 — 그 묶음 판단은 이 스펙이 처음부터 [범위 밖](#범위)에 뒀다.
+
+## 머지 (2026-08-20, PR #309 — develop `cf357937`)
+
+두 번째 리베이스로 만든 head `63ec2989`가 **충돌 해소 편집 0건으로 그대로 들어갔다** — 머지 커밋의
+트리가 브랜치 팁과 동일하므로 위 [as-built 재정정](#as-built-재정정-2026-08-20-두-번째-리베이스) 절의
+수치와 서술은 **재측정 없이 그대로 develop 사실이다**(유닛 560건·클래스 64개, `YGScaffoldV2` 채택
+18파일, V1 잔존 3파일). develop 대조로 확인한 것 넷: `Navigator.kt#popUpTo`가 develop에 있고,
+세 모듈 EntryBuilder에서 `YGScaffold`가 사라졌으며, `AddRecentImageUseCase`의 호출자가
+`SegmentationViewModel` 하나 생겼고, `NavKeyCanvasMove` 계열은 그대로 남아 있다(OQ-P-239).
+
+이 머지로 **문서가 "브랜치에만 있다"고 적던 것이 전부 develop 사실이 됐다** — 캐시 정리 안전 근거
+(OQ-P-003 ③)·`popUpTo`와 닫기 결선(OQ-P-055 ②)·배치 완료 되감기(OQ-P-238 ①)가 그것이다.
+남긴 것은 그대로다: 재시도 동선 부재(OQ-P-003 ①) · 다운샘플 없음(OQ-P-228, 현재 트리 피크는
+세그멘테이션·토핑 편집 둘 다 미측정) · `NavKeyCanvasMove` 계열 도달 불가(OQ-P-239) ·
+카메라 캐시 정리 경로 없음. **실기기 확인은 이 머지 뒤에도 없다.**

@@ -244,8 +244,10 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
 4. **테두리 색 9종의 정책 근거가 없다** — 4종은 `YGAtomicColors`(투명·흰·검·`Cherry200`)지만 5종은
    `Color(0xFF……)` 리터럴이고, 위키에 C-105 색 팔레트 정책 문서가 없다.
 5. **死코드 2건** — `BitmapUtils.kt`의 `mapViewToBitmap`·`mapBitmapToViewFloat`가 사용처 0건이다.
-6. **플로우를 나갈 수 없다** — 세 화면의 `onClickClose`가 전부 빈 람다다. C-101-confirm의 닫기도
-   여전히 TODO라, 토핑 생성 경로에 들어오면 뒤로가기 말고는 나갈 길이 없다.
+6. ~~**플로우를 나갈 수 없다**~~ → ✅ **해소(2026-08-20, PR #309)** — 세 화면의 `onClickClose`와
+   C-101-confirm의 닫기가 `Navigator.popUpTo<NavKeyCanvasMain>()`으로 결선됐다(배경 편집에서 들어온
+   경로만 부른 화면으로 되감는다). 세그멘테이션 쪽은 로딩·에러·본문이 콜백 하나를 공유해 한 자리를
+   채우자 셋이 함께 열렸다 → OQ-P-152.
 7. **에러 화면에 재시도가 없다** — 위키 [[누끼-따기]]는 "실패 시 재시도 또는 원본 사용 옵션"을 적었는데
    닫기(빈 람다)뿐이다. `ModuleNotReady`는 코드가 "잠시 후 재시도하면 해결"이라 적어 둔 일시적 실패인데도
    재시도 경로가 없다.
@@ -256,12 +258,15 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
    쓰는 형태다(ADR-0011은 domain 경계만 규정한다).
 10. **치수 리터럴** — `Spacer(23.dp)`·`spacedBy(12.dp)`·`height(4.dp)`·`height(11.dp)`,
     칩 `36.dp`/체크 `24.dp`, 슬라이더 트랙 `2.dp`/thumb `16.dp`. A-002 라운드와 같은 유형이다.
-11. **유닛 테스트가 편집 로직을 안 덮는다** — `feature/segmentation/impl`에 `parfait.test.unit`이
-    붙지 않았다. 이번에 추가된 테스트 2파일은 `core:util:jvm`의 픽셀 유틸(`ArgbExtension`·
-    `FloatArrayExtension`)뿐이고, 마스크 합성·거리장·`UndoRedoStack`은 검증 없이 머지됐다.
-12. **`error()` 잔존** — `ImageSegmentationRepositoryImpl`이 `foregroundConfidenceMask == null`을 여전히
-    raw `IllegalStateException`으로 던진다(`Result`로 감싸이지 않는다). `Tasks.await` 예외 쪽만
-    `ModuleNotReady`/`Process`로 매핑됐다 → [open-questions](../../synthesis/open-questions.md) [2026-07-12].
+11. **유닛 테스트가 편집 로직을 안 덮는다** — 이번 라운드에는 `feature/segmentation/impl`에
+    `parfait.test.unit`조차 붙지 않았다. 추가된 테스트 2파일은 `core:util:jvm`의 픽셀 유틸
+    (`ArgbExtension`·`FloatArrayExtension`)뿐이었다.
+    > 📌 **절반만 닫혔다(2026-08-20, PR #309)** — 플러그인이 붙고 모듈이 첫 `src/test`를 얻었지만
+    > 들어온 것은 `SegmentationViewModelTest`이고, **마스크 합성·거리장·`UndoRedoStack`은 여전히
+    > 검증이 없다** → OQ-P-155.
+12. ~~**`error()` 잔존**~~ → ✅ **해소(2026-08-20, PR #309)** — `foregroundConfidenceMask == null`이
+    `Result.failure(SegmentationException.Process)`를 탄다. 같은 라운드가 마스크 크기 불일치와 저장
+    구간의 `IOException`까지 같은 블록 안에서 접었다 → [open-questions](../../synthesis/open-questions.md) OQ-P-004 ②.
 
 ## 정책 대조 (위키)
 
@@ -271,7 +276,7 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
 | [[누끼-따기]] 피사체 마스킹 → 투명 PNG | ML Kit 마스크(임계 0.5) → `cacheDir` PNG | 일치 |
 | [[누끼-따기]] C-103-Selected 캔버스 = 바운딩 박스 **+20% Safe Margin**·투명 확장 | 원본 전체 크기 유지, 크롭 없음 | ⚠️ **미이행** |
 | [[누끼-따기]] C-103-loading / C-103-select 분리 | loading 있음, select는 단일 대상 하이라이트로 축약 | 부분 이행 |
-| [[누끼-따기]] 실패 시 재시도 또는 원본 사용 | 에러 화면에 닫기(빈 람다)뿐 | 미이행 |
+| [[누끼-따기]] 실패 시 재시도 또는 원본 사용 | 에러 화면에 닫기뿐(#309로 캔버스 되감기 결선). 재시도·원본 사용은 없다 | 미이행 |
 | [[누끼-편집]] 초기 렌더 Aspect Fit + 세로/가로 중앙 | `BitmapViewMapping.fitCenter` | 일치 |
 | [[누끼-편집]] 2핑거 확대 허용 / **Scale 1.0 미만 축소 차단** | `MIN_ZOOM = 1f`, `MAX_ZOOM = 3f` | 일치(상한은 코드가 먼저 확정) |
 | [[누끼-편집]] 확대 후 Pan **Clamping** | `clampPan` — 뷰포트보다 작은 축은 중앙 고정 | 일치 |
@@ -310,6 +315,9 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
 - **저장 경로가 캐시에만 있다** — `parfait_<timestamp>.png`가 편집을 마칠 때마다 최대 2장 늘고 정리 경로가
   없다. ADR-0012 라운드부터 열려 있던 캐시 정리 미결이 이번에 파일 수만큼 커졌다
   → [open-questions](../../synthesis/open-questions.md) [2026-07-12].
+  > ✅ **정리 경로가 생겼다(2026-08-20, PR #309)** — 저장 위치가 `cacheDir`의 세그멘테이션 전용 하위
+  > 디렉토리로 내려가고, 다음 세그멘테이션이 진입할 때 그 디렉토리를 통째로 비운다. 누적 상한이
+  > 직전 흐름 1회분이 됐다 → OQ-P-003 ③. **저장 자체가 캐시에만 있다는 것은 그대로다.**
 - **`ToppingEditResult`가 직렬화 대상이 아니다** — 프로세스 사망 후 복원 시 결과가 사라진다.
   확인 화면 쪽 `rememberSaveable` 3개는 살아남으므로 편집 완료분 자체는 보존되지만, 편집 중 사망은
   복구되지 않는다.

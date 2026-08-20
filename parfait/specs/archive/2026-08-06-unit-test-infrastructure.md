@@ -156,6 +156,8 @@ Main looper가 있어 쓸 일이 없다. `test-android` 번들에 coroutines-tes
 
 > 📌 **`parfait-test-unit`은 이후 라운드에서 feature·core 모듈로 퍼졌다** — `core:ui`·`core:testing`과
 > 화면 결선 라운드마다 그 feature `impl`(로그인·설정·그룹 설정·그룹 참여·인트로·그룹 목록)이 차례로 붙였다.
+> **결선이 아닌 라운드에서 붙은 사례도 생겼다** — `feature/segmentation/impl`은 크래시 정리·스캐폴드
+> 이관 라운드(2026-08-20, PR #309)에 붙어 첫 `src/test` 소스셋을 얻었다.
 > **현재 적용 목록은 코드가 SoT**다(`grep -rl "parfait.test.unit" --include=build.gradle.kts .`) — 여기 표는
 > 스펙 시점 기준으로 남긴다. 아래 두 플러그인은 여전히 스모크 적용 그대로다.
 

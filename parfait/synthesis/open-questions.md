@@ -45,7 +45,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-003
 - **출처**: `gradle/libs.versions.toml`의 `mlkitSubjectSegmentation`(beta), `feature/segmentation/impl`의 `AndroidManifest` install-time 모델. [ADR-0012](../adr/0012-mlkit-subject-segmentation.md).
 - **항목**: ① beta 승급·API 변동 추적, ② GMS 미탑재 기기 대응, ③ subject PNG 캐시 파일(`cacheDir`) 정리 정책, ④ [[누끼-따기]] "온디바이스 vs 서버" 미결의 온디바이스 잠정 확정 여부.
-- **상태**: 부분 해소 (③ 캐시 정리 정책 — **2026-08-18, `refactor/segmentation-logic` 구현으로 해소.**
+- **상태**: 부분 해소 (③ 캐시 정리 정책 — **PR #309 develop 머지, 2026-08-20.**
   ①은 잔존, ②는 방어만 붙은 채 미해결, ④는 온디바이스 잠정 채택 유지로 별개)
   > 📌 **②는 방어가 붙고 ③은 커졌다(2026-08-14, PR #221)** — 매니페스트 meta-data가 보장이 아니라는 전제 아래
   > `ModuleInstall.areModulesAvailable`/`installModules`로 사용 직전 확인·설치를 넣고, 실패를
@@ -67,7 +67,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 잔존한다** — 이 라운드는 캐시만 다뤘다. **세그멘테이션 캐시만 닫혔다는 점도 분명히 한다** — 카메라
   > 캐시(`FileCameraCacheLocalDataSourceImpl`)는 여전히 정리 경로가 없고 초 단위 파일명이라 충돌도
   > 남는다. 원본 다운샘플 부재로 인한 메모리 위험은 OQ-P-228(신규 항목, 아래)로 갈랐다 →
-  > [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md).
+  > [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md).
   > 🔧 **정정(2026-08-19)** — 위 ⚠️ 문단은 develop에 미머지인 PR #290(`feature/topping-add-screen`)을
   > 로컬 머지해 얹은 `refactor/segmentation-logic` 브랜치 기준이다. `CanvasToppingPlaceRoute`는
   > **#290이 들여오는 화면**이라 plain develop에는 애초에 없다. 같은 작업을 develop 위
@@ -88,6 +88,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > **위험이 이 브랜치의 캐시 정리에서 나오기 때문**이다 — 고칠 도구(`popUpTo`)도 이 브랜치에만 있다.
   > 즉 ③의 안전 근거는 **`refactor/segmentation-develop` 머지 시점부터 다시 참이고**, 그전까지
   > develop 단독으로는 거짓이다.
+  > ✅ **그 시점이 왔다(2026-08-20, PR #309 — develop `cf357937`)** — 브랜치 팁이 충돌 해소 편집
+  > 없이 그대로 머지돼 캐시 정리(`SegmentationCacheDir.kt`·`ClearSegmentationCacheUseCase`)와
+  > 그 안전 근거를 참으로 만드는 되감기(`CanvasToppingPlaceRoute`의 `popUpTo<NavKeyCanvasMain>()`)가
+  > **한 커밋 안에서 함께 develop 사실이 됐다.** ③은 이제 브랜치 조건 없이 닫힌다. ①(재시도 동선)과
+  > 카메라 캐시(`FileCameraCacheLocalDataSourceImpl`, 정리 경로 없음·초 단위 파일명 충돌)는 그대로다.
 - **해소 메모**: 정식(GA) 승급 시 버전 고정·문서 갱신. ③ 캐시 정리는 위에서 해소됨 —
   [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절에 반영 완료. ①(재시도 동선)은
   실행을 `init`에서 꺼내는 구조 변경과 재시도 버튼 디자인이 확정돼야 다룰 수 있다.
@@ -96,8 +101,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-004
 - **출처**: `data`의 `ImageSegmentationRepositoryImpl.segmentImage` — `Result<SegmentationResult>`/`SegmentationException` 패턴을 쓰면서도 `foregroundConfidenceMask`가 null이면 `error("...")`(raw `IllegalStateException`)로 throw. Result로 감싸지 않아 호출부(effect→Toast)가 못 잡을 수 있음.
 - **항목**: ① `Tasks.await` 예외를 `SegmentationException`으로 통합할지, ② null 마스크를 `Result.failure`로 바꿀지.
-- **상태**: 해소됨 (① **PR #221 develop 머지, 2026-08-14** — `toSegmentationException()`이 `ExecutionException`을 한 겹 벗겨 `MlKitException.UNAVAILABLE`이면 `ModuleNotReady`, 그 외는 `Process`로 매핑하고 `Result.failure`로 반환한다. / ② **2026-08-18, `refactor/segmentation-logic` 구현으로 해소** — `foregroundConfidenceMask == null`이 더는 `error("…")` raw throw가 아니라 `Result.failure(SegmentationException.Process)`를 탄다)
-- **해소 메모**: ②는 `segmentImage`가 픽셀 마스킹을 `SegmentationMask.kt#maskSubjectPixels`로 뽑아내며 함께 정리됐다 — [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절과 [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)에 반영 완료.
+- **상태**: 해소됨 (① **PR #221 develop 머지, 2026-08-14** — `toSegmentationException()`이 `ExecutionException`을 한 겹 벗겨 `MlKitException.UNAVAILABLE`이면 `ModuleNotReady`, 그 외는 `Process`로 매핑하고 `Result.failure`로 반환한다. / ② **PR #309 develop 머지, 2026-08-20** — `foregroundConfidenceMask == null`이 더는 `error("…")` raw throw가 아니라 `Result.failure(SegmentationException.Process)`를 탄다)
+- **해소 메모**: ②는 `segmentImage`가 픽셀 마스킹을 `SegmentationMask.kt#maskSubjectPixels`로 뽑아내며 함께 정리됐다 — [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절과 [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)에 반영 완료.
   **정확히는 같은 라운드 안에서 두 단계였다** — 위 커밋은 null 마스크·마스크 크기 불일치 두 경로만
   `Result`로 접었고, 같은 `withContext` 블록의 세 번째 경로(`saveToCacheAsPng`의 `IOException`)는
   여전히 새어나가고 있었다. 그 경로는 라운드 막바지 리뷰가 별도로 잡아 `try`로 마저 감쌌다 —
@@ -107,6 +112,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 위에서 닫힌 것으로 적은 동작(null 마스크·크기 불일치 `Result.failure`, 저장 경로 `try` 방어)은
   > 새 브랜치의 `ImageSegmentationRepositoryImpl.kt#segmentImage`에서도 그대로 확인된다 — **해소
   > 판정 자체는 안 바뀐다.** 브랜치명만 정정한다.
+  > ✅ **develop 머지됨(2026-08-20, PR #309)** — 위 동작이 이제 브랜치가 아니라 develop 코드다.
+  > 같은 머지가 `DecodeImageUseCase`도 `Result`로 넓혔다 — 스펙이 기각했던 대안인데, 두 호출부가
+  > 쓰던 stdlib `runCatching`이 `CancellationException`까지 삼켜 **떠난 화면이 자기를 "디코드 실패"로
+  > 보고하던 것**이 뒤집은 근거다. 리포지토리 계약(`decodeImage`는 던진다)은 그대로이고 감싸는 자리가
+  > UseCase 하나로 모였다.
 
 ### [2026-07-12] 디자인시스템 컴포넌트 컨벤션 분기
 - **ID**: OQ-P-005
@@ -499,7 +509,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-055
 - **출처**: `feature/camera/impl/.../route/PictureConfirmRoute.kt`(PR #182 develop 머지) — "다음"이 `onClickConfirm = { }`(TODO "c103-로딩페이지로 넘어가야함"), 닫기가 `onClickClose = {}`(TODO "c001-캔버스메인으로 넘어가야함")다. 뒤로(다시 찍기)만 동작한다. [navigation-flow](../architecture/navigation-flow.md) 체크리스트 6번(진입 경로를 같은 PR에)의 반대편 사례 — 나가는 경로가 없다.
 - **항목**: ① C-103(누끼 로딩) 진입 NavKey·인자 계약 확정, ② 닫기가 캔버스(C-001)로 가는지 촬영 호출자에게 결과를 돌려주는지(`LocalResultEventBus` 경로가 이미 있다) 확정.
-- **상태**: 해소됨 (① **PR #221 develop 머지, 2026-08-14** — `navigator.goToAndPopCurrent(NavKeySegmentation(sourceImageUri = uri))`. 인자는 원본 uri 하나이고, `goTo`가 아니라 **치환**이라 확인 화면은 백스택에서 걷힌다. `feature/camera/impl` → `feature/segmentation/api` 의존 추가. / ② **2026-08-18, `refactor/segmentation-logic` 구현으로 해소**)
+- **상태**: 해소됨 (① **PR #221 develop 머지, 2026-08-14** — `navigator.goToAndPopCurrent(NavKeySegmentation(sourceImageUri = uri))`. 인자는 원본 uri 하나이고, `goTo`가 아니라 **치환**이라 확인 화면은 백스택에서 걷힌다. `feature/camera/impl` → `feature/segmentation/api` 의존 추가. / ② **PR #309 develop 머지, 2026-08-20**)
   > 📌 **영향 확대(2026-08-04, PR #191)** — 갤러리 선택도 이 화면으로 합류한다(`PictureConfirmSource.GALLERY`). 갤러리는 결과 반환까지 없애서 **두 진입점 모두 이 화면이 유일한 출구**인데 그 출구가 TODO다. ②의 "결과 반환" 선택지는 갤러리 쪽에서 이미 폐기된 셈이라 결정이 한쪽으로 기울었다.
   > ✅ **②가 닫혔다(2026-08-18, `refactor/segmentation-logic`)** — `Navigator`에 타입 기준 pop
   > `popUpTo<T>()`(`Navigator.kt#popUpTo`)가 신설됐다. 기존 `goToSingleClearTop`은 키 동등성 비교라
@@ -509,14 +519,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > **배경 편집 경로(C-301, `returnResultOnly = true`)는 갈린다** — 여기서 캔버스까지 튀면 편집 중이던
   > 배경이 날아가므로 `onClickClose`가 `popUpTo` 대신 `onBack` 2회(확인 버튼과 같은 백 처리)다.
   > 세그멘테이션 화면들은 배경 편집 경로를 타지 않아 이 분기가 없다. `ToppingEditRoute`는 닫기 버튼
-  > 자체가 없어(뒤로만) 대상이 아니다 → [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md).
+  > 자체가 없어(뒤로만) 대상이 아니다 → [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md).
   > 🔧 **정정(2026-08-19)** — `refactor/segmentation-logic`(PR #290 로컬 머지 브랜치)은 develop
   > 위 `refactor/segmentation-develop`로 다시 만들어졌다(사유는 OQ-P-003 ③ 정정 참고). `popUpTo`
   > 신설과 `PictureConfirmRoute`·`SegmentationRoute`·`SegmentationConfirmRoute`의 닫기 결선은
   > 새 브랜치에서도 코드로 확인된다(`Navigator.kt#popUpTo`, 각 Route의 `onClickClose`) — **해소
   > 판정은 안 바뀐다.** 브랜치명만 정정한다.
+  > ✅ **develop 머지됨(2026-08-20, PR #309)** — 위 결선이 develop 코드다. **다만 배경 편집 경로의
+  > 처리가 위 서술과 갈린다** — PR 코드리뷰가 `onBack` 2회를 짚어 `popUpTo<NavKeyCanvasBGEdit>()`로
+  > 바뀌었다(확인·닫기 두 콜백 모두). 흐름 깊이를 가정하지 않으므로 사이에 화면이 하나 껴도 어긋나지
+  > 않고, 목적지를 타입으로 특정할 수 있는 근거는 `returnResultOnly = true` 호출자가 `CanvasBGEditRoute`
+  > 하나뿐이라는 것이다. 대가는 카메라가 자기를 부른 화면을 이름으로 안다는 결합이다.
 - **해소 메모**: [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)과
-  [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)에
+  [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)에
   반영 완료.
 
 ### [2026-08-01] 블러 구현 관용구가 둘로 갈림 — Haze vs 자체 GraphicsLayer
@@ -776,8 +791,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-087
 - **출처**: `feature/gallery/impl` `CustomGalleryPickerViewModel`(`ReturnResult` → `NavigateToConfirm`으로 교체)·`route/CustomGalleryPickerRoute.kt`(`LocalResultEventBus` 사용 제거) vs `feature/groups/canvas/impl/route/CanvasMainRoute.kt`(PR #191 develop 머지) — 호출 화면은 여전히 `ResultEffect<String> { CacheImage(imageUri) }`로 URI 반환을 기다리지만, 커스텀 갤러리는 이제 아무것도 보내지 않고 확인 화면으로 `goTo` 한다. 같은 화면에서 가는 다른 목적지(`NavKeyCameraCustom`)도 성공 시엔 확인 화면으로 전진하고 `ReturnResult`는 실패·취소(null)에만 쓴다. 즉 **이 `ResultEffect`가 캐시 저장을 트리거하는 경로가 사실상 없다.**
 - **항목**: ① 사진 선택 후 캐시 저장(`CanvasMainIntent.CacheImage`)을 어디서 할지 — 확인 화면 "다음"이 결선되면 그쪽 책임인지, ② 결선 후에도 `ResultEffect`를 남길지 걷어낼지, ③ 커스텀/시스템 피커가 반환 방식이 갈린 것(시스템 쪽은 `LocalResultEventBus` 유지)이 의도인지.
-- **상태**: 미해결 (코드 수정 대상 — 죽은 결과 수신부)
-- **해소 메모**: [2026-08-01 확인 화면 이후 경로 항목](#2026-08-01-c-101-confirm-이후-경로-미결선--확인-화면에서-앞으로-못-감)과 같은 라운드에서 처리하고 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md)·[navigation-flow](../architecture/navigation-flow.md) 체크리스트 5번 마커를 정리한다.
+- **상태**: 해소됨 (**PR #309 develop 머지, 2026-08-20** — ②로 결론이 났다: 수신부를 걷어냈다)
+- **해소 메모**: `CanvasMainRoute`의 `ResultEffect<String>`과 짝인 `CanvasMainIntent.CacheImage`·
+  `handleCacheImage`·`CanvasMainEffect.NavigateToSegmentation`·`AddRecentImageUseCase` 주입이 전부
+  삭제됐다. **죽어 있던 것은 기능뿐이고 크래시는 살아 있었다** — 카메라 취소가 흘린 `null`이 결과
+  버스에 남아 있다가 캔버스로 돌아오는 순간 그 인텐트로 들어갔다(결과 키가 타입 이름이라 nullable
+  여부로 갈리지 않는다). 같은 라운드가 `CustomCameraEffect.ReturnResult(uri: String?)`를 인자 없는
+  `Cancel`로 좁혀 `null`을 흘리는 자리 자체를 없앴고, 촬영 실패는 `CaptureFailed`로 갈라 나왔다.
+  ①은 별개 자리에서 답이 나왔다 — 최근 이미지 공급자는 `SegmentationViewModel`이 됐다(기록 대상이
+  결과물이 아니라 **사용자가 고른 원본 uri**다). ③(커스텀/시스템 피커의 반환 방식 차이)은 시스템
+  피커가 도달 불가라 물음이 실물로 서지 않는다 →
+  [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md).
 
   > 📌 **다른 死 `ResultEffect` 하나는 걷혔다(2026-08-09, PR #220)** — 로그인 화면의 `ResultEffect<String>` Toast가 짝(`GroupHomeRoute`)과 함께 삭제됐다. 여기 남은 `CanvasMainRoute` 건은 그대로다 → [2026-08-10] 데코레이터 존치 항목.
 
@@ -1563,8 +1587,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-152
 - **출처**: `feature/segmentation/impl` `route/SegmentationRoute.kt`·`route/SegmentationConfirmRoute.kt`(둘 다 `onClickClose = { }` + TODO "편집 플로우 종료 후 이동할 화면 연결 필요") · `feature/camera/impl` `route/PictureConfirmRoute.kt`(`onClickClose = {}` TODO "c001-캔버스메인으로")(PR #221 develop 머지) — 화면마다 `YGFloatingBar`의 닫기 버튼이 그려지는데 눌러도 아무 일이 없다. 편집 화면(`ToppingEditRoute`)만 닫기가 `onBack()`이다. 즉 촬영·갤러리에서 들어오면 **뒤로가기로 한 칸씩 물러나는 것 말고는 나갈 길이 없다.**
 - **항목**: ① 종료 목적지를 C-001 캔버스 메인으로 확정할지 — C-001 자체가 아직 도달 불가 화면이라([2026-08-12] 항목) 목적지를 정해도 진입 경로가 없다, ② 종료가 `goToSingleClearTop`인지 `clearBackStack()`+`goTo`인지([2026-08-12] 백스택 관용구 항목과 같은 결정), ③ 종료 시 편집 중이던 결과·캐시 파일을 어떻게 할지.
-- **상태**: 미해결 (후속 화면 결선 종속 — [2026-08-01] C-101-confirm ②의 확대판)
-- **해소 메모**: 결선 시 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md)·[c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)·[navigation-flow](../architecture/navigation-flow.md) "토핑 생성 플로우" 절을 함께 갱신하고 [2026-08-01] 항목을 닫는다.
+- **상태**: 해소됨 (**PR #309 develop 머지, 2026-08-20**)
+- **해소 메모**: 세 닫기가 전부 결선됐다 — `SegmentationRoute`·`SegmentationConfirmRoute`·
+  `PictureConfirmRoute`(`returnResultOnly = false`)가 `popUpTo<NavKeyCanvasMain>()`이고, 배경 편집에서
+  들어온 경로만 `popUpTo<NavKeyCanvasBGEdit>()`로 갈린다(캔버스까지 튀면 편집 중이던 배경이 날아간다).
+  ①은 C-001로 확정됐고 그 화면은 그 사이 도달 가능해졌다(PR #268). ②의 답은 둘 중 어느 쪽도 아닌
+  **타입 기준 되감기**다 — `goToSingleClearTop`은 키 동등성 비교라 `NavKeyCanvasMain`의 `groupId`를
+  알아야 하는데 카메라·세그멘테이션 NavKey가 그 값을 안 들고 다녀서 새 API(`Navigator.kt#popUpTo`)가
+  생겼다. ③(종료 시 캐시 파일)은 **다음 진입이 통째로 비우는 쪽**으로 정해졌다(OQ-P-003 ③) —
+  나가는 시점에 지우지 않는 이유는 되돌아가는 화면이 아직 그 파일을 보고 있을 수 있어서다 →
+  [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md).
+  `SegmentationLoadingScreen`·`SegmentationErrorScreen`·`SegmentationScreen`이 콜백 하나를 공유해
+  한 자리를 채우자 셋이 함께 출구를 얻었다. `ToppingEditRoute`는 닫기 버튼 자체가 없어 대상이 아니다.
 
 ### [2026-08-15] C-103 다중 검출 선택과 실패 재시도가 통째로 빠졌다
 
@@ -1587,8 +1621,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-155
 - **출처**: `feature/segmentation/impl/build.gradle.kts`(`parfait.test.unit` 미적용) vs 같은 PR이 추가한 `core/util/jvm` 테스트 2파일(`ArgbExtensionTest`·`FloatArrayExtensionTest`)(PR #221 develop 머지) — 픽셀 유틸은 `core:util:jvm`으로 승격되며 테스트가 붙었는데, **정작 판단이 몰려 있는 곳**(마스크 합성 `buildCutoutBitmap`의 3단계 알파 규칙, 거리장 밴드 환산 `toBorderBands`, `UndoRedoStack`의 undo/redo/`replaceLast`, `BitmapViewMapping.fitCenter`·`clampPan`)은 검증이 없다. `UndoRedoStack`·`BitmapViewMapping`은 Android 타입에 의존하지 않아 **지금도 JVM 테스트가 가능하다**(비트맵 합성 2건만 계측 또는 Robolectric이 필요하다).
 - **항목**: ① `feature/segmentation/impl`에 `parfait.test.unit`을 붙이고 순수 로직 2종부터 덮을지, ② 비트맵 합성 검증을 어디서 돌릴지(계측 / Robolectric / 안 함), ③ 편집 화면이 들고 있는 상태(그리는 도중 획·zoom/pan)가 화면 로컬이라 ViewModel 테스트로 안 잡히는 것을 감수할지.
-- **상태**: 미해결 (테스트 기반 구조는 이미 있다 — 적용만 안 됐다)
-- **해소 메모**: ①을 하면 [2026-08-09] "검증 안 된 표면" 항목의 `MainDispatcherRule` 사용처와도 겹친다. 붙일 때 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "적용 대상" 표에 모듈을 추가한다.
+- **상태**: 부분 해소 (**PR #309 develop 머지, 2026-08-20** — `parfait.test.unit`이 붙고 모듈이 첫
+  `src/test` 소스셋을 얻었다. **다만 ①이 겨눈 순수 로직 2종은 여전히 안 덮였다** — 붙은 테스트는
+  `SegmentationViewModelTest` 하나이고 `UndoRedoStack`·`BitmapViewMapping`은 그대로 검증이 없다.
+  ②③은 미해결)
+- **해소 메모**: 플러그인이 이미 있으므로 남은 것은 테스트를 쓰는 일뿐이다 — 판단이 몰린
+  `buildCutoutBitmap`(3단계 알파 규칙)·`toBorderBands`·`UndoRedoStack`·`BitmapViewMapping`이 대상이고,
+  앞의 하나만 비트맵 합성이라 계측 또는 Robolectric이 필요하다. [2026-08-09] "검증 안 된 표면" 항목의
+  `MainDispatcherRule` 사용처와도 겹친다. 플러그인 적용 목록의 SoT는 코드이고
+  ([unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "적용 대상" 표는
+  스펙 시점 기준이다), 그 스펙에는 이번 적용 사례만 각주로 남겼다.
 
 ### [2026-08-15] 세그멘테이션 화면이 raw `Bitmap`을 UiState에 담고 死코드 2건이 함께 머지됐다
 
@@ -1918,8 +1960,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-178
 - **출처**: `feature/camera/api` `NavKeyCameraCustom`·`NavKeyPictureConfirm`, `feature/gallery/api` `NavKeyCustomGalleryPicker`, `feature/camera/impl` `PictureConfirmRoute`(PR #231) — `showGuideToast`·`returnResultOnly`는 화면이 그릴 데이터가 아니라 **호출자가 고르는 동작 분기**인데 `@Serializable` 백스택 키에 실린다. 확인 화면은 `returnResultOnly`면 `sendResult(PictureConfirmResult)` 후 `navigator.onBack()`을 두 번 부른다(어느 화면을 걷는지 주석으로만 표시). 또 카메라 실패·취소는 여전히 `sendResult(uri: String?)`라 **반환 타입이 한 플로우에 둘**이고, `ResultEffect<PictureConfirmResult>`만 구독하는 C-301은 실패를 못 받아 아무 표시 없이 돌아온다.
 - **항목**: ① 재사용 화면의 동작 차이를 NavKey 인자로 싣는 것을 관용구로 확정할지, 아니면 목적지를 나눌지(`NavKeyPictureConfirmForBackground` 등). ② 복귀를 `onBack()` 2회 대신 명시적 수단(`goToSingleClearTop`·`popUpTo` 계열)으로 바꿀지. ③ 실패 반환 타입을 결과 타입 하나로 합칠지(`PictureConfirmResult`에 실패 표현 추가).
-- **상태**: 미해결
-- **해소 메모**: ②는 [2026-08-12] 백스택 리셋 관용구 항목과 같은 자리에서 정한다. 정해지면 [navigation-flow](../architecture/navigation-flow.md) "캔버스 배경 편집 플로우" 절과 [c301](../specs/archive/2026-08-15-c301-canvas-background-edit.md)·[c101](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) 스펙을 갱신한다.
+- **상태**: 부분 해소 (**②는 PR #309 develop 머지로 닫혔다, 2026-08-20.** ①③은 미해결)
+  > ✅ **복귀가 깊이 대신 타입이 됐다(PR #309)** — `PictureConfirmRoute`의 `returnResultOnly = true`
+  > 경로가 확인·닫기 두 콜백 모두 `popUpTo<NavKeyCanvasBGEdit>()`다. `onBack()` 2회는 흐름 깊이가
+  > 정확히 2라고 가정했고 **그 가정을 주석이 설명하고 있었다는 것 자체가 신호**였다 — 사이에 화면이
+  > 하나 끼는 날 조용히 어긋난다. 목적지를 타입으로 특정할 수 있는 근거는 `returnResultOnly = true`를
+  > 주는 곳이 `CanvasBGEditRoute` 하나뿐이고 `NavKeyCanvasBGEdit`이 `data object`라 백스택에 최대
+  > 한 장이라는 것이다. **대가는 카메라가 자기를 부른 화면을 이름으로 안다는 결합**이고, 둘째 호출자가
+  > 생기면 이 분기를 고쳐야 한다. ③도 절반은 사라졌다 — 카메라 실패·취소가 `sendResult(uri: String?)`를
+  > 하지 않게 되면서(`CustomCameraEffect.Cancel`은 인자가 없다) **한 플로우에 반환 타입이 둘인 상태는
+  > 없어졌다.** 다만 C-301이 실패를 아는 수단은 여전히 없다(이제는 아무 결과도 오지 않는다).
+- **해소 메모**: ①은 아직 관용구로 확정되지 않았다 — 같은 라운드가 `returnResultOnly` 분기를 하나 더
+  늘렸다(닫기). 정해지면 [navigation-flow](../architecture/navigation-flow.md) "캔버스 배경 편집 플로우" 절과
+  [c301](../specs/archive/2026-08-15-c301-canvas-background-edit.md)·[c101](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) 스펙을 갱신한다.
 
 ### [2026-08-15] 그룹 닉네임 중복 409가 서버에서 사라져 앱 분기·테스트가 死코드가 됐다
 
@@ -2484,7 +2537,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 잔여 8파일을 화면별 API 결선 라운드에 붙일지, 이관만 하는 라운드를 따로 돌릴지.
   ② `ERROR` 승급·V1 파일 삭제 시점. ③ 공존 기간 동안 새로 생기는 화면이 규약(Route 소유)을 지키는지
   기계로 확인할 수단이 없다 — 지금은 리뷰가 유일한 관문이다.
-- **상태**: 미해결 (**8파일 → 7파일 → 6파일**, 이관 화면은 8개)
+- **상태**: 미해결 (**8파일 → 7파일 → 6파일 → 3파일**, 이관 화면은 8개 → 16개)
 - **해소 메모**: 이관이 끝나면 [design-system](../architecture/design-system.md) "화면 컨테이너"의
   V1 항목과 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번의 "(구 형태)" 서술을
   함께 지운다. OQ-P-167(실패 표현 갈래)과는 별개 축이다 — 이관해도 실패 표현이 통일되지는 않는다.
@@ -2514,6 +2567,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > `isLoading`·`toastPolicy`를 안 넘긴다. **V1 잔여는 6파일 그대로**이고(같은 모듈 EntryBuilder의 옛
   > 엔트리들이 남는다) 이관 화면은 **8개**가 됐다 →
   > [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md).
+  > 📌 **①의 다른 답이 한 라운드에 8엔트리를 옮겼다(2026-08-20, PR #309)** — `camera` 3
+  > (`NavKeyCameraCustom`·`NavKeyCameraSystem`·`NavKeyPictureConfirm`) · `gallery` 2
+  > (`NavKeyCustomGalleryPicker`·`NavKeySystemGalleryPicker`) · `segmentation` 3
+  > (`NavKeySegmentation`·`NavKeySegmentationConfirm`·`NavKeyToppingEdit`)이 한꺼번에 갔다. 계기는
+  > 로딩·실패가 아니라 **세 모듈 파일을 어차피 다 여는 라운드**였다는 것이고(위 #296·#305와 같은
+  > 갈래), 실제로 여덟 엔트리 중 `isLoading`을 넘기는 곳이 하나도 없다 — 세 모듈의 로딩이 전부 화면
+  > 고유 표현이라 V2가 흡수하지 않는 갈래다. 실익은 토스트 배선 쪽이었다(`CustomCameraScreen`·
+  > `CustomGalleryPickerScreen`이 직접 꽂던 `YGToastHost`·`toastPolicy` 파라미터가 걷혔고, 조용히
+  > 뒤로 가던 카메라 촬영 실패에 `showError`가 붙었다). **V1 잔여가 처음으로 줄어 3파일이 됐다** —
+  > 전부 EntryBuilder(`feature/intro/impl`·`feature/groups/enter/impl`·`feature/groups/canvas/impl`)이고
+  > ②(`ERROR` 승급·V1 삭제)를 정할 자리가 그만큼 가까워졌다. ③의 기계 확인 수단은 여전히 없다 →
+  > [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md).
 
 ### [2026-08-17] 공통 로딩 오버레이가 임시 구현이고, 적용 기준도 사례에서 귀납한 것뿐이다
 
@@ -3038,7 +3103,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   실측: `segmentImage` 내부에 살아 있는 비트맵 총량이 피크에서 약 244MB, 토핑 편집 화면까지
   이어지면(스택 아래 `SegmentationState.originBitmap`이 겹쳐 살아 있는 채) 약 390MB.~~ `app` 모듈
   매니페스트는 `largeHeap`을 선언하지 않는다.
-  [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)이
+  [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)이
   "고화질 보존을 택했다"며 다운샘플을 의도적으로 범위 밖에 뒀는데, 리뷰는 그 판단이 틀렸다고 본다.
   같은 저장소의 `ToppingBorderOutline.kt`는 이미 자기 작업 치수를 캡핑하고 있어(원본 그대로 돌리지
   않는다), 다운샘플 여부 판단이 코드베이스 안에서 화면마다 갈린다.
@@ -3068,13 +3133,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 토핑 편집은 부담이 한 겹 더 늘었다: `ToppingEditViewModel.completeEdit`이 `cutout`·`edited`에
   > 더해 `trimmedEdited`까지 만들고, **"테두리가 없으면 같은 파일을 두 번 떨구지 않는다" 최적화가
   > 사라져** 파일 저장도 항상 두 번이다.
+  >
+  > 📌 **세그멘테이션 라운드가 머지됐다(2026-08-20, PR #309)** — 이 항목이 겨눈 `segmentImage`는
+  > 이제 develop에서 `getPixels` 1회 + 배열 내 마스킹으로 돌고 저장 구간이 `try`/`finally`로 감싸여
+  > `subjectBitmap`·trimmed 비트맵의 회수가 실패 경로에서도 보장된다. **동시 생존 버퍼가 준 것은
+  > 아니다** — 배열 하나를 아끼는 재작성이었고 다운샘플 상한은 여전히 없으며 `largeHeap`도 그대로
+  > 미선언이다. 위 두 실측치는 다른 트리에서 잰 값이라 되살리지 않는다 — **현재 develop 기준 피크는
+  > 세그멘테이션·토핑 편집 둘 다 미측정으로 남는다.** 항목 ①~③과 상태는 그대로다.
 - **항목**: ① 원본 디코드에 다운샘플 상한을 둘지, 둔다면 어느 화면(세그멘테이션만 vs 디코드 공통
   경로)·어느 치수부터 적용할지. ② 다운샘플 대신 `largeHeap` 선언으로 버틸지(저사양 기기에서 여전히
   위험할 수 있다). ③ `ToppingBorderOutline`이 쓰는 치수 캡 관용구를 세그멘테이션 파이프라인 전체의
   표준으로 승격할지.
 - **상태**: 미해결
 - **해소 메모**: 다운샘플 도입 또는 `largeHeap` 채택 시
-  [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)
+  [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)
   "주의 / 열린 질문"과 [ADR-0012](../adr/0012-mlkit-subject-segmentation.md)를 함께 갱신한다.
 
 ### [2026-08-18] 앱 진입이 로띠 재생 길이에 묶였다 — 상한도 하한도 없다
@@ -3302,10 +3374,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `navigator.goTo(NavKeyCanvasMain(groupId = 0L))`을 `navigator.popUpTo<NavKeyCanvasMain>()`으로
   바꿔 닫았다. 되감기는 이미 백스택에 있는 엔트리를 찾으므로 **그룹 id를 실어 나를 필요 자체가
   없어졌고** 하드코딩 `0L`도 함께 사라졌다. 같은 커밋이
-  [segmentation-pipeline-hardening 스펙](../specs/2026-08-18-segmentation-pipeline-hardening.md)의
+  [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)의
   캐시 정리 안전 근거("새 흐름은 캔버스에서만 시작하고 그러려면 이전 화면이 이미 백스택에서 걷혀
   있다")를 **참으로 만든다** — 그 브랜치가 스스로 들여온 결함이라 그 브랜치에서 닫는 것이 맞다고 봤다.
-  ⚠️ **아직 develop에는 없다** — `refactor/segmentation-develop`이 머지돼야 반영된다.
+  ✅ **develop에 반영됐다(2026-08-20, PR #309 — develop `cf357937`)** — `CanvasToppingPlaceRoute`의
+  배치 완료 이펙트는 이제 `popUpTo<NavKeyCanvasMain>()`이고 `groupId = 0L` 하드코딩은 코드에 없다.
+  ②③은 그대로 열려 있다 — 배치 확정은 여전히 서버로 가지 않고, `CanvasToppingPlaceScreen`의 닫기도
+  아직 결선되지 않았다.
   ②③이 정해지면 [navigation-flow](../architecture/navigation-flow.md) 토핑 생성 플로우 절과
   [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 드리프트 ①②를 함께 본다.
   OQ-P-209 ②③과 한 라운드에 정해지는 것이 자연스럽다.
@@ -3325,8 +3400,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **2026-08-20 — `refactor/segmentation-develop`이 되살리지 않기로 했다.** 그 브랜치가 두 번째
   > 리베이스에서 같이 처리할 후보였으나(아래 해소 메모의 옛 권고), **이 잔해는 그 라운드가 만든 것이
   > 아니라 #290이 남긴 것**이라 리뷰 대상 diff를 넓힐 값이 없다고 판단했다
-  > ([재정정 절](../specs/2026-08-18-segmentation-pipeline-hardening.md#드롭됐던-것-둘의-처리--하나만-되살렸다)).
+  > ([재정정 절](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md#드롭됐던-것-둘의-처리--하나만-되살렸다)).
   > 코드 현황은 그대로다 — `goTo` 호출부 0건, `feature/groups/canvas/impl`의 엔트리 등록만 잔존.
+  > 📌 **그 라운드가 머지된 뒤에도 그대로다(2026-08-20, PR #309)** — develop에서 `NavKeyCanvasMove`·
+  > `CanvasMoveRoute`·`CanvasMoveScreen`과 엔트리 등록이 확인되고 `goTo` 호출부는 여전히 0건이다.
+  > **이 잔해를 지울 라운드가 정해지지 않았다는 것만 남았다.**
 - **해소 메모**: 지우면 [navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지" 목록과
   토핑 생성 플로우 절의 도달 불가 표기를 함께 걷는다. ②와 묶어 도달 불가 화면 셋을 한 라운드에
   정리하는 쪽이 남았다.

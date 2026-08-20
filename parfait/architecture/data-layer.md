@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-19
-related_spec: data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
+verified: 2026-08-20
+related_spec: segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -68,7 +68,7 @@ tags: [architecture, parfait]
 `RecentImageRepositoryImpl`이 `RecentImageLocalDataSource`(DataStore, URI 메타)와 `FileRecentImageLocalDataSource`(파일 저장)를 조합. 파일 last-modified로 캐시 축출, `DayWindow`로 날짜 윈도잉.
 
 ## 예: 이미지 세그멘테이션(누끼)
-`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]]), subject 이미지는 `cacheDir` PNG 파일로 저장해 경로를 반환. 실패는 `Result<SegmentationResult>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`SaveEditedImageUseCase`.
+`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]]), subject 이미지는 `cacheDir`의 **세그멘테이션 전용 하위 디렉토리**에 PNG로 저장해 경로를 반환. 실패는 `Result<SegmentationResult>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`SaveEditedImageUseCase`·`ClearSegmentationCacheUseCase`.
 
 **결과 모델 재편(2026-08-14, PR #221)** — `SegmentationResult`가 `BitmapWrapper`를 더 이상 담지 않는다.
 `subjectImagePath`(파일 경로) + `subjectBounds: SegmentationBounds?`(원본 픽셀 좌표계 바운딩 박스,
@@ -87,9 +87,16 @@ tags: [architecture, parfait]
 > ([open-questions](../synthesis/open-questions.md) OQ-P-003 ③·OQ-P-228) →
 > [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md).
 
-**메서드 3개**로 늘었다 — `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
-`saveEditedImage(bitmapWrapper)`(손편집 결과를 캐시에 PNG로 떨구고 절대 경로 반환).
+**메서드 4개**다 — `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
+`saveEditedImage(bitmapWrapper)`(손편집 결과를 캐시에 PNG로 떨구고 절대 경로 반환) ·
+`clearSegmentationCache()`(PR #309 신설, 아래 캐시 정리 절).
 `saveEditedImage`는 **넘겨받은 비트맵을 recycle하지 않는다**(수명은 넘겨준 쪽 몫, 코드 주석에 명시).
+
+**계약 셋 중 `decodeImage`만 `Result`가 아니다 — 감싸는 자리를 UseCase로 올렸다(2026-08-20, PR #309).**
+`DecodeImageUseCase`가 `runSuspendCatching`으로 감싸 `Result<BitmapWrapper>`를 주고, 리포지토리
+시그니처는 던지는 채로 남았다. 호출부마다 감싸던 것을 한 자리로 모은 이유는 **두 호출부가 쓰던 stdlib
+`runCatching`이 `CancellationException`까지 삼켜** 이미 떠난 화면이 자기를 "디코드 실패"로 보고했기
+때문이다 — 취소를 실패로 접는 실수가 호출부 수만큼 반복될 자리를 없앴다.
 
 **ML Kit optional module을 사용 직전에 확인한다** — 매니페스트의 `com.google.mlkit.vision.DEPENDENCIES`는
 설치 시점 다운로드 힌트일 뿐 보장이 없어서, `ModuleInstall.areModulesAvailable`로 확인하고 없으면
@@ -97,11 +104,19 @@ tags: [architecture, parfait]
 `Process`(그 외)로 가른다 — `Tasks.await`가 원인을 `ExecutionException`으로 감싸므로 한 겹 벗겨
 `MlKitException.UNAVAILABLE`을 판정한다.
 
-> ⚠️ **캐시 파일이 쌓인다** — `parfait_<timestamp>.png`가 추출 1장 + 편집 완료마다 최대 2장 늘고
-> 정리 경로가 없다 → [open-questions](../synthesis/open-questions.md) [2026-07-12].
+> ✅ **캐시 파일에 정리 경로가 생겼다(2026-08-20, PR #309)** — 저장 위치가 `cacheDir` 바로 밑에서
+> **전용 하위 디렉토리**(`SegmentationCacheDir.kt`)로 내려갔고, 세그멘테이션 진입 시 디코드보다 먼저
+> 그 디렉토리를 통째로 비운다(`ClearSegmentationCacheUseCase`). 파일 이름도 밀리초 타임스탬프에서
+> `File.createTempFile`로 바뀌었다 — 한 번의 세그멘테이션이 두 장을 연달아 저장해 같은 밀리초에
+> 덮어쓸 수 있었다. **누적 상한은 직전 흐름 1회분**이고, 정리 호출 자체는 실패해도 흐름을 막지 않는다
+> (best-effort). **카메라 캐시는 여전히 정리 경로가 없다**(`FileCameraCacheLocalDataSourceImpl`, 초
+> 단위 파일명이라 충돌도 남는다) → [open-questions](../synthesis/open-questions.md) OQ-P-003 ③.
 
-> ⚠️ **`foregroundConfidenceMask == null`은 여전히 raw `error()`다** — `Result`로 감싸이지 않아
-> 호출부(effect→Toast)가 못 잡는다 → [open-questions](../synthesis/open-questions.md) [2026-07-12].
+> ✅ **`foregroundConfidenceMask == null`이 `Result.failure`를 탄다(2026-08-20, PR #309)** — raw
+> `error()`가 아니다. 같은 라운드가 마스크 버퍼의 `remaining()`이 `width * height`와 다른 경우도
+> 실패로 방어하고(그전까지는 조용히 잘못 읽었다), 저장 구간(`saveToCacheAsPng`의 `IOException`)까지
+> `try`로 감싸 `finally`에서 비트맵을 회수한다. `CancellationException`은 그 방어 앞에서 재던져
+> 취소가 실패로 접히지 않는다 → [open-questions](../synthesis/open-questions.md) OQ-P-004 ②.
 
 ## 실패는 Repository 경계에서 도메인 타입이 된다
 

@@ -5,8 +5,52 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `750cc2dd` (`Merge pull request #310 from mash-up-kr/feature/#300-sync-backend-api-250819`)
-- **요약**: **미머지 스택이 한 번에 비었고, 계약과 앱이 처음으로 어긋난 데 없이 만났다**(delta 3건).
+- **커밋**: `cf357937` (`Merge pull request #309 from mash-up-kr/refactor/segmentation-develop`)
+- **요약**: **문서가 조건부로 적어 둔 문장 여섯이 한 커밋에 조건을 잃었다**(delta 1건).
+  마지막 남은 미머지 브랜치(`refactor/segmentation-develop`)가 들어왔고, **머지 커밋의 트리가 브랜치
+  팁과 같다** — 충돌 해소 편집이 0건이라 [스펙 as-built 재정정 절](specs/archive/2026-08-18-segmentation-pipeline-hardening.md#as-built-재정정-2026-08-20-두-번째-리베이스)의
+  수치를 **재측정 없이 그대로 develop 사실로 승격**할 수 있었다(유닛 538 → **560건**, 클래스 61 → 64).
+  그래서 이 라운드가 한 일도 새 감사가 아니라 **"브랜치에만 있다"고 단서를 달아 둔 서술에서 그 단서를
+  떼는 것**이었다. 조건부로 적혀 있던 것이 실제로 그 조건을 만난 사례라 **문서가 예측한 대로 닫혔는지**가
+  이번의 관전 포인트다.
+  **가장 잘 맞은 예측은 캐시 정리의 안전 근거다** — OQ-P-003 ③은 "세그멘테이션 진입 시 캐시를 통째로
+  비워도 안전하다. 새 흐름은 캔버스에서만 시작하고, 그러려면 이전 흐름 화면이 이미 백스택에서 걷혀
+  있으니까"라고 적고 곧바로 **"단 `refactor/segmentation-develop` 머지 시점부터"**라는 단서를 달았다.
+  그 단서가 필요했던 이유는 근거를 참으로 만드는 수정(`CanvasToppingPlaceRoute`의 배치 완료 이펙트를
+  `goTo(NavKeyCanvasMain(groupId = 0L))`에서 `popUpTo<NavKeyCanvasMain>()`으로)이 develop이 아니라 그
+  브랜치에 있었기 때문이고, **정리와 그 정리를 안전하게 만드는 수정이 같은 커밋에 들어와야만 참**이었다.
+  이번 머지가 정확히 그렇게 됐다(OQ-P-238 ① 해소).
+  **닫힌 미결이 여섯이다** — OQ-P-003 ③(캐시 정리) · OQ-P-004 ②(마스크 null raw throw) ·
+  OQ-P-055 ②(닫기 목적지) · OQ-P-087(죽은 `ResultEffect`) · OQ-P-152(토핑 생성 플로우 출구) ·
+  OQ-P-238 ①. 이 중 둘은 **"고칠 도구가 없어서" 열려 있던 것**이고 도구가 이번에 생겼다:
+  `Navigator.popUpTo<T>()`는 목적지 키의 인자를 모르는 호출부를 위한 되감기이고(`goToSingleClearTop`은
+  키 동등성 비교라 `NavKeyCanvasMain`의 `groupId`를 알아야 한다), 그 하나로 세 Route의 닫기가 한꺼번에
+  출구를 얻었다 — 세그멘테이션 쪽은 로딩·에러·본문 세 화면이 콜백 하나를 공유해 **한 자리를 채우자
+  셋이 함께 열렸다.** **OQ-P-087은 반대로 "걷어내는" 쪽으로 닫혔다** — `CanvasMainRoute`의 `ResultEffect<String>`은
+  기능이 죽고 크래시만 살아 있던 통로였고(카메라 취소가 흘린 `null`이 버퍼에 남아 있다가 캔버스로
+  돌아오는 순간 인텐트로 들어갔다), `CustomCameraEffect.ReturnResult(uri: String?)`를 인자 없는 `Cancel`로
+  좁혀 **`null`을 흘리는 자리 자체**를 없앴다.
+  **부분 해소가 셋**이다. OQ-P-204는 **V1 잔여가 처음으로 줄었다**(6 → **3파일**, 전부 EntryBuilder) —
+  8엔트리를 한 라운드에 옮긴 결과이고 이관 계기는 로딩·실패가 아니라 **어차피 그 파일을 다 여는
+  라운드**였다(여덟 중 `isLoading`을 넘기는 곳이 하나도 없다). OQ-P-178은 ②가 닫혔다 — 배경 편집 복귀가
+  `onBack()` 2회에서 `popUpTo<NavKeyCanvasBGEdit>()`가 됐고, **흐름 깊이를 가정한다는 것을 주석이
+  설명하고 있었다는 것 자체가 신호**였다(PR 리뷰가 짚었다). OQ-P-155는 `feature/segmentation/impl`이
+  첫 `src/test` 소스셋을 얻었지만 **판단이 몰린 순수 로직**(`UndoRedoStack`·`BitmapViewMapping`)은
+  여전히 안 덮였다.
+  **스펙 본문을 뒤집은 결정 둘도 그대로 develop에 들어왔다** — `decodeImage` 계약을 `Result`로 넓힌 것
+  (스펙이 명시적으로 기각했던 대안인데, 이미 방어하던 호출부도 stdlib `runCatching`으로
+  `CancellationException`을 삼켜 **떠난 화면이 자기를 "디코드 실패"로 보고**하던 것이 뒤집은 근거다)과,
+  최근 이미지 공급자를 만든 것(스펙이 "C-106 몫"이라며 제외했으나 기록 대상이 결과물이 아니라
+  **사용자가 고른 원본 uri**라 제외했던 설계와는 다르다 — 갤러리의 "최근"은 다시 고를 사진 목록이다).
+  ⚠️ **열린 채로 남은 것도 분명히 한다** — 재시도 동선 부재(OQ-P-003 ①, `ModuleNotReady`는 일시적
+  실패인데 다시 시도할 수단이 없다) · 다운샘플 없음(OQ-P-228, **현재 develop 기준 피크는 세그멘테이션·
+  토핑 편집 둘 다 미측정이다** — 옛 실측치는 전부 다른 트리에서 잰 값이라 되살리지 않았다) ·
+  `NavKeyCanvasMove` 계열 도달 불가(OQ-P-239, `goTo` 호출부 0건인데 엔트리 등록만 남았다. **이 라운드가
+  만든 잔해가 아니라 #290이 남긴 것**이라 리뷰 diff를 넓히지 않기로 한 판단이 그대로다) · 카메라 캐시
+  정리 경로 없음. 배치 확정이 서버로 가지 않는 것(OQ-P-238 ②③)도 그대로다 — **되돌아가는 방식만
+  고쳐졌지 저장은 여전히 없다.**
+  ⚠️ **실기기·실서버 확인 없음** — 크래시 셋을 닫은 라운드인데 그 크래시들을 실제로 밟아 본 적이 없다.
+  직전 회차 요약: **미머지 스택이 한 번에 비었고, 계약과 앱이 처음으로 어긋난 데 없이 만났다**(delta 3건).
   세 PR(#307 → #308 → #310)이 쓰인 순서대로 들어갔고 **머지 커밋 셋 모두 충돌 해소 편집이 0건**이라
   브랜치 팁이 그대로 develop 사실이다. 그래서 이 라운드가 한 일의 대부분은 새 감사가 아니라
   **"미머지"라고 적힌 문서를 사실로 바꾸는 것**이었다 — 셋 다 선작성 스펙·플랜이 있었고 as-built 기록도
@@ -360,38 +404,18 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-20 (36회차)
-- **미머지 제외 항목**: **`refactor/segmentation-develop` 하나만 남았다**(세그멘테이션 파이프라인 하드닝 +
-  스캐폴드 8엔트리 일괄 이관 + `popUpTo<T>()`, [스펙](specs/2026-08-18-segmentation-pipeline-hardening.md)
-  선반영 완료). ✅ **2026-08-20에 리베이스해 뒤처짐이 0이 됐다** — base가 develop `86f0f6b0`에서
-  **`750cc2dd`(이 기준선과 동일)**로 올라갔고 head는 `63ec2989`, 커밋 **15개**다. 확인은
-  `git merge-base --is-ancestor origin/develop refactor/segmentation-develop`이고 지금은 참이다
-  (리모트 `origin/refactor/segmentation-develop`도 2026-08-20에 같은 히스토리로 갱신됐다).
-  리베이스 결과·수치·뒤집힌 결정은
-  [스펙 as-built 재정정 절](specs/2026-08-18-segmentation-pipeline-hardening.md#as-built-재정정-2026-08-20-두-번째-리베이스)이
-  정본이다 — 요지는 셋이다. **① 예고와 달리 충돌이 3건 났다**(스펙은 "그대로 얹히는지만 확인하면
-  된다"고 적었으나 `ImageSegmentationRepositoryImpl`은 두 변경이 같은 블록에서 `subjectBitmap` 수명을
-  서로 다르게 다뤄 결합 판단이 필요했다). **② 스펙 본문을 뒤집은 커밋이 둘 있다**(`decodeImage` 계약을
-  `Result`로 넓힌 것 — 스펙이 명시적으로 기각했던 대안이고, 이미 방어하던 쪽도 `CancellationException`을
-  삼키고 있었다는 것이 뒤집은 근거다 / 최근 이미지 공급자를 만든 것 — 스펙이 "C-106 몫"이라며 범위 밖에
-  뒀으나 기록 대상이 결과물이 아니라 **사용자가 고른 원본 uri**라 제외했던 설계와는 다르다).
-  **③ OQ-P-238을 같이 닫았다**(`CanvasToppingPlaceRoute`의 `goTo(NavKeyCanvasMain(groupId = 0L))` →
-  `popUpTo<NavKeyCanvasMain>()`) — 이 브랜치의 캐시 정리 안전 근거를 참으로 만드는 수정이라 여기서
-  닫았고, 함께 권고됐던 OQ-P-239(`NavKeyCanvasMove` 삭제)는 **#290이 남긴 잔해라 열어 뒀다.**
-  **④ PR #309 코드리뷰 대응 1건**(`63ec2989`) — `PictureConfirmRoute`의 배경 편집 복귀가 `onBack()`
-  2회로 흐름 깊이를 가정하던 것을 `popUpTo<NavKeyCanvasBGEdit>()`로 바꿨다. 리뷰가 함께 요청한
-  "백스택 포함 여부 확인 로직"은 `popUpTo`의 반환값이 이미 그 역할을 해서 새로 만들지 않았다.
-  수치는 develop `750cc2dd` 대비 재측정: 유닛 **538 → 560건**(클래스 61 → 64), `YGScaffoldV2` 채택
-  **10 → 18개 파일**, `YGScaffold`(V1) 잔존 **6 → 3개 파일**(전부 엔트리 빌더).
-  develop 대조 시 `camera`·`gallery`·`segmentation` EntryBuilder가 여전히 `YGScaffold`이고 `popUpTo`도 없다.
-  리베이스 시 드롭했던 커밋 둘(`NavKeyCanvasMove` 계열 삭제·배치 완료 이펙트 `popUpTo` 전환)이 되살아날
-  자리는 그대로다(OQ-P-238·OQ-P-239).
-  ✅ **직전 회차가 미머지로 적던 `feature/#300-sync-backend-api-250819`(PR #310)는 이 라운드에 머지됐다** —
-  #307·#308과 함께 develop에 들어가 기준선이 `750cc2dd`가 됐다. 그때 "함께 정리할 것 셋"으로 적어 둔
-  것(두 스펙의 "구현 완료·미머지" 표기 · ADR-0023의 `status: proposed` · 두 스펙의 `archive/` 이동)은
-  전부 이 라운드에서 처리했고, 세 스펙·세 플랜 모두 `archive/`로 옮겼다.
-  ⚠️ **문서 전제 오류 정정 이월**: [design-system](architecture/design-system.md)의 8엔트리 일괄 이관
-  수치는 여전히 브랜치 기준 표기이고 develop 값(6파일)을 병기한 상태다.
+- **검증일**: 2026-08-20 (37회차)
+- **미머지 제외 항목**: **없다.** 추적하던 마지막 브랜치 `refactor/segmentation-develop`이 PR #309로
+  들어와 이 기준선이 됐다(head `63ec2989` → 머지 `cf357937`, 충돌 해소 편집 0건이라 두 트리가 같다).
+  선반영해 둔 [스펙](specs/archive/2026-08-18-segmentation-pipeline-hardening.md)·플랜은 이 라운드에
+  `archive/`로 옮겼고, 그 문서들이 브랜치 조건을 달아 두었던 서술도 전부 develop 사실로 승격했다.
+  ✅ **직전 회차가 이월로 적어 둔 문서 전제 오류도 여기서 닫혔다** —
+  [design-system](architecture/design-system.md)의 8엔트리 일괄 이관 수치가 브랜치 기준 표기였는데,
+  develop 실측으로 갈아 끼웠다(이관 화면 8 → **16개**, `YGScaffold`(V1) 잔존 6 → **3파일**, 전부
+  엔트리 빌더 `feature/intro/impl`·`feature/groups/enter/impl`·`feature/groups/canvas/impl`).
+  다음 라운드가 이어받을 것은 미머지 추적이 아니라 **열린 미결**이다 — OQ-P-239(도달 불가 화면 셋을
+  묶어 정리) · OQ-P-228(다운샘플, 현재 트리 피크 미측정) · OQ-P-003 ①(재시도 동선) · OQ-P-204 ②
+  (V1 `ERROR` 승급·삭제 시점, 잔여가 3파일까지 줄어 판단할 자리가 가까워졌다).
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
@@ -462,3 +486,4 @@
 | 2026-08-19 | `f12870a8` | Merge #290 (feature/topping-add-screen) | delta 1건(#290). **C-106 토핑 배치 화면 신설** — 자리채움 `NavKeyCanvasMove`(아무것도 안 하는 `CanvasMoveScreen`)를 대신해 `NavKeyCanvasToppingPlace(imageUri)` + Route/Screen/ViewModel 한 벌이 들어와 토핑 생성 플로우의 마지막 자리가 채워졌다. 위키 [[C-106-토핑-배치-정책-v0.1]]의 초기 배치 규칙 **넷이 처음으로 코드에 들어왔다**(긴 변 = 캔버스 너비 40%·정중앙·짧은 변 48 하한·이탈 허용 + 클리핑) → **OQ-P-200 종결**. 40% 상수를 `internal`로 열어 읽기·쓰기가 공유(③ = 양쪽 다), 48은 **dp로 굳음**(② 확정, 정책은 px). 계산은 ViewModel 소유 — 캔버스 실측·토핑 원본 크기가 서로 다른 시점에 오므로 인텐트 둘로 받아 매번 재시도하되 사용자가 손대면 멈춘다. **리사이즈 한계는 고정 배율이 아니라 역산**(하한 = 48dp 최소 터치, 상한 = 캔버스 긴 변 1.5배). 그리기는 `center`·`sizeAfterScale`을 한 번만 계산해 이미지·스트로크·핸들에 공유하고 클리핑만 셋이 갈린다. 세그멘테이션 결과가 **두 벌**로 갈림(`trimmedSubjectImagePath` 신설 — 편집은 원본 크기 유지, 배치는 여백 없는 실제 크기) → 캐시 PNG·메모리 버퍼 각 1 증가, "테두리 없으면 한 번만 떨군다" 최적화 소멸. `CanvasBGEditScreen` private 컴포저블 3종이 모듈 `component/`로 승격돼 두 화면 공유(`toppingId: Long` → `key: Any?`), 그 과정의 `size` → `requiredSize`가 C-301 토핑에도 적용. `YGScaffoldV2` 이관 **8화면째**(V1 잔여 6파일 불변). 조치: 신규 as-built 스펙 1건(c106-topping-place, archive) + specs README 등록·c103 아카이브 스펙 목적지/모델 정정, navigation-flow(NavKey 목록·토핑 생성 플로우 다이어그램·도달 불가 표기)·design-system(이관 8화면·`YGFloatingBarEdit` 두 번째 화면·핸들 관용구 공용화)·data-layer(`SegmentationResult` 3필드)·module-structure(화면 간 공유 컴포저블은 모듈 `component/`) 갱신, open-questions: **OQ-P-200 해소** · OQ-P-209 부분 해소(①) · OQ-P-202/203/204/207/228 사례 갱신 · **신규 4건**(OQ-P-238 `groupId = 0L` 하드코딩 + 백스택 누적 / OQ-P-239 `NavKeyCanvasMove` 도달 불가 / OQ-P-240 배치 화면이 실제 캔버스가 아님 / OQ-P-241 회전·리사이즈 한계에 정책 근거 없음). 미머지 세그멘테이션 스펙의 캐시 정리 안전 근거가 **다시 거짓**이 됨을 그 스펙에 기록. 유닛 474 → **484건**. 미머지: `refactor/segmentation-develop`·`feature/#294-group-ssot`·`feature/#300-sync-backend-api-250819`(셋 다 리베이스 필요) |
 | 2026-08-20 | `c36cad49` | Merge #306 (#236 withdraw-api) | delta 1건(#306). **되돌릴 수 없는 문 셋이 다 열렸다** — S-001 회원 탈퇴가 로그 한 줄에서 실제 요청이 됐다. 표면(#250)도 팝업(#225)도 이미 있어 이번에 들어온 것은 사이를 잇는 셋뿐이다(`MemberRepository.withdraw` · `WithdrawUseCase` · ViewModel 분기). **핵심은 순서다** — 서버가 받아 준 뒤에야 기기를 정리하고 거절당하면 아무것도 지우지 않는다(로그아웃과 반대. 서버가 거절했는데 로컬만 지우면 계정이 살아 있는 채로 사용자만 탈퇴했다고 믿는다). 정리는 새로 쓰지 않고 `LogoutUseCase`에 위임해 "무엇을 지우는가"의 단일 자리를 지켰다(호출자 셋). 화면은 **S-101 나가기·신고 형태를 그대로 복제**(팝업 먼저 닫고 로딩 오버레이 + 실패 토스트)했고 갈린 것은 목적지(`replaceAll(NavKeyLogin)` — 세션이 끝나 그룹 목록으로 갈 자리가 없다)와 **연타 잠금 테스트**뿐이다. `isWithdrawing`을 `isLoggingOut`과 합치지 않은 이유는 덮개가 아니라 `YGActionItem(enabled = !isLoggingOut)`이 로그아웃 줄 하나만 가리키기 때문. S-001이 토스트 호스트를 처음 얻었지만 이미 V2라 컨테이너는 불변(이관 8화면·V1 잔여 6파일 그대로). ⚠️ **끝난 뒤가 깨끗하지 않다** — 위임받은 로그아웃이 방금 지워진 계정의 토큰으로 나가 401 → 재발급 거절 → `ForcedLogout`까지 이어져 이동을 두 곳이 일으킨다(**OQ-P-242 신설**). 조치: 신규 스펙·플랜 없음(선작성 문서가 없던 소규모 결선 라운드), **api 4표면**(member.md `android_status: partial`→**`done`** · 엔드포인트 표 DELETE 열 `구현됨·결선됨` · Android 매핑 2블록 재작성 · README 도메인 표 member 행 **결선됨** + 소비처 20건 문단. `verified`·서버 계약 절 불변, conventions.md 불일치 표는 이 delta가 안 건드림), architecture 3건(data-layer `MemberRepository` 인벤토리 + UseCase 규칙 넷째 + 도메인 공백 문단 / state-management in-flight 분리 사례 둘째 / design-system 토스트 호스트 사례). open-questions: **해소 1건**(OQ-P-141 Danger Zone 확인 3종 — ②·③은 채택이 아니라 불필요해져서 닫힘), **부분 해소 2건**(OQ-P-162 ③이 물음이 서지 않은 채 닫힘 · OQ-P-186 ② 닫힘, ① 비활성 색은 잔존), **신규 1건**(OQ-P-242). 테스트 484 → **490건**. ⚠️ 실기기·실서버 확인 없음. 미머지 3건 재확인 — **`refactor/segmentation-develop`이 리모트에 올라와 있어 직전 회차의 "리모트에도 없다"를 정정**했고, 셋 다 base가 develop 뒤라 리베이스 필요 |
 | 2026-08-20 | `750cc2dd` | Merge #310 (#300 sync-backend-api-250819) | delta 3건(#307·#308·#310, 전부 선작성 스펙·플랜 보유). **미머지 스택이 한 번에 비었고 계약 정합이 처음으로 0건이 됐다** — [api/conventions.md](api/conventions.md) "Android 불일치"가 2건 → **0건**. 닫힌 방식이 서로 다르다: 업로드 시각 파싱은 **앱이 서버 포맷 변경을 기다리지 않고** `LocalDateTime` + 고정 KST로 읽는 쪽(OQ-P-165 ①의 "서버 쪽이 자연스럽다"를 뒤집었고 근거는 서버 DB 커넥션 세 환경의 `serverTimezone=Asia/Seoul`), 하루 경계는 **정책상 옳은 쪽이 서버라 앱을 03시로** 옮겼다(`parfaitToday()` 한 함수만 고쳐 재시도 조건·달력 활성 조건·`syncToday()` 트리거가 저절로 따라왔다). **#307**: 그룹 목록·상세가 `:data` 인메모리 캐시 한 벌로 모이고 세 화면이 구독한다 — 갱신 함수가 `Result<Unit>`이라 **값을 얻는 두 번째 경로가 없다**([ADR-0023](adr/0023-group-in-memory-ssot.md) `proposed` → `accepted`). 세션 정리 경로 셋(로그아웃·강제 로그아웃·탈퇴 위임), 캐시 clear를 계정 정보 clear **앞에**. **#308**: 칩 배정 주체가 **서버**로 정해져 `:domain` 중립 enum `NametagChipType` 신설 + feature가 디자인시스템 타입으로 옮긴다. **`GroupDetailVO` 삭제** — 상세에 `groupName`이 실려 존재 이유가 사라졌고, 합성 자리를 `:data`가 아니라 UseCase에 둔 판단이 소멸을 한 줄 삭제로 끝나게 했다. S-101 "N명 남음"도 실값. **#310**: 서버가 HTTP DTO 경계에서만 키를 `nameTagChip` 계열로 바꿔 직전 라운드의 칩 결선을 조용히 무력화한 것을 되살리고, C-001 상단 칩을 서버 값으로 결선해 `NAMETAG_CHIP_PALETTE`를 걷었다(팔레트 개념째 소멸 → **같은 사람이 S-101·C-001에서 같은 색**). 머지 전 리뷰가 결론 하나를 뒤집어 **모르는 값·값 없음을 모두 `DEFAULT`로 접고 널 허용을 없앴다**([ADR-0024](adr/0024-nametag-chip-unknown-fold.md), 대가는 "새 타입"과 "반납된 자리"의 구분 상실). `:data` 칩 매퍼 두 사본은 `source/common/mapper` `internal` 하나로 합쳤다(feature 색 변환 셋과 결론이 갈리는 이유는 가시성 미결이 여기엔 안 걸려서다). **`MyParfaitGroupVOMapperTest` 삭제로 `XxxVOMapperTest`가 0개** — 오프셋 붙은 입력을 스스로 지어 넣어 파싱 버그를 초록으로 지켜 온 파일이고, 옮길 대상 `ParfaitGroupRemoteDataSourceImplTest`도 이번에 신설(OQ-P-168 해소). ⚠️ **재발 방지 수단은 이번에도 없고 위험 반경은 넓어졌다** — 키 어긋남을 잡은 것은 두 번 다 계약 문서 감사였고, 그전까지 브랜치에 갇혀 있던 사고가 지금은 **develop 네 자리에서 색을 정한다**(OQ-P-234 ③). ⚠️ 서버 `COALESCE` 폴백 탓에 토핑 0건 그룹이 **생성 시각을 활동 시각처럼·생성자 칩을 마지막 토퍼 칩처럼** 보여 준다(OQ-P-235 사정거리 확대). 미결: **해소 8건**(OQ-P-165·168·216·222·224·234 ①②·236 ①) · **소멸 1건**(OQ-P-210 ②) · **신설 1건**(OQ-P-243 — 하루 경계 상수 하나가 뜻이 다른 두 하루를 정한다). 스펙 3건·플랜 3건 `archive/` 이동, 스캐폴드 이관 수치 불변(8화면·V1 잔여 6파일). 유닛 490 → **538건**(파일 56 → 61). ⚠️ 실기기·실서버 확인 없음. 미머지: `refactor/segmentation-develop`(다섯 세대 뒤처짐, 커밋 11 → 13개로 늘어 스펙이 자기 브랜치보다 뒤처졌다) |
+| 2026-08-20 | `cf357937` | Merge #309 (refactor/segmentation-develop) | delta 1건(#309, 선작성 스펙·플랜 보유). **추적하던 마지막 미머지 브랜치가 들어와 미머지 항목이 0건이 됐다** — 머지 커밋 트리가 브랜치 팁(`63ec2989`)과 같아 스펙 as-built 수치를 재측정 없이 승격했다(유닛 538 → **560건**, 클래스 61 → 64). 이 라운드가 한 일은 새 감사가 아니라 **"브랜치에만 있다"는 단서를 문서에서 떼는 것**이었다. **닫힌 미결 여섯**: OQ-P-003 ③(캐시 정리 — 진입 시 전용 디렉토리를 통째로 비운다. 그 안전 근거를 참으로 만드는 되감기 수정이 **같은 커밋에 있어야만 참**이었고 이번에 그렇게 됐다) · OQ-P-004 ②(마스크 null raw throw → `Result.failure`) · OQ-P-055 ②(닫기 목적지) · OQ-P-087(죽은 `ResultEffect` — 기능은 죽고 크래시만 살아 있던 통로라 걷어냈고, `ReturnResult(uri: String?)`를 인자 없는 `Cancel`로 좁혀 `null`을 흘리는 자리 자체를 없앴다) · OQ-P-152(플로우 출구 — `Navigator.popUpTo<T>()` 하나로 세 Route의 닫기가 함께 열렸다) · OQ-P-238 ①(배치 완료가 캔버스를 새로 쌓던 것 → 되감기, 하드코딩 `groupId = 0L` 소멸). **부분 해소 셋**: OQ-P-204(8엔트리 일괄 이관으로 V1 잔여가 처음 줄어 6 → **3파일**, 이관 화면 8 → **16개**. 계기는 로딩·실패가 아니라 어차피 그 파일을 다 여는 라운드였고 여덟 중 `isLoading`을 넘기는 곳이 0이다) · OQ-P-178 ②(배경 편집 복귀가 `onBack()` 2회 → `popUpTo<NavKeyCanvasBGEdit>()`, PR 리뷰가 짚었다) · OQ-P-155(`feature/segmentation/impl`이 첫 `src/test`를 얻었으나 `UndoRedoStack`·`BitmapViewMapping`은 여전히 미검증). **스펙을 뒤집은 결정 둘**(`decodeImage` 계약 → `Result` / 최근 이미지 공급자 신설)도 그대로 들어왔다. 열린 채: OQ-P-239(도달 불가 잔해) · OQ-P-228(다운샘플, 현재 트리 피크 미측정) · OQ-P-003 ①(재시도 동선) · 카메라 캐시 정리. ⚠️ 실기기 확인 없음 |

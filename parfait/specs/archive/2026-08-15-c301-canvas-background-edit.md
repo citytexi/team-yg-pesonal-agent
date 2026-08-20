@@ -134,10 +134,12 @@ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnR
    화면 비율은 도메인 규칙이 아니라 표시 규격이다
    → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
 6. **NavKey 인자가 데이터가 아니라 동작 플래그다** — `showGuideToast`·`returnResultOnly`는 화면이
-   그릴 값이 아니라 **호출자가 고르는 분기**이고, `@Serializable` 백스택 키에 실린다. 복귀도
-   `onBack()` 2회로 스택 깊이를 가정한다(중간에 화면이 하나 끼면 깨진다). 카메라 실패 경로는
-   여전히 `sendResult(uri: String?)`라 `ResultEffect<PictureConfirmResult>`인 이 화면은 **실패를
-   받지 못한다** → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
+   그릴 값이 아니라 **호출자가 고르는 분기**이고, `@Serializable` 백스택 키에 실린다.
+   ~~복귀도 `onBack()` 2회로 스택 깊이를 가정한다~~ → ✅ **#309(2026-08-20)로 `popUpTo<NavKeyCanvasBGEdit>()`가
+   됐다**(확인·닫기 둘 다). 깊이를 가정하지 않고, 목적지를 타입으로 특정할 수 있는 근거는
+   `returnResultOnly = true`를 주는 곳이 이 화면 하나라는 것이다. 카메라 실패·취소도 같은 라운드에
+   `sendResult(uri: String?)`를 그만뒀지만(인자 없는 `Cancel`), **이 화면이 실패를 아는 수단은 여전히
+   없다** — 이제는 아무 결과도 오지 않는다 → [open-questions](../../synthesis/open-questions.md) OQ-P-178.
 7. **클릭 규약 이탈** — 팔레트 원 2종·색 원이 `Modifier.clickable`을 직접 쓴다(`clickableYG`
    미사용, 갤러리 그리드 셀과 같은 부류) → [open-questions](../../synthesis/open-questions.md) [2026-08-04].
 8. **치수 리터럴** — 원 36dp·아이콘 24dp·테두리 1dp·미리보기 좌우 21dp가 토큰 밖이다.
