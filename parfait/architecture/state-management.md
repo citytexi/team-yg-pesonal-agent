@@ -4,11 +4,11 @@ title: 상태 관리 (MVI) · 데이터 흐름
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-17
-related_spec: c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, group-ssot
+verified: 2026-08-20
+related_spec: c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, group-ssot, intro-term-agree
 related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: data-layer, navigation-flow
-related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase, GetMyGroupsFlowUseCase, GetGroupDetailUseCase, GroupListViewModel, GroupSettingViewModel, CanvasMainViewModel
+related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase, GetMyGroupsFlowUseCase, GetGroupDetailUseCase, GroupListViewModel, GroupSettingViewModel, CanvasMainViewModel, TermAgreeViewModel, TermAgreeError
 tags: [architecture, parfait]
 ---
 # 상태 관리 (MVI) · 데이터 흐름
@@ -157,6 +157,14 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
   > 함께 **`launch(onError = …)`를 붙여야 한다** — 안 붙이면 `Result.failure`만 알려지고 UseCase가
   > 예외를 던지는 경로가 조용해진다([ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md)이 "이 자리가
   > 통로"라고 지정한 곳이다).
+  > 📌 **가장 좁은 사례 — 온보딩 약관의 `TermAgreeError` 2종(2026-08-20, PR #315 develop 머지).**
+  > 갈래 넷(`SignUpException.RequiredPolicyNotAgreed`·`AppError.Network`·`AppError.Server`·그 외)이
+  > `NETWORK`·`UNKNOWN` **둘로 접힌다.** `LoginError`가 보여 준 "enum이 세는 것은 에러 코드가 아니라
+  > 문구가 갈리는 지점"을 끝까지 민 형태이고, **결함으로 로그를 남기는 갈래까지 사용자에겐 같은
+  > 문구**라는 것이 새로 드러난 점이다(화면 가드가 뚫린 경우도 처분이 "잠시 후 다시"로 같다).
+  > 같은 화면이 **enum에 넣지 않은 실패**도 함께 보여 준다 — 약관 조회 실패는 `isLoadFailed`로
+  > 화면에 남는다. 갈림길은 **재시도 동선이 화면 안에 있는가**이고, 있으면 State가 들고 없으면
+  > 사유 enum + 토스트다 → [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md) "실패 표현".
 - **요청 중 플래그는 `finally`로 내린다** — S-001 로그아웃(`isLoggingOut`, PR #260)이 `launch(key)` 중복
   가드 위에 State 플래그를 한 겹 더 두는 사례다. `launch(key)`는 두 번째 탭을 삼킬 뿐 버튼이 눌리는
   것처럼 보이므로 비활성은 State로 드러낸다(아래 "안티패턴" 1번의 반대 사례).

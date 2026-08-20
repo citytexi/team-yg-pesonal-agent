@@ -470,15 +470,20 @@ Service·DataSource 함수가 있다.
 이 라운드가 바꾼 것은 갈래 수가 아니라 **오늘 조회 응답을 얼마나 읽는가**다(멤버 칩 결선 + 하루 경계
 정정). 배경 변경은 여전히 소비처 0건이라 Repository 인터페이스에 없다.
 
-⚠️ **2026-08-20 서버 delta로 앱 주석 일곱 곳이 거짓이 됐다.** "서버가 캔버스 상태를 보지 않아 마감된
-캔버스도 편집된다 · 막는 것은 화면 책임"이라는 서술이 `ParfaitService`·`ParfaitRemoteDataSource`(둘)·
-`ParfaitRepository`·`CanvasStatus`·`CanvasMainViewModel`·`CanvasMainScreen`에 흩어져 있는데 서버가
-그 전제를 닫았다. **동작은 안 깨진다** — 화면이 지난 캔버스의 편집 진입을 치워 두었으므로 그 방어가
-이제 서버 가드와 겹칠 뿐이고, 쓰기 다섯 경로는 소비처가 0건이라 409를 받을 코드가 아직 없다.
-남는 것은 ① 낡은 주석 정리와 ② 결선 시 `PARFAIT_ALREADY_CLOSED`를 어떤 문구로 보여줄지다 —
-앱 `ServerErrorCode`에 이 코드 상수가 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-20].
-이 부류는 [parfait/CLAUDE.md](../CLAUDE.md) "수명이 기준이다"가 경고한 **다른 컴포넌트의 현재 상태를
-단정한 주석**이고, 하루 만에 낡은 사례가 2026-08-19에 이어 두 번째다.
+✅ **거짓이 된 주석 일곱 곳이 같은 날 정리됐다**(2026-08-20, PR #318 develop 머지). "서버가 캔버스
+상태를 보지 않아 마감된 캔버스도 편집된다 · 막는 것은 화면 책임"이라는 서술이
+`ParfaitService`·`ParfaitRemoteDataSource`(둘)·`ParfaitRepository`·`CanvasStatus`·`CanvasMainViewModel`·
+`CanvasMainScreen` 일곱 자리에 흩어져 있었고, 전부 **409를 사실로 적는 문장으로 바뀌었다**.
+지우지 않고 고친 것은 [parfait/CLAUDE.md](../CLAUDE.md) "기준 2와 3이 겹칠 때는 남긴다"를 따른
+것이다 — `CanvasStatus`·`CanvasMainScreen`처럼 오해를 미리 막는 성격이 섞인 자리이고, 새 문장은
+단정 대신 근거 문서(`api/parfait.md`)를 가리킨다. **화면 방어는 그대로 남는다** — 지난 캔버스의
+편집 진입을 치우는 것은 실패를 보여 주기 전에 길을 없애는 일이라 서버 가드와 목적이 다르다.
+같은 PR이 **`ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED`를 신설했다** — 소비처가 아직 0건인데
+상수를 먼저 둔 것은 예외이고, 그 근거(처분이 이미 정해졌다)를 상수 KDoc이 함께 적는다.
+⚠️ 그 KDoc이 경고하는 함정이 하나 있다: 다섯 경로 전부 **권한 검사가 마감 검사보다 앞이라**
+마감된 캔버스라도 남의 토핑·비멤버면 409가 아니라 403이 먼저 온다.
+이 부류(다른 컴포넌트의 현재 상태를 단정한 주석)를 문서 감사 말고 잡을 수단이 없다는 것은 그대로다
+→ [open-questions](../synthesis/open-questions.md) [2026-08-20] OQ-P-244 ③.
 
 **계약의 두 성질이 소비 방식을 갈랐다.**
 ① `today`는 **부작용이 있다**(행 생성). 그럼에도 쓰는 이유는 토핑을 얹으려면 `parfaitId`가 있어야 하고,
@@ -657,6 +662,6 @@ DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조
 따라오는 일**이었고 그것도 2026-08-20에 닫혔다 → [open-questions](../synthesis/open-questions.md).
 
 ✅ **2026-08-20 해소 1건** — 배경 변경이 마감 상태를 보지 않던 것을 서버가 409 `PARFAIT_ALREADY_CLOSED`로
-막았다(OQ-P-189). **앱이 "막는 것은 화면 책임"이라고 적어 둔 자리 일곱 곳이 그 순간 거짓이 됐다** —
-경로가 아니라 서술의 문제라 `⚠️불일치`는 아니지만 정리 대상이다 → [Android 매핑](#android-매핑) ·
-[open-questions](../synthesis/open-questions.md).
+막았다(OQ-P-189). 앱이 "막는 것은 화면 책임"이라고 적어 둔 자리 일곱 곳이 그 순간 거짓이 됐고,
+**같은 날 PR #318이 그 일곱을 전부 고쳤다**(경로가 아니라 서술의 문제라 `⚠️불일치`였던 적은 없다)
+→ [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).

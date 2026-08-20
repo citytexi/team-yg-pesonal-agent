@@ -138,10 +138,10 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > - **재시도 동선이 필요한 실패는 V2가 다루지 않는다.** 그건 화면이 자기 UI로 표현한다
 >   (`GroupListErrorScreen` 같은 전면 에러, 입력 자리 인라인 등).
 >
-> 이관은 화면별로 진행 중이다 — **develop 기준 16화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
+> 이관은 화면별로 진행 중이다 — **develop 기준 17화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
 > 정보 · S-101 그룹 설정(#285) · G-001 그룹 목록(#297) · 스플래시(#305) · 약관 웹뷰(#296) ·
-> C-106 토핑 배치(#290) · 카메라 3 · 갤러리 2 · 세그멘테이션 3(#309)), V1 잔여 3파일**
-> (PR #267 · #285 · #290 · #296 · #297 · #305 · #309).
+> C-106 토핑 배치(#290) · 카메라 3 · 갤러리 2 · 세그멘테이션 3(#309) · 온보딩 약관 동의(#315)),
+> V1 잔여 2파일**(PR #267 · #285 · #290 · #296 · #297 · #305 · #309 · #315).
 > **여덟째는 이관이 아니라 신규 화면이다** — #290의 `CanvasToppingPlaceRoute`가 처음부터 Route에서
 > V2를 소유해 규약을 지켰다(`isLoading`도 토스트도 안 쓴다 — 이 화면은 부를 API가 없다). 잔여 파일
 > 수가 안 준 것도 같은 이유다: `feature/groups/canvas/impl` EntryBuilder에는 옛 엔트리들이 그대로
@@ -149,8 +149,8 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > 뒤의 둘은 **로딩·실패를 채우려고 옮긴 것이 아니다** — 스플래시는 로띠를 시스템바 밑까지 그리려고
 > `contentWindowInsets = WindowInsets(0)`으로 V2를 쓰고, 약관 웹뷰는 그전까지 머티리얼 `Scaffold`를
 > 직접 부르던 자리(V1·V2 어느 쪽도 아닌 규약 이탈)를 메운 것이다. 둘 다 `isLoading`을 넘기지 않는다.
-> 잔여 파일 수가 그대로인 이유는 `feature/intro/impl` EntryBuilder에 **약관 동의 화면 엔트리가 남아
-> 있어서**다 — 스플래시만 빠지고 파일은 목록에 남았다.
+> 잔여 파일 수가 그때 그대로였던 이유는 `feature/intro/impl` EntryBuilder에 **약관 동의 화면 엔트리가
+> 남아 있어서**다 — 스플래시만 빠지고 파일은 목록에 남았다(그 엔트리는 #315에 걷혔다).
 > S-101은 **API 결선 라운드에 이관이 딸려 온 첫 사례**다 — 로딩 오버레이와 실패 토스트를 채울 것이
 > 그때 생겼기 때문이고, OQ-P-204 ①("결선 라운드에 붙일지 이관 전용 라운드를 돌릴지")에 사례로 답한
 > 셈이다. G-001은 그 답을 넓힌다 — API 결선이 아니라 **재조회 라운드**였는데, 새로고침 실패를
@@ -180,6 +180,17 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > `YGScaffold` 잔여가 처음으로 줄어 3파일이 됐다** — 전부 EntryBuilder(`feature/intro/impl`·
 > `feature/groups/enter/impl`·`feature/groups/canvas/impl`)이고 셋 다 그 모듈의 진입 화면을 만드는
 > 자리다 → [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md).
+>
+> 📌 **이관만 하는 라운드가 처음 돌았다(2026-08-20, PR #315 develop 머지)** — 온보딩 약관 동의가
+> 옮겨 오며 **V1 잔여가 2파일**(`feature/groups/enter/impl` 3곳 · `feature/groups/canvas/impl` 5곳,
+> 둘 다 EntryBuilder)이 됐다. OQ-P-204 ①이 묻던 "결선 라운드에 붙일지, 이관 전용 라운드를 돌릴지"에
+> **후자의 첫 사례**이고, 앞선 사례들과 갈린 이유는 **채울 것이 이미 있었기** 때문이다 — 이 화면은
+> 서버 조회·가입 요청이 진작 결선돼 있었고 실패 표현만 `TODO`로 비어 있었다. 그래서 이관이
+> 컨테이너 교체로 끝나지 않고 **`TermAgreeError` 2갈래 + 공통 토스트 결선**을 같이 데려왔다
+> (→ [state-management](state-management.md) "서버 실패 갈래는 feature 로컬 enum",
+> [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md) "실패 표현").
+> 같은 라운드가 `isLoading`에 **두 플래그를 함께** 넘기는 첫 사례도 만들었다
+> (`state.isLoading || state.isSigningUp` — 조회와 가입이 같은 오버레이를 쓴다).
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.
