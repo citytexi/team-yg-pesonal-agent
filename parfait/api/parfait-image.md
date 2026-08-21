@@ -399,20 +399,26 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 409 `PARFAIT_ALREADY_CLOSED`를 낼 수 있게 되자 앱이 **`ServerErrorCode.Parfait`** 를 신설해 그 코드를
 들었다. 소비처가 0건인데 상수를 먼저 둔 것은 "쓰지 않는 상수는 계약이 바뀌어도 아무도 고치지 않아
 거짓말이 된다"는 그 파일의 규약에 대한 **명시적 예외**였고, 근거는 **처분이 이미 정해졌다**는 것이다
-(→ [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md): 이 코드만 토스트 후
-캔버스로 되감고 나머지 실패는 화면에 머문다). 상수 KDoc이 결정과 함정을 함께 적어 소비처가 붙을 때
+(→ [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md): 이 코드는 다른 넷과
+함께 토스트 후 화면에 남는다). 상수 KDoc이 결정과 함정을 함께 적어 소비처가 붙을 때
 같은 판단을 다시 하지 않게 한다 — 특히 **네 경로 전부 소유권 검사가 마감 검사보다 앞이라** 남의
 토핑을 마감된 캔버스에서 고치려 하면 409가 아니라 403 `PARFAIT_IMAGE_NOT_OWNED`가 먼저 온다.
 같은 PR이 `CanvasStatus` KDoc의 "서버가 그것을 강제하지 않는다"도 뒤집었다
 → [parfait.md](parfait.md) Android 매핑 · [open-questions](../synthesis/open-questions.md) [2026-08-20].
 
-✅ **위 예외 사유가 소멸했다(2026-08-21, PR5)** — `CanvasToppingPlaceViewModel`이 되감기 대상 세
-코드를 실제로 분기에 써 소비처가 생겼다. 셋은 **서로 다른 object에 흩어져 있다**
+✅ **위 예외 사유가 소멸했다(2026-08-21, PR5)** — `CanvasToppingPlaceViewModel`이 영구 실패 판정에
+쓰는 코드에 소비처가 생겼다. 처음 셋(`PARFAIT_ALREADY_CLOSED`·`GROUP_NOT_JOINED`·`PARFAIT_NOT_FOUND`)에
+최종 브랜치 리뷰가 400 둘(`Common.INVALID_REQUEST`·`ParfaitImage.INVALID_BORDER`)을 더해 **다섯**이
+됐다 — 재시도가 발급부터 4단계를 다시 태워도 결과는 항상 같은 400이라, 확인을 누를 때마다
+참조되지 않는 이미지만 쌓여서다. 다섯은 **서로 다른 object에 흩어져 있다**
 (`ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED`·`ServerErrorCode.ParfaitGroup.GROUP_NOT_JOINED`·
-`ServerErrorCode.ParfaitImage.PARFAIT_NOT_FOUND`) — 위에서 경고한 "같은 문자열을 두 enum이 갖는다"와
-같은 이유로 코드 쪽도 도메인 경계를 지켜 나눠 둔다. PR5가 `PARFAIT_NOT_FOUND`를 담을 **`object
-ParfaitImage`를 새로 만들었다**(그전엔 없었다). "쓰지 않는 상수를 먼저 둔 명시적 예외"는 이제
-필요 없다 — 상수 KDoc의 결정·함정 서술은 남지만, 더는 예외가 아니라 보통의 소비되는 상수다.
+`ServerErrorCode.ParfaitImage.{PARFAIT_NOT_FOUND, INVALID_BORDER}`·`ServerErrorCode.Common.INVALID_REQUEST`)
+— 위에서 경고한 "같은 문자열을 두 enum이 갖는다"와 같은 이유로 코드 쪽도 도메인 경계를 지켜 나눠
+둔다. PR5가 `PARFAIT_NOT_FOUND`를 담을 **`object ParfaitImage`를 새로 만들었다**(그전엔 없었다).
+"쓰지 않는 상수를 먼저 둔 명시적 예외"는 이제 필요 없다 — 상수 KDoc의 결정·함정 서술은 남지만,
+더는 예외가 아니라 보통의 소비되는 상수다. 다만 `PARFAIT_ALREADY_CLOSED` KDoc의 "화면 이동은
+그대로 진행하고"는 낡았다 — 최종 리뷰가 되감기 자체를 걷어 이제 알린 뒤 화면에 남는다(아래 인접
+절·[스펙](../specs/2026-08-20-c106-topping-place-api.md) 참고).
 
 **화면 소비처는 배치(POST) 하나뿐이다.** 나머지 셋(위치 PATCH · 테두리 PATCH · DELETE)은 여전히
 화면 로컬 상태로만 동작한다(소비 화면은 C-301 라운드). 다만 **"다시 그릴 수 없다"는 사유도, 앱 표면
@@ -428,7 +434,8 @@ ParfaitImage`를 새로 만들었다**(그전엔 없었다). "쓰지 않는 상�
 
 ✅ **화면 결선이 끝났다(2026-08-21, 브랜치 `feature/#270-topping-place-wiring`, develop 미머지)** —
 `CanvasToppingPlaceViewModel`이 `AddToppingUseCase`를 불러 좌표 변환·업로드·배치를 조율하고, 로딩
-오버레이·실패 토스트·영구 실패 세 코드에서 캔버스로 되감기까지 붙었다. **배치(POST)의 화면
+오버레이·실패 토스트·영구 실패 판정(다섯 코드)까지 붙었다. 영구 실패도 **되감지 않고 알린 뒤
+화면에 남는다**(최종 브랜치 리뷰로 뒤집힌 결정, 성공은 여전히 되감는다). **배치(POST)의 화면
 소비처는 이것 하나다.** 실기기 확인은 아직 없다
 → [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) ·
 [open-questions](../synthesis/open-questions.md).
@@ -454,4 +461,6 @@ ParfaitImage`를 새로 만들었다**(그전엔 없었다). "쓰지 않는 상�
 ✅ **2026-08-20 해소** — "네 엔드포인트 어디도 `parfait.status`를 보지 않아 마감된 캔버스도 편집된다"가
 서버 가드로 닫혔다(409 `PARFAIT_ALREADY_CLOSED`). **서버가 막을지 앱 책임으로 둘지**라는 물음에
 서버가 답했고, "앱이 그 코드를 어떻게 보여줄지"도 같은 날 정해졌다(토스트 후 캔버스로 되감기, 상수
-신설까지 PR #318) → [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).
+신설까지 PR #318). **이 처분은 2026-08-21 PR5 최종 리뷰로 뒤집혔다** — 되감기가 안내(토스트)를
+같은 프레임에 폐기하는 것이 드러나 알린 뒤 화면에 남는 것으로 바뀌었다(위 [Android
+매핑](#android-매핑) 절 참고) → [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).

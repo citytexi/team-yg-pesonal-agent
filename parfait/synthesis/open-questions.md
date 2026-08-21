@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-20
+verified: 2026-08-21
 related_spec: c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -1861,6 +1861,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > **그래서 "공통 실패는 `YGScaffoldV2`가 자리를 준다"가 전 화면 규칙이 아니게 됐다** — 화면이 자기
   > 토스트 호스트를 이미 갖고 있으면 그쪽이 이긴다. 남은 질문은 그 예외를 규약으로 적을지, 아니면
   > `YGScaffoldV2`가 호스트 위치를 슬롯으로 열어 하나로 되돌릴지다.
+  > 📌 **캔버스 쪽 토스트 호스트가 필요한 사례가 둘로 늘었다 — 둘 다 배치 화면(같은 Route)이고 둘 다
+  > "되감으면 안내가 죽는다"는 같은 함정에서 나왔다.** 첫 번째는 PR4(2026-08-21, 브랜치
+  > `feature/#270-topping-border-contract`)의 초안 결손(`DraftMissing`) 안내 — 되감기가 토스트 호스트를
+  > 같은 프레임에 폐기해 알림이 잔상으로 끝나므로 되감기를 걷고 알린 뒤 화면에 남기는 것으로 정했다.
+  > 두 번째는 PR5(2026-08-21, 브랜치 `feature/#270-topping-place-wiring`) 최종 브랜치 리뷰가 잡은
+  > **영구 실패(다섯 코드) 안내** — `CanvasToppingPlaceRoute`의 `toastPolicy`가
+  > `rememberYGToastPolicy()`로 Route 컴포지션에 매달려 있어 `popUpTo`가 같은 프레임에 안내까지
+  > 폐기하는 것을 최종 리뷰가 Critical로 잡았고, 처방은 PR4와 같다(되감기를 걷고 알린 뒤 화면에
+  > 남긴다). **진짜 처방(안내를 캔버스 쪽 토스트 호스트로 보내는 것)은 두 사례 모두 미뤘다** — 자리가
+  > 아직 없다. 이 화면 하나에서 같은 함정에 두 번 걸린 것이 그 자리의 필요를 뒷받침한다
+  > → [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) 실패 처리 절.
 - **해소 메모**: 정해지면 네 스펙(a005·a004·s102·intro-term-agree·g001)의 실패 절과 [design-system](../architecture/design-system.md)에 공통 규약을 적는다.
 
 ### [2026-08-15] 매퍼 단독 테스트가 규약을 어기고 다시 생겼다
@@ -3815,4 +3826,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 정하면 [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) PR
   분할 표 6번 행과 PR6 계획에 반영한다.
 
-<!-- oq-next: 256 -->
+### [2026-08-21] `Int.toRgbHexString()`의 불투명 가드가 `require()` — 반투명 색이 팔레트에 들어오면 크래시다
+
+- **ID**: OQ-P-256
+- **출처**: PR5 최종 브랜치 리뷰 — `core/util/android`의 `String.kt#toRgbHexString`이 알파가
+  불투명(`0xFF`)이 아니면 `require()`로 던진다. 호출부
+  `CanvasToppingPlaceViewModel#toToppingBorder`는 `handleOnClickConfirm`에서 `launch { }` **앞에**
+  동기로 불린다 — `BaseViewModel.launch`의 `try`(성공·실패·예외·취소 네 경로를 한 곳에서 덮는 그
+  블록) 밖이라, 여기서 `require()`가 던지면 어디에도 안 걸리고 그대로 크래시한다.
+- **항목**: ① 지금은 이 화면의 `borderColorArgb`가 팔레트가 주는 불투명 색뿐이라 도달 불가능하지만,
+  그 전제가 코드 어디에도 강제돼 있지 않다 — 팔레트에 반투명 색이 하나라도 들어오면 사용자 손에서
+  터진다. `require()`를 `runCatching`으로 감싸 `ToppingBorder.None`으로 폴백할지, 팔레트 타입을 좁혀
+  반투명을 아예 표현 불가능하게 만들지, 아니면 이 상태를 계속 감수할지. ② 감수한다면 그 전제(팔레트가
+  불투명만 준다)를 어디에 못박아 다음 사람이 같은 가정을 다시 확인하지 않게 할지.
+- **상태**: 미해결 (**PR5가 만든 것이 아니라 PR5의 처방이 연 새 선택지의 부작용** — 최종 리뷰가
+  "지금은 도달 불가"로 판정해 파킹했다)
+- **해소 메모**: 정하면 `CanvasToppingPlaceViewModel#toToppingBorder`·`String.kt#toRgbHexString` KDoc과
+  [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)에 반영한다.
+
+<!-- oq-next: 257 -->

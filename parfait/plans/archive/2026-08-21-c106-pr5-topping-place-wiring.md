@@ -5,7 +5,7 @@ status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
-archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-topping-place-wiring 에 커밋 7개, 신규 테스트 25건 + 삭제 1건.
+archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-topping-place-wiring 에 커밋 10개(392014a7..280d9651), 신규 테스트 29건 + 삭제 1건 — 최종 브랜치 리뷰 지적 8건과 주석 정리를 포함한 as-built 수치. 아래 "as-built 정정" 절 참고.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026
@@ -1876,3 +1876,33 @@ git commit -m "docs: PR5 배치 결선의 결정을 문서에 반영한다"
   배율 축뿐이고 이 기기 폭 축은 Task 7이 그 항목에 덧붙인다.
 - **`ImageUploadRepositoryImpl#upload`의 `file.isFile`이 호출자 스레드에서 도는 것** — Task 3이
   업로드 사슬의 마지막 IO 홉을 걷으면서 더 도드라지지만 이 라운드가 만든 문제가 아니다.
+
+---
+
+## as-built 정정 (2026-08-21, 최종 브랜치 리뷰 + 주석 정리 이후)
+
+이 계획서 본문(Task 1~7)은 **실행 전 문서라 고치지 않는다** — 계획과 실행이 갈린 곳은 실행
+결과 문서([plans/README.md](../README.md) PR5 행)에 적는 것이 이 저장소의 관례다. 이 절은 그
+관례에 따라 계획 본문과 갈린 지점만 모은다. 원문은 그대로 두고 정정만 여기 적는다.
+
+계획 실행 직후(Task 1~7 통과 시점)의 수치는 커밋 7개 `392014a7..4a8318a1`, 신규 테스트 25건 +
+삭제 1건, 20파일 886삽입/63삭제였다. **그 뒤 최종 브랜치 리뷰(opus)가 지적 8건을 냈고**, fix
+웨이브 한 번(`9b58b2fa`)과 별도의 주석·KDoc 정리 커밋(`280d9651`)이 더 붙어 아래로 갈렸다.
+
+| 원 서술(Task 1~7 통과 시점) | as-built 정정 |
+|---|---|
+| 영구 실패 세 코드(`PARFAIT_ALREADY_CLOSED`·`GROUP_NOT_JOINED`·`PARFAIT_NOT_FOUND`)에서 캔버스로 되감는다 | **되감지 않는다 — 알린 뒤 화면에 남는다.** 최종 리뷰가 Critical로 잡았다: `CanvasToppingPlaceRoute`의 `toastPolicy`가 `rememberYGToastPolicy()`로 Route 컴포지션에 매달려 있어, `popUpTo`가 Route를 접는 같은 프레임에 안내(토스트)까지 함께 폐기된다. `DraftMissing`을 안 되감는 이유로 이미 주석에 적어 둔 함정을 바로 아래 영구 실패 갈래가 반복하고 있었다. 처방은 `DraftMissing`과 같은 처분(알린 뒤 화면에 남긴다, 닫기 버튼이 이미 있어 막다른 곳이 아니다) — 진짜 처방(안내를 캔버스 쪽 토스트 호스트로 보내기)은 OQ-P-167 소관이라 이 라운드 밖으로 미뤘다. **성공 경로의 `popUpTo`는 그대로다.** |
+| 영구 실패 코드 셋(`PARFAIT_ALREADY_CLOSED`·`GROUP_NOT_JOINED`·`PARFAIT_NOT_FOUND`) | **다섯**으로 늘었다 — 최종 리뷰가 배치 POST 실패 표의 400 둘(`Common.INVALID_REQUEST`·`ParfaitImage.INVALID_BORDER`)이 빠졌다고 지적했다. 재시도가 발급부터 4단계를 전부 다시 태워도 결과가 항상 같은 400이라, 확인을 누를 때마다 참조되지 않는 이미지만 쌓인다. |
+| 커밋 7개 `392014a7..4a8318a1` | **커밋 10개** `392014a7..280d9651` — 위 fix 웨이브(`9b58b2fa`, 최종 리뷰 지적 8건)와 주석·KDoc 정리(`280d9651`, 규약을 어기거나 낡은 자리 여덟)가 더 붙었다. |
+| 신규 테스트 25건 + 삭제 1건, 20파일 886삽입/63삭제 | **신규 테스트 29건**(계획 25건 + 최종 리뷰가 심은 4건) + 삭제 1건, **23파일 961삽입/64삭제**. 신규 테스트 파일이 셋(`ToppingPlaceFailureTest`·`ToppingPlacementTest`·`SelectiveLoggingInterceptorTest`)에서 **넷**(`ImageServiceTest` 추가)으로, 기존 파일 확장이 셋에서 **넷**(`NetworkModuleTest` 추가)으로 늘었다. |
+| `ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED` KDoc — "토핑 추가 흐름이 이 코드를 받으면 화면 이동은 그대로 진행하고 실패만 알린다" | 되감기 철회로 이 문장이 거짓이 됐다 — 주석 정리 커밋(`280d9651`)에서 "화면 이동에 대한 단정"만 걷었다. "되돌리지 않는다"(업로드 이미지를 롤백하지 않는다)는 여전히 참이라 남겼다. 소비처가 화면을 어떻게 다루는지는 이 상수가 알 바가 아니다. |
+
+**실기기 확인은 여전히 안 했다** — 위 정정은 전부 코드 검토·자동 테스트로 확인했고, 실기기
+확인 항목(이 라운드 9항목 + PR3·PR4 이월 13항목)은 원 서술 그대로 미수행이다.
+
+문서 반영: [c106-topping-place-api 스펙](../../specs/2026-08-20-c106-topping-place-api.md) 실패
+처리 절 · [parfait-image.md](../../api/parfait-image.md) · [plans/README.md](../README.md) PR5
+행 · [specs/README.md](../../specs/README.md) ⑤ 문단 · [open-questions](../../synthesis/open-questions.md)
+OQ-P-167(캔버스 토스트 호스트 필요 사례 둘째)·**OQ-P-256**(신설 — `Int.toRgbHexString()`의
+`require()` 불투명 가드가 `toToppingBorder` 호출부에서 `launch`의 `try` 밖에 있어, 팔레트에
+반투명 색이 들어오면 크래시하는 파킹된 부작용).
