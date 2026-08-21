@@ -36,7 +36,8 @@ tags: [plan, parfait, topping, gallery, segmentation, c-106]
 
 **Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../specs/2026-08-20-c106-topping-place-api.md) — 「누끼 알맹이 재사용 (PR6)」 절, PR 분할 표 **6번 행**
 
-> **베이스는 PR5 브랜치다.** `feature/#270-topping-place-wiring`(팁 `280d9651`, **미머지**).
+> **베이스는 PR5 브랜치의 현재 팁이다.** `feature/#270-topping-place-wiring`(**미머지**, 검수 시점
+> 팁 `389fc0ac` — 그 브랜치가 계획서보다 나중에도 자랄 수 있으므로 **작업 직전에 팁을 다시 확인한다**).
 > 그 아래로 PR4 `feature/#270-topping-border-contract` → PR3 `feature/#270-topping-draft-ssot`가
 > 깔려 있고, PR1·PR2는 develop에 머지됐다(`da03c9b0`).
 > 새 브랜치 `feature/#270-recent-cutout-reuse`를 PR5 팁 위에 만든다.
@@ -69,7 +70,8 @@ tags: [plan, parfait, topping, gallery, segmentation, c-106]
 
 - **작업 대상 저장소는 `TJYG-Android`**이고 이 문서가 사는 저장소가 아니다. 로컬 절대경로는
   `wiki/personal-private/project-paths.md`에 있다(Task 7만 이 문서 저장소에서 한다).
-- **베이스 브랜치는 `feature/#270-topping-place-wiring`**(PR5, 팁 `280d9651`, 미머지)다.
+- **베이스 브랜치는 `feature/#270-topping-place-wiring`의 현재 팁**(PR5, 미머지)이다. 검수 시점 팁은
+  `389fc0ac`이고, 브랜치할 때 `git log -1`로 다시 확인한다.
   그 위에 새 브랜치 `feature/#270-recent-cutout-reuse`를 만들어 작업한다.
 - **워크트리를 만들지 않는다.** 본 체크아웃에서 브랜치로 작업한다.
 - **커밋은 태스크마다 한다.** `git push`·`gh pr create`·`gh pr merge`는 **하지 않는다** —
@@ -157,9 +159,15 @@ import kotlin.test.assertEquals
 class RecentImageLocalDataSourceImplTest {
     private val dataStore = FakePreferencesDataStore()
 
+    // 프로덕션 @LocalJson 과 같은 설정이다(`data/di/JsonModule.kt`). coerceInputValues 를 빼면
+    // 모르는 종류값을 흡수하는 동작이 테스트에서 재현되지 않는다
     private val dataSource = RecentImageLocalDataSourceImpl(
         dataStore = dataStore,
-        json = Json { ignoreUnknownKeys = true },
+        json = Json {
+            ignoreUnknownKeys = true
+            coerceInputValues = true
+            encodeDefaults = true
+        },
     )
 
     private val entities = listOf(
@@ -193,6 +201,22 @@ class RecentImageLocalDataSourceImplTest {
                 RecentImageEntity(uri = "content://recent/a", kind = RecentImageKindEntity.SOURCE),
                 RecentImageEntity(uri = "content://recent/b", kind = RecentImageKindEntity.SOURCE),
             ),
+            decoded,
+        )
+    }
+
+    @Test
+    fun decodeValue_unknownKind_keepsEntryAsSource() {
+        // Given 이 판본이 모르는 종류값이 섞여 있다(뒷 판본에서 만든 값이거나 손상된 값)
+        val unknown = """[{"uri":"content://recent/a","kind":"STICKER"}]"""
+
+        // When 읽는다
+        val decoded = dataSource.decodeValue(unknown)
+
+        // Then 항목 하나 때문에 목록 전체가 비워지지 않는다 — 기본값이 있어야
+        // coerceInputValues 가 흡수한다
+        assertEquals(
+            listOf(RecentImageEntity(uri = "content://recent/a", kind = RecentImageKindEntity.SOURCE)),
             decoded,
         )
     }
@@ -289,7 +313,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class RecentImageEntity(
     val uri: String,
-    val kind: RecentImageKindEntity,
+    /** 기본값이 있어야 모르는 종류값 하나가 목록 전체를 못 날린다(`coerceInputValues`) */
+    val kind: RecentImageKindEntity = RecentImageKindEntity.SOURCE,
 )
 
 @Serializable
@@ -308,6 +333,15 @@ fun RecentImageKind.toEntity(): RecentImageKindEntity = when (this) {
     RecentImageKind.CUTOUT -> RecentImageKindEntity.CUTOUT
 }
 ```
+
+**`kind`의 기본값은 장식이 아니다.** 프로덕션 `@LocalJson`은 `coerceInputValues = true`인데, 이
+옵션은 **기본값이 있는 프로퍼티에만** 작동한다. 기본값이 없으면 모르는 종류값 하나가 예외를 내고,
+그 예외가 2단 폴백의 두 번째 시도(`List<String>`)까지 실패시켜 **목록이 통째로 비워진다** — 폴백을
+만든 이유와 똑같은 사고가 다른 문으로 들어온다. `encodeDefaults = true`라 저장 형태는 달라지지 않는다.
+
+**`ToppingDraftEntity`와 달리 `internal`을 붙이지 않는다.** 그쪽 datasource는 도메인 모델만 내보내지만
+여기 datasource 계약은 엔티티를 그대로 노출한다(절대경로를 붙이는 일이 Repository 몫이라 그렇다).
+`internal`을 붙이면 "public 함수가 internal 타입을 노출한다"로 깨진다.
 
 - [ ] **Step 5: DataSource 계약을 넓힌다**
 
@@ -490,7 +524,13 @@ class RecentImageRepositoryImplTest {
     private val localDataSource: RecentImageLocalDataSource = mockk(relaxed = true)
     private val fileDataSource: FileRecentImageLocalDataSource = mockk(relaxed = true)
 
-    private val repository = RecentImageRepositoryImpl(
+    /**
+     * 프로퍼티가 아니라 함수다. 구현의 `recentCacheImages` 가 **생성자 초기화식**에서
+     * `localDataSource.values` 를 곧바로 읽으므로, 저장소를 먼저 만들어 두면 relaxed mock 이 준
+     * 빈 흐름을 붙들어 뒤늦은 `every` 가 닿지 않는다(`ToppingDraftRepositoryImplTest` 가 같은
+     * 함정을 문서로 박아 두었다).
+     */
+    private fun repository() = RecentImageRepositoryImpl(
         recentImageLocalDataSource = localDataSource,
         fileRecentImageLocalDataSource = fileDataSource,
     )
@@ -510,7 +550,7 @@ class RecentImageRepositoryImplTest {
         every { fileDataSource.getUriStringForFile(target) } returns "content://recent/abc.jpg"
 
         // When 원본 사진으로 저장한다
-        val stored = repository.storeRecentImageInInternalStorage(
+        val stored = repository().storeRecentImageInInternalStorage(
             source = "content://media/1",
             kind = com.teamyg.parfait.domain.model.image.RecentImageKind.SOURCE,
         )
@@ -531,7 +571,7 @@ class RecentImageRepositoryImplTest {
         every { fileDataSource.getUriStringForFile(target) } returns "content://recent/def.png"
 
         // When 알맹이로 저장한다
-        val stored = repository.storeRecentImageInInternalStorage(
+        val stored = repository().storeRecentImageInInternalStorage(
             source = "/data/cache/segmentation/subject.png",
             kind = com.teamyg.parfait.domain.model.image.RecentImageKind.CUTOUT,
         )
@@ -571,8 +611,6 @@ interface FileRecentImageLocalDataSource {
 
     fun readFileBytes(filePath: String): ByteArray
 
-    fun getTargetFile(name: String): File
-
     fun getTargetFile(
         bytes: ByteArray,
         extension: String,
@@ -593,11 +631,6 @@ interface FileRecentImageLocalDataSource {
 
 ```kotlin
     override fun readFileBytes(filePath: String): ByteArray = File(filePath).readBytes()
-
-    override fun getTargetFile(name: String): File = File(
-        dir,
-        name,
-    )
 
     override fun getTargetFile(
         bytes: ByteArray,
@@ -621,6 +654,9 @@ interface FileRecentImageLocalDataSource {
 ```
 
 `private fun fileName`과 `FILE_EXTENSION` 상수는 지운다. 지울 import: `android.net.Uri`.
+`getTargetFile(name: String)` 오버로드는 **인터페이스와 구현 양쪽에서 지운다** — 유일한 호출부였던
+`RecentImageRepositoryImpl`의 두 자리를 Step 5가 `getTargetFileFromUri`로 갈아 치우므로 남기면
+호출부 없는 죽은 계약이 된다. `androidx.core.net.toUri`는 `readBytes`가 계속 쓰므로 **지우지 않는다**.
 
 - [ ] **Step 5: Repository에서 안드로이드 타입을 걷는다**
 
@@ -751,7 +787,11 @@ git commit -m "refactor: 최근 이미지 파일 계층이 uri 를 삼키고 절
 `com.teamyg.parfait.data.model.local.RecentImageKindEntity`,
 `com.teamyg.parfait.domain.model.image.RecentImage`,
 `com.teamyg.parfait.domain.model.image.RecentImageKind`,
-`io.mockk.coEvery`, `kotlinx.coroutines.flow.first`, `kotlinx.coroutines.flow.flowOf`.
+`kotlinx.coroutines.flow.first`, `kotlinx.coroutines.flow.flowOf`.
+(`io.mockk.coEvery`는 쓰지 않는다 — 두 테스트가 `every`만 쓴다.)
+
+> 두 테스트 모두 `every { localDataSource.values } returns …`를 **`repository()` 호출보다 먼저**
+> 둔다. 순서가 뒤집히면 생성자 초기화식이 relaxed mock의 빈 흐름을 붙들어 단언이 무조건 실패한다.
 
 ```kotlin
     @Test
@@ -767,7 +807,7 @@ git commit -m "refactor: 최근 이미지 파일 계층이 uri 를 삼키고 절
         every { fileDataSource.getTargetFileFromUri("content://recent/b.png") } returns File(dir, "b.png")
 
         // When 목록을 읽는다
-        val images: List<RecentImage> = repository.recentCacheImages.first()
+        val images: List<RecentImage> = repository().recentCacheImages.first()
 
         // Then 절대경로가 함께 온다 — 확인 화면과 초안이 요구하는 형태가 uri 가 아니라 경로다
         assertEquals(
@@ -796,7 +836,7 @@ git commit -m "refactor: 최근 이미지 파일 계층이 uri 를 삼키고 절
         every { fileDataSource.getTargetFileFromUri("broken") } returns null
 
         // When 목록을 읽는다
-        val images: List<RecentImage> = repository.recentCacheImages.first()
+        val images: List<RecentImage> = repository().recentCacheImages.first()
 
         // Then 경로 없는 항목을 지어내지 않고 뺀다
         assertEquals(emptyList(), images)
@@ -887,6 +927,12 @@ interface RecentImageRepository {
 `com.teamyg.parfait.domain.model.image.RecentImage`.
 지울 import: `com.teamyg.parfait.data.model.local.RecentImageKindEntity`(더는 안 쓴다).
 
+> `mapNotNull`이 경로를 못 만든 항목을 목록에서 뺀다. 그러면 그 항목은
+> `clearOutsideDayWindow`의 시야에서도 사라져 **저장소에 영영 남는다**(지금은 uri를 그대로
+> 흘려서 `getLastModifiedCacheFile`이 `null → 0L`을 주고 윈도우 밖으로 판정돼 걷혔다). 저장되는
+> 값이 언제나 FileProvider content uri라 발생 조건이 거의 없어 **감수한다.** 실제로 관측되면
+> 정리 기준을 목록이 아니라 datasource의 uri로 바꾼다.
+
 - [ ] **Step 4: UseCase 둘을 맞춘다**
 
 `AddRecentImageUseCase#invoke`:
@@ -949,30 +995,41 @@ interface RecentImageRepository {
             }
 ```
 
-두 파일에 추가할 import: `com.teamyg.parfait.domain.model.image.RecentImage`,
-`com.teamyg.parfait.domain.model.image.RecentImageKind`(`AddRecentImageUseCase`만).
+추가할 import는 파일마다 다르다. `GetRecentCacheImagesUseCase`에는
+`com.teamyg.parfait.domain.model.image.RecentImage`만, `AddRecentImageUseCase`에는
+`com.teamyg.parfait.domain.model.image.RecentImageKind`만 넣는다. 서로 교차해 넣으면 미사용
+import로 ktlint가 멈춘다.
 
 - [ ] **Step 5: 갤러리 소비자를 컴파일만 되게 맞춘다**
 
 노출 분기와 셀 표시는 Task 5가 한다. 여기서는 타입만 따라간다.
 
-`CustomGalleryPickerState.recentImages: List<RecentImage>`,
-`CustomGalleryPickerScreen(recentImages: List<RecentImage>, …)`,
-`GalleryImageGridComponent(recentImages: List<RecentImage>, …)`로 바꾸고,
-그리드의 `items` 블록은 `key = { "recent-${it.uri}" }`, 셀 호출은 `uri = image.uri`로 맞춘다.
-`GalleryImageGridComponent`의 `@YGPreview` 호출부(파일 끝 `recentImages = listOf(...)`)도 함께
+화면 계층은 Route → `CustomGalleryPickerScreen` → 같은 파일의 private `GalleryContent` →
+`GalleryImageGridComponent` **넷**이다. `CustomGalleryPickerScreen`은 `recentImages`를 직접 받지
+않고 `state`를 받으므로 시그니처가 안 바뀌고, 실제로 고칠 자리는 `GalleryContent`다.
+
+- `CustomGalleryPickerState.recentImages: List<RecentImage>`
+- `GalleryContent(… recentImages: List<RecentImage> …)`
+- `GalleryImageGridComponent(recentImages: List<RecentImage>, …)` — `items` 블록의 키는
+  `key = { "recent-${it.uri}" }`, 셀 호출은 `uri = image.uri`
+
+`GalleryImageGridComponent`의 `@YGPreview` 호출부(파일 끝 `recentImages = listOf("test1", "test3")`)를
 `RecentImage(uri = …, filePath = …, kind = RecentImageKind.SOURCE)` 형태로 고친다.
 
-세 파일에 추가할 import: `com.teamyg.parfait.domain.model.image.RecentImage`,
-프리뷰가 있는 파일에는 `com.teamyg.parfait.domain.model.image.RecentImageKind`.
+추가할 import: `com.teamyg.parfait.domain.model.image.RecentImage`(세 파일), 프리뷰가 있는 파일에
+`com.teamyg.parfait.domain.model.image.RecentImageKind`.
 
 - [ ] **Step 6: 테스트와 빌드가 통과하는 것을 확인한다**
 
 ```bash
-./gradlew :data:testDebugUnitTest :domain:test ktlintCheck :app:assembleDebug
+./gradlew :data:testDebugUnitTest :domain:test :feature:segmentation:impl:testDebugUnitTest \
+  ktlintCheck :app:assembleDebug
 ```
 
-Expected: PASS.
+Expected: PASS. `assembleDebug`는 main 소스만 컴파일하므로 **segmentation 테스트를 반드시 함께
+돌린다** — `SegmentationViewModelTest`가 `addRecentImage(SOURCE_URI)`를 네 자리에서 `coVerify`·
+`coEvery`로 잡고 있고, 기본 인자가 붙은 호출을 MockK가 어떻게 기록하는지는 돌려 봐야 안다.
+깨지면 그 네 자리를 `addRecentImage(SOURCE_URI, RecentImageKind.SOURCE)`로 명시한다.
 
 - [ ] **Step 7: 커밋**
 
@@ -999,15 +1056,19 @@ git commit -m "feat: 최근 이미지 목록이 종류와 절대경로를 함께
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
 `CanvasToppingPlaceViewModelTest`에 더한다. 기존 픽스처(`draft()`·`readyViewModel()`)를 그대로 쓰고,
-`viewModel()` 헬퍼의 생성자 호출에 `addRecentImageUseCase = addRecentImageUseCase`를 더한다.
 클래스 프로퍼티로 `private val addRecentImageUseCase: AddRecentImageUseCase = mockk(relaxed = true)`를
 선언한다.
+
+⚠️ **`CanvasToppingPlaceViewModel(`를 부르는 자리가 셋이다.** 생성자에 파라미터를 더하면 셋 다
+깨지므로 전부 `addRecentImageUseCase = addRecentImageUseCase`를 더한다 — `viewModel()` 헬퍼 하나와,
+자기 안에서 `draft` 스텁을 따로 세우느라 헬퍼를 안 쓰는 테스트 둘
+(`onClickConfirm_beforeDraftEmits_sendsNoEffect`·`draft_throws_tellsTheUser_insteadOfDyingSilently`).
 
 ```kotlin
     @Test
     fun onClickConfirm_afterSuccess_savesCutoutBeforeClearingDraft() = runTest(mainDispatcherRule.dispatcher) {
         // Given 배치가 성공하는 상태
-        coEvery { addToppingUseCase(any(), any(), any(), any(), any()) } returns Result.success(Unit)
+        coEvery { addToppingUseCase(any(), any(), any(), any(), any()) } returns Result.success(mockk())
         coEvery { toppingDraftRepository.clear() } returns Unit
         val viewModel = readyViewModel()
 
@@ -1028,7 +1089,7 @@ git commit -m "feat: 최근 이미지 목록이 종류와 절대경로를 함께
     @Test
     fun onClickConfirm_whenRecentImageSaveThrows_stillReportsSuccess() = runTest(mainDispatcherRule.dispatcher) {
         // Given 최근 목록 저장이 던진다
-        coEvery { addToppingUseCase(any(), any(), any(), any(), any()) } returns Result.success(Unit)
+        coEvery { addToppingUseCase(any(), any(), any(), any(), any()) } returns Result.success(mockk())
         coEvery { toppingDraftRepository.clear() } returns Unit
         coEvery { addRecentImageUseCase(any(), any()) } throws IllegalStateException("disk full")
         val viewModel = readyViewModel()
@@ -1047,8 +1108,8 @@ git commit -m "feat: 최근 이미지 목록이 종류와 절대경로를 함께
 추가할 import: `com.teamyg.parfait.domain.model.image.RecentImageKind`,
 `com.teamyg.parfait.domain.usecase.image.AddRecentImageUseCase`, `io.mockk.coVerifyOrder`.
 
-> `addToppingUseCase`의 반환 타입과 인자 수는 **기존 성공 케이스 테스트에서 그대로 복사한다.**
-> 이 계획이 적은 `Result.success(Unit)`이 실제와 다르면 파일 쪽이 정답이다.
+> `addToppingUseCase`는 `Result<PlacedToppingVO>`를 돌려준다. 기존 성공 케이스도 `Result.success(mockk())`를
+> 쓴다.
 
 - [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
 
@@ -1061,27 +1122,34 @@ Expected: 컴파일 실패 — ViewModel이 `AddRecentImageUseCase`를 받지 �
 - [ ] **Step 3: 구현한다**
 
 생성자에 `private val addRecentImageUseCase: AddRecentImageUseCase,`를 더하고,
-`handleOnClickConfirm`의 `.onSuccess { }` 안에서 `clear()` **앞**에 저장을 넣는다. 경로는 그 함수가
-확정 직전에 이미 지역 변수 `imagePath`로 잡아 둔 값을 그대로 쓴다 — `clear()` 뒤에 초안을 다시
-읽으면 없다.
+`handleOnClickConfirm`의 `.onSuccess { }` 안에서 **`PlaceSucceeded`를 쏘기 전에** 저장을 넣는다.
+경로는 그 함수가 확정 직전에 이미 지역 변수 `imagePath`로 잡아 둔 값을 그대로 쓴다 — `clear()` 뒤에
+초안을 다시 읽으면 없다.
 
 ```kotlin
                 }.onSuccess {
-                    // 되감기를 먼저 알린다 — clear() 가 초안을 비우면 구독이 알맹이를 null 로
-                    // 되돌려, 오버레이가 내려간 화면에 빈 캔버스가 잠깐 조작 가능한 상태로 남는다
-                    postSideEffect(effect = CanvasToppingPlaceEffect.PlaceSucceeded)
-
-                    // 초안을 비우기 전에 남긴다. 배치는 이미 끝났으므로 여기서 실패해도 흐름을
-                    // 실패로 보이게 하지 않는다
+                    // 알림보다 먼저 남긴다 — PlaceSucceeded 를 받은 Route 가 popUpTo 로 이 화면을
+                    // 걷어 내면 viewModelScope 가 취소되고, 그 뒤 코드는 실행되다 말고 끊긴다
                     runSuspendCatching {
                         addRecentImageUseCase(source = imagePath, kind = RecentImageKind.CUTOUT)
                     }.onFailure { throwable ->
                         viewModelLogger.d { "recent cutout save failed - $throwable" }
                     }
 
+                    // 되감기를 먼저 알린다 — clear() 가 초안을 비우면 구독이 알맹이를 null 로
+                    // 되돌려, 오버레이가 내려간 화면에 빈 캔버스가 잠깐 조작 가능한 상태로 남는다
+                    postSideEffect(effect = CanvasToppingPlaceEffect.PlaceSucceeded)
                     toppingDraftRepository.clear()
                 }
 ```
+
+⚠️ **이 순서가 이 태스크의 핵심이다.** `PlaceSucceeded`를 받은 `CanvasToppingPlaceRoute`가
+`popUpTo<NavKeyCanvasMain>()`을 부르고, 그 `popUpTo`는 백스택 리스트를 **즉시** 잘라 다음
+리컴포지션에서 NavEntry가 dispose되며 `viewModelScope`가 취소된다. 저장을 그 뒤에 두면 파일 읽기·
+sha256·쓰기·DataStore edit·축출 삭제가 **한 프레임 안에** 끝나야만 살아남고, `runSuspendCatching`은
+`CancellationException`을 재던지므로 `clear()`까지 함께 건너뛴다. 저장이 앞에 있으면 그 시간 동안
+로딩 오버레이가 유지될 뿐이다. 계획의 테스트는 내비게이션을 태우지 않으므로 **순서를 뒤집어도
+초록불이 뜬다** — 테스트가 아니라 이 문단이 근거다.
 
 추가할 import: `com.teamyg.parfait.core.util.jvm.coroutines.runSuspendCatching`,
 `com.teamyg.parfait.domain.model.image.RecentImageKind`,
@@ -1111,6 +1179,7 @@ git commit -m "feat: 배치에 성공하면 테두리 없는 알맹이를 최근
 - Modify: `feature/gallery/impl/build.gradle.kts`
 - Modify: `feature/gallery/impl/src/main/java/com/teamyg/parfait/feature/gallery/impl/viewmodel/CustomGalleryPickerViewModel.kt`
 - Modify: `feature/gallery/impl/src/main/java/com/teamyg/parfait/feature/gallery/impl/route/CustomGalleryPickerRoute.kt`
+- Modify: `feature/gallery/impl/src/main/java/com/teamyg/parfait/feature/gallery/impl/screen/CustomGalleryPickerScreen.kt`
 - Modify: `feature/gallery/impl/src/main/java/com/teamyg/parfait/feature/gallery/impl/component/GalleryImageGridComponent.kt`
 - Test: `feature/gallery/impl/src/test/java/com/teamyg/parfait/feature/gallery/impl/viewmodel/CustomGalleryPickerViewModelTest.kt` (신규)
 
@@ -1369,9 +1438,21 @@ class CustomGalleryPickerViewModel
                 }
 ```
 
-추가할 import: `com.teamyg.parfait.feature.segmentation.api.NavKeySegmentationConfirm`.
+같은 파일에서 화면으로 내려보내는 콜백도 인자 둘을 받게 고친다.
+
+```kotlin
+            onClickImage = { uri, kind ->
+                viewModel.processIntent(
+                    CustomGalleryPickerIntent.OnClickImage(uri = uri, kind = kind),
+                )
+            },
+```
+
+추가할 import: `com.teamyg.parfait.feature.segmentation.api.NavKeySegmentationConfirm`,
+`com.teamyg.parfait.domain.model.image.RecentImageKind`.
 `feature/gallery/impl/build.gradle.kts`의 `dependencies`에
-`implementation(projects.feature.segmentation.api)`를 더한다.
+`implementation(projects.feature.segmentation.api)`를 더한다(feature impl이 다른 feature의 api를
+쓰는 것은 이 저장소의 기존 관례이고 순환도 생기지 않는다).
 
 > `NavKeySegmentationConfirm`의 인자 완화는 **Task 6이 한다.** 이 단계까지는 컴파일이 깨지므로
 > Task 5와 Task 6은 **연달아 끝낸 뒤 함께 검증**한다. 중간 커밋은 Step 8에서 한 번만 한다.
@@ -1423,9 +1504,13 @@ private fun GalleryImageCell(
 }
 ```
 
-날짜 그룹 쪽 호출부는 `onClickImage = { onClickImage(uri, RecentImageKind.SOURCE) }`로 맞추고,
-`GalleryImageGridComponent`·`CustomGalleryPickerScreen`의 콜백 타입을
-`(String, RecentImageKind) -> Unit`으로 넓힌다. 두 파일의 `@YGPreview` 호출부도 함께 고친다.
+날짜 그룹 쪽 호출부는 `onClickImage = { onClickImage(uri, RecentImageKind.SOURCE) }`로 맞춘다.
+
+콜백 타입 `(String, RecentImageKind) -> Unit`을 **네 자리 전부**에 관통시킨다 —
+`GalleryImageGridComponent` · `CustomGalleryPickerScreen.kt`의 private `GalleryContent` ·
+`CustomGalleryPickerScreen` 자신 · Route(위 Step 5). 프리뷰 호출부 둘
+(`GalleryImageGridComponent.kt`·`CustomGalleryPickerScreen.kt`의 `onClickImage = {}`)은
+`{ _, _ -> }`로 고친다 — 인자 0개 람다는 인자 둘짜리 타입에 대입되지 않는다.
 
 - [ ] **Step 7: Task 6을 마친 뒤 검증한다**
 
@@ -1457,7 +1542,7 @@ git commit -m "feat: 갤러리가 토핑 만들기 진입에서만 알맹이를 
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/route/SegmentationConfirmRoute.kt`
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/route/SegmentationRoute.kt`
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/screen/SegmentationConfirmScreen.kt`
-- Test: `feature/segmentation/impl/src/test/.../SegmentationConfirmViewModelTest.kt` (신규 또는 확장)
+- Test: `feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationConfirmViewModelTest.kt` (**기존 파일 확장** — 테스트 7건이 이미 있다. 덮어쓰지 말 것)
 - Test: `data/src/test/java/com/teamyg/parfait/data/repository/topping/ToppingDraftRepositoryImplTest.kt` (확장)
 
 **Interfaces:**
@@ -1465,119 +1550,63 @@ git commit -m "feat: 갤러리가 토핑 만들기 진입에서만 알맹이를 
 - Produces:
   - `NavKeySegmentationConfirm(sourceImageUri: String?, subjectImagePath: String?, trimmedSubjectImagePath: String)`
   - `ToppingDraftRepository.record(subjectImagePath: String, cutoutImagePath: String?, borderColorArgb: Int?, borderWidthDp: Float?): Boolean`
-  - `SegmentationConfirmViewModel.Factory.create(subjectImagePath: String, cutoutImagePath: String?)`
+  - `SegmentationConfirmViewModel.Factory.create(subjectImagePath: String, cutoutImagePath: String?, sourceImageUri: String?)`
+  - `SegmentationConfirmState.sourceImageUri: String?` · `SegmentationConfirmState.isEditPhotoEnabled: Boolean`
   - `SegmentationConfirmScreen(… isEditPhotoEnabled: Boolean …)`
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
-`feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationConfirmViewModelTest.kt`:
+기존 파일 `feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationConfirmViewModelTest.kt`에
+**테스트 2건을 더한다.** 그 파일에는 이미 7건이 있고 그중 `onEnter_writesNothing`이 이 라운드가
+파는 예외의 반대편을 지키고 있다 — 통째로 덮어쓰면 안 된다.
+
+기존 픽스처(`SUBJECT_PATH`·`CUTOUT_PATH`·`toppingDraftRepository`·`givenDraft`·`draft`·`viewModel`)를
+그대로 쓰되, 재사용 진입은 인자가 다르므로 헬퍼 하나와 상수 하나를 더한다.
 
 ```kotlin
-package com.teamyg.parfait.feature.segmentation.impl.viewmodel
+private const val REUSED_PATH = "/data/files/recent_images/b.png"
 
-import com.teamyg.parfait.core.testing.MainDispatcherRule
-import com.teamyg.parfait.domain.model.id.GroupId
-import com.teamyg.parfait.domain.model.id.ParfaitId
-import com.teamyg.parfait.domain.model.topping.ToppingDraft
-import com.teamyg.parfait.domain.repository.topping.ToppingDraftRepository
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runTest
-import org.junit.Rule
-import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
-
-class SegmentationConfirmViewModelTest {
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
-
-    private val draftFlow = MutableStateFlow<ToppingDraft?>(
-        ToppingDraft(
-            groupId = GroupId(1L),
-            parfaitId = ParfaitId(2L),
-            nextPositionZ = 1,
-        ),
+    private fun reuseViewModel() = SegmentationConfirmViewModel(
+        subjectImagePath = REUSED_PATH,
+        cutoutImagePath = null,
+        toppingDraftRepository = toppingDraftRepository,
     )
-    private val toppingDraftRepository: ToppingDraftRepository = mockk(relaxed = true) {
-        every { draft } returns draftFlow
-    }
-
-    private val cutoutPath = "/data/files/recent_images/b.png"
 
     @Test
-    fun init_whenReuseEntry_recordsDraftBeforeObserving() = runTest(mainDispatcherRule.dispatcher) {
-        // Given 최근 목록에서 고른 알맹이만 있고 재편집 마스크가 없다
-        coEvery {
-            toppingDraftRepository.record(
-                subjectImagePath = cutoutPath,
-                cutoutImagePath = null,
-                borderColorArgb = null,
-                borderWidthDp = null,
-            )
-        } coAnswers {
-            draftFlow.value = draftFlow.value?.copy(subjectImagePath = cutoutPath)
-            true
+    fun reuseEntry_withEmptyDraft_recordsBeforeObserving() = runTest(mainDispatcherRule.dispatcher) {
+        // Given 캔버스가 흐름은 열었지만 알맹이는 아직 없는 초안 — 최근 목록에서 고른 진입이다
+        givenDraft(draft(subjectImagePath = null))
+
+        // When 화면이 열린다
+        reuseViewModel()
+        advanceUntilIdle()
+
+        // Then 구독보다 먼저 적는다. 뒤집으면 첫 방출의 null 이 DraftMissing 토스트를 쏴
+        // 사용자가 없는 실패를 듣는다
+        coVerify(exactly = 1) {
+            toppingDraftRepository.record(REUSED_PATH, null, null, null)
         }
-
-        // When 화면이 열린다
-        val viewModel = SegmentationConfirmViewModel(
-            subjectImagePath = cutoutPath,
-            cutoutImagePath = null,
-            toppingDraftRepository = toppingDraftRepository,
-        )
-        advanceUntilIdle()
-
-        // Then 초안을 먼저 적었기 때문에 다음 버튼이 열린다. 순서를 뒤집으면 첫 방출의 null 이
-        // DraftMissing 토스트를 쏴 사용자가 없는 실패를 듣는다
-        coVerify { toppingDraftRepository.record(cutoutPath, null, null, null) }
-        assertTrue(viewModel.state.value.isDraftReady)
     }
 
     @Test
-    fun init_whenNormalEntry_doesNotRecord() = runTest(mainDispatcherRule.dispatcher) {
-        // Given 세그멘테이션이 이미 초안을 채운 정상 흐름
-        draftFlow.value = draftFlow.value?.copy(
-            subjectImagePath = "/data/cache/segmentation/trimmed.png",
-            cutoutImagePath = "/data/cache/segmentation/subject.png",
-        )
+    fun reuseEntry_whenDraftAlreadyHasSubject_doesNotRecordAgain() =
+        runTest(mainDispatcherRule.dispatcher) {
+            // Given 이미 이 알맹이가 적힌 초안 — 프로세스 사망 복원으로 돌아온 자리다
+            givenDraft(draft(subjectImagePath = REUSED_PATH, borderColorArgb = 0xFF00FF00.toInt()))
 
-        // When 화면이 열린다
-        val viewModel = SegmentationConfirmViewModel(
-            subjectImagePath = "/data/cache/segmentation/trimmed.png",
-            cutoutImagePath = "/data/cache/segmentation/subject.png",
-            toppingDraftRepository = toppingDraftRepository,
-        )
-        advanceUntilIdle()
+            // When 화면이 다시 열린다
+            reuseViewModel()
+            advanceUntilIdle()
 
-        // Then 남이 적어 둔 초안을 덮어쓰지 않는다
-        coVerify(exactly = 0) { toppingDraftRepository.record(any(), any(), any(), any()) }
-        assertTrue(viewModel.state.value.isDraftReady)
-    }
-
-    @Test
-    fun init_whenReuseEntryAndFlowNotOpen_reportsMissingDraft() = runTest(mainDispatcherRule.dispatcher) {
-        // Given 캔버스가 흐름을 열지 않았다
-        draftFlow.value = null
-        coEvery { toppingDraftRepository.record(any(), any(), any(), any()) } returns false
-
-        // When 화면이 열린다
-        val viewModel = SegmentationConfirmViewModel(
-            subjectImagePath = cutoutPath,
-            cutoutImagePath = null,
-            toppingDraftRepository = toppingDraftRepository,
-        )
-        advanceUntilIdle()
-
-        // Then 없는 초안을 지어내지 않고 다음 버튼도 잠긴 채다
-        assertFalse(viewModel.state.value.isDraftReady)
-    }
-}
+            // Then 다시 적지 않는다 — record 는 테두리까지 통째로 덮어쓰므로 여기서 다시 적으면
+            // 사용자가 방금 두른 테두리가 사라진다
+            coVerify(exactly = 0) { toppingDraftRepository.record(any(), any(), any(), any()) }
+        }
 ```
+
+`draft()` 헬퍼에 `borderWidthDp` 인자를 넘기지 않아도 되도록 기본값이 이미 있다. 위 둘째 테스트는
+테두리가 실제로 살아남는지까지 보려면 `assertEquals(0xFF00FF00.toInt(), viewModel.state.value.borderColorArgb)`를
+덧붙인다.
 
 `ToppingDraftRepositoryImplTest`에는 한 건을 더한다.
 
@@ -1669,8 +1698,13 @@ class SegmentationConfirmViewModel
     init {
         launch(onError = { reportMissingDraft() }) {
             // 최근 목록에서 되살린 알맹이는 세그멘테이션을 타지 않아 초안을 적어 준 데가 없다.
-            // 구독보다 먼저 적어야 첫 방출의 null 이 없는 실패를 알리지 않는다
-            if (cutoutImagePath == null) {
+            // 구독보다 먼저 적어야 첫 방출의 null 이 없는 실패를 알리지 않는다.
+            // 이미 적혀 있으면 건드리지 않는다 — record 는 테두리까지 통째로 덮어쓰므로,
+            // 프로세스 사망 복원으로 이 화면이 다시 만들어질 때 사용자가 두른 테두리가 사라진다
+            val isReuseEntry = cutoutImagePath == null
+            val isDraftEmpty = toppingDraftRepository.draft.first()?.subjectImagePath == null
+
+            if (isReuseEntry && isDraftEmpty) {
                 val recorded = toppingDraftRepository.record(
                     subjectImagePath = subjectImagePath,
                     cutoutImagePath = null,
@@ -1691,8 +1725,31 @@ class SegmentationConfirmViewModel
 `observeDraft()`의 `collect { … }` 본문을 `private suspend fun collectDraft()`로 옮기고
 `init`의 옛 `observeDraft()` 호출은 지운다. 상태 갱신의 `cutoutImagePath` 자리는
 `draft.cutoutImagePath ?: cutoutImagePath`를 그대로 둔다(둘 다 nullable이 된다).
+추가할 import: `kotlinx.coroutines.flow.first`.
 
-`SegmentationConfirmState.cutoutImagePath`를 `String?`로 바꾸고, 팩토리 선언도 맞춘다.
+`isDraftEmpty` 판정이 `draft` 흐름을 한 번 읽는데, 그 흐름은 `withExistingFilesOnly`로 걸러진다 —
+초안이 가리키던 파일이 이미 지워졌으면 빈 초안으로 보이므로 재사용 진입이 다시 적는다. 그게 맞는
+동작이다.
+
+`SegmentationConfirmState.cutoutImagePath`를 `String?`로 바꾸고 **편집 가능 여부도 상태로 올린다** —
+Route의 지역 변수로 두면 단위 테스트로 잡히지 않는데, 스펙 테스트 표가 "편집 버튼이 잠긴다"를
+검증 항목으로 든다.
+
+```kotlin
+data class SegmentationConfirmState(
+    val subjectImagePath: String,
+    val cutoutImagePath: String?,
+    val sourceImageUri: String?,
+    …
+) : UiState {
+    /** 원본과 재편집 마스크가 둘 다 있어야 편집 화면이 지운 영역을 되살릴 수 있다 */
+    val isEditPhotoEnabled: Boolean
+        get() = sourceImageUri != null && cutoutImagePath != null
+}
+```
+
+`sourceImageUri`는 assisted 인자로 하나 더 받아 초기 상태에 넣는다(Route가 `key.sourceImageUri`를
+넘긴다). 팩토리 선언도 맞춘다.
 
 ```kotlin
     @AssistedFactory
@@ -1700,9 +1757,14 @@ class SegmentationConfirmViewModel
         fun create(
             @Assisted("subjectImagePath") subjectImagePath: String,
             @Assisted("cutoutImagePath") cutoutImagePath: String?,
+            @Assisted("sourceImageUri") sourceImageUri: String?,
         ): SegmentationConfirmViewModel
     }
 ```
+
+Step 1의 두 테스트도 `reuseViewModel()` 헬퍼에 `sourceImageUri = null`을 함께 넘긴다. 기존 7건이
+쓰는 `viewModel()` 헬퍼에는 `sourceImageUri = "content://media/1"` 같은 값을 넣어 편집 버튼이
+열린 채로 두고, "재사용 진입에서는 `isEditPhotoEnabled`가 `false`"를 단언하는 테스트 한 건을 더한다.
 
 - [ ] **Step 5: Route와 화면을 맞춘다**
 
@@ -1715,21 +1777,21 @@ class SegmentationConfirmViewModel
                 // 두 인자의 이름이 서로 반대 의미라 뒤바꾸기 쉽다(`ToppingEditResult` KDoc)
                 subjectImagePath = key.trimmedSubjectImagePath,
                 cutoutImagePath = key.subjectImagePath,
+                sourceImageUri = key.sourceImageUri,
             )
         },
     )
 ```
 
-편집 버튼 가드와 호출을 바꾼다.
+편집 버튼 호출을 바꾼다. 판정은 상태가 갖고 있으므로 Route는 값을 읽기만 한다.
 
 ```kotlin
-    val sourceImageUri = key.sourceImageUri
+    val sourceImageUri = uiState.sourceImageUri
     val cutoutImagePath = uiState.cutoutImagePath
-    val isEditPhotoEnabled = sourceImageUri != null && cutoutImagePath != null
 ```
 
 ```kotlin
-            isEditPhotoEnabled = isEditPhotoEnabled,
+            isEditPhotoEnabled = uiState.isEditPhotoEnabled,
             onClickEditPhoto = {
                 if (sourceImageUri == null || cutoutImagePath == null) return@SegmentationConfirmScreen
 
