@@ -13,8 +13,9 @@ related_code:
   - CanvasToppingLayer.kt#CanvasTopping
   - CanvasToppingLayer.kt#ToppingOutline
   - ToppingHandleComponents.kt#rememberToppingBaseSize
-  - CanvasConst.kt#CANVAS_ASPECT_RATIO
+  - YGCanvas.kt#CANVAS_AREA_ASPECT_RATIO
   - YGCanvas.kt#CanvasArea
+  - YGToppingCutoutImage.kt#YGToppingCutoutImage
   - ImageRemoteDataSource.kt#issueUploadUrl
   - ImageRemoteDataSource.kt#confirmUpload
   - ParfaitImageRemoteDataSource.kt#placeTopping
@@ -164,7 +165,7 @@ data class ToppingDraft(
 | 시점 | 하는 일 |
 |---|---|
 | `CanvasMain`이 카메라·갤러리로 떠날 때 | 캔버스 식별값 셋으로 **새로 덮어쓴다**. 이미지·테두리는 비운다 |
-| 세그멘테이션 완료 | 알맹이·cutout 경로 기록 |
+| 세그멘테이션 완료 | `SegmentationViewModel`이 알맹이·cutout 경로 기록. **화면 진입이 아니라 세그멘테이션 성공 사건에 건다** — 진입에 걸면 프로세스 사망 복원 때 진입 인자가 편집 결과를 덮어써, [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)이 영속을 고른 이유를 스스로 깬다 |
 | 토핑 편집 완료 | 알맹이·cutout·테두리 기록(덮어쓰기) |
 | 배치 확정 성공 | 비운다 |
 
@@ -256,7 +257,10 @@ positionZ = draft.nextPositionZ
 갈려 있다** — 배치 화면은 `CanvasConst#CANVAS_ASPECT_RATIO`를, 읽기 쪽 `YGCanvas#CanvasArea`는
 자기 모듈의 private 상수를 쓴다. 값만 같을 뿐 **동일성을 강제하는 것이 없고, 하나를 바꿔도 컴파일이
 깨지지 않는다.** 어긋나는 순간 이미 저장된 모든 토핑의 `positionY`가 틀어지고 증상은 "토핑이 조금씩
-위아래로 밀린다"라 원인 추적이 어렵다. **`YGCanvas`가 `domain`의 상수를 쓰도록 통일한다.**
+위아래로 밀린다"라 원인 추적이 어렵다. **`domain`의 `CANVAS_ASPECT_RATIO`를 지우고
+`core:designsystem`의 `CANVAS_AREA_ASPECT_RATIO` 하나로 통일한다.** 반대 방향으로 모으면
+`core:designsystem` → `:domain` 간선이 새로 생기는데, 캔버스 비율은 도메인 규칙이 아니라 **표시
+규격**이라 소유가 디자인시스템 쪽이다(OQ-P-177 ①).
 
 ## 실패 처리
 
@@ -296,7 +300,7 @@ positionZ = draft.nextPositionZ
 | 1 | 업로드 전송 계층 | `@UploadClient` · `PresignedUploadDataSource` · `ImageUploadRepository`/Impl · DI | **없음**(소비자 0) — ✅ **develop 머지**(PR #322, 2026-08-20 `da03c9b0`) |
 | 2 | 배치 계층 | `ToppingRepository`/Impl(`place`만) · `AddToppingUseCase` | **없음**(소비자 0) — ✅ **develop 머지**(PR #322와 같은 머지 — PR2 브랜치가 PR1 커밋을 업고 올라갔다) |
 | 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 · 초안 쓰기 실패도 알린다 — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-draft-ssot`(이제 베이스가 develop에 들어왔다) |
-| 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** |
+| 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-border-contract`([계획](../plans/archive/2026-08-21-c106-pr4-topping-border-contract.md)) |
 | 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** |
 
 1과 2는 소비자가 없어 리뷰가 각각 **S3 서명**과 **계약 매핑** 한 가지에만 집중할 수 있다.
@@ -331,9 +335,9 @@ positionZ = draft.nextPositionZ
 | `domain/repository/image/ImageUploadRepository` | 위 계약 |
 | `domain/repository/topping/ToppingRepository` | 위 계약 |
 | `domain/usecase/topping/AddToppingUseCase` | 업로드 → 배치 조율 |
-| `core/designsystem/.../ygcanvas/YGCanvas.kt` | private 종횡비 상수를 `domain` 것으로 교체 |
+| `core/designsystem/.../ygcanvas/YGCanvas.kt` | private 종횡비 상수를 public으로 올려 저장소의 유일한 정본으로 둔다 |
 | `feature/groups/canvas/impl/.../CanvasToppingPlaceViewModel` | 좌표 변환·확정·실패 표현 |
-| `feature/groups/canvas/impl/.../component/` | `CanvasToppingLayer`의 8방향 스탬프 추출(세 화면 공유) |
+| `core/designsystem/.../ygtoppingcutout/YGToppingCutoutImage` | 8방향 테두리 스탬프. 나눠 쓰는 화면 셋이 **모듈 둘**(`segmentation`·`groups/canvas`)에 걸쳐 있어 feature `component/`가 아니라 여기가 소유한다 |
 
 ## 테스트
 
@@ -343,7 +347,7 @@ positionZ = draft.nextPositionZ
 | `ImageUploadRepositoryImpl` | 3단계 순서 · 중간 실패가 그대로 올라온다 · 실패 후 다음 단계를 부르지 않는다 |
 | `AddToppingUseCase` | 업로드 실패 시 배치를 부르지 않는다 |
 | 좌표 변환(순수 함수) | 정중앙·모서리·회전·스케일에서 읽기 쪽 식으로 되돌리면 원래 화면 좌표가 나온다(왕복) |
-| 종횡비 상수 | 통일 후 읽기 쪽이 `domain` 상수를 참조한다(통일이 되돌려지면 깨지는 단언) |
+| 종횡비 상수 | 상수가 하나뿐이라 컴파일이 보증한다(단언 없음) |
 | 테두리 색 | 초안 ARGB → 서버 문자열 → `String#toColorOrNull` 왕복이 원래 색을 낸다 |
 | `CanvasToppingPlaceViewModel` | painter 미완료 시 확인 비활성 · 연타 차단 · 영구 실패 세 코드는 되감기, 그 외는 잔류 |
 | 초안 DataStore | 흐름 진입 시 덮어쓰기 · 성공 시 비우기 · **경로는 있는데 파일이 없으면 빈 초안 취급** |
