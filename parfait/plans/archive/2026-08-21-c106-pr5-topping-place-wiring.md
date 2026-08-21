@@ -110,9 +110,10 @@ tags: [plan, parfait, topping, canvas, api, c-106]
   - 아키텍처 결정 설명을 코드에 복사하지 않는다. 포인터 한 줄만 둔다.
 - **초안이 담는 이미지 경로는 파일 시스템 절대경로**다. `file://` uri가 아니다.
   `ImageUploadRepository.upload`도 절대경로를 받는다.
-- **테두리 색의 직렬화 형식은 `#AARRGGBB` 8자리다.** 형식이 어긋나면 읽기 쪽
-  `String#toColorOrNull`이 `null`을 내고 캔버스가 **테두리를 그냥 안 그린다** — 서버는 200을
-  주고 어디에도 로그가 남지 않는 무증상 실패다.
+- **테두리 색의 직렬화 형식은 `#RRGGBB` 6자리다**(계획 당시엔 8자리로 적었으나, PR5 브랜치
+  리뷰에서 8자리가 ARGB·RGBA 두 관례로 갈려 iOS·CSS와 어긋나는 것이 드러나 6자리로 정정됐다).
+  형식이 어긋나면 읽기 쪽 `String#toColorOrNull`이 `null`을 내고 캔버스가 **테두리를 그냥 안
+  그린다** — 서버는 200을 주고 어디에도 로그가 남지 않는 무증상 실패다.
 - **실패 알림은 시스템 `Toast`가 아니라 `YGScaffoldV2`의 `toastPolicy`로 띄운다.**
 - ⚠️ **`ImageType`을 화면이 정하지 않는다.** `AddToppingUseCase`가 `NUKKI`로 못 박아 두었다.
   파라미터로 열면 객체가 무증상으로 엉뚱한 S3 접두사에 앉는다.
@@ -330,7 +331,7 @@ git commit -m "feat(topping): 배치 영구 실패 세 코드를 판정한다"
 - Consumes: `TOPPING_BASE_LONG_SIDE_RATIO`(`feature/.../impl/component/CanvasToppingLayer.kt`, `internal const val = 0.4f`) · `ToppingTransform`(`domain/model/topping/`) · `String#toColorOrNull`(`core/util/android/extension/String.kt`).
 - Produces:
   - `internal fun toToppingTransform(offsetX: Dp, offsetY: Dp, scale: Float, rotationDegrees: Float, canvasSize: DpSize, toppingBaseSize: DpSize, positionZ: Int): ToppingTransform`
-  - `fun Int.toArgbHexString(): String` — `#AARRGGBB` 8자리 대문자. Task 5가 `ToppingBorder.Solid(color = …)`에 넣는다.
+  - `fun Int.toRgbHexString(): String` — `#RRGGBB` 6자리 대문자(계획 당시 `toArgbHexString`·8자리였으나 PR5 브랜치 리뷰에서 정정됐다). Task 5가 `ToppingBorder.Solid(color = …)`에 넣는다.
 
 > **왜 왕복 테스트인가.** 쓰기 쪽 `scale`과 읽기 쪽 `scale`은 **기준이 다른 다른 수다.**
 > 읽기 쪽 `CanvasToppingLayer#CanvasTopping`은 한 변이
@@ -1837,7 +1838,7 @@ git commit -m "docs: PR5 배치 결선의 결정을 문서에 반영한다"
 1. 토핑을 배치하고 확인 → **로딩 오버레이가 뜨고 터치가 먹히지 않는다.**
 2. 성공 후 캔버스로 돌아오면 **방금 만든 토핑이 목록에 있다.** 위치·크기·회전이 배치 화면에서
    본 것과 같다(모서리에 걸친 것은 캔버스 쪽이 더 잘린다 — 스펙이 적어 둔 알려진 차이다).
-3. **테두리가 캔버스에서도 보인다.** 색이 배치 화면과 같다(`#AARRGGBB` 왕복이 깨지면 여기서
+3. **테두리가 캔버스에서도 보인다.** 색이 배치 화면과 같다(`#RRGGBB` 왕복이 깨지면 여기서
    테두리만 조용히 사라진다).
 4. 영구 실패(다른 기기로 그룹에서 나간 뒤 확인) → **토스트가 보이는가**, 그리고 캔버스로
    되감기는가. **토스트가 잔상으로 끝나면 Task 6 Step 3의 경고대로 후속이 필요하다.**
