@@ -20,8 +20,10 @@ related_code:
   - ImageService.kt#postImages
   - ServerErrorCode.kt#Parfait
   - ServerErrorCode.kt#ParfaitGroup
+  - ServerErrorCode.kt#ParfaitImage
   - String.kt#toColorOrNull
   - CanvasToppingLayer.kt#TOPPING_BASE_LONG_SIDE_RATIO
+  - CanvasToppingLayer.kt#CanvasTopping
   - YGCanvas.kt#CANVAS_AREA_ASPECT_RATIO
   - ToppingDraftRepository.kt#clear
 tags: [plan, parfait, topping, canvas, api, c-106]
@@ -128,9 +130,10 @@ tags: [plan, parfait, topping, canvas, api, c-106]
 
 | 자리 | 역할 | 태스크 |
 |---|---|---|
-| `domain/model/error/ServerErrorCode.kt` | 되감기 판정이 쓸 코드 상수 둘 추가 | 1 |
+| `domain/model/error/ServerErrorCode.kt` | `ParfaitGroup.GROUP_NOT_JOINED` 추가 + `object ParfaitImage` 신설(`PARFAIT_NOT_FOUND`) | 1 |
 | `feature/groups/canvas/impl/util/ToppingPlaceFailure.kt` | **신규** — 영구 실패 판정 순수 함수 | 1 |
 | `feature/groups/canvas/impl/util/ToppingPlacement.kt` | **신규** — 화면 좌표 → 서버 좌표 변환 순수 함수 | 2 |
+| `feature/groups/canvas/impl/component/CanvasToppingLayer.kt` | 읽기 쪽 `size` → `requiredSize`. clamp가 역함수를 깨고 있었다 | 2 |
 | `core/util/android/extension/String.kt` | `Int.toArgbHexString()` 추가(`toColorOrNull`의 역함수) | 2 |
 | `data/network/NoBodyLog.kt` | **신규** — 응답 본문을 로그에 남기지 않는 엔드포인트 표시 | 4 |
 | `data/network/SelectiveLoggingInterceptor.kt` | **신규** — 표시된 엔드포인트만 본문 로깅을 낮춘다 | 4 |
@@ -138,7 +141,7 @@ tags: [plan, parfait, topping, canvas, api, c-106]
 | `data/di/NetworkModule.kt` | 로깅 인터셉터를 선택형으로 교체 | 4 |
 | `data/service/ImageService.kt` | 발급 엔드포인트에 `@NoBodyLog` | 4 |
 | `feature/groups/canvas/impl/viewmodel/CanvasToppingPlaceViewModel.kt` | 확정 결선·로딩·실패 분기·초안 비우기 | 5 |
-| `feature/groups/canvas/impl/screen/CanvasToppingPlaceScreen.kt` | painter 준비 상태를 올려보낸다 | 6 |
+| `feature/groups/canvas/impl/screen/CanvasToppingPlaceScreen.kt` | painter 준비 상태를 올려보낸다(**Preview 호출부 포함**) | 6 |
 | `feature/groups/canvas/impl/route/CanvasToppingPlaceRoute.kt` | 로딩 오버레이·토스트·되감기 | 6 |
 | `feature/groups/canvas/impl/res/values/strings.xml` | 실패 문구 둘 | 6 |
 | `domain/usecase/topping/AddToppingUseCase.kt` | 취소 함정 KDoc 한 줄(OQ-P-248) | 7 |
@@ -237,18 +240,29 @@ Expected: 컴파일 실패 — `isPermanentPlaceFailure` 가 없고 `ServerError
         const val GROUP_NOT_JOINED = "GROUP_NOT_JOINED"
 ```
 
-`object Parfait` 안에 추가한다(`PARFAIT_ALREADY_CLOSED` 아래):
+`PARFAIT_NOT_FOUND`는 **`object Parfait`에 넣지 않는다.** 이 파일의 분류 원칙은
+"서버 enum 하나에 object 하나"이고 `object Parfait`은 서버 `ParfaitErrorCode` 대응인데,
+**배치 POST가 내는 `PARFAIT_NOT_FOUND`는 `ParfaitImageErrorCode` 것이다**
+([api/parfait-image.md](../api/parfait-image.md) 실패 표). 그래서 `object ParfaitImage`를
+새로 만든다(`object Parfait` 아래):
 
 ```kotlin
+    /** 서버 `ParfaitImageErrorCode` 에 대응한다 */
+    object ParfaitImage {
         /**
          * 404 — `parfaitId` 가 그 그룹의 파르페가 아니다.
          *
          * ⚠️ "존재하지 않음"과 "남의 그룹 것"을 구분하지 않는다 — 서버가
-         * `findByIdAndGroupId` 하나로 판정한다. 같은 문자열을 다른 enum 도 갖지만 둘 다
-         * 404 이고 뜻도 같다. 검사 순서와 enum 분포는 `api/parfait-image.md`.
+         * `findByIdAndGroupId` 하나로 판정한다. 같은 문자열을 `ParfaitErrorCode` 도 갖지만
+         * (캔버스 상세 조회·배경 변경) 둘 다 404 라 와이어에서 구분되지 않는다 — 그래서 이
+         * 문자열을 보는 판정은 `code` 단독으로 한다. 검사 순서는 `api/parfait-image.md`.
          */
         const val PARFAIT_NOT_FOUND = "PARFAIT_NOT_FOUND"
+    }
 ```
+
+> C-301이 위치·테두리·삭제 PATCH를 붙일 때 같은 enum의 `PARFAIT_IMAGE_NOT_FOUND`·
+> `PARFAIT_IMAGE_NOT_OWNED`가 이 object로 들어온다.
 
 - [ ] **Step 4: 판정 함수를 만든다**
 
@@ -272,10 +286,16 @@ internal fun AppError.isPermanentPlaceFailure(): Boolean = this is AppError.Serv
 
 private val PERMANENT_PLACE_FAILURE_CODES = setOf(
     ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED,
-    ServerErrorCode.Parfait.PARFAIT_NOT_FOUND,
+    ServerErrorCode.ParfaitImage.PARFAIT_NOT_FOUND,
     ServerErrorCode.ParfaitGroup.GROUP_NOT_JOINED,
 )
 ```
+
+> **판정 범위는 배치 POST의 실패 표뿐이다.** 업로드 3단계(발급·전송·확인)의 실패와
+> `ImageUploadRepositoryImpl`의 로컬 프리플라이트 실패(파일 부재·지원 밖 확장자)는
+> **전량 잔류**로 둔다 — 재시도가 발급부터 다시 타므로 새 `imageId`가 생겨 대부분 의미가
+> 있고, 파일이 사라진 경우는 `ToppingDraftRepository`가 그 경로를 정규화해 다음 방출에서
+> `DraftMissing`으로 넘어간다.
 
 - [ ] **Step 5: 테스트가 통과하는지 확인한다**
 
@@ -300,6 +320,7 @@ git commit -m "feat(topping): 배치 영구 실패 세 코드를 판정한다"
 
 **Files:**
 - Create: `feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingPlacement.kt`
+- Modify: `feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/component/CanvasToppingLayer.kt:110`(읽기 쪽 clamp 제거)
 - Modify: `core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/extension/String.kt`
 - Test: `feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingPlacementTest.kt`
 - Test: `core/util/android/src/test/kotlin/com/teamyg/parfait/core/util/android/extension/StringTest.kt`(기존 파일에 케이스 추가)
@@ -315,6 +336,15 @@ git commit -m "feat(topping): 배치 영구 실패 세 코드를 판정한다"
 > `canvasWidth × TOPPING_BASE_LONG_SIDE_RATIO × scale`인 정사각 박스에 `ContentScale.Fit`으로
 > 담아 긴 변을 꽉 채운다. 배치 화면의 긴 변은 `max(baseWidth, baseHeight) × scale`이다.
 > 둘을 같게 놓은 것이 아래 식이고, 어긋나면 "토핑이 조금씩 밀린다"라 원인 추적이 어렵다.
+>
+> ⚠️ **그 역함수가 지금은 오버플로 구간에서 성립하지 않는다.** `CanvasToppingLayer.kt:110`이
+> 그 정사각 박스를 `Modifier.size(side)`로 주는데 `size`는 부모 constraints에 clamp된다.
+> 반면 배치 화면은 같은 자리를 `requiredSize(sizeAfterScale)`로 주고 그 이유를 주석에 적어
+> 두었으며(`CanvasToppingPlaceScreen.kt:136-139`),
+> `CanvasToppingPlaceViewModel#maxScaleToOverflowCanvas`는 긴 변이 캔버스 긴 변의 1.5배까지
+> 가도록 **일부러** 허용한다. 그래서 캔버스를 넘긴 토핑은 캔버스에서 잘리는 것이 아니라
+> **조용히 작아진다** — `CanvasTopping`의 KDoc이 "넘친 픽셀은 clip이 잘라 낸다"고 적은 것도
+> 함께 거짓이다. **Step 3이 읽기 쪽을 고쳐 역함수를 참으로 만든다.**
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -331,7 +361,6 @@ import kotlin.test.assertEquals
 
 private const val DELTA = 1e-4
 
-/** 세로 캔버스. 값 자체에 의미는 없고 가로/세로가 달라야 x·y 를 뒤바꾼 구현이 걸린다 */
 private val CANVAS = DpSize(width = 360.dp, height = 640.dp)
 
 class ToppingPlacementTest {
@@ -367,20 +396,47 @@ class ToppingPlacementTest {
 
     @Test
     fun toToppingTransform_topLeftCorner_mapsToHalfSizeFractions() {
-        // Given 좌상단에 딱 붙인 토핑 — 중심은 자기 절반만큼 안쪽에 있다
+        // Given 좌상단에 딱 붙인 토핑을 2배로 키웠다.
+        // 중심은 **배율 적용 전** 크기의 절반만큼 안쪽이다 — 화면이 그렇게 계산한다
+        // (CanvasToppingPlaceScreen 의 center = offsetX + baseSize.width / 2).
+        // scale 을 곱해 중심을 구하는 구현은 여기서 갈린다
         val baseSize = DpSize(width = 100.dp, height = 50.dp)
         val transform = toToppingTransform(
             offsetX = 0.dp,
             offsetY = 0.dp,
-            scale = 1f,
+            scale = 2f,
             rotationDegrees = 0f,
             canvasSize = CANVAS,
             toppingBaseSize = baseSize,
             positionZ = 1,
         )
 
+        // 캔버스가 가로/세로로 달라 x·y 를 뒤바꾼 구현도 여기서 걸린다
         assertEquals(50.0 / 360.0, transform.positionX, DELTA)
         assertEquals(25.0 / 640.0, transform.positionY, DELTA)
+    }
+
+    @Test
+    fun toToppingTransform_overflowingTopping_roundTripsToo() {
+        // Given 캔버스 폭을 넘도록 키운 토핑 — maxScaleToOverflowCanvas 가 허용하는 구간이다
+        val baseSize = DpSize(width = 200.dp, height = 80.dp)
+        val transform = toToppingTransform(
+            offsetX = 0.dp,
+            offsetY = 0.dp,
+            scale = 4f,
+            rotationDegrees = 0f,
+            canvasSize = CANVAS,
+            toppingBaseSize = baseSize,
+            positionZ = 1,
+        )
+
+        // 화면 긴 변 800dp 는 캔버스 폭 360dp 를 넘는다. 읽기 쪽 박스가 clamp 되면
+        // 여기가 아니라 실제 화면에서만 갈리므로, 이 단언과 Step 3 의 수정이 한 쌍이다
+        assertEquals(
+            200.0 * 4,
+            readBackLongSideDp(scale = transform.scale, canvasWidth = CANVAS.width.value),
+            DELTA,
+        )
     }
 
     @Test
@@ -492,7 +548,34 @@ import androidx.compose.ui.graphics.toArgb
 
 Expected: 컴파일 실패 — `toToppingTransform`·`toArgbHexString` 이 없다.
 
-- [ ] **Step 3: 좌표 변환 함수를 만든다**
+- [ ] **Step 3: 읽기 쪽 clamp를 걷어 역함수를 참으로 만든다**
+
+`feature/groups/canvas/impl/.../component/CanvasToppingLayer.kt` — `CanvasTopping`의
+`.size(side)`를 바꾼다:
+
+```kotlin
+            // 캔버스를 넘긴 토핑은 잘려야지 작아지면 안 된다. size 는 부모 constraints 로
+            // clamp 돼 정사각 박스가 캔버스 크기로 줄고, 그 안에서 Fit 이 다시 축소한다
+            ).requiredSize(side)
+```
+
+import를 바꾼다:
+
+```kotlin
+// 지운다
+import androidx.compose.foundation.layout.size
+// 더한다
+import androidx.compose.foundation.layout.requiredSize
+```
+
+> `size`가 파일의 다른 자리에서도 쓰이면 그 import는 남긴다. **`grep -n "\.size(" `로 확인한 뒤
+> 판단한다.**
+>
+> ⚠️ **이것은 캔버스 렌더가 실제로 바뀌는 수정이다.** JVM 테스트로는 안 잡히므로
+> **실기기 확인 9번**이 감지선이다. `CanvasTopping`의 KDoc이 이미 "넘친 픽셀은 clip이
+> 잘라 낸다"고 적어 두었으니 문구는 고칠 것이 없다 — 코드가 그 문장에 맞춰지는 것이다.
+
+- [ ] **Step 4: 좌표 변환 함수를 만든다**
 
 `feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingPlacement.kt`:
 
@@ -538,7 +621,7 @@ internal fun toToppingTransform(
 }
 ```
 
-- [ ] **Step 4: 테두리 색 직렬화를 만든다**
+- [ ] **Step 5: 테두리 색 직렬화를 만든다**
 
 `core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/extension/String.kt`
 맨 아래에 더한다(`toColorOrNull`과 **같은 파일에 둔다** — 둘은 서로의 역함수라 떨어뜨리면
@@ -554,18 +637,19 @@ internal fun toToppingTransform(
 fun Int.toArgbHexString(): String = "#%08X".format(this)
 ```
 
-- [ ] **Step 5: 테스트가 통과하는지 확인한다**
+- [ ] **Step 6: 테스트가 통과하는지 확인한다**
 
 ```bash
 ./gradlew :core:util:android:testDebugUnitTest :feature:groups:canvas:impl:testDebugUnitTest ktlintCheck
 ```
 
-Expected: 전부 PASS. 신규 8건(좌표 5 + 색 3).
+Expected: 전부 PASS. 신규 9건(좌표 6 + 색 3).
 
-- [ ] **Step 6: 커밋한다**
+- [ ] **Step 7: 커밋한다**
 
 ```bash
 git add feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingPlacement.kt \
+  feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/component/CanvasToppingLayer.kt \
   feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingPlacementTest.kt \
   core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/extension/String.kt \
   core/util/android/src/test/kotlin/com/teamyg/parfait/core/util/android/extension/StringTest.kt
@@ -636,7 +720,9 @@ git commit -m "feat(topping): 화면 좌표와 테두리 색을 서버 형식으
         }
         // 요청이 실제로 나간 뒤에 취소해야 "취소가 호출을 끊는지"를 보는 테스트가 된다
         server.takeRequest()
-        job.cancelAndJoin()
+        // ⚠️ join 하지 않는다. 블로킹 execute() 를 쓰는 구현에서는 join 이 응답 도착까지
+        // 기다려 버려, 그 뒤에 세면 호출이 이미 걷힌 뒤라 구·신 구현이 똑같이 통과한다
+        job.cancel()
 
         // Then 열린 호출이 사라진다. 취소가 안 이어지면 HANG_SECONDS 내내 1 로 남는다
         assertTrue(awaitNoRunningCalls(), "취소 후에도 열린 업로드 호출이 남았다")
@@ -656,20 +742,20 @@ git commit -m "feat(topping): 화면 좌표와 테두리 색을 서버 형식으
     }
 ```
 
-파일 하단(클래스 밖, 기존 `FILE_SIZE` 옆)에 상수를 더한다:
+`FILE_SIZE`는 파일 하단이 아니라 **클래스 안 `private companion object`** 에 있다.
+그 안, `FILE_SIZE` 아래에 더한다:
 
 ```kotlin
-private const val HANG_SECONDS = 10L
-private const val CANCEL_TIMEOUT_MILLIS = 2_000L
-private const val POLL_INTERVAL_MILLIS = 10L
-private const val NANOS_PER_MILLI = 1_000_000L
+        const val HANG_SECONDS = 10L
+        const val CANCEL_TIMEOUT_MILLIS = 2_000L
+        const val POLL_INTERVAL_MILLIS = 10L
+        const val NANOS_PER_MILLI = 1_000_000L
 ```
 
 파일 상단 import에 더한다(기존 목록에 없는 것만):
 
 ```kotlin
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -679,7 +765,8 @@ import java.util.concurrent.TimeUnit
 > `headersDelay`도 폴링도 실시간이다. `advanceUntilIdle()`을 부르지 않고,
 > `launch`에 `Dispatchers.IO`를 명시해 테스트 스케줄러가 이 코루틴을 붙잡지 않게 한다.
 >
-> ⚠️ `FILE_SIZE`는 기존 파일에 이미 있는 상수다. **다시 선언하지 않는다.**
+> ⚠️ `FILE_SIZE`는 기존 `private companion object` 에 이미 있는 상수다.
+> **다시 선언하지 않는다.**
 
 - [ ] **Step 2: 테스트가 실패하는지 확인한다**
 
@@ -687,8 +774,9 @@ import java.util.concurrent.TimeUnit
 ./gradlew :data:testDebugUnitTest --tests "*PresignedUploadDataSourceImplTest*"
 ```
 
-Expected: FAIL — `runningCallsCount()`가 0이 아니다. `execute()`는 블로킹이고
-`Call.cancel()`이 취소에 이어져 있지 않다.
+Expected: FAIL — `awaitNoRunningCalls()`가 2초 상한 안에 0을 못 보고 `false`를 낸다.
+현행 `execute()`는 블로킹이라 `Call.cancel()`이 취소에 이어져 있지 않고, 열린 호출이
+`HANG_SECONDS`(10초) 내내 남는다. **이 실패까지 약 2초가 걸린다.**
 
 - [ ] **Step 3: 취소를 잇는다**
 
@@ -738,7 +826,9 @@ class PresignedUploadDataSourceImpl @Inject constructor(
             okHttpClient.newCall(request)
         } catch (e: Exception) {
             // uploadUrl·contentType 은 서버가 준 값이라 Request 조립 단계에서 예외가 날 수 있다.
-            // 여기서 안 잡으면 Result 를 돌려주기로 한 계약이 깨진 채 호출부까지 올라간다
+            // 여기서 안 잡으면 Result 를 돌려주기로 한 계약이 깨진 채 호출부까지 올라간다.
+            // 이 블록에는 suspend 호출이 없어 CancellationException 재던지기가 필요 없다 —
+            // 한 줄이라도 들어오면 그때 가드를 붙인다
             return Result.failure(ApiException.Unknown(e))
         }
 
@@ -747,7 +837,10 @@ class PresignedUploadDataSourceImpl @Inject constructor(
 
             call.enqueue(
                 object : Callback {
-                    override fun onResponse(call: Call, response: Response) {
+                    override fun onResponse(
+                        call: Call,
+                        response: Response,
+                    ) {
                         response.use {
                             val result = if (it.isSuccessful) {
                                 Result.success(Unit)
@@ -758,9 +851,12 @@ class PresignedUploadDataSourceImpl @Inject constructor(
                         }
                     }
 
-                    // 취소로 끊긴 호출도 여기로 온다. 이미 취소된 continuation 을 재개하면
-                    // 취소가 실패 Result 로 둔갑한다
-                    override fun onFailure(call: Call, e: IOException) {
+                    // 취소로 끊긴 호출도 IOException("Canceled") 로 여기 들어온다.
+                    // 이미 취소된 continuation 은 resume 을 버리므로 굳이 부르지 않는다
+                    override fun onFailure(
+                        call: Call,
+                        e: IOException,
+                    ) {
                         if (continuation.isActive) continuation.resume(Result.failure(ApiException.Network(e)))
                     }
                 },
@@ -851,7 +947,7 @@ class SelectiveLoggingInterceptorTest {
         val full = HttpLoggingInterceptor { message -> logs += message }
             .apply { level = HttpLoggingInterceptor.Level.BODY }
         val redacted = HttpLoggingInterceptor { message -> logs += message }
-            .apply { level = HttpLoggingInterceptor.Level.BASIC }
+            .apply { level = HttpLoggingInterceptor.Level.HEADERS }
 
         val client = OkHttpClient
             .Builder()
@@ -995,8 +1091,8 @@ import com.teamyg.parfait.data.network.NoBodyLog
     /** 두 클라이언트가 같은 로깅·`Authorization` 마스킹 처리를 받는다 */
     private fun loggingInterceptor(): Interceptor = SelectiveLoggingInterceptor(
         full = httpLoggingInterceptor(HttpLoggingInterceptor.Level.BODY),
-        // 본문만 뺀다. 요청 라인·상태 코드는 남아야 실패 원인을 좁힐 수 있다
-        redacted = httpLoggingInterceptor(HttpLoggingInterceptor.Level.BASIC),
+        // 본문만 뺀다. BASIC 은 헤더까지 통째로 버려 실패 원인을 좁힐 단서가 사라진다
+        redacted = httpLoggingInterceptor(HttpLoggingInterceptor.Level.HEADERS),
     )
 
     private fun httpLoggingInterceptor(debugLevel: HttpLoggingInterceptor.Level): HttpLoggingInterceptor =
@@ -1057,7 +1153,13 @@ git commit -m "fix(network): 발급 응답 본문에 실려 오는 presigned URL
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
-`CanvasToppingPlaceViewModelTest.kt`의 `viewModel(...)` 헬퍼를 바꾸고 케이스를 더한다.
+⚠️ **먼저 기존 케이스 하나를 지운다.** `onClickConfirm_withASubjectImage_confirmsThePlacement`가
+`CanvasToppingPlaceEffect.ToppingPlaced`와 그 프로퍼티(`imagePath`·`offsetX` 등)를 단언하는데
+Step 3이 그 이펙트를 없앤다. 남겨 두면 `Unresolved reference: ToppingPlaced`로 **모듈 테스트가
+통째로 컴파일되지 않는다.** 그 자리를 아래 `onClickConfirm_success_clearsDraftAndNavigatesBack`이
+대신한다.
+
+그다음 `viewModel(...)` 헬퍼를 바꾸고 케이스를 더한다.
 **헬퍼 교체**(기존 `viewModel` 함수를 아래로 대체):
 
 ```kotlin
@@ -1169,18 +1271,22 @@ git commit -m "fix(network): 발급 응답 본문에 실려 오는 presigned URL
 
     @Test
     fun onClickConfirm_permanentFailure_rewindsAndKeepsDraftUncleaned() = runTest(mainDispatcherRule.dispatcher) {
-        coEvery { addToppingUseCase(any(), any(), any(), any(), any()) } returns Result.failure(
-            AppError.Server(code = "PARFAIT_ALREADY_CLOSED", statusCode = 409, serverMessage = "마감됐습니다"),
-        )
-        val viewModel = readyViewModel()
-        advanceUntilIdle()
-
-        viewModel.effect.test {
-            viewModel.processIntent(CanvasToppingPlaceIntent.OnClickConfirm)
+        // 스펙의 되감기 표는 세 코드를 든다. 하나만 넣으면 집합이 좁아진 회귀를 못 잡는다
+        listOf("PARFAIT_ALREADY_CLOSED", "GROUP_NOT_JOINED", "PARFAIT_NOT_FOUND").forEach { code ->
+            coEvery { addToppingUseCase(any(), any(), any(), any(), any()) } returns Result.failure(
+                AppError.Server(code = code, statusCode = null, serverMessage = "서버 메시지"),
+            )
+            val viewModel = readyViewModel()
             advanceUntilIdle()
 
-            assertEquals(CanvasToppingPlaceEffect.PlaceFailedPermanently, awaitItem())
+            viewModel.effect.test {
+                viewModel.processIntent(CanvasToppingPlaceIntent.OnClickConfirm)
+                advanceUntilIdle()
+
+                assertEquals(CanvasToppingPlaceEffect.PlaceFailedPermanently, awaitItem(), code)
+            }
         }
+        // 실패한 흐름의 초안은 남아야 한다 — 비우면 막 만든 토핑을 통째로 잃는다
         coVerify(exactly = 0) { toppingDraftRepository.clear() }
     }
 
@@ -1384,27 +1490,29 @@ class CanvasToppingPlaceViewModel
 
         launch(key = CONFIRM_JOB_KEY, onError = { postSideEffect(CanvasToppingPlaceEffect.PlaceFailed) }) {
             updateState { copy(isLoading = true) }
-            try {
-                addToppingUseCase(
-                    groupId = groupId,
-                    parfaitId = parfaitId,
-                    filePath = imagePath,
-                    transform = transform,
-                    border = border,
-                ).onSuccess {
-                    toppingDraftRepository.clear()
-                    postSideEffect(effect = CanvasToppingPlaceEffect.PlaceSucceeded)
-                }.onFailure { throwable ->
-                    val error = throwable as? AppError ?: AppError.Unexpected(throwable)
-                    postSideEffect(
-                        effect = if (error.isPermanentPlaceFailure()) {
-                            CanvasToppingPlaceEffect.PlaceFailedPermanently
-                        } else {
-                            CanvasToppingPlaceEffect.PlaceFailed
-                        },
-                    )
-                }
-            } finally {
+
+            addToppingUseCase(
+                groupId = groupId,
+                parfaitId = parfaitId,
+                filePath = imagePath,
+                transform = transform,
+                border = border,
+            ).onSuccess {
+                // 되감기를 먼저 알린다 — clear() 가 초안을 비우면 구독이 알맹이를 null 로
+                // 되돌려, 오버레이가 내려간 화면에 빈 캔버스가 잠깐 조작 가능한 상태로 남는다
+                postSideEffect(effect = CanvasToppingPlaceEffect.PlaceSucceeded)
+                toppingDraftRepository.clear()
+            }.onFailure { throwable ->
+                val error = throwable as? AppError ?: AppError.Unexpected(throwable)
+                postSideEffect(
+                    effect = if (error.isPermanentPlaceFailure()) {
+                        CanvasToppingPlaceEffect.PlaceFailedPermanently
+                    } else {
+                        CanvasToppingPlaceEffect.PlaceFailed
+                    },
+                )
+                // 성공 경로에서는 되돌리지 않는다. 화면이 사라지므로 되돌릴 대상이 없고,
+                // 내리는 순간 위 주석의 빈 화면이 드러난다
                 updateState { copy(isLoading = false) }
             }
         }
@@ -1447,7 +1555,8 @@ import com.teamyg.parfait.feature.groups.canvas.impl.util.toToppingTransform
 ./gradlew :feature:groups:canvas:impl:testDebugUnitTest ktlintCheck
 ```
 
-Expected: 전부 PASS. 신규 8건. **기존 케이스가 깨지면 헬퍼 교체를 빠뜨린 것이다.**
+Expected: 전부 PASS. 신규 8건, 삭제 1건.
+**`Unresolved reference: ToppingPlaced`가 나오면 Step 1의 삭제 지시를 빠뜨린 것이다.**
 
 - [ ] **Step 6: 커밋한다**
 
@@ -1463,8 +1572,13 @@ git commit -m "feat(topping): 배치 확정이 서버로 나가게 결선한다"
 
 **Files:**
 - Modify: `feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/screen/CanvasToppingPlaceScreen.kt`
+  (컴포저블 선언 + **같은 파일의 `PreviewCanvasToppingPlaceScreen` 호출부**)
 - Modify: `feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/route/CanvasToppingPlaceRoute.kt`
 - Modify: `feature/groups/canvas/impl/src/main/res/values/strings.xml`
+
+> ⚠️ **`CanvasToppingPlaceScreen` 호출부는 둘이다** — Route 하나와 같은 파일의 `@YGPreview`
+> 함수 하나. 파라미터를 더하면서 Preview를 빠뜨리면 main 소스셋이 컴파일되지 않아
+> Step 4의 검증이 아예 실행되지 않는다.
 
 **Interfaces:**
 - Consumes: Task 5의 `CanvasToppingPlaceIntent.OnToppingImageReadyChanged` ·
@@ -1493,6 +1607,12 @@ git commit -m "feat(topping): 배치 확정이 서버로 나가게 결선한다"
             LaunchedEffect(isToppingImageLoaded) {
                 onToppingImageReadyChanged(isToppingImageLoaded)
             }
+```
+
+같은 파일의 `PreviewCanvasToppingPlaceScreen`(`onToppingBaseSizeMeasured = {},` 아래)에도 더한다:
+
+```kotlin
+        onToppingImageReadyChanged = {},
 ```
 
 - [ ] **Step 2: 문구 둘을 더한다**
@@ -1586,6 +1706,7 @@ git commit -m "feat(topping): 배치 화면에 로딩·실패 알림·되감기�
 - Modify: `parfait/specs/README.md`
 - Modify: `parfait/plans/README.md`
 - Modify: `parfait/synthesis/open-questions.md`
+- Modify: `parfait/api/parfait-image.md` · `parfait/api/image.md`(소비처 셈)
 - Move: `parfait/plans/2026-08-21-c106-pr5-topping-place-wiring.md` → `parfait/plans/archive/`
 
 - [ ] **Step 1: `AddToppingUseCase`에 취소 함정을 한 줄 남긴다 (OQ-P-248)**
@@ -1635,8 +1756,10 @@ git commit -m "docs(topping): 취소가 남기는 고아 이미지를 KDoc 에 �
 `parfait/synthesis/open-questions.md`:
 
 - **OQ-P-109** — 상태를 `해소됨(PR5)`으로 바꾸고 해소 메모를 더한다:
-  `@NoBodyLog` + `SelectiveLoggingInterceptor`로 발급 엔드포인트만 `Level.BASIC`으로 낮췄다.
-  전체 레벨을 낮추지 않은 이유는 본문 로깅이 다른 엔드포인트에서는 값이 크기 때문이다.
+  `@NoBodyLog` + `SelectiveLoggingInterceptor`로 발급 엔드포인트만 `Level.HEADERS`로 낮췄다.
+  전체 레벨을 낮추지 않은 이유는 본문 로깅이 다른 엔드포인트에서는 값이 크기 때문이고,
+  `BASIC`이 아니라 `HEADERS`인 이유는 새는 값이 **응답 본문에만** 있어 헤더까지 버릴
+  이유가 없기 때문이다.
 - **OQ-P-246** — 상태를 `해소됨(PR5)`으로 바꾼다. `execute()` → `enqueue` +
   `suspendCancellableCoroutine`·`invokeOnCancellation { call.cancel() }`.
   `onFailure`가 취소를 실패 `Result`로 둔갑시키지 않도록 `continuation.isActive` 가드를 뒀다.
@@ -1646,6 +1769,9 @@ git commit -m "docs(topping): 취소가 남기는 고아 이미지를 KDoc 에 �
 - **OQ-P-248** — 상태를 `해소됨(PR5, 감수)`으로 바꾼다. ① 취소는 예외로 올라오는 것이 정상
   계약이고 그 시점엔 화면이 없다. ② 고아 이미지는 재시도 결정과 같은 처분으로 감수한다.
   ③ z 겹침은 서버가 유일성을 요구하지 않아 거부되지 않는다. 코드 변경 없이 KDoc 한 줄로 닫았다.
+- **OQ-P-245 본문 확장** — 지금은 "편집 화면 굵기와 캔버스 굵기의 어긋남"(배율 축)만 적혀
+  있다. **기기 폭 축을 덧붙인다**: 토핑 크기는 캔버스 폭 대비 비율로 정규화되는데
+  `borderWidth`만 절대 dp라, 폭이 다른 기기에서 상대 굵기가 달라진다.
 - **OQ-P-255 신설** — 제목: `누끼 알맹이를 최근 이미지로 재사용하려면 선행 결함 넷을 먼저 닫아야 한다`.
   본문에 아래 넷을 근거 파일과 함께 적는다:
   1. `FileRecentImageLocalDataSourceImpl#readBytes`가 `contentResolver.openInputStream(uri)`
@@ -1661,7 +1787,23 @@ git commit -m "docs(topping): 취소가 남기는 고아 이미지를 KDoc 에 �
      `sourceImageUri`·`cutoutImagePath`를 둘 다 쓴다 — 알맹이만 복원하면 **"사진 편집" 버튼이
      죽는다.** 셋을 다 저장하면 내부 저장소 사용량이 3배가 되면서 `MAX_SIZE = 9`와 부딪힌다.
 
-- [ ] **Step 4: 두 README를 갱신한다**
+- [ ] **Step 4: 계약 문서의 "소비처 0건" 서술을 갱신한다**
+
+`parfait/api/parfait-image.md`와 `parfait/api/image.md`가 여러 곳에서 **"화면 소비처는
+0건"**이라고 적는다. PR5가 그것을 거짓으로 만든다. 아래를 고친다:
+
+- `parfait-image.md` — 배치(POST)의 소비처가 `CanvasToppingPlaceViewModel`임을 적고,
+  "남은 것은 화면 결선(스펙의 PR5)"이라는 문장을 걷는다. 나머지 셋(위치·테두리 PATCH·DELETE)은
+  **여전히 0건**이므로 그 구분을 분명히 한다.
+- `parfait-image.md` — **"소비처가 0건인데 상수를 먼저 둔 것은 명시적 예외"**라는 서술의
+  사유가 소멸했다. PR5가 `ServerErrorCode`의 세 코드를 실제로 소비한다.
+- `image.md` — 업로드 2 엔드포인트의 소비처가 `ImageUploadRepositoryImpl`을 거쳐
+  `AddToppingUseCase`에 닿았음을 적는다.
+
+> 이 저장소는 `sync-teamyg-server-api` 워크플로로 이 문서들을 감사한다. 여기서 안 고치면
+> 다음 라운드가 "소비처 0"을 전제로 판단한다.
+
+- [ ] **Step 5: 두 README를 갱신한다**
 
 - `parfait/plans/README.md` — 이 계획의 행을 추가하고 **실행 결과**를 적는다
   (형식은 PR4 행을 따른다: 태스크 수, 브랜치명, 커밋 범위, 신규 테스트 수,
@@ -1669,7 +1811,7 @@ git commit -m "docs(topping): 취소가 남기는 고아 이미지를 KDoc 에 �
 - `parfait/specs/README.md` — `c106-topping-place-api` 행의 상태를 갱신한다
   (PR5까지 구현 완료·미머지, PR6 분리 사실).
 
-- [ ] **Step 5: 계획서를 아카이브로 옮긴다**
+- [ ] **Step 6: 계획서를 아카이브로 옮긴다**
 
 ```bash
 git mv parfait/plans/2026-08-21-c106-pr5-topping-place-wiring.md parfait/plans/archive/
@@ -1677,7 +1819,7 @@ git mv parfait/plans/2026-08-21-c106-pr5-topping-place-wiring.md parfait/plans/a
 
 frontmatter의 `status`를 `done`으로, `archived_reason`을 실행 결과 한 줄로 채운다.
 
-- [ ] **Step 6: 커밋한다**
+- [ ] **Step 7: 커밋한다**
 
 ```bash
 git add parfait/
@@ -1703,6 +1845,9 @@ git commit -m "docs: PR5 배치 결선의 결정을 문서에 반영한다"
 7. 로딩 중 **뒤로 가기** → 업로드가 끊긴다(Logcat에 `callTimeout`까지 남는 요청이 없다).
 8. 큰 원본 사진(12MP)으로 전체 흐름 → **OOM 없이** 업로드가 끝난다(OQ-P-228이 열려 있는 축이라
    증상이 나오면 그 항목에 실측을 남긴다).
+9. **토핑을 캔버스 밖으로 넘칠 만큼 키워서** 배치 → 캔버스에서 **같은 크기로 잘려** 보인다.
+   Task 2 Step 3의 `requiredSize` 전환이 감지선 없이 들어가는 유일한 자리다. 수정 전에는
+   토핑이 잘리는 대신 통째로 작아졌으므로, **차이가 눈에 보여야 한다.**
 
 **이월 13항목** — PR3의 5항목과 PR4의 8항목이 아직 안 됐다. 세 브랜치가 한 스택이라
 이 라운드에서 함께 확인하고, 각 계획서의 해당 절에 결과를 적는다.
@@ -1721,3 +1866,11 @@ git commit -m "docs: PR5 배치 결선의 결정을 문서에 반영한다"
 - **확인 버튼 비활성 표현** — 디자인 근거가 없다. 판정만 ViewModel이 갖는다.
 - **presigned URL 만료 판정** — 만료는 실패 후 전량 재시도로만 풀린다.
 - **원본 다운샘플** — OQ-P-228 잔존.
+- **초안 구독이 끊긴 뒤의 재구독** — `observeDraft`가 실패하면 `isDraftLoaded`가 `false`로 굳고
+  확인이 아무 반응 없이 흘러간다. 첫 `DraftMissing` 토스트를 놓치면 되돌릴 길이 없다. PR4에서
+  넘어온 기존 동작이라 이 라운드가 손대지 않는다.
+- **테두리 굵기가 캔버스 폭을 안 따라간다** — 토핑 크기는 캔버스 폭 대비 비율로 정규화되는데
+  `borderWidth`만 절대 dp라, 폭이 다른 기기에서 상대 굵기가 달라진다. OQ-P-245가 열어 둔 것은
+  배율 축뿐이고 이 기기 폭 축은 Task 7이 그 항목에 덧붙인다.
+- **`ImageUploadRepositoryImpl#upload`의 `file.isFile`이 호출자 스레드에서 도는 것** — Task 3이
+  업로드 사슬의 마지막 IO 홉을 걷으면서 더 도드라지지만 이 라운드가 만든 문제가 아니다.
