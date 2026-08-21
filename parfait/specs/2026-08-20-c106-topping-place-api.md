@@ -253,10 +253,10 @@ positionZ = draft.nextPositionZ
 담아 긴 변을 꽉 채운다. 배치 화면의 긴 변은 `max(baseWidth, baseHeight) × scale`이다. 둘을 같게
 놓으면 위 식이 나온다.
 
-정규화가 성립하려면 두 화면의 Canvas-Area 종횡비가 같아야 한다. **그런데 지금 그 값이 두 상수로
-갈려 있다** — 배치 화면은 `CanvasConst#CANVAS_ASPECT_RATIO`를, 읽기 쪽 `YGCanvas#CanvasArea`는
-자기 모듈의 private 상수를 쓴다. 값만 같을 뿐 **동일성을 강제하는 것이 없고, 하나를 바꿔도 컴파일이
-깨지지 않는다.** 어긋나는 순간 이미 저장된 모든 토핑의 `positionY`가 틀어지고 증상은 "토핑이 조금씩
+정규화가 성립하려면 두 화면의 Canvas-Area 종횡비가 같아야 한다. **이 스펙을 쓸 때 그 값이 두 상수로
+갈려 있었다** — 배치 화면은 `domain`의 `CANVAS_ASPECT_RATIO`를, 읽기 쪽 `YGCanvas#CanvasArea`는
+자기 모듈의 private 상수를 썼다. 값만 같을 뿐 **동일성을 강제하는 것이 없어 하나를 바꿔도 컴파일이
+깨지지 않았다.** 어긋나는 순간 이미 저장된 모든 토핑의 `positionY`가 틀어지고 증상은 "토핑이 조금씩
 위아래로 밀린다"라 원인 추적이 어렵다. **`domain`의 `CANVAS_ASPECT_RATIO`를 지우고
 `core:designsystem`의 `CANVAS_AREA_ASPECT_RATIO` 하나로 통일한다.** 반대 방향으로 모으면
 `core:designsystem` → `:domain` 간선이 새로 생기는데, 캔버스 비율은 도메인 규칙이 아니라 **표시

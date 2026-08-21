@@ -1,10 +1,11 @@
 ---
 id: c106-pr4-topping-border-contract
 title: C-106 결선 PR4 — 테두리 계약 전환 (굽기 중단·초안 채우기·공유 스탬프 렌더러)
-status: draft
+status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
+archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-topping-border-contract 에 커밋 9개, 신규 테스트 16건.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026
@@ -35,11 +36,11 @@ tags: [plan, parfait, topping, border, canvas, segmentation]
 
 **Goal:** 토핑 테두리를 이미지 픽셀에 굽는 것을 그만두고, 테두리 없는 알맹이와 색·굵기 값을 초안에 담아 **누끼 확인 화면과 배치 화면이 캔버스와 같은 8방향 스탬프로** 그리게 한다. 함께 `NavKeyCanvasToppingPlace`의 인자를 걷고 캔버스 종횡비 상수를 하나로 모은다.
 
-**Architecture:** 세 화면(누끼 확인·배치·캔버스)이 같은 그림을 그리도록 `CanvasToppingLayer` 안에 있던 8방향 스탬프 컴포저블을 `:core:designsystem`으로 올린다([ADR-0025](../adr/0025-topping-border-as-server-field.md)). 초안에 쓰는 시점은 **사건 둘**이다 — 세그멘테이션 성공과 편집 완료. 화면이 열릴 때가 아니라 사건이 났을 때 적으므로, 프로세스가 죽었다 살아나도 이미 적힌 편집 결과가 진입 인자로 덮이지 않는다([ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)이 DataStore를 고른 이유가 그 복원이다). 편집 화면은 종전대로 `TOPPING_EDIT_RESULT_KEY`로 결과를 돌려주고, 배치 화면은 초안만 읽는다. **이 PR은 서버를 부르지 않는다** — 업로드·배치 호출과 좌표 변환은 PR5다. 사용자에게 보이는 변화는 **테두리 렌더 방식**이고, 그래서 이 라운드에 시각 회귀 위험이 몰린다.
+**Architecture:** 세 화면(누끼 확인·배치·캔버스)이 같은 그림을 그리도록 `CanvasToppingLayer` 안에 있던 8방향 스탬프 컴포저블을 `:core:designsystem`으로 올린다([ADR-0025](../../adr/0025-topping-border-as-server-field.md)). 초안에 쓰는 시점은 **사건 둘**이다 — 세그멘테이션 성공과 편집 완료. 화면이 열릴 때가 아니라 사건이 났을 때 적으므로, 프로세스가 죽었다 살아나도 이미 적힌 편집 결과가 진입 인자로 덮이지 않는다([ADR-0026](../../adr/0026-topping-draft-datastore-ssot.md)이 DataStore를 고른 이유가 그 복원이다). 편집 화면은 종전대로 `TOPPING_EDIT_RESULT_KEY`로 결과를 돌려주고, 배치 화면은 초안만 읽는다. **이 PR은 서버를 부르지 않는다** — 업로드·배치 호출과 좌표 변환은 PR5다. 사용자에게 보이는 변화는 **테두리 렌더 방식**이고, 그래서 이 라운드에 시각 회귀 위험이 몰린다.
 
 **Tech Stack:** Kotlin · Hilt · Jetpack Compose · Coil3 · DataStore Preferences · kotlinx-coroutines-test · MockK · Turbine · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **4번 행**, 「토핑 초안 SSOT」·「좌표 변환」의 종횡비 절
+**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **4번 행**, 「토핑 초안 SSOT」·「좌표 변환」의 종횡비 절
 
 > **베이스는 PR3 브랜치다.** `feature/#270-topping-draft-ssot`(팁 `17157b24`, **PR 올라가 있고 미머지**).
 > PR1·PR2는 develop에 머지됐다(`da03c9b0`).
@@ -57,7 +58,7 @@ tags: [plan, parfait, topping, border, canvas, segmentation]
 ## 스펙과 갈린 결정 셋 (실행 전에 읽는다)
 
 1. **종횡비 상수를 domain이 아니라 디자인시스템으로 모은다.** 스펙은 "`YGCanvas`가 `domain`의 상수를
-   쓰도록 통일한다"고 적었지만, [module-structure](../architecture/module-structure.md)는 그
+   쓰도록 통일한다"고 적었지만, [module-structure](../../architecture/module-structure.md)는 그
    `domain` 상수(`CANVAS_ASPECT_RATIO`) 자체를 **"표시 규격이 domain에 들어온 사례"**로 미결에 올려
    두었다(2026-08-15). 스펙대로 하면 `:core:designsystem → :domain` 간선이 새로 생기면서 그 미결이
    굳는다. 반대로 하면 새 간선이 0개다 — 그 상수를 쓰는 곳은 `feature/groups/canvas/impl`의 화면
@@ -85,7 +86,7 @@ tags: [plan, parfait, topping, border, canvas, segmentation]
   - **다른 컴포넌트의 현재 상태를 단정하지 않는다**(낡는다). 근거는 문서를 가리킨다. 함정과 의도는 쓴다.
   - 아키텍처 결정 설명을 코드에 복사하지 않는다. 포인터 한 줄만 둔다.
 - **초안이 담는 이미지 경로는 파일 시스템 절대경로**다. `file://` uri가 아니다. uri가 필요한 화면이 그 자리에서 바꾼다.
-- ⚠️ **`TOPPING_EDIT_RESULT_KEY`를 걷지 않는다.** 소비자가 `SegmentationConfirmRoute`와 `CanvasBGEditRoute` 둘이라 걷으면 배경 편집이 컴파일은 통과한 채 조용히 죽는다([ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)).
+- ⚠️ **`TOPPING_EDIT_RESULT_KEY`를 걷지 않는다.** 소비자가 `SegmentationConfirmRoute`와 `CanvasBGEditRoute` 둘이라 걷으면 배경 편집이 컴파일은 통과한 채 조용히 죽는다([ADR-0026](../../adr/0026-topping-draft-datastore-ssot.md)).
 - ⚠️ **`NavKeySegmentationConfirm`의 경로 셋도 그대로 둔다.** 그것은 화면을 여는 인자이고 초안은 흐름의 결과물이다. 값이 겹치는 구간에서는 **초안이 정본**이다.
 - ⚠️ **초안 쓰기는 화면 진입이 아니라 사건에 건다.** 화면이 열릴 때마다 적으면 프로세스 사망 복원에서 **이미 적힌 편집 결과를 진입 인자로 덮어쓴다** — ADR-0026이 영속을 고른 이유를 스스로 깨는 경로다.
 - **실패 알림은 시스템 `Toast`가 아니라 `YGScaffoldV2`의 `toastPolicy`로 띄운다.** 선례는 `AppSettingRoute`·`TermAgreeRoute`다. (같은 모듈의 `ToppingEditRoute`가 시스템 토스트를 쓰지만 그것은 이 라운드가 손대는 자리가 아니다.)
