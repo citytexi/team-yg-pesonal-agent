@@ -406,10 +406,13 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 같은 PR이 `CanvasStatus` KDoc의 "서버가 그것을 강제하지 않는다"도 뒤집었다
 → [parfait.md](parfait.md) Android 매핑 · [open-questions](../synthesis/open-questions.md) [2026-08-20].
 
-✅ **위 예외 사유가 소멸했다(2026-08-21, PR5)** — `CanvasToppingPlaceViewModel`이
-`ServerErrorCode.Parfait`의 세 코드(`PARFAIT_ALREADY_CLOSED`·`GROUP_NOT_JOINED`·`PARFAIT_NOT_FOUND`)를
-실제로 분기에 써 소비처가 생겼다. "쓰지 않는 상수를 먼저 둔 명시적 예외"는 이제 필요 없다 — 상수
-KDoc의 결정·함정 서술은 남지만, 더는 예외가 아니라 보통의 소비되는 상수다.
+✅ **위 예외 사유가 소멸했다(2026-08-21, PR5)** — `CanvasToppingPlaceViewModel`이 되감기 대상 세
+코드를 실제로 분기에 써 소비처가 생겼다. 셋은 **서로 다른 object에 흩어져 있다**
+(`ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED`·`ServerErrorCode.ParfaitGroup.GROUP_NOT_JOINED`·
+`ServerErrorCode.ParfaitImage.PARFAIT_NOT_FOUND`) — 위에서 경고한 "같은 문자열을 두 enum이 갖는다"와
+같은 이유로 코드 쪽도 도메인 경계를 지켜 나눠 둔다. PR5가 `PARFAIT_NOT_FOUND`를 담을 **`object
+ParfaitImage`를 새로 만들었다**(그전엔 없었다). "쓰지 않는 상수를 먼저 둔 명시적 예외"는 이제
+필요 없다 — 상수 KDoc의 결정·함정 서술은 남지만, 더는 예외가 아니라 보통의 소비되는 상수다.
 
 **화면 소비처는 배치(POST) 하나뿐이다.** 나머지 셋(위치 PATCH · 테두리 PATCH · DELETE)은 여전히
 화면 로컬 상태로만 동작한다(소비 화면은 C-301 라운드). 다만 **"다시 그릴 수 없다"는 사유도, 앱 표면
