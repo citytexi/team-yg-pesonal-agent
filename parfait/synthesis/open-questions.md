@@ -2006,8 +2006,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-177
 - **출처**: `domain/model/CanvasConst.kt#CANVAS_ASPECT_RATIO`(PR #231 신설) × `core/designsystem/.../ygcanvas/YGCanvas.kt#CANVAS_AREA_ASPECT_RATIO`(private) — 값이 같고 뜻도 같은데 모듈이 다르다. 캔버스 비율은 도메인 규칙이 아니라 표시 규격이라 `domain` 배치가 [module-structure](../architecture/module-structure.md) 레이어 의도와 어긋난다(Android 의존이 없어 "순수 Kotlin" 규칙 자체를 어기지는 않는다). 한쪽만 바뀌면 편집 미리보기와 실제 캔버스의 비율이 조용히 갈린다.
 - **항목**: ① 소유를 `core:designsystem`으로 모으고 public으로 올릴지, ② 아니면 `domain` 상수를 정본으로 삼고 `YGCanvas`가 참조할지(디자인시스템 → domain 의존이 생긴다), ③ 화면 규격 상수 전반의 소유 규칙을 세울지.
-- **상태**: 미해결 (동작 결함은 아님 — 이중 정의)
+- **상태**: 미해결 (**①로 정해 브랜치에서 닫혔다 — develop 미머지.** ③은 그대로 열려 있다)
 - **해소 메모**: ①이 의존 방향상 자연스럽다. 정하면 [module-structure](../architecture/module-structure.md) 규칙 항목과 [design-system](../architecture/design-system.md) 캔버스 절을 정리한다.
+  > ✅ **①로 닫혔다(2026-08-21, 브랜치 `feature/#270-topping-border-contract`, develop 미머지)** —
+  > `domain/model/CanvasConst.kt`를 지우고 `YGCanvas`의 `CANVAS_AREA_ASPECT_RATIO`를 public으로 올려
+  > 정본을 하나로 뒀다. ②를 고르면 `core:designsystem` → `:domain` 간선이 새로 생기는데, 캔버스 비율은
+  > 도메인 규칙이 아니라 표시 규격이라 소유가 이쪽이다. **상수가 하나뿐이라 갈라짐을 막을 단언이
+  > 필요 없어졌다** — [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)이
+  > 계획하던 "통일이 되돌려지면 깨지는 테스트"를 그래서 만들지 않았고, 그 자리는 컴파일이 지킨다.
+  > ③(화면 규격 상수 **전반**의 소유 규칙)은 이 한 건으로 서지 않아 그대로 남는다.
+  > **브랜치가 develop에 들어오면 상태를 `해소됨`으로 올린다.**
 
 ### [2026-08-15] 재사용 진입을 NavKey 동작 플래그로 가르고 복귀는 `onBack()` 2회에 기댄다
 
@@ -3631,6 +3639,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 정하면 [ADR-0025](../adr/0025-topping-border-as-server-field.md) "트레이드오프"와
   [design-system](../architecture/design-system.md) 토핑 절에 반영한다. C-301 테두리 재편집 라운드가
   같은 값을 다시 만지므로 그 전에 정하는 편이 싸다.
+  > 📌 **이 차이가 사용자 화면에 실현됐다(2026-08-21, 브랜치 `feature/#270-topping-border-contract`,
+  > develop 미머지)** — 편집을 마치면 누끼 확인·배치·캔버스가 전부 서버 계약과 같은 방식으로
+  > (화면 dp 고정 8방향 스탬프) 그리므로, **편집 화면에서 본 굵기보다 그다음 화면들이 가늘어 보인다.**
+  > 그때까지는 굽기 덕에 편집에서 본 그림이 확인 화면까지 그대로 따라와 차이가 한 흐름 안에서
+  > 드러나지 않았다. 라운드는 이것을 회귀가 아니라 **의도된 변화**로 두고 실기기 확인 항목에 적어
+  > 두었다 — 어느 쪽이 정책인지는 여전히 이 항목이 쥔다. ①이 사실상 dp 고정으로 굳는 압력이 한 단계
+  > 더 세졌다.
 
 ### [2026-08-20] S3 업로드가 코루틴 취소를 따라가지 않는다
 
@@ -3751,4 +3766,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   상태가 남을 수 있다. **OQ-P-196 ②가 S-002에서 지적한 것과 같은 뿌리**이고, 이 화면은 비활성
   대신 무반응이라는 점만 다르다.
 
-<!-- oq-next: 254 -->
+### [2026-08-21] C-301 배경 편집에서 테두리를 다시 편집해도 화면이 그대로다
+
+- **ID**: OQ-P-254
+- **출처**: `feature/groups/canvas/impl` `CanvasBGEditScreen`·`CanvasBGEditViewModel#CanvasToppingItem`
+  (브랜치 `feature/#270-topping-border-contract`, develop 미머지) — 이 화면은 이미 놓인 토핑을
+  `borderOnly`로 다시 편집하는 경로를 갖고 있고([ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)이
+  `TOPPING_EDIT_RESULT_KEY`를 걷지 않은 이유가 이 경로다), 편집 결과의 테두리 값을 받아
+  `CanvasToppingItem.borderLayers`에 담아 둔다. 그런데 토핑을 그리는 자리는 편집 결과 **이미지 하나만**
+  읽고 그 값을 보지 않는다. 테두리를 두르든 벗든 화면이 그대로다.
+- **항목**: ① 이 화면을 `:core:designsystem`의 `YGToppingCutoutImage`로 갈아태워 `borderLayers`를
+  그릴지 — 값도 컴포저블도 이미 있어 붙이는 일만 남는다. ② 아니면 C-301 라운드가 이 화면의 미리보기를
+  다시 설계할 때 함께 볼지(지금 미리보기는 컷 도형·Dot Grid·날짜 라벨이 없는 목업이고 그 어긋남은
+  OQ-P-174가 쥐고 있다).
+- **상태**: 미해결 (**C-301 라운드 몫** — 이 라운드가 표시를 그쪽으로 미뤘다)
+- **해소 메모**: 이 화면이 테두리를 **그린 적은 없다.** 그전에는 편집이 돌려주던 파일에 테두리가 이미
+  구워져 있어 화면이 아무것도 하지 않아도 반영된 것처럼 보였고,
+  [ADR-0025](../adr/0025-topping-border-as-server-field.md) 전환이 굽기를 멈추면서 **표시 경로가 없다는
+  사실이 드러났다.** 그래서 이 라운드는 필드 이름만 맞추고(그 자리가 받는 것이 구운 판에서 알맹이로
+  바뀌었다) 표시는 손대지 않았다. 붙일 때 `CanvasToppingItem`이 지금 들고 있는 경고 KDoc도 함께 걷는다.
+
+<!-- oq-next: 255 -->

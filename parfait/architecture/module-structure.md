@@ -6,7 +6,7 @@ status: living
 platforms: android
 verified: 2026-08-19
 related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab
-related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016
+related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016, ADR-0025
 related_architecture:
 related_code:
   - settings.gradle.kts
@@ -73,6 +73,12 @@ app / app-preview
   `core:designsystem` `YGCanvas`의 private `CANVAS_AREA_ASPECT_RATIO`로 이미 있다. Android 의존은
   없어 위 "순수 Kotlin 유지" 규칙은 어기지 않지만 **레이어 소유가 갈렸다**
   → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+  > ✅ **소유를 디자인시스템으로 모았다**(2026-08-21, 브랜치 `feature/#270-topping-border-contract`,
+  > **develop 미머지**) — `domain`의 `CanvasConst.kt`를 지우고 `YGCanvas`의 상수를 public으로 올려
+  > 정본을 하나로 뒀다. 반대 방향으로 모으면 `core:designsystem` → `:domain` 간선이 새로 생기는데,
+  > 캔버스 비율은 도메인 규칙이 아니라 **표시 규격**이라 소유가 이쪽이다. 상수가 하나뿐이라
+  > 갈라짐을 막을 단언도 필요 없어졌다 — 컴파일이 보증한다.
+  > 화면 규격 상수 **전반**의 소유 규칙은 여전히 정해지지 않았다(OQ-P-177 ③).
 - **feature `impl`이 다른 feature `:api`에 의존하는 경우가 하나 늘었다**(2026-08-15, PR #260) —
   `feature/app/setting/impl` → `feature/login/api`(강제·사용자 로그아웃 뒤 `NavKeyLogin`으로 간다).
   규약대로 `:api`만 본다.
@@ -95,6 +101,14 @@ app / app-preview
   > **디자인시스템으로 올리지는 않았다** — 소비처가 한 모듈 안 두 화면이라
   > `feature/common/*` 승격 기준("2개 이상 소비처")과 같은 판단을 모듈 안에서 한 셈이다.
   > 컴포저블이 아닌 기하 계산은 종전대로 `util/ToppingGeometry.kt`에 남는다.
+  > 📌 **소비처가 모듈 경계를 넘으면 `:core:designsystem`으로 올린다**(2026-08-21, 브랜치
+  > `feature/#270-topping-border-contract`, **develop 미머지**) — 토핑 테두리를 그리는 8방향 스탬프가
+  > `component/ygtoppingcutout/YGToppingCutoutImage`로 올라갔다. 나눠 쓰는 화면이 누끼 확인
+  > (`:feature:segmentation:impl`)과 배치·캔버스(`:feature:groups:canvas:impl`) 셋이라 **모듈 둘에
+  > 걸친다** — 앞 항목처럼 한 모듈 `component/`에 두면 다른 모듈이 볼 길이 없고, `feature/common/*`은
+  > 화면을 올리는 자리이지 컴포저블 조각을 올리는 자리가 아니다. **가르는 기준은 소비처 수가 아니라
+  > 소비처가 몇 모듈에 걸치는가**다. 올린 이유 자체는 [ADR-0025](../adr/0025-topping-border-as-server-field.md)가
+  > 쥔다 — 세 화면이 갈라진 그림을 그릴 여지를 구조로 없애려는 것이다.
 - **표시 문자열은 `strings.xml` + `stringResource`**(코틀린 리터럴 금지). 화면 전용 정적 라벨은 그 화면의 `feature/*/impl` `res/values/strings.xml`
   (같은 모듈의 여러 화면이 한 파일 공용), **여러 feature가 공유하는 문구**(유효성 에러 등)는 `core:ui` `res/values/strings.xml`([[0016-domain-result-presentation-string-mapping]]).
   `domain`은 표시 문자열을 보유하지 않는다. 미착수 화면에 잔존한 리터럴은 [open-questions](../synthesis/open-questions.md) [2026-07-26]에서 추적.
