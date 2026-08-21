@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-20
+verified: 2026-08-21
 related_spec: c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -1071,7 +1071,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-109
 - **출처**: `data/di/NetworkModule.kt#provideOkHttpClient` × `data/service/ImageService.kt#postImages`(**2026-08-12 PR #230으로 develop 머지**) — 로깅 인터셉터가 `BuildConfig.DEBUG`에서 `Level.BODY`이고 `redactHeader("Authorization")`은 **헤더만** 가린다. 발급 응답 본문의 `uploadUrl`은 `X-Amz-Signature`를 포함한 **그 자체가 자격증명**이다(만료 전까지 누구나 그 버킷 키에 PUT할 수 있다). 응답 바디 전량이 logcat에 찍힌다. 기존 14 엔드포인트에는 본문에 자격증명을 싣는 응답이 없어 **이번에 처음 생긴 성질**이다.
 - **항목**: ① debug 로그 레벨을 `BODY`로 유지할지, 아니면 이미지 도메인만 응답 본문을 가릴지(OkHttp 로깅 인터셉터에는 바디 redact 기능이 없어 커스텀 인터셉터가 필요하다). ② 아니면 debug 빌드 한정 + `expiresIn` 만료라는 이중 제한으로 충분하다고 볼지.
-- **상태**: 미해결 (**PR5 선행** — 아래 메모 참고)
+- **상태**: 해소됨(PR5)
   > 📌 **마감이 정해졌다(2026-08-20, PR1 최종 리뷰)** — "실연동 라운드"가 가리키는 라운드는
   > [c106-topping-place-api](../specs/2026-08-20-c106-topping-place-api.md) 스택의 **PR5**(화면 결선)다.
   > PR1(업로드 전송 계층)은 `ImageUploadRepository`를 만들었지만 그것을 부르는 코드가 0건이라
@@ -1080,7 +1080,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > PR1 계획 범위 밖이라 미뤘고, **PR5 계획이 이 항목을 선행 조건으로 실어야 한다.**
   > 참고: 같은 라운드가 **업로드 전용 클라이언트**에서는 로깅 인터셉터를 아예 제거했다
   > ([ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절과 별개 표면).
-- **해소 메모**: 결정 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절에 반영한다.
+- **해소 메모**: `@NoBodyLog` + `SelectiveLoggingInterceptor`로 발급 엔드포인트만 `Level.HEADERS`로
+  낮췄다. 전체 레벨을 낮추지 않은 이유는 본문 로깅이 다른 엔드포인트에서는 값이 크기 때문이고,
+  `BASIC`이 아니라 `HEADERS`인 이유는 새는 값이 **응답 본문에만** 있어 헤더까지 버릴 이유가 없기
+  때문이다. 결정 시 [ADR-0017](../adr/0017-remote-network-datasource.md) "로깅" 절에 반영한다.
 
 ### [2026-08-10] `image`라는 이름이 domain에서 기기 이미지 뜻으로 선점돼 있다
 
@@ -1858,6 +1861,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > **그래서 "공통 실패는 `YGScaffoldV2`가 자리를 준다"가 전 화면 규칙이 아니게 됐다** — 화면이 자기
   > 토스트 호스트를 이미 갖고 있으면 그쪽이 이긴다. 남은 질문은 그 예외를 규약으로 적을지, 아니면
   > `YGScaffoldV2`가 호스트 위치를 슬롯으로 열어 하나로 되돌릴지다.
+  > 📌 **캔버스 쪽 토스트 호스트가 필요한 사례가 둘로 늘었다 — 둘 다 배치 화면(같은 Route)이고 둘 다
+  > "되감으면 안내가 죽는다"는 같은 함정에서 나왔다.** 첫 번째는 PR4(2026-08-21, 브랜치
+  > `feature/#270-topping-border-contract`)의 초안 결손(`DraftMissing`) 안내 — 되감기가 토스트 호스트를
+  > 같은 프레임에 폐기해 알림이 잔상으로 끝나므로 되감기를 걷고 알린 뒤 화면에 남기는 것으로 정했다.
+  > 두 번째는 PR5(2026-08-21, 브랜치 `feature/#270-topping-place-wiring`) 최종 브랜치 리뷰가 잡은
+  > **영구 실패(다섯 코드) 안내** — `CanvasToppingPlaceRoute`의 `toastPolicy`가
+  > `rememberYGToastPolicy()`로 Route 컴포지션에 매달려 있어 `popUpTo`가 같은 프레임에 안내까지
+  > 폐기하는 것을 최종 리뷰가 Critical로 잡았고, 처방은 PR4와 같다(되감기를 걷고 알린 뒤 화면에
+  > 남긴다). **진짜 처방(안내를 캔버스 쪽 토스트 호스트로 보내는 것)은 두 사례 모두 미뤘다** — 자리가
+  > 아직 없다. 이 화면 하나에서 같은 함정에 두 번 걸린 것이 그 자리의 필요를 뒷받침한다
+  > → [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) 실패 처리 절.
 - **해소 메모**: 정해지면 네 스펙(a005·a004·s102·intro-term-agree·g001)의 실패 절과 [design-system](../architecture/design-system.md)에 공통 규약을 적는다.
 
 ### [2026-08-15] 매퍼 단독 테스트가 규약을 어기고 다시 생겼다
@@ -3635,6 +3649,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   쪽으로 사실상 정해 버린 상태다). ② 편집 화면 미리보기를 캔버스와 같은 거동으로 맞출지, 아니면 편집은
   원본 좌표계 그대로 두고 차이를 받아들일지. ③ 굵기 값의 단위를 계약 문서에 명시할지 —
   [api/parfait-image.md](../api/parfait-image.md)는 타입만 적고 단위를 말하지 않아 앱이 dp로 정했다.
+  ④ **기기 폭 축**(2026-08-21, PR5 추가) — 토핑 크기는 캔버스 폭 대비 비율로 정규화되는데
+  `borderWidth`만 절대 dp라, 폭이 다른 기기에서 상대 굵기가 달라진다. ①②③이 다루던 것은
+  "편집 화면 굵기와 캔버스 굵기의 어긋남"(배율 축)뿐이었다.
 - **상태**: 미해결 (정책 근거 없음 — 코드가 먼저 정했다)
 - **해소 메모**: 정하면 [ADR-0025](../adr/0025-topping-border-as-server-field.md) "트레이드오프"와
   [design-system](../architecture/design-system.md) 토핑 절에 반영한다. C-301 테두리 재편집 라운드가
@@ -3652,24 +3669,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-246
 - **출처**: `data/source/image/remote/PresignedUploadDataSourceImpl#put`(PR1 `feature/#270-image-upload-transport`) — `withContext(Dispatchers.IO)` 안에서 OkHttp `Call.execute()`를 블로킹으로 부르고 `Call.cancel()`을 코루틴 취소에 잇지 않는다. 그 블록에 중단점이 없어 **호출 코루틴이 취소돼도 업로드는 `callTimeout`까지 계속 돈다.** 브랜치 최종 리뷰가 잡았고 "되돌리는 비용은 지금이 가장 싸다"고 평가했다.
 - **항목**: ① `suspendCancellableCoroutine` + `enqueue` + `invokeOnCancellation { call.cancel() }`로 바꿀지, 아니면 ② 지금 형태를 두고 화면이 취소를 안 하도록 설계할지. ①이면 취소를 실제로 관측하는 테스트 설계가 따로 필요하다(느린 응답 + 취소).
-- **상태**: 미해결 (**PR5 선행 권고** — 소비자가 붙기 전에 고치는 편이 싸다)
-- **해소 메모**: PR1에서 미룬 이유는 전송 메서드의 모양을 바꾸는 변경이라 단일 fix 웨이브에 태우면 클린한 브랜치를 늦게 흔들 위험이 이득보다 컸다는 것이다. PR5는 로딩 오버레이·실패 시 `popUpTo` 되감기가 있어 `viewModelScope` 취소가 흔한 화면이므로 그 라운드가 판정한다. 다만 `BaseViewModel.launch(key)` 가드가 동시 실행을 1건으로 묶어 두어 최악이라도 유휴 업로드 하나가 `callTimeout`까지 남는 수준이다.
+- **상태**: 해소됨(PR5)
+- **해소 메모**: PR1에서 미룬 이유는 전송 메서드의 모양을 바꾸는 변경이라 단일 fix 웨이브에 태우면 클린한 브랜치를 늦게 흔들 위험이 이득보다 컸다는 것이다. PR5는 로딩 오버레이·실패 시 `popUpTo` 되감기가 있어 `viewModelScope` 취소가 흔한 화면이므로 그 라운드가 판정했다. `execute()` → `enqueue` + `suspendCancellableCoroutine`·`invokeOnCancellation { call.cancel() }`로 바꿨다. `onFailure`가 취소를 실패 `Result`로 둔갑시키지 않도록 `continuation.isActive` 가드를 뒀다.
 
 ### [2026-08-20] 서버가 200에 실패 봉투를 실으면 `AppError.Server.statusCode`가 null이다
 
 - **ID**: OQ-P-247
 - **출처**: `data/network/ApiCaller#runCatchingApi` — HTTP 200 + `success=false` 봉투는 `ApiException.Business(statusCode = null)`을 만들고(`ApiCaller.kt:60`), `HttpException` 경로만 `statusCode = e.code()`를 채운다(`:84`). 그 값이 `AppError.Server`까지 그대로 흘러간다. PR2 브랜치 최종 리뷰가 "이 브랜치가 지금 잠그지 못하는 것" 중 하나로 짚었다.
 - **항목**: [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)의 실패 처리 절은 되감기 판정을 **`code`와 `statusCode`를 함께 보고** 하라고 정한다 — 코드 문자열이 도메인 간 유일하지 않다는 `ServerErrorCode`의 전제 때문이다. 그런데 `statusCode`가 null로 오는 갈래에서 그 판정이 어떻게 되는지가 정해져 있지 않다. ① `code`만으로 판정하고 `statusCode`는 확증용으로만 쓸지, ② null을 "판정 불가"로 보고 잔류시킬지, ③ 서버가 실제로 200에 실패 봉투를 싣는 경로가 있는지부터 확인할지.
-- **상태**: 미해결 (**PR5가 판정한다** — 되감기 분기를 처음 쓰는 라운드다)
-- **해소 메모**: PR2는 `AppError`로 바꿔 올리기만 하고 코드를 보고 분기하는 자리가 없어 이 null이 문제가 되지 않는다. ③을 먼저 확인하면 ①·②가 필요 없어질 수도 있다 — `api/` 계약 스냅샷에 200 + `success=false` 사례가 있는지 대조하는 것이 가장 싸다.
+- **상태**: 해소됨(PR5, ①안)
+- **해소 메모**: PR2는 `AppError`로 바꿔 올리기만 하고 코드를 보고 분기하는 자리가 없어 이 null이 문제가 되지 않는다. ③을 먼저 확인한 결과 `parfait/api/`의 실패 표에 200 + `success=false` 사례가 없고, 그와 별개로 세 코드에 status로 갈려야 하는 동명 코드가 없어 `code` 단독 판정으로 닫았다.
 
 ### [2026-08-20] 업로드 확정과 배치 사이에서 취소되면 고아 이미지가 남고 예외가 `Result` 밖으로 나간다
 
 - **ID**: OQ-P-248
 - **출처**: `domain/usecase/topping/AddToppingUseCase`(PR2 `feature/#270-topping-place-domain`) — 업로드가 `COMPLETED`까지 간 뒤 배치 전에 호출 코루틴이 취소되면 서버에는 확정된 이미지만 남는다. 게다가 `mapErrorToAppError`가 `CancellationException`을 **변환하지 않고 재던지므로**(`AppErrorMapper.kt`) 그 취소는 실패 `Result`가 아니라 예외로 호출부까지 올라간다. PR2 브랜치 최종 리뷰가 짚었다.
 - **항목**: ① 취소를 화면이 어떻게 받을지(예외로 올라오는 것이 정상 계약임을 호출부가 알고 있어야 한다). ② 고아 이미지를 감수할지 — 스펙의 재시도 결정이 이미 고아 S3 객체를 감수하기로 했으므로 같은 처분이면 문서에 그렇게 적으면 된다. ③ `positionZ`를 이미 소진한 흐름을 다시 타면 z가 겹치는지(서버가 유일성을 요구하지 않아 거부되지는 않는다).
-- **상태**: 미해결 (**PR5가 판정한다**)
-- **해소 메모**: OQ-P-246과 뿌리는 같지만 결과가 다르다 — 246은 취소돼도 전송이 계속 도는 것이고, 이쪽은 취소 시점이 두 단계 **사이**일 때 서버에 남는 것이다. PR5는 로딩 오버레이와 `popUpTo` 되감기가 있어 취소가 흔한 화면이므로 그 라운드가 함께 본다. 현재는 `AddToppingUseCase`를 부르는 코드가 0건이라 발생하지 않는다.
+- **상태**: 해소됨(PR5, 감수)
+- **해소 메모**: OQ-P-246과 뿌리는 같지만 결과가 다르다 — 246은 취소돼도 전송이 계속 도는 것이고, 이쪽은 취소 시점이 두 단계 **사이**일 때 서버에 남는 것이다. PR5가 판정했다 — ① 취소는 예외로 올라오는 것이 정상 계약이고 그 시점엔 화면이 없다. ② 고아 이미지는 재시도 결정과 같은 처분으로 감수한다. ③ z 겹침은 서버가 유일성을 요구하지 않아 거부되지 않는다. 코드 변경 없이 `AddToppingUseCase` KDoc 한 줄로 닫았다.
 
 ### [2026-08-20] 가입 중 플래그가 "버튼을 잠근다"고 적혀 있는데 그 버튼이 없다
 
@@ -3786,4 +3803,61 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   사실이 드러났다.** 그래서 이 라운드는 필드 이름만 맞추고(그 자리가 받는 것이 구운 판에서 알맹이로
   바뀌었다) 표시는 손대지 않았다. 붙일 때 `CanvasToppingItem`이 지금 들고 있는 경고 KDoc도 함께 걷는다.
 
-<!-- oq-next: 255 -->
+### [2026-08-21] 누끼 알맹이를 최근 이미지로 재사용하려면 선행 결함 넷을 먼저 닫아야 한다
+
+- **ID**: OQ-P-255
+- **출처**: [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) PR6(누끼 알맹이
+  재사용) 계획 전 실사 — 배치 성공 시 테두리 없는 알맹이를 최근 이미지에 저장하고 최근 목록에서 골라
+  누끼 확인 화면으로 직행시키려면, 기존 최근 이미지 경로가 다음 넷을 견디지 못한다.
+- **항목**:
+  1. `FileRecentImageLocalDataSourceImpl#readBytes`가 `contentResolver.openInputStream(uri)` 전용이라
+     스킴 없는 절대경로를 못 읽는다. `AddRecentImageUseCase`가 `runSuspendCatching`으로 감싸므로
+     **아무 일도 안 일어난 채 성공처럼 지나간다.**
+  2. 같은 파일이 확장자를 `.jpg`로 하드코딩한다(`FILE_EXTENSION`). 알맹이는 투명 PNG라 이름이
+     거짓이 되고, `ImageUploadRepositoryImpl#contentTypeOf`의 확장자 판정과 부딪힌다.
+  3. 최근 목록이 `List<String>`이라 종류 축이 없다. 스키마를 넓히면
+     `RecentImageLocalDataSourceImpl#decode`의 `runCatching { … }.getOrDefault(emptyList())`가 구
+     스키마 디코드 실패를 삼켜 **기존 목록이 통째로 날아가고 파일은 고아로 남는다**
+     (`GetRecentCacheImagesUseCase#clearOutsideDayWindow`가 목록 기준이라 못 지운다).
+  4. `NavKeySegmentationConfirm`이 인자 셋을 요구하고 그 화면의 `onClickEditPhoto`가
+     `sourceImageUri`·`cutoutImagePath`를 둘 다 쓴다 — 알맹이만 복원하면 **"사진 편집" 버튼이 죽는다.**
+     셋을 다 저장하면 내부 저장소 사용량이 3배가 되면서 `MAX_SIZE = 9`와 부딪힌다.
+- **상태**: 미해결 (**PR6 선행** — 넷 다 닫아야 재사용 흐름이 안전하다)
+- **해소 메모**: 정하면 [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) PR
+  분할 표 6번 행과 PR6 계획에 반영한다.
+
+### [2026-08-21] `Int.toRgbHexString()`의 불투명 가드가 `require()` — 반투명 색이 팔레트에 들어오면 크래시다
+
+- **ID**: OQ-P-256
+- **출처**: PR5 최종 브랜치 리뷰 — `core/util/android`의 `String.kt#toRgbHexString`이 알파가
+  불투명(`0xFF`)이 아니면 `require()`로 던진다. 호출부
+  `CanvasToppingPlaceViewModel#toToppingBorder`는 `handleOnClickConfirm`에서 `launch { }` **앞에**
+  동기로 불린다 — `BaseViewModel.launch`의 `try`(성공·실패·예외·취소 네 경로를 한 곳에서 덮는 그
+  블록) 밖이라, 여기서 `require()`가 던지면 어디에도 안 걸리고 그대로 크래시한다.
+- **항목**: ① 지금은 이 화면의 `borderColorArgb`가 팔레트가 주는 불투명 색뿐이라 도달 불가능하지만,
+  그 전제가 코드 어디에도 강제돼 있지 않다 — 팔레트에 반투명 색이 하나라도 들어오면 사용자 손에서
+  터진다. `require()`를 `runCatching`으로 감싸 `ToppingBorder.None`으로 폴백할지, 팔레트 타입을 좁혀
+  반투명을 아예 표현 불가능하게 만들지, 아니면 이 상태를 계속 감수할지. ② 감수한다면 그 전제(팔레트가
+  불투명만 준다)를 어디에 못박아 다음 사람이 같은 가정을 다시 확인하지 않게 할지.
+- **상태**: 부분 해소 (**크래시 경로는 닫혔고 ①의 "표현 불가능하게 만들기"와 ②만 남았다** —
+  2026-08-21, PR5 브랜치 코드리뷰 대응)
+  > ✅ **크래시가 정상 실패 경로가 됐다** — `toToppingBorder` 호출을 `launch { }` **안**,
+  > `addToppingUseCase` 호출 **앞**으로 옮겼다. 던지면 `BaseViewModel.launch`의
+  > `catch (e: Throwable)` → `onError` → `PlaceFailed`로 흡수되고, `finally`가 `isLoading`을
+  > 내린다. 업로드보다 앞이라 **고아 이미지도 안 남는다.**
+  > `CanvasToppingPlaceViewModelTest#onClickConfirm_nonOpaqueBorderColor_failsInsteadOfCrashing`이
+  > 그 경로를 잠근다(호출을 다시 `launch` 밖으로 빼면 `processIntent`가 그 자리에서 던져 실패한다).
+  >
+  > **`require()`는 그대로 뒀다** — `toRgbHexString`은 `core:util:android`의 public 확장이라
+  > 누구든 부를 수 있고, public API 경계의 인자 검증은 그 자리가 맞다. 문제는 검사가 아니라
+  > **호출부가 그것을 안 받는 것**이었다.
+  >
+  > **`ToppingBorder.None` 폴백은 기각했다** — 사용자가 고른 테두리가 말없이 사라진 채 서버에
+  > 저장된다. 이 라운드가 6자리 전환으로 내내 피하려던 무증상 실패와 같은 부류다. 읽기 쪽
+  > `toColorOrNull` → null → 안 그리기는 **이미 저장된 잘못된 값을 표시하는** 처리라 성격이 다르다.
+- **해소 메모**: 남은 것은 **타입으로 불변식을 옮기는 것**이다 — 불투명 색 전용 타입을
+  팔레트 → 편집 화면 → 초안 → ViewModel까지 관통시키면 반투명 색이 표현 불가능해지고 `require()`도
+  필요 없어진다. 커스텀 컬러피커처럼 진입점이 실제로 늘어나는 라운드에서 함께 한다.
+  ②(전제를 어디에 못박을지)는 이 항목과 `toRgbHexString` KDoc이 지금 그 역할을 한다.
+
+<!-- oq-next: 257 -->
