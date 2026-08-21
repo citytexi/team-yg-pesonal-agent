@@ -3839,9 +3839,25 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   터진다. `require()`를 `runCatching`으로 감싸 `ToppingBorder.None`으로 폴백할지, 팔레트 타입을 좁혀
   반투명을 아예 표현 불가능하게 만들지, 아니면 이 상태를 계속 감수할지. ② 감수한다면 그 전제(팔레트가
   불투명만 준다)를 어디에 못박아 다음 사람이 같은 가정을 다시 확인하지 않게 할지.
-- **상태**: 미해결 (**PR5가 만든 것이 아니라 PR5의 처방이 연 새 선택지의 부작용** — 최종 리뷰가
-  "지금은 도달 불가"로 판정해 파킹했다)
-- **해소 메모**: 정하면 `CanvasToppingPlaceViewModel#toToppingBorder`·`String.kt#toRgbHexString` KDoc과
-  [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)에 반영한다.
+- **상태**: 부분 해소 (**크래시 경로는 닫혔고 ①의 "표현 불가능하게 만들기"와 ②만 남았다** —
+  2026-08-21, PR5 브랜치 코드리뷰 대응)
+  > ✅ **크래시가 정상 실패 경로가 됐다** — `toToppingBorder` 호출을 `launch { }` **안**,
+  > `addToppingUseCase` 호출 **앞**으로 옮겼다. 던지면 `BaseViewModel.launch`의
+  > `catch (e: Throwable)` → `onError` → `PlaceFailed`로 흡수되고, `finally`가 `isLoading`을
+  > 내린다. 업로드보다 앞이라 **고아 이미지도 안 남는다.**
+  > `CanvasToppingPlaceViewModelTest#onClickConfirm_nonOpaqueBorderColor_failsInsteadOfCrashing`이
+  > 그 경로를 잠근다(호출을 다시 `launch` 밖으로 빼면 `processIntent`가 그 자리에서 던져 실패한다).
+  >
+  > **`require()`는 그대로 뒀다** — `toRgbHexString`은 `core:util:android`의 public 확장이라
+  > 누구든 부를 수 있고, public API 경계의 인자 검증은 그 자리가 맞다. 문제는 검사가 아니라
+  > **호출부가 그것을 안 받는 것**이었다.
+  >
+  > **`ToppingBorder.None` 폴백은 기각했다** — 사용자가 고른 테두리가 말없이 사라진 채 서버에
+  > 저장된다. 이 라운드가 6자리 전환으로 내내 피하려던 무증상 실패와 같은 부류다. 읽기 쪽
+  > `toColorOrNull` → null → 안 그리기는 **이미 저장된 잘못된 값을 표시하는** 처리라 성격이 다르다.
+- **해소 메모**: 남은 것은 **타입으로 불변식을 옮기는 것**이다 — 불투명 색 전용 타입을
+  팔레트 → 편집 화면 → 초안 → ViewModel까지 관통시키면 반투명 색이 표현 불가능해지고 `require()`도
+  필요 없어진다. 커스텀 컬러피커처럼 진입점이 실제로 늘어나는 라운드에서 함께 한다.
+  ②(전제를 어디에 못박을지)는 이 항목과 `toRgbHexString` KDoc이 지금 그 역할을 한다.
 
 <!-- oq-next: 257 -->
