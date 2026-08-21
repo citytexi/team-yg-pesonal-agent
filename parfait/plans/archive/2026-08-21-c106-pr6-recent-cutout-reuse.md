@@ -1,10 +1,11 @@
 ---
 id: c106-pr6-recent-cutout-reuse
 title: C-106 결선 PR6 — 누끼 알맹이 재사용 (최근 목록 종류 축·확인 화면 직행)
-status: ready
+status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
+archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-recent-cutout-reuse 에 커밋 9개(389fc0ac..f19b4777), 신규 테스트 24건, 30파일 969/145. 실행이 계획과 갈린 자리 셋은 plans/README 행과 스펙 「구현이 이 절과 갈린 자리」 절에 있다.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026
@@ -493,8 +494,9 @@ git commit -m "feat: 최근 이미지 목록에 종류 축을 얹고 구 스키�
 - Produces: `FileRecentImageLocalDataSource`:
   `mkdirs(): Boolean` · `readBytes(sourceUri: String): ByteArray` ·
   `readFileBytes(filePath: String): ByteArray` ·
-  `getTargetFile(name: String): File` · `getTargetFile(bytes: ByteArray, extension: String): File` ·
+  `getTargetFile(bytes: ByteArray, extension: String): File` ·
   `getTargetFileFromUri(uri: String): File?` · `getUriStringForFile(target: File): String`
+  (`getTargetFile(name: String)`은 이 태스크가 지운다)
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -1699,12 +1701,11 @@ class SegmentationConfirmViewModel
         launch(onError = { reportMissingDraft() }) {
             // 최근 목록에서 되살린 알맹이는 세그멘테이션을 타지 않아 초안을 적어 준 데가 없다.
             // 구독보다 먼저 적어야 첫 방출의 null 이 없는 실패를 알리지 않는다.
-            // 이미 적혀 있으면 건드리지 않는다 — record 는 테두리까지 통째로 덮어쓰므로,
-            // 프로세스 사망 복원으로 이 화면이 다시 만들어질 때 사용자가 두른 테두리가 사라진다
+            // 초안이 이미 이 알맹이를 가리키면 건드리지 않는다 — record 는 테두리까지 통째로
+            // 덮어쓰므로, 프로세스 사망 복원으로 화면이 다시 만들어질 때 두른 테두리가 사라진다
             val isReuseEntry = cutoutImagePath == null
-            val isDraftEmpty = toppingDraftRepository.draft.first()?.subjectImagePath == null
 
-            if (isReuseEntry && isDraftEmpty) {
+            if (isReuseEntry && toppingDraftRepository.draft.first()?.subjectImagePath != subjectImagePath) {
                 val recorded = toppingDraftRepository.record(
                     subjectImagePath = subjectImagePath,
                     cutoutImagePath = null,
@@ -1727,9 +1728,13 @@ class SegmentationConfirmViewModel
 `draft.cutoutImagePath ?: cutoutImagePath`를 그대로 둔다(둘 다 nullable이 된다).
 추가할 import: `kotlinx.coroutines.flow.first`.
 
-`isDraftEmpty` 판정이 `draft` 흐름을 한 번 읽는데, 그 흐름은 `withExistingFilesOnly`로 걸러진다 —
-초안이 가리키던 파일이 이미 지워졌으면 빈 초안으로 보이므로 재사용 진입이 다시 적는다. 그게 맞는
-동작이다.
+**판정 기준이 "초안이 비어 있는가"가 아니라 "초안이 이 알맹이를 가리키는가"인 이유**: 갤러리는
+`goTo`로 쌓여 백스택에 남으므로, 알맹이 A를 고른 뒤 뒤로 가 B를 고르는 경로가 실재한다. "비어
+있는가"로 판정하면 그때 초안에 A가 남아 있어 B를 적지 않고, 구독이 초안을 정본으로 삼아 **A가 배치된다.**
+경로 비교로 두면 복원(경로가 같다)은 여전히 건너뛰고 새 알맹이는 적힌다.
+
+이 판정이 읽는 `draft` 흐름은 `withExistingFilesOnly`로 걸러진다 — 초안이 가리키던 파일이 이미
+지워졌으면 빈 초안으로 보이므로 재사용 진입이 다시 적는다. 그게 맞는 동작이다.
 
 `SegmentationConfirmState.cutoutImagePath`를 `String?`로 바꾸고 **편집 가능 여부도 상태로 올린다** —
 Route의 지역 변수로 두면 단위 테스트로 잡히지 않는데, 스펙 테스트 표가 "편집 버튼이 잠긴다"를
