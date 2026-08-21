@@ -1,10 +1,11 @@
 ---
 id: c106-pr5-topping-place-wiring
 title: C-106 결선 PR5 — 배치 결선 (좌표 변환·업로드 호출·로딩·되감기)
-status: draft
+status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
+archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-topping-place-wiring 에 커밋 7개, 신규 테스트 25건 + 삭제 1건.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026

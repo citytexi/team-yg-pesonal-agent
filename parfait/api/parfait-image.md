@@ -341,7 +341,9 @@ tags: [api, parfait, server-contract, parfait-image]
 
 ## Android 매핑
 
-**네 엔드포인트 전부 표면 있음, 소비처 0**(2026-08-12 PR #230 두 건 + **2026-08-15 PR #250 두 건**).
+**네 엔드포인트 전부 표면 있음.** 소비처는 배치(POST) 하나뿐이고(2026-08-21, PR5) 나머지 셋(위치
+PATCH · 테두리 PATCH · DELETE)은 여전히 **소비처 0건**이다(표면은 2026-08-12 PR #230 두 건 +
+**2026-08-15 PR #250 두 건**).
 
 | 계약 | Android 심볼 |
 |---|---|
@@ -396,7 +398,7 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 ✅ **늘어난 실패 경로를 앱이 같은 날 받았다**(2026-08-20, PR #318 develop 머지). 네 엔드포인트가 모두
 409 `PARFAIT_ALREADY_CLOSED`를 낼 수 있게 되자 앱이 **`ServerErrorCode.Parfait`** 를 신설해 그 코드를
 들었다. 소비처가 0건인데 상수를 먼저 둔 것은 "쓰지 않는 상수는 계약이 바뀌어도 아무도 고치지 않아
-거짓말이 된다"는 그 파일의 규약에 대한 **명시적 예외**이고, 근거는 **처분이 이미 정해졌다**는 것이다
+거짓말이 된다"는 그 파일의 규약에 대한 **명시적 예외**였고, 근거는 **처분이 이미 정해졌다**는 것이다
 (→ [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md): 이 코드만 토스트 후
 캔버스로 되감고 나머지 실패는 화면에 머문다). 상수 KDoc이 결정과 함정을 함께 적어 소비처가 붙을 때
 같은 판단을 다시 하지 않게 한다 — 특히 **네 경로 전부 소유권 검사가 마감 검사보다 앞이라** 남의
@@ -404,16 +406,27 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 같은 PR이 `CanvasStatus` KDoc의 "서버가 그것을 강제하지 않는다"도 뒤집었다
 → [parfait.md](parfait.md) Android 매핑 · [open-questions](../synthesis/open-questions.md) [2026-08-20].
 
-**화면 소비처는 0건이다.** 캔버스 토핑 배치(C-106)는 여전히 화면 로컬 상태로만 동작한다. 다만
-**"다시 그릴 수 없다"는 사유도, 앱 표면 공백도 사라졌다** — `GET .../parfaits/today`가 배치 전량을
-내려주고([parfait.md](parfait.md)) 네 엔드포인트 전부 DataSource까지 와 있다.
+✅ **위 예외 사유가 소멸했다(2026-08-21, PR5)** — `CanvasToppingPlaceViewModel`이
+`ServerErrorCode.Parfait`의 세 코드(`PARFAIT_ALREADY_CLOSED`·`GROUP_NOT_JOINED`·`PARFAIT_NOT_FOUND`)를
+실제로 분기에 써 소비처가 생겼다. "쓰지 않는 상수를 먼저 둔 명시적 예외"는 이제 필요 없다 — 상수
+KDoc의 결정·함정 서술은 남지만, 더는 예외가 아니라 보통의 소비되는 상수다.
+
+**화면 소비처는 배치(POST) 하나뿐이다.** 나머지 셋(위치 PATCH · 테두리 PATCH · DELETE)은 여전히
+화면 로컬 상태로만 동작한다(소비 화면은 C-301 라운드). 다만 **"다시 그릴 수 없다"는 사유도, 앱 표면
+공백도 사라졌다** — `GET .../parfaits/today`가 배치 전량을 내려주고([parfait.md](parfait.md)) 네
+엔드포인트 전부 DataSource까지 와 있다.
 
 ✅ **배치 하나는 Repository·UseCase까지 올라왔다**(2026-08-20 develop 머지, PR #322) —
 `ToppingRepository.place`가 DataSource의 넷 중 배치만 열고, `AddToppingUseCase`가 업로드
 ([image.md](image.md))와 배치를 **이 순서로** 조율한다. 나머지 셋(위치·테두리 수정·삭제)을 안 올린
 것은 소비 화면이 C-301 라운드라서다 — 쓰지 않는 갈래를 미리 열면 계약이 바뀌어도 아무도 고치지
 않는다. Repository 층은 **에러 변환만 하고 좌표·테두리를 손대지 않는다**(테두리를 흘리면 서버는
-200을 주고 캔버스에서 테두리만 조용히 사라진다). 남은 것은 화면 결선(스펙의 PR5)이다
+200을 주고 캔버스에서 테두리만 조용히 사라진다).
+
+✅ **화면 결선이 끝났다(2026-08-21, 브랜치 `feature/#270-topping-place-wiring`, develop 미머지)** —
+`CanvasToppingPlaceViewModel`이 `AddToppingUseCase`를 불러 좌표 변환·업로드·배치를 조율하고, 로딩
+오버레이·실패 토스트·영구 실패 세 코드에서 캔버스로 되감기까지 붙었다. **배치(POST)의 화면
+소비처는 이것 하나다.** 실기기 확인은 아직 없다
 → [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) ·
 [open-questions](../synthesis/open-questions.md).
 

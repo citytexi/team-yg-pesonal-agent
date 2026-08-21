@@ -67,6 +67,9 @@ C-106 확인 버튼을 누르면 토핑이 **실제로 서버에 올라가게 �
   - **배치 화면의 실제 배경·기존 토핑 미리보기** — OQ-P-240을 연 채로 둔다.
   - 고아 `PENDING` 이미지 정리 · 회전·리사이즈 한계의 정책 근거(OQ-P-241) ·
     드래그 핸들 접근성(OQ-P-202 ③) · `60.dp`/`14.dp` 리터럴(OQ-P-203 ③)
+  - **누끼 알맹이의 최근 이미지 재사용** — PR6로 분리했다. 결정 셋(배치 성공 시 저장 · 대상은
+    테두리 없는 알맹이 · 최근에서 고르면 누끼 확인 화면 직행)은 PR 분할 표 6번 행에 있고,
+    선행 결함 넷은 OQ-P-255에 있다.
 
 ## 결정된 것
 
@@ -267,8 +270,9 @@ positionZ = draft.nextPositionZ
 로딩은 `launch(key = …)`로 연타를 막고 `isLoading`을 세워 `YGScaffoldV2`의 오버레이가 터치를
 삼킨다. 4단계 전체가 한 덩어리라 단계별 진행률은 표시하지 않는다.
 
-분기는 `AppError.Server`의 `code`와 `statusCode`를 **함께** 본다. 코드 문자열이 도메인 간 유일하지
-않다는 것이 `ServerErrorCode`의 전제다.
+분기는 `AppError.Server`의 `code` 하나로 한다. `statusCode`를 조건에 넣지 않는 것이 결정이다 —
+되감기 대상 세 코드에는 status로 갈려야 하는 동명 코드가 없고, 서버가 HTTP 200에 실패 봉투를
+실으면 `ApiCaller`가 그 값을 `null`로 채워 조건에 넣는 순간 판정이 사라진다(OQ-P-247 해소).
 
 | 실패 | 화면 |
 |---|---|
@@ -301,19 +305,20 @@ positionZ = draft.nextPositionZ
 | 2 | 배치 계층 | `ToppingRepository`/Impl(`place`만) · `AddToppingUseCase` | **없음**(소비자 0) — ✅ **develop 머지**(PR #322와 같은 머지 — PR2 브랜치가 PR1 커밋을 업고 올라갔다) |
 | 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 · 초안 쓰기 실패도 알린다 — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-draft-ssot`(이제 베이스가 develop에 들어왔다) |
 | 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-border-contract`([계획](../plans/archive/2026-08-21-c106-pr4-topping-border-contract.md)) |
-| 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** |
+| 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-place-wiring`(베이스는 PR4 브랜치 팁 `392014a7`, [계획](../plans/archive/2026-08-21-c106-pr5-topping-place-wiring.md)) |
+| 6 | 누끼 알맹이 재사용 | 배치 성공 시 **테두리 없는 알맹이**를 최근 이미지에 저장 · 최근 목록에 종류 축 신설 · 알맹이를 고르면 누끼 확인 화면으로 직행 | 갤러리 "최근"에서 이미 만든 누끼를 다시 쓸 수 있다 |
 
 1과 2는 소비자가 없어 리뷰가 각각 **S3 서명**과 **계약 매핑** 한 가지에만 집중할 수 있다.
 
-⚠️ **PR5는 선행 미결 둘을 함께 닫는다.** PR1이 만든 계층에 **처음으로 소비자가 붙는 라운드**라
-그때까지 잠들어 있던 두 결함이 동시에 살아난다. PR5 계획을 쓸 때 태스크로 실어야 한다.
+✅ **PR5가 선행 미결 둘을 함께 닫았다.** PR1이 만든 계층에 **처음으로 소비자가 붙는 라운드**라
+그때까지 잠들어 있던 두 결함이 동시에 살아날 뻔했다.
 
 - [**OQ-P-109**](../synthesis/open-questions.md) — 메인 클라이언트가 발급 **응답 본문**을
-  `Level.BODY`로 찍는다. 그 본문에 presigned `uploadUrl`이 실려 오고 그것이 곧 자격증명이다.
-  PR1은 `ImageUploadRepository`를 만들었을 뿐 부르는 코드가 0건이라 아직 아무것도 새지 않는다.
+  `Level.BODY`로 찍던 것. `@NoBodyLog` + `SelectiveLoggingInterceptor`로 발급 엔드포인트만
+  `Level.HEADERS`로 낮춰 닫았다.
 - [**OQ-P-246**](../synthesis/open-questions.md) — `PresignedUploadDataSourceImpl#put`이 블로킹
-  `execute()`를 쓰고 `Call.cancel()`을 코루틴 취소에 잇지 않아, 취소돼도 업로드가 `callTimeout`까지
-  계속 돈다. PR5는 로딩 오버레이와 `popUpTo` 되감기가 있어 취소가 흔한 화면이다.
+  `execute()`를 쓰고 `Call.cancel()`을 코루틴 취소에 잇지 않던 것. `enqueue` +
+  `suspendCancellableCoroutine`·`invokeOnCancellation { call.cancel() }`로 바꿔 닫았다.
 
 **3과 4의 경계에 주의한다.** 초안에 이미지를 채우는 것과 굽기를 그만두는 것은 **떼면 안 된다** —
 3에서 확인 화면이 초안을 읽게 하면서 4에서야 굽기를 멈추면, 그사이 초안의 `subjectImagePath`가
@@ -365,12 +370,13 @@ positionZ = draft.nextPositionZ
   "본 대로 올라간다"가 모서리에서만 성립하지 않는다.
 - 고아 `PENDING` 이미지·S3 객체가 재시도마다 늘어난다. 서버에 정리 경로가 없는 것은 기존 미결이고
   이 라운드가 그 발생률을 처음으로 실제화한다.
-- ⚠️ **되감기 판정의 근거 절반이 없을 수 있다**(OQ-P-247). 위 실패 처리 표는 `code`와 `statusCode`를
-  함께 보라고 정하는데, 서버가 HTTP 200에 실패 봉투를 실으면 `ApiCaller`가 `statusCode`를 `null`로
-  채운다. PR2 브랜치 최종 리뷰가 짚었고 **PR5가 판정한다.**
-- ⚠️ **업로드 확정과 배치 사이에서 취소되면** 서버에 확정된 이미지만 남고, `mapErrorToAppError`가
-  `CancellationException`을 재던지므로 그 취소는 실패 `Result`가 아니라 예외로 화면까지 올라간다
-  (OQ-P-248). 로딩 오버레이와 `popUpTo` 되감기가 있는 PR5가 취소가 흔한 라운드다.
+- ✅ **되감기 판정 근거 문제는 PR5가 판정했다**(OQ-P-247 해소, ①안). 서버가 HTTP 200에 실패
+  봉투를 싣는 경로가 `api/` 계약 스냅샷에 없고, 되감기 대상 세 코드에 status로 갈려야 하는 동명
+  코드도 없어 위 실패 처리 절이 `code` 하나로 판정하도록 바뀌었다 — `statusCode`는 조건에 넣지 않는다.
+- ✅ **업로드 확정과 배치 사이 취소는 감수로 닫혔다**(OQ-P-248 해소, 감수). 서버에 확정된 이미지만
+  남고 `mapErrorToAppError`가 `CancellationException`을 재던져 그 취소가 실패 `Result`가 아니라
+  예외로 화면까지 올라가는 것은 정상 계약으로 둔다 — 재시도 결정이 이미 고아 S3 객체를 감수하기로
+  한 것과 같은 처분이다. 코드 변경 없이 `AddToppingUseCase` KDoc 한 줄로 남겼다.
 - presigned URL 만료를 판정하지 않는다. 만료는 실패 후 전량 재시도로만 풀린다.
 - `positionZ`가 흐름 진입 시점에 못 박히므로, 그 사이 남이 올린 토핑과 z가 겹칠 수 있다.
   서버가 유일성을 요구하지 않아 거부되지는 않는다.
