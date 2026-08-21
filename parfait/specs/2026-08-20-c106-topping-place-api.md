@@ -31,6 +31,16 @@ related_code:
   - CanvasMainScreen.kt#addAction
   - ServerErrorCode.kt#Parfait
   - String.kt#toColorOrNull
+  - RecentImageLocalDataSourceImpl.kt#decode
+  - FileRecentImageLocalDataSourceImpl.kt#readBytes
+  - RecentImageRepositoryImpl.kt#storeRecentImageInInternalStorage
+  - AddRecentImageUseCase.kt#invoke
+  - GetRecentCacheImagesUseCase.kt#clearOutsideDayWindow
+  - CustomGalleryPickerViewModel.kt#CustomGalleryPickerState
+  - GalleryImageGridComponent.kt#GalleryImageGridComponent
+  - NavKeySegmentationConfirm.kt#NavKeySegmentationConfirm
+  - SegmentationConfirmViewModel.kt#observeDraft
+  - ToppingDraftRepository.kt#record
 related_adr: ADR-0025, ADR-0026, ADR-0017, ADR-0020
 related_spec: c106-topping-place, image-api-service-layer, parfait-canvas-topping-member-api-service-layer, ygscaffold-v2-common-loading-error, c103-segmentation-topping-edit, segmentation-pipeline-hardening, screen-resume-refetch
 related_architecture: data-layer, state-management, navigation-flow, module-structure
@@ -67,9 +77,8 @@ C-106 확인 버튼을 누르면 토핑이 **실제로 서버에 올라가게 �
   - **배치 화면의 실제 배경·기존 토핑 미리보기** — OQ-P-240을 연 채로 둔다.
   - 고아 `PENDING` 이미지 정리 · 회전·리사이즈 한계의 정책 근거(OQ-P-241) ·
     드래그 핸들 접근성(OQ-P-202 ③) · `60.dp`/`14.dp` 리터럴(OQ-P-203 ③)
-  - **누끼 알맹이의 최근 이미지 재사용** — PR6로 분리했다. 결정 셋(배치 성공 시 저장 · 대상은
-    테두리 없는 알맹이 · 최근에서 고르면 누끼 확인 화면 직행)은 PR 분할 표 6번 행에 있고,
-    선행 결함 넷은 OQ-P-255에 있다.
+  - **누끼 알맹이의 최근 이미지 재사용** — PR6로 분리했다. 결정과 선행 결함 넷의 처방은
+    아래 [누끼 알맹이 재사용 (PR6)](#누끼-알맹이-재사용-pr6) 절에 있다(미결 원문은 OQ-P-255).
 
 ## 결정된 것
 
@@ -324,7 +333,7 @@ KDoc이 "되돌리지 않고 알린다"로 처분을 미리 적어 뒀다(막 �
 | 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 · 초안 쓰기 실패도 알린다 — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-draft-ssot`(이제 베이스가 develop에 들어왔다) |
 | 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-border-contract`([계획](../plans/archive/2026-08-21-c106-pr4-topping-border-contract.md)) |
 | 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·성공 시 되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-place-wiring`(베이스는 PR4 브랜치 팁 `392014a7`, [계획](../plans/archive/2026-08-21-c106-pr5-topping-place-wiring.md)) |
-| 6 | 누끼 알맹이 재사용 | 배치 성공 시 **테두리 없는 알맹이**를 최근 이미지에 저장 · 최근 목록에 종류 축 신설 · 알맹이를 고르면 누끼 확인 화면으로 직행 | 갤러리 "최근"에서 이미 만든 누끼를 다시 쓸 수 있다 |
+| 6 | 누끼 알맹이 재사용 | 배치 성공 시 **테두리 없는 알맹이**를 최근 이미지에 저장 · 최근 목록에 종류 축 신설 · 알맹이를 고르면 누끼 확인 화면으로 직행 · 선행 결함 넷(OQ-P-255) 처방 | 갤러리 "최근"에서 이미 만든 누끼를 다시 쓸 수 있다 — 상세는 [누끼 알맹이 재사용 (PR6)](#누끼-알맹이-재사용-pr6) |
 
 1과 2는 소비자가 없어 리뷰가 각각 **S3 서명**과 **계약 매핑** 한 가지에만 집중할 수 있다.
 
@@ -346,6 +355,52 @@ KDoc이 "되돌리지 않고 알린다"로 처분을 미리 적어 뒀다(막 �
 4가 시각 회귀 위험이 유일하게 몰리는 자리다. 실기기 확인을 여기에 붙이고 **누끼 확인 화면까지**
 본다.
 
+## 누끼 알맹이 재사용 (PR6)
+
+배치에 성공한 알맹이를 갤러리 "최근"에 남겨, 다음번에 같은 사진을 다시 누끼 따지 않고 바로 쓰게
+한다. 재사용 항목을 고르면 카메라·갤러리 확인과 세그멘테이션을 건너뛰고 **누끼 확인 화면(C-103)으로
+직행**한다.
+
+### 결정된 것
+
+| 쟁점 | 결정 | 근거 |
+|---|---|---|
+| 저장 대상 | **테두리 없는 트리밍 알맹이 1장만** | 원본·마스크까지 함께 두면 내부 저장소 사용량이 3배가 되면서 상한 `MAX_SIZE = 9`와 정면으로 부딪힌다. 다시 편집하고 싶으면 갤러리의 원본에서 새로 시작하는 길이 이미 있다 |
+| 종류 축 | 기존 목록 하나를 `List<RecentImage>`로 넓힌다 | 상한·데이 윈도우 정리·정렬이 전부 한 곳에 남는다. 목록을 둘로 가르면 상한이 목록마다 따로 걸려 최대 18장이 되고 시간순 병합이 이중으로 생긴다 |
+| 구 스키마 처분 | 디코드 **2단 폴백** | 신 스키마 디코드가 실패하면 `List<String>`으로 한 번 더 시도해 종류를 `SOURCE`로 올려받는다. 지금의 `getOrDefault(emptyList())` 하나로는 기존 목록이 통째로 날아가고 파일만 고아로 남는다(OQ-P-255 ③) |
+| 저장 시점 | 배치 성공 직후, **초안을 비우기 전** | 알맹이 경로를 초안에서 읽으므로 `clear()`가 먼저면 경로를 잃는다 |
+| 저장 실패 처분 | 삼키고 로그만 남긴다 | 배치는 이미 성공했다. 재사용 편의 하나 때문에 성공한 흐름을 실패로 보이게 하지 않는다 |
+| 노출 범위 | `returnResultOnly = false`인 토핑 만들기 진입에서만 | 배경 선택(C-301)에서 투명 알맹이가 골라지는 사고를 막는다. 경로마다 직행 대상 화면이 다른 문제도 함께 사라진다 |
+| 셀 표시 | 같은 "최근 업로드" 섹션에 시간순으로 섞고 알맹이만 `ContentScale.Fit` | 알맹이는 투명 여백을 걷어낸 객체라 지금의 `Crop`으로는 잘린다. 종류를 알리는 시각 장치(뱃지·배경 구분)는 시안이 없어 두지 않는다 |
+| 재업로드 | 재사용해도 **다시 올린다** | 서버가 준 `imageId`를 로컬에 붙들어 두는 경로가 없다. 업로드를 아끼는 것은 이 라운드의 목표가 아니다 |
+
+### 선행 결함 넷의 처방 (OQ-P-255)
+
+| # | 결함 | 처방 |
+|---|---|---|
+| ① | `FileRecentImageLocalDataSourceImpl#readBytes`가 `contentResolver` 전용이라 스킴 없는 절대경로를 못 읽는다 | 절대경로를 읽는 `readFileBytes(path)`를 따로 둔다. 어느 쪽으로 읽을지는 `kind`가 가른다 |
+| ② | 확장자를 `.jpg`로 하드코딩한다 | `getTargetFile(bytes, extension)`으로 확장자를 인자화하고 알맹이는 `.png`를 받는다. 이름이 거짓이면 `ImageUploadRepositoryImpl#contentTypeOf`가 투명 PNG를 `image/jpeg`로 올린다 |
+| ③ | 목록 스키마를 넓히면 구 스키마 디코드 실패를 `runCatching { … }.getOrDefault(emptyList())`가 삼킨다 | 위 2단 폴백. 폴백이 없으면 기존 목록이 사라지고 `clearOutsideDayWindow`가 목록 기준이라 파일을 못 지운다 |
+| ④ | `NavKeySegmentationConfirm`이 인자 셋을 요구하고 "사진 편집"이 원본·마스크를 둘 다 쓴다 | `sourceImageUri`·`cutoutImagePath`를 nullable로 넓히고 트리밍 알맹이 경로만 필수로 남긴다. 재사용 항목에서는 편집 버튼이 잠긴다 |
+
+### 초안을 쓰는 주체가 새로 필요하다
+
+확인 화면은 **초안에 알맹이가 적혀 있어야** 다음 버튼이 열린다
+(`SegmentationConfirmViewModel#observeDraft`의 `isDraftReady`). 지금 그것을 적는 것은 세그멘테이션
+화면과 편집 결과뿐인데, 재사용 진입은 둘 다 타지 않는다. 그래서 확인 화면이 재사용 인자를 받았고
+초안이 비어 있으면 **스스로 `record`를 먼저 마친 뒤 구독을 연다.** 순서를 뒤집으면 첫 방출의 `null`이
+`DraftMissing` 토스트를 쏘고 사용자가 없는 실패를 듣는다. `ToppingDraftRepository#record`의
+`cutoutImagePath`도 nullable로 넓힌다 — 재사용 초안에는 재편집 마스크가 없다.
+
+파일이 이미 지워진 항목을 골랐을 때의 안전망은 새로 만들지 않는다. `draft`가
+`withExistingFilesOnly`로 걸러 빈 초안이 되고, 그때 뜨는 `DraftMissing`이 그대로 맞는 안내다.
+
+### 범위 밖
+
+- 알맹이 셀의 최종 디자인(뱃지·배경·섹션 분리) — 시안이 없다(OQ-P-257).
+- 배경 이미지(C-301)의 재사용.
+- 재사용 시 서버 재업로드 회피.
+
 ## 파일 구성
 
 | 자리 | 역할 |
@@ -361,6 +416,11 @@ KDoc이 "되돌리지 않고 알린다"로 처분을 미리 적어 뒀다(막 �
 | `core/designsystem/.../ygcanvas/YGCanvas.kt` | private 종횡비 상수를 public으로 올려 저장소의 유일한 정본으로 둔다 |
 | `feature/groups/canvas/impl/.../CanvasToppingPlaceViewModel` | 좌표 변환·확정·실패 표현 |
 | `core/designsystem/.../ygtoppingcutout/YGToppingCutoutImage` | 8방향 테두리 스탬프. 나눠 쓰는 화면 셋이 **모듈 둘**(`segmentation`·`groups/canvas`)에 걸쳐 있어 feature `component/`가 아니라 여기가 소유한다 |
+| `domain/model/image/RecentImage`(PR6) | 최근 이미지 한 항목. uri·절대경로·종류를 함께 든다 |
+| `data/source/image/local/RecentImageLocalDataSourceImpl`(PR6) | 목록 스키마 확장과 2단 폴백 디코드 |
+| `data/source/file/local/FileRecentImageLocalDataSourceImpl`(PR6) | 절대경로 읽기·확장자 인자화 |
+| `feature/gallery/impl/.../GalleryImageGridComponent`(PR6) | 알맹이 셀을 `Fit`으로 그린다 |
+| `feature/segmentation/api/NavKeySegmentationConfirm`(PR6) | 원본·마스크 인자를 nullable로 넓힌다 |
 
 ## 테스트
 
@@ -374,6 +434,10 @@ KDoc이 "되돌리지 않고 알린다"로 처분을 미리 적어 뒀다(막 �
 | 테두리 색 | 초안 ARGB → 서버 문자열 → `String#toColorOrNull` 왕복이 원래 색을 낸다 |
 | `CanvasToppingPlaceViewModel` | painter 미완료 시 확인 비활성 · 연타 차단 · 영구 실패 다섯 코드는 전용 문구로 알리고 화면에 남는다, 그 외도 잔류(문구만 다르다) |
 | 초안 DataStore | 흐름 진입 시 덮어쓰기 · 성공 시 비우기 · **경로는 있는데 파일이 없으면 빈 초안 취급** |
+| 최근 목록 디코드(PR6) | 신 스키마·구 `List<String>`·깨진 값 셋 다에서 **기존 항목이 사라지지 않는다** |
+| 최근 이미지 저장(PR6) | 종류가 읽기 경로와 확장자를 가른다 · 알맹이 저장이 `clear()`보다 **먼저** 일어난다 · 저장 실패가 배치 성공을 뒤집지 않는다 |
+| 갤러리(PR6) | `returnResultOnly = true`면 알맹이가 목록에 없다 · 알맹이 클릭이 확인 화면으로 간다 |
+| 재사용 진입(PR6) | 초안 `record`가 구독보다 **먼저** 끝난다(없으면 `DraftMissing`이 잘못 뜬다) · 편집 버튼이 잠긴다 |
 
 `Authorization` 부재 검증은 형식이 아니다. 그것이 붙으면 업로드가 **아예 동작하지 않는** 이
 라운드의 핵심 실패 모드다.
@@ -396,6 +460,11 @@ KDoc이 "되돌리지 않고 알린다"로 처분을 미리 적어 뒀다(막 �
   남고 `mapErrorToAppError`가 `CancellationException`을 재던져 그 취소가 실패 `Result`가 아니라
   예외로 화면까지 올라가는 것은 정상 계약으로 둔다 — 재시도 결정이 이미 고아 S3 객체를 감수하기로
   한 것과 같은 처분이다. 코드 변경 없이 `AddToppingUseCase` KDoc 한 줄로 남겼다.
+- ✅ **PR6의 선행 결함 넷은 설계로 닫혔다**(OQ-P-255 해소). 처방은 위 [누끼 알맹이 재사용
+  (PR6)](#누끼-알맹이-재사용-pr6) 절이 정본이고, 그 과정에서 **다섯 번째 결함**이 드러났다 — 재사용
+  진입은 초안에 알맹이를 적는 두 경로를 모두 타지 않아 확인 화면의 다음 버튼이 열리지 않는다.
+- **알맹이 셀을 무엇으로 구별할지 시안이 없다**(OQ-P-257). PR6는 잘림을 막는 `ContentScale.Fit`만
+  적용하고 뱃지·배경 구분·섹션 분리는 두지 않는다.
 - presigned URL 만료를 판정하지 않는다. 만료는 실패 후 전량 재시도로만 풀린다.
 - `positionZ`가 흐름 진입 시점에 못 박히므로, 그 사이 남이 올린 토핑과 z가 겹칠 수 있다.
   서버가 유일성을 요구하지 않아 거부되지는 않는다.
