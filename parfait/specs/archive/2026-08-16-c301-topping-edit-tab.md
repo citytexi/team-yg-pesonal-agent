@@ -4,14 +4,17 @@ title: C-301 토핑 편집 탭 (선택·이동·크기·회전·삭제 + 테두�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-16
+verified: 2026-08-22
 related_code:
   - CanvasBGEditScreen.kt#CanvasBGEditScreen
   - CanvasBGEditScreen.kt#CanvasToppingImage
   - CanvasBGEditScreen.kt#ToppingCornerButtons
   - CanvasBGEditScreen.kt#ToppingSelectionStroke
   - CanvasBGEditScreen.kt#ToppingDragHandleButton
-  - CanvasBGEditScreen.kt#rememberToppingBaseSize
+  - CanvasBGEditScreen.kt#rememberToppingSize
+  - ToppingGeometry.kt#TOPPING_BASE_LONG_SIDE_RATIO
+  - ToppingGeometry.kt#toppingLongSide
+  - ToppingGeometry.kt#toppingCenter
   - CanvasBGEditViewModel.kt#CanvasToppingItem
   - CanvasBGEditViewModel.kt#CanvasBGEditViewModel
   - CanvasBGEditRoute.kt#CanvasBGEditRoute
@@ -181,10 +184,10 @@ NavKeyCanvasBGEdit ─(편집 버튼)─▶ NavKeyToppingEdit(source, segmentati
 
 ## 드리프트 / 잔존
 
-1. **고칠 대상이 mock이다** — `loadMockToppings()`가 템플릿 이미지 4개를 하드코딩 좌표에 깔고,
-   `sourceImageUri`·`segmentationImageUri`는 그 drawable을 가리키는 `android.resource://` uri다.
-   서버에는 이미 파르페 상세 조회·토핑 테두리 수정·삭제 표면이 있는데 소비처가 0이다
-   → [open-questions](../../synthesis/open-questions.md) [2026-08-16].
+1. ~~**고칠 대상이 mock이다**~~ — ✅ **해소(PR #329, 2026-08-22)**. `loadMockToppings()`가 사라지고
+   `GetTodayParfaitUseCase` 응답을 그린다. 자세한 것은 아래
+   [as-built 재정정](#as-built-재정정-2026-08-22-pr-329-develop-머지)
+   → [open-questions](../../synthesis/open-questions.md) OQ-P-199 ①.
 2. **편집 결과가 어디에도 남지 않는다** — 이동·크기·회전·삭제·테두리 재편집이 전부 `UiState`에서
    끝나고, 확인 버튼은 배경만 싣는다. 배경이 겪던 것과 같은 왕복 미완이 토핑에서 반복된다
    → [open-questions](../../synthesis/open-questions.md) [2026-08-16].
@@ -223,3 +226,48 @@ feature/segmentation/
   impl/viewmodel/ToppingEditViewModel.kt  Assisted 4인자 + isBorderOnly 초기 상태
   impl/res/values/strings.xml          1줄 추가
 ```
+
+## as-built 재정정 (2026-08-22, PR #329 develop 머지)
+
+> **드리프트 1이 닫혔다** — 고치는 대상이 mock에서 서버 캔버스로 바뀌었다. 배경 저장이 붙은 같은
+> 라운드이고, 그쪽 결정은
+> [c301 배경 스펙](2026-08-15-c301-canvas-background-edit.md#as-built-재정정-2026-08-22-pr-329-develop-머지)에 있다.
+
+### 그리는 값이 바뀌었다
+
+`CanvasToppingItem`이 화면 좌표를 버리고 **캔버스 메인과 같은 단위**를 든다.
+
+| 전 | 후 | 왜 |
+|---|---|---|
+| `imageResId`(템플릿 drawable) | `imageUrl`(서버 주소) | 조회 응답이 준다 |
+| `offsetX`·`offsetY`(Dp) | `positionX`·`positionY`(0~1 중심점) | 저장된 배치가 그 단위이고 ViewModel은 화면 크기를 모른다 |
+| `graphicsLayer(scaleX/scaleY)` | 긴 변 = 캔버스 너비 × 40% × `scale` | 캔버스 메인과 같은 규칙 |
+| `rememberToppingBaseSize`(intrinsic을 dp로 직독) | `rememberToppingSize`(긴 변에서 비율로 편다) | 스트로크·모서리 버튼이 투명 여백이 아니라 그림에 붙어야 한다 |
+
+같은 캔버스가 두 화면에서 다르게 보이면 안 되므로, 배치 규칙 셋(`TOPPING_BASE_LONG_SIDE_RATIO`·
+`toppingLongSide`·`toppingCenter`)이 `component/CanvasToppingLayer.kt`에서 `util/ToppingGeometry.kt`로
+올라가 **캔버스 메인·편집 탭·배치 화면 셋이 같은 값을 본다.** 드래그도 픽셀이 아니라 비율로
+넘어온다 — 화면이 `BoxWithConstraints`로 실측을 알고 있어 거기서 환산한다.
+
+### 잔존과 새 위험
+
+- **드리프트 2(편집 결과가 어디에도 안 남는다)는 그대로다.** 이동·크기·회전은 여전히 `UiState`
+  안에서 끝나고, 삭제는 `TODO(#271 대기)`로 화면에서만 사라지며, 토핑 편집 진입은
+  `TODO(#274 대기)`다(서버 토핑은 https 주소라 편집 화면이 `ContentResolver`로 열지 못한다).
+  확인 버튼은 배경만 저장한다 → OQ-P-199 ②③.
+- ⚠️ **소유 판정이 축이 다른 두 id를 비교한다** — `isMine`이 상수 `false`를 벗어나
+  `MyAccountVO.memberId`(계정 id)와 `placedBy.groupMemberId`(그룹 멤버십 행 id)를 견준다. 코드
+  KDoc이 그 사실을 `TODO(서버 응답 확장 대기)`로 적어 두었다. **이 화면에서는 그 판정이 곧
+  게이트**라, 참으로 새면 남의 토핑을 만지고 거짓으로 접히면 내 토핑도 못 만진다
+  → [open-questions](../../synthesis/open-questions.md) OQ-P-250.
+- **테두리는 여전히 안 그린다** — `borderLayers`를 받아 두기만 하고 그리는 자리가 편집 결과
+  이미지 하나만 읽는다 → [open-questions](../../synthesis/open-questions.md) OQ-P-254.
+- 드리프트 4(회전 한계 없음)·5(선택 상태가 목록 변화를 못 견딤)·6(접근성)은 그대로다. 5는
+  목록이 실제로 서버에서 오기 시작해 **전제가 현실이 됐다** — 다시 조회하는 경로가 진입 1회뿐이라
+  아직 증상이 없을 뿐이다.
+
+### 유닛 테스트
+
+`CanvasBGEditViewModelTest`에 이 탭 몫으로 다섯이 붙었다 — 비율 배치·`positionZ` 정렬·소유 판정,
+드래그가 받은 비율만큼 옮기는지, 남의 토핑 탭이 선택으로 이어지지 않는지, 테두리 한 겹 펴기와
+못 읽는 색에서 겹을 만들지 않는지다.

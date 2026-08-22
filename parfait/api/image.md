@@ -218,6 +218,26 @@ PR #334) — 메인 클라이언트가 발급 **응답 본문**을
 블로킹 `execute()`라 코루틴 취소를 따라가지 않던 것은 `enqueue` + `suspendCancellableCoroutine`으로
 바꿔 닫았다(OQ-P-246 해소).
 
+✅ **두 번째 소비자가 붙으면서 `imageType`의 두 값이 모두 쓰이게 됐다**(2026-08-22 develop 머지,
+PR #329). C-301 배경 편집이 고른 사진을 `ImageType.BACKGROUND`로 올린다 — 그전까지 실제로 나가는
+값은 `NUKKI` 하나뿐이었다(`AddToppingUseCase`가 스스로 정한다). 배경 쪽은 반대로 **UseCase가
+`imageType`을 인자로 받는다**(`UploadImageUseCase(uri, imageType)`) — 흐름이 정해진 토핑과 달리
+이쪽은 화면이 용도를 안다.
+
+그 UseCase가 메우는 것은 **단위 차이**다. 화면이 쥔 것은 `content://` 같은 uri이고
+`ImageUploadRepository.upload`는 파일 절대경로만 받으므로, `ImageFileRepository.copyToCache`로 캐시에
+한 번 떨군 뒤 그 경로를 넘긴다. 두 단계 순서를 화면마다 다시 세우지 않으려는 자리다.
+
+⚠️ **형식 판정이 이 라운드에 한 자리로 모였다** — `ImageUploadRepositoryImpl`이 확장자로 contentType을
+정하던 `when` 분기가 `UploadImageFormat` enum(확장자·contentType·파일 시그니처)으로 흡수됐고, 캐시
+복사 단계가 **시스템 MIME → 바이트 앞머리** 순으로 형식을 판정해 파일명 확장자를 붙인다. 확장자와
+실제 내용이 어긋난 파일을 그대로 올리면 잘못 실린 contentType이 S3를 통과해 다른 기기에서 깨져
+보이기 때문이다. 서버가 받지 않는 형식은 발급 요청을 보내기 전에 걸러진다(400 `INVALID_CONTENT_TYPE`
+왕복이 줄었다).
+
+⚠️ **캐시가 쌓이기만 한다** — 복사본은 `cacheDir/upload`에 UUID 이름으로 남고 지우는 코드가 없다
+(세그멘테이션 캐시와 달리 정리 경로가 아직 없다) → [open-questions](../synthesis/open-questions.md) OQ-P-262.
+
 `http/images.http`가 두 요청 + S3 PUT을 덮는다(요청 모음 20/20 회복).
 
 ## 미결

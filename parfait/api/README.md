@@ -26,7 +26,7 @@
 | [auth.md](auth.md) | `http/auth` | 5 (카카오 로그인 · **애플 로그인** · 회원가입 완료 · 토큰 재발급 · 로그아웃) | **결선됨**(애플 해당 없음, 나머지 4 전부 호출부 있음) |
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | **결선됨**(8 전부 호출부 있음, 불일치 0건) |
-| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음, 연도·오늘·과거·상세 4건은 **결선됨**, 배경 변경만 미소비, 불일치 0건) |
+| [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | **결선됨**(회전 해당 없음, 5 전부 호출부 있음 — 배경 변경이 2026-08-22 PR #329로 마지막에 붙었다, 불일치 0건) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | **결선됨**(2 전부 호출부 있음) |
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | **결선됨**(3 전부 호출부 있음) |
 | [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨(배치 확정만 **결선됨**, 나머지 셋은 미소비) |
@@ -204,6 +204,15 @@
 > `PENDING` 이미지·S3 객체) → [open-questions](../synthesis/open-questions.md) OQ-P-146.
 > 발급 응답 본문에 실려 오던 presigned URL은 `@NoBodyLog` + `SelectiveLoggingInterceptor`로 로그에서
 > 뺐다(그 URL은 쿼리 스트링이 곧 자격증명이다) → [image.md](image.md).
+>
+> ✅ **2026-08-22 — `parfait.md`가 `done`이 됐다**(PR #329 develop 머지, 계약 delta 없음).
+> C-301 배경 편집의 확인 버튼이 **배경 변경 PATCH**를 부르면서 이 도메인의 마지막 미소비 갈래가
+> 닫혔다(회전 제외 5/5). **소비처를 얻은 엔드포인트는 24건**이고, `partial`로 남은 도메인은
+> **둘**(`parfait-group.md`·`parfait-image.md`)이다. 같은 라운드가 `image.md`의 `imageType`에
+> **두 번째 값**을 실었다 — 배경 이미지가 `BACKGROUND`로 올라간다(그전까지는 `NUKKI` 하나뿐).
+> ⚠️ 앱이 서버에 쓰는 두 번째 경로인데 **실기기·실서버 확인은 여전히 0회**이고, 마감된 캔버스가
+> 돌려주는 409는 화면에서 일반 오류로 접힌다
+> → [open-questions](../synthesis/open-questions.md) OQ-P-146·OQ-P-261.
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만
