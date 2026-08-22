@@ -5,8 +5,41 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `8eb2af7d` (`Merge pull request #329 from mash-up-kr/feature/#269-canvas-bg-edit-api-test`)
-- **요약**: **고른 배경이 처음으로 남는다 — 그리고 편집 화면이 mock을 버렸다**(delta 1건). #329가
+- **커밋**: `96dc215c` (`Merge pull request #339 from mash-up-kr/feature/#338-version-and-orientation`)
+- **요약**: **앱이 처음으로 화면 방향을 정했고, 그 결정에는 시한이 붙어 있다**(delta 1건). #339가
+  커밋 일곱·6파일 **삽입 42줄·삭제 17줄**로 들어왔고, **머지 트리가 브랜치 팁 `cab38993`과 같아**
+  충돌 해소 편집이 0건이다. **`.kt` 파일이 0건인 첫 라운드**다 — 매니페스트 둘·문자열 둘·버전
+  카탈로그·gradle wrapper가 전부이고, 그래서 테스트도 변하지 않았다(유닛 737건·클래스 87개 유지).
+  들어온 것은 세 갈래다.
+  **① 세로 고정**([ADR-0027](adr/0027-portrait-orientation-lock.md) 신설). 그전까지 방향은 아무도
+  정하지 않아 기기 설정을 따랐는데, 이 앱의 화면 규격은 세로 폭 전제다(목록 지그재그 좌표·C-101
+  뷰파인더 여백·달력 그리드가 실측이다). 결정에서 값진 부분은 **어디에 붙였는가** 둘이다 —
+  카카오 리다이렉트 액티비티에도 붙였고(빼면 하필 **로그인 구간에서만** 회전이 살아 있는데, 그
+  구간이 A-002 리뷰가 잡은 로그인 유실 경로다 — OQ-P-146 ⑨의 재현 경로가 이번에 닫혔다),
+  `<application>`에 대화면 opt-out 속성을 얹었다(`targetSdk 36`은 sw600dp 이상에서
+  `screenOrientation`을 무시해, 안 붙이면 폰은 고정되고 태블릿·폴더블만 눕는다 — 그쪽 레이아웃은
+  아무도 만든 적이 없다).
+  **② 표기·버전**: 앱 표시명이 소문자 `parfait`에서 `Parfait`으로 올라가고(프리뷰도 함께),
+  `appVersionName`이 **내려갔다**(`versionCode`와 프리뷰 버전은 그대로다 — 스토어에 올린 적이
+  없어 되돌릴 수 있는 자리다).
+  **③ 의존성 일괄 상향**: AGP·Kotlin·KSP·Compose BOM·OkHttp·Kakao SDK·Navigation3(alpha 계열
+  안에서)·Lottie·Hilt Navigation Compose·Kermit·Firebase BOM·Crashlytics 플러그인·Gradle
+  wrapper. 코드 수정이 0건인 채로 **CI `lint`·`unit-test`가 둘 다 통과**해, 이 상향이 컴파일·유닛
+  수준에서는 무해하다는 것까지는 확인됐다.
+  ⚠️ **이 결정은 시한부다**(OQ-P-264) — 대화면 opt-out 속성은 `targetSdk 37`부터 제거돼
+  무력화되는데, 그 사실이 지금 **매니페스트 주석의 TODO 한 줄에만** 있고 대화면 방침은 없다.
+  ⚠️ **세로 고정이 카메라의 기준을 함께 고정했다**(OQ-P-265) — `CustomCameraRoute`는
+  `targetRotation`을 주지 않고 `ImageProxy`의 회전값으로 보정하는데, 그 기준이 표시 방향이라
+  **가로로 들고 찍었을 때의 결과가 이번 라운드에서 바뀌었다.** 촬영 결과는 누끼·배치·캔버스까지
+  그대로 흘러가므로 한 번 누우면 흐름 끝까지 눕는다.
+  문서 쪽 결과는 **ADR 하나와 미결 둘**이다 — 선작성 스펙·플랜이 없고 화면 변경도 없어 **아카이브
+  이동 0건**이고, 매니페스트 결정은 스펙이 아니라 ADR 자리라 [ADR-0027](adr/0027-portrait-orientation-lock.md)을
+  신설했다. 겸해 [ADR-0006](adr/0006-navigation3-custom-navigator.md)이 채택 당시 alpha 버전을
+  현행 핀처럼 적어 두고 있어 문구를 고쳤다(이번 상향으로 실제로 어긋났다).
+  계약 문서(`api/`)는 원격 연동 코드가 delta에 없어 **손대지 않았다.**
+  ⚠️ **실기기 확인은 여전히 0회이고, 이번 라운드는 유닛으로 덮을 수 없는 종류다**(매니페스트 속성).
+  직전 회차 요약: **고른 배경이 처음으로 남는다 — 그리고 편집 화면이 mock을 버렸다**(delta 1건,
+  기준선 `8eb2af7d`). #329가
   커밋 열셋·44파일 **삽입 1677줄·삭제 218줄**로 들어왔고, **머지 트리가 브랜치 팁과 같아** 충돌
   해소 편집이 0건이다. C-301은 2026-08-15에 생긴 뒤 일주일 동안 **고른 값을 버리는 화면**이었다
   (확인 이펙트에 배경을 실어 놓고 Route가 `// TODO` 주석과 함께 그냥 물러났다). 이번에 확인이
@@ -642,3 +675,4 @@
 | 2026-08-22 | `19cb5299` | Merge #334 (C-106 결선 스택 PR3~PR6) | delta 1건인데 **PR 넷이 실렸다** — 머지는 하나고 커밋 43개·77파일 3602/433이다. **머지 트리 = PR6 브랜치 팁 `656cbf2e`**(충돌 해소 편집 0건)라 네 브랜치의 as-built를 **재측정 없이 승격**했다(선작성 스펙 1·플랜 4 전부 보유). **앱이 처음으로 서버에 무언가를 만든다** — 확인 버튼이 발급 → S3 PUT → confirm → 배치 네 단계를 태워 "저장 없이 화면만 바뀐다"가 끝났다(OQ-P-238 ② 해소). 테두리는 서버 필드로(ADR-0025 `accepted`), 흐름 상태는 DataStore 초안 한 벌로(ADR-0026 `accepted`) 가면서 `NavKeyCanvasToppingPlace`가 인자를 잃었다. 종횡비 상수 정본 하나로 통일(OQ-P-177 ① 해소), C-001이 V2 스캐폴드로(V1 잔여 2파일 유지·호출 5→4), 배치 성공 알맹이가 갤러리 "최근"에 남아 **흐름의 두 번째 입구**가 생겼다. 되감기는 최종 리뷰가 걷었다 — Route에 매달린 토스트까지 같은 프레임에 폐기돼 실패를 못 듣는다(OQ-P-167 그대로 열림). 유닛 602 → **694건**, 클래스 70 → **80개**. `api/image.md` `done` — 표면만 있고 소비처 0인 도메인 소멸. 스펙 1건 아카이브 이동, ADR 둘 `accepted`, 미머지 추적 항목 **0**. ⚠️ 실기기·실서버 0회(이월 13 + 신규 9) |
 | 2026-08-22 | `a0d584ef` | Merge #326 (nav screen transition) | delta 1건, 커밋 5·5파일 156/1, **머지 트리 = 브랜치 팁 `07f0a6a2`**(충돌 해소 편집 0건). **전환이 처음으로 앱의 결정이 됐다** — 라이브러리 기본(페이드+축소)에서 **오른쪽에서 덮고 오른쪽으로 빠지는** 밀기로 바뀌었다. `NavTransition`(`core:navigation`)이 `push`·`pop`·`predictivePop`을 한 값으로 묶고(방향이 짝을 이뤄야 하나의 동작으로 읽힌다) `metadata`로 화면별 override를 연다 — 붙는 대상이 **위에 놓이는 화면**이라는 것이 이 API의 함정이다. ⚠️ **산출물을 아무도 본 적이 없다**(OQ-P-260): 테스트가 잠그는 것은 세 슬롯이 비지 않았다는 것뿐이고, 유일한 예외 `Fade`가 붙은 `NavKeyCanvasEdit`은 짝인 `NavKeyCanvasImageSelect`와 함께 **도달 불가**라(OQ-P-129 ②) 그 근거인 공유 요소 전환도 실행되지 않는다. ⚠️ 앱 기본을 무는 세 줄이 `MainRoute`·`RootRoute`(app-preview) **두 곳에 복제**됐다(OQ-P-259 — 데코레이터 셋도 이미 같은 형태다). 문서 결과는 **최종 커밋이 지운 `Fade` KDoc을 받아 낸 것** — [navigation-flow](architecture/navigation-flow.md) 「화면 전환」 신설 + 등록 체크리스트 8번. 선작성 스펙·플랜 없어 **아카이브 이동 0건**, `api/` 무변경. 유닛 694 → **696건**, 클래스 80 → **81개**. 미머지 추적 항목 **0** |
 | 2026-08-22 | `8eb2af7d` | Merge #329 (canvas bg edit api + test) | delta 1건, 커밋 13·44파일 1677/218, **머지 트리 = 브랜치 팁**(충돌 해소 편집 0건). **고른 배경이 처음으로 남고, 편집 화면이 mock을 버렸다.** 확인이 세 갈래로 갈린다 — 색은 `#RRGGBB` PATCH, 기기 사진은 **캐시 복사 → 발급 → S3 PUT → confirm** 뒤 `imageId` PATCH, 서버에 이미 있던 배경은 **요청 0건**(https는 기기가 못 읽어 다시 못 올린다). **저장이 끝나야 화면을 넘긴다**(먼저 넘기면 저장 안 된 배경을 그린 채 서 있다가 다음 조회에서 되돌아간다). 앱이 서버에 쓰는 **두 번째 경로**이고 `api/parfait.md`가 **`done`**(회전 제외 5/5). OQ-P-173 **해소**, OQ-P-193(성공 널 → 실패로 안 다루고 고른 값으로 그린다)·OQ-P-194(②는 UseCase 둘로 조율, ③은 재조회) **부분 해소** — 다만 널 폴백은 Route가 이펙트 값을 안 써서 **아직 아무것도 안 바꾼다**. **토핑 탭이 서버 캔버스를 그린다**(OQ-P-199 ① 해소) — 좌표가 Dp 오프셋 → **0~1 중심점**, 배치 규칙 셋이 `util/ToppingGeometry.kt`로 올라가 캔버스 메인·편집 탭·배치 화면이 같은 값을 본다. `NavKeyCanvasBGEdit`가 `data class(groupId, parfaitId)`로 승격되고 C-001은 **오늘 캔버스를 못 받았으면 편집을 안 연다**. entry의 `YGScaffold` 껍질을 걷고 Route가 `YGScaffoldV2`를 직접 든다(토스트 자리·인셋 이중 적용 회피). `AppError` **네 번째 갈래 `UnsupportedImage`** — 서버가 아니라 **기기에서 오는 실패**의 첫 사례이고 그 갈래만 재시도가 무의미하다. 형식 판정이 `UploadImageFormat`(확장자·contentType·시그니처) 한 자리로 모이고, 캐시 복사가 **시스템 MIME → 바이트 앞머리** 순으로 판정한다. ⚠️ **소유 판정이 축이 다른 두 id를 견준다**(OQ-P-250 — 편집 화면에서는 그 판정이 곧 게이트다). ⚠️ 마감 409가 "잠시 후 다시"로 접힌다(**OQ-P-261 신설**, C-106 배치와 처분이 갈렸다). 조치: 스펙 as-built 2건(c301 배경·c301 토핑 탭, 둘 다 드리프트 1 닫힘·`verified` 2026-08-22, **아카이브 이동 0건**), api 3표면(parfait `android_status: partial`→**`done`**·엔드포인트 표 5칸·Android 매핑 4블록 / image Android 매핑에 `BACKGROUND` 첫 소비·형식 판정·캐시 / README 도메인 표 + 소비 24건 문단. `verified`·conventions 불일치 표 불변 — 0건 유지), architecture 3건(data-layer `UnsupportedImage`·`ImageFileLocalDataSource`·Repository 인벤토리 2행·DI 2줄·`UploadImageFormat` / navigation-flow 인자 승격·entry 예외·Assisted 목록 / state-management 실패 enum 네 번째 사례·UI 타입 근거 변경). open-questions: **해소 1건**(OQ-P-173) · **부분 해소 3건**(OQ-P-193·194·199) · 마커 5건(OQ-P-146 실기기 신규 4항목·OQ-P-190 첫 실사례·OQ-P-250·OQ-P-254·OQ-P-256) · **신규 3건**(OQ-P-261 마감 409 처분 갈림 · OQ-P-262 업로드 캐시 정리 없음 · OQ-P-263 6자리 HEX 변환 함수 둘·알파 처리 정반대·로케일 결함). 유닛 696 → **737건**(+41), 클래스 81 → **87개**. 미머지 추적 항목 **0**. ⚠️ 실기기·실서버 확인 0회 |
+| 2026-08-22 | `96dc215c` | Merge #339 (portrait lock + version/dependency bump) | delta 1건, 커밋 7·6파일 42/17, **머지 트리 = 브랜치 팁 `cab38993`**(충돌 해소 편집 0건). **`.kt` 0건인 첫 라운드** — 매니페스트 둘·문자열 둘·버전 카탈로그·wrapper뿐이라 테스트도 안 변했다(유닛 737·클래스 87 유지). **① 세로 고정**([ADR-0027](adr/0027-portrait-orientation-lock.md) 신설): `MainActivity`(`app`·`app-preview`)와 **카카오 `AuthCodeHandlerActivity`**에 `screenOrientation="portrait"`, `<application>`에 `PROPERTY_COMPAT_ALLOW_RESTRICTED_ORIENTATION_AND_ASPECT_RATIO_OPT_OUT`. 리다이렉트까지 붙인 이유가 알맹이다 — 빼면 **로그인 구간에서만** 회전이 살아 있고 그 구간이 A-002 리뷰의 로그인 유실 경로다(OQ-P-146 ⑨ **재현 경로 닫힘**, 다른 구성 변경은 남아 항목 자체는 유지). opt-out을 붙인 이유는 `targetSdk 36`이 sw600dp 이상에서 `screenOrientation`을 무시해 폰과 대화면 거동이 갈리기 때문. **② 표기·버전**: `app_name` 대문자화(프리뷰 포함), `appVersionName` **하향**(`versionCode`·프리뷰 버전 불변 — 스토어 미배포라 되돌릴 수 있는 자리). **③ 의존성 일괄 상향**: AGP·Kotlin·KSP·Compose BOM·OkHttp·Kakao SDK·Navigation3(alpha 계열 내)·Lottie·Hilt Navigation Compose·Kermit·Firebase BOM·Crashlytics·Gradle wrapper — 코드 수정 0건인 채 **CI `lint`·`unit-test` 통과**. 조치: **ADR-0027 신설 + README 등록**, [ADR-0006](adr/0006-navigation3-custom-navigator.md) alpha 버전 핀 문구 정정(이번 상향으로 실제로 어긋났다), open-questions **신규 2건**(OQ-P-264 opt-out이 `targetSdk 37`에 사라지는데 대화면 방침 없음·추적처가 매니페스트 TODO 한 줄뿐 / OQ-P-265 세로 고정으로 카메라 촬영이 기기 방향을 안 따른다 — `targetRotation`·`OrientationEventListener` 없음, 정책 근거도 없음) + 마커 1건(OQ-P-146 ⑨). 선작성 스펙·플랜 없고 화면 변경도 없어 **아카이브 이동 0건**, 계약 문서(`api/`)는 원격 연동 코드가 delta에 없어 무변경. 미머지 추적 항목 **0**. ⚠️ 실기기 0회 — 이번 라운드는 **유닛으로 덮을 수 없는 종류**(매니페스트 속성)이고 대화면 opt-out은 폰에서 드러나지 않는다 |

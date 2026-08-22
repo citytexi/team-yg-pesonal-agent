@@ -18,7 +18,7 @@ tags: [adr, parfait]
 feature :api/:impl 분리([[0002-feature-api-impl-split]]) 상태에서 app이 각 화면을 직접 알지 않으면서도 목적지로 이동하고 결과를 주고받아야 한다. 화면 간 결과 전달·공유 요소 전환도 필요했다.
 
 ## 결정
-**Navigation3**(`androidx.navigation3`, `1.2.0-alpha04`)를 채택하고 그 위에 자체 라우팅을 얹는다. alpha 버전을 택한 이유는 결과 전달용 `ResultEventBusNavEntryDecorator` 지원.
+**Navigation3**(`androidx.navigation3`, `1.2.0` alpha 계열 — 채택 시 `alpha04`, 현행 핀은 버전 카탈로그가 정본)를 채택하고 그 위에 자체 라우팅을 얹는다. alpha 버전을 택한 이유는 결과 전달용 `ResultEventBusNavEntryDecorator` 지원.
 
 - **Navigator**(`core:navigation`) — `@ActivityRetainedScoped`. 백스택을 `SnapshotStateList<NavKey>`로 보유. `goTo()`, `onBack()`, `clearBackStack()`.
 - **목적지 = NavKey** — 각 feature `:api`가 `@Serializable NavKey`(예: `NavKeyLogin`)를 노출.
