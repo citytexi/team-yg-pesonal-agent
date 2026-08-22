@@ -4,11 +4,11 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-20
+verified: 2026-08-22
 related_spec: segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
-related_code: core:navigation, Navigator, Navigator.kt#popUpTo
+related_code: core:navigation, Navigator, Navigator.kt#popUpTo, NavTransition
 tags: [architecture, parfait]
 ---
 # 내비게이션 흐름 (Navigation3 + Navigator)
@@ -44,6 +44,8 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
     ([segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)).
 - **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasMain`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`(#290 이후 도달 불가)·`NavKeyCanvasBGEdit`(#231)·`NavKeyCanvasToppingPlace`(#290), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
 - **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`ImageAdd`·`BGEdit`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
+- **NavTransition**(`core:navigation`, #326 신설) — 화면 전환 한 벌(`push`·`pop`·`predictivePop`)을
+  묶은 값. `metadata`로 NavEntry에 실어 화면별로 앱 기본을 덮는다 → 아래 [화면 전환](#화면-전환-2026-08-22-pr-326).
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
   - `rememberSaveableStateHolderNavEntryDecorator` — 엔트리별 상태 보존.
   - `rememberViewModelStoreNavEntryDecorator` — 엔트리별 ViewModel 수명.
@@ -53,6 +55,36 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 - 이동: ViewModel의 side effect → Screen이 소비 → `navigator.goTo(NavKeyXxx(...))`.
 - 뒤로: `navigator.onBack()`. **빈 백스택 접근 가드 필수**(과거 크래시 이력) — `backStack.size <= 1`이면 no-op.
 - feature 간 이동은 상대 `:impl`이 아니라 **`:api`의 NavKey만** 참조.
+
+## 화면 전환 (2026-08-22, PR #326)
+
+전환이 처음으로 앱의 결정이 됐다. 그전까지는 Navigation3 기본(페이드 + 축소)을 그대로 썼고,
+지금은 **새 화면이 오른쪽에서 들어와 지금 화면을 덮고 뒤로 가면 오른쪽으로 빠진다.**
+
+- **한 벌로 묶는다** — `NavTransition`(`core:navigation`)은 `push`·`pop`·`predictivePop` 셋을 한
+  값으로 들고, 셋을 각각 넘기지 않는 이유가 **방향이 짝을 이뤄야 하나의 동작으로 읽히기** 때문이다.
+  한쪽만 갈아 끼우면 오른쪽에서 들어와 놓고 아래로 빠지는 식이 되기 쉽다. `metadata`는 세 슬롯
+  (`NavDisplay.transitionSpec`·`popTransitionSpec`·`predictivePopTransitionSpec`)을 한 번에 채운
+  맵이라 엔트리 쪽에서는 `entry<K>(metadata = ….metadata)` 한 줄이다.
+- **`predictivePop`만 인자를 받는다** — 끌어당긴 가장자리(`swipeEdge`)에 따라 화면이 빠지는 방향이
+  반대라 `pop`과 같은 모양을 쓸 수 없다. `targetSdk`가 36이라 시스템 predictive back은 opt-out을
+  하지 않는 한 켜져 있지만, **이 경로가 실기기에서 도는 것을 본 기록은 없다**(OQ-P-260).
+- **어느 화면에 붙는지가 함정이다** — `NavDisplay`는 **위에 놓이는 화면**, 즉 새로 쌓이거나 지금
+  걷히는 화면의 메타데이터만 본다. A → B 전환의 모양은 **B에 붙인 것**이 정하고, B에서 A로 되돌아올
+  때도 마찬가지로 B의 것이 쓰인다. "이 화면을 떠나는 모양"을 A에 붙이려는 것이 자연스러운 오해다.
+- **앱 기본은 `NavDisplay` 인자로 직접 물린다** — `NavTransition.Default`의 세 함수를
+  `transitionSpec`·`popTransitionSpec`·`predictivePopTransitionSpec`에 넘긴다. ⚠️ **같은 세 줄이
+  `app`의 `MainRoute`와 `app-preview`의 `RootRoute` 두 곳에 있다** → OQ-P-259.
+- **예외는 지금 한 화면이다** — `NavKeyCanvasEdit` 엔트리만 `NavTransition.Fade.metadata`를 단다.
+  그 화면과 `NavKeyCanvasImageSelect`가 **사진 하나를 공유 요소로 잇고**(`LocalSharedTransitionScope`,
+  두 Screen이 `sharedElement`), 화면 전체가 옆으로 밀리면 정작 봐야 할 사진의 이동이 묻히기 때문이다.
+  ⚠️ **그 짝은 지금 도달 불가**라 이 예외가 실제로 도는 것을 볼 수 없다(OQ-P-129 ②) → OQ-P-260.
+- **`Fade`를 고르는 기준**(브랜치 KDoc에 있다가 최종 커밋에서 지워져 여기로 옮긴다 —
+  [parfait/CLAUDE.md](../CLAUDE.md) 최소 보존선): **방향을 말할 수 없는 전환**에 쓴다. 앞뒤 관계가
+  없는 경계(스플래시 → 첫 화면)이거나, 공유 요소가 자리를 옮기는 전환이다.
+- **`NavTransitionTest`가 잠그는 것은 슬롯이 다 찼는지 하나다** — 프리셋마다 세 키가 모두 있고,
+  `copy()`로 한 슬롯만 갈아도 나머지 둘이 그대로 실려 나가는지. 하나라도 비면 **그 방향만 라이브러리
+  기본으로 튀어** 앞뒤가 안 맞는다. 전환의 모양 자체는 단언 대상이 아니다(실기기 몫).
 
 ## 앱 진입 체인 (2026-08-09, PR #220)
 
@@ -348,6 +380,9 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
    대상 화면의 인자를 모르면(`groupId` 같은) `goToSingleClearTop` 대신 `popUpTo<T>()`를 쓴다 — 위
    `popUpTo` 항목 참고. 배경 편집처럼 캔버스까지 튀면 안 되는 진입 경로가 섞여 있으면 그 경로만
    `onBack`으로 분기한다(`returnResultOnly` 선례).
+8. **전환은 기본을 쓰고, 다를 이유가 있을 때만 `metadata`를 단다**(2026-08-22, PR #326) — 근거는
+   대개 공유 요소이거나 앞뒤 관계가 없는 경계다. 붙이는 대상은 **위에 놓이는 화면**이라는 점에 주의
+   → 위 [화면 전환](#화면-전환-2026-08-22-pr-326).
 
 > ⚠️ **이탈 사례(2026-08-01, PR #173)** — G-001 `featureGroupListEntryBuilder`는 엔트리 컨테이너를
 > `YGScaffold`가 아니라 `Box`(전면 배경 이미지)로 두고 `YGScaffold`를 Route 안으로 내렸으며, 그룹 추가

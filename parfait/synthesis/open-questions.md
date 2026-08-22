@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-21
+verified: 2026-08-22
 related_spec: c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -3967,4 +3967,39 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 데이 윈도우 정리(03:00 밖이면 삭제)가 이미 목록을 매일 비우므로 누적되지는
   않는다. 문제가 되는 것은 같은 날 토핑을 여러 개 만들 때다.
 
-<!-- oq-next: 259 -->
+### [2026-08-22] 앱 전역 화면 전환이 루트 두 곳에 복제됐다
+
+- **ID**: OQ-P-259
+- **출처**: `app/MainRoute.kt` · `app-preview/route/RootRoute.kt`(PR #326 develop 머지) — 두 파일이
+  `NavDisplay`의 `transitionSpec`·`popTransitionSpec`·`predictivePopTransitionSpec`에
+  `NavTransition.Default`를 물리는 **같은 세 줄**을 각각 들고 있다. `NavTransition`은 프리셋을
+  공유하지만 **그것을 `NavDisplay`에 붙이는 일**은 공유되지 않는다. 앱 기본을 바꿀 때 한쪽만 고치면
+  컴포넌트 갤러리(app-preview)와 본 앱의 전환이 갈리고, 그것을 잡을 기계 검사는 없다.
+- **항목**: ① 붙이는 쪽을 하나로 뺄지 — `NavTransition` 쪽에 `NavDisplay` 인자 묶음을 주는 확장이나
+  두 루트가 함께 쓰는 컴포저블이 후보다. ② 아니면 app-preview는 본 앱 전환을 따를 이유가 없다고 보고
+  복제를 의도로 확정할지(그렇다면 두 파일에 그 뜻을 적어야 한다).
+- **상태**: 미해결
+- **해소 메모**: 같은 부류가 이미 하나 있다 — 데코레이터 세 개(`SaveableStateHolder`·`ViewModelStore`·
+  `ResultEventBus`)도 두 루트에 나란히 복제돼 있다. 즉 이 항목은 전환만의 문제가 아니라 **두 루트가
+  `NavDisplay` 설정을 통째로 복제하는 형태**를 어떻게 둘지의 문제다 →
+  [navigation-flow](../architecture/navigation-flow.md) 「화면 전환」.
+
+### [2026-08-22] 새 전환을 아무도 본 적이 없고, 예외를 붙인 화면은 도달 불가다
+
+- **ID**: OQ-P-260
+- **출처**: `core/navigation/NavTransition.kt` · `feature/groups/canvas/impl/navigation/EntryBuilder.kt`
+  (PR #326 develop 머지) — ① `NavTransitionTest`가 잠그는 것은 **세 슬롯이 비지 않았다**는 것뿐이라
+  전환의 모양·시간·방향은 실기기에서만 판정된다. ② `predictivePop`은 시스템 predictive back 제스처가
+  실제로 `swipeEdge`를 물어다 줘야 도는데 그 경로를 밟아 본 기록이 없다(`targetSdk` 36이라 opt-out을
+  하지 않는 한 켜져 있다는 것이 근거의 전부다). ③ 유일한 예외인 `NavTransition.Fade`는
+  `NavKeyCanvasEdit`에 붙었는데 그 화면과 짝인 `NavKeyCanvasImageSelect`는 **`goTo` 호출부가 0건**이라
+  (OQ-P-129 ②) 공유 요소 전환도 그 예외도 실행되지 않는다. ④ `Default.push`는 나가는 화면을
+  `ExitTransition.KeepUntilTransitionsFinished`로 붙들어 두므로, 무거운 화면이 전환 동안 한 프레임에
+  둘 다 그려진다 — 체감 비용도 미측정이다.
+- **항목**: ① 실기기 확인 항목으로 옮길지(쌓기·뒤로·가장자리 제스처 좌우 각 1회). ② `Fade` 예외의
+  값은 그 짝이 도달 가능해질 때까지 판정을 미룰 수밖에 없는데, 그때 이 예외가 아직 맞는지 다시 볼지.
+- **상태**: 미해결 (**실기기 확인 대기** — 이번 라운드의 산출물이 전부 눈으로만 판정되는 것들이다)
+- **해소 메모**: ③은 OQ-P-129 ②가 닫히면 함께 판정된다. ①·②는 실기기 이월 목록에 붙는다 —
+  [doc-baseline](../doc-baseline.md) 「현재 기준선」의 실기기 항목과 같은 줄에서 관리한다.
+
+<!-- oq-next: 261 -->
