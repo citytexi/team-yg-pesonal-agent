@@ -20,7 +20,7 @@
 | [0010](0010-custom-compositionlocal-theme.md) | 자체 CompositionLocal 디자인시스템 테마 | accepted | 2026-07-10 | 0007 대체, MaterialTheme·dynamic color 배제 |
 | [0011](0011-cross-module-bitmap-abstraction.md) | 크로스모듈 비트맵 추상화 (BitmapWrapper/AndroidBitmap) | accepted | 2026-07-12 | domain 순수성 유지, 현재 stub |
 | [0012](0012-mlkit-subject-segmentation.md) | 이미지 세그멘테이션 — ML Kit Subject Segmentation 온디바이스 | accepted | 2026-07-12 | beta·GMS·install-time 모델 |
-| [0013](0013-firebase-fcm-crashlytics.md) | Firebase 도입 — FCM 푸시 + Crashlytics + Analytics | accepted | 2026-07-18 | app 모듈 집중·토큰 서버전송 후속·GMS 의존 |
+| [0013](0013-firebase-fcm-crashlytics.md) | Firebase 도입 — FCM 푸시 + Crashlytics + Analytics | accepted | 2026-07-18 | app 모듈 집중·토큰 서버전송 후속·GMS 의존. 🔁 **2026-08-22 FCM 축만 철회**(PR #325) — 서비스·알림 권한·채널·`firebase-messaging` 의존이 전부 걷혔고 Crashlytics·Analytics는 유지. 근거는 결선 부재 하나다(`onNewToken`이 서버에 닿은 적이 없어 토큰은 로그로만 갔고, 권한·채널은 그 서비스만을 위한 것이라 **결선된 적 없는 기능 때문에 첫 실행마다 알림 권한을 묻고 있었다**). 푸시 자체의 필요성 판단을 뒤집은 것이 아니라 껍데기를 출시 경로에서 뺀 것이라 ADR을 폐기하지 않는다. 되살릴 때 다시 정할 것: 토큰 라이프사이클과 **권한을 언제 묻는가**(걷어낸 형태는 `MainActivity.onCreate` 무조건 요청) |
 | [0014](0014-logging-abstraction-kermit.md) | 로깅 추상화 — Kermit 위임 Logger 인터페이스 | accepted | 2026-07-18 | core:util:jvm, backfill(기준선 이전 존재) |
 | [0015](0015-feature-common-shared-layer.md) | feature/common 공유 feature 레이어 도입 | accepted | 2026-07-21 | terms를 S-001+A-003 공유·2소비처 확정 시에만 common |
 | [0016](0016-domain-result-presentation-string-mapping.md) | 유효성 결과 — domain 의미 sealed 반환 + 표시 문자열 프레젠테이션 매핑 | accepted | 2026-07-23 | NicknameResult sealed·core:ui `toStringResource`·ui→domain 의존 |

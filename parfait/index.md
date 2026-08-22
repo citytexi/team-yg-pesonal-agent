@@ -165,7 +165,7 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
 | 이미지 업로드(presigned 발급·S3 PUT·확인) | [api/image.md](api/image.md) + [c106-topping-place-api 스펙](specs/2026-08-20-c106-topping-place-api.md) "업로드 전송" |
 | 토핑 테두리를 굽지 않고 서버 필드로 | [ADR-0025](adr/0025-topping-border-as-server-field.md) |
 | 토핑 만들기 흐름 상태(초안 SSOT) | [ADR-0026](adr/0026-topping-draft-datastore-ssot.md) |
-| 푸시(FCM)·Crashlytics·Firebase 설정 | [ADR-0013](adr/0013-firebase-fcm-crashlytics.md) |
+| Crashlytics·Analytics·Firebase 설정 (**푸시(FCM)는 2026-08-22 철회** — 되살릴 때 참고할 결정만 남아 있다) | [ADR-0013](adr/0013-firebase-fcm-crashlytics.md) |
 | 로깅·Logger 추상화(Kermit) | [ADR-0014](adr/0014-logging-abstraction-kermit.md) |
 | 유효성 결과·에러 문자열 다국어 매핑(domain 의미↔표시 분리) | [ADR-0016](adr/0016-domain-result-presentation-string-mapping.md) + [state-management](architecture/state-management.md) |
 | 구현 직전 기능·컴포넌트 설계 스펙 | [specs/README.md](specs/README.md) |
@@ -188,7 +188,7 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `da03c9b0`(2026-08-21 검증, #322까지 — **보이는 변화 넷과 아무것도 안 보이는 변화 하나**. #298이 캔버스 토핑에 첫 상호작용(C-202 Spotlight)을 얹으며 토스트 자리를 캔버스 프레임 상단으로 못 박았고, #322가 C-106 스택 1·2를 한 PR로 들여와 **Repository 0건 도메인을 없앴다**(소비 화면은 아직 0). #312가 G-001의 마지막 mock을 걷고, #319·#320이 잔버그 둘을 닫았다. 다섯 머지 모두 트리가 브랜치 팁과 같다(충돌 해소 편집 0건). 유닛 561 → 602건. 남은 위험은 **다운샘플 상한 미측정**(OQ-P-228)·**실기기·실서버 확인 0회**(OQ-P-146), 그리고 **Spotlight 라운드의 테스트 0건**(OQ-P-252). 직전 기준선 `36719e8e`는 #315·#318로 "임시"라 적어 둔 자리 셋이 결정이 된 라운드).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `ef55a58c`(2026-08-22 검증, #325까지 — **삭제 라운드이고, 두 머지가 지운 근거가 같다: 지키고 있던 조건이 실은 값이 없었다**. 삽입 53줄·삭제 365줄에 신규 심볼 하나뿐이다. #311이 세그멘테이션의 로딩·에러 **전용 화면 둘을 삭제**해 공통 오버레이·공통 토스트로 넘겼고(ygscaffold-v2 스펙의 제외 두 항목 **철회** — 지키려던 문구는 안내문 두 줄, 닫기는 오버레이가 삼켜 눌리지도 않던 것. 화면 고유 로딩 화면 0개·OQ-P-205 ①③ 해소), #325가 **FCM을 통째로 걷었다**(Analytics·Crashlytics는 유지. 근거는 결선 부재 하나 — 결선된 적 없는 기능 때문에 첫 실행마다 알림 권한을 묻고 있었다. ADR-0013은 폐기가 아니라 FCM 축만 철회로 정정, OQ-P-012 해소). 두 머지 모두 트리가 브랜치 팁과 같다(충돌 해소 편집 0건). 유닛 **602건·클래스 70개 유지**(신규 0). 남은 위험은 **다운샘플 상한 미측정**(OQ-P-228)·**실기기·실서버 확인 0회**(OQ-P-146)·**Spotlight 라운드 테스트 0건**(OQ-P-252), 그리고 이번에 **로딩 중 닫기가 도달 불가**가 된 것. 직전 기준선 `da03c9b0`는 #298·#312·#319·#320·#322로 **보이는 변화 넷과 아무것도 안 보이는 변화 하나**가 갈린 라운드).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md
