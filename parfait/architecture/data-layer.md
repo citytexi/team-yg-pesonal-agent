@@ -29,7 +29,11 @@ tags: [architecture, parfait]
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
 ## DataSource 종류
-- **파일 기반** — `FileRecentImageLocalDataSource`, `FileCameraCacheLocalDataSource`(내부 저장소 이미지 I/O).
+- **파일 기반** — `FileRecentImageLocalDataSource`, `FileCameraCacheLocalDataSource`(내부 저장소 이미지 I/O),
+  **`ImageFileLocalDataSource`**(#329 — 업로드가 파일 절대경로만 받는데 갤러리 `content://`는 경로가
+  아니라, `cacheDir/upload`에 UUID 이름으로 한 번 떨군다. 확장자는 **시스템 MIME을 먼저 믿되 없거나
+  서버가 받지 않는 형식이면 바이트 앞머리로 다시 본다** — 확장자와 실제 내용이 어긋난 파일이 드물지
+  않고 업로드가 확장자로 contentType을 정하기 때문이다. 어느 쪽으로도 PNG·JPEG이 아니면 던진다).
 - **DataStore 기반** — `RecentImageLocalDataSource`(메타데이터), `RecentImageEditor`(`data/datastore/`, DataStore 접근 추상화 — 단일 키 `get()`/`set()` 동기 인터페이스로, suspend/flow가 아님), **`UserInfoLocalDataSource`**(계정 정보 SSoT, 암호화 + `Flow`, PR #263), **`ToppingDraftLocalDataSource`**(토핑 만들기 흐름의 초안 SSoT, 평문 JSON 한 키 + `Flow`, [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md), C-106 결선 PR3 — PR #334로 develop 머지). 초안이 담는 것은 캐시 파일 경로와 id·색·수치뿐이라 암호화 대상이 아니다.
 - **인메모리** — **`GroupLocalDataSource`**(그룹 목록·상세 SSoT, `@Singleton` + `MutableStateFlow`,
   [ADR-0023](../adr/0023-group-in-memory-ssot.md)). 디스크를 쓰지 않아 **모든 함수가 non-suspend**이고
@@ -59,8 +63,8 @@ tags: [architecture, parfait]
 
 | 모듈 | 제공/바인딩 |
 |------|-------------|
-| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
-| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)) |
+| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)·**imageFile**(#329)) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
+| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)·`ImageFileLocalDataSource` ↔ `ImageFileLocalDataSourceImpl`(#329)) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
 | `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) + **`@UploadClient` `OkHttpClient`**(#322 — S3 presigned PUT 전용. Retrofit이 없는 유일한 표면이고 인터셉터를 하나도 안 단다) |
@@ -129,17 +133,27 @@ tags: [architecture, parfait]
 impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Repository 구현이 경계에서**
 `AppError`(`domain/model/error/AppError.kt`)로 바꿔 넘긴다.
 
-| ApiException | AppError |
+| 던져진 예외 | AppError |
 |---|---|
-| `Business` | `Server(code, statusCode, serverMessage)` |
-| `Network` | `Network` |
-| `Http`·`EmptyBody`·`Unknown` | `Unexpected` |
+| `ApiException.Business` | `Server(code, statusCode, serverMessage)` |
+| `ApiException.Network` | `Network` |
+| **`UnsupportedImageException`**(#329) | **`UnsupportedImage(cause)`** |
+| `ApiException.Http`·`EmptyBody`·`Unknown`, 그 외 | `Unexpected` |
 
 `AppError`는 `Exception` 하위 sealed class다 — `Result.failure`가 `Throwable`을 요구해 기존
 `Result<T>` 관용구를 그대로 쓰기 위한 제약이다. 변환은 `data/model/error/AppErrorMapper.kt`의
 `internal fun Throwable.toAppError()`·`Result<T>.mapErrorToAppError()`이고, `CancellationException`은
-변환하지 않고 **재던진다**. 갈래가 셋인 이유·`code`가 String인 이유는
+변환하지 않고 **재던진다**. 갈래를 나누는 기준·`code`가 String인 이유는
 [ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md).
+
+> 📌 **네 번째 갈래는 서버가 아니라 기기에서 온다**(2026-08-22, PR #329). `UnsupportedImage`는
+> 고른 사진이 서버 계약 밖 형식이거나 아예 열리지 않는 경우이고, **재시도해도 같은 결과**라
+> 화면이 "다른 사진을 골라 주세요"로 갈라 말할 수 있어야 해서 생겼다. 갈래를 세운 자리가
+> 중요하다 — 화면이 `cause`의 예외 타입을 뒤져 판정하게 두면 데이터 레이어가 예외를 바꾸는 날
+> 아무 실패도 없이 문구만 조용히 어긋나므로, 그 사실을 아는 Repository 경계에서 한 번만
+> 판정한다. 던지는 쪽도 `IllegalArgumentException`이 아니라 전용
+> `UnsupportedImageException`(`data/model/exception/`)을 쓴다 — `require`는 업로드 경로 어디서든
+> 쓰이므로 타입만 보고 "이 사진이 문제"라고 읽으면 무관한 실패까지 그렇게 접힌다.
 
 서버 에러 코드 문자열은 `:domain`의 `ServerErrorCode`(도메인별 중첩 object)가 소유한다. 코드
 문자열은 도메인 간 유일하지 않으므로(`MEMBER_NOT_FOUND`가 인증 401 / 그룹·이미지·회원 404)
@@ -170,8 +184,9 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
 | `ParfaitGroupRepository`(#285, #287, 그룹 SSoT 라운드) | **읽기** `myGroups: Flow<List<MyParfaitGroupVO>?>` · `groupDetail(groupId): Flow<ParfaitGroupDetailVO?>` / **갱신** `refreshMyGroups` · `refreshGroupDetail`(둘 다 `Result<Unit>`) / **정리** `clearGroups`(non-suspend) / **명령** `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` · `leaveGroup`(#287) · `reportGroup`(#287) | `GetMyGroupsFlowUseCase`·`RefreshMyGroupsUseCase`(G-001·C-001) · `GetGroupDetailUseCase`·`RefreshGroupDetailUseCase`(S-101) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102·S-101) · `LeaveGroupUseCase`·`ReportGroupUseCase`(S-101 Danger Zone) · `LogoutUseCase`(`clearGroups`) |
 | `MemberRepository`(#263, #306) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` · **`withdraw`**(#306) | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` · `WithdrawUseCase`(S-001 Danger Zone) |
-| `ParfaitRepository`(#268, #279) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) |
-| `ImageUploadRepository`(#322) | `upload(filePath, imageType): Result<ImageId>` — 발급·S3 PUT·확인 3단계를 하나로 닫고 **이미 `COMPLETED`인 `imageId`**를 준다 | `AddToppingUseCase`(아직 화면 소비자 0) |
+| `ParfaitRepository`(#268, #279, #329) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` · **`changeCanvasBackground`**(#329) | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입, C-301 편집 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) · `ChangeCanvasBackgroundUseCase`(C-301 확인) |
+| `ImageUploadRepository`(#322) | `upload(filePath, imageType): Result<ImageId>` — 발급·S3 PUT·확인 3단계를 하나로 닫고 **이미 `COMPLETED`인 `imageId`**를 준다 | `AddToppingUseCase`(C-106 배치) · `UploadImageUseCase`(#329, C-301 배경) |
+| **`ImageFileRepository`**(#329) | `copyToCache(uri): Result<String>` — `content://`를 캐시 파일로 떨구고 **절대경로**를 준다 | `UploadImageUseCase` |
 | `ToppingRepository`(#322) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` | `AddToppingUseCase`(아직 화면 소비자 0) |
 
 > 📌 **위 표는 develop 기준이다.** 마지막 두 행은 2026-08-20 PR #322로 들어왔고 **소비자가 0이라
@@ -184,9 +199,20 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 > 같은 이유다. **`AddToppingUseCase`가 `ImageType`을 스스로 정하는 것**도 같은 계열의 판단이다 —
 > 파라미터로 열면 배경 타입으로 올라간 객체가 무증상으로 엉뚱한 S3 접두사에 앉는다.
 
-**`ParfaitRepository`는 DataSource가 가진 다섯 갈래 중 넷을 연다** — 남은 배경 변경은 소비자가
-생길 때 올린다(`ParfaitGroupRepository`와 같은 방침: 쓰지 않는 갈래를 미리 열면 어떤 실패를 어떻게
-다룰지 정하지 않은 채 계약이 굳는다). #268에서는 셋이었고 **같은 ViewModel 안에서 층이 갈려 있었다**
+**업로드가 받아 주는 형식은 `UploadImageFormat` 한 자리가 안다**(#329) — 확장자·contentType·파일
+시그니처를 enum 하나에 묶었다(`data/model/image/`). 셋을 함께 두는 이유는 **발급 요청과 S3 PUT
+헤더가 같은 contentType을 써야 하고**(둘 다 서명 대상이라 어긋난 실패는 서버 로그에 안 남는다)
+파일명 확장자가 그 contentType을 되짚는 유일한 단서이기 때문이다. 갈라 두면 서버가 받는 형식이
+늘어날 때 한쪽만 고쳐도 아무 실패가 드러나지 않는다. `ImageUploadRepositoryImpl`의
+`contentTypeOf(file)` `when` 분기가 이 enum으로 흡수됐다.
+
+✅ **`ParfaitRepository`가 DataSource의 다섯 갈래를 전부 연다**(2026-08-22, PR #329) — 마지막 하나였던
+배경 변경이 C-301 확인 버튼이라는 소비자와 함께 올라왔다. "쓰지 않는 갈래를 미리 열지 않는다"는
+방침이 이 도메인에서도 끝까지 지켜졌고(`ParfaitGroupRepository`에 이은 두 번째), 여는 시점에
+**반환값을 버리지 않기로** 함께 정했다 — 이미지 배경은 앱이 `imageId`만 알고 URL은 모르므로 방금
+저장한 배경을 그리려면 그 응답이 유일한 출처다. 앱이 모르는 `type`이면 조회와 같은 규칙으로 `null`
+이고, 그 값의 뜻은 "미설정"이 아니라 **"저장은 됐는데 그릴 수 없다"**다(OQ-P-193).
+#268에서는 셋이었고 **같은 ViewModel 안에서 층이 갈려 있었다**
 (캔버스 조회는 이 Repository, 달력 조회는 UseCase 본문 mock) — **#279가 그 방침대로 연도 조회를
 소비자와 함께 올려 층 갈림을 닫았다**(OQ-P-183). 그 라운드에 `GetCanvasByDateUseCase`가
 `GetParfaitDetailUseCase`로 대체됐다 — 달력이 그 해 목록을 캐시로 들게 되면서 UseCase가 하던

@@ -267,7 +267,7 @@ C-001 캔버스 메인의 편집 버튼이 C-301 배경 편집(`NavKeyCanvasBGEd
 [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md).
 
 ```
-NavKeyCanvasMain ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnResultOnly=true) ─┐
+NavKeyCanvasMain ─▶ NavKeyCanvasBGEdit(groupId, parfaitId) ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnResultOnly=true) ─┐
                                             └─▶ NavKeyCustomGalleryPicker(동일 인자) ───────────────────────────┤
                                                                                                                  ▼
                                                         NavKeyPictureConfirm(uri, source, returnResultOnly=true)
@@ -293,6 +293,15 @@ NavKeyCanvasMain ─▶ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showG
   클릭이 `goTo(NavKeyCanvasMain(groupId))`로 이어져 진입 화면 C-001에 호출자가 생겼고, 이 플로우
   전체가 함께 도달 가능해졌다
   → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
+- **목적지가 인자를 얻었다**(2026-08-22, PR #329) — `NavKeyCanvasBGEdit`가 `data object` →
+  `data class(groupId, parfaitId)`다. **인자 출처는 C-001이 이미 받아 둔 오늘 캔버스**이고,
+  못 받았으면 편집을 아예 열지 않는다(로그만 남기고 버튼이 조용히 안 먹는다). 편집 화면이 스스로
+  오늘 조회를 부르면 캔버스가 없는 날에는 서버가 캔버스를 새로 만들기 때문에, "화면 상태가 그대로
+  다음 목적지의 인자"(그룹 설정과 같은 형태)를 여기서도 택했다.
+- **entry에서 `YGScaffold` 껍질이 걷혔다**(2026-08-22, PR #329) — 이 화면은 저장 실패를 토스트로
+  알려야 해서 Route가 `YGScaffoldV2`를 직접 든다. 두 겹으로 씌우면 **인셋 패딩이 두 번 먹으므로**
+  entry는 `Modifier.fillMaxSize()`만 넘긴다. 아래 [체크리스트](#신규-목적지-등록-체크리스트) 2번의
+  기본형에 대한 예외이고, 세그멘테이션 계열이 먼저 같은 이유로 예외가 됐다.
 
 ### 토핑 테두리 재편집 왕복 (2026-08-16, PR #264)
 
@@ -428,7 +437,8 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 `NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
 `NavKeyCanvasMain`(#268 승격 — `groupId`)·`NavKeyGroupSetting`(#285 승격 — `groupId`)·
-`NavKeyWebView`(#296 신설 — `title`·`url`)·`NavKeyCanvasToppingPlace`(#290 신설 — `imageUri`, **#334에서 인자를 잃고 `data object`로 되돌아갔다**)).
+`NavKeyWebView`(#296 신설 — `title`·`url`)·`NavKeyCanvasToppingPlace`(#290 신설 — `imageUri`, **#334에서 인자를 잃고 `data object`로 되돌아갔다**)·
+`NavKeyCanvasBGEdit`(#329 승격 — `groupId`·`parfaitId`)).
 **목적지 둘이 인자 하나로 합쳐진 첫 사례가 #296이다** — `NavKeyServiceTerms`·`NavKeyPrivacyPolicy`
 두 `data object`가 삭제되고 `NavKeyWebView(title, url)` 하나가 됐다. 두 화면은 상단바 제목과 여는
 주소만 달랐고 그 둘이 이제 서버 응답 값이라(`GET /api/v1/policies`의 `title`·`url`,
@@ -460,7 +470,7 @@ A-005를 연다(#222). 현재 그 `nickName`은 `GroupListUiState` 기본값 moc
 그 값을 ViewModel 초기 상태로 넘길 때는 **Assisted 주입**을 쓴다 — `@HiltViewModel(assistedFactory = …)` + `@AssistedInject` +
 `@Assisted` 파라미터, 엔트리 빌더에서 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.…) })`로 생성해 Route에 넘긴다
 (`GroupCreateViewModel`·`SegmentationViewModel`·`GroupNickNameViewModel`(#244)·`TermAgreeViewModel`(#242)·
-`CanvasMainViewModel`(#268)·`GroupSettingViewModel`(#285)).
+`CanvasMainViewModel`(#268)·`GroupSettingViewModel`(#285)·`CanvasBGEditViewModel`(#329)).
 **생성 위치는 두 형태가 공존한다** — 엔트리 빌더에서 만들어 Route 파라미터로 넘기거나(`GroupNickName`),
 Route의 기본 인자에서 만들거나(`TermAgree`·`CanvasMain`). 후자는 Route가 인자 값을 받아 팩토리에 넘긴다.
 **인자 출처가 "목록에서 누른 항목"인 첫 사례가 #268이다** — G-001이 `ClickTopping(groupId)`으로 누른

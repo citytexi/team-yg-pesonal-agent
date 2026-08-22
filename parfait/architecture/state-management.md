@@ -177,12 +177,24 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
 - **요청 중 플래그는 `finally`로 내린다** — S-001 로그아웃(`isLoggingOut`, PR #260)이 `launch(key)` 중복
   가드 위에 State 플래그를 한 겹 더 두는 사례다. `launch(key)`는 두 번째 탭을 삼킬 뿐 버튼이 눌리는
   것처럼 보이므로 비활성은 State로 드러낸다(아래 "안티패턴" 1번의 반대 사례).
+  > 📌 **네 번째 사례 — C-301 배경 저장의 `CanvasBGEditError` 3종(2026-08-22, PR #329).** 앞의 셋과
+  > 같은 형태이고(사유 enum + `entries.associateWith` 문구 사전 + 토스트), 새로 드러난 것은 **갈래
+  > 하나가 서버가 아니라 기기에서 온다**는 점이다 — `AppError.UnsupportedImage`가 "이 사진 자체가
+  > 안 된다"를 뜻하고, 그 갈래만 **재시도가 무의미**해서 문구가 "다른 사진을 골라 주세요"로 갈린다.
+  > 나머지 실패는 전부 `UNKNOWN`으로 접히는데, 그래서 마감된 캔버스의 409도 "잠시 후 다시"가 된다
+  > → [open-questions](../synthesis/open-questions.md) OQ-P-261.
 - ⚠️ **UI 타입 보유 사례(2026-08-15, PR #231)** — C-301 배경 편집의 `CanvasBGEditUiState`가 Compose
   `Color`를, `CanvasBGEditEffect.ConfirmBackground`가 디자인시스템 타입 `YGCanvasBackground`를 든다.
   선택 팔레트(`CanvasBackgroundPaletteColors`)도 ViewModel 파일의 public 상수다. 위 "표시 문자열을
   담지 않는다"의 같은 결에서 보면 이탈이지만, 배경색은 **도메인 의미가 아직 없는 값**(저장·서버 계약이
   없다)이라 대체 표현도 정해져 있지 않다 → [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md) ·
   [open-questions](../synthesis/open-questions.md) [2026-08-15].
+  > 📌 **전제 하나가 사라졌다(2026-08-22, PR #329)** — 이제 배경에는 저장·서버 계약이 있다
+  > (`CanvasBackgroundEdit`·`CanvasBackground`). 그럼에도 **화면 타입은 그대로 남겼다** — 확인은
+  > `Color.toRgbHex()`로 경계에서만 도메인 값을 만들고, 저장 성공 이펙트는 여전히
+  > `YGCanvasBackground`를 싣는다(실은 Route가 그 값을 쓰지도 않는다 — 돌아간 캔버스 메인이 재조회로
+  > 그린다). 즉 이탈의 근거는 "도메인 의미가 없다"에서 **"화면이 도메인 타입을 들 이유가 아직
+  > 없다"**로 바뀌었다 → [open-questions](../synthesis/open-questions.md) OQ-P-194 ①.
 
 ## 안티패턴 (금지)
 - `launch` 블록의 **마지막 줄**에서 로딩 플래그를 되돌리기 → 던지거나 취소되면 도달하지 못해

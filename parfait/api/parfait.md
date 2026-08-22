@@ -4,7 +4,7 @@ title: 파르페(캔버스) 조회·배경·회전
 server_module: http/parfait
 server_commit: efbf98f
 verified: 2026-08-20
-android_status: partial
+android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, canvas]
@@ -43,11 +43,11 @@ PR #109). 배경 변경과 토핑 네 엔드포인트([parfait-image.md](parfait
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/v1/groups/{groupId}/parfaits/year` | 필요 | path `groupId` Long | `ParfaitYearsResponse` | 구현됨 |
+| GET | `/api/v1/groups/{groupId}/parfaits/year` | 필요 | path `groupId` Long | `ParfaitYearsResponse` | 결선됨 |
 | GET | `/api/v1/groups/{groupId}/parfaits/today` | 필요 | path `groupId` Long | `GetTodayParfaitResponse` | 결선됨[^dayboundary] |
-| GET | `/api/v1/groups/{groupId}/parfaits` | 필요 | query `from`·`to`(선택) | `PastParfaitsResponse` | 구현됨 |
-| GET | `/api/v1/groups/{groupId}/parfaits/{parfaitId}` | 필요 | path `groupId`·`parfaitId` Long | `GetTodayParfaitResponse`(**재사용**) | 구현됨 |
-| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/background` | 필요 | `ChangeParfaitBackgroundRequest` | `ChangeParfaitBackgroundResponse` | 구현됨 |
+| GET | `/api/v1/groups/{groupId}/parfaits` | 필요 | query `from`·`to`(선택) | `PastParfaitsResponse` | 결선됨 |
+| GET | `/api/v1/groups/{groupId}/parfaits/{parfaitId}` | 필요 | path `groupId`·`parfaitId` Long | `GetTodayParfaitResponse`(**재사용**) | 결선됨 |
+| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/background` | 필요 | `ChangeParfaitBackgroundRequest` | `ChangeParfaitBackgroundResponse` | 결선됨 |
 | POST | `/api/v1/test/parfait-canvas/rotate` | **불필요(화이트리스트)** | 없음 | `RotateParfaitCanvasesResponse` | 해당 없음[^test] |
 
 [^test]: **테스트 전용 엔드포인트다.** 서버 컨트롤러(`ParfaitCanvasRotationTestController`)와
@@ -469,6 +469,29 @@ Service·DataSource 함수가 있다.
 ✅ **2026-08-20(PR #308·#310 develop 머지) — 소비처 수는 그대로 넷이고 `android_status`도 `partial`이다.**
 이 라운드가 바꾼 것은 갈래 수가 아니라 **오늘 조회 응답을 얼마나 읽는가**다(멤버 칩 결선 + 하루 경계
 정정). 배경 변경은 여전히 소비처 0건이라 Repository 인터페이스에 없다.
+
+✅ **`android_status`가 `done`이 됐다**(2026-08-22, PR #329 develop 머지). 마지막 하나였던 **배경 변경**이
+C-301 확인 버튼과 함께 올라와 다섯 갈래 전부(테스트 전용 회전 제외)가 화면까지 이어졌다. 경로는
+`ParfaitRepository#changeCanvasBackground` → `ChangeCanvasBackgroundUseCase` → `CanvasBGEditViewModel`이다.
+이 도메인은 **표면이 먼저 들어오고 소비처가 엿새에 걸쳐 붙은** 형태로 닫혔다(#266 표면 → #268·#279 조회
+넷 → #329 쓰기 하나).
+
+**반환값을 버리지 않기로 한 것이 이 결선의 핵심 결정이다.** 이미지 배경은 **쓸 때 `imageId`·읽을 때
+URL**이라 앱이 방금 저장한 배경의 주소를 아는 길이 이 응답뿐이다. 앱이 모르는 `type`이 오면 조회와
+같은 규칙으로 `null`이고, 그 값의 뜻은 "미설정"이 아니라 **"저장은 됐는데 그릴 수 없다"**인데
+(OQ-P-193) **화면은 이것을 실패로 다루지 않는다** — 저장이 끝났으므로 막을 이유가 없고 고른 값으로
+그린다. 다만 지금 이 응답은 **실제로 쓰이지 않는다**: 확인 이펙트를 받은 Route가 값을 버리고 돌아간
+캔버스 메인이 다시 조회한다. 즉 널 폴백은 **아직 아무 화면 결과도 바꾸지 않는 방어**다.
+
+⚠️ **409 `PARFAIT_ALREADY_CLOSED`를 이 경로가 구별하지 않는다.** 마감된 캔버스에 배경을 보내면 서버가
+거절하는데(위 [도메인 에러 코드 전수](#도메인-에러-코드-전수)) 화면 사유 enum은 `NETWORK`·
+`UNSUPPORTED_IMAGE`·`UNKNOWN` 셋뿐이라 **"잠시 후 다시 시도해 주세요"로 접힌다**. 같은 상수를 C-106
+배치는 되감기 판정에 쓰므로 **한 코드에 두 처분이 생겼다**
+→ [open-questions](../synthesis/open-questions.md) OQ-P-261.
+
+⚠️ **배경 이미지가 참조 카운트를 올리지 않는 문제에 첫 실사례가 생겼다** — 이 경로가 업로드하는
+이미지는 `ImageType.BACKGROUND`이고, 서버는 배경 설정 시 `reference_count`를 올리지 않는다(OQ-P-190).
+지금까지는 소비처가 0이라 드러나지 않던 상태였다.
 
 ✅ **거짓이 된 주석 일곱 곳이 같은 날 정리됐다**(2026-08-20, PR #318 develop 머지). "서버가 캔버스
 상태를 보지 않아 마감된 캔버스도 편집된다 · 막는 것은 화면 책임"이라는 서술이

@@ -4,8 +4,8 @@ title: C-301 캔버스 배경 편집 화면 (배경/토핑 탭 + 색 팔레트 +
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-15
-related_code: CanvasBGEditRoute, CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasEditTab, CanvasBackgroundPaletteColors, NavKeyCanvasBGEdit, PictureConfirmResult, NavKeyCameraCustom, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, CANVAS_ASPECT_RATIO, YGFloatingBarEditTab, YGModalPopup, YGCanvasBackground
+verified: 2026-08-22
+related_code: CanvasBGEditRoute, CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditError, CanvasEditTab, CanvasBackgroundPaletteColors, NavKeyCanvasBGEdit, PictureConfirmResult, NavKeyCameraCustom, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, CANVAS_ASPECT_RATIO, YGFloatingBarEditTab, YGModalPopup, YGCanvasBackground, YGScaffoldV2, ChangeCanvasBackgroundUseCase, UploadImageUseCase, ImageFileRepository, ImageFileLocalDataSource, UploadImageFormat, UnsupportedImageException, AppError.UnsupportedImage, Color.kt#toRgbHex, CanvasBGEditViewModelTest
 related_adr: ADR-0002, ADR-0005, ADR-0006, ADR-0007
 related_spec: c001-canvas-main, c101-camera-picture-confirm, c102-custom-gallery-picker, c301-topping-edit-tab, designsystem-canvas-components, designsystem-bar-listdate-components
 related_architecture: navigation-flow, design-system, state-management, module-structure
@@ -111,10 +111,10 @@ NavKeyCanvasBGEdit ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnR
 
 ## 드리프트 / 잔존
 
-1. **편집 결과가 아무 데도 남지 않는다** — `ConfirmBackground(background)`를 Route가 버리고
-   `onBack()`만 한다. C-001은 `YGCanvas`에 `background`를 넘기지 않아 기본값
-   `Solid(Gray100)` 그대로다. 저장(서버·로컬)도 없고, 재진입 시 기본값을 다시 고르므로 **왕복 전체가
-   화면 안에서 끝난다** → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
+1. ~~**편집 결과가 아무 데도 남지 않는다**~~ — ✅ **해소(PR #329, 2026-08-22)**. 확인이 서버 저장을
+   마친 뒤에만 화면을 넘기고, 돌아간 캔버스 메인이 재조회로 그린다. 저장 경로와 그 라운드가 정한
+   것은 아래 [as-built 재정정](#as-built-재정정-2026-08-22-pr-329-develop-머지) 절이 갖는다
+   → [open-questions](../../synthesis/open-questions.md) OQ-P-173.
 2. **미리보기가 `YGCanvas`를 재사용하지 않는다** — 화면이 `Box` + `aspectRatio` + `border`로 직접
    그린다. 그래서 좌상단 컷 도형·Dot Grid·메뉴가 없고, 좌우 여백이 C-001의 `padding7`(20)이 아니라
    **21dp 리터럴**이다(코드 주석이 토큰 부재를 자인). 편집 중 보는 캔버스와 실제 캔버스가 다르다
@@ -198,3 +198,80 @@ feature/gallery/impl/
 domain/
   model/CanvasConst.kt                 신설(CANVAS_ASPECT_RATIO)
 ```
+
+## as-built 재정정 (2026-08-22, PR #329 develop 머지)
+
+> **드리프트 1이 닫혔다** — 고른 배경이 서버에 저장된다. 아래는 머지 코드를 역기록한 것이고,
+> 이 절의 서술이 위 본문과 어긋나면 이 절이 현행이다.
+
+### 저장 경로
+
+확인 버튼이 세 갈래로 갈린다.
+
+| 고른 것 | 하는 일 |
+|---|---|
+| 팔레트 색 | `Color.toRgbHex()`로 `#RRGGBB`를 만들어 `CanvasBackgroundEdit.Color`로 PATCH |
+| 기기에서 고른 사진 | `UploadImageUseCase`(캐시 복사 → 발급 → S3 PUT → confirm)로 `imageId`를 얻어 `CanvasBackgroundEdit.Image`로 PATCH |
+| 서버에 이미 있던 배경 | **요청 0건** — 이펙트만 쏘고 끝난다 |
+
+세 번째 갈래를 가르는 것은 `selectedImageSource`가 null인지다. 서버 배경의 URL은 기기가 읽을 수
+없어 다시 올릴 수도 없고, 바뀐 것이 없으니 보낼 것도 없다.
+
+**저장이 끝나야 화면을 넘긴다.** `ConfirmBackground`를 먼저 쏘면 캔버스 메인이 저장되지 않은
+배경을 그린 채 서 있다가 다음 조회에서 슬그머니 되돌아간다.
+
+### 이 라운드가 정한 것
+
+- **성공인데 그릴 수 없는 응답**(앱이 모르는 `type` → `null`)은 **실패로 다루지 않는다.** 저장은
+  끝났으므로 화면을 막을 이유가 없고, 고른 값으로 그린다 → OQ-P-193 ①.
+- **Route는 이펙트에 실린 배경을 쓰지 않는다.** 되돌아간 캔버스 메인이 다시 조회해 그리므로
+  값을 실어 나를 이유가 없다 → OQ-P-194 ③(재조회 쪽으로 결정).
+- **화면 타입은 남았다.** `YGCanvasBackground`를 이펙트가 계속 싣고, 도메인 타입을 화면까지
+  쓰지 않는다 → OQ-P-194 ①은 그대로 열려 있다.
+- **저장된 배경을 팔레트 시작점으로 읽는다** — 위 [범위](#범위)의 제외 항목 "저장된 기존 배경
+  불러오기"가 함께 닫혔다. 색을 못 읽으면 기본 색으로 두는데, 그 상태로 확인을 누르면 배경이
+  팔레트 첫 색으로 **바뀐다**(못 읽는 값을 되돌려 보내지 않는다).
+
+### 실패 표현
+
+`CanvasBGEditError` enum 3종(`NETWORK`·`UNSUPPORTED_IMAGE`·`UNKNOWN`) + `strings.xml` 3줄이
+신설되고 `YGScaffoldV2`의 토스트로 나간다. 갈래를 셋으로 둔 근거는 사용자가 다르게 굴 수 있는
+경우가 셋뿐이라는 것이다 — 다시 시도하면 될 일인가, 이 사진 자체가 안 되는 것인가, 그 밖인가.
+
+⚠️ **서버 409 `PARFAIT_ALREADY_CLOSED`는 `UNKNOWN`으로 접힌다.** 마감된 캔버스에 배경을 보내면
+영원히 실패하는데 문구는 "잠시 후 다시 시도해 주세요"다. C-106 배치가 같은 코드를 되감기 판정에
+쓰는 것과 처분이 갈렸다 → [open-questions](../../synthesis/open-questions.md) OQ-P-261.
+
+### 화면 컨테이너·진입 인자
+
+- `NavKeyCanvasBGEdit`가 `data object` → **`data class(groupId, parfaitId)`**가 됐다. 편집 대상은
+  언제나 오늘의 캔버스인데 그 id는 오늘 조회를 이미 마친 캔버스 메인만 안다 — 편집 화면이 스스로
+  오늘 조회를 부르면 캔버스가 없는 날에는 서버가 캔버스를 새로 만든다. ViewModel은
+  `@AssistedInject` + `hiltViewModel(creationCallback = …)`으로 두 값을 받는다.
+- C-001은 **오늘 캔버스를 못 받았으면 편집을 열지 않는다**(`todayCanvas` null이면 로그만 남기고
+  버튼이 조용히 안 먹는다). 위 [규약 대조](#규약-대조-parfait)의 "entry가 규약 기본형"은
+  **더 이상 사실이 아니다** — entry에서 `YGScaffold` 껍질을 걷고 Route가 `YGScaffoldV2`를 직접
+  든다(실패를 토스트로 알려야 하고, 두 겹이면 인셋 패딩이 두 번 먹는다).
+- 이펙트 수집은 코루틴이라 그 안에서 `stringResource`를 부를 수 없어, Route가 **문구 사전**
+  (`CanvasBGEditError.entries.associateWith { it.toStringResource() }`)을 컴포지션에서 미리 뽑아
+  둔다. 실패 문구가 여러 갈래인 화면의 첫 사례다.
+
+### 다시 여는 사이 날이 바뀌면
+
+ViewModel이 진입 시 오늘 조회를 한 번 더 부르고(편집을 여는 사이 다른 멤버가 올린 토핑까지
+그려야 한다), 응답의 `parfaitId`가 진입 인자와 다르면 **조회 쪽으로 저장 대상을 옮긴다.**
+화면에 그려진 토핑과 저장 대상이 갈라지는 편이 더 나쁘다는 판단이다.
+
+### 유닛 테스트
+
+이 화면은 테스트가 0건이었고 `CanvasBGEditViewModelTest` **15건**이 붙었다 — 저장 세 갈래,
+업로드·저장 각각의 실패, 못 읽는 사진, 저장된 배경으로 열기(색·이미지), 토핑 비율 배치·정렬·
+소유 판정·테두리 펴기다. 캔버스 메인 쪽도 편집 진입 두 건이 늘었다.
+
+### 잔존
+
+- 드리프트 2(미리보기가 `YGCanvas` 재사용 아님)·4(State·Effect가 UI 타입)·7(클릭 규약)·
+  8(치수 리터럴)은 그대로다.
+- **업로드 캐시가 쌓이기만 한다** — `ImageFileLocalDataSourceImpl`이 고른 사진을
+  `cacheDir/upload`에 UUID 이름으로 떨구는데 지우는 코드가 없다
+  → [open-questions](../../synthesis/open-questions.md) OQ-P-262.
