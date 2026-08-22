@@ -30,7 +30,7 @@ tags: [architecture, parfait]
 
 ## DataSource 종류
 - **파일 기반** — `FileRecentImageLocalDataSource`, `FileCameraCacheLocalDataSource`(내부 저장소 이미지 I/O).
-- **DataStore 기반** — `RecentImageLocalDataSource`(메타데이터), `RecentImageEditor`(`data/datastore/`, DataStore 접근 추상화 — 단일 키 `get()`/`set()` 동기 인터페이스로, suspend/flow가 아님), **`UserInfoLocalDataSource`**(계정 정보 SSoT, 암호화 + `Flow`, PR #263), **`ToppingDraftLocalDataSource`**(토핑 만들기 흐름의 초안 SSoT, 평문 JSON 한 키 + `Flow`, [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md), C-106 결선 PR3 미머지). 초안이 담는 것은 캐시 파일 경로와 id·색·수치뿐이라 암호화 대상이 아니다.
+- **DataStore 기반** — `RecentImageLocalDataSource`(메타데이터), `RecentImageEditor`(`data/datastore/`, DataStore 접근 추상화 — 단일 키 `get()`/`set()` 동기 인터페이스로, suspend/flow가 아님), **`UserInfoLocalDataSource`**(계정 정보 SSoT, 암호화 + `Flow`, PR #263), **`ToppingDraftLocalDataSource`**(토핑 만들기 흐름의 초안 SSoT, 평문 JSON 한 키 + `Flow`, [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md), C-106 결선 PR3 — PR #334로 develop 머지). 초안이 담는 것은 캐시 파일 경로와 id·색·수치뿐이라 암호화 대상이 아니다.
 - **인메모리** — **`GroupLocalDataSource`**(그룹 목록·상세 SSoT, `@Singleton` + `MutableStateFlow`,
   [ADR-0023](../adr/0023-group-in-memory-ssot.md)). 디스크를 쓰지 않아 **모든 함수가 non-suspend**이고
   실패 채널이 없다 — 계정 정보 SSoT와 형태는 같되 영속·암호화만 뺀 갈래다. 목록은
@@ -60,7 +60,7 @@ tags: [architecture, parfait]
 | 모듈 | 제공/바인딩 |
 |------|-------------|
 | `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
-| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource`는 **미머지**(`feature/#270-topping-draft-ssot`)) |
+| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
 | `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) + **`@UploadClient` `OkHttpClient`**(#322 — S3 presigned PUT 전용. Retrofit이 없는 유일한 표면이고 인터셉터를 하나도 안 단다) |
@@ -176,7 +176,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 
 > 📌 **위 표는 develop 기준이다.** 마지막 두 행은 2026-08-20 PR #322로 들어왔고 **소비자가 0이라
 > 아직 아무 화면도 부르지 않는다** — 결선은
-> [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)의 PR5다.
+> [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md)의 PR5다.
 > 그래서 이 둘에는 **Dagger가 잡아 주는 안전망이 없다**(엔트리포인트에서 도달 불가 + 저장소에
 > `dagger.fullBindingGraphValidation` 미설정). `ToppingRepositoryBindingTest`가 두 바인딩을
 > 리플렉션으로 단언하는 것이 유일한 감지선이다.
@@ -352,7 +352,7 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > `ImageUploadRepository`(발급 → S3 PUT → 확인)와 `ToppingRepository.place`가 마지막 둘
 > (image·parfait-image)을 채웠고 `AddToppingUseCase`가 둘을 조율한다. **다만 "소비처가 0"은
 > 그대로다** — 부르는 화면이 없어 계층만 쌓였고, 결선은 C-106 스택의 PR5다
-> → [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md).
+> → [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md).
 
 원격 연동 기초 구조와 서버 계약 정합이 확정됐다([[0017-remote-network-datasource]]). 응답→도메인
 매핑 지점도 확정(아래 "응답 매핑"). 실제 백엔드 엔드포인트 연동·Repository/UseCase 소비는 후속.
@@ -474,8 +474,7 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   > 토큰 재발급 저장이 무관한 구독자(계정 정보를 보는 편집 중 입력 필드)를 흔들기 때문이고,
   > 복호화 뒤에 끊으면 이미 매번 Keystore를 두드린 뒤라 비용을 못 던다.
   >
-  > **평문 저장소도 같은 순서를 쓴다**(⚠️ 아래는 **미머지** 브랜치 `feature/#270-topping-draft-ssot`
-  > 기준이다 — develop에는 이 파일이 아직 없다) — `ToppingDraftLocalDataSourceImpl.draft`가 원문 문자열
+  > **평문 저장소도 같은 순서를 쓴다**(#334) — `ToppingDraftLocalDataSourceImpl.draft`가 원문 문자열
   > 단계에서 `distinctUntilChanged`를 건 뒤 JSON을 파싱한다. 비용의 종류만 다르고(Keystore 대신
   > 역직렬화) 이유는 같다: 파일을 공유하는 다른 키의 쓰기가 이 흐름을 재방출시킨다. 순서를
   > 뒤집으면 남의 쓰기마다 안 바뀐 JSON을 다시 파싱한다.

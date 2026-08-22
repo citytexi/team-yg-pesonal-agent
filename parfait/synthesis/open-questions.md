@@ -340,7 +340,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 유휴 상한이라 전송 전체가 느린 것을 못 잡는다. 메인·재발급 클라이언트는 종전대로 3종만 쓴다.
   > ② 업로드 전용 `OkHttpClient`(`@UploadClient`)를 **분리했다.** 예상대로 선택이 아니라 전제였다.
   > ③ 재시도는 인터셉터가 아니라 **호출부**다 — 실패하면 발급부터 전량 재시도한다
-  > ([스펙](../specs/2026-08-20-c106-topping-place-api.md) "결정된 것"). 만료 판정을 따로 하지 않으므로
+  > ([스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) "결정된 것"). 만료 판정을 따로 하지 않으므로
   > `expiresIn` 선행 조건도 함께 사라졌다. 대가는 고아 S3 객체이고 그 정리 경로 부재는 별개 미결이다.
   > 수치는 규율대로 문서에 적지 않는다 — 구조만 기록한다.
   > 📌 **전제가 사라졌다(2026-08-10, 서버 `5bb2a3a`)** — 업로드 API가 [api/image.md](../api/image.md)로 들어왔고, 형태가 예상과 다르다. **바이트가 서버를 지나지 않는다**(S3 presigned PUT 직접 업로드). 그래서 타임아웃 결정 대상이 `YG_BASE_URL` 호출이 아니라 **S3로 나가는 PUT**이다 — 이 요청은 Retrofit 서비스가 아니므로 ②의 "업로드 전용 `OkHttpClient` 분리"는 선택이 아니라 사실상 전제가 되고, ③ 재시도는 `expiresIn` 만료 시 URL 재발급이 선행돼야 한다(만료된 presigned URL은 재시도해도 실패한다). ①의 `callTimeout`도 서버 API가 아니라 이 PUT에 걸 값이다.
@@ -1087,7 +1087,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① debug 로그 레벨을 `BODY`로 유지할지, 아니면 이미지 도메인만 응답 본문을 가릴지(OkHttp 로깅 인터셉터에는 바디 redact 기능이 없어 커스텀 인터셉터가 필요하다). ② 아니면 debug 빌드 한정 + `expiresIn` 만료라는 이중 제한으로 충분하다고 볼지.
 - **상태**: 해소됨(PR5)
   > 📌 **마감이 정해졌다(2026-08-20, PR1 최종 리뷰)** — "실연동 라운드"가 가리키는 라운드는
-  > [c106-topping-place-api](../specs/2026-08-20-c106-topping-place-api.md) 스택의 **PR5**(화면 결선)다.
+  > [c106-topping-place-api](../specs/archive/2026-08-20-c106-topping-place-api.md) 스택의 **PR5**(화면 결선)다.
   > PR1(업로드 전송 계층)은 `ImageUploadRepository`를 만들었지만 그것을 부르는 코드가 0건이라
   > **런타임에 presigned URL을 실제로 받아 오는 첫 시점이 PR5**다. 그때까지 logcat에 찍히는 것은
   > 지금과 같이 아무것도 없다. 커스텀 인터셉터(OkHttp 로깅 인터셉터에 바디 redact가 없다)는
@@ -1576,6 +1576,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 몇 번 도는지 포함) ② 새로고침 실패 토스트가 실제로 뜨는가(비행기 모드로 당기기) ③ 재진입 왕복이
   > 잦을 때 `/parfaits/today` 호출이 눈에 띄는 지연·중복을 만드는가 ④ 화면을 열어 둔 채 자정을 넘겼을 때
   > `syncToday()`가 날짜와 캔버스를 갈아 끼우는가.
+  > ⚠️ **처음으로 쓰기 경로가 develop에 들어왔는데 그것도 안 돌았다(2026-08-22, PR #334)** —
+  > C-106 결선 스택 넷이 한 머지로 들어오면서 발급 → S3 PUT → confirm → 배치 **네 단계가 사용자
+  > 조작에 걸렸다.** 그전까지 미검증 경로는 전부 읽기였고, 이번 것은 실패해도 서버에 흔적이 남는다
+  > (고아 `PENDING` 이미지·S3 객체). 스택이 남긴 실기기 항목은 이월 13항목 + 신규 9항목이고 **하나도
+  > 수행되지 않았다.** 특히 실기기 1회로만 갈릴 것 셋이다: ① presigned PUT에 `Authorization`이
+  > 안 붙는가(붙으면 업로드가 아예 안 된다 — 유닛이 잠근 것은 인터셉터 판정뿐이다) ② 배치 화면에서
+  > 본 위치·크기·각도가 캔버스에 같게 그려지는가(좌표 왕복은 순수 함수 테스트가 잠갔지만 두 화면의
+  > 클립 모양이 다르다) ③ 테두리 색 `#RRGGBB` 왕복이 실제 응답에서도 성립하는가.
 - **해소 메모**: ⑥은 버튼이 비활성이어도 시각적으로 동일하므로("눌리는가"로 확인, "비활성으로 보이는가"가 아니다) 주의한다. ⚠️ 디버그 빌드는 `HttpLoggingInterceptor.Level.BODY`라 logcat에 ID 토큰·nonce·발급 토큰이 찍힌다 — 그 로그를 PR·이슈에 붙이지 않는다. 결과에 따라 [api/auth.md](../api/auth.md) 판별자 키 항목과 [ADR-0019](../adr/0019-encrypted-token-storage.md) 검증 절을 갱신한다.
 
 ### [2026-08-14] 신규 가입자가 세션 없이 그룹 목록에 도달한다 — signup 라운드까지의 과도기
@@ -1869,8 +1877,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 문구를 새로 만들어, 같은 뜻의 문자열을 든 화면이 셋이 됐다(S-101·A-002·약관 동의).
   > ③(재시도 최소선)은 이 화면에 한해 답이 있다 — 조회는 "다시 시도" 탭, 가입은 화면이 남아 확인
   > 버튼이 그 자리에 있다.
-  > 📌 **C-001이 공통 토스트를 쓰되 `YGScaffoldV2`의 자리는 쓰지 않는다(2026-08-20, C-106 결선 PR3
-  > 브랜치 `feature/#270-topping-draft-ssot`, 미머지)** — ④가 지목하던 C-001 오늘 캔버스 조회 실패가
+  > 📌 **C-001이 공통 토스트를 쓰되 `YGScaffoldV2`의 자리는 쓰지 않는다**(C-106 결선 PR3, 2026-08-22
+  > develop 머지 PR #334) — ④가 지목하던 C-001 오늘 캔버스 조회 실패가
   > 드디어 표현을 얻었다(보여 줄 캔버스가 없을 때만, G-001이 정한 "사용자가 시켰는가"의 C-001 대응물).
   > 그런데 **토스트가 뜨는 자리가 스캐폴드 최상단이 아니라 캔버스 프레임 상단**이다. 같은 화면의
   > Spotlight 작성자 토스트(C-202)가 `YGCanvas`의 `overlayContent`에 먼저 못 박혀 있어서다
@@ -1891,7 +1899,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 폐기하는 것을 최종 리뷰가 Critical로 잡았고, 처방은 PR4와 같다(되감기를 걷고 알린 뒤 화면에
   > 남긴다). **진짜 처방(안내를 캔버스 쪽 토스트 호스트로 보내는 것)은 두 사례 모두 미뤘다** — 자리가
   > 아직 없다. 이 화면 하나에서 같은 함정에 두 번 걸린 것이 그 자리의 필요를 뒷받침한다
-  > → [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) 실패 처리 절.
+  > → [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) 실패 처리 절.
+  > ✅ **위 세 사례가 develop 사실이 됐다(2026-08-22, PR #334)** — 스택 넷이 한 머지로 들어왔고,
+  > 그래서 **캔버스 쪽 토스트 호스트가 없다는 것도 이제 develop의 사실**이다. 남은 질문(예외를 규약으로
+  > 적을지, `YGScaffoldV2`가 호스트 위치를 슬롯으로 열지)은 그대로 열려 있다.
   > 📌 **출처 ②(전면 에러 화면)에서 처음으로 하나가 빠져나왔다(2026-08-22, PR #311 develop 머지)** —
   > 세그멘테이션 실패가 `SegmentationErrorScreen`(전면)에서 **공통 토스트**로 옮겼다. 위 #315가 세운
   > 기준("재시도 동선이 화면 안에 있으면 화면에 남기고, 없으면 토스트")을 **그 기준이 만들어진 뒤 처음
@@ -2049,13 +2060,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-177
 - **출처**: `domain/model/CanvasConst.kt#CANVAS_ASPECT_RATIO`(PR #231 신설) × `core/designsystem/.../ygcanvas/YGCanvas.kt#CANVAS_AREA_ASPECT_RATIO`(private) — 값이 같고 뜻도 같은데 모듈이 다르다. 캔버스 비율은 도메인 규칙이 아니라 표시 규격이라 `domain` 배치가 [module-structure](../architecture/module-structure.md) 레이어 의도와 어긋난다(Android 의존이 없어 "순수 Kotlin" 규칙 자체를 어기지는 않는다). 한쪽만 바뀌면 편집 미리보기와 실제 캔버스의 비율이 조용히 갈린다.
 - **항목**: ① 소유를 `core:designsystem`으로 모으고 public으로 올릴지, ② 아니면 `domain` 상수를 정본으로 삼고 `YGCanvas`가 참조할지(디자인시스템 → domain 의존이 생긴다), ③ 화면 규격 상수 전반의 소유 규칙을 세울지.
-- **상태**: 미해결 (**①로 정해 브랜치에서 닫혔다 — develop 미머지.** ③은 그대로 열려 있다)
+- **상태**: 부분 해소 (**①은 develop 머지로 닫혔다**(2026-08-22, PR #334). ③은 그대로 열려 있다)
 - **해소 메모**: ①이 의존 방향상 자연스럽다. 정하면 [module-structure](../architecture/module-structure.md) 규칙 항목과 [design-system](../architecture/design-system.md) 캔버스 절을 정리한다.
-  > ✅ **①로 닫혔다(2026-08-21, 브랜치 `feature/#270-topping-border-contract`, develop 미머지)** —
+  > ✅ **①로 닫혔다**(2026-08-21 브랜치 작업 → 2026-08-22 develop 머지, PR #334) —
   > `domain/model/CanvasConst.kt`를 지우고 `YGCanvas`의 `CANVAS_AREA_ASPECT_RATIO`를 public으로 올려
   > 정본을 하나로 뒀다. ②를 고르면 `core:designsystem` → `:domain` 간선이 새로 생기는데, 캔버스 비율은
   > 도메인 규칙이 아니라 표시 규격이라 소유가 이쪽이다. **상수가 하나뿐이라 갈라짐을 막을 단언이
-  > 필요 없어졌다** — [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)이
+  > 필요 없어졌다** — [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md)이
   > 계획하던 "통일이 되돌려지면 깨지는 테스트"를 그래서 만들지 않았고, 그 자리는 컴파일이 지킨다.
   > ③(화면 규격 상수 **전반**의 소유 규칙)은 이 한 건으로 서지 않아 그대로 남는다.
   > **브랜치가 develop에 들어오면 상태를 `해소됨`으로 올린다.**
@@ -2661,7 +2672,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 잔여 8파일을 화면별 API 결선 라운드에 붙일지, 이관만 하는 라운드를 따로 돌릴지.
   ② `ERROR` 승급·V1 파일 삭제 시점. ③ 공존 기간 동안 새로 생기는 화면이 규약(Route 소유)을 지키는지
   기계로 확인할 수단이 없다 — 지금은 리뷰가 유일한 관문이다.
-- **상태**: 미해결 (**8파일 → 7파일 → 6파일 → 3파일 → 2파일**, 이관 화면은 8개 → 17개)
+- **상태**: 미해결 (**8파일 → 7파일 → 6파일 → 3파일 → 2파일**, 이관 화면은 8개 → 18개)
 - **해소 메모**: 이관이 끝나면 [design-system](../architecture/design-system.md) "화면 컨테이너"의
   V1 항목과 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번의 "(구 형태)" 서술을
   함께 지운다. OQ-P-167(실패 표현 갈래)과는 별개 축이다 — 이관해도 실패 표현이 통일되지는 않는다.
@@ -2712,6 +2723,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 이관을 계기로 채워졌다. 남은 둘은 EntryBuilder 안에 옛 엔트리가 뭉쳐 있는 자리라 화면별 결선
   > 없이는 안 줄어든다. ③의 기계 확인 수단은 이번에도 없다 →
   > [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md).
+  > 📌 **결선 라운드가 다시 한 화면을 데려왔다(2026-08-22, PR #334)** — C-001 캔버스 메인이
+  > `feature/groups/canvas/impl` EntryBuilder의 `YGScaffold`를 벗고 Route에서 `YGScaffoldV2`를
+  > 소유한다. 계기는 앞선 사례들과 같은 "채울 것이 생기는 시점"이다 — 오늘 캔버스 조회 실패 표현과
+  > 배치 로딩 오버레이가 이 라운드에 생겼다. **V1 잔여는 2파일 그대로**이고(같은 EntryBuilder에 옛
+  > 엔트리 넷이 남는다: 배경 편집·캔버스 편집·이미지 선택·`NavKeyCanvasMove`) 호출 곳 수가
+  > 5 → 4로 줄었다. 이관 화면은 **18개**다. ③의 기계 확인 수단은 이번에도 없다 →
+  > [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md).
 
 ### [2026-08-17] 공통 로딩 오버레이가 임시 구현이고, 적용 기준도 사례에서 귀납한 것뿐이다
 
@@ -3523,7 +3541,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   어떻게 둘지 — 지금은 **저장 없이 화면만 바뀐다.** ③ 흐름을 중간에 닫는 경로(각 화면
   `onClickClose`)와 같은 자리에서 정할지 — 세그멘테이션 쪽 셋은
   `refactor/segmentation-develop`이 이미 결선했고, `CanvasToppingPlaceScreen`의 닫기는 아직 남았다.
-- **상태**: ① 해소됨(2026-08-20) · ②③ 미해결
+- **상태**: ① 해소됨(2026-08-20) · ② 해소됨(2026-08-22) · ③ 미해결
 - **해소 메모**: ①은 `refactor/segmentation-develop`의 `1181eedf`가
   `navigator.goTo(NavKeyCanvasMain(groupId = 0L))`을 `navigator.popUpTo<NavKeyCanvasMain>()`으로
   바꿔 닫았다. 되감기는 이미 백스택에 있는 엔트리를 찾으므로 **그룹 id를 실어 나를 필요 자체가
@@ -3533,9 +3551,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   있다")를 **참으로 만든다** — 그 브랜치가 스스로 들여온 결함이라 그 브랜치에서 닫는 것이 맞다고 봤다.
   ✅ **develop에 반영됐다(2026-08-20, PR #309 — develop `cf357937`)** — `CanvasToppingPlaceRoute`의
   배치 완료 이펙트는 이제 `popUpTo<NavKeyCanvasMain>()`이고 `groupId = 0L` 하드코딩은 코드에 없다.
-  ②③은 그대로 열려 있다 — 배치 확정은 여전히 서버로 가지 않고, `CanvasToppingPlaceScreen`의 닫기도
-  아직 결선되지 않았다.
-  ②③이 정해지면 [navigation-flow](../architecture/navigation-flow.md) 토핑 생성 플로우 절과
+  ✅ **②가 닫혔다(2026-08-22, PR #334)** — 확인 버튼이 발급 → S3 PUT → confirm → 배치 네 단계를
+  태우고, **성공했을 때만** 되감는다. "저장 없이 화면만 바뀐다"는 상태가 이로써 사라졌고, 이 항목이
+  물음을 열어 둔 채 기다리던 **되감기 시점의 근거도 함께 정해졌다**(성공 이펙트가 유일한 되감기
+  경로다). 실패는 되감지 않고 알린 뒤 화면에 남는다 — 되감으면 Route 컴포지션에 매달린 토스트까지
+  같은 프레임에 폐기돼 사용자가 실패 사실을 못 듣기 때문이다(OQ-P-167).
+  ⚠️ **다만 실서버 요청은 아직 0건이다**(실기기 미수행) — 네 단계가 실제로 통과하는 것을 본 적이 없다.
+  ③은 그대로 열려 있다 — `CanvasToppingPlaceScreen`의 닫기는 `onBack()` 한 칸이라, 흐름 전체를
+  되감는 다른 세 화면(`popUpTo<NavKeyCanvasMain>()`)과 여전히 형태가 다르다.
+  ③이 정해지면 [navigation-flow](../architecture/navigation-flow.md) 토핑 생성 플로우 절과
   [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 드리프트 ①②를 함께 본다.
   OQ-P-209 ②③과 한 라운드에 정해지는 것이 자연스럽다.
 
@@ -3668,7 +3692,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [api/parfait-image.md](../api/parfait-image.md) Android 매핑의 ⚠️도 함께 걷는다. ②는 C-106 결선 스펙에
   적는다. ③은 OQ-P-234 ③(와이어 계약 테스트 부재)과 같은 성격이지만 대상이 **주석**이라 테스트로는
   안 잡힌다 — 문서 감사 주기가 유일한 수단이라는 사실 자체를 기록해 둔다.
-  > 📌 **②는 답이 났다(2026-08-20, [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md))** —
+  > 📌 **②는 답이 났다(2026-08-20, [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md))** —
   > `PARFAIT_ALREADY_CLOSED`만 토스트 후 캔버스로 되감고 나머지 실패는 화면에 머문다. 마감된 캔버스에는
   > 다시 눌러도 영원히 실패하므로 잔류시키면 사용자가 할 수 있는 일이 실패 반복뿐이기 때문이다.
   > 상수 부재도 그 라운드의 선행 커밋이 닫았다. ①③은 그대로 열려 있다.
@@ -3701,8 +3725,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 정하면 [ADR-0025](../adr/0025-topping-border-as-server-field.md) "트레이드오프"와
   [design-system](../architecture/design-system.md) 토핑 절에 반영한다. C-301 테두리 재편집 라운드가
   같은 값을 다시 만지므로 그 전에 정하는 편이 싸다.
-  > 📌 **이 차이가 사용자 화면에 실현됐다(2026-08-21, 브랜치 `feature/#270-topping-border-contract`,
-  > develop 미머지)** — 편집을 마치면 누끼 확인·배치·캔버스가 전부 서버 계약과 같은 방식으로
+  > 📌 **이 차이가 사용자 화면에 실현됐다**(2026-08-21 브랜치 작업 → 2026-08-22 develop 머지,
+  > PR #334) — 편집을 마치면 누끼 확인·배치·캔버스가 전부 서버 계약과 같은 방식으로
   > (화면 dp 고정 8방향 스탬프) 그리므로, **편집 화면에서 본 굵기보다 그다음 화면들이 가늘어 보인다.**
   > 그때까지는 굽기 덕에 편집에서 본 그림이 확인 화면까지 그대로 따라와 차이가 한 흐름 안에서
   > 드러나지 않았다. 라운드는 이것을 회귀가 아니라 **의도된 변화**로 두고 실기기 확인 항목에 적어
@@ -3721,7 +3745,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-247
 - **출처**: `data/network/ApiCaller#runCatchingApi` — HTTP 200 + `success=false` 봉투는 `ApiException.Business(statusCode = null)`을 만들고(`ApiCaller.kt:60`), `HttpException` 경로만 `statusCode = e.code()`를 채운다(`:84`). 그 값이 `AppError.Server`까지 그대로 흘러간다. PR2 브랜치 최종 리뷰가 "이 브랜치가 지금 잠그지 못하는 것" 중 하나로 짚었다.
-- **항목**: [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)의 실패 처리 절은 되감기 판정을 **`code`와 `statusCode`를 함께 보고** 하라고 정한다 — 코드 문자열이 도메인 간 유일하지 않다는 `ServerErrorCode`의 전제 때문이다. 그런데 `statusCode`가 null로 오는 갈래에서 그 판정이 어떻게 되는지가 정해져 있지 않다. ① `code`만으로 판정하고 `statusCode`는 확증용으로만 쓸지, ② null을 "판정 불가"로 보고 잔류시킬지, ③ 서버가 실제로 200에 실패 봉투를 싣는 경로가 있는지부터 확인할지.
+- **항목**: [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md)의 실패 처리 절은 되감기 판정을 **`code`와 `statusCode`를 함께 보고** 하라고 정한다 — 코드 문자열이 도메인 간 유일하지 않다는 `ServerErrorCode`의 전제 때문이다. 그런데 `statusCode`가 null로 오는 갈래에서 그 판정이 어떻게 되는지가 정해져 있지 않다. ① `code`만으로 판정하고 `statusCode`는 확증용으로만 쓸지, ② null을 "판정 불가"로 보고 잔류시킬지, ③ 서버가 실제로 200에 실패 봉투를 싣는 경로가 있는지부터 확인할지.
 - **상태**: 해소됨(PR5, ①안)
 - **해소 메모**: PR2는 `AppError`로 바꿔 올리기만 하고 코드를 보고 분기하는 자리가 없어 이 null이 문제가 되지 않는다. ③을 먼저 확인한 결과 `parfait/api/`의 실패 표에 200 + `success=false` 사례가 없고, 그와 별개로 세 코드에 status로 갈려야 하는 동명 코드가 없어 `code` 단독 판정으로 닫았다.
 
@@ -3832,7 +3856,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-254
 - **출처**: `feature/groups/canvas/impl` `CanvasBGEditScreen`·`CanvasBGEditViewModel#CanvasToppingItem`
-  (브랜치 `feature/#270-topping-border-contract`, develop 미머지) — 이 화면은 이미 놓인 토핑을
+  (#334 develop 머지, 2026-08-22) — 이 화면은 이미 놓인 토핑을
   `borderOnly`로 다시 편집하는 경로를 갖고 있고([ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)이
   `TOPPING_EDIT_RESULT_KEY`를 걷지 않은 이유가 이 경로다), 편집 결과의 테두리 값을 받아
   `CanvasToppingItem.borderLayers`에 담아 둔다. 그런데 토핑을 그리는 자리는 편집 결과 **이미지 하나만**
@@ -3851,7 +3875,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-21] 누끼 알맹이를 최근 이미지로 재사용하려면 선행 결함 넷을 먼저 닫아야 한다
 
 - **ID**: OQ-P-255
-- **출처**: [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) PR6(누끼 알맹이
+- **출처**: [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) PR6(누끼 알맹이
   재사용) 계획 전 실사 — 배치 성공 시 테두리 없는 알맹이를 최근 이미지에 저장하고 최근 목록에서 골라
   누끼 확인 화면으로 직행시키려면, 기존 최근 이미지 경로가 다음 넷을 견디지 못한다.
 - **항목**:
@@ -3868,8 +3892,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
      `sourceImageUri`·`cutoutImagePath`를 둘 다 쓴다 — 알맹이만 복원하면 **"사진 편집" 버튼이 죽는다.**
      셋을 다 저장하면 내부 저장소 사용량이 3배가 되면서 `MAX_SIZE = 9`와 부딪힌다.
 - **상태**: 해소됨 (2026-08-21, PR6 설계·구현 — 넷 다 처방이 정해졌고
-  [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md)의 "누끼 알맹이 재사용
-  (PR6)" 절이 정본이다. 구현은 브랜치 `feature/#270-recent-cutout-reuse`에 **완료·미머지**)
+  [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md)의 "누끼 알맹이 재사용
+  (PR6)" 절이 정본이다. 구현은 2026-08-22 develop 머지됐다 — PR #334)
 - **해소 메모**: ①은 절대경로 전용 `readFileBytes(path)`를 따로 두고 종류가 읽기 경로를 가르는 것으로,
   ②는 `getTargetFile(bytes, extension)`으로 확장자를 인자화해 알맹이가 `.png`를 받는 것으로 닫았다.
   ③은 **2단 폴백 디코드**다 — 신 스키마가 실패하면 구 `List<String>`으로 한 번 더 시도해 종류를
@@ -3920,7 +3944,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-21] 갤러리 "최근"에서 누끼 알맹이 셀을 무엇으로 구별할지 시안이 없다
 
 - **ID**: OQ-P-257
-- **출처**: [c106-topping-place-api 스펙](../specs/2026-08-20-c106-topping-place-api.md) PR6 설계 —
+- **출처**: [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) PR6 설계 —
   최근 목록에 종류 축이 생기면서 원본 사진과 누끼 알맹이가 같은 "최근 업로드" 섹션에 섞인다. 알맹이는
   투명 PNG이고 지금 셀은 `ContentScale.Crop`이라, 여백을 걷어낸 객체가 잘린다.
 - **항목**: ① 종류를 알리는 시각 장치를 둘지 — 뱃지·셀 배경 구분·섹션 분리 셋이 후보다. ② 흰 배경

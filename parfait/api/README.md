@@ -27,9 +27,9 @@
 | [policy.md](policy.md) | `http/auth` | 1 (현재 유효 약관 목록) | 구현됨 |
 | [parfait-group.md](parfait-group.md) | `http/parfaitgroup` | 8 (목록 · 상세 · 참여 미리보기 · 참여 · 생성 · 닉네임 변경 · 탈퇴 · 신고) | **결선됨**(8 전부 호출부 있음, 불일치 0건) |
 | [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | 구현됨(회전 해당 없음, 연도·오늘·과거·상세 4건은 **결선됨**, 배경 변경만 미소비, 불일치 0건) |
-| [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | 구현됨 |
+| [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | **결선됨**(2 전부 호출부 있음) |
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | **결선됨**(3 전부 호출부 있음) |
-| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨 |
+| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨(배치 확정만 **결선됨**, 나머지 셋은 미소비) |
 
 **총 28 엔드포인트 + 테스트 전용 1**(2026-08-20, 서버 `efbf98f` — **세 라운드 연속 증감 0**).
 **Android 표면은 27/27, 공백 0이다** —
@@ -192,6 +192,18 @@
 > `placedBy.nameTagChip`은 **읽는 화면이 생긴 뒤에도 여전히 DTO에서 멈춰 있다** — C-202 Spotlight
 > (PR #298)가 그 필드 대신 `groupMembers` 조인으로 색을 정해서다
 > → [open-questions](../synthesis/open-questions.md) OQ-P-251.
+>
+> ✅ **2026-08-22 — 앱이 처음으로 서버에 무언가를 만든다**(PR #334 develop 머지, 계약 delta 없음).
+> C-106 결선 스택 넷이 한 머지로 들어오면서 발급 → **S3 PUT** → confirm → 배치 네 단계가 확인 버튼
+> 하나에 걸렸다. **`image.md`가 `done`이 됐다**(2/2 소비) — 표면만 있고 소비처가 0인 도메인은 이로써
+> **0개**가 됐고, `parfait-image.md`는 배치 하나만 소비돼 `partial` 그대로다(나머지 셋은 C-301 라운드).
+> **소비처를 얻은 엔드포인트는 23건**이다. 그전까지 소비되던 것이 전부 읽기였으므로 **쓰기 경로가
+> 사용자 조작에 걸린 것도 이번이 처음**이다 — S3 PUT은 발급 응답이 준 URL로 나가므로 엔드포인트
+> 셈(27/27)에는 들어가지 않는다.
+> ⚠️ **실서버 요청 검증은 여전히 0건**(실기기 미수행)이고, 실패하면 서버에 흔적이 남는다(고아
+> `PENDING` 이미지·S3 객체) → [open-questions](../synthesis/open-questions.md) OQ-P-146.
+> 발급 응답 본문에 실려 오던 presigned URL은 `@NoBodyLog` + `SelectiveLoggingInterceptor`로 로그에서
+> 뺐다(그 URL은 쿼리 스트링이 곧 자격증명이다) → [image.md](image.md).
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만

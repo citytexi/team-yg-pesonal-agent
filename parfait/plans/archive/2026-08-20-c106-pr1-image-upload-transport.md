@@ -39,7 +39,7 @@ tags: [plan, parfait, image, upload, network]
 
 **Tech Stack:** Kotlin · OkHttp 5 · Hilt · kotlinx-coroutines-test · MockWebServer 3 · MockK · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md)
+**Spec:** [`parfait/specs/archive/2026-08-20-c106-topping-place-api.md`](../../specs/archive/2026-08-20-c106-topping-place-api.md)
 
 > ✅ **실행 완료·미머지(2026-08-20)** — subagent-driven-development 로 3 태스크 + fix 라운드 2회 +
 > 브랜치 최종 리뷰 1회 + fix 웨이브 1회. 신규 테스트 **22건**(계획 예상 20건 + fix 웨이브 2건),
@@ -204,7 +204,7 @@ import com.teamyg.parfait.data.model.qualifier.UploadClient
      * S3 presigned PUT 전용. **자격증명을 붙이지 않는 것이 이 클라이언트의 존재 이유다** —
      * presigned URL 에 `Authorization` 이 실리면 S3 가 거절해 업로드가 아예 동작하지 않는다.
      * 재발급 표면([provideUnauthenticatedOkHttpClient])을 재사용하지 않는 이유를 포함한 근거는
-     * `specs/2026-08-20-c106-topping-place-api.md` 업로드 전송 절에 있다.
+     * `specs/archive/2026-08-20-c106-topping-place-api.md` 업로드 전송 절에 있다.
      *
      * ⚠️ `newBuilder()` 로 파생하면 부모의 [Dispatcher] 를 물려받아 격리가 사라진다.
      * 반드시 새 [OkHttpClient.Builder] 로 만든다.

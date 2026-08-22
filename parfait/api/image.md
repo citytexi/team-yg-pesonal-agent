@@ -4,7 +4,7 @@ title: 이미지(업로드 URL 발급·업로드 확인)
 server_module: http/image
 server_commit: efbf98f
 verified: 2026-08-20
-android_status: partial
+android_status: done
 related_spec:
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, image]
@@ -186,10 +186,12 @@ wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlReques
 `domain` 쪽은 `image`라는 이름이 이미 기기 이미지 뜻으로 선점돼 있다
 → [open-questions](../synthesis/open-questions.md).
 
-**화면 소비처가 생겼다.** 두 엔드포인트는 `ImageUploadRepositoryImpl`(발급 → PUT → confirm)을 거쳐
-`AddToppingUseCase`에 닿고, `CanvasToppingPlaceViewModel`(2026-08-21, 브랜치
-`feature/#270-topping-place-wiring`, develop 미머지)이 그 UseCase를 화면에서 부른다. 다만 **실서버
-요청 검증은 아직 0건**(실기기 미수행)이라 `android_status`는 `done`이 아니라 `partial`로 남긴다.
+✅ **`android_status`가 `done`이 됐다**(2026-08-22 develop 머지, PR #334). 두 엔드포인트는
+`ImageUploadRepositoryImpl`(발급 → PUT → confirm)을 거쳐 `AddToppingUseCase`에 닿고,
+`CanvasToppingPlaceViewModel`이 C-106 확인 버튼에서 그 UseCase를 부른다 — **2/2 전부 화면까지
+이어졌다.** `done`은 이 저장소에서 **소비 여부만 뜻한다**([README](README.md) 규약) —
+⚠️ **실서버 요청 검증은 여전히 0건**(실기기 미수행)이고 그 추적은
+[open-questions](../synthesis/open-questions.md) OQ-P-146이 쥔다.
 
 ✅ **3단계가 처음으로 이어졌다**(2026-08-20 develop 머지, PR #322).
 `data/source/image/remote/PresignedUploadDataSource`가 S3 PUT을 수행하고,
@@ -206,11 +208,11 @@ wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlReques
   서명 불일치를 구조적으로 불가능하게 만든다.
 - **`expiresIn` 만료를 판정하지 않는다** — 만료는 실패 후 발급부터 전량 재시도로만 풀린다.
 
-설계 근거는 [specs/2026-08-20-c106-topping-place-api](../specs/2026-08-20-c106-topping-place-api.md),
+설계 근거는 [specs/2026-08-20-c106-topping-place-api](../specs/archive/2026-08-20-c106-topping-place-api.md),
 선행 결정의 판정은 [open-questions](../synthesis/open-questions.md) `OQ-P-030`·`OQ-P-110`(둘 다 해소).
 
-✅ **소비자가 붙으면서 살아날 뻔한 결함 둘을 PR5가 미리 닫았다**(2026-08-21, 브랜치
-`feature/#270-topping-place-wiring`, develop 미머지) — 메인 클라이언트가 발급 **응답 본문**을
+✅ **소비자가 붙으면서 살아날 뻔한 결함 둘을 PR5가 미리 닫았다**(2026-08-22 develop 머지,
+PR #334) — 메인 클라이언트가 발급 **응답 본문**을
 `Level.BODY`로 찍어 `uploadUrl`(=자격증명)이 debug logcat에 남던 것은 `@NoBodyLog` +
 `SelectiveLoggingInterceptor`로 발급 엔드포인트만 `Level.HEADERS`로 낮춰 닫았다(OQ-P-109 해소). PUT이
 블로킹 `execute()`라 코루틴 취소를 따라가지 않던 것은 `enqueue` + `suspendCancellableCoroutine`으로

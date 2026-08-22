@@ -172,13 +172,13 @@ NavKeyCameraCustom ─┐
                     ├─▶ NavKeyPictureConfirm(uri, source) ══▶ NavKeySegmentation(sourceImageUri)
 NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다)          │
                                                                               ▼
-                          NavKeySegmentationConfirm(sourceImageUri, subjectImagePath, trimmedSubjectImagePath)
-                                                    │  ▲ ToppingEditResult(ResultEventBus)  │
-                                                    ▼  │                                    ▼
-                                    NavKeyToppingEdit(source, segmentation, borderLayers)   NavKeyCanvasToppingPlace(imageUri)
+                          NavKeySegmentationConfirm(sourceImageUri?, subjectImagePath?, trimmedSubjectImagePath)
+                                     ▲              │  ▲ ToppingEditResult(ResultEventBus)  │
+   갤러리 "최근"의 알맹이 ────────────┘              ▼  │                                    ▼
+   (앞의 둘이 null — 사진 편집 잠김)  NavKeyToppingEdit(source, segmentation, borderLayers)   NavKeyCanvasToppingPlace
                                                                                              │ popUpTo<NavKeyCanvasMain>()
                                                                                              ▼
-                                                                                        C-001 캔버스 (⚠️ 아래 참고)
+                                                                                        C-001 캔버스
 ```
 
 - 확인 화면(C-101-confirm) → C-103은 **`goToAndPopCurrent`**다. 확인 화면이 걷히므로 세그멘테이션에서
@@ -199,7 +199,7 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
   PR #309 이관). 빌더 하나(`featureSegmentationEntryBuilder`)가 세 entry를 등록하는 것은 그대로다.
 
 > 📌 **마지막 목적지가 실물로 바뀌었다(2026-08-19, PR #290)** — 확인 화면의 "다음"이 자리채움이던
-> `NavKeyCanvasMove`를 버리고 **`NavKeyCanvasToppingPlace(imageUri)`**로 간다. 넘기는 값도 파일
+> `NavKeyCanvasMove`를 버리고 **`NavKeyCanvasToppingPlace`**로 간다(당시엔 `imageUri` 인자를 실었고, PR #334가 그것을 초안으로 옮기며 인자를 걷었다). 넘기는 값도 파일
 > 경로가 아니라 `File(...).toUri()`로 감싼 `file` 스킴 uri이고(배치 화면이 Coil로 읽는다), 그 대상은
 > 여백을 걷어낸 **트리밍본**이다(확인 화면이 `key.trimmedSubjectImagePath`로 초기화한다) →
 > [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md).
@@ -211,8 +211,19 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 > 하다** — 진입 시 캐시를 통째로 비우는데, 이전 흐름 화면이 살아 있으면 그 화면들이 가리키던 PNG가
 > 지워진다(OQ-P-003 ③).
 >
-> ⚠️ **그래도 끝이 흐름을 닫지는 못한다.** 배치 확정은 여전히 서버로 가지 않고 이펙트만 쏜다 —
-> 화면만 바뀌고 아무것도 저장되지 않는다 → [open-questions](../synthesis/open-questions.md) OQ-P-238 ②③.
+> ✅ **끝이 흐름을 닫는다(2026-08-22, PR #334)** — 배치 확정이 발급 → S3 PUT → confirm → 배치
+> 네 단계를 태우고 성공해야 되감는다(OQ-P-238 ②③ 해소). 함께 **NavKey가 인자를 잃었다** —
+> `NavKeyCanvasToppingPlace`는 `data object`가 됐고, 배치할 토핑·캔버스 식별값·테두리는 DataStore
+> 초안이 나른다([ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)). `camera`·`segmentation`
+> 모듈이 캔버스 개념을 떠안지 않는 것이 이 배치의 실익이다.
+>
+> ✅ **흐름에 두 번째 입구가 생겼다(2026-08-22, PR #334)** — 배치에 성공한 알맹이가 갤러리 "최근"에
+> 남고, 그것을 고르면 촬영·세그멘테이션을 건너뛰어 **확인 화면으로 직행**한다. 그래서
+> `NavKeySegmentationConfirm`의 `sourceImageUri`·`subjectImagePath`가 nullable로 넓어졌고, 둘이 없는
+> 진입에서는 "사진 편집"이 잠긴다. 확인 화면은 초안이 이번 알맹이를 가리키지 않으면 **스스로 초안을
+> 먼저 적은 뒤** 구독을 연다 — 순서를 뒤집으면 첫 방출의 `null`이 없는 실패를 알린다.
+> 노출은 `returnResultOnly = false`인 토핑 만들기 진입에서만이라 배경 선택(C-301)에는 안 섞인다 →
+> [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) 「누끼 알맹이 재사용 (PR6)」.
 >
 > ⚠️ **`NavKeyCanvasMove`·`CanvasMoveRoute`·`CanvasMoveScreen`은 호출자를 잃은 채 남았다** — 엔트리도
 > 등록돼 있어 컴파일은 되지만 도달할 수 없다 → OQ-P-239.
@@ -382,7 +393,7 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 `NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
 `NavKeyCanvasMain`(#268 승격 — `groupId`)·`NavKeyGroupSetting`(#285 승격 — `groupId`)·
-`NavKeyWebView`(#296 신설 — `title`·`url`)·`NavKeyCanvasToppingPlace`(#290 신설 — `imageUri`)).
+`NavKeyWebView`(#296 신설 — `title`·`url`)·`NavKeyCanvasToppingPlace`(#290 신설 — `imageUri`, **#334에서 인자를 잃고 `data object`로 되돌아갔다**)).
 **목적지 둘이 인자 하나로 합쳐진 첫 사례가 #296이다** — `NavKeyServiceTerms`·`NavKeyPrivacyPolicy`
 두 `data object`가 삭제되고 `NavKeyWebView(title, url)` 하나가 됐다. 두 화면은 상단바 제목과 여는
 주소만 달랐고 그 둘이 이제 서버 응답 값이라(`GET /api/v1/policies`의 `title`·`url`,

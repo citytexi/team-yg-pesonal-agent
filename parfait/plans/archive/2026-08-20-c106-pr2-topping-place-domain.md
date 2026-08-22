@@ -35,7 +35,7 @@ tags: [plan, parfait, topping, canvas, domain]
 
 **Tech Stack:** Kotlin · Hilt · kotlinx-coroutines-test · MockK · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **2번 행**
+**Spec:** [`parfait/specs/archive/2026-08-20-c106-topping-place-api.md`](../../specs/archive/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **2번 행**
 
 > ✅ **실행 완료·미머지(2026-08-20)** — subagent-driven-development로 2 태스크, 태스크 리뷰 두 번 다
 > **지적 0건 통과**(fix 라운드 0회). 브랜치 `feature/#270-topping-place-domain`(PR1 브랜치 위),
@@ -657,7 +657,7 @@ import javax.inject.Inject
  * 누끼 이미지를 올리고 그 결과를 캔버스에 배치한다.
  *
  * 두 단계의 순서는 서버 계약이 정한 도메인 규칙이지 화면 관심사가 아니라 여기서 조율한다
- * (`specs/2026-08-20-c106-topping-place-api.md`). 배치까지 마치지 못해도 앞 단계를 되돌리지
+ * (`specs/archive/2026-08-20-c106-topping-place-api.md`). 배치까지 마치지 못해도 앞 단계를 되돌리지
  * 않는 것이 같은 스펙의 결정이다.
  */
 class AddToppingUseCase @Inject constructor(

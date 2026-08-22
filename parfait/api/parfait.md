@@ -480,8 +480,7 @@ Service·DataSource 함수가 있다.
 편집 진입을 치우는 것은 실패를 보여 주기 전에 길을 없애는 일이라 서버 가드와 목적이 다르다.
 같은 PR이 **`ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED`를 신설했다** — 신설 당시는 소비처가
 아직 0건인데 상수를 먼저 둔 예외였고, 그 근거(처분이 이미 정해졌다)를 상수 KDoc이 함께 적었다.
-✅ **그 예외 사유는 2026-08-21(PR5, 브랜치 `feature/#270-topping-place-wiring`, develop 미머지)에
-소멸했다** — `feature/groups/canvas/impl/util/ToppingPlaceFailure.kt`의 `isPermanentPlaceFailure()`가
+✅ **그 예외 사유는 2026-08-22 develop 머지(PR #334)로 소멸했다** — `feature/groups/canvas/impl/util/ToppingPlaceFailure.kt`의 `isPermanentPlaceFailure()`가
 이 상수를 배치(POST) 실패의 되감기 판정에 실제로 쓴다. 나머지 넷(위치·테두리 수정·삭제·배경 변경)의
 경로는 여전히 소비처 0건이라, 이 상수는 배치 경로 하나로만 소비된다. 상수 KDoc의 결정·함정 서술은
 남지만 더는 예외가 아니라 보통의 소비되는 상수다.
@@ -643,8 +642,7 @@ DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조
 있고, 실제 억제는 화면의 `launch(key = LOAD_TODAY_CANVAS_KEY)` **하나**에 걸려 있다(다른 소비자가 생기면
 같은 규율을 스스로 지켜야 한다) → [open-questions](../synthesis/open-questions.md).
 
-✅ **쓰기도 배치(POST) 하나는 붙었다**(2026-08-21, PR5, 브랜치 `feature/#270-topping-place-wiring`,
-develop 미머지) — `CanvasToppingPlaceViewModel` → `AddToppingUseCase` → `ToppingRepository.place`가
+✅ **쓰기도 배치(POST) 하나는 붙었다**(2026-08-22 develop 머지, PR #334) — `CanvasToppingPlaceViewModel` → `AddToppingUseCase` → `ToppingRepository.place`가
 화면에서 새 토핑을 얹는다. **좌표 수정(위치 PATCH)·테두리 PATCH·DELETE는 여전히 소비처 0건**이라
 화면은 그 셋에 대해서는 여전히 **서버가 가진 배치를 그리기만 하고 고치거나 지우지는 못한다**
 ([parfait-image.md](parfait-image.md)).
