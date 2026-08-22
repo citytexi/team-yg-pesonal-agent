@@ -1593,6 +1593,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > "다른 사진을 골라 주세요"로 걸러지는가(형식 판정이 시스템 MIME → 바이트 순으로 두 번 돈다).
   > ④ 저장한 배경이 캔버스 메인 재조회에서 실제로 그려지는가(이미지 배경은 URL을 응답으로만 아는데,
   > 지금 그 응답을 쓰지 않고 재조회에 맡긴다).
+  > 📌 **항목 ⑨(카카오 창 회전)는 경로가 닫혔다(2026-08-22, PR #339)** — 앱이 세로로 고정되고
+  > 카카오 리다이렉트 액티비티까지 함께 고정돼([ADR-0027](../adr/0027-portrait-orientation-lock.md))
+  > 기기를 돌려도 그 구간이 재생성되지 않는다. **회전 말고 다른 구성 변경**(글꼴 크기·다크 모드
+  > 전환·멀티윈도우)은 그대로이므로 확인 자체를 지우지는 않고, 재현 방법을 그쪽으로 바꾼다.
+  > 나머지 항목은 전부 그대로다.
 - **해소 메모**: ⑥은 버튼이 비활성이어도 시각적으로 동일하므로("눌리는가"로 확인, "비활성으로 보이는가"가 아니다) 주의한다. ⚠️ 디버그 빌드는 `HttpLoggingInterceptor.Level.BODY`라 logcat에 ID 토큰·nonce·발급 토큰이 찍힌다 — 그 로그를 PR·이슈에 붙이지 않는다. 결과에 따라 [api/auth.md](../api/auth.md) 판별자 키 항목과 [ADR-0019](../adr/0019-encrypted-token-storage.md) 검증 절을 갱신한다.
 
 ### [2026-08-14] 신규 가입자가 세션 없이 그룹 목록에 도달한다 — signup 라운드까지의 과도기
@@ -4136,4 +4141,40 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: OQ-P-256이 남긴 "타입으로 불변식을 옮긴다"(불투명 색 전용 타입)가 ①의 답이 되면
   두 함수가 함께 정리된다. 그때까지는 ②③만으로도 값이 있다.
 
-<!-- oq-next: 264 -->
+### [2026-08-22] 세로 고정을 떠받치는 opt-out이 `targetSdk 37`에 사라지는데 대화면 방침이 없다
+
+- **ID**: OQ-P-264
+- **출처**: `app/src/main/AndroidManifest.xml`·`app-preview/src/main/AndroidManifest.xml`의
+  `PROPERTY_COMPAT_ALLOW_RESTRICTED_ORIENTATION_AND_ASPECT_RATIO_OPT_OUT`(PR #339 develop 머지,
+  [ADR-0027](../adr/0027-portrait-orientation-lock.md)) — `targetSdk 36`은 smallest width 600dp
+  이상에서 `screenOrientation`을 무시하고, 이 속성이 그 예외를 되돌린다. **속성 자체가
+  `targetSdk 37`부터 제거돼 무력화된다**는 사실은 지금 **매니페스트 주석의 TODO 한 줄에만** 있다.
+  그날 태블릿·폴더블은 눕는데, 가로 규격은 위키 정책에도 구현 문서에도 없다(목록 지그재그 좌표·
+  C-101 뷰파인더 여백·달력 그리드가 전부 세로 폭 실측이다).
+- **항목**: ① 대화면에서 무엇을 보일지 — 세로 레이아웃을 가운데 두고 여백을 주는 letterbox인지,
+  가로 규격을 새로 만드는지. ②는 ①이 정해질 때까지의 방어다 — `targetSdk` 상향 PR이 이 항목을
+  밟게 할 자리가 매니페스트 주석뿐인지, 아니면 문서·체크리스트에 걸지. ③ 대화면 opt-out이 지금
+  실제로 먹는지 자체가 미확인이다(폰에서는 드러나지 않는다).
+- **상태**: 미해결
+- **해소 메모**: ①을 정하면 [ADR-0027](../adr/0027-portrait-orientation-lock.md) "영향"의 시한부
+  항목과 매니페스트 TODO를 함께 닫는다. `targetSdk` 상향은 [ADR-0003](../adr/0003-convention-plugins-version-catalog.md)
+  컨벤션 플러그인 한 곳에서 갈리므로 그 자리가 트리거로 쓸 만하다.
+
+### [2026-08-22] 세로 고정 뒤 카메라 촬영이 기기를 든 방향을 따라가지 않는다
+
+- **ID**: OQ-P-265
+- **출처**: `feature/camera/impl/.../route/CustomCameraRoute.kt`(`ImageProxy#imageInfo.rotationDegrees`를
+  `saveViewfinderCapture`에 넘긴다)와 PR #339의 `screenOrientation="portrait"` — 이 앱은
+  `ImageCapture#setTargetRotation`을 부르지 않고 `OrientationEventListener`도 두지 않는다.
+  즉 보정 기준이 **표시 방향**인데 그것이 이제 항상 세로로 고정된다. 고정 전에는 액티비티가 돌면서
+  기준도 함께 돌았으므로, **가로로 들고 찍었을 때의 결과가 이번 라운드에서 바뀌었다.**
+  촬영 결과는 누끼·배치·캔버스까지 그대로 흘러가므로 한 번 누우면 흐름 끝까지 눕는다.
+- **항목**: ① 가로로 든 촬영을 어떻게 다룰지 — 센서 방향을 읽어 보정할지(`OrientationEventListener` +
+  `targetRotation`), 세로로 들도록 화면이 안내할지, 지금 거동을 그대로 둘지. ② 정책 근거가 없다 —
+  위키 [[카메라-뷰파인더]]는 여백·블러만 말하고 방향을 말한 적이 없다. ③ 갤러리에서 고른 사진에는
+  해당하지 않는다(EXIF를 디코더가 본다) — 두 입구의 결과가 갈리는지 확인이 필요하다.
+- **상태**: 미해결 (**실기기 1회로 갈린다** — 에뮬레이터 회전은 표시 방향만 돌려서 재현이 다르다)
+- **해소 메모**: ①이 "보정한다"로 가면 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)
+  촬영 절과 [ADR-0027](../adr/0027-portrait-orientation-lock.md) 트레이드오프 항목을 함께 고친다.
+
+<!-- oq-next: 266 -->
