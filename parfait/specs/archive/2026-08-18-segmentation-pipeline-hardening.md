@@ -199,6 +199,15 @@ OQ-P-055 ②를 닫는다.
 V2 스펙이 그것을 흡수하지 않겠다고 명시했다. 이관의 실익은 토스트 호스트 배선을 화면에서
 걷어내는 쪽에 있다.
 
+> 🔁 **첫 행의 판정이 뒤집혔다(2026-08-22, PR #311 develop 머지)** — `NavKeySegmentation`은 이제
+> `isLoading`을 넘기고 `toastPolicy`도 넘긴다. 근거로 든 `SegmentationLoadingScreen`은 짝인
+> `SegmentationErrorScreen`과 함께 **삭제됐다**. 이 라운드가 스캐폴드를 옮겨 놓은 덕에 채우는 일이
+> 파일 하나(Route)에서 끝났다는 점에서 위 문단의 "이관의 실익"은 여전히 맞지만, **"세 모듈의 로딩은
+> 전부 화면 고유 표현"이라는 전제 자체가 세그멘테이션에서 틀렸다.** 다시 세어 보니 그 화면이 가진
+> 문구는 안내문 두 줄이었고 닫기 버튼은 오버레이가 삼켜 로딩 중엔 눌리지도 않았다 →
+> [ygscaffold-v2 스펙 "제외 철회"](2026-08-16-ygscaffold-v2-common-loading-error.md#제외-철회-2026-08-22-화면-고유-로딩과-에러-화면-흡수).
+> 나머지 일곱 행은 그대로다(gallery 그리드 인디케이터는 흡수 대상이 아니다 — 화면 일부만 덮는다).
+
 **Screen에서 걷어낼 것**: `CustomCameraScreen`·`CustomGalleryPickerScreen`이 `toastPolicy`를
 파라미터로 받아 자기 레이아웃에 `YGToastHost`를 꽂고 있다. 파라미터와 호스트를 지우고 프리뷰도
 따라 고친다. 정책 객체는 Route가 만들어 스캐폴드에 넘긴다.

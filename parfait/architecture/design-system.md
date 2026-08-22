@@ -191,6 +191,20 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md) "실패 표현").
 > 같은 라운드가 `isLoading`에 **두 플래그를 함께** 넘기는 첫 사례도 만들었다
 > (`state.isLoading || state.isSigningUp` — 조회와 가입이 같은 오버레이를 쓴다).
+>
+> 🔁 **"화면 고유 로딩 화면은 V2가 흡수하지 않는 갈래"가 뒤집혔다(2026-08-22, PR #311 develop 머지)** —
+> 세그멘테이션이 `SegmentationLoadingScreen`·`SegmentationErrorScreen` 둘을 **삭제하고** 로딩을
+> `YGScaffoldV2(isLoading = …)`에, 실패를 공통 토스트에 넘겼다. 바로 위 #309 문단이 "세 모듈 모두
+> `isLoading`은 쓰지 않는다(로딩이 전부 화면 고유 표현이라 V2가 흡수하지 않는 갈래)"고 적은 그
+> 세 모듈 중 하나이고, **이관 두 달 만에 그 판정만 다시 봤다**. 이관 화면 수는 안 변한다(17개,
+> 세그멘테이션은 #309에 이미 옮겨 왔다) — 바뀐 것은 옮겨 온 스캐폴드에 **채울 것이 있었다**는 판정이다.
+> 되짚은 근거는 제외를 세웠던 두 조건이 실제로는 값이 없었다는 것이다 — 로딩 문구는 안내문 두 줄이었고,
+> 닫기 버튼은 **오버레이가 터치를 삼키므로 로딩 중에는 눌리지도 않던 것**이다. 대가는 명시한다:
+> **로딩 중 닫기가 도달 불가**가 됐고(시스템 뒤로가기는 그대로), 안내 문구 두 줄이 사라졌다.
+> 이로써 이 저장소의 화면 고유 로딩 화면은 **0개**다(OQ-P-205 ①③ 해소). **`isLoading`을 켜는 기준의
+> 반례이기도 하다** — 세그멘테이션은 온디바이스 추론이라 네트워크 왕복이 아닌데 오버레이를 켠다.
+> 아래 "네트워크 왕복인가"는 그래서 **"사용자가 기다려야 하는 비동기 작업인가"**로 읽는 편이 맞고,
+> 규약 승격 여부는 여전히 OQ-P-205 ②다.
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.

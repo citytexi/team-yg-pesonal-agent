@@ -27,7 +27,11 @@ tags: [adr, parfait]
 - **`KermitLoggerImpl`**(internal): `co.touchlab.kermit.Logger`에 위임. `tag`가 null이면 delegate의 tag 사용. `withTag`로 태그 파생 가능.
 - **`Loggers.create(tag)`**: `KermitLoggerImpl(KermitLogger.withTag(tag))` 반환하는 팩토리(진입점).
 - **`LoggerInitializer.setupDebug()`**: `Logger.setLogWriters(platformLogWriter())` — 디버그 로그 라이터 초기화.
-- **모듈별 named logger 상수**: 각 모듈이 자기 스코프 로거를 `by lazy`로 노출 — `app`(`fcmLogger`·`tokenLogger`), `core:ui`(`viewModelLogger`·`screenLogger`), `data`·`domain`도 동일 패턴. 모듈은 `Loggers.create("태그")`만 부르고 Kermit에 직접 의존하지 않는다.
+- **모듈별 named logger 상수**: 각 모듈이 자기 스코프 로거를 `by lazy`로 노출 — `core:ui`(`viewModelLogger`·`screenLogger`), `data`·`domain`도 동일 패턴. 모듈은 `Loggers.create("태그")`만 부르고 Kermit에 직접 의존하지 않는다.
+  > 🔁 **`app`의 두 로거는 사라졌다(2026-08-22, PR #325)** — `fcmLogger`·`tokenLogger`가 유일하게
+  > FCM 서비스와 토큰 조회만을 위한 것이라 그 기능이 걷히면서 `app/Logger.kt`째 지워졌다
+  > ([ADR-0013](0013-firebase-fcm-crashlytics.md) 철회 정정). **패턴이 폐기된 것이 아니라 그 모듈에
+  > 로그를 남길 자리가 없어진 것**이고, `app`이 다시 로그를 찍게 되면 같은 형태로 되살린다.
 - 버전은 `gradle/libs.versions.toml`의 `kermit`, 별칭 `kermit`.
 
 ## 대안

@@ -16,8 +16,6 @@ related_code:
   - SegmentationConfirmRoute.kt#SegmentationConfirmRoute
   - ToppingEditRoute.kt#ToppingEditRoute
   - SegmentationScreen.kt#SegmentationScreen
-  - SegmentationLoadingScreen.kt#SegmentationLoadingScreen
-  - SegmentationErrorScreen.kt#SegmentationErrorScreen
   - SegmentationConfirmScreen.kt#SegmentationConfirmScreen
   - ToppingEditScreen.kt#ToppingEditScreen
   - ToppingBorderEditScreen.kt#ToppingBorderEditScreen
@@ -87,6 +85,14 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
 | C-104 | `NavKeyToppingEdit` → `ToppingEditScreen` **영역 탭** | 브러시로 마스크 가감 |
 | C-105 | 같은 목적지의 **테두리 탭** | 색·굵기 선택. 별도 화면이 아니라 탭 |
 
+> 🔁 **첫 행이 화면에서 오버레이로 바뀌었다(2026-08-22, PR #311 develop 머지)** — C-103-loading을
+> 받던 `SegmentationLoadingScreen`이 삭제되고 그 자리를 `SegmentationRoute`의
+> `YGScaffoldV2(isLoading = state.isLoading)` 공통 오버레이가 받는다. **분기 조건은 그대로**
+> (`state.isLoading`)이고 바뀐 것은 그것이 화면을 갈아 끼우는 대신 위에 덮인다는 점이다.
+> 함께 지워진 `SegmentationErrorScreen`은 이 표에 대응 화면이 없었다 — 위키가 정의한 실패 처리
+> (재시도·원본 사용)를 담은 적이 없기 때문이고(OQ-P-153), 지금은 공통 에러 토스트가 대신한다 →
+> [ygscaffold-v2 스펙 "제외 철회"](2026-08-16-ygscaffold-v2-common-loading-error.md#제외-철회-2026-08-22-화면-고유-로딩과-에러-화면-흡수).
+
 ## 범위
 
 - **포함**
@@ -126,6 +132,10 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
   `originBitmap`은 성공 여부와 무관하게 먼저 상태에 실리고, `isLoading`은 성공/실패 어느 쪽이든
   마지막에 풀린다(로딩 화면에 갇히지 않게).
 - `subjectBounds == null`(감지 픽셀 0)이면 하이라이트도 다음 경로도 없으므로 `isError`로 간다.
+  > 🔁 **`isError` 상태가 없어졌다(2026-08-22, PR #311)** — 이 갈래를 포함한 실패 셋이
+  > `SegmentationEffect.ShowError` 1회성 이펙트 + 공통 에러 토스트가 됐고 화면은 그대로 남는다
+  > (아래 [화면 ID 대응](#화면-id-대응) 정정). 위 `isLoading` 서술은 그대로 유효하다 — 걷히는
+  > 대상이 로딩 화면에서 오버레이로 바뀌었을 뿐이다.
 - 본문은 원본 이미지(`ContentScale.Fit`) 위에 `SegmentationSubjectHighlight`를 같은 크기로 겹친다 —
   bounds 바깥만 `Transparency.Black25` 딤(`ClipOp.Difference`), 경계는 흰 dashed `Stroke`.
   탭 판정과 그리기가 같은 `subjectRect()` 계산을 공유한다.
@@ -296,6 +306,8 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
 - `impl/screen/` — `SegmentationScreen`(로딩/에러/본문 분기)·`SegmentationLoadingScreen`·
   `SegmentationErrorScreen`·`SegmentationConfirmScreen`·`ToppingEditScreen`·`ToppingBorderEditScreen`·
   `BitmapUtils.kt`(`BitmapViewMapping`·`fitScale`·`clampPan`·좌표 변환).
+  > 🔁 **파일 둘이 삭제됐다(2026-08-22, PR #311)** — `SegmentationLoadingScreen`·`SegmentationErrorScreen`이
+  > 없어지고 `SegmentationScreen`은 분기 없이 **본문 하나**만 그린다.
 - `impl/editor/` — `ToppingEditStroke.kt`(`ToppingEditTab`·`ToppingEditMode`·`ToppingEditStroke`)·
   `UndoRedoStack.kt`·`ToppingEditMask.kt`(`buildCutoutBitmap`·`withBorders`)·
   `ToppingBorderOutline.kt`(거리장·밴드)·`ToppingBorderColors.kt`.

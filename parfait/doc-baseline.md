@@ -5,9 +5,41 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `36719e8e` (`Merge pull request #318 from mash-up-kr/feature/#317-sync-backend-api-260820`)
-- **커밋**: `da03c9b0` (`Merge pull request #322 from mash-up-kr/feature/#270-topping-place-domain`)
-- **요약**: **한 화면이 처음으로 사용자에게 되묻기 시작했고, 그 아래층은 아직 아무도 부르지 않는다**(delta 5건).
+- **커밋**: `ef55a58c` (`Merge pull request #325 from mash-up-kr/refactor/#316-remove-fcm-and-notification-permission`)
+- **요약**: **두 라운드가 각각 코드를 지웠고, 지운 근거가 같다 — 지키고 있던 조건이 실은 값이
+  없었다**(delta 2건). 두 머지 모두 **트리가 브랜치 팁과 같아** 충돌 해소 편집이 0건이고, 합쳐서
+  **삽입 53줄·삭제 365줄**이다. 신규 심볼은 `SegmentationEffect.ShowError` 하나뿐이다.
+  **#311**(`feature/#253-segmentation-common-loading`): 세그멘테이션의 로딩·에러 **전용 화면 둘이
+  삭제되고** 로딩은 `YGScaffoldV2(isLoading = …)` 공통 오버레이, 실패는 공통 에러 토스트가 받는다.
+  ⚠️ **이것은 [ygscaffold-v2 스펙](specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)의
+  제외 두 항목을 철회한 것**이고("화면 고유 로딩 표현"·"차단성 에러 UI"), 두 달 전 그 제외를 세웠던
+  근거가 다시 세어 보니 값이 없었다는 것이 철회 사유다 — 지키려던 **문구**는 안내문 두 줄이었고,
+  지키려던 **닫기 버튼**은 오버레이가 터치를 삼켜 로딩 중엔 눌리지도 않았다. 게다가 그 닫기는
+  전용 화면을 정당화하던 시기에 **갈 곳이 없는 빈 람다**였다(OQ-P-152). 대가는 명시한다:
+  로딩 중 닫기가 도달 불가가 됐고(시스템 뒤로가기는 동작) 안내 문구 두 줄이 사라졌다.
+  실패는 상태(`isError`)에서 **1회성 이펙트**로 옮겼는데 근거가 OQ-P-003 ①이다 — **재시도 동선이
+  없는 실패를 상태로 붙들면 영영 걷히지 않는 화면이 된다.** 즉 재시도가 없다는 사실은 그대로이되
+  없는 재시도를 기다리는 화면이 없어졌다. 이로써 저장소의 화면 고유 로딩 화면이 **0개**가 됐고
+  (OQ-P-205 ①③ 해소) 전면 에러 화면은 `GroupListErrorScreen` 하나만 남는다.
+  ⚠️ **`isLoading`을 켜는 귀납 기준의 첫 반례이기도 하다** — 세그멘테이션은 온디바이스 ML Kit
+  추론이라 네트워크 왕복이 아닌데 오버레이를 켠다. 기준을 규약으로 올린다면 "왕복인가"가 아니라
+  **"사용자가 기다려야 하는 비동기 작업인가"**다(OQ-P-205 ②, 여전히 미결).
+  **#325**(`refactor/#316-remove-fcm-and-notification-permission`): FCM이 통째로 걷혔다 —
+  `YGFirebaseMessagingService`·`app/Logger.kt`(`fcmLogger`·`tokenLogger`)·`MainActivity`의 토큰 조회와
+  알림 채널·권한 요청·매니페스트 서비스 등록·`POST_NOTIFICATIONS`·`firebase-messaging` 의존.
+  Analytics·Crashlytics는 남는다. **철회 근거도 "쓰이지 않았다" 하나**다 — `onNewToken`이 서버에
+  닿은 적이 없고 권한·채널은 오직 그 서비스를 위한 것이라, **결선된 적 없는 기능 때문에 첫 실행마다
+  알림 권한을 묻고 있었다.** ⚠️ **이 라운드의 발견은 그것이 열린 채로 방치된 방식이다** — OQ-P-012는
+  "원격 연동 이후"라며 **보류**였는데 원격 연동은 그 사이 전부 붙었고(#308·#310·#318·#322) 아무도
+  토큰을 결선하지 않았다. 보류 조건이 충족돼도 스스로 열리지 않는 항목이 있다는 뜻이다.
+  [ADR-0013](adr/0013-firebase-fcm-crashlytics.md)은 폐기하지 않고 **FCM 축만 철회**로 정정했다 —
+  푸시가 필요하다는 판단이 뒤집힌 게 아니라 껍데기를 뺀 것이고, 되살릴 때 **권한을 언제 묻는가**를
+  새로 정해야 한다(걷어낸 형태는 `MainActivity.onCreate` 무조건 요청이었다).
+  테스트: 유닛 **602건 유지**(신규 0 — `SegmentationViewModelTest`가 상태 단언에서 Turbine 이펙트
+  단언으로 바뀌었을 뿐이다), 테스트 클래스 **70개 유지**.
+  ⚠️ **실기기·실서버 확인 없음** — 삭제 라운드라 새로 생긴 화면은 없지만, 로딩 중 닫기가 도달
+  불가가 된 것과 실패 토스트가 실제로 읽히는지는 둘 다 눈으로 본 적이 없다.
+  직전 회차 요약: **한 화면이 처음으로 사용자에게 되묻기 시작했고, 그 아래층은 아직 아무도 부르지 않는다**(delta 5건, 기준선 `da03c9b0`).
   다섯 머지 **전부 트리가 브랜치 팁과 같아** 충돌 해소 편집이 0건이고, 브랜치 사실이 그대로
   develop 사실이다. 라운드를 관통하는 것은 **"보이는 것"과 "쌓이는 것"이 갈렸다**는 점이다 —
   #298·#312·#319·#320은 전부 화면에서 눈에 보이는 변화이고, 가장 큰 #322는 화면에서 아무것도
@@ -446,18 +478,31 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-20 (37회차)
-- **미머지 제외 항목**: **없다.** 추적하던 마지막 브랜치 `refactor/segmentation-develop`이 PR #309로
-  들어와 이 기준선이 됐다(head `63ec2989` → 머지 `cf357937`, 충돌 해소 편집 0건이라 두 트리가 같다).
-  선반영해 둔 [스펙](specs/archive/2026-08-18-segmentation-pipeline-hardening.md)·플랜은 이 라운드에
-  `archive/`로 옮겼고, 그 문서들이 브랜치 조건을 달아 두었던 서술도 전부 develop 사실로 승격했다.
-  ✅ **직전 회차가 이월로 적어 둔 문서 전제 오류도 여기서 닫혔다** —
-  [design-system](architecture/design-system.md)의 8엔트리 일괄 이관 수치가 브랜치 기준 표기였는데,
-  develop 실측으로 갈아 끼웠다(이관 화면 8 → **16개**, `YGScaffold`(V1) 잔존 6 → **3파일**, 전부
-  엔트리 빌더 `feature/intro/impl`·`feature/groups/enter/impl`·`feature/groups/canvas/impl`).
-  다음 라운드가 이어받을 것은 미머지 추적이 아니라 **열린 미결**이다 — OQ-P-239(도달 불가 화면 셋을
-  묶어 정리) · OQ-P-228(다운샘플, 현재 트리 피크 미측정) · OQ-P-003 ①(재시도 동선) · OQ-P-204 ②
-  (V1 `ERROR` 승급·삭제 시점, 잔여가 3파일까지 줄어 판단할 자리가 가까워졌다).
+- **검증일**: 2026-08-22 (40회차)
+- **미머지 제외 항목**: **C-106 결선 스택 브랜치 넷**(전부 `origin`에 있고 develop 대비 미반영
+  커밋을 갖는다). 스택이라 서로를 업고 있어 뒤엣것일수록 앞엣것의 커밋을 포함한다.
+
+  | 브랜치 | develop 대비 미반영 커밋 | 문서 |
+  |---|---|---|
+  | `feature/#270-topping-border-contract` (PR4) | 21 | [ADR-0025](adr/0025-topping-border-as-server-field.md) (`proposed`) |
+  | `feature/#270-topping-draft-ssot` (PR3) | 10 | [ADR-0026](adr/0026-topping-draft-datastore-ssot.md) (`proposed`) |
+  | `feature/#270-topping-place-wiring` (PR5) | 33 | [c106-topping-place-api 스펙](specs/2026-08-20-c106-topping-place-api.md) (미아카이브) |
+  | `feature/#270-recent-cutout-reuse` (PR6) | 43 | 같은 스펙 |
+
+  ⚠️ **이 항목은 두 회차 동안 갱신되지 않은 채 "없다"로 남아 있었다** — 마지막으로 손댄 것이
+  37회차(`cf357937`)이고 그 뒤 38·39회차(`36719e8e`·`da03c9b0`)가 이 줄을 지나쳤다. 그 사이
+  요약 본문은 미머지 브랜치를 계속 언급했으므로(39회차의 "아직 머지도 안 된 PR3") **본문과 이 줄이
+  서로 어긋나 있었다.** 이번 회차가 실측으로 되살렸다.
+
+  **이번 delta 둘은 이 스택과 무관하다** — #311은 세그멘테이션 화면, #325는 `app` 모듈이다.
+  다만 PR3~PR6이 develop에 얹힐 때 **#311의 결정과 부딪힐 자리가 하나 있다**:
+  [c106-topping-place-api 스펙](specs/2026-08-20-c106-topping-place-api.md)이 실패 안내를 캔버스 쪽
+  토스트 호스트로 보내는 것을 미뤄 두었는데(OQ-P-167 정정), #311은 반대로 **공통 토스트 자리를
+  한 화면 더 늘렸다.** 어느 쪽이 규칙인지는 여전히 안 정해졌다.
+
+  열린 미결은 그대로다 — OQ-P-239(도달 불가 화면 셋) · OQ-P-228(다운샘플, 현재 트리 피크 미측정) ·
+  OQ-P-003 ①(재시도 동선, 이번에 **담을 화면이 없어졌다**) · OQ-P-204 ②(V1 `ERROR` 승급·삭제 시점,
+  잔여 2파일) · OQ-P-205 ②④(오버레이·톤을 켜는 기준의 규약 승격) · OQ-P-146(실기기·실서버 0회).
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
@@ -531,3 +576,4 @@
 | 2026-08-20 | `cf357937` | Merge #309 (refactor/segmentation-develop) | delta 1건(#309, 선작성 스펙·플랜 보유). **추적하던 마지막 미머지 브랜치가 들어와 미머지 항목이 0건이 됐다** — 머지 커밋 트리가 브랜치 팁(`63ec2989`)과 같아 스펙 as-built 수치를 재측정 없이 승격했다(유닛 538 → **560건**, 클래스 61 → 64). 이 라운드가 한 일은 새 감사가 아니라 **"브랜치에만 있다"는 단서를 문서에서 떼는 것**이었다. **닫힌 미결 여섯**: OQ-P-003 ③(캐시 정리 — 진입 시 전용 디렉토리를 통째로 비운다. 그 안전 근거를 참으로 만드는 되감기 수정이 **같은 커밋에 있어야만 참**이었고 이번에 그렇게 됐다) · OQ-P-004 ②(마스크 null raw throw → `Result.failure`) · OQ-P-055 ②(닫기 목적지) · OQ-P-087(죽은 `ResultEffect` — 기능은 죽고 크래시만 살아 있던 통로라 걷어냈고, `ReturnResult(uri: String?)`를 인자 없는 `Cancel`로 좁혀 `null`을 흘리는 자리 자체를 없앴다) · OQ-P-152(플로우 출구 — `Navigator.popUpTo<T>()` 하나로 세 Route의 닫기가 함께 열렸다) · OQ-P-238 ①(배치 완료가 캔버스를 새로 쌓던 것 → 되감기, 하드코딩 `groupId = 0L` 소멸). **부분 해소 셋**: OQ-P-204(8엔트리 일괄 이관으로 V1 잔여가 처음 줄어 6 → **3파일**, 이관 화면 8 → **16개**. 계기는 로딩·실패가 아니라 어차피 그 파일을 다 여는 라운드였고 여덟 중 `isLoading`을 넘기는 곳이 0이다) · OQ-P-178 ②(배경 편집 복귀가 `onBack()` 2회 → `popUpTo<NavKeyCanvasBGEdit>()`, PR 리뷰가 짚었다) · OQ-P-155(`feature/segmentation/impl`이 첫 `src/test`를 얻었으나 `UndoRedoStack`·`BitmapViewMapping`은 여전히 미검증). **스펙을 뒤집은 결정 둘**(`decodeImage` 계약 → `Result` / 최근 이미지 공급자 신설)도 그대로 들어왔다. 열린 채: OQ-P-239(도달 불가 잔해) · OQ-P-228(다운샘플, 현재 트리 피크 미측정) · OQ-P-003 ①(재시도 동선) · 카메라 캐시 정리. ⚠️ 실기기 확인 없음 |
 | 2026-08-20 | `36719e8e` | Merge #315(term-agree scaffold v2) · #318(API 현행화 260820) | delta 2건, **둘 다 머지 커밋 트리 = 브랜치 팁**(충돌 해소 편집 0건). 공통점은 **"임시"라고 적어 둔 자리가 결정으로 바뀐 것**이다. **#315** — 이름은 스캐폴드 이관인데 실은 실패 표현 라운드다. 가입 실패가 갈래 넷을 열거만 하고 로그로 흘리던 것(`TODO(에러 UX 미정)`)이 `TermAgreeError` **2갈래** + 공통 토스트가 됐고, `RequiredPolicyNotAgreed`처럼 **로그에는 결함으로 남기는 갈래까지 `UNKNOWN`으로 접었다**(사용자 처분이 같다). 같은 화면의 조회 실패는 **반대로** — `TODO(공통 에러화면)`이 예고하던 공용 화면으로 **가지 않기로** 정해 목록 자리에 남겼고, 가른 기준이 OQ-P-167 ①의 답이다(**재시도 동선이 화면 안에 있으면 화면에 남기고 없으면 토스트**). 컨테이너는 Route의 `YGScaffoldV2`로 옮기며 `isLoading`에 **두 플래그를 겹쳐** 넘기는 첫 사례(`isLoading \|\| isSigningUp`). **V1 잔여 3 → 2파일**(둘 다 EntryBuilder), 이관 화면 16 → **17개** — OQ-P-204 ①의 "이관만 하는 라운드" 첫 사례인데 **결선을 데려왔다**(채울 것이 밀려 있던 자리였다). **#318** — 하루 전 서버 409 가드로 거짓이 된 앱 주석 일곱을 **지우지 않고 고쳤다**(`parfait/CLAUDE.md` "기준 2와 3이 겹칠 때는 남긴다", 단정 대신 `api/parfait.md` 포인터). 화면 방어는 남는다 — **실패를 보여 주기 전에 길을 없애는 일**이라 서버 가드와 목적이 다르다. `ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED`를 **소비처 0건인 채로** 신설하며 "쓰는 코드만 둔다" 규약에 **"처분이 정해진 코드는 미리 둔다"** 예외를 함께 적었다(브랜치 PR2 파일과 바이트 동일). ⚠️ 상수 KDoc이 남긴 발견 — 다섯 경로 전부 **권한 검사가 마감 검사보다 앞**이라 마감된 캔버스라도 남의 토핑·비멤버면 403이 먼저 온다. 조치: 스펙 1건 as-built(intro-term-agree, `verified` 2026-08-20)·architecture 3건(design-system 이관 수치 + 📌 · navigation-flow **구 형태 7파일이라는 낡은 수치 정정** · state-management 실패 enum 사례) · api 2건(parfait·parfait-image Android 매핑을 ⚠️ → ✅, `verified`는 서버 대조일이라 불변) · index 3곳. open-questions: **해소 3**(OQ-P-244 ① · OQ-P-167 ③④) · **신설 1**(OQ-P-249 가입 중 플래그 KDoc이 없는 버튼을 가리킨다) · **악화 1**(OQ-P-167 ② "알 수 없는 오류" 문구를 든 화면이 셋). 테스트 유닛 560 → **561건**, 파일 64개 유지. ⚠️ 실기기·실서버 확인 없음 |
 | 2026-08-21 | `da03c9b0` | Merge #320(overlay reset) · #319(calendar dim guard) · #312(내 닉네임) · #298(Spotlight) · #322(C-106 업로드·배치 계층) | delta 5건, **다섯 머지 전부 트리 = 브랜치 팁**(충돌 해소 편집 0건). 라운드를 가르는 축은 **보이는 변화와 쌓이는 변화**다 — 넷은 화면에서 눈에 보이고, 가장 큰 #322는 화면에서 아무것도 바꾸지 않는다. **#298**: 캔버스 토핑이 처음 탭을 받는다(C-202 Spotlight). 사후 스펙 신규 작성(`implemented`·archive). 상태는 `spotlightedToppingId` 하나이고 그리기 순서가 곧 정책 z 우선순위(나머지 → Dim `Black50` → 강조). 정책 대조 8일치·2공백 — **본인 갈래가 통째로 비었고**(`isMine()`이 상수 `false`, 내 멤버십 행 id를 알 길이 없다 → OQ-P-250 신설), 탈퇴 문안은 서버가 준 `(알수없음)`이 그대로 문장이 된다. ⚠️ 진짜 결정은 **토스트 자리** — `YGCanvas`에 `overlayContent` 슬롯이 뚫려 토스트가 스캐폴드가 아니라 캔버스 프레임 상단에 서고, 미머지 PR3의 조회 실패 토스트까지 그 자리로 정해졌다(OQ-P-167). 작성자 칩은 서버 필드가 아니라 화면 조인인데 **탈퇴 멤버에서도 결과가 우연히 같아** 임시가 안 드러난다(OQ-P-251 신설). **신규 유닛 0건**(OQ-P-252 신설). **#322**: C-106 스택 1/5·2/5가 한 PR로(PR2 브랜치가 PR1 커밋 여섯을 업었다). **Repository 0건 도메인이 사라졌다**(image·parfait-image). Retrofit 밖 raw OkHttp 첫 자리라 `@NoAuth`가 안 걸리고 전용 `@UploadClient`가 기능 전제다. 소비자 0이라 Dagger 도달 불가 — 리플렉션 바인딩 테스트가 유일한 감지선. **#312**: G-001 마지막 mock 소멸, 닉네임이 계정 SSoT 구독이 되며 **전역 닉네임으로 확정**(OQ-P-197 해소). ⚠️ 값이 없으면 그룹 만들기가 조용히 안 열린다(OQ-P-253 신설). **#319·#320**: 달력 빈자리 탭이 달력을 닫던 것을 컴포넌트가 소비해 막고, 그룹 추가 오버레이를 나가는 길에 접는다. 조치: 스펙 신규 1(c202)·아카이브 스펙 갱신 3(g001·c201·c106 active)·plan README 및 PR1/PR2 `archived_reason` 머지 표기·architecture 3건(data-layer Repository 인벤토리 2행 추가·DI 3항목·design-system 슬롯/토스트·state-management 세 번째 구독자)·api 5건(image·parfait-image·parfait·member·README, `verified`·`android_status` 불변)·index 상태 3문단. open-questions: **해소 1건**(OQ-P-197) · **신규 4건**(250~253) · 마커 2건(OQ-P-224·OQ-P-167 관련). **범위 밖 스테일 3건도 정정**(develop 기준으로 이미 거짓이던 서술) — data-layer·api/parfait-group의 `Instant::parse` 경고, g001 스펙 UiState 코드 블록의 `groupList` 타입. 유닛 561 → **602건**, 테스트 클래스 64 → 70개. 미머지: `feature/#270-topping-draft-ssot`(PR3) |
+| 2026-08-22 | `ef55a58c` | Merge #311(segmentation 공통 로딩·토스트) · #325(FCM·알림 권한 철거) | delta 2건, **둘 다 머지 커밋 트리 = 브랜치 팁**(충돌 해소 편집 0건). 삽입 53줄·삭제 365줄에 신규 심볼 하나(`SegmentationEffect.ShowError`)뿐인 **삭제 라운드**이고, 두 머지가 지운 근거가 같다 — **지키고 있던 조건이 실은 값이 없었다.** **#311**: `SegmentationLoadingScreen`·`SegmentationErrorScreen`이 삭제되고 로딩은 `YGScaffoldV2(isLoading = …)`, 실패는 공통 토스트가 받는다. [ygscaffold-v2 스펙](specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)의 제외 두 항목을 **철회**한 것이고, 제외를 정당화하던 문구는 안내문 두 줄·닫기 버튼은 오버레이가 삼켜 로딩 중 눌리지도 않던 것이었다(게다가 그 시기엔 갈 곳 없는 빈 람다였다 — OQ-P-152). 실패를 상태에서 1회성 이펙트로 옮긴 근거는 OQ-P-003 ①(재시도 없는 실패를 상태로 붙들면 영영 안 걷힌다). 화면 고유 로딩 화면 **0개**(OQ-P-205 ①③ 해소), 전면 에러 화면은 `GroupListErrorScreen` 하나만 잔존. `isLoading` 귀납 기준의 첫 반례이기도 하다(온디바이스 추론이라 네트워크 왕복이 아닌데 켠다 → OQ-P-205 ② 미결). 대가: 로딩 중 닫기 도달 불가·안내 문구 소멸. **#325**: FCM 전면 철거(서비스·`app/Logger.kt`·토큰 조회·알림 채널/권한·매니페스트 등록·`firebase-messaging` 의존), Analytics·Crashlytics 유지. 근거는 결선 부재 하나 — **결선된 적 없는 기능 때문에 첫 실행마다 알림 권한을 묻고 있었다.** 발견은 방치된 방식이다: OQ-P-012가 "원격 연동 이후"로 **보류**였는데 원격 연동은 그 사이 다 붙었고 아무도 토큰을 결선하지 않았다(보류 조건이 충족돼도 스스로 열리지 않는 항목이 있다). ADR-0013은 폐기가 아니라 **FCM 축만 철회**로 정정. 유닛 **602건·클래스 70개 유지**(신규 0 — Turbine 이펙트 단언으로 바뀌었을 뿐). 실기기·실서버 확인 없음 |
