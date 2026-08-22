@@ -5,7 +5,7 @@ status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
-archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-topping-place-wiring 에 커밋 10개(392014a7..280d9651), 신규 테스트 29건 + 삭제 1건 — 최종 브랜치 리뷰 지적 8건과 주석 정리를 포함한 as-built 수치. 아래 "as-built 정정" 절 참고.
+archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-topping-place-wiring 에 커밋 10개(17a2c09f..c443846b), 신규 테스트 29건 + 삭제 1건 — 최종 브랜치 리뷰 지적 8건과 주석 정리를 포함한 as-built 수치. 아래 "as-built 정정" 절 참고.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026
@@ -42,9 +42,11 @@ tags: [plan, parfait, topping, canvas, api, c-106]
 
 **Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **5번 행**, 「좌표 변환」·「실패 처리」·「표시·제어 규칙」 절
 
-> **베이스는 PR4 브랜치다.** `feature/#270-topping-border-contract`(팁 `392014a7`, **미머지**).
+> **베이스는 PR4 브랜치다.** `feature/#270-topping-border-contract`(팁 `17a2c09f`, **미머지**).
 > 그 아래로 PR3 `feature/#270-topping-draft-ssot`가 깔려 있고, PR1·PR2는 develop에 머지됐다(`da03c9b0`).
 > 새 브랜치 `feature/#270-topping-place-wiring`을 PR4 팁 위에 만든다.
+> 🔁 이 문서의 스택 해시는 **2026-08-22 리베이스 뒤 기준**이다 — 스택 넷을 develop `ef55a58c` 위로
+> 다시 쌓았고 기록은 [PR3 계획서](2026-08-20-c106-pr3-topping-draft-ssot.md)에 있다.
 
 ## 사용자에게 보이는 변화 (예고)
 
@@ -90,7 +92,7 @@ tags: [plan, parfait, topping, canvas, api, c-106]
 
 - **작업 대상 저장소는 `TJYG-Android`**이고 이 문서가 사는 저장소가 아니다. 로컬 절대경로는
   `wiki/personal-private/project-paths.md`에 있다(Task 7만 이 문서 저장소에서 한다).
-- **베이스 브랜치는 `feature/#270-topping-border-contract`**(PR4, 팁 `392014a7`, 미머지)다.
+- **베이스 브랜치는 `feature/#270-topping-border-contract`**(PR4, 팁 `17a2c09f`, 미머지)다.
   그 위에 새 브랜치 `feature/#270-topping-place-wiring`을 만들어 작업한다.
 - **워크트리를 만들지 않는다.** 본 체크아웃에서 브랜치로 작업한다.
 - **커밋은 태스크마다 한다.** `git push`·`gh pr create`·`gh pr merge`는 **하지 않는다** —
@@ -1885,17 +1887,17 @@ git commit -m "docs: PR5 배치 결선의 결정을 문서에 반영한다"
 결과 문서([plans/README.md](../README.md) PR5 행)에 적는 것이 이 저장소의 관례다. 이 절은 그
 관례에 따라 계획 본문과 갈린 지점만 모은다. 원문은 그대로 두고 정정만 여기 적는다.
 
-계획 실행 직후(Task 1~7 통과 시점)의 수치는 커밋 7개 `392014a7..4a8318a1`, 신규 테스트 25건 +
+계획 실행 직후(Task 1~7 통과 시점)의 수치는 커밋 7개 `17a2c09f..56a1c0c4`, 신규 테스트 25건 +
 삭제 1건, 20파일 886삽입/63삭제였다. **그 뒤 최종 브랜치 리뷰(opus)가 지적 8건을 냈고**, fix
-웨이브 한 번(`9b58b2fa`)과 별도의 주석·KDoc 정리 커밋(`280d9651`)이 더 붙어 아래로 갈렸다.
+웨이브 한 번(`80ba8805`)과 별도의 주석·KDoc 정리 커밋(`c443846b`)이 더 붙어 아래로 갈렸다.
 
 | 원 서술(Task 1~7 통과 시점) | as-built 정정 |
 |---|---|
 | 영구 실패 세 코드(`PARFAIT_ALREADY_CLOSED`·`GROUP_NOT_JOINED`·`PARFAIT_NOT_FOUND`)에서 캔버스로 되감는다 | **되감지 않는다 — 알린 뒤 화면에 남는다.** 최종 리뷰가 Critical로 잡았다: `CanvasToppingPlaceRoute`의 `toastPolicy`가 `rememberYGToastPolicy()`로 Route 컴포지션에 매달려 있어, `popUpTo`가 Route를 접는 같은 프레임에 안내(토스트)까지 함께 폐기된다. `DraftMissing`을 안 되감는 이유로 이미 주석에 적어 둔 함정을 바로 아래 영구 실패 갈래가 반복하고 있었다. 처방은 `DraftMissing`과 같은 처분(알린 뒤 화면에 남긴다, 닫기 버튼이 이미 있어 막다른 곳이 아니다) — 진짜 처방(안내를 캔버스 쪽 토스트 호스트로 보내기)은 OQ-P-167 소관이라 이 라운드 밖으로 미뤘다. **성공 경로의 `popUpTo`는 그대로다.** |
 | 영구 실패 코드 셋(`PARFAIT_ALREADY_CLOSED`·`GROUP_NOT_JOINED`·`PARFAIT_NOT_FOUND`) | **다섯**으로 늘었다 — 최종 리뷰가 배치 POST 실패 표의 400 둘(`Common.INVALID_REQUEST`·`ParfaitImage.INVALID_BORDER`)이 빠졌다고 지적했다. 재시도가 발급부터 4단계를 전부 다시 태워도 결과가 항상 같은 400이라, 확인을 누를 때마다 참조되지 않는 이미지만 쌓인다. |
-| 커밋 7개 `392014a7..4a8318a1` | **커밋 10개** `392014a7..280d9651` — 위 fix 웨이브(`9b58b2fa`, 최종 리뷰 지적 8건)와 주석·KDoc 정리(`280d9651`, 규약을 어기거나 낡은 자리 여덟)가 더 붙었다. |
+| 커밋 7개 `17a2c09f..56a1c0c4` | **커밋 10개** `17a2c09f..c443846b` — 위 fix 웨이브(`80ba8805`, 최종 리뷰 지적 8건)와 주석·KDoc 정리(`c443846b`, 규약을 어기거나 낡은 자리 여덟)가 더 붙었다. |
 | 신규 테스트 25건 + 삭제 1건, 20파일 886삽입/63삭제 | **신규 테스트 29건**(계획 25건 + 최종 리뷰가 심은 4건) + 삭제 1건, **23파일 961삽입/64삭제**. 신규 테스트 파일이 셋(`ToppingPlaceFailureTest`·`ToppingPlacementTest`·`SelectiveLoggingInterceptorTest`)에서 **넷**(`ImageServiceTest` 추가)으로, 기존 파일 확장이 셋에서 **넷**(`NetworkModuleTest` 추가)으로 늘었다. |
-| `ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED` KDoc — "토핑 추가 흐름이 이 코드를 받으면 화면 이동은 그대로 진행하고 실패만 알린다" | 되감기 철회로 이 문장이 거짓이 됐다 — 주석 정리 커밋(`280d9651`)에서 "화면 이동에 대한 단정"만 걷었다. "되돌리지 않는다"(업로드 이미지를 롤백하지 않는다)는 여전히 참이라 남겼다. 소비처가 화면을 어떻게 다루는지는 이 상수가 알 바가 아니다. |
+| `ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED` KDoc — "토핑 추가 흐름이 이 코드를 받으면 화면 이동은 그대로 진행하고 실패만 알린다" | 되감기 철회로 이 문장이 거짓이 됐다 — 주석 정리 커밋(`c443846b`)에서 "화면 이동에 대한 단정"만 걷었다. "되돌리지 않는다"(업로드 이미지를 롤백하지 않는다)는 여전히 참이라 남겼다. 소비처가 화면을 어떻게 다루는지는 이 상수가 알 바가 아니다. |
 
 **실기기 확인은 여전히 안 했다** — 위 정정은 전부 코드 검토·자동 테스트로 확인했고, 실기기
 확인 항목(이 라운드 9항목 + PR3·PR4 이월 13항목)은 원 서술 그대로 미수행이다.

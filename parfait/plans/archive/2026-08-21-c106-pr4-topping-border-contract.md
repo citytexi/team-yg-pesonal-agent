@@ -42,8 +42,10 @@ tags: [plan, parfait, topping, border, canvas, segmentation]
 
 **Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **4번 행**, 「토핑 초안 SSOT」·「좌표 변환」의 종횡비 절
 
-> **베이스는 PR3 브랜치다.** `feature/#270-topping-draft-ssot`(팁 `17157b24`, **PR 올라가 있고 미머지**).
+> **베이스는 PR3 브랜치다.** `feature/#270-topping-draft-ssot`(팁 `90eb22a1`, **PR 올라가 있고 미머지**).
 > PR1·PR2는 develop에 머지됐다(`da03c9b0`).
+> 🔁 이 문서의 스택 해시는 **2026-08-22 리베이스 뒤 기준**이다 — 스택 넷을 develop `ef55a58c` 위로
+> 다시 쌓았고 기록은 [PR3 계획서](2026-08-20-c106-pr3-topping-draft-ssot.md)에 있다.
 
 ## 사용자에게 보이는 변화 (예고)
 
@@ -75,7 +77,7 @@ tags: [plan, parfait, topping, border, canvas, segmentation]
 ## Global Constraints
 
 - **작업 대상 저장소는 `TJYG-Android`**이고 이 문서가 사는 저장소가 아니다. 로컬 절대경로는 `wiki/personal-private/project-paths.md`에 있다(Task 8만 이 문서 저장소에서 한다).
-- **베이스 브랜치는 `feature/#270-topping-draft-ssot`**(PR3, 팁 `17157b24`, 미머지)다. 그 위에 새 브랜치 `feature/#270-topping-border-contract`를 만들어 작업한다.
+- **베이스 브랜치는 `feature/#270-topping-draft-ssot`**(PR3, 팁 `90eb22a1`, 미머지)다. 그 위에 새 브랜치 `feature/#270-topping-border-contract`를 만들어 작업한다.
 - **커밋은 태스크마다 한다.** `git push`·`gh pr create`·`gh pr merge`는 **하지 않는다** — 사용자 확인이 필요한 작업이다.
 - ⚠️ **새 ViewModel 테스트는 `runTest(mainDispatcherRule.dispatcher)`로 연다.** `MainDispatcherRule`의 KDoc이 이유를 못 박아 두었다 — 인자 없이 부르면 스케줄러가 갈려 `advanceUntilIdle()`이 Main 큐를 못 비울 수 있다.
 - ⚠️ **ktlint가 미사용 import를 실패로 잡는다**(`ktlint_standard_no-unused-imports`). 그래서 이 계획은 태스크마다 **추가할 import와 지울 import를 명시한다.** 그 목록을 건너뛰면 `ktlintCheck`에서 멈춘다.

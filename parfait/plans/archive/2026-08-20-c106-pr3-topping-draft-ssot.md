@@ -46,7 +46,7 @@ tags: [plan, parfait, topping, canvas, datastore, state]
 
 > ✅ **실행 완료·미머지(2026-08-20)** — subagent-driven-development로 5 태스크. 브랜치
 > `feature/#270-topping-draft-ssot`(PR2 브랜치 `feature/#270-topping-place-domain` 위), 커밋 **10개**
-> (`99fd7a91`..`b5d8f1ce`, 아래 리베이스 뒤 기준). 신규 테스트 **20건**(계획 예상 18건 + 최종 리뷰가 요구한 2건),
+> (`6938e8a7`..`90eb22a1`, 아래 리베이스 뒤 기준). 신규 테스트 **20건**(계획 예상 18건 + 최종 리뷰가 요구한 2건),
 > 검증 명령 `:domain:test :data:testDebugUnitTest :feature:groups:canvas:impl:testDebugUnitTest
 > ktlintCheck :app:assembleDebug` 전부 통과. **머지·push 안 했다.**
 >
@@ -58,12 +58,12 @@ tags: [plan, parfait, topping, canvas, datastore, state]
 > 하지 않아 **어제 `parfaitId`가 초안에 못 박히는** 경로가 있었다. PR5에서 촬영·누끼·편집을 다 마친
 > 뒤 409를 맞는 시나리오이고, 버튼 가드가 막으려던 바로 그 실패다. 이 PR 이전부터 있던 표시 결함인데
 > 초안이 그 값을 "못 박히는 값"으로 승격시켜 무거워졌다. 두 자리를 고치고 테스트 둘로 잠갔다
-> (`fe476ca8`). 함께 닫은 것 셋: 성공 경로의 내비게이션 이펙트 미단언, DataSource 의 dedupe·decode
+> (`6456070a`). 함께 닫은 것 셋: 성공 경로의 내비게이션 이펙트 미단언, DataSource 의 dedupe·decode
 > 순서, 같은 결정 설명 3중복.
 >
 > **계획 텍스트와 갈린 것 둘:**
 > - **이 문서의 코드 블록에 적힌 KDoc·주석은 최종 형태가 아니다.** 실행 뒤 주석이 코드의 어려움에
->   비해 과하다는 지적을 받아 6파일에서 23줄을 걷었다(`b916eeec`). 걷은 것은 코드가 이미 말하는 것,
+>   비해 과하다는 지적을 받아 6파일에서 23줄을 걷었다(`59e20635`). 걷은 것은 코드가 이미 말하는 것,
 >   두 계층에 겹쳐 적힌 dedupe 설명, 다른 파일의 현재 상태를 단정하던 주석이다. **코드가 정본이다.**
 > - `ToppingDraftLocalDataSourceImpl.draft` 가 계획과 달리 원문 단계에서 `distinctUntilChanged` 한 뒤
 >   decode 하고, Repository 쪽 중복 dedupe 는 지웠다. 이웃 `EncryptedPreferences.observe` 가
@@ -74,7 +74,7 @@ tags: [plan, parfait, topping, canvas, datastore, state]
 > `LifecycleStartEffect`·토핑 탭 콜백을 더하면서 `CanvasMainRoute`·`CanvasMainViewModel` 을 같이 고쳤기
 > 때문이고, 커밋 셋에 걸쳐 해소했다. 양쪽 기능은 전부 살렸다.
 >
-> **그 과정에서 토스트 자리 하나를 다시 정했다**(계획에 없던 결정, 커밋 `b5d8f1ce`). Spotlight 토스트가
+> **그 과정에서 토스트 자리 하나를 다시 정했다**(계획에 없던 결정, 커밋 `90eb22a1`). Spotlight 토스트가
 > `YGCanvas` 의 `overlayContent`에 — 즉 **캔버스 프레임 상단**에 — 이미 못 박혀 있어서, 실패 토스트를
 > `YGScaffoldV2` 의 공통 자리로 보내면 같은 화면에서 토스트 자리가 둘로 갈리고 [[toast]] 공통 정책의
 > 스택(나중 것이 위로)이 큐마다 따로 논다. 그래서 **정책 하나를 화면 쪽 호스트에 넘기고 스캐폴드에는
@@ -85,6 +85,23 @@ tags: [plan, parfait, topping, canvas, datastore, state]
 > **아직 안 한 것**: 아래 「완료 조건」의 실기기 확인 5항목. 비활성 버튼 표현과 토스트 노출은
 > `:core:designsystem`에 호스트 테스트 소스셋이 없어 사람 눈이 유일한 감지선이고, 리베이스로 토스트가
 > 뜨는 자리가 바뀌었으므로 **조회 실패 토스트가 캔버스 프레임 상단에 뜨는지**도 함께 본다.
+>
+> 🔁 **스택 넷을 develop `ef55a58c` 위로 다시 쌓았다(2026-08-22, PR3~PR6 공통 기록)** —
+> `git rebase --update-refs`로 네 브랜치를 한 번에 옮겼고 커밋 43개가 그대로 재적용됐다(유실·중복 0건).
+> 새 팁은 **PR3 `90eb22a1` · PR4 `17a2c09f` · PR5 `67ee0d6a` · PR6 `656cbf2e`**이고 force-push 해
+> 리모트도 같다. PR 베이스 구조(#327→develop, #331→#327, #333→#331, #334→#333)는 그대로다.
+> **이 라운드가 스택의 해시를 전부 다시 썼으므로 PR3~PR6 문서·`plans/README`·스펙이 인용하던 옛
+> 해시는 새 것으로 갱신했다.** 옛 팁은 로컬 `refs/backup/prestack/<브랜치>`에 남겨 뒀다.
+>
+> **충돌은 한 자리뿐이다** — `SegmentationViewModel.kt`. develop의 #311이 세그멘테이션 실패 표현을
+> 상태(`SegmentationState.isError`)에서 1회성 이펙트(`SegmentationEffect.ShowError`)로 옮겼는데 이
+> 스택은 같은 자리에 초안 기록(`toppingDraftRepository.record`)을 넣었다. 둘 다 살렸다 — 기록 블록은
+> 스택 것 그대로 두고 실패 경로만 develop의 이펙트를 따른다. 스택이 `isError`를 읽거나 쓰던 자리는
+> 남지 않았고, **스택 쪽 동작 서술은 바뀌지 않는다**(초안 기록은 `subjectBounds == null`이면 여전히
+> 건너뛴다). 스택 문서가 #311·#325가 지운 심볼을 인용하던 자리도 없다.
+>
+> 검증: 전 모듈 `testDebugUnitTest` 통과. 리베이스 전후 diff가 develop delta(#311·#325)와 정확히
+> 같아 스택 콘텐츠 유실이 없음을 확인했다. **실기기 확인은 여전히 0회다.**
 
 ## Global Constraints
 
