@@ -5,7 +5,7 @@ status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
-archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-recent-cutout-reuse 에 커밋 9개(389fc0ac..f19b4777), 신규 테스트 24건, 30파일 969/145. 실행이 계획과 갈린 자리 셋은 plans/README 행과 스펙 「구현이 이 절과 갈린 자리」 절에 있다.
+archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-recent-cutout-reuse 에 커밋 10개(389fc0ac..be9b5373), 신규 테스트 24건, 30파일 964/145. 실행이 계획과 갈린 자리 셋은 plans/README 행과 스펙 「구현이 이 절과 갈린 자리」 절에 있다.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026
