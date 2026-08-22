@@ -273,15 +273,14 @@ internal const val MAX_SUBJECT_COUNT = 5
  * 정렬이 결정적이어야 하는 이유가 둘이다 — 테스트가 ML Kit 반환 순서에 흔들리지 않아야 하고,
  * 탭 판정이 목록 순서를 근거로 삼지 않더라도 상한 절단 결과가 매번 같아야 한다.
  */
-internal fun filterCandidates(candidates: List<SegmentationCandidate>): List<SegmentationCandidate> =
-    candidates
-        .distinctBy { it.bounds }
-        .filter { it.isLargeEnough() }
-        .sortedWith(
-            compareByDescending<SegmentationCandidate> { it.area }
-                .thenBy { it.bounds.top }
-                .thenBy { it.bounds.left },
-        ).take(MAX_SUBJECT_COUNT)
+internal fun filterCandidates(candidates: List<SegmentationCandidate>): List<SegmentationCandidate> = candidates
+    .distinctBy { it.bounds }
+    .filter { it.isLargeEnough() }
+    .sortedWith(
+        compareByDescending<SegmentationCandidate> { it.area }
+            .thenBy { it.bounds.top }
+            .thenBy { it.bounds.left },
+    ).take(MAX_SUBJECT_COUNT)
 
 /**
  * 면적을 마스크의 실제 객체 픽셀이 아니라 bounds 로 재는 것은, 이 판정이 거르려는 것이 손톱만 한
@@ -547,12 +546,25 @@ git commit -m "feat: 고른 후보를 파일로 떨구는 persistSubject 를 더
     }
 ```
 
-나머지 테스트(`init_segmentationSucceeds_publishesSubjectImagePath`·`init_cacheClearThrows_stillSegments`·`init_recentImageRecordThrows_stillSegments`·`init_segmentationSucceeds_recordsTheDraft`·`init_segmentationFails_recordsNothing` 등)는 **본문을 고치지 않는다.** 이 라운드에서 화면 동작이 같으므로 그대로 통과해야 한다.
+⚠️ **`init_segmentationSucceeds_recordsTheDraft`에서 스텁 한 줄을 지운다.** 이 테스트는 `@Before`가 이미 놓은 것과 같은 스텁을 자기 안에서 다시 놓는데, 그 줄이 옛 타입이라 그대로 두면 **컴파일이 막힌다.**
+
+```kotlin
+    @Test
+    fun init_segmentationSucceeds_recordsTheDraft() = runTest(mainDispatcherRule.dispatcher) {
+        // Given 정상 응답
+        // When 화면이 돈다
+        viewModel()
+        advanceUntilIdle()
+```
+
+즉 `coEvery { segmentImage(bitmapWrapper) } returns Result.success(success)` 줄을 걷고 Given 주석을 다듬는다. 뒤의 `coVerify` 블록은 그대로 둔다.
+
+나머지 테스트(`init_segmentationSucceeds_publishesSubjectImagePath`·`init_cacheClearThrows_stillSegments`·`init_recentImageRecordThrows_stillSegments`·`init_segmentationFails_recordsNothing`·`init_segmentationFails_tellsTheUser` 등)는 **본문을 고치지 않는다.** `Result.failure(...)`는 제네릭이 기대 타입에서 추론되므로 옛 코드 그대로 컴파일되고, 화면 동작이 같으므로 단언도 그대로 통과한다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인한다**
 
 Run: `./gradlew :feature:segmentation:impl:testDebugUnitTest --tests "*SegmentationViewModelTest*"`
-Expected: 컴파일 실패 — `SegmentationCandidate` 미해결, `SegmentationResult` 생성자 인자 수 불일치, `persistSubjectUseCase` 파라미터 없음
+Expected: 컴파일 실패 셋 — `SegmentationResult` 생성자 인자 수 불일치, `SegmentationViewModel`에 `persistSubjectUseCase` 파라미터 없음, `Result.success(listOf(candidate))`의 타입 불일치(`segmentImage`가 아직 옛 계약이다). `SegmentationCandidate` 자체는 Task 1에서 `domain`에 만들었고 이 모듈이 `implementation(project(":domain"))`을 받으므로 해결된다.
 
 - [ ] **Step 3: `SegmentationResult`에서 `subjectBounds`를 걷는다**
 
@@ -710,7 +722,9 @@ Task 2 Step 4에서 임시로 넘겼던 `subjectBounds = candidate.bounds` 인�
     }
 ```
 
-import를 더한다: `com.google.mlkit.vision.segmentation.subject.SubjectSegmentationResult` · `com.teamyg.parfait.domain.model.SegmentationBounds` · `com.teamyg.parfait.domain.model.SegmentationCandidate`.
+import를 **둘** 더한다: `com.google.mlkit.vision.segmentation.subject.SubjectSegmentationResult` · `com.teamyg.parfait.domain.model.SegmentationBounds`. `SegmentationCandidate`는 Task 2에서 이미 들어왔고, `toAndroidBitmap`은 기존 import에 있으며 `filterCandidates`·`maskSubjectPixels`는 같은 패키지라 추가할 것이 없다.
+
+> 📌 **실패의 의미가 한 자리에서 뒤집힌다.** 지금은 전경 마스크가 없거나 `remaining()` 이 어긋나면 `Result.failure(SegmentationException.Process(null))` 이 나간다. 이 라운드 뒤에는 그 두 갈래가 `fallbackCandidates` 의 `emptyList()` 를 거쳐 **`Result.success(emptyList())`** 가 되고, 화면이 빈 목록을 보고 `ShowError` 를 띄운다. 사용자가 보는 것은 같지만 `Result` 의 성패가 반대가 되므로, 리뷰에서 "실패를 성공으로 바꿨다"는 지적이 나오면 이 문단을 가리킨다.
 
 > 위 `if (trimmed !== masked)` 가드는 기존 `segmentImage` 가 `trimmedBitmap !== subjectBitmap` 으로 이미 방어하던 것과 같은 함정이다. `Bitmap.createBitmap` 이 자를 것이 없으면 원본 인스턴스를 그대로 돌려준다.
 

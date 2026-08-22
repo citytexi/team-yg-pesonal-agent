@@ -44,7 +44,8 @@ tags: [plan, parfait, segmentation, topping, c-103]
 - **다른 컴포넌트의 현재 상태를 단정하는 주석을 쓰지 않는다** — 낡는다. 써야 하면 근거 문서를 가리킨다.
 - 아키텍처 결정 설명은 코드가 아니라 `parfait/adr/`·`parfait/architecture/` 몫이다. 코드에는 포인터 한 줄만 둔다.
 - 테스트 이름은 `대상_상황_기대` 형식이고 본문에 `// Given` · `// When` · `// Then` 주석을 단다.
-- 매 Task 끝에 `./gradlew test ktlintCheck` 가 통과해야 한다.
+- **Task 1과 Task 4 끝에 `./gradlew test ktlintCheck` 가 통과해야 한다.** Task 2와 Task 3은 **의도적으로 모듈 컴파일이 깨진 상태로 끝난다**(사유는 Task 2에 적었다). 그 구간에서는 검증을 돌리지 않는다.
+- ktlint 설정 둘을 미리 알아 둔다(`.editorconfig`). **파라미터가 2개 이상이면 길이와 무관하게 시그니처를 여러 줄로 쪼갠다**(`function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 2`). 그리고 **미사용 import는 오류다**(`no-unused-imports`).
 
 ---
 
@@ -99,8 +100,12 @@ private const val CANVAS_WIDTH = 200f
 private const val CANVAS_HEIGHT = 400f
 
 class SegmentationHighlightGeometryTest {
-    private fun bounds(left: Int, top: Int, right: Int, bottom: Int) =
-        SegmentationBounds(left = left, top = top, right = right, bottom = bottom)
+    private fun bounds(
+        left: Int,
+        top: Int,
+        right: Int,
+        bottom: Int,
+    ) = SegmentationBounds(left = left, top = top, right = right, bottom = bottom)
 
     private fun rectOf(bounds: SegmentationBounds) = scaledRectOrNull(
         bounds = bounds,
@@ -110,7 +115,11 @@ class SegmentationHighlightGeometryTest {
         canvasHeight = CANVAS_HEIGHT,
     )
 
-    private fun pick(boundsList: List<SegmentationBounds>, tapX: Float, tapY: Float) = pickCandidateIndex(
+    private fun pick(
+        boundsList: List<SegmentationBounds>,
+        tapX: Float,
+        tapY: Float,
+    ) = pickCandidateIndex(
         boundsList = boundsList,
         imageWidth = IMAGE_SIDE,
         imageHeight = IMAGE_SIDE,
@@ -253,7 +262,10 @@ internal data class ScaledRect(
 
     val height: Float get() = bottom - top
 
-    fun contains(x: Float, y: Float): Boolean = x in left..right && y in top..bottom
+    fun contains(
+        x: Float,
+        y: Float,
+    ): Boolean = x in left..right && y in top..bottom
 }
 
 /**
@@ -413,7 +425,9 @@ internal fun SegmentationSubjectHighlight(
 }
 ```
 
-import를 바꾼다 — `androidx.compose.ui.graphics.drawscope.clipRect`를 걷고 `androidx.compose.ui.graphics.Path`·`androidx.compose.ui.graphics.drawscope.clipPath`를 더한다. `androidx.compose.ui.geometry.Rect`와 `androidx.compose.ui.unit.toSize`는 남는 코드에 맞춰 정리한다(`toSize`는 더 이상 쓰지 않는다).
+import를 바꾼다. **세 줄을 지운다** — `androidx.compose.ui.graphics.drawscope.clipRect` · `androidx.compose.ui.unit.toSize` · `kotlin.math.min`. 마지막 것은 삭제 대상인 `subjectRect` 에서만 쓰였고 새 코드에는 `min` 호출이 없다. **두 줄을 더한다** — `androidx.compose.ui.graphics.Path` · `androidx.compose.ui.graphics.drawscope.clipPath`.
+
+⚠️ `androidx.compose.ui.geometry.Rect` 는 **남긴다.** `addRect(Rect(...))` 가 쓴다. 미사용 import 가 하나라도 남으면 Task 4의 `ktlintCheck` 가 실패한다.
 
 > `Path` 를 `Canvas` 블록 안에서 만드는 것은 그리기마다 할당을 뜻한다. 이 화면은 정적인 사진 위의 오버레이라 프레임이 계속 돌지 않으므로 지금은 두고, 애니메이션이 붙으면 그때 `remember` 로 올린다.
 
@@ -441,9 +455,9 @@ private fun SegmentationSubjectHighlightPreview() = PreviewBox {
 - [ ] **Step 3: 컴파일을 확인한다**
 
 Run: `./gradlew :feature:segmentation:impl:compileDebugKotlin`
-Expected: 실패 — `SegmentationScreen.kt`가 아직 옛 파라미터(`bounds`·`onClickSubject`)로 부른다. 이 실패는 Task 4가 닫는다.
+Expected: 실패 — `SegmentationScreen.kt`가 아직 옛 파라미터(`bounds`·`onClickSubject`)로 부른다. 이 실패는 Task 3이 닫는다.
 
-> 이 Task를 단독으로 초록으로 만들려면 화면까지 함께 고쳐야 하는데, 그러면 리뷰가 그리기와 상태 재편을 한 덩어리로 보게 된다. **컴파일이 깨진 채로 다음 Task로 넘어간다.**
+> 이 Task를 단독으로 초록으로 만들려면 화면과 상태를 함께 고쳐야 하는데, 그러면 리뷰가 그리기와 상태 재편을 한 덩어리로 보게 된다. **컴파일이 깨진 채로 Task 3으로 넘어간다** — 그래서 이 Task에는 테스트 실행 지시가 없다.
 
 - [ ] **Step 4: 커밋 (사용자가 요청했을 때만)**
 
@@ -454,12 +468,16 @@ git commit -m "feat: 하이라이트가 후보 목록을 받아 여럿을 그린
 
 ---
 
-### Task 3: 상태·의도·효과를 재편하고 선택 시점의 순서를 못 박는다
+### Task 3: 선택 시점의 순서를 못 박고 화면까지 결선한다
 
 이 라운드에서 가장 조용히 깨지는 자리다. 확인 화면(`SegmentationConfirmViewModel`)은 정상 진입에서 스스로 초안을 적지 않고 `collectDraft`로 구독만 하므로, **이 화면이 초안의 유일한 writer**다. 저장과 기록과 이동이 모두 탭 시점으로 몰리면서 순서가 결과를 가른다.
 
+**화면과 Route까지 이 Task에 넣는다.** 상태에서 필드를 걷으면 그것을 읽는 화면이 함께 깨지고, `testDebugUnitTest`는 main 소스셋 컴파일에 의존한다. 화면을 다음 Task로 미루면 **이 Task의 테스트를 아예 돌릴 수 없다.**
+
 **Files:**
 - Modify: `.../impl/viewmodel/SegmentationViewModel.kt`
+- Modify: `.../impl/screen/SegmentationScreen.kt`
+- Modify: `.../impl/route/SegmentationRoute.kt`
 - Test: `.../impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModelTest.kt`
 
 **Interfaces:**
@@ -473,7 +491,7 @@ git commit -m "feat: 하이라이트가 후보 목록을 받아 여럿을 그린
 
 `SegmentationViewModelTest.kt`에서 상태 단언을 후보 기준으로 바꾸고 선택 흐름 테스트를 더한다.
 
-먼저 `init` 계열 5건의 단언을 바꾼다. `assertEquals(SUBJECT_PATH, ...state.subjectImagePath)` 를 쓰던 자리(`init_segmentationSucceeds_publishesSubjectImagePath`·`init_cacheClearThrows_stillSegments`·`init_recentImageRecordThrows_stillSegments`)는 모두 아래처럼 바꾼다:
+먼저 `init` 계열 3건의 단언을 바꾼다. `assertEquals(SUBJECT_PATH, ...state.subjectImagePath)` 를 쓰던 자리(`init_segmentationSucceeds_publishesSubjectImagePath`·`init_cacheClearThrows_stillSegments`·`init_recentImageRecordThrows_stillSegments`)는 모두 아래처럼 바꾼다:
 
 ```kotlin
         assertEquals(listOf(candidate), viewModel.state.value.candidates)
@@ -614,7 +632,7 @@ git commit -m "feat: 하이라이트가 후보 목록을 받아 여럿을 그린
 - [ ] **Step 2: 테스트가 실패하는지 확인한다**
 
 Run: `./gradlew :feature:segmentation:impl:testDebugUnitTest --tests "*SegmentationViewModelTest*"`
-Expected: 컴파일 실패 — `SegmentationIntent.ClickCandidate` 미해결, `state.candidates` 미해결
+Expected: 컴파일 실패. **다만 터지는 자리가 테스트가 아니라 main 소스셋이다** — Task 2가 `SegmentationSubjectHighlight`의 파라미터를 바꿔 놓아 `SegmentationScreen.kt`가 먼저 깨진다. 테스트 소스셋 컴파일에는 닿지도 못한다. 이 Step은 "아직 초록이 아니다"를 확인하는 것이고, 테스트가 실제로 도는 것은 Step 8이다.
 
 - [ ] **Step 3: 상태·의도·효과를 다시 쓴다**
 
@@ -721,31 +739,7 @@ private const val SELECT_CANDIDATE_KEY = "select-candidate"
 
 `launch(key = ...)`가 중복 탭을 막는다 — 같은 키의 작업이 돌고 있으면 새로 시작하지 않는다(`BaseViewModel.launch` KDoc).
 
-- [ ] **Step 6: 테스트가 통과하는지 확인한다**
-
-Run: `./gradlew :feature:segmentation:impl:testDebugUnitTest --tests "*SegmentationViewModelTest*"`
-Expected: PASS. 화면·Route가 아직 옛 상태 필드를 읽으므로 **모듈 컴파일은 여전히 깨져 있다** — Task 4가 닫는다.
-
-- [ ] **Step 7: 커밋 (사용자가 요청했을 때만)**
-
-```bash
-git add feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModel.kt \
-        feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModelTest.kt
-git commit -m "feat: 후보를 고르는 시점에 저장하고 초안을 적는다"
-```
-
----
-
-### Task 4: 화면과 Route를 결선한다
-
-**Files:**
-- Modify: `.../impl/screen/SegmentationScreen.kt`
-- Modify: `.../impl/route/SegmentationRoute.kt`
-
-**Interfaces:**
-- Consumes: Task 2의 `SegmentationSubjectHighlight`, Task 3의 `SegmentationState.candidates`·`ClickCandidate`·`GoToConfirm`
-
-- [ ] **Step 1: 화면이 후보 목록을 넘기게 한다**
+- [ ] **Step 6: 화면이 후보 목록을 넘기게 한다**
 
 `SegmentationScreen.kt`에서 `SegmentationScreen`의 `onClickSubject: () -> Unit` 파라미터를 `onClickCandidate: (index: Int) -> Unit`으로 바꾸고, `SegmentationResultImage` 호출과 정의를 바꾼다:
 
@@ -794,9 +788,9 @@ private fun SegmentationResultImage(
 }
 ```
 
-파일 아래 `PreviewSegmentationScreen`의 `onClickSubject = {}` 를 `onClickCandidate = {}` 로 바꾼다.
+파일 아래 `PreviewSegmentationScreen`의 `onClickSubject = {}` 를 `onClickCandidate = {}` 로 바꾼다. `SegmentationBounds` import는 새 시그니처가 계속 쓰므로 남긴다.
 
-- [ ] **Step 2: Route가 효과로 이동하게 한다**
+- [ ] **Step 7: Route가 효과로 이동하게 한다**
 
 `SegmentationRoute.kt`의 `LaunchedEffect` 블록과 `SegmentationScreen` 호출을 바꾼다:
 
@@ -826,12 +820,37 @@ private fun SegmentationResultImage(
 
 import에 `com.teamyg.parfait.feature.segmentation.impl.viewmodel.SegmentationIntent`를 더한다.
 
-- [ ] **Step 3: 전체 검증**
+⚠️ **옛 자리의 주석을 함께 옮긴다.** `// 백스택에 쌓아 올려서 뒤로가기 하면…` 주석은 지금 `onClickSubject` 위에 붙어 있다. 위 스니펫이 그것을 `LaunchedEffect` 안으로 옮겼으므로, `SegmentationScreen` 호출부에 남은 옛 주석을 지운다.
+
+- [ ] **Step 8: 테스트가 통과하는지 확인한다**
+
+여기서 비로소 모듈이 온전히 컴파일된다. `testDebugUnitTest`는 main 소스셋 컴파일에 의존하므로, 화면과 Route를 고치기 전에는 이 명령이 테스트 컴파일에 닿지도 못한다.
+
+Run: `./gradlew :feature:segmentation:impl:testDebugUnitTest --tests "*SegmentationViewModelTest*"`
+Expected: PASS
+
+- [ ] **Step 9: 커밋 (사용자가 요청했을 때만)**
+
+```bash
+git add feature/segmentation/impl
+git commit -m "feat: 후보를 고르는 시점에 저장하고 초안을 적는다"
+```
+
+---
+
+### Task 4: 전체 검증과 문서 갱신
+
+코드 변경이 없는 Task다. 앞선 셋이 만든 결과를 저장소 전체 기준으로 확인하고, 이 라운드로 거짓이 된 문서를 고친다.
+
+**Files:**
+- 없음(TJYG-Android). 문서는 `team-yg-pesonal-agent` 저장소에서 고친다.
+
+- [ ] **Step 1: 전체 검증**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 Expected: 전부 통과
 
-- [ ] **Step 4: 선행 스펙에 갱신 표기를 단다**
+- [ ] **Step 2: 선행 스펙에 갱신 표기를 단다**
 
 이 저장소가 아니라 **`team-yg-pesonal-agent`** 쪽 작업이다. `parfait/specs/archive/2026-08-15-c103-segmentation-topping-edit.md`의 네 자리에 이 라운드로 거짓이 된 서술을 표기한다.
 
@@ -842,12 +861,13 @@ Expected: 전부 통과
 
 표기 형식은 같은 파일의 기존 `📌`·`🔁` 각주를 따른다. 새 스펙([c103-multi-subject-selection](../specs/2026-08-23-c103-multi-subject-selection.md))을 가리킨다.
 
-- [ ] **Step 5: 커밋 (사용자가 요청했을 때만)**
+- [ ] **Step 3: 새 스펙의 드리프트 한 줄을 고친다**
 
-```bash
-git add feature/segmentation/impl
-git commit -m "feat: 후보를 여럿 그리고 고른 하나로 진행한다"
-```
+`parfait/specs/2026-08-23-c103-multi-subject-selection.md` 「다중 하이라이트」 절이 *"`Path`는 후보 목록과 캔버스 크기를 키로 `remember`해 프레임마다 새로 만들지 않는다"*고 적었는데, 구현은 `Canvas` 블록 안에서 매번 만든다. 이 화면은 정적인 사진 위의 오버레이라 프레임이 계속 돌지 않아 그렇게 정했다(Task 2의 인용문에 사유가 있다). 스펙 문장을 구현에 맞춘다.
+
+- [ ] **Step 4: 커밋 (사용자가 요청했을 때만)**
+
+문서 저장소(`team-yg-pesonal-agent`)에서 커밋한다. 이 저장소는 `main`에 직접 커밋하지 않으므로 브랜치를 먼저 판다.
 
 ---
 
