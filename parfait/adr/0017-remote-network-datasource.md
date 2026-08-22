@@ -144,7 +144,7 @@ DataSource 배치 관례를 확립한다.
   > 하나뿐이라 로깅으로 얻는 값이 노출을 감수할 만큼 크지 않다. 같은 표면만 **`callTimeout`을
   > 추가로 둔다** — `writeTimeout`은 바이트 사이 유휴 상한이라 전송 전체가 느린 것을 못 잡는다.
   > 이로써 OQ-P-030(타임아웃·클라이언트 분리·재시도)이 닫혔다. 근거는
-  > [specs/2026-08-20-c106-topping-place-api](../specs/2026-08-20-c106-topping-place-api.md).
+  > [specs/2026-08-20-c106-topping-place-api](../specs/archive/2026-08-20-c106-topping-place-api.md).
 - **remote DataSource 배치**: 원격 DataSource는 `source.<도메인>.remote` 패키지에 인터페이스+`Impl`
   쌍으로 둔다. 예시 1세트로 `TempService`+`TempRequest`/`TempResponse`+`TempRemoteDataSource`(+`Impl`)를
   두고, `RemoteDataSourceModule`(`@Binds`)로 바인딩한다.

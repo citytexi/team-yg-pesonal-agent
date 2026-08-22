@@ -5,7 +5,7 @@ status: done
 type: work-order
 created: 2026-08-20
 updated: 2026-08-20
-archived_reason: 구현 완료·미머지(2026-08-20). 브랜치 feature/#270-topping-draft-ssot 에 커밋 9개.
+archived_reason: 구현 완료·develop 머지(2026-08-22, PR #334 19cb5299). 브랜치 feature/#270-topping-draft-ssot 에 커밋 9개.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0026, ADR-0025
@@ -42,9 +42,10 @@ tags: [plan, parfait, topping, canvas, datastore, state]
 
 **Tech Stack:** Kotlin · Hilt · DataStore Preferences · kotlinx.serialization · Jetpack Compose · kotlinx-coroutines-test · MockK · Turbine · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **3번 행**, 「토핑 초안 SSOT」·「표시·제어 규칙」·「C-001 오늘 캔버스 조회 실패 표현」 절
+**Spec:** [`parfait/specs/archive/2026-08-20-c106-topping-place-api.md`](../../specs/archive/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **3번 행**, 「토핑 초안 SSOT」·「표시·제어 규칙」·「C-001 오늘 캔버스 조회 실패 표현」 절
 
-> ✅ **실행 완료·미머지(2026-08-20)** — subagent-driven-development로 5 태스크. 브랜치
+> ✅ **실행 완료(2026-08-20) · develop 머지(2026-08-22, PR #334 `19cb5299` — 스택 넷이 함께 들어왔다)**
+> — subagent-driven-development로 5 태스크. 브랜치
 > `feature/#270-topping-draft-ssot`(PR2 브랜치 `feature/#270-topping-place-domain` 위), 커밋 **10개**
 > (`6938e8a7`..`90eb22a1`, 아래 리베이스 뒤 기준). 신규 테스트 **20건**(계획 예상 18건 + 최종 리뷰가 요구한 2건),
 > 검증 명령 `:domain:test :data:testDebugUnitTest :feature:groups:canvas:impl:testDebugUnitTest
@@ -293,7 +294,7 @@ import com.teamyg.parfait.domain.model.id.ParfaitId
  * 알고, 나머지는 흐름의 뒤 단계가 채운다.
  *
  * @param nextPositionZ 흐름에 들어설 때 못 박은 값이라 그 사이 남이 올린 토핑과 겹칠 수 있다
- *   (`specs/2026-08-20-c106-topping-place-api.md` 결정 표).
+ *   (`specs/archive/2026-08-20-c106-topping-place-api.md` 결정 표).
  * @param subjectImagePath 파일 시스템 절대경로다. `file://` uri 가 아니다.
  * @param cutoutImagePath 재편집 시작 마스크. 좌표계를 지켜야 해 트리밍하지 않는다.
  * @param borderColorArgb null 이면 테두리가 없다.
@@ -716,7 +717,7 @@ class ToppingDraftRepositoryImpl @Inject constructor(
     /**
      * 초안은 영속되지만 그것이 가리키는 것은 `cacheDir` 하위 파일이다. 세그멘테이션 진입이
      * 그 디렉토리를 비우고 OS 도 저장 공간이 모자라면 회수하므로, 사라진 경로는 처음부터
-     * 없었던 것처럼 읽힌다(`specs/2026-08-20-c106-topping-place-api.md` 초안 SSOT 절).
+     * 없었던 것처럼 읽힌다(`specs/archive/2026-08-20-c106-topping-place-api.md` 초안 SSOT 절).
      */
     private fun ToppingDraft.withExistingFilesOnly(): ToppingDraft = copy(
         subjectImagePath = subjectImagePath?.takeIf { path -> File(path).isFile },
@@ -936,7 +937,7 @@ Expected: 컴파일 실패 — `Unresolved reference: ShowTodayCanvasError`
 ```kotlin
     /**
      * 오늘 캔버스를 못 받았고 보여 줄 것도 없을 때만 온다. 화면이 앞에 설 때마다 재조회하므로
-     * 매번 알리면 방해가 된다(`specs/2026-08-20-c106-topping-place-api.md` C-001 절).
+     * 매번 알리면 방해가 된다(`specs/archive/2026-08-20-c106-topping-place-api.md` C-001 절).
      */
     data object ShowTodayCanvasError : CanvasMainEffect
 ```

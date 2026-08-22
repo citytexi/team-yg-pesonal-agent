@@ -5,7 +5,7 @@ status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
-archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-recent-cutout-reuse 에 커밋 10개(67ee0d6a..656cbf2e), 신규 테스트 24건, 30파일 964/145. 실행이 계획과 갈린 자리 셋은 plans/README 행과 스펙 「구현이 이 절과 갈린 자리」 절에 있다.
+archived_reason: 구현 완료·develop 머지(2026-08-22, PR #334 19cb5299). 브랜치 feature/#270-recent-cutout-reuse 에 커밋 10개(67ee0d6a..656cbf2e), 신규 테스트 24건, 30파일 964/145. 실행이 계획과 갈린 자리 셋은 plans/README 행과 스펙 「구현이 이 절과 갈린 자리」 절에 있다.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026
@@ -35,7 +35,7 @@ tags: [plan, parfait, topping, gallery, segmentation, c-106]
 
 **Tech Stack:** Kotlin · Hilt · Jetpack Compose · Coil3 · DataStore Preferences · kotlinx.serialization · kotlinx-coroutines-test · MockK · Turbine · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../specs/2026-08-20-c106-topping-place-api.md) — 「누끼 알맹이 재사용 (PR6)」 절, PR 분할 표 **6번 행**
+**Spec:** [`parfait/specs/archive/2026-08-20-c106-topping-place-api.md`](../../specs/archive/2026-08-20-c106-topping-place-api.md) — 「누끼 알맹이 재사용 (PR6)」 절, PR 분할 표 **6번 행**
 
 > **베이스는 PR5 브랜치의 현재 팁이다.** `feature/#270-topping-place-wiring`(**미머지**, 검수 시점
 > 팁 `67ee0d6a` — 그 브랜치가 계획서보다 나중에도 자랄 수 있으므로 **작업 직전에 팁을 다시 확인한다**).
@@ -44,6 +44,10 @@ tags: [plan, parfait, topping, gallery, segmentation, c-106]
 > 새 브랜치 `feature/#270-recent-cutout-reuse`를 PR5 팁 위에 만든다.
 > 🔁 이 문서의 스택 해시는 **2026-08-22 리베이스 뒤 기준**이다 — 스택 넷을 develop `ef55a58c` 위로
 > 다시 쌓았고 기록은 [PR3 계획서](2026-08-20-c106-pr3-topping-draft-ssot.md)에 있다.
+
+> ✅ **2026-08-22 develop 머지**(PR #334 `19cb5299`) — 스택 넷이 머지 커밋 하나로 함께 들어왔다.
+> 머지 트리가 PR6 브랜치 팁 `656cbf2e`와 같아 충돌 해소 편집이 0건이고, 위 as-built 수치는
+> 재측정 없이 그대로 develop 사실이다.
 
 ## 사용자에게 보이는 변화 (예고)
 
@@ -1848,7 +1852,7 @@ git commit -m "feat: 최근 알맹이를 고르면 누끼 확인 화면으로 �
 > `docs/c106-pr6-recent-cutout-reuse`이고 코드 저장소를 건드리지 않는다.
 
 **Files:**
-- Modify: `parfait/specs/2026-08-20-c106-topping-place-api.md`
+- Modify: `parfait/specs/archive/2026-08-20-c106-topping-place-api.md`
 - Modify: `parfait/plans/README.md`
 - Modify: `parfait/synthesis/open-questions.md`
 - Move: 이 계획 파일을 `parfait/plans/archive/`로

@@ -1,7 +1,7 @@
 ---
 id: ADR-0026
 title: 토핑 만들기 흐름 상태를 DataStore 초안 한 벌로 모은다
-status: proposed
+status: accepted
 date: 2026-08-20
 deciders: Parfait 팀
 supersedes:

@@ -5,7 +5,7 @@ status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
-archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-topping-border-contract 에 커밋 9개, 신규 테스트 16건.
+archived_reason: 구현 완료·develop 머지(2026-08-22, PR #334 19cb5299). 브랜치 feature/#270-topping-border-contract 에 커밋 9개, 신규 테스트 16건.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026
@@ -40,12 +40,16 @@ tags: [plan, parfait, topping, border, canvas, segmentation]
 
 **Tech Stack:** Kotlin · Hilt · Jetpack Compose · Coil3 · DataStore Preferences · kotlinx-coroutines-test · MockK · Turbine · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **4번 행**, 「토핑 초안 SSOT」·「좌표 변환」의 종횡비 절
+**Spec:** [`parfait/specs/archive/2026-08-20-c106-topping-place-api.md`](../../specs/archive/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **4번 행**, 「토핑 초안 SSOT」·「좌표 변환」의 종횡비 절
 
 > **베이스는 PR3 브랜치다.** `feature/#270-topping-draft-ssot`(팁 `90eb22a1`, **PR 올라가 있고 미머지**).
 > PR1·PR2는 develop에 머지됐다(`da03c9b0`).
 > 🔁 이 문서의 스택 해시는 **2026-08-22 리베이스 뒤 기준**이다 — 스택 넷을 develop `ef55a58c` 위로
 > 다시 쌓았고 기록은 [PR3 계획서](2026-08-20-c106-pr3-topping-draft-ssot.md)에 있다.
+
+> ✅ **2026-08-22 develop 머지**(PR #334 `19cb5299`) — 스택 넷이 머지 커밋 하나로 함께 들어왔다.
+> 머지 트리가 PR6 브랜치 팁 `656cbf2e`와 같아 충돌 해소 편집이 0건이고, 위 as-built 수치는
+> 재측정 없이 그대로 develop 사실이다.
 
 ## 사용자에게 보이는 변화 (예고)
 
@@ -1591,7 +1595,7 @@ git commit -m "feat(canvas): 배치 화면이 초안을 읽고 같은 스탬프�
 > `team-yg-pesonal-agent`에서 한다. 코드 변경은 0건이다.
 
 **Files:**
-- Modify: `parfait/specs/2026-08-20-c106-topping-place-api.md`
+- Modify: `parfait/specs/archive/2026-08-20-c106-topping-place-api.md`
 - Modify: `parfait/architecture/module-structure.md`
 - Modify: `parfait/architecture/design-system.md`
 - Modify: `parfait/adr/0025-topping-border-as-server-field.md`

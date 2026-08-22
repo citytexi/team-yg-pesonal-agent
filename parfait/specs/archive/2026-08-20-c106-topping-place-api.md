@@ -1,10 +1,10 @@
 ---
 id: c106-topping-place-api
 title: C-106 토핑 배치 API 결선 — 업로드 전송·초안 SSOT·테두리 계약 전환 (Topping Place API)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-21
+verified: 2026-08-22
 related_code:
   - CanvasToppingPlaceViewModel.kt#CanvasToppingPlaceUiState
   - CanvasToppingPlaceRoute.kt#CanvasToppingPlaceRoute
@@ -57,7 +57,7 @@ tags: [spec, parfait, canvas, topping, c-106, api]
 
 C-106 확인 버튼을 누르면 토핑이 **실제로 서버에 올라가게 한다.** 지금은
 `CanvasToppingPlaceViewModel#handleOnClickConfirm`이 이펙트만 쏘고 Route가 `// TODO` 뒤에서
-캔버스로 되감는다([c106-topping-place](archive/2026-08-19-c106-topping-place.md) 드리프트 ①).
+캔버스로 되감는다([c106-topping-place](2026-08-19-c106-topping-place.md) 드리프트 ①).
 
 ## 범위
 
@@ -65,8 +65,8 @@ C-106 확인 버튼을 누르면 토핑이 **실제로 서버에 올라가게 �
   - S3 presigned PUT 전송 경로 신설 + 업로드 전용 OkHttp 클라이언트 분리
   - `ImageUploadRepository`(발급·전송·확인 3단계를 하나로) · `ToppingRepository`(배치) ·
     `AddToppingUseCase`(둘을 조율)
-  - 토핑 만들기 흐름 상태를 `:data` DataStore 한 곳으로 모으는 **토핑 초안 SSOT**([ADR-0026](../adr/0026-topping-draft-datastore-ssot.md))
-  - **테두리를 픽셀에 굽지 않고 서버 필드로 보내는 계약 전환**([ADR-0025](../adr/0025-topping-border-as-server-field.md))
+  - 토핑 만들기 흐름 상태를 `:data` DataStore 한 곳으로 모으는 **토핑 초안 SSOT**([ADR-0026](../../adr/0026-topping-draft-datastore-ssot.md))
+  - **테두리를 픽셀에 굽지 않고 서버 필드로 보내는 계약 전환**([ADR-0025](../../adr/0025-topping-border-as-server-field.md))
   - 화면 좌표 → 서버 좌표 변환 + **종횡비 상수 통일**
   - 로딩 오버레이 · 실패 토스트 · 영구 실패 코드 판정(다섯 코드, 알린 뒤 화면에 남는다)
   - **C-001 `YGScaffoldV2` 이관 + 오늘 캔버스 조회 실패 표현**
@@ -88,8 +88,8 @@ C-106 확인 버튼을 누르면 토핑이 **실제로 서버에 올라가게 �
 | 조율 위치 | `AddToppingUseCase` 하나 | 4단계 순서는 서버 계약이 정한 도메인 규칙이지 화면 관심사가 아니다. C-301 배경이 앞 3단계를 재사용한다 |
 | `positionZ` | 흐름 진입 시 캔버스의 최대 z + 1, **토핑이 없으면 1** | 새 토핑이 항상 맨 위. 목록 크기로 세면 지워진 토핑이 있는 캔버스에서 겹친다. 서버 요청 DTO에 검증 애노테이션이 없고 유일성 제약도 없어 남과 겹쳐도 거부되지 않는다 |
 | 재시도 | 실패하면 토스트 후 **발급부터 전부 다시** | 만료된 presigned URL 문제가 자동으로 풀리고 상태 기계가 단순하다. 대가는 고아 S3 객체 |
-| 테두리 | 굽지 않고 서버 필드로 | [ADR-0025](../adr/0025-topping-border-as-server-field.md) |
-| 흐름 상태 위치 | DataStore 초안 SSOT | [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md) |
+| 테두리 | 굽지 않고 서버 필드로 | [ADR-0025](../../adr/0025-topping-border-as-server-field.md) |
+| 흐름 상태 위치 | DataStore 초안 SSOT | [ADR-0026](../../adr/0026-topping-draft-datastore-ssot.md) |
 | 업로드 Repository 이름 | `ImageUploadRepository` | 요청의 `ImageType`이 `NUKKI`·`BACKGROUND` 둘이라 토핑 전용이 아니다 |
 | 배치 Repository 이름 | `ToppingRepository` | `domain/model/topping/`과 이름이 맞는다 |
 
@@ -179,7 +179,7 @@ data class ToppingDraft(
 | 시점 | 하는 일 |
 |---|---|
 | `CanvasMain`이 카메라·갤러리로 떠날 때 | 캔버스 식별값 셋으로 **새로 덮어쓴다**. 이미지·테두리는 비운다 |
-| 세그멘테이션 완료 | `SegmentationViewModel`이 알맹이·cutout 경로 기록. **화면 진입이 아니라 세그멘테이션 성공 사건에 건다** — 진입에 걸면 프로세스 사망 복원 때 진입 인자가 편집 결과를 덮어써, [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)이 영속을 고른 이유를 스스로 깬다 |
+| 세그멘테이션 완료 | `SegmentationViewModel`이 알맹이·cutout 경로 기록. **화면 진입이 아니라 세그멘테이션 성공 사건에 건다** — 진입에 걸면 프로세스 사망 복원 때 진입 인자가 편집 결과를 덮어써, [ADR-0026](../../adr/0026-topping-draft-datastore-ssot.md)이 영속을 고른 이유를 스스로 깬다 |
 | 토핑 편집 완료 | 알맹이·cutout·테두리 기록(덮어쓰기) |
 | 배치 확정 성공 | 비운다 |
 
@@ -237,13 +237,13 @@ data class ToppingDraft(
 가드가 그 위에 얹히면 "버튼이 왜 안 눌리는지"까지 안 보이게 되므로 함께 연다.
 
 - `CanvasMain`을 `YGScaffold`(V1, `EntryBuilder` 소유)에서 **`YGScaffoldV2`(Route 소유)**로 옮긴다.
-  [ygscaffold-v2 스펙](archive/2026-08-16-ygscaffold-v2-common-loading-error.md)이 이관을
+  [ygscaffold-v2 스펙](2026-08-16-ygscaffold-v2-common-loading-error.md)이 이관을
   "화면별 API 결선 라운드에 묶어 점진 진행"으로 정해 둔 그 경우다.
 - ⚠️ **토스트 자리는 `YGScaffoldV2`의 것이 아니다**(2026-08-20, PR #298 머지 후 확정). 같은 화면의
   Spotlight 작성자 토스트가 `YGCanvas`의 `overlayContent`에 호스트를 못 박아 두었고, 큐를 둘로
   나누면 [[toast]] 공통 정책의 스택이 큐마다 따로 논다. 조회 실패 토스트도 그 호스트로 보내고
   스캐폴드는 **로딩 오버레이 자리로만** 쓴다(OQ-P-167 ·
-  [c202 스펙](archive/2026-08-20-c202-canvas-spotlight.md)).
+  [c202 스펙](2026-08-20-c202-canvas-spotlight.md)).
 - **실패를 매번 알리지 않는다.** `screen-resume-refetch`가 화면이 앞에 설 때마다 재조회하게
   만들어 조회 빈도가 높다. 이미 받아 둔 `todayCanvas`가 있으면 화면을 유지하고 조용히 로그만 남기고,
   **보여 줄 캔버스가 없을 때만** 토스트로 알린다. G-001이 같은 스펙에서 정한 규칙의 C-001 대응물이다.
@@ -316,7 +316,7 @@ KDoc이 "되돌리지 않고 알린다"로 처분을 미리 적어 뒀다(막 �
 
 그 외에는 확인을 다시 눌러 **발급부터 전부 다시** 탄다.
 
-`AppError` → 문구 공통 매핑은 아직 없다([ygscaffold-v2 스펙](archive/2026-08-16-ygscaffold-v2-common-loading-error.md)이
+`AppError` → 문구 공통 매핑은 아직 없다([ygscaffold-v2 스펙](2026-08-16-ygscaffold-v2-common-loading-error.md)이
 명시적으로 제외한 항목). 이 화면이 자기 문구를 가진다.
 
 성공하면 초안을 비우고 `popUpTo<NavKeyCanvasMain>()`으로 되감는다. `CanvasMainViewModel`에 이미
@@ -330,26 +330,28 @@ KDoc이 "되돌리지 않고 알린다"로 처분을 미리 적어 뒀다(막 �
 |---|---|---|---|
 | 1 | 업로드 전송 계층 | `@UploadClient` · `PresignedUploadDataSource` · `ImageUploadRepository`/Impl · DI | **없음**(소비자 0) — ✅ **develop 머지**(PR #322, 2026-08-20 `da03c9b0`) |
 | 2 | 배치 계층 | `ToppingRepository`/Impl(`place`만) · `AddToppingUseCase` | **없음**(소비자 0) — ✅ **develop 머지**(PR #322와 같은 머지 — PR2 브랜치가 PR1 커밋을 업고 올라갔다) |
-| 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 · 초안 쓰기 실패도 알린다 — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-draft-ssot`(이제 베이스가 develop에 들어왔다) |
-| 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-border-contract`([계획](../plans/archive/2026-08-21-c106-pr4-topping-border-contract.md)) |
-| 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·성공 시 되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** — ✅ **완료·미머지**, 브랜치 `feature/#270-topping-place-wiring`(베이스는 PR4 브랜치 팁 `17a2c09f`, [계획](../plans/archive/2026-08-21-c106-pr5-topping-place-wiring.md)) |
-| 6 | 누끼 알맹이 재사용 | 배치 성공 시 **테두리 없는 알맹이**를 최근 이미지에 저장 · 최근 목록에 종류 축 신설 · 알맹이를 고르면 누끼 확인 화면으로 직행 · 선행 결함 넷(OQ-P-255) 처방 | 갤러리 "최근"에서 이미 만든 누끼를 다시 쓸 수 있다 — ✅ **완료·미머지**, 브랜치 `feature/#270-recent-cutout-reuse`(베이스는 PR5 팁 `67ee0d6a`, 커밋 10개 `67ee0d6a..656cbf2e`, 신규 테스트 24건, 30파일 964/145). 상세는 [누끼 알맹이 재사용 (PR6)](#누끼-알맹이-재사용-pr6) |
+| 3 | 초안 SSOT + C-001 정비 | `ToppingDraft` + DataStore + Repository · `CanvasMain`이 흐름 진입 시 초안 쓰기 · 토핑 추가 버튼 가드 · `YGScaffoldV2` 이관 + 조회 실패 토스트 | 버튼 가드 · 조회 실패가 보인다 · 초안 쓰기 실패도 알린다 — ✅ **develop 머지**(PR #334, 2026-08-22 `19cb5299` — PR3~PR6 넷이 이 머지 하나로 함께 들어왔다) |
+| 4 | 테두리 계약 전환 | 트리밍된 알맹이 생성 · 굽기 중단 · 확인·배치 화면이 초안을 읽고 같은 스탬프로 그리기 · `rememberSaveable` 걷기 · `NavKeyCanvasToppingPlace` 인자 제거 · 종횡비 상수 통일 | **테두리 렌더 방식이 바뀐다** — ✅ **develop 머지**(PR #334와 같은 머지)([계획](../../plans/archive/2026-08-21-c106-pr4-topping-border-contract.md)) |
+| 5 | 결선 | 좌표 변환 · `AddToppingUseCase` 호출 · 로딩·토스트·성공 시 되감기 · 성공 시 초안 비우기 · **아래 선행 미결 둘** | **토핑이 서버에 올라간다** — ✅ **develop 머지**(PR #334와 같은 머지)([계획](../../plans/archive/2026-08-21-c106-pr5-topping-place-wiring.md)) |
+| 6 | 누끼 알맹이 재사용 | 배치 성공 시 **테두리 없는 알맹이**를 최근 이미지에 저장 · 최근 목록에 종류 축 신설 · 알맹이를 고르면 누끼 확인 화면으로 직행 · 선행 결함 넷(OQ-P-255) 처방 | 갤러리 "최근"에서 이미 만든 누끼를 다시 쓸 수 있다 — ✅ **develop 머지**(PR #334와 같은 머지. 브랜치 커밋 10개 `67ee0d6a..656cbf2e`, 신규 테스트 24건, 30파일 964/145). 상세는 [누끼 알맹이 재사용 (PR6)](#누끼-알맹이-재사용-pr6) |
 
 1과 2는 소비자가 없어 리뷰가 각각 **S3 서명**과 **계약 매핑** 한 가지에만 집중할 수 있다.
 
-🔁 **PR3~PR6 넷을 develop `ef55a58c` 위로 다시 쌓았다(2026-08-22).** 위 표와 아래 절의 스택 해시는
-그 뒤 기준이고, PR 베이스 구조(#327→develop, #331→#327, #333→#331, #334→#333)는 그대로다. 충돌은
-`SegmentationViewModel` 한 자리뿐이었고 스택의 초안 기록은 그대로 둔 채 실패 표현만 develop의
-`SegmentationEffect.ShowError`를 따르게 했다 — 이 스펙이 정한 동작은 바뀌지 않는다. 상세는
-[PR3 계획서](../plans/archive/2026-08-20-c106-pr3-topping-draft-ssot.md).
+✅ **PR3~PR6 넷이 머지 커밋 하나로 develop에 들어왔다**(2026-08-22, PR #334 `19cb5299`). 스택을
+`ef55a58c` 위로 다시 쌓아 둔 상태에서 최상단 하나만 머지했고(PR 베이스 구조 #327→develop,
+#331→#327, #333→#331, #334→#333), **머지 커밋의 트리가 PR6 브랜치 팁 `656cbf2e`와 같다** — 충돌
+해소 편집이 0건이라 네 브랜치에 붙여 둔 as-built 기록을 **재측정 없이 develop 사실로 승격**할 수
+있다. 리베이스 때 충돌은 `SegmentationViewModel` 한 자리뿐이었고 스택의 초안 기록은 그대로 둔 채
+실패 표현만 develop의 `SegmentationEffect.ShowError`를 따르게 했다 — 이 스펙이 정한 동작은 바뀌지
+않았다. 상세는 [PR3 계획서](../../plans/archive/2026-08-20-c106-pr3-topping-draft-ssot.md).
 
 ✅ **PR5가 선행 미결 둘을 함께 닫았다.** PR1이 만든 계층에 **처음으로 소비자가 붙는 라운드**라
 그때까지 잠들어 있던 두 결함이 동시에 살아날 뻔했다.
 
-- [**OQ-P-109**](../synthesis/open-questions.md) — 메인 클라이언트가 발급 **응답 본문**을
+- [**OQ-P-109**](../../synthesis/open-questions.md) — 메인 클라이언트가 발급 **응답 본문**을
   `Level.BODY`로 찍던 것. `@NoBodyLog` + `SelectiveLoggingInterceptor`로 발급 엔드포인트만
   `Level.HEADERS`로 낮춰 닫았다.
-- [**OQ-P-246**](../synthesis/open-questions.md) — `PresignedUploadDataSourceImpl#put`이 블로킹
+- [**OQ-P-246**](../../synthesis/open-questions.md) — `PresignedUploadDataSourceImpl#put`이 블로킹
   `execute()`를 쓰고 `Call.cancel()`을 코루틴 취소에 잇지 않던 것. `enqueue` +
   `suspendCancellableCoroutine`·`invokeOnCancellation { call.cancel() }`로 바꿔 닫았다.
 

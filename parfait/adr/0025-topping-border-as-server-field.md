@@ -1,7 +1,7 @@
 ---
 id: ADR-0025
 title: 토핑 테두리를 픽셀에 굽지 않고 서버 필드로 보낸다
-status: proposed
+status: accepted
 date: 2026-08-20
 deciders: Parfait 팀
 supersedes:
@@ -88,5 +88,5 @@ C-301 테두리 재편집도 필드 수정으로는 성립하지 않고 이미�
 **위험·방어**
 
 - 시각 회귀가 유일한 실질 위험이라 이 전환을 **PR 하나로 격리**하고 실기기 확인을 거기에 붙인다
-  ([스펙의 PR 분할](../specs/2026-08-20-c106-topping-place-api.md#pr-분할-스택) 4번).
+  ([스펙의 PR 분할](../specs/archive/2026-08-20-c106-topping-place-api.md#pr-분할-스택) 4번).
 - 미리보기와 캔버스가 같은 스탬프 컴포저블을 공유하게 해, 두 그림이 갈라질 구조적 여지를 없앤다.

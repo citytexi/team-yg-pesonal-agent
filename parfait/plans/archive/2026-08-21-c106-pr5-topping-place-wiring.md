@@ -5,7 +5,7 @@ status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
-archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-topping-place-wiring 에 커밋 10개(17a2c09f..c443846b), 신규 테스트 29건 + 삭제 1건 — 최종 브랜치 리뷰 지적 8건과 주석 정리를 포함한 as-built 수치. 아래 "as-built 정정" 절 참고.
+archived_reason: 구현 완료·develop 머지(2026-08-22, PR #334 19cb5299). 브랜치 feature/#270-topping-place-wiring 에 커밋 10개(17a2c09f..c443846b), 신규 테스트 29건 + 삭제 1건 — 최종 브랜치 리뷰 지적 8건과 주석 정리를 포함한 as-built 수치. 아래 "as-built 정정" 절 참고.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026
@@ -40,13 +40,17 @@ tags: [plan, parfait, topping, canvas, api, c-106]
 
 **Tech Stack:** Kotlin · Hilt · Jetpack Compose · Coil3 · OkHttp5 · Retrofit · DataStore Preferences · kotlinx-coroutines-test · MockK · Turbine · MockWebServer · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../specs/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **5번 행**, 「좌표 변환」·「실패 처리」·「표시·제어 규칙」 절
+**Spec:** [`parfait/specs/archive/2026-08-20-c106-topping-place-api.md`](../../specs/archive/2026-08-20-c106-topping-place-api.md) — PR 분할 표 **5번 행**, 「좌표 변환」·「실패 처리」·「표시·제어 규칙」 절
 
 > **베이스는 PR4 브랜치다.** `feature/#270-topping-border-contract`(팁 `17a2c09f`, **미머지**).
 > 그 아래로 PR3 `feature/#270-topping-draft-ssot`가 깔려 있고, PR1·PR2는 develop에 머지됐다(`da03c9b0`).
 > 새 브랜치 `feature/#270-topping-place-wiring`을 PR4 팁 위에 만든다.
 > 🔁 이 문서의 스택 해시는 **2026-08-22 리베이스 뒤 기준**이다 — 스택 넷을 develop `ef55a58c` 위로
 > 다시 쌓았고 기록은 [PR3 계획서](2026-08-20-c106-pr3-topping-draft-ssot.md)에 있다.
+
+> ✅ **2026-08-22 develop 머지**(PR #334 `19cb5299`) — 스택 넷이 머지 커밋 하나로 함께 들어왔다.
+> 머지 트리가 PR6 브랜치 팁 `656cbf2e`와 같아 충돌 해소 편집이 0건이고, 위 as-built 수치는
+> 재측정 없이 그대로 develop 사실이다.
 
 ## 사용자에게 보이는 변화 (예고)
 
@@ -66,7 +70,7 @@ tags: [plan, parfait, topping, canvas, api, c-106]
    "`code`와 `statusCode`를 **함께** 본다"고 적었고, 그것이 판정 불가가 되는 갈래를 OQ-P-247이
    열어 두었다(서버가 HTTP 200에 실패 봉투를 실으면 `ApiCaller#runCatchingApi`가
    `statusCode = null`을 채운다). **OQ-P-247 ③을 먼저 확인한 결과 계약 스냅샷에 그 사례가 없다** —
-   [`parfait/api/parfait-image.md`](../api/parfait-image.md)의 네 엔드포인트 실패 표가 전부
+   [`parfait/api/parfait-image.md`](../../api/parfait-image.md)의 네 엔드포인트 실패 표가 전부
    403/404/409이고 성공만 200이다. 그래도 `statusCode`를 조건에 넣지 않는 이유는 따로 있다:
    **되감기 대상 세 코드에는 status로 갈려야 하는 동명 코드가 없다.** `GROUP_NOT_JOINED`는
    `ParfaitGroupApiErrorCode`에만 있고, `PARFAIT_ALREADY_CLOSED`는 `ParfaitErrorCode`에만 있으며,
@@ -247,7 +251,7 @@ Expected: 컴파일 실패 — `isPermanentPlaceFailure` 가 없고 `ServerError
 `PARFAIT_NOT_FOUND`는 **`object Parfait`에 넣지 않는다.** 이 파일의 분류 원칙은
 "서버 enum 하나에 object 하나"이고 `object Parfait`은 서버 `ParfaitErrorCode` 대응인데,
 **배치 POST가 내는 `PARFAIT_NOT_FOUND`는 `ParfaitImageErrorCode` 것이다**
-([api/parfait-image.md](../api/parfait-image.md) 실패 표). 그래서 `object ParfaitImage`를
+([api/parfait-image.md](../../api/parfait-image.md) 실패 표). 그래서 `object ParfaitImage`를
 새로 만든다(`object Parfait` 아래):
 
 ```kotlin
@@ -283,7 +287,7 @@ import com.teamyg.parfait.domain.model.error.ServerErrorCode
  *
  * `statusCode` 를 보지 않는 것이 결정이다 — 세 코드 모두 status 로 갈려야 하는 동명 코드가
  * 없고, 서버가 200 에 실패 봉투를 실으면 그 값이 `null` 로 와서 조건에 넣는 순간 판정이
- * 사라진다(`specs/2026-08-20-c106-topping-place-api.md` 실패 처리 절).
+ * 사라진다(`specs/archive/2026-08-20-c106-topping-place-api.md` 실패 처리 절).
  */
 internal fun AppError.isPermanentPlaceFailure(): Boolean = this is AppError.Server &&
     code in PERMANENT_PLACE_FAILURE_CODES
@@ -1461,7 +1465,7 @@ class CanvasToppingPlaceViewModel
      *
      * ⚠️ 확정이 도는 동안 화면을 떠나면 `viewModelScope` 취소가 업로드를 끊는다. 확인까지
      * 간 뒤 배치 전에 끊기면 **서버에 고아 이미지가 남는다** — 되돌리지 않기로 한 자리다
-     * (`specs/2026-08-20-c106-topping-place-api.md`).
+     * (`specs/archive/2026-08-20-c106-topping-place-api.md`).
      */
     private fun handleOnClickConfirm() {
         val current = state.value
@@ -1706,7 +1710,7 @@ git commit -m "feat(topping): 배치 화면에 로딩·실패 알림·되감기�
 
 **Files:**
 - Modify(코드 저장소): `domain/src/main/java/com/teamyg/parfait/domain/usecase/topping/AddToppingUseCase.kt`
-- Modify: `parfait/specs/2026-08-20-c106-topping-place-api.md`
+- Modify: `parfait/specs/archive/2026-08-20-c106-topping-place-api.md`
 - Modify: `parfait/specs/README.md`
 - Modify: `parfait/plans/README.md`
 - Modify: `parfait/synthesis/open-questions.md`
@@ -1732,7 +1736,7 @@ git commit -m "docs(topping): 취소가 남기는 고아 이미지를 KDoc 에 �
 
 - [ ] **Step 2: 스펙의 PR 분할 표를 갱신하고 PR6 행을 만든다**
 
-`parfait/specs/2026-08-20-c106-topping-place-api.md` — 5번 행 「사용자에게 보이는 변화」 칸을
+`parfait/specs/archive/2026-08-20-c106-topping-place-api.md` — 5번 행 「사용자에게 보이는 변화」 칸을
 실행 결과로 갱신하고, 표 아래에 6번 행을 더한다:
 
 | # | 브랜치 성격 | 내용 | 사용자에게 보이는 변화 |
@@ -1902,7 +1906,7 @@ git commit -m "docs: PR5 배치 결선의 결정을 문서에 반영한다"
 **실기기 확인은 여전히 안 했다** — 위 정정은 전부 코드 검토·자동 테스트로 확인했고, 실기기
 확인 항목(이 라운드 9항목 + PR3·PR4 이월 13항목)은 원 서술 그대로 미수행이다.
 
-문서 반영: [c106-topping-place-api 스펙](../../specs/2026-08-20-c106-topping-place-api.md) 실패
+문서 반영: [c106-topping-place-api 스펙](../../specs/archive/2026-08-20-c106-topping-place-api.md) 실패
 처리 절 · [parfait-image.md](../../api/parfait-image.md) · [plans/README.md](../README.md) PR5
 행 · [specs/README.md](../../specs/README.md) ⑤ 문단 · [open-questions](../../synthesis/open-questions.md)
 OQ-P-167(캔버스 토스트 호스트 필요 사례 둘째)·**OQ-P-256**(신설 — `Int.toRgbHexString()`의
