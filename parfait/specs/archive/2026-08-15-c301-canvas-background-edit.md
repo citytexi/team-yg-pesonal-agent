@@ -4,8 +4,8 @@ title: C-301 캔버스 배경 편집 화면 (배경/토핑 탭 + 색 팔레트 +
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-22
-related_code: CanvasBGEditRoute, CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditError, CanvasEditTab, CanvasBackgroundPaletteColors, NavKeyCanvasBGEdit, PictureConfirmResult, NavKeyCameraCustom, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, CANVAS_ASPECT_RATIO, YGFloatingBarEditTab, YGModalPopup, YGCanvasBackground, YGScaffoldV2, ChangeCanvasBackgroundUseCase, UploadImageUseCase, ImageFileRepository, ImageFileLocalDataSource, UploadImageFormat, UnsupportedImageException, AppError.UnsupportedImage, Color.kt#toRgbHex, CanvasBGEditViewModelTest
+verified: 2026-08-23
+related_code: CanvasBGEditRoute, CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditError, CanvasEditTab, CanvasBackgroundPaletteColors, NavKeyCanvasBGEdit, PictureConfirmResult, NavKeyCameraCustom, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, CANVAS_ASPECT_RATIO, YGFloatingBarEditTab, YGModalPopup, YGCanvasBackground, YGScaffoldV2, ChangeCanvasBackgroundUseCase, UploadImageUseCase, ImageFileRepository, ImageFileLocalDataSource, UploadImageFormat, UnsupportedImageException, AppError.UnsupportedImage, Color.kt#toRgbHex, CanvasBGEditViewModel.kt#handleOnClickConfirm, CanvasBGEditViewModel.kt#saveBackground, CanvasBGEditViewModelTest
 related_adr: ADR-0002, ADR-0005, ADR-0006, ADR-0007
 related_spec: c001-canvas-main, c101-camera-picture-confirm, c102-custom-gallery-picker, c301-topping-edit-tab, designsystem-canvas-components, designsystem-bar-listdate-components
 related_architecture: navigation-flow, design-system, state-management, module-structure
@@ -275,3 +275,18 @@ ViewModel이 진입 시 오늘 조회를 한 번 더 부르고(편집을 여는 
 - **업로드 캐시가 쌓이기만 한다** — `ImageFileLocalDataSourceImpl`이 고른 사진을
   `cacheDir/upload`에 UUID 이름으로 떨구는데 지우는 코드가 없다
   → [open-questions](../../synthesis/open-questions.md) OQ-P-262.
+
+## as-built 재정정 (2026-08-23, PR #336 develop 머지)
+
+> **확인 버튼이 더는 배경만 다루지 않는다.** 배경 축의 세 갈래는 그대로이고, 그 앞에 토핑 저장이
+> 붙었다. 토핑 쪽 설계는
+> [c301 토핑 탭 스펙](2026-08-16-c301-topping-edit-tab.md#as-built-재정정-2026-08-23-pr-336-develop-머지)에 있다.
+
+- 위 [저장 경로](#저장-경로)의 표는 `saveBackground()`로 이름을 얻어 **그대로 남았다.** 달라진 것은
+  그 앞이다 — `handleOnClickConfirm`이 바뀐 토핑을 먼저 전부 PATCH 하고 나서 이 흐름을 태운다.
+  코루틴 키도 `SAVE_BACKGROUND_KEY` → **`CONFIRM_KEY`**로 바뀌어 확인 버튼 전체가 한 단위다.
+- 그래서 **"요청 0건"이던 세 번째 갈래가 더는 요청 0건이 아니다** — 서버 배경을 그대로 둔 채
+  토핑만 옮기고 확인하면 배경 요청은 여전히 없지만 토핑 PATCH는 나간다.
+- ⚠️ **두 축의 실패 처분이 갈렸다.** 배경 실패는 위 [실패 표현](#실패-표현)대로 토스트로 나가고
+  화면이 남는데, 토핑 실패는 로그 한 줄이고 배경이 성공하면 화면이 넘어간다
+  → [open-questions](../../synthesis/open-questions.md) OQ-P-275.

@@ -194,7 +194,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `ParfaitRepository`(#268, #279, #329) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` · **`changeCanvasBackground`**(#329) | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입, C-301 편집 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) · `ChangeCanvasBackgroundUseCase`(C-301 확인) |
 | `ImageUploadRepository`(#322) | `upload(filePath, imageType): Result<ImageId>` — 발급·S3 PUT·확인 3단계를 하나로 닫고 **이미 `COMPLETED`인 `imageId`**를 준다 | `AddToppingUseCase`(C-106 배치) · `UploadImageUseCase`(#329, C-301 배경) |
 | **`ImageFileRepository`**(#329) | `copyToCache(uri): Result<String>` — `content://`를 캐시 파일로 떨구고 **절대경로**를 준다 | `UploadImageUseCase` |
-| `ToppingRepository`(#322, #335) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` · **`delete(groupId, parfaitId, parfaitImageId): Result<Unit>`**(#335) | `AddToppingUseCase`(C-106 배치) · `DeleteToppingUseCase`(C-301 편집 탭 삭제) |
+| `ToppingRepository`(#322, #335, #336) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` · **`delete(groupId, parfaitId, parfaitImageId): Result<Unit>`**(#335) · **`update(groupId, parfaitId, parfaitImageId, positionX?, positionY?, positionZ?, scale?, rotation?): Result<UpdatedToppingVO>`**(#336) | `AddToppingUseCase`(C-106 배치) · `DeleteToppingUseCase`(C-301 편집 탭 삭제) · `UpdateToppingUseCase`(C-301 편집 탭 확인) |
 
 > 📌 **위 표는 develop 기준이다.** 마지막 두 행은 2026-08-20 PR #322로 들어왔고 **소비자가 0이라
 > 아직 아무 화면도 부르지 않는다** — 결선은
@@ -211,6 +211,13 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 > 테두리 수정)은 아직 부르는 화면이 없어 닫혀 있다. Repository는 여기서도 **에러 변환만** 한다
 > (`mapErrorToAppError`) — 삭제 실패의 처분은 화면 몫인데 지금 그 화면이 로그만 남긴다
 > ([open-questions](../synthesis/open-questions.md) OQ-P-270).
+>
+> 🔁 **셋째 갈래가 같은 날 열렸다(2026-08-23, PR #336)** — `update`가 같은 화면의 확인 버튼과 함께
+> 올라와 **넷 중 셋**이 열렸다. 이 메서드만 파라미터가 전부 널 허용인데 서버 계약이 부분 병합이라
+> 그렇고(`null` = 기존 값 유지), 기본값 `null`을 인터페이스에 둔 덕에 호출부가 바꾸는 축만 적는다.
+> Repository는 여기서도 에러 변환만 하고 **좌표를 손대지 않는다** — 범위 판정 주체가 어디에도 없는
+> 상태가 그대로 서버까지 간다([open-questions](../synthesis/open-questions.md) OQ-P-271).
+> 남은 하나(테두리 수정)는 여전히 부르는 화면이 없다.
 
 **업로드가 받아 주는 형식은 `UploadImageFormat` 한 자리가 안다**(#329) — 확장자·contentType·파일
 시그니처를 enum 하나에 묶었다(`data/model/image/`). 셋을 함께 두는 이유는 **발급 요청과 S3 PUT
