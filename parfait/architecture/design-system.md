@@ -4,8 +4,8 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-20
-related_spec: segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
+verified: 2026-08-23
+related_spec: c001-canvas-gallery-save, c202-canvas-spotlight, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0007, ADR-0010, ADR-0018, ADR-0025
 related_architecture:
 related_code: core:designsystem, YGTheme
@@ -282,6 +282,18 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
     `isEnabled`가 붙어 `YGCanvasMenu`가 비활성 표현과 클릭 차단을 함께 맡는다. 첫 소비는 C-001의
     토핑 추가 버튼 가드다(오늘 캔버스를 아직 못 받았으면 흐름에 못 들어간다) →
     [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) 「표시·제어 규칙」.
+  - 📌 **캔버스가 자기 그림을 밖으로 내보낼 수 있게 됐다(#324 develop 머지, 2026-08-23)** —
+    `captureGraphicsLayer: GraphicsLayer?`를 넘기면 `CanvasArea`가 그리면서 그 레이어에도 함께
+    기록하고, 호출부가 나중에 `toImageBitmap()`으로 받아 간다. **레이어를 거는 자리가 이 API의
+    전부다** — 바깥 `Box`가 아니라 **배경·토핑만 담는 안쪽 `Box`**에 걸어 테두리·컷 도형·빈 캔버스
+    문구·날짜 버튼(화면 크롬)을 캡처에서 뺀다. 컴포넌트가 "무엇이 그림이고 무엇이 프레임인가"를
+    처음으로 갈라 놓은 자리이고, 그 경계가 곧 갤러리에 저장되는 이미지의 경계다. 넘기지 않으면
+    분기 자체가 없어 기존 호출부는 영향이 없다 →
+    [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md).
+  - 📌 **`overlayContent`에 호스트가 둘이 됐다(#324, 2026-08-23)** — C-001이 `YGToastHost` 아래
+    `YGAlertHost`를 세로로 병치했다. 슬롯은 여전히 하나이고 겹침 규칙은 컴포넌트가 아니라 주입자
+    몫인데, **얼럿을 띄우는 코드가 아직 없어** 그 규칙이 검증된 적이 없다
+    → [open-questions](../synthesis/open-questions.md) OQ-P-273.
 - **`YGGrouptagChip` / `YGToppingGroup`**(#186, G-001 그룹 목록용): 칩은 이름+구분점+상대시간 pill이고 `YGGrouptagChipType`이 **타임스탬프 색만** 결정한다(Nametag용 `YGColorChipType`과 매핑이 별개라 타입도 분리). 🔁 **6종 + `DEFAULT`가 됐다**(#308 develop 머지, 2026-08-20) — Nametag 12종을 둘씩 묶은 6종에 **가리킬 사람이 없는 경우**(마지막 토퍼가 나갔거나 아직 아무도 안 올렸다)를 위한 중립 변형이 붙었다. `YGToppingGroup`은 160dp 프레임에 96dp 토핑을 회전·오프셋으로 얹고 칩을 겹치며 **클리핑·`onClick`이 없다**(오버플로우 허용, 터치 범위는 호출자가 `clickableYG`로 감쌈). 대체 그래픽 정책은 갖지 않고 `YGToppingImage` 3상태(`Remote`/`Template`/`Error`)를 주입받아 렌더만 한다. 고정폭 프레임이 칩에 **측정** 제약을 내리므로 칩에 `wrapContentWidth(unbounded = true)`, 비정사각 원격 이미지 때문에 `rotate` **안쪽**에 `clip(RectangleShape)`가 필요하다(둘 다 실기기 검증에서 드러난 조건). **첫 소비처(#194 develop 머지, 2026-08-07)** — G-001이 `YGToppingGroup`을 그리기 시작했다. 다만 ① 호출부가 `clickableYG`로 감싸지 않아 토핑 클릭 경로가 없고, ② `YGToppingImage`는 `Remote`만 쓰여 템플릿·에러 분기가 화면 선택으로 들어오지 않았으며(에러는 `AsyncImage(error = …)` 폴백으로만 그려짐), ③ `chipType`이 전 항목 동일 값 고정이라 위키 [[S-101-프로필-닉네임-컬러-규칙-v0.3]] 매핑이 미구현이다 → [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) · [open-questions](../synthesis/open-questions.md) [2026-08-07]. ✅ **③이 닫혔다(#308·#310 develop 머지, 2026-08-20)** — 서버가 목록에 `lastPlacedByNameTagChip`을 실어 주고 `list/impl/util/GrouptagChipType.kt`가 그것을 6종으로 접는다. **색이 목록 순서가 아니라 사람에 걸린 것이 이 변경의 뜻이다** — 그룹이 하나 빠져도 남은 카드의 색이 밀리지 않는다. ✅ **①이 닫혔다(#268 develop 머지, 2026-08-17)** — 호출부가 카드 `modifier`에 `clickableYGScaleRipple`을 걸어 **토핑에 첫 클릭 경로**가 생겼고 누른 그룹의 캔버스(C-001)로 간다. 컴포넌트는 그대로다 — `onClick`을 열지 않고 `modifier` 위임으로 해결한 첫 사례다 → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md). 배치(지그재그·인셋·저개수 규칙)는 컴포넌트가 아니라 화면의 `ToppingLayout`이 쥔다.
 - **`YGToppingCutoutImage` = 누끼 + 실루엣을 따르는 테두리**(#334 develop 머지, 2026-08-22): 같은 그림을 테두리 색으로 물들여 **여덟 방향으로 밀어 찍고** 그 위에 원본을 얹는다 — 사각 테두리를 두르면 잘라 낸 배경이 다시 드러나기 때문이다. ⚠️ **바로 위 `YGToppingImage`(G-001 파르페 토핑)와는 이름만 닮은 다른 물건이다** — 그쪽은 목록 카드가 쓰는 3상태(`Remote`/`Template`/`Error`) 렌더러라 테두리 개념이 없다. 한쪽을 고치면서 다른 쪽까지 같은 것으로 보면 안 된다. 이 컴포넌트가 `:core:designsystem`에 있는 이유는 소비 화면 셋(누끼 확인·배치·캔버스)이 **모듈 둘에 걸쳐** 있어서다([module-structure](module-structure.md) 컴포저블 소유 규칙). `borderWidth`는 **화면 dp**라 토핑을 키워도 굵기가 그대로다 — 편집 화면이 원본 픽셀 좌표계로 그리는 것과 어긋나는 자리이고 그 판정은 OQ-P-245다. 그림이 아직 뜨지 않은 painter로 찍으면 플레이스홀더 실루엣이 테두리로 보이므로, 준비되기 전에는 호출부가 `borderColor`에 `null`을 넘기는 것이 계약이다.
 - **이미지 로딩**: Coil 3. `coil-compose`에 더해 **`coil-network-okhttp`가 `build-logic` `ComposeConfig`에 추가됨(#186)** — 그전까지 네트워크 페처가 없어 원격 URL이 아예 로드되지 않았다(로컬 MediaStore URI만 쓰던 탓에 드러나지 않았다). `YGToppingGroup.Remote`·`YGCanvasBackground.Image`가 이 의존에 걸린다.

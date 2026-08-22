@@ -5,8 +5,47 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `96dc215c` (`Merge pull request #339 from mash-up-kr/feature/#338-version-and-orientation`)
-- **요약**: **앱이 처음으로 화면 방향을 정했고, 그 결정에는 시한이 붙어 있다**(delta 1건). #339가
+- **커밋**: `f31b8c30` (`Merge pull request #335 from mash-up-kr/feature/topping-delete`)
+- **요약**: **앱이 캔버스를 밖으로 내보내고, 처음으로 서버의 것을 지운다**(delta 2건). 두 머지 다
+  **트리가 브랜치 팁과 같아**(#324 = `20295ba8`, #335 = `122d950b`) 충돌 해소 편집이 0건이고,
+  둘 다 선작성 스펙·플랜이 없어 **아카이브 이동은 0건**이다. 공통점은 **오래 걸려 있던 `TODO`
+  두 개가 같은 날 닫힌 것**이고, 차이는 닫는 방식이다 — 하나는 없던 계층을 새로 쌓았고 하나는
+  이미 있던 표면에 소비자를 붙였다.
+  **① 갤러리 저장**(PR #324, 12파일 **삽입 416줄·삭제 26줄** → 사후 스펙 신설
+  [c001-canvas-gallery-save](specs/archive/2026-08-23-c001-canvas-gallery-save.md)). 지난 캔버스
+  메뉴의 "갤러리에 저장"이 **로그 한 줄에서 실제 저장**이 됐다(OQ-P-211 해소, 넷 다 답이 나왔다).
+  설계에서 값진 부분은 둘이다 — **한 동작이 MVI 왕복 두 번으로 갈린다**(비트맵은 컴포지션만 만들 수
+  있어 ViewModel이 `RequestCanvasCapture`로 요청만 보내고 화면이 `toImageBitmap()` 결과를
+  `SaveCapturedCanvas`로 되돌린다), 그리고 **캡처 레이어를 어디에 거는가**다 — 바깥이 아니라
+  **배경·토핑만 담는 안쪽 `Box`**에 걸어 테두리·컷 도형·빈 캔버스 문구·날짜 버튼을 뺐다. 그래서
+  `YGCanvas`가 "무엇이 그림이고 무엇이 프레임인가"를 처음으로 갈랐고, 그 경계가 곧 저장되는 이미지의
+  경계다(정책 소스가 없어 코드가 확정). 쓰기는 `IS_PENDING` 등록 → 바이트 → 내림이고 중간 실패는
+  등록 자체를 지운다. 권한은 `GalleryWritePermissionManager`가 API 29 미만에서만 보고 매니페스트도
+  `maxSdkVersion="28"`로 좁혔다(`minSdk` 26이라 살아 있는 갈래이고, 요청에 Activity가 필요해 **Route가
+  캡처한 비트맵을 들고 기다린다**).
+  **② 토핑 삭제**(PR #335, 6파일 **삽입 163줄·삭제 9줄**). C-301 편집 탭의 삭제 확인 모달이 곧
+  `DELETE`이고 **성공해야 목록에서 뺀다** — `ToppingRepository`의 둘째 갈래가 소비 화면과 함께 열려
+  `parfait-image` 도메인의 미소비가 셋에서 **둘**(위치·테두리 수정)로 줄었다. **앱이 서버 데이터를
+  지우는 첫 경로**이고 OQ-P-199 ③이 "확인 모달 시점에 즉시"로 닫혔다.
+  ⚠️ **그런데 삭제만 즉시 영구이고 실패는 화면에 닿지 않는다**(OQ-P-270) — 이동·크기·회전은 여전히
+  나가면 사라지는데 삭제는 "그만두기"로 나가도 안 돌아오고, 403·409·404가 전부 `viewModelLogger.e`
+  한 줄로 접힌다. 같은 화면의 배경 저장은 같은 실패를 토스트로 보여 주므로 **한 화면 안에서 처분이
+  갈렸고**, 409는 같은 서버 코드에 **세 번째 처분**을 더했다(OQ-P-261).
+  ⚠️ **같은 커밋이 근거 없이 크기 상한을 지웠다**(OQ-P-271) — `TOPPING_MAX_SCALE = 2.5f`가 사라져
+  이제 앱에도 서버에도 배율을 막는 자리가 없고, 상·하한 없는 축이 둘이 됐다.
+  ⚠️ **캡처는 지금 그려진 것을 복사한다**(OQ-P-272) — 배경 `AsyncImage`가 늦으면 그대로 담기고
+  해상도도 기기 종속인데 코드가 다루지 않는다. ⚠️ **얼럿 호스트와 문자열 셋이 트리거 없이 들어왔다**
+  (OQ-P-273 — 프리뷰만 띄운다). ⚠️ **저장이 API 29를 경계로 위치도 보호도 갈린다**(OQ-P-274).
+  문서 쪽 결과는 **사후 스펙 하나와 as-built 하나**다 — 갤러리 저장은 새 스펙이 갖고, 토핑 삭제는
+  [c301-topping-edit-tab](specs/archive/2026-08-16-c301-topping-edit-tab.md)에 재정정 절로 들어갔다
+  (드리프트 2 부분 해소, **드리프트 4의 "크기는 클램프한다"는 전제 정정**). 계약 문서는 delta가
+  없지만 소비가 늘어 `api/parfait-image.md` Android 매핑·`api/README.md` 도메인 표를 고쳤다
+  (**`verified`는 서버 계약 대조일이라 미변경**, `android_status`도 `partial` 유지). 유닛 737 →
+  **745건**(+8), 테스트 클래스 **87개** 유지. ⚠️ **실기기·실서버 확인은 여전히 0회이고, 이번 라운드는
+  유닛이 닿지 않는 자리가 특히 넓다** — 캡처 결과물·권한 다이얼로그·`MediaStore` 쓰기가 한 줄도 안
+  잠겨 있다.
+  직전 회차 요약: **앱이 처음으로 화면 방향을 정했고, 그 결정에는 시한이 붙어 있다**(delta 1건,
+  기준선 `96dc215c`). #339가
   커밋 일곱·6파일 **삽입 42줄·삭제 17줄**로 들어왔고, **머지 트리가 브랜치 팁 `cab38993`과 같아**
   충돌 해소 편집이 0건이다. **`.kt` 파일이 0건인 첫 라운드**다 — 매니페스트 둘·문자열 둘·버전
   카탈로그·gradle wrapper가 전부이고, 그래서 테스트도 변하지 않았다(유닛 737건·클래스 87개 유지).
@@ -676,3 +715,4 @@
 | 2026-08-22 | `a0d584ef` | Merge #326 (nav screen transition) | delta 1건, 커밋 5·5파일 156/1, **머지 트리 = 브랜치 팁 `07f0a6a2`**(충돌 해소 편집 0건). **전환이 처음으로 앱의 결정이 됐다** — 라이브러리 기본(페이드+축소)에서 **오른쪽에서 덮고 오른쪽으로 빠지는** 밀기로 바뀌었다. `NavTransition`(`core:navigation`)이 `push`·`pop`·`predictivePop`을 한 값으로 묶고(방향이 짝을 이뤄야 하나의 동작으로 읽힌다) `metadata`로 화면별 override를 연다 — 붙는 대상이 **위에 놓이는 화면**이라는 것이 이 API의 함정이다. ⚠️ **산출물을 아무도 본 적이 없다**(OQ-P-260): 테스트가 잠그는 것은 세 슬롯이 비지 않았다는 것뿐이고, 유일한 예외 `Fade`가 붙은 `NavKeyCanvasEdit`은 짝인 `NavKeyCanvasImageSelect`와 함께 **도달 불가**라(OQ-P-129 ②) 그 근거인 공유 요소 전환도 실행되지 않는다. ⚠️ 앱 기본을 무는 세 줄이 `MainRoute`·`RootRoute`(app-preview) **두 곳에 복제**됐다(OQ-P-259 — 데코레이터 셋도 이미 같은 형태다). 문서 결과는 **최종 커밋이 지운 `Fade` KDoc을 받아 낸 것** — [navigation-flow](architecture/navigation-flow.md) 「화면 전환」 신설 + 등록 체크리스트 8번. 선작성 스펙·플랜 없어 **아카이브 이동 0건**, `api/` 무변경. 유닛 694 → **696건**, 클래스 80 → **81개**. 미머지 추적 항목 **0** |
 | 2026-08-22 | `8eb2af7d` | Merge #329 (canvas bg edit api + test) | delta 1건, 커밋 13·44파일 1677/218, **머지 트리 = 브랜치 팁**(충돌 해소 편집 0건). **고른 배경이 처음으로 남고, 편집 화면이 mock을 버렸다.** 확인이 세 갈래로 갈린다 — 색은 `#RRGGBB` PATCH, 기기 사진은 **캐시 복사 → 발급 → S3 PUT → confirm** 뒤 `imageId` PATCH, 서버에 이미 있던 배경은 **요청 0건**(https는 기기가 못 읽어 다시 못 올린다). **저장이 끝나야 화면을 넘긴다**(먼저 넘기면 저장 안 된 배경을 그린 채 서 있다가 다음 조회에서 되돌아간다). 앱이 서버에 쓰는 **두 번째 경로**이고 `api/parfait.md`가 **`done`**(회전 제외 5/5). OQ-P-173 **해소**, OQ-P-193(성공 널 → 실패로 안 다루고 고른 값으로 그린다)·OQ-P-194(②는 UseCase 둘로 조율, ③은 재조회) **부분 해소** — 다만 널 폴백은 Route가 이펙트 값을 안 써서 **아직 아무것도 안 바꾼다**. **토핑 탭이 서버 캔버스를 그린다**(OQ-P-199 ① 해소) — 좌표가 Dp 오프셋 → **0~1 중심점**, 배치 규칙 셋이 `util/ToppingGeometry.kt`로 올라가 캔버스 메인·편집 탭·배치 화면이 같은 값을 본다. `NavKeyCanvasBGEdit`가 `data class(groupId, parfaitId)`로 승격되고 C-001은 **오늘 캔버스를 못 받았으면 편집을 안 연다**. entry의 `YGScaffold` 껍질을 걷고 Route가 `YGScaffoldV2`를 직접 든다(토스트 자리·인셋 이중 적용 회피). `AppError` **네 번째 갈래 `UnsupportedImage`** — 서버가 아니라 **기기에서 오는 실패**의 첫 사례이고 그 갈래만 재시도가 무의미하다. 형식 판정이 `UploadImageFormat`(확장자·contentType·시그니처) 한 자리로 모이고, 캐시 복사가 **시스템 MIME → 바이트 앞머리** 순으로 판정한다. ⚠️ **소유 판정이 축이 다른 두 id를 견준다**(OQ-P-250 — 편집 화면에서는 그 판정이 곧 게이트다). ⚠️ 마감 409가 "잠시 후 다시"로 접힌다(**OQ-P-261 신설**, C-106 배치와 처분이 갈렸다). 조치: 스펙 as-built 2건(c301 배경·c301 토핑 탭, 둘 다 드리프트 1 닫힘·`verified` 2026-08-22, **아카이브 이동 0건**), api 3표면(parfait `android_status: partial`→**`done`**·엔드포인트 표 5칸·Android 매핑 4블록 / image Android 매핑에 `BACKGROUND` 첫 소비·형식 판정·캐시 / README 도메인 표 + 소비 24건 문단. `verified`·conventions 불일치 표 불변 — 0건 유지), architecture 3건(data-layer `UnsupportedImage`·`ImageFileLocalDataSource`·Repository 인벤토리 2행·DI 2줄·`UploadImageFormat` / navigation-flow 인자 승격·entry 예외·Assisted 목록 / state-management 실패 enum 네 번째 사례·UI 타입 근거 변경). open-questions: **해소 1건**(OQ-P-173) · **부분 해소 3건**(OQ-P-193·194·199) · 마커 5건(OQ-P-146 실기기 신규 4항목·OQ-P-190 첫 실사례·OQ-P-250·OQ-P-254·OQ-P-256) · **신규 3건**(OQ-P-261 마감 409 처분 갈림 · OQ-P-262 업로드 캐시 정리 없음 · OQ-P-263 6자리 HEX 변환 함수 둘·알파 처리 정반대·로케일 결함). 유닛 696 → **737건**(+41), 클래스 81 → **87개**. 미머지 추적 항목 **0**. ⚠️ 실기기·실서버 확인 0회 |
 | 2026-08-22 | `96dc215c` | Merge #339 (portrait lock + version/dependency bump) | delta 1건, 커밋 7·6파일 42/17, **머지 트리 = 브랜치 팁 `cab38993`**(충돌 해소 편집 0건). **`.kt` 0건인 첫 라운드** — 매니페스트 둘·문자열 둘·버전 카탈로그·wrapper뿐이라 테스트도 안 변했다(유닛 737·클래스 87 유지). **① 세로 고정**([ADR-0027](adr/0027-portrait-orientation-lock.md) 신설): `MainActivity`(`app`·`app-preview`)와 **카카오 `AuthCodeHandlerActivity`**에 `screenOrientation="portrait"`, `<application>`에 `PROPERTY_COMPAT_ALLOW_RESTRICTED_ORIENTATION_AND_ASPECT_RATIO_OPT_OUT`. 리다이렉트까지 붙인 이유가 알맹이다 — 빼면 **로그인 구간에서만** 회전이 살아 있고 그 구간이 A-002 리뷰의 로그인 유실 경로다(OQ-P-146 ⑨ **재현 경로 닫힘**, 다른 구성 변경은 남아 항목 자체는 유지). opt-out을 붙인 이유는 `targetSdk 36`이 sw600dp 이상에서 `screenOrientation`을 무시해 폰과 대화면 거동이 갈리기 때문. **② 표기·버전**: `app_name` 대문자화(프리뷰 포함), `appVersionName` **하향**(`versionCode`·프리뷰 버전 불변 — 스토어 미배포라 되돌릴 수 있는 자리). **③ 의존성 일괄 상향**: AGP·Kotlin·KSP·Compose BOM·OkHttp·Kakao SDK·Navigation3(alpha 계열 내)·Lottie·Hilt Navigation Compose·Kermit·Firebase BOM·Crashlytics·Gradle wrapper — 코드 수정 0건인 채 **CI `lint`·`unit-test` 통과**. 조치: **ADR-0027 신설 + README 등록**, [ADR-0006](adr/0006-navigation3-custom-navigator.md) alpha 버전 핀 문구 정정(이번 상향으로 실제로 어긋났다), open-questions **신규 2건**(OQ-P-264 opt-out이 `targetSdk 37`에 사라지는데 대화면 방침 없음·추적처가 매니페스트 TODO 한 줄뿐 / OQ-P-265 세로 고정으로 카메라 촬영이 기기 방향을 안 따른다 — `targetRotation`·`OrientationEventListener` 없음, 정책 근거도 없음) + 마커 1건(OQ-P-146 ⑨). 선작성 스펙·플랜 없고 화면 변경도 없어 **아카이브 이동 0건**, 계약 문서(`api/`)는 원격 연동 코드가 delta에 없어 무변경. 미머지 추적 항목 **0**. ⚠️ 실기기 0회 — 이번 라운드는 **유닛으로 덮을 수 없는 종류**(매니페스트 속성)이고 대화면 opt-out은 폰에서 드러나지 않는다 |
+| 2026-08-23 | `f31b8c30` | Merge #324(gallery-store) · #335(topping-delete) | delta 2건, **둘 다 머지 트리 = 브랜치 팁**(#324 = `20295ba8`, #335 = `122d950b`, 충돌 해소 편집 0건)이고 **선작성 스펙·플랜 없음 → 아카이브 이동 0건**. 라운드를 묶는 축은 **오래 걸려 있던 `TODO` 둘이 같은 날 닫힌 것**이고, 닫는 방식이 갈린다 — 하나는 없던 계층을 새로 쌓았고 하나는 이미 있던 표면에 소비자를 붙였다. **#324**(12파일 416/26): 지난 캔버스의 "갤러리에 저장"이 로그 한 줄에서 **실제 저장**이 됐다(OQ-P-211 **해소**, 네 항목 전부 답). 설계의 핵심 둘 — **한 동작이 MVI 왕복 두 번**으로 갈린다(비트맵은 컴포지션만 만들 수 있어 ViewModel이 `RequestCanvasCapture`로 요청만 보내고 화면이 `toImageBitmap()`을 `SaveCapturedCanvas`로 되돌린다), 그리고 **캡처 레이어를 배경·토핑만 담는 안쪽 `Box`에 건다**(테두리·컷 도형·빈 캔버스 문구·날짜 버튼 제외) — `YGCanvas`가 "그림 vs 프레임"을 처음 갈랐고 그 경계가 곧 저장 이미지의 경계다. 쓰기는 `IS_PENDING` 등록 → 바이트 → 내림이고 중간 실패는 등록을 지운다. 권한은 API 29 미만 전용(`GalleryWritePermissionManager`, 매니페스트 `maxSdkVersion="28"`, `minSdk` 26이라 살아 있는 갈래)이고 Activity가 필요해 **Route가 캡처 비트맵을 들고 기다린다**. **#335**(6파일 163/9): 삭제 확인 모달이 곧 `DELETE`이고 **성공해야 목록에서 뺀다** — `ToppingRepository` 둘째 갈래가 소비 화면과 함께 열려 `parfait-image` 미소비가 셋 → **둘**(위치·테두리 수정), **앱이 서버 데이터를 지우는 첫 경로**다(OQ-P-199 ③ 해소 = "확인 모달 시점에 즉시"). ⚠️ **삭제만 즉시 영구이고 실패가 화면에 안 닿는다**(OQ-P-270 — "그만두기"로 나가도 안 돌아오는데 403·409·404가 전부 로그 한 줄, 같은 화면 배경 저장은 토스트라 처분이 갈렸고 409는 같은 코드에 **세 번째 처분**). ⚠️ **같은 커밋이 `TOPPING_MAX_SCALE`을 근거 없이 삭제**해 상·하한 없는 축이 둘이 됐다(OQ-P-271). ⚠️ 캡처가 **지금 그려진 것**을 복사해 배경 로딩 전이면 그대로 담기고 해상도도 기기 종속(OQ-P-272) · **얼럿 호스트·문자열 셋이 트리거 없이 유입**(OQ-P-273) · **저장이 API 29를 경계로 위치도 보호도 갈림**(OQ-P-274). 조치: 사후 스펙 1건 작성(`implemented`·archive) [c001-canvas-gallery-save](specs/archive/2026-08-23-c001-canvas-gallery-save.md) + README 등록, [c301-topping-edit-tab](specs/archive/2026-08-16-c301-topping-edit-tab.md)에 as-built 재정정 절(드리프트 2 부분 해소 · **드리프트 4의 "크기는 클램프한다" 전제 정정**) + README 행 갱신, [c201-canvas-calendar-server](specs/archive/2026-08-17-c201-canvas-calendar-server.md) 드리프트 1 해소 마커, `api/parfait-image.md` Android 매핑(소비처 배치+삭제 둘 · 실패 무반응 경고 · 배율 상한 소멸 마커)·`api/README.md` 도메인 표 + 소비 25건 문단(**`verified`·`android_status` 불변**), architecture 2건(data-layer 시스템 미디어가 **읽기 전용이 아니게 됨** + `ToppingRepository` 인벤토리 / design-system `captureGraphicsLayer`·`overlayContent` 호스트 둘). open-questions: **OQ-P-211 해소됨**, OQ-P-199 **③ 해소 + ② 전제 정정**(좌표 PATCH는 2026-08-15부터 계약에 있다), **신규 5건**(OQ-P-270~274), `oq-next` 270 → 275. 유닛 737 → **745건**(+8), 클래스 87 유지. ⚠️ **실기기·실서버 확인 0회 — 캡처 결과물·권한 다이얼로그·`MediaStore` 쓰기가 한 줄도 안 잠겼다.** 미머지: 없음(as-built 대기 브랜치 0건 — 활성 계획 [c103 다중 후보 PR1·PR2](plans/2026-08-23-c103-pr1-multi-subject-domain.md)는 아직 브랜치가 없다) |

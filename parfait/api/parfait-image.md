@@ -341,9 +341,9 @@ tags: [api, parfait, server-contract, parfait-image]
 
 ## Android 매핑
 
-**네 엔드포인트 전부 표면 있음.** 소비처는 배치(POST) 하나뿐이고(2026-08-21, PR5) 나머지 셋(위치
-PATCH · 테두리 PATCH · DELETE)은 여전히 **소비처 0건**이다(표면은 2026-08-12 PR #230 두 건 +
-**2026-08-15 PR #250 두 건**).
+**네 엔드포인트 전부 표면 있음.** 소비처는 **배치(POST)와 삭제(DELETE) 둘**이고(배치 2026-08-21 PR5,
+삭제 2026-08-23 PR #335) 나머지 둘(위치 PATCH · 테두리 PATCH)은 여전히 **소비처 0건**이다(표면은
+2026-08-12 PR #230 두 건 + **2026-08-15 PR #250 두 건**).
 
 | 계약 | Android 심볼 |
 |---|---|
@@ -424,6 +424,7 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 화면 로컬 상태로만 동작한다(소비 화면은 C-301 라운드). 다만 **"다시 그릴 수 없다"는 사유도, 앱 표면
 공백도 사라졌다** — `GET .../parfaits/today`가 배치 전량을 내려주고([parfait.md](parfait.md)) 네
 엔드포인트 전부 DataSource까지 와 있다.
+> 🔁 **삭제가 그 셋에서 빠졌다**(2026-08-23, PR #335) — 아래 항목 참고.
 
 ✅ **배치 하나는 Repository·UseCase까지 올라왔다**(2026-08-20 develop 머지, PR #322) —
 `ToppingRepository.place`가 DataSource의 넷 중 배치만 열고, `AddToppingUseCase`가 업로드
@@ -441,6 +442,19 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 → [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) ·
 [open-questions](../synthesis/open-questions.md).
 
+✅ **삭제가 화면까지 이어졌다**(2026-08-23 develop 머지, PR #335) — `ToppingRepository.delete` ·
+`DeleteToppingUseCase`가 신설되고 C-301 편집 탭의 삭제 확인 모달이 그것을 부른다. **앱이 서버의
+데이터를 지우는 첫 경로**이고, `safeApiCallWithoutData`(200 + `data: null`)가 이 라운드에 화면 쪽
+소비자까지 갖게 됐다. 성공해야 화면 목록에서 뺀다.
+⚠️ **그런데 실패가 화면에 닿지 않는다** — ViewModel이 로그 한 줄만 남겨 이 도메인의 실패 코드가
+전부 무반응으로 접힌다: 403 `PARFAIT_IMAGE_NOT_OWNED`(남의 배치 / 그룹 미참여) · 409
+`PARFAIT_ALREADY_CLOSED`(마감된 캔버스) · 404 `PARFAIT_IMAGE_NOT_FOUND`(두 번째 삭제). 같은 화면의
+배경 저장은 같은 실패를 토스트로 보여 준다 — **한 화면 안에서 처분이 갈렸다.** 409는 그 김에
+[c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md)이 남긴 "같은
+서버 코드에 처분이 둘"에 **세 번째 처분**을 더했다(되감기 → 알리고 남기 → 아무것도 안 함)
+→ [open-questions](../synthesis/open-questions.md) OQ-P-270 · OQ-P-261.
+`android_status`는 여전히 `partial`이다 — 위치·테두리 PATCH의 소비 화면이 없다.
+
 `http/parfait-image.http`가 **네 요청을 전부** 덮는다(2026-08-15). **선행이 넷**이 됐다 —
 `auth.http` → `parfait-group.http` → `images.http`(발급·PUT·confirm) → `parfait.http`(오늘의 캔버스
 조회가 `parfait_id`를 채운다). `parfaitId` 리터럴을 손으로 바꾸던 단계는 사라졌다.
@@ -449,6 +463,8 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 
 - 좌표·`scale`·`rotation`·`borderWidth`에 서버 검증이 없다 — 범위를 서버가 강제할지, 앱 책임으로 둘지
   → [open-questions](../synthesis/open-questions.md)
+  > ⚠️ **앱 쪽 상한도 하나 사라졌다**(2026-08-23, PR #335) — C-301 편집 탭의 `TOPPING_MAX_SCALE`이
+  > 삭제돼 배율을 막는 자리가 양쪽 어디에도 없다 → 같은 문서 OQ-P-271.
 - 같은 `imageId` 재-POST가 남의 배치를 옮기고 소유자를 가져간다(POST에 소유자 검사 없음)
   → [open-questions](../synthesis/open-questions.md)
 - 삭제가 S3 객체를 지우면서 `image_meta` 행은 `COMPLETED`로 남긴다 — 그 `imageId`로 다시 배치하면 깨진

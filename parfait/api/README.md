@@ -29,7 +29,7 @@
 | [parfait.md](parfait.md) | `http/parfait` | 5 + 테스트 전용 1 (연도 리스트 · 오늘의 캔버스 · 과거 목록 · **상세 조회** · **배경 변경** / 테스트 회전) | **결선됨**(회전 해당 없음, 5 전부 호출부 있음 — 배경 변경이 2026-08-22 PR #329로 마지막에 붙었다, 불일치 0건) |
 | [image.md](image.md) | `http/image` | 2 (업로드 URL 발급 · 업로드 확인) | **결선됨**(2 전부 호출부 있음) |
 | [member.md](member.md) | `http/member` | 3 (내 계정 조회 · 전역 닉네임 변경 · **탈퇴**) | **결선됨**(3 전부 호출부 있음) |
-| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨(배치 확정만 **결선됨**, 나머지 셋은 미소비) |
+| [parfait-image.md](parfait-image.md) | `http/parfaitimage` | 4 (토핑 배치 확정 · 위치/크기/각도 수정 · **테두리 수정** · **삭제**) | 구현됨(배치 확정·**삭제**가 **결선됨**, 위치·테두리 수정은 미소비) |
 
 **총 28 엔드포인트 + 테스트 전용 1**(2026-08-20, 서버 `efbf98f` — **세 라운드 연속 증감 0**).
 **Android 표면은 27/27, 공백 0이다** —
@@ -213,6 +213,14 @@
 > ⚠️ 앱이 서버에 쓰는 두 번째 경로인데 **실기기·실서버 확인은 여전히 0회**이고, 마감된 캔버스가
 > 돌려주는 409는 화면에서 일반 오류로 접힌다
 > → [open-questions](../synthesis/open-questions.md) OQ-P-146·OQ-P-261.
+>
+> ✅ **2026-08-23 — 앱이 서버 데이터를 지우는 첫 경로가 생겼다**(PR #335 develop 머지, 계약 delta
+> 없음). C-301 편집 탭의 삭제 확인 모달이 **토핑 삭제 DELETE**를 부르면서 `parfait-image.md`의
+> 미소비 셋이 **둘**(위치·테두리 수정)로 줄었다. **소비처를 얻은 엔드포인트는 25건**이고 `partial`
+> 도메인은 여전히 **둘**이다(`parfait-group.md`·`parfait-image.md`). ⚠️ **실패가 화면에 닿지
+> 않는다** — 403·409·404가 전부 로그 한 줄로 접혀, 같은 화면의 배경 저장과 처분이 갈렸다
+> → [parfait-image.md](parfait-image.md) Android 매핑 ·
+> [open-questions](../synthesis/open-questions.md) OQ-P-270.
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만
