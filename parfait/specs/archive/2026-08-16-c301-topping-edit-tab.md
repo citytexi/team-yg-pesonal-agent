@@ -18,9 +18,14 @@ related_code:
   - CanvasBGEditViewModel.kt#CanvasToppingItem
   - CanvasBGEditViewModel.kt#CanvasBGEditViewModel
   - CanvasBGEditViewModel.kt#handleOnDeleteToppingDialogConfirm
+  - CanvasBGEditViewModel.kt#handleOnClickConfirm
+  - CanvasBGEditViewModel.kt#updateToppingIfChanged
   - DeleteToppingUseCase.kt#DeleteToppingUseCase
+  - UpdateToppingUseCase.kt#UpdateToppingUseCase
   - ToppingRepository.kt#delete
+  - ToppingRepository.kt#update
   - ToppingRepositoryImpl.kt#delete
+  - ToppingRepositoryImpl.kt#update
   - CanvasBGEditRoute.kt#CanvasBGEditRoute
   - ToppingGeometry.kt#computeToppingStrokeCorners
   - ToppingGeometry.kt#computeToppingButtonPoints
@@ -197,6 +202,10 @@ NavKeyCanvasBGEdit ─(편집 버튼)─▶ NavKeyToppingEdit(source, segmentati
    → [open-questions](../../synthesis/open-questions.md) [2026-08-16].
    > 🔁 **부분 해소(PR #335, 2026-08-23)** — **삭제만** 서버에 남는다. 나머지 넷은 그대로다.
    > 아래 [as-built 재정정](#as-built-재정정-2026-08-23-pr-335-develop-머지) 참고.
+   > ✅ **거의 닫혔다(PR #336, 2026-08-23)** — 이동·크기·회전이 확인 버튼에서 PATCH로 나간다.
+   > **다섯 중 넷이 남고 테두리 재편집만 혼자 사라진다**
+   > → 아래 [as-built 재정정](#as-built-재정정-2026-08-23-pr-336-develop-머지) ·
+   > [open-questions](../../synthesis/open-questions.md) OQ-P-276.
 3. **C-106 배치 규격이 코드에 없다** — 40%·정중앙·48px 방어가 전부 빠졌다. 신규 배치 경로가 없어
    당장 어긋나지는 않지만, 추가 경로가 붙을 때 이 규격이 어디에 살지 정해져 있지 않다
    → [open-questions](../../synthesis/open-questions.md) [2026-08-16].
@@ -205,6 +214,9 @@ NavKeyCanvasBGEdit ─(편집 버튼)─▶ NavKeyToppingEdit(source, segmentati
    > ⚠️ **크기 쪽 전제가 뒤집혔다(PR #335, 2026-08-23)** — `TOPPING_MAX_SCALE`이 삭제돼 상한이
    > 사라졌고 하한만 남았다. 이제 **상·하한이 없는 축이 둘**이다
    > → [open-questions](../../synthesis/open-questions.md) OQ-P-271.
+   > ⚠️ **"저장 계약이 생기면"이 같은 날 현실이 됐다(PR #336, 2026-08-23)** — 두 축의 값이 그대로
+   > PATCH 본문에 실린다. 정규화 주체는 여전히 없고 서버도 범위를 검증하지 않는다
+   > ([api/parfait-image.md](../../api/parfait-image.md) 미결).
 5. **선택 상태가 목록 변화를 견디지 못한다** — `selectedToppingId`가 목록에서 사라진 id를 가리켜도
    화면은 조용히 아무것도 그리지 않는다(삭제 경로에서는 함께 비우지만, 목록이 서버에서 갱신되기
    시작하면 그 보장이 사라진다).
@@ -319,3 +331,67 @@ feature/segmentation/
 `CanvasBGEditViewModelTest` 셋 — 성공 시 목록에서 빠지고 선택이 풀리는지, 실패 시 목록이 그대로인지,
 선택이 없으면 호출하지 않는지. 저장소 전체 유닛은 737 → **745건**(같은 라운드의 갤러리 저장 셋 포함),
 테스트 클래스는 **87개**로 그대로다.
+
+## as-built 재정정 (2026-08-23, PR #336 develop 머지)
+
+> **드리프트 2가 거의 닫혔다** — 편집 결과 다섯 중 넷이 서버에 남는다. 브랜치
+> `feature/topping-edit-c305`, 머지 `d634efd3`, 6파일 삽입 318줄·삭제 32줄. 머지 커밋 트리가
+> 브랜치의 develop 병합 커밋 `dd29dce5`와 같아 충돌 해소 편집은 0건이다.
+
+### 확인 버튼이 두 축을 순서대로 태운다
+
+`handleOnClickConfirm`이 하던 일이 갈렸다 — 이제 **토핑 저장을 먼저 완전히 끝내고** 기존 배경
+저장 흐름(`saveBackground`)을 그대로 태운다. 코루틴 키도 `SAVE_BACKGROUND_KEY`에서 `CONFIRM_KEY`로
+바뀌어 확인 버튼 전체가 한 단위가 됐다.
+
+순서에 근거가 있다. 둘을 진짜 병렬로 얽으면 **어느 한쪽만 실패한 경우를 갈라 다뤄야 하고**, 그
+설계가 이 라운드 범위 밖이다. 반면 토핑들끼리는 서로 독립적인 요청이라 `async` + `awaitAll`로
+동시에 나간다 — 순차로 기다리면 확인 버튼이 바뀐 토핑 수만큼 느려진다.
+
+### 바뀐 것만 보낸다
+
+`confirmedToppings`가 새로 생겼다. **서버에서 막 받아온 그대로의 스냅샷**이고 화면 렌더링에는
+쓰지 않는다 — 확인 시점에 `state.toppings`와 대조해 실제로 달라진 토핑만 PATCH 한다.
+비교 대상은 넷(`positionX`·`positionY`·`scale`·`rotationDegrees`)이다.
+
+| 보내는 값 | 안 보내는 값 |
+|---|---|
+| `positionX`·`positionY`·`scale`·`rotation` | `positionZ`(널로 두어 서버가 겹침 순서를 유지한다) |
+| | `borderLayers`·`editedImagePath`(비교 대상도 아니다) |
+
+계약이 부분 병합(`null`이면 기존 값 유지)이라 넘기지 않은 축이 그대로 남는다
+([api/parfait-image.md](../../api/parfait-image.md) 위치 PATCH 절).
+
+`ToppingRepository.update`·`UpdateToppingUseCase`가 신설돼 **DataSource의 넷 중 셋째**가 열렸다.
+Repository는 여기서도 **에러 변환만** 하고 좌표를 손대지 않는다.
+
+### 이 라운드가 만든 비대칭
+
+- **토핑 저장 실패는 화면에 닿지 않는데, 확인은 그대로 성공한다.** 실패 갈래가
+  `viewModelLogger.e` 한 줄이고 그다음 `saveBackground()`가 이어져, 배경이 성공하면
+  `ConfirmBackground`가 나가 **화면이 넘어간다.** 사용자는 옮긴 자리가 저장됐다고 믿지만 캔버스
+  메인은 재조회로 옛 좌표를 그린다 → [open-questions](../../synthesis/open-questions.md) OQ-P-275.
+  같은 확인 버튼 안에서 **배경 실패는 토스트 + 화면 잔류, 토핑 실패는 무반응 + 화면 이동**으로
+  처분이 갈렸다.
+- **테두리 재편집만 혼자 남았다.** `borderLayers`·`editedImagePath`는 비교에도 요청에도 없고,
+  테두리 PATCH는 여전히 소비처 0건이다. 다른 넷이 저장되기 시작했으므로 사용자 기준으로는
+  **"확인했는데 이것만 사라지는" 갈래**가 됐다 → 같은 문서 OQ-P-276.
+- **되돌림 가능성이 다시 갈렸다.** 삭제는 모달 확인 시점, 이동·크기·회전은 확인 버튼 시점에
+  영구가 된다. "그만두기"로 나가면 이동·크기·회전은 여전히 사라지므로 **시점이 둘**이다
+  (OQ-P-270 ②의 전제가 절반 바뀌었다).
+- **스냅샷을 성공 후 갱신하지 않는다.** 배경 저장이 실패해 화면에 남은 채 다시 확인을 누르면
+  이미 저장된 토핑도 같은 값으로 다시 PATCH 된다. 서버가 부분 병합이라 결과는 같지만 요청은
+  중복된다.
+
+### 유닛 테스트
+
+여섯이 붙었다. `ToppingRepositoryImplTest` 둘 — 성공 값을 가공 없이 넘기는지, 403
+`PARFAIT_IMAGE_NOT_OWNED`를 `AppError.Server`로 바꾸면서 코드와 상태 코드를 함께 살리는지.
+`CanvasBGEditViewModelTest` 넷 — 옮긴 토핑만 요청이 나가고 안 건드린 토핑은 안 나가는지, 아무것도
+안 바꾸면 호출이 0건인지, 토핑 저장이 실패해도 배경 확인이 진행되는지(**위 비대칭을 그대로
+잠갔다**), 그리고 **크기가 예전 상한 2.5를 넘어 커지는지**.
+
+마지막 하나가 특기할 자리다 — PR #335가 근거 없이 지운 상한(OQ-P-271)이 이번에 **회귀 테스트로
+굳었다.** 상한을 되살리려면 이제 그 테스트를 함께 지워야 한다.
+
+저장소 전체 유닛은 745 → **751건**, 테스트 클래스는 **87개**로 그대로다.

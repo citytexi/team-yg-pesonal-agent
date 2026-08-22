@@ -341,9 +341,9 @@ tags: [api, parfait, server-contract, parfait-image]
 
 ## Android 매핑
 
-**네 엔드포인트 전부 표면 있음.** 소비처는 **배치(POST)와 삭제(DELETE) 둘**이고(배치 2026-08-21 PR5,
-삭제 2026-08-23 PR #335) 나머지 둘(위치 PATCH · 테두리 PATCH)은 여전히 **소비처 0건**이다(표면은
-2026-08-12 PR #230 두 건 + **2026-08-15 PR #250 두 건**).
+**네 엔드포인트 전부 표면 있음.** 소비처는 **셋**이다 — 배치(POST, 2026-08-21 PR5) · 삭제(DELETE,
+2026-08-23 PR #335) · **위치 PATCH**(2026-08-23 PR #336). 남은 하나(테두리 PATCH)는 여전히
+**소비처 0건**이다(표면은 2026-08-12 PR #230 두 건 + **2026-08-15 PR #250 두 건**).
 
 | 계약 | Android 심볼 |
 |---|---|
@@ -425,6 +425,7 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 공백도 사라졌다** — `GET .../parfaits/today`가 배치 전량을 내려주고([parfait.md](parfait.md)) 네
 엔드포인트 전부 DataSource까지 와 있다.
 > 🔁 **삭제가 그 셋에서 빠졌다**(2026-08-23, PR #335) — 아래 항목 참고.
+> 🔁 **위치 PATCH도 빠졌다**(2026-08-23, PR #336) — 남은 것은 테두리 PATCH 하나다.
 
 ✅ **배치 하나는 Repository·UseCase까지 올라왔다**(2026-08-20 develop 머지, PR #322) —
 `ToppingRepository.place`가 DataSource의 넷 중 배치만 열고, `AddToppingUseCase`가 업로드
@@ -455,6 +456,29 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 → [open-questions](../synthesis/open-questions.md) OQ-P-270 · OQ-P-261.
 `android_status`는 여전히 `partial`이다 — 위치·테두리 PATCH의 소비 화면이 없다.
 
+✅ **위치 PATCH도 화면까지 이어졌다**(2026-08-23 develop 머지, PR #336) — `ToppingRepository.update` ·
+`UpdateToppingUseCase`가 신설되고 C-301 편집 탭의 **확인 버튼**이 그것을 부른다. 소비되지 않은
+엔드포인트는 이제 **테두리 PATCH 하나**다. 설계에서 계약과 맞물리는 자리는 셋이다.
+
+- **바뀐 토핑만 보낸다.** ViewModel이 조회 응답 스냅샷(`confirmedToppings`)을 따로 들고 확인 시점에
+  대조해, 위치·배율·각도 중 하나라도 달라진 토핑만 요청한다. 안 건드린 토핑은 요청이 0건이다.
+- **`positionZ`를 안 보낸다.** 이 PATCH가 부분 병합(`null`이면 유지)이라 겹침 순서는 서버 값이
+  그대로 남는다. 앱에는 z 조작 경로 자체가 없다.
+- **토핑들끼리는 병렬, 배경보다는 앞.** `async` + `awaitAll`로 동시에 나가고 전부 끝난 뒤에야 배경
+  변경([parfait.md](parfait.md))이 이어진다. 둘을 얽으면 한쪽만 실패한 경우를 갈라 다뤄야 해서다.
+
+⚠️ **그런데 실패가 화면에 닿지 않고, 확인은 그대로 성공한다** — 실패 갈래가 `viewModelLogger.e`
+한 줄이고 그 뒤 배경 저장이 이어져, 배경이 성공하면 화면이 넘어간다. 이 도메인의 실패 코드
+(403 `PARFAIT_IMAGE_NOT_OWNED` · 409 `PARFAIT_ALREADY_CLOSED` · 404 `PARFAIT_IMAGE_NOT_FOUND`)가
+삭제와 **같은 방식으로** 접히는데, 삭제와 달리 **사용자가 성공했다고 믿을 여지까지 생긴다**
+(캔버스 메인은 재조회로 옛 좌표를 그린다) → [open-questions](../synthesis/open-questions.md)
+OQ-P-275 · OQ-P-270.
+⚠️ **한 번의 확인이 같은 409를 두 처분으로 낸다** — 마감된 캔버스에서는 토핑 PATCH도 배경 PATCH도
+409인데, 토핑 쪽은 무반응이고 배경 쪽은 토스트다(OQ-P-261).
+⚠️ **범위 검증 없는 두 축이 그대로 요청 값이 된다** — 아래 [미결](#미결)의 `scale`·`rotation`
+서버 검증 부재가 이 라운드부터 실제로 닿는다. 앱 쪽 상한도 없다(OQ-P-271).
+`android_status`는 여전히 `partial`이다 — 테두리 PATCH의 소비 화면이 없다.
+
 `http/parfait-image.http`가 **네 요청을 전부** 덮는다(2026-08-15). **선행이 넷**이 됐다 —
 `auth.http` → `parfait-group.http` → `images.http`(발급·PUT·confirm) → `parfait.http`(오늘의 캔버스
 조회가 `parfait_id`를 채운다). `parfaitId` 리터럴을 손으로 바꾸던 단계는 사라졌다.
@@ -465,6 +489,8 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
   → [open-questions](../synthesis/open-questions.md)
   > ⚠️ **앱 쪽 상한도 하나 사라졌다**(2026-08-23, PR #335) — C-301 편집 탭의 `TOPPING_MAX_SCALE`이
   > 삭제돼 배율을 막는 자리가 양쪽 어디에도 없다 → 같은 문서 OQ-P-271.
+  > ⚠️ **그 값이 하루 만에 요청 값이 됐다**(2026-08-23, PR #336) — 확인 버튼이 `scale`·`rotation`을
+  > 그대로 위치 PATCH에 싣는다. 무한히 커진 배율과 누적된 각도가 검증 없이 저장된다.
 - 같은 `imageId` 재-POST가 남의 배치를 옮기고 소유자를 가져간다(POST에 소유자 검사 없음)
   → [open-questions](../synthesis/open-questions.md)
 - 삭제가 S3 객체를 지우면서 `image_meta` 행은 `COMPLETED`로 남긴다 — 그 `imageId`로 다시 배치하면 깨진
