@@ -5,7 +5,7 @@ status: done
 type: work-order
 created: 2026-08-21
 updated: 2026-08-21
-archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-recent-cutout-reuse 에 커밋 10개(389fc0ac..be9b5373), 신규 테스트 24건, 30파일 964/145. 실행이 계획과 갈린 자리 셋은 plans/README 행과 스펙 「구현이 이 절과 갈린 자리」 절에 있다.
+archived_reason: 구현 완료·미머지(2026-08-21). 브랜치 feature/#270-recent-cutout-reuse 에 커밋 10개(67ee0d6a..656cbf2e), 신규 테스트 24건, 30파일 964/145. 실행이 계획과 갈린 자리 셋은 plans/README 행과 스펙 「구현이 이 절과 갈린 자리」 절에 있다.
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0025, ADR-0026
@@ -38,10 +38,12 @@ tags: [plan, parfait, topping, gallery, segmentation, c-106]
 **Spec:** [`parfait/specs/2026-08-20-c106-topping-place-api.md`](../specs/2026-08-20-c106-topping-place-api.md) — 「누끼 알맹이 재사용 (PR6)」 절, PR 분할 표 **6번 행**
 
 > **베이스는 PR5 브랜치의 현재 팁이다.** `feature/#270-topping-place-wiring`(**미머지**, 검수 시점
-> 팁 `389fc0ac` — 그 브랜치가 계획서보다 나중에도 자랄 수 있으므로 **작업 직전에 팁을 다시 확인한다**).
+> 팁 `67ee0d6a` — 그 브랜치가 계획서보다 나중에도 자랄 수 있으므로 **작업 직전에 팁을 다시 확인한다**).
 > 그 아래로 PR4 `feature/#270-topping-border-contract` → PR3 `feature/#270-topping-draft-ssot`가
 > 깔려 있고, PR1·PR2는 develop에 머지됐다(`da03c9b0`).
 > 새 브랜치 `feature/#270-recent-cutout-reuse`를 PR5 팁 위에 만든다.
+> 🔁 이 문서의 스택 해시는 **2026-08-22 리베이스 뒤 기준**이다 — 스택 넷을 develop `ef55a58c` 위로
+> 다시 쌓았고 기록은 [PR3 계획서](2026-08-20-c106-pr3-topping-draft-ssot.md)에 있다.
 
 ## 사용자에게 보이는 변화 (예고)
 
@@ -72,7 +74,7 @@ tags: [plan, parfait, topping, gallery, segmentation, c-106]
 - **작업 대상 저장소는 `TJYG-Android`**이고 이 문서가 사는 저장소가 아니다. 로컬 절대경로는
   `wiki/personal-private/project-paths.md`에 있다(Task 7만 이 문서 저장소에서 한다).
 - **베이스 브랜치는 `feature/#270-topping-place-wiring`의 현재 팁**(PR5, 미머지)이다. 검수 시점 팁은
-  `389fc0ac`이고, 브랜치할 때 `git log -1`로 다시 확인한다.
+  `67ee0d6a`이고, 브랜치할 때 `git log -1`로 다시 확인한다.
   그 위에 새 브랜치 `feature/#270-recent-cutout-reuse`를 만들어 작업한다.
 - **워크트리를 만들지 않는다.** 본 체크아웃에서 브랜치로 작업한다.
 - **커밋은 태스크마다 한다.** `git push`·`gh pr create`·`gh pr merge`는 **하지 않는다** —
