@@ -4,8 +4,8 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-20
-related_spec: segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
+verified: 2026-08-23
+related_spec: c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: state-management
 related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft
@@ -40,7 +40,14 @@ tags: [architecture, parfait]
   실패 채널이 없다 — 계정 정보 SSoT와 형태는 같되 영속·암호화만 뺀 갈래다. 목록은
   `StateFlow<List<MyParfaitGroupVO>?>`이고 **`null`이 "아직 못 받음"**, `emptyList()`가 "그룹 0건"이다.
 - **암호화 DataStore 프록시** — `EncryptedPreferences`(`data/datastore/`, PR #263). 저장 형태가 값이 아니라 **암호문**인 저장소들이 공유한다(`EncryptedTokenStore`·`UserInfoLocalDataSourceImpl`) — 아래 "토큰·계정 정보 저장 경로" 참고.
-- **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근).
+- **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근). **읽기 전용이 아니게 됐다**(#324) —
+  `insertPendingImage`·`openOutputStream`·`finalizePendingImage`·`deleteImage`로 `MediaStore`에
+  이미지를 쓴다(`GalleryRepository.saveImageToGallery` → `SaveCanvasToGalleryUseCase`, C-001 지난
+  캔버스 저장). 쓰기 순서는 **등록(`IS_PENDING`) → 바이트 → 표시로 내림**이고 중간 실패는 등록 자체를
+  지운다 — 갤러리에 반쯤 쓰인 파일이 온전한 것처럼 보이지 않게 하려는 것이다. **그 보호와
+  `Pictures/Parfait` 경로는 API 29부터만** 걸린다(그 아래는 권한도 함께 필요해
+  `core:util:android`의 `GalleryWritePermissionManager`가 판정한다)
+  → [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md).
 - **원격(raw HTTP)** — **`PresignedUploadDataSource`**(#322). 저장소에서 **Retrofit을 거치지 않고 raw
   OkHttp `Request`를 만드는 유일한 자리**다(발급받은 presigned URL로 PUT). 그래서 `@NoAuth` 판정이
   안 걸리고, 그 때문에 전용 `@UploadClient`가 기능 전제가 된다. 파일은 스트리밍 `RequestBody`로 태워
@@ -187,7 +194,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `ParfaitRepository`(#268, #279, #329) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` · **`changeCanvasBackground`**(#329) | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입, C-301 편집 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) · `ChangeCanvasBackgroundUseCase`(C-301 확인) |
 | `ImageUploadRepository`(#322) | `upload(filePath, imageType): Result<ImageId>` — 발급·S3 PUT·확인 3단계를 하나로 닫고 **이미 `COMPLETED`인 `imageId`**를 준다 | `AddToppingUseCase`(C-106 배치) · `UploadImageUseCase`(#329, C-301 배경) |
 | **`ImageFileRepository`**(#329) | `copyToCache(uri): Result<String>` — `content://`를 캐시 파일로 떨구고 **절대경로**를 준다 | `UploadImageUseCase` |
-| `ToppingRepository`(#322) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` | `AddToppingUseCase`(아직 화면 소비자 0) |
+| `ToppingRepository`(#322, #335) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` · **`delete(groupId, parfaitId, parfaitImageId): Result<Unit>`**(#335) | `AddToppingUseCase`(C-106 배치) · `DeleteToppingUseCase`(C-301 편집 탭 삭제) |
 
 > 📌 **위 표는 develop 기준이다.** 마지막 두 행은 2026-08-20 PR #322로 들어왔고 **소비자가 0이라
 > 아직 아무 화면도 부르지 않는다** — 결선은
@@ -198,6 +205,12 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 > `ToppingRepository`가 DataSource의 넷 중 배치 하나만 연 것은 아래 `ParfaitRepository` 방침과
 > 같은 이유다. **`AddToppingUseCase`가 `ImageType`을 스스로 정하는 것**도 같은 계열의 판단이다 —
 > 파라미터로 열면 배경 타입으로 올라간 객체가 무증상으로 엉뚱한 S3 접두사에 앉는다.
+>
+> 🔁 **둘째 갈래가 열렸다(2026-08-23, PR #335)** — `delete`가 C-301 편집 탭이라는 소비 화면과 함께
+> 올라왔다. **소비자 없이 열지 않는다**는 방침이 이 Repository에서도 유지된 셈이고, 남은 둘(위치·
+> 테두리 수정)은 아직 부르는 화면이 없어 닫혀 있다. Repository는 여기서도 **에러 변환만** 한다
+> (`mapErrorToAppError`) — 삭제 실패의 처분은 화면 몫인데 지금 그 화면이 로그만 남긴다
+> ([open-questions](../synthesis/open-questions.md) OQ-P-270).
 
 **업로드가 받아 주는 형식은 `UploadImageFormat` 한 자리가 안다**(#329) — 확장자·contentType·파일
 시그니처를 enum 하나에 묶었다(`data/model/image/`). 셋을 함께 두는 이유는 **발급 요청과 S3 PUT

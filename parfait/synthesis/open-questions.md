@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-22
-related_spec: c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+verified: 2026-08-23
+related_spec: c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -2598,7 +2598,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ② 편집 결과의 저장 단위 — 확인 한 번에 위치·크기·회전을 **일괄 전송**할지, 조작마다 보낼지.
   서버 토핑 수정 표면은 **테두리만** 받고 좌표·배율·회전 갱신 경로가 계약에 없다. ③ 삭제를 확인
   모달 시점에 즉시 반영할지, 확인 버튼까지 미룰지(지금은 즉시 목록에서 뺀다).
-- **상태**: **부분 해소** (2026-08-22, PR #329 — **① 해소**, ②③ 잔존)
+- **상태**: **부분 해소** (2026-08-22 PR #329로 **① 해소**, 2026-08-23 PR #335로 **③ 해소** — **②만 잔존**)
   > ✅ **①이 닫혔다 — 편집 탭도 같은 서버 조회를 쓴다.** `loadMockToppings()`가 사라지고
   > `GetTodayParfaitUseCase` 응답을 그린다(진입 시 한 번 더 부르는 이유는 편집을 여는 사이 다른
   > 멤버가 올린 토핑까지 그려야 해서다). 좌표계도 함께 맞춰졌다 — `CanvasToppingItem`이 Dp 오프셋을
@@ -2618,6 +2618,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 한쪽은 mock**이다. ①의 원래 물음("C-001과 C-301이 같은 조회를 쓰는지")은 이제 **"C-301을 그
   > 조회로 옮기는 일"**로 좁혀졌고, 옮기면 ②(저장 단위)가 곧바로 걸린다 — 서버 토핑 수정 표면은
   > **테두리만** 받고 좌표·배율·회전 갱신 경로가 계약에 없다는 사실이 그대로다.
+  > ✅ **③이 닫혔다(2026-08-23, PR #335)** — **확인 모달 시점에 즉시**다. "삭제하기"가 곧
+  > `DELETE .../images/{parfaitImageId}`이고, **성공해야** 화면 목록에서 뺀다(서버에 반영되지 않은
+  > 것을 화면에서 지우지 않는다). 부작용은 이 화면의 두 파괴적 조작이 갈린 것이다 — **"그만두기"로
+  > 나가도 지운 토핑은 돌아오지 않는데** 이동·크기·회전은 여전히 나가면 사라진다. 실패 처분은 함께
+  > 정해지지 않아 로그 한 줄로 남았다(OQ-P-270).
+  > 📌 **②의 전제 하나가 낡아 있었다** — "서버 토핑 수정 표면은 **테두리만** 받고 좌표·배율·회전
+  > 갱신 경로가 계약에 없다"는 서술은 2026-08-15 PR #250 이후로 사실이 아니다.
+  > `PATCH .../images/{parfaitImageId}`가 `positionX`·`positionY`·`positionZ`·`scale`·`rotation`을
+  > 부분 병합으로 받고 앱 `:data`에도 `updateTopping`으로 들어와 있다
+  > ([api/parfait-image.md](../api/parfait-image.md)). 그래서 ②에 남은 물음은 "계약이 있는가"가
+  > 아니라 **"확인 한 번에 일괄 전송할지, 조작마다 보낼지"** 하나다.
 - **해소 메모**: ②는 서버 계약 확장이 필요하면 [api/parfait-image.md](../api/parfait-image.md)에
   먼저 반영한다. 정해지면 [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md)
   드리프트 1·2와 [c301 배경 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md) 드리프트 1,
@@ -2952,9 +2963,21 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   (전자면 화면 밖 영역·비동기 이미지 로딩 완료를 어떻게 다룰지가 따라온다). ② 저장 권한·경로
   (`MediaStore` 진입점이 앱에 아직 없다). ③ 결과 표현 — 성공·실패 토스트가 필요하면 `YGScaffoldV2`
   이관과 같은 자리다(OQ-P-204). ④ 구현 전까지 버튼을 비활성으로 둘지.
-- **상태**: 미해결
+- **상태**: **해소됨** (2026-08-23, PR #335과 같은 라운드의 PR #324 — 네 항목 전부 답이 나왔다)
 - **해소 메모**: 정하면 [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md)
   드리프트 1을 지운다. ①이 캡처면 `core:util:android` 소유 판단이 붙는다(OQ-P-186과 같은 성격).
+  > ✅ **넷 다 답이 나왔다**(2026-08-23, PR #324) — 설계는
+  > [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md)이 갖는다.
+  > **①** Compose `GraphicsLayer` 캡처다. 다만 예상했던 후속("화면 밖 영역·비동기 이미지 로딩 완료를
+  > 어떻게 다룰지")은 **다뤄지지 않은 채 남았다** — 캡처는 지금 화면에 그려진 것을 그대로 복사한다
+  > (OQ-P-272). 소유 판단은 갈렸다: 권한 판정만 `core:util:android`(`GalleryWritePermissionManager`)
+  > 로 가고, 캡처는 화면(`CanvasMainRoute`)에 남았다.
+  > **②** `MediaStore` 진입점이 기존 `GalleryMediaProvider`(읽기 전용이던 자리)에 붙었고, 권한은
+  > API 29 미만에서만 필요해 매니페스트도 `maxSdkVersion="28"`로 좁혔다. 저장 위치는
+  > `Pictures/Parfait`인데 **그 경로도 API 29부터다**(OQ-P-274).
+  > **③** 성공·실패 모두 토스트이고 자리는 `YGScaffoldV2`가 아니라 **`YGCanvas.overlayContent`의
+  > 호스트**다 — 이 화면의 토스트 자리를 정한 OQ-P-167의 결정을 그대로 따랐다.
+  > **④** 비활성으로 두는 갈래는 쓰이지 않았다(구현이 같은 라운드에 들어와 물음이 사라졌다).
 
 ### [2026-08-17] 날짜 연속 선택의 승자가 근거 없이 뒤집혔다 — 머리말과 그림이 어긋난 채 남는다
 
@@ -4241,4 +4264,98 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 같은 API를 쓰는 프로덕션 사례(Telegram `StickerMakerView`)는 segmenter를 아예
   닫지 않는다. 그것이 우연인지 필요 때문인지가 이 항목의 답이다.
 
-<!-- oq-next: 270 -->
+### [2026-08-23] 토핑 삭제만 즉시 영구인데, 실패는 화면에 닿지 않는다
+
+- **ID**: OQ-P-270
+- **출처**: `feature/groups/canvas/impl` `CanvasBGEditViewModel#handleOnDeleteToppingDialogConfirm`
+  (PR #335) — 확인 모달의 "삭제하기"가 곧 `DeleteToppingUseCase` 호출이고, 실패 갈래는
+  `viewModelLogger.e` 한 줄이다. 같은 파일에 `CanvasBGEditEffect.ShowError`가 있고 Route가 그것을
+  토스트로 받는데(배경 저장 실패가 그 길로 나간다) **삭제만 그 길을 쓰지 않는다.**
+  계약상 실패는 셋이다 — 403 `PARFAIT_IMAGE_NOT_OWNED`(남의 배치·그룹 미참여) · 409
+  `PARFAIT_ALREADY_CLOSED`(마감된 캔버스) · 404 `PARFAIT_IMAGE_NOT_FOUND`(두 번째 삭제)
+  ([api/parfait-image.md](../api/parfait-image.md)). 지금은 셋 다 **모달이 닫히고 아무 일도 안
+  일어나는** 하나의 모습으로 접힌다.
+- **항목**: ① 삭제 실패를 무엇으로 알릴지 — 셋을 한 문구로 접을지, 409만 갈라 "마감된 캔버스"라고
+  말할지. 409는 **같은 서버 코드에 세 번째 처분**을 더한 자리다(C-106 배치는 알린 뒤 남기고, C-301
+  배경 저장은 일반 오류로 접고, 삭제는 아무것도 안 한다 — OQ-P-261). ② **같은 화면 안에서 되돌림
+  가능성이 갈린 것**을 그대로 둘지 — 삭제는 "그만두기"로 나가도 돌아오지 않는데 이동·크기·회전은
+  나가면 사라진다. 화면은 그 차이를 말하지 않는다. ③ 소유 판정이 새면 삭제가 남의 토핑을 향할 수
+  있는데(OQ-P-250) 그때 서버가 주는 403이 지금은 무반응이라 **잘못된 게이트가 조용히 덮인다.**
+- **상태**: 미해결 (**①은 문구만 정하면 코드 자리가 이미 있다**)
+- **해소 메모**: ①을 정하면 `CanvasBGEditError`에 갈래를 더하고 기존 토스트 경로에 얹는다 —
+  새 인프라가 필요 없다. ②는 [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md)
+  as-built 절의 비대칭 서술과 함께 정리한다.
+
+### [2026-08-23] 토핑 크기 상한이 근거 없이 사라졌다 — 이제 막는 자리가 앱에도 서버에도 없다
+
+- **ID**: OQ-P-271
+- **출처**: `CanvasBGEditViewModel`(PR #335) — 같은 커밋이 `TOPPING_MAX_SCALE = 2.5f`를 지우고
+  크기조절 핸들의 `coerceIn(MIN, MAX)`를 `coerceAtLeast(MIN)`으로 바꿨다. 커밋 메시지는 토핑 삭제
+  연동과 mock 제거를 말할 뿐 이 변경을 설명하지 않고, 코드에도 근거 주석이 없다. 서버 쪽도
+  `scale`에 검증이 없다([api/parfait-image.md](../api/parfait-image.md) 미결). **하한만 남아 축이
+  비대칭**이 됐고, 회전과 함께 **상·하한이 없는 축이 둘**이 됐다.
+- **항목**: ① 상한을 되살릴지, 없는 것이 결정인지. ② 없는 것이 결정이라면 캔버스 밖으로 얼마든지
+  커진 배치가 저장될 때 무엇이 막는지 — 지금은 앱도 서버도 안 막고, 그린 결과는 클리핑으로 잘릴 뿐
+  값은 그대로 남는다. ③ 되살린다면 그 값의 근거를 어디서 받을지(2.5도 실측이 아니었다).
+- **상태**: 미해결
+- **해소 메모**: 편집 결과가 서버로 나가는 라운드(OQ-P-199 ②)가 오면 이 값이 곧 요청 값이 되므로
+  그때까지는 화면 안에서만 문제다. ②를 앱 책임으로 정하면
+  [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md) 드리프트 4를
+  "두 축 모두 상한 없음"으로 다시 적는다.
+
+### [2026-08-23] 캔버스 캡처가 "지금 그려진 것"을 복사한다 — 배경이 늦으면 그대로 담긴다
+
+- **ID**: OQ-P-272
+- **출처**: `CanvasMainRoute`(PR #324)가 `RequestCanvasCapture`를 받는 즉시
+  `graphicsLayer.toImageBitmap()`을 부른다. 캡처 대상인 `YGCanvas`의 배경은 Coil `AsyncImage`라
+  비동기로 온다 — **아직 안 온 상태에서 저장을 누르면 배경 없는 그림이 저장된다.** 기다리거나 다시
+  시도하는 코드는 없다. 같은 이유로 결과물의 픽셀 크기가 **기기 화면 폭에 종속**된다(캡처는 화면에
+  그려진 크기 그대로다).
+- **항목**: ① 배경 로딩 완료를 기다릴지 — 기다린다면 무엇으로 판정할지(`AsyncImage` 상태를 화면이
+  들고 있지 않다). ② 저장 이미지의 해상도를 규격으로 정할지, 화면 크기를 그대로 둘지. ③ 저장되는
+  그림이 **프레임 없는 배경+토핑**이라는 것이 의도인지 — 정책 소스가 없어 코드가 확정했다.
+- **상태**: 미해결 (**실기기 1회로 ①②가 함께 드러난다**)
+- **해소 메모**: ①은 저장을 누른 시점에 배경 준비 여부를 상태로 들고 있으면 풀리는데, 그 상태를
+  누가 소유할지가 `YGCanvas`(컴포넌트)와 화면 사이에서 갈린다 — 컴포넌트가 배경 폴백을 갖지 않기로
+  한 결정과 같은 자리다([architecture/design-system](../architecture/design-system.md) 캔버스 절).
+  이 경로는 유닛이 ViewModel 층에서 멈춰 **캡처·권한·`MediaStore` 쓰기가 한 줄도 안 잠겨 있다**는
+  것도 함께 본다 →
+  [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md).
+
+### [2026-08-23] 전일 캔버스 알림 얼럿이 문자열과 호스트만 있고 띄우는 코드가 없다
+
+- **ID**: OQ-P-273
+- **출처**: `CanvasMainScreen`(PR #324) — `YGCanvas.overlayContent`에 `YGToastHost` 아래
+  `YGAlertHost`가 병치되고 `alertPolicy` 파라미터가 생겼는데, `show`를 부르는 프로덕션 코드가
+  **0건**이다(프리뷰만 정책 객체를 직접 만들어 보여 준다). 문자열 셋
+  (`canvas_main_closed_canvas_alert_title`·`_sub`·`_button`)도 같은 라운드에 들어와 **프리뷰에서만**
+  쓰인다. 겹침 처리도 코드 주석의 TODO다 — "토스트·얼럿이 같은 타이밍에 겹쳐 뜨지 않게 같이
+  처리한다. 지금은 그냥 세로로 쌓아 둘 다 보일 수 있다."
+- **항목**: ① 이 얼럿을 무엇이 띄우는지 — 전일 캔버스 마감을 앱이 어떻게 아는가(조회 응답의
+  `lastClosedDate`인지, 별도 트리거인지). FCM은 2026-08-22 PR #325로 걷혔으므로 푸시는 후보가
+  아니다. ② 마감 알림을 **몇 번** 띄울지(캔버스 재진입마다면 매번 뜬다). ③ 토스트와 겹칠 때의 규칙.
+- **상태**: 미해결 (**아무도 본 적이 없다** — OQ-P-260과 같은 부류다)
+- **해소 메모**: ①이 정해지기 전에는 문자열 셋과 호스트가 낡을 위험만 쌓는다. 정하면
+  [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md) 제외 항목과
+  [architecture/design-system](../architecture/design-system.md)의 `overlayContent` 호스트 둘 서술을
+  함께 갱신한다.
+
+### [2026-08-23] 갤러리 저장이 API 29를 경계로 위치도 보호도 갈린다
+
+- **ID**: OQ-P-274
+- **출처**: `GalleryMediaProvider#insertPendingImage`(PR #324) — `RELATIVE_PATH`
+  (`Pictures/Parfait`)와 `IS_PENDING`을 **API 29 이상에서만** 넣는다. `minSdk`가 26이라 26~28
+  기기에서는 ① 저장 위치가 앱 전용 하위 폴더가 아니고 ② 쓰다 만 파일이 갤러리에 잠깐 온전한
+  것처럼 보이며(그 보호가 `IS_PENDING`이다) ③ `WRITE_EXTERNAL_STORAGE` 권한 다이얼로그가 추가로
+  뜬다. 세 갈래 전부 실기기 확인이 0회다.
+- **항목**: ① 26~28에서 `Pictures/Parfait`에 넣을지 — 넣으려면 `MediaColumns.DATA`로 경로를 직접
+  적어야 하고 그것은 Q부터 무시되는 필드다. ② 그 구간을 그냥 기본 위치로 둘지(그러면 저장 위치가
+  기기에 따라 달라진다는 것을 어디에도 안 적은 상태다). ③ `minSdk`를 올릴 계획이 있는지 — 있다면
+  이 분기와 권한 선언이 통째로 사라진다.
+- **상태**: 미해결
+- **해소 메모**: 정하면 [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md)
+  「권한」·「쓰기」 절과 [architecture/data-layer](../architecture/data-layer.md) 시스템 미디어 항목을
+  함께 고친다. ③은 [ADR-0027](../adr/0027-portrait-orientation-lock.md)이 `targetSdk`로 겪는 것과
+  같은 부류의 질문이다(OQ-P-264).
+
+<!-- oq-next: 275 -->

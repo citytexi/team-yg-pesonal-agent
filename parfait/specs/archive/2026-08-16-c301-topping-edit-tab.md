@@ -4,7 +4,7 @@ title: C-301 토핑 편집 탭 (선택·이동·크기·회전·삭제 + 테두�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-22
+verified: 2026-08-23
 related_code:
   - CanvasBGEditScreen.kt#CanvasBGEditScreen
   - CanvasBGEditScreen.kt#CanvasToppingImage
@@ -17,6 +17,10 @@ related_code:
   - ToppingGeometry.kt#toppingCenter
   - CanvasBGEditViewModel.kt#CanvasToppingItem
   - CanvasBGEditViewModel.kt#CanvasBGEditViewModel
+  - CanvasBGEditViewModel.kt#handleOnDeleteToppingDialogConfirm
+  - DeleteToppingUseCase.kt#DeleteToppingUseCase
+  - ToppingRepository.kt#delete
+  - ToppingRepositoryImpl.kt#delete
   - CanvasBGEditRoute.kt#CanvasBGEditRoute
   - ToppingGeometry.kt#computeToppingStrokeCorners
   - ToppingGeometry.kt#computeToppingButtonPoints
@@ -191,11 +195,16 @@ NavKeyCanvasBGEdit ─(편집 버튼)─▶ NavKeyToppingEdit(source, segmentati
 2. **편집 결과가 어디에도 남지 않는다** — 이동·크기·회전·삭제·테두리 재편집이 전부 `UiState`에서
    끝나고, 확인 버튼은 배경만 싣는다. 배경이 겪던 것과 같은 왕복 미완이 토핑에서 반복된다
    → [open-questions](../../synthesis/open-questions.md) [2026-08-16].
+   > 🔁 **부분 해소(PR #335, 2026-08-23)** — **삭제만** 서버에 남는다. 나머지 넷은 그대로다.
+   > 아래 [as-built 재정정](#as-built-재정정-2026-08-23-pr-335-develop-머지) 참고.
 3. **C-106 배치 규격이 코드에 없다** — 40%·정중앙·48px 방어가 전부 빠졌다. 신규 배치 경로가 없어
    당장 어긋나지는 않지만, 추가 경로가 붙을 때 이 규격이 어디에 살지 정해져 있지 않다
    → [open-questions](../../synthesis/open-questions.md) [2026-08-16].
-4. **회전에 상·하한이 없다** — 크기는 0.5~2.5로 클램프하는데 각도는 무한히 누적된다.
+4. **회전에 상·하한이 없다** — ~~크기는 0.5~2.5로 클램프하는데~~ 각도는 무한히 누적된다.
    `rotationDegrees`가 커져도 렌더는 같지만 저장 계약이 생기면 정규화 주체가 필요하다.
+   > ⚠️ **크기 쪽 전제가 뒤집혔다(PR #335, 2026-08-23)** — `TOPPING_MAX_SCALE`이 삭제돼 상한이
+   > 사라졌고 하한만 남았다. 이제 **상·하한이 없는 축이 둘**이다
+   > → [open-questions](../../synthesis/open-questions.md) OQ-P-271.
 5. **선택 상태가 목록 변화를 견디지 못한다** — `selectedToppingId`가 목록에서 사라진 id를 가리켜도
    화면은 조용히 아무것도 그리지 않는다(삭제 경로에서는 함께 비우지만, 목록이 서버에서 갱신되기
    시작하면 그 보장이 사라진다).
@@ -271,3 +280,42 @@ feature/segmentation/
 `CanvasBGEditViewModelTest`에 이 탭 몫으로 다섯이 붙었다 — 비율 배치·`positionZ` 정렬·소유 판정,
 드래그가 받은 비율만큼 옮기는지, 남의 토핑 탭이 선택으로 이어지지 않는지, 테두리 한 겹 펴기와
 못 읽는 색에서 겹을 만들지 않는지다.
+
+## as-built 재정정 (2026-08-23, PR #335 develop 머지)
+
+> **드리프트 2가 삭제 한 갈래만 열렸다** — 편집 결과 다섯 중 삭제가 처음으로 서버에 남는다.
+> 브랜치 `feature/topping-delete`, 머지 `f31b8c30`, 6파일 삽입 163줄·삭제 9줄. 머지 커밋 트리가
+> 브랜치 팁 `122d950b`과 같아 충돌 해소 편집은 0건이다.
+
+### 삭제는 확인 모달이 곧 서버 요청이다
+
+`ToppingRepository.delete`와 `DeleteToppingUseCase`가 신설돼 **DataSource의 넷 중 둘째**가 열렸다
+(첫째는 배치, [api/parfait-image.md](../../api/parfait-image.md)). 흐름은 이렇다.
+
+1. 모달의 "삭제하기"를 누르면 **모달을 먼저 닫고**(`showDeleteToppingDialog = false`)
+   `launch(key = DELETE_TOPPING_KEY)`로 `DELETE`를 태운다.
+2. 성공해야 목록에서 빠지고 선택이 풀린다. 서버에 반영되지 않은 것을 화면에서 지우지 않는다.
+3. 선택된 토핑이 없으면 인텐트가 와도 요청하지 않는다.
+
+`selectedToppingId`가 `Long`이라 호출 직전에 `ParfaitImageId`로 감싼다.
+
+### 이 라운드가 만든 비대칭
+
+- **삭제만 즉시 영구다.** 이동·크기·회전·테두리 재편집은 여전히 `UiState` 안에서 끝나고 확인 버튼은
+  배경만 저장한다. 그래서 **"그만두기"로 나가도 지운 토핑은 돌아오지 않는다** — 같은 화면의 두
+  파괴적 조작이 되돌림 가능성에서 갈렸는데 화면은 그 차이를 말하지 않는다.
+- **실패가 조용하다.** 실패 갈래가 `viewModelLogger.e` 한 줄이다. 이 화면에는 이미
+  `CanvasBGEditEffect.ShowError`와 Route의 토스트 정책이 있고 배경 저장 실패는 그 길로 나가는데,
+  삭제만 쓰지 않는다. 계약상 403 `PARFAIT_IMAGE_NOT_OWNED`·409 `PARFAIT_ALREADY_CLOSED`·404가
+  전부 무반응으로 접힌다 → [open-questions](../../synthesis/open-questions.md) OQ-P-270.
+- **크기 상한이 사라졌다.** 같은 커밋이 `TOPPING_MAX_SCALE = 2.5f`를 지우고
+  `coerceIn(MIN, MAX)`를 `coerceAtLeast(MIN)`으로 바꿨다. 근거가 커밋에도 코드에도 없고, 서버 검증도
+  없어 막는 자리가 이제 아무 데도 없다 → 같은 문서 OQ-P-271.
+
+### 유닛 테스트
+
+다섯이 붙었다. `ToppingRepositoryImplTest` 둘 — 성공 값을 가공 없이 넘기는지, `ApiException.Business`
+403을 `AppError.Server`로 바꾸면서 **코드 문자열과 상태 코드를 함께 살리는지**.
+`CanvasBGEditViewModelTest` 셋 — 성공 시 목록에서 빠지고 선택이 풀리는지, 실패 시 목록이 그대로인지,
+선택이 없으면 호출하지 않는지. 저장소 전체 유닛은 737 → **745건**(같은 라운드의 갤러리 저장 셋 포함),
+테스트 클래스는 **87개**로 그대로다.

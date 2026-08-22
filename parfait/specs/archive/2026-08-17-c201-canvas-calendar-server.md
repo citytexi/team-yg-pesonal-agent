@@ -4,10 +4,10 @@ title: C-201 캘린더 서버 결선 (mock 제거 + 연도별 캐시 + 지난 �
 status: implemented
 category: feature-spec
 platforms: android
-verified: 2026-08-18
+verified: 2026-08-23
 related_code: GetParfaitHistoriesUseCase, GetParfaitYearsUseCase, GetParfaitDetailUseCase, ParfaitRepository, ParfaitRepositoryImpl, PastCanvasVO, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainRoute, CanvasMainScreen, CustomCalendar, YGCanvasMenuAction, parfaitToday
 related_adr: ADR-0009, ADR-0017, ADR-0020
-related_spec: c201-canvas-calendar, c001-canvas-today-detail, c001-canvas-main, parfait-canvas-topping-member-api-service-layer, screen-resume-refetch
+related_spec: c201-canvas-calendar, c001-canvas-today-detail, c001-canvas-main, parfait-canvas-topping-member-api-service-layer, screen-resume-refetch, c001-canvas-gallery-save
 related_architecture: data-layer, state-management, design-system
 supersedes:
 superseded_by:
@@ -47,6 +47,7 @@ tags: [spec, parfait, canvas, calendar, c201, api-consumer]
   - 달력 셀 활성 조건 변경 — `isCurrentMonth && (오늘 || 기록 있는 날)`.
 - **제외**(이번 라운드에서 안 함)
   - **갤러리 저장의 실제 동작** — 버튼과 인텐트만 있고 핸들러는 로그 한 줄이다(드리프트 1).
+    ✅ PR #324가 채웠다 → [c001-canvas-gallery-save 스펙](2026-08-23-c001-canvas-gallery-save.md).
   - 배경 변경(`PATCH .../background`) — 다섯 갈래 중 마지막 하나는 여전히 Repository에 없다.
   - 조회 실패의 사용자 표현 — 셋 다 로그만 남기는 것이 그대로다.
 
@@ -143,9 +144,12 @@ tags: [spec, parfait, canvas, calendar, c201, api-consumer]
 
 ## 드리프트 / 잔존
 
-1. **갤러리에 저장이 아무 일도 하지 않는다** — 지난 캔버스에서 가장 위 액션인데 핸들러가
-   `TODO` 주석과 로그 한 줄이다. 누르면 눌린 티만 나고 끝난다
-   → [open-questions](../../synthesis/open-questions.md).
+1. ~~**갤러리에 저장이 아무 일도 하지 않는다**~~ — ✅ **해소(PR #324, 2026-08-23)**. 핸들러가
+   `RequestCanvasCapture` 이펙트로 바뀌어 화면이 `GraphicsLayer`로 캡처하고 `MediaStore`에 쓴다.
+   설계·잔존은 [c001-canvas-gallery-save 스펙](2026-08-23-c001-canvas-gallery-save.md)이 갖는다
+   → [open-questions](../../synthesis/open-questions.md) OQ-P-211.
+   저장되는 그림은 **배경+토핑뿐**이라 이 라운드가 만든 캔버스 프레임(테두리·컷 도형·날짜 라벨)은
+   들어가지 않는다.
 2. **날짜를 빠르게 두 번 고르면 머리말과 그림이 어긋난 채 남는다** — 상세 조회에 `launch(key)`
    가드가 붙었는데 이 가드는 **앞선 조회를 살리고 새 것을 버린다**. 새 요청이 버려진 뒤 앞선 응답이
    와도 `selectedDate`가 이미 달라 반영되지 않고, 이번 라운드부터 이전 날 그림을 비우지도 않는다.
