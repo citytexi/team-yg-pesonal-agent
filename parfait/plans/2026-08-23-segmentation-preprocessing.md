@@ -6,27 +6,35 @@
 
 **Architecture:** 손실이 처음 생기는 촬영 지점(`ImageCapture`)을 먼저 고치고, 디코드 지점
 (`decodeUriToBitmap`·`decodeImage`)에 입력 정규화를 놓는다. 정규화의 판단은 순수 함수로 빼서 기기 없이
-검증하고, 실제 픽셀 효과는 고정 사진 세트가 눈으로 판정한다. **판정 결과에 따라 뒤 절반을 넣거나 뺀다.**
+검증하고, 실제 픽셀 효과는 **버리는 스파이크에서 미리 만들어 본 뒤 고정 사진 세트로 판정한다.**
+판정을 통과한 것만 정식으로 구현한다.
 
-**Tech Stack:** Kotlin, Jetpack Compose, CameraX, ML Kit Subject Segmentation, Hilt,
+**Tech Stack:** Kotlin, Jetpack Compose, CameraX 1.6.1, ML Kit Subject Segmentation, Hilt,
 `androidx.exifinterface`(신규), kotlin.test + MockK
 
 **Spec:** [`parfait/specs/2026-08-23-segmentation-preprocessing.md`](../specs/2026-08-23-segmentation-preprocessing.md)
 
-**작업 저장소:** `TJYG-Android`(별도 repo). 브랜치는 `develop`에서 새로 딴다.
-이 계획 문서가 있는 repo와 다른 곳이다.
-
 ## Global Constraints
 
+- **작업 저장소는 `TJYG-Android`다**(이 계획 문서가 있는 repo와 다르다).
+  **베이스는 `feature/c103-multi-subject-ui` 팁(`ab196483`)이고 그 위에 스택으로 쌓는다.**
+  `develop`이 아니다. 이유: 측정이 C-103 다중 후보 화면과 면적 1% 필터를 필요로 하는데 그 둘이
+  `develop`에 없다. 확대의 효과가 가장 크게 드러날 자리가 후보 개수와 면적 필터다.
+  **C-103 PR1·PR2가 `develop`에 머지되면 리베이스한다.**
 - **커밋만 하고 push·PR은 하지 않는다.** 사용자가 명시적으로 요청할 때까지 리모트로 내보내지 않는다.
 - 매 태스크 끝에 `./gradlew test ktlintCheck :app:assembleDebug`가 통과해야 한다.
+  (예외: Task 5 스파이크. 그 태스크는 버릴 코드라 검증을 요구하지 않는다.)
 - **주석 규약**: 코드가 이미 말하는 것은 쓰지 않는다. `@return`·`@param`은 타입·이름이 말하지 못할
-  때만 쓴다. **다른 컴포넌트의 현재 상태를 단정하지 않는다**(낡는다). 아키텍처 결정은 코드가 아니라
-  문서에 쓰고 코드에는 포인터 한 줄만 둔다.
+  때만 쓴다. **다른 컴포넌트의 현재 상태를 단정하지 않는다**(낡는다 — 근거는 문서 포인터로 적는다).
+  아키텍처 결정은 코드가 아니라 문서에 쓰고 코드에는 포인터 한 줄만 둔다.
+  주석 분량은 그 코드의 **어려움**에 비례해야지 **중요함**에 비례하면 안 된다.
 - 테스트는 `kotlin.test`(`@Test`·`assertEquals`·`assertNull`)를 쓴다. 이름은
-  `함수명_조건_기대`이고 본문에 `// Given` `// When` `// Then` 주석을 단다. 저장소 기존
-  `SegmentationMaskTest`·`RecentImageRepositoryImplTest` 형식 그대로다.
+  `함수명_조건_기대`이고 본문에 `// Given` `// When` `// Then` 주석을 단다.
 - **변환 자체를 위한 단독 테스트를 만들지 않는다.** 판단이 든 순수 함수만 덮는다.
+- **이 저장소에 Robolectric이 없다.** `Bitmap`·`ImageDecoder`·`ExifInterface`·CameraX 빌더가 걸린
+  코드는 JVM 유닛으로 못 덮는다. 그런 태스크는 **왜 테스트가 없는지를 본문에 적는다.**
+- **기존 파일을 "전문"으로 덮어쓰지 않는다.** 항상 추가·치환 지시로 고친다. 이 저장소는 전문
+  덮어쓰기로 남의 함수를 지운 이력이 있다.
 - `minSdk`는 26이다. API 분기를 지울 수 없다.
 - 세그멘테이션 입력 이미지 하한은 **짧은 변 512px**이다(ML Kit Android 가이드
   "Tips to improve performance").
@@ -38,23 +46,41 @@
 | 파일 | 책임 | 단계 |
 |---|---|---|
 | `feature/camera/impl/.../component/CameraPreviewComponent.kt` | `ImageCapture` 촬영 품질 | 1단계 |
-| `core/util/android/.../extension/ExifOrientation.kt` (신설) | EXIF 상수를 각도로 (순수 함수) | 1단계 |
-| `core/util/android/.../Logger.kt` (신설) | 모듈 로거. EXIF 재개방 실패를 남긴다 | 1단계 |
-| `core/util/android/.../extension/ContentResolver.kt` | API 26·27 갈래에 회전 보정 결선 | 1단계 |
 | `gradle/libs.versions.toml` | `androidx.exifinterface` 추가 | 1단계 |
+| `core/util/android/build.gradle.kts` | 위 의존성 결선 | 1단계 |
+| `core/util/android/.../extension/ExifOrientation.kt` (신설) | EXIF 상수를 각도로 (순수 함수) | 1단계 |
+| `core/util/android/src/test/.../extension/ExifOrientationTest.kt` (신설) | 위 함수의 유닛 | 1단계 |
+| `core/util/android/.../Logger.kt` (신설) | 모듈 로거 | 1단계 |
+| `core/util/android/.../extension/ContentResolver.kt` | 회전 보정 결선 | 1단계 |
 | `data/.../repository/image/RecentImageRepositoryImpl.kt` | `SOURCE` 확장자를 바이트로 판정 | 1단계 |
-| `data/.../repository/image/SegmentationInputNormalizer.kt` (신설) | 확대 치수·하한·픽셀 상한 (순수 함수) | 3단계 |
-| `data/.../repository/image/ImageSegmentationRepositoryImpl.kt` | 확대 결선 | 3단계 |
-| `domain/.../model/camera/CameraCacheFormat.kt` (신설) | 캐시 파일 포맷 어휘 | 3단계 |
-| `domain/.../usecase/camera/CreateCameraCacheFileUseCase.kt` | 포맷 인자(기본 JPEG) | 3단계 |
-| `data/.../source/file/local/FileCameraCacheLocalDataSource(+Impl).kt` | 포맷별 확장자 | 3단계 |
-| `feature/camera/impl/.../util/CameraCrop.kt` | 포맷별 압축 | 3단계 |
-| `feature/camera/impl/.../viewmodel/CustomCameraViewModel.kt` | 포맷 분기·촬영 중 상태 | 3단계 |
-| `feature/camera/impl/.../route/CustomCameraRoute.kt` | `returnResultOnly`로 포맷 결정 | 3단계 |
+| `data/src/test/.../repository/image/RecentImageRepositoryImplTest.kt` | 위 판정의 유닛 | 1단계 |
+| `data/.../repository/image/SegmentationInputNormalizer.kt` (신설) | 확대 치수·하한·픽셀 상한 | 4단계 |
+| `data/src/test/.../repository/image/SegmentationInputNormalizerTest.kt` (신설) | 위 함수의 유닛 | 4단계 |
+| `domain/.../repository/image/ImageSegmentationRepository.kt` | 계약 KDoc 확장 | 4단계 |
+| `data/.../repository/image/ImageSegmentationRepositoryImpl.kt` | 확대 결선 | 4단계 |
+| `domain/.../model/camera/CameraCacheFormat.kt` (신설) | 캐시 파일 포맷 어휘 | 4단계 |
+| `domain/.../usecase/camera/CreateCameraCacheFileUseCase.kt` | 포맷 인자(기본 JPEG) | 4단계 |
+| `domain/.../repository/camera/CameraCacheFileRepository.kt` | 위 인자 통과 | 4단계 |
+| `data/.../repository/camera/CameraCacheFileRepositoryImpl.kt` | 위 인자 통과 | 4단계 |
+| `data/.../source/file/local/FileCameraCacheLocalDataSource(+Impl).kt` | 포맷별 확장자 | 4단계 |
+| `feature/camera/impl/.../util/CameraCrop.kt` | 포맷별 압축 | 4단계 |
+| `feature/camera/impl/build.gradle.kts` | 유닛 테스트 소스셋 신설 | 4단계 |
+| `feature/camera/impl/.../viewmodel/CustomCameraViewModel.kt` | 포맷 분기·촬영 중 상태 | 4단계 |
+| `feature/camera/impl/src/test/.../viewmodel/CustomCameraViewModelTest.kt` (신설) | 연타 가드 유닛 | 4단계 |
+| `feature/camera/impl/.../route/CustomCameraRoute.kt` | `returnResultOnly`로 포맷 결정 | 4단계 |
+| `feature/camera/impl/.../screen/CustomCameraScreen.kt` | 셔터 비활성 전달 | 4단계 |
+| `feature/camera/impl/.../component/CameraControlComponent.kt` | 셔터 비활성 중계 | 4단계 |
+| `core/designsystem/.../component/ygcamerashutter/YGCameraShutter.kt` | `enabled` 파라미터 신설 | 4단계 |
 
-**단계 구분이 이 계획의 핵심이다.** 1단계는 근거가 확정된 것만 넣는다. 2단계는 측정이다.
-3단계는 **2단계 결과가 조건을 만족할 때만** 실행한다. 조건을 안 만족하면 3단계를 통째로 버리고
-그 사실을 스펙에 기록하는 것이 정답이다.
+**단계 구조가 이 계획의 핵심이다.**
+
+| 단계 | 태스크 | 성격 |
+|---|---|---|
+| 1단계 | Task 1~4 | 근거가 확정된 것. 무조건 한다 |
+| 2단계 | Task 5 | **버리는 스파이크.** 측정 대상을 만들기만 한다 |
+| 3단계 | Task 6~8 | 사람이 하는 측정과 판정. Task 8은 회전 확장(독립 조건부) |
+| 4단계 | Task 9~13 | 판정을 통과한 것만 정식 구현 |
+| 마무리 | Task 14 | 실기기 회귀와 문서 |
 
 ---
 
@@ -69,43 +95,34 @@
 - Consumes: 없음
 - Produces: 없음(설정 변경). 뒤 태스크가 의존하는 심볼이 없다.
 
-`ImageCapture.Builder().build()`가 아무 설정도 하지 않아 기본값으로 촬영한다. HAL이 내려주는 프레임이
-이미 압축된 JPEG이고, `ImageProxy.toBitmap()`이 디코드하는 것이 그 프레임이다. 세그멘테이션이 보는
-픽셀의 손실은 저장 시점이 아니라 **여기서 처음 생긴다.**
-
-이 태스크에는 유닛 테스트가 없다. CameraX 빌더 설정이고 검증은 2단계 사진 세트가 한다.
+**테스트가 없는 이유**: CameraX 빌더 설정이고 이 저장소에 Robolectric이 없다. 검증은 Task 6 사진 세트가 한다.
 
 - [ ] **Step 1: 빌더에 품질 설정을 넣는다**
 
-`CameraPreviewComponent.kt`에서 `imageCapture` 생성부를 찾아 바꾼다.
+`imageCapture` 생성부(현재 `ImageCapture.Builder().build()`)를 바꾼다.
 
 ```kotlin
 val imageCapture: ImageCapture = ImageCapture
     .Builder()
-    // 세그멘테이션이 보는 픽셀의 손실은 저장이 아니라 여기서 처음 생긴다.
-    // 기본값에 기대지 않고 둘 다 명시한다 — capture mode 별 기본 품질이 다르다
+    // 근거: parfait/specs/2026-08-23-segmentation-preprocessing.md 「1. 손실이 처음 생기는 자리」
     .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
     .setJpegQuality(MAX_JPEG_QUALITY)
     .build()
 ```
 
-같은 파일 하단(또는 기존 상수 자리)에 상수를 둔다.
+파일 하단 상수 자리에 더한다. `CAPTURE_MODE_MAXIMIZE_QUALITY`의 기본 품질이 이미 100이지만,
+기본값에 기대지 않고 명시한다.
 
 ```kotlin
 private const val MAX_JPEG_QUALITY = 100
 ```
 
-- [ ] **Step 2: 빌드가 통과하는지 본다**
-
-Run: `./gradlew :feature:camera:impl:compileDebugKotlin`
-Expected: BUILD SUCCESSFUL
-
-- [ ] **Step 3: 전체 검사**
+- [ ] **Step 2: 전체 검사**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 4: 커밋**
+- [ ] **Step 3: 커밋**
 
 ```bash
 git add feature/camera/impl/src/main/java/com/teamyg/parfait/feature/camera/impl/component/CameraPreviewComponent.kt
@@ -124,15 +141,18 @@ git commit -m "fix: 촬영을 최대 품질로 받는다"
 
 **Interfaces:**
 - Consumes: 없음
-- Produces: `internal fun exifOrientationToDegrees(orientation: Int): Int` — `core.util.android.extension`
-  패키지. Task 3이 이것을 부른다.
+- Produces: `internal fun exifOrientationToDegrees(orientation: Int): Int` —
+  `com.teamyg.parfait.core.util.android.extension` 패키지. Task 3이 부른다.
+
+같은 모듈 유닛 테스트가 `internal`을 본다. 이 모듈에 선례는 없지만 `data` 모듈의
+`SegmentationMask.kt#maskSubjectPixels`가 같은 컨벤션 플러그인 조합에서 그렇게 동작한다.
 
 - [ ] **Step 1: 의존성을 추가한다**
 
 `gradle/libs.versions.toml`의 `[versions]` 절 `#Android` 부근에 넣는다.
 
 ```toml
-exifinterface = "1.4.1"
+exifinterface = "1.4.2"
 ```
 
 `[libraries]` 절 `#Android` 부근, `androidx-core-ktx` 아래에 넣는다.
@@ -178,8 +198,7 @@ class ExifOrientationTest {
     @Test
     fun exifOrientationToDegrees_mirrorTags_areZero() {
         // Given 좌우 반전이 섞인 태그 넷
-        // Then 0 이다 — 반전을 적용하면 뒤집힌 누끼가 나오고, 세그멘테이션 정확도에는
-        // 기여하지 않는다. 이 테스트가 그 결정을 지킨다
+        // Then 0 이다. 반전을 적용하면 뒤집힌 누끼가 나오고 정확도에는 기여하지 않는다
         assertEquals(0, exifOrientationToDegrees(ExifInterface.ORIENTATION_FLIP_HORIZONTAL))
         assertEquals(0, exifOrientationToDegrees(ExifInterface.ORIENTATION_FLIP_VERTICAL))
         assertEquals(0, exifOrientationToDegrees(ExifInterface.ORIENTATION_TRANSPOSE))
@@ -202,8 +221,6 @@ Expected: 컴파일 실패 — `Unresolved reference: exifOrientationToDegrees`
 
 - [ ] **Step 4: 최소 구현을 쓴다**
 
-`ExifOrientation.kt`를 만든다.
-
 ```kotlin
 package com.teamyg.parfait.core.util.android.extension
 
@@ -212,9 +229,8 @@ import androidx.exifinterface.media.ExifInterface
 /**
  * EXIF orientation 태그를 시계 방향 회전 각도로 바꾼다.
  *
- * 미러링(`FLIP_*`·`TRANSPOSE`·`TRANSVERSE`)은 0 이다. 좌우 반전은 세그멘테이션 정확도에
- * 기여하지 않고 잘못 적용하면 뒤집힌 결과물이 나온다
- * (`parfait/specs/2026-08-23-segmentation-preprocessing.md`).
+ * 미러링(`FLIP_*`·`TRANSPOSE`·`TRANSVERSE`)이 0 인 이유는
+ * `parfait/specs/2026-08-23-segmentation-preprocessing.md` 「범위 제외」에 있다.
  */
 internal fun exifOrientationToDegrees(orientation: Int): Int = when (orientation) {
     ExifInterface.ORIENTATION_ROTATE_90 -> 90
@@ -251,19 +267,18 @@ git commit -m "feat: EXIF orientation 을 회전 각도로 바꾼다"
 **Interfaces:**
 - Consumes: `exifOrientationToDegrees(orientation: Int): Int` (Task 2)
 - Produces: `fun ContentResolver.decodeUriToBitmap(uri: Uri): Bitmap` — 시그니처는 그대로이고 계약만
-  넓어진다. Task 6이 이 함수 위에 확대를 얹는다.
+  넓어진다. Task 10이 이 함수 위에 확대를 얹는다.
 
-`MediaStore.Images.Media.getBitmap`은 EXIF orientation을 적용하지 않는다. API 26·27이 그 갈래를 타므로
-누운 사진이 그대로 `InputImage.fromBitmap(bitmap, 0)`으로 들어간다.
+**테스트가 없는 이유**: `Bitmap`·`ImageDecoder`·`ExifInterface`가 걸려 JVM에서 못 돈다. 이 저장소에
+Robolectric이 없다. 판단은 Task 2의 순수 함수가 덮었고 픽셀 효과는 Task 6 사진 세트가 본다.
 
-⚠️ **API 28 이상은 건드리지 않는다.** `ImageDecoder`가 EXIF를 자동 적용하는지 공식 문서로 확인하지
-못했다(OQ-P-280). 이미 적용된 이미지를 또 돌리면 두 번 돌아간다. 판정 못 한 상태의 기본값은
-"보정하지 않음"이다. 2단계에서 API 28 이상도 누워 나오는 것이 확인되면 그때 넓힌다.
+⚠️ **API 28 이상은 이 태스크에서 건드리지 않는다.** `ImageDecoder`가 EXIF를 자동 적용하는지 공식
+문서로 확인하지 못했다(OQ-P-280). 이미 적용된 판을 또 돌리면 두 번 돌아간다. 판정 못 한 상태의
+기본값은 "보정하지 않음"이다. 넓힐지는 Task 8이 정한다.
 
 - [ ] **Step 1: 모듈 로거를 만든다**
 
 `data/src/main/java/com/teamyg/parfait/data/utils/Logger.kt`와 같은 형태다.
-`core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/Logger.kt`를 만든다.
 
 ```kotlin
 package com.teamyg.parfait.core.util.android
@@ -276,42 +291,39 @@ internal val coreUtilAndroidLogger: Logger by lazy {
 }
 ```
 
-- [ ] **Step 2: 디코드에 회전 보정을 얹는다**
+- [ ] **Step 2: `ContentResolver.kt` 를 고친다 (전문 교체 금지)**
 
-`ContentResolver.kt`를 이렇게 만든다. 기존 API 28 이상 갈래는 그대로 둔다.
+⚠️ **이 파일에는 `decodeUriToBitmap` 말고 `readBytes`도 있다.** 소비자가
+`FileRecentImageLocalDataSourceImpl`과 `ImageFileLocalDataSourceImpl` 둘이다.
+**`readBytes`를 지우면 `:data` 컴파일이 깨진다.** 아래 세 가지만 한다.
+
+**(a) 임포트를 더한다.**
 
 ```kotlin
-package com.teamyg.parfait.core.util.android.extension
-
-import android.content.ContentResolver
-import android.graphics.Bitmap
-import android.graphics.ImageDecoder
 import android.graphics.Matrix
-import android.net.Uri
-import android.os.Build
-import android.provider.MediaStore
 import androidx.exifinterface.media.ExifInterface
 import com.teamyg.parfait.core.util.android.coreUtilAndroidLogger
+```
 
-fun ContentResolver.decodeUriToBitmap(uri: Uri): Bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-    val source = ImageDecoder.createSource(this, uri)
-    ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
-        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-        decoder.isMutableRequired = true
-        decoder.setTargetSize(info.size.width, info.size.height)
-    }
+**(b) `decodeUriToBitmap`의 `else` 갈래 끝에 호출을 붙인다.** `if` 갈래(API 28 이상)는 손대지 않는다.
+
+```kotlin
 } else {
     @Suppress("DEPRECATION")
     MediaStore.Images.Media
         .getBitmap(this, uri)
         .rotatedToUpright(this, uri)
 }
+```
 
+**(c) 파일 하단에 비공개 함수 둘을 더한다.** `readBytes` 아래여도 되고 위여도 된다.
+
+```kotlin
 /**
  * EXIF 회전을 픽셀에 적용한다.
  *
- * API 28 이상에서는 부르지 않는다 — [ImageDecoder] 가 이미 적용하는지 확인하지 못했고,
- * 적용된 판을 또 돌리면 두 번 돌아간다(`parfait/synthesis/open-questions.md` OQ-P-280).
+ * 왜 API 28 이상에서는 부르지 않는지는
+ * `parfait/synthesis/open-questions.md` OQ-P-280 에 있다.
  */
 private fun Bitmap.rotatedToUpright(
     resolver: ContentResolver,
@@ -323,9 +335,8 @@ private fun Bitmap.rotatedToUpright(
     val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
     val rotated = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
 
-    // 전체 해상도 판 둘이 함께 살지 않게 한다.
-    // createBitmap 은 바꿀 것이 없으면 원본 인스턴스를 그대로 돌려주므로 그때는 회수하지 않는다
-    if (rotated !== this) recycle()
+    // 각도가 0 이 아니라 언제나 새 인스턴스다. 전체 해상도 판 둘이 함께 살지 않게 여기서 닫는다
+    recycle()
 
     return rotated
 }
@@ -333,8 +344,8 @@ private fun Bitmap.rotatedToUpright(
 /**
  * [ImageDecoder.createSource] 가 스트림을 소비하므로 EXIF 는 uri 를 한 번 더 열어서 읽는다.
  *
- * 못 읽으면 0 이다 — 태그가 깨진 것과 이미지를 못 연 것은 다른 사건이라 여기서 디코드를
- * 실패시키지 않는다. 다만 재개방 실패가 상시 참이 되면 보정이 조용히 무효가 되므로 남긴다.
+ * 못 읽으면 0 이다 — 태그가 깨진 것과 이미지를 못 연 것은 다른 사건이라 디코드를 실패시키지
+ * 않는다. 다만 이 갈래가 상시 참이 되면 보정이 조용히 무효가 되므로 남긴다.
  */
 private fun ContentResolver.readExifDegrees(uri: Uri): Int = try {
     openInputStream(uri).use { input ->
@@ -355,19 +366,17 @@ private fun ContentResolver.readExifDegrees(uri: Uri): Int = try {
 }
 ```
 
-> `coreUtilAndroidLogger.w(throwable) { ... }` 시그니처가 이 저장소 `Logger` 인터페이스와 다르면
-> 같은 인터페이스가 제공하는 경고 수준 메서드로 맞춘다. `core/util/jvm/.../analytics/Logger.kt`를 열어
-> 확인한다. 로그를 남기는 것 자체는 빼지 않는다.
+`Logger.w(throwable: Throwable? = null, tag: String? = null, message: () -> String)`이 실제
+시그니처다. 위 호출이 그대로 컴파일된다.
 
-- [ ] **Step 3: 전체 검사**
+- [ ] **Step 3: `readBytes` 가 그대로 있는지 확인한다**
+
+Run: `grep -n "fun ContentResolver.readBytes" core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/extension/ContentResolver.kt`
+Expected: 한 줄이 나온다. 안 나오면 지운 것이므로 되살린다.
+
+- [ ] **Step 4: 전체 검사와 커밋**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
-Expected: BUILD SUCCESSFUL
-
-기존 테스트가 깨지지 않는지 본다. `decodeUriToBitmap`은 호출부가 `ImageSegmentationRepositoryImpl`
-하나뿐이라 파급이 없어야 한다.
-
-- [ ] **Step 4: 커밋**
 
 ```bash
 git add core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/Logger.kt \
@@ -384,21 +393,25 @@ git commit -m "fix: API 28 미만에서 누운 사진을 세워서 디코드한�
 - Test: `data/src/test/java/com/teamyg/parfait/data/repository/image/RecentImageRepositoryImplTest.kt`
 
 **Interfaces:**
-- Consumes: `UploadImageFormat.ofBytes(bytes: ByteArray): UploadImageFormat?`와
-  `UploadImageFormat.extension: String` — `data.model.image` 패키지에 이미 있다.
+- Consumes: `UploadImageFormat.ofBytes(bytes: ByteArray): UploadImageFormat?`,
+  `UploadImageFormat.extension: String` — 같은 `:data` 모듈의 `data.model.image` 패키지에 있다.
 - Produces: 없음(내부 판정 변경).
 
-> 📌 **이 태스크는 스펙이 "PNG 채택 시"로 분류했으나 1단계로 올린다.** 지금도 참인 결함이기
-> 때문이다. `SegmentationViewModel`이 세그멘테이션 진입마다 원본을 `RecentImageKind.SOURCE`로
-> 기록하는데, **사용자가 갤러리에서 고른 PNG도 그 경로를 탄다.** 확장자가 `"jpg"`로 못박혀 있어
-> PNG 바이트가 `.jpg` 이름으로 앉고, C-301 배경 편집이 최근 목록에서 그것을 고르면
+> 📌 **스펙은 이 항목을 "PNG 채택 시"로 분류했으나 1단계로 올린다.** 지금도 참인 결함이다.
+> `SegmentationViewModel`이 세그멘테이션 진입마다 원본을 `RecentImageKind.SOURCE`로 기록하는데
+> **사용자가 갤러리에서 고른 PNG도 그 경로를 탄다.** 확장자가 `"jpg"`로 못박혀 있어 PNG 바이트가
+> `.jpg` 이름으로 앉고, C-301 배경 편집이 최근 목록에서 그것을 고르면
 > `ImageFileLocalDataSourceImpl#formatOf`가 확장자에서 유도된 MIME을 바이트 스니핑보다 먼저 믿어
-> `image/jpeg`로 업로드된다. 3단계를 안 하더라도 고칠 값이 있다.
+> `image/jpeg`로 업로드된다.
+
+⚠️ **이 변경은 앞으로 저장되는 것만 고친다.** 파일명이 `sha256 + "." + extension`이라 같은 사진이
+`.jpg`와 `.png` 두 이름으로 남을 수 있고, 최근 목록의 중복 판정 키가 uri라 **두 칸을 먹는다.**
+마이그레이션은 하지 않는다 — 목록 상한이 9칸이라 곧 밀려난다. 이 감수를 OQ-P-283으로 남긴다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
-`RecentImageRepositoryImplTest.kt`에 케이스를 더한다. 기존
-`store_withAbsolutePath_readsThroughFilePathAndKeepsPngExtension` 아래에 둔다.
+기존 `store_withAbsolutePath_readsThroughFilePathAndKeepsPngExtension` 아래에 더한다.
+`File`·`assertEquals`는 이미 import되어 있다.
 
 ```kotlin
 @Test
@@ -416,7 +429,7 @@ fun store_sourceIsActuallyPng_namesItPngNotJpg() = runTest {
         kind = RecentImageKind.SOURCE,
     )
 
-    // Then 내용대로 png 다 — jpg 로 굳으면 배경으로 다시 골랐을 때
+    // Then 내용대로 png 다. jpg 로 굳으면 배경으로 다시 골랐을 때
     // 확장자에서 유도된 image/jpeg 로 올라간다
     verify { fileDataSource.getTargetFile(bytes, "png") }
     assertEquals("content://recent/abc.png", stored)
@@ -446,11 +459,11 @@ fun store_sourceFormatIsUnknown_fallsBackToJpg() = runTest {
 
 Run: `./gradlew :data:testDebugUnitTest --tests '*RecentImageRepositoryImplTest*'`
 Expected: `store_sourceIsActuallyPng_namesItPngNotJpg` FAIL —
-`getTargetFile(bytes, "png")` 대신 `getTargetFile(bytes, "jpg")`가 불렸다는 MockK 검증 실패
+`getTargetFile(bytes, "png")`가 안 불렸다는 MockK 검증 실패
 
 - [ ] **Step 3: 구현을 고친다**
 
-`RecentImageRepositoryImpl.kt`에서 `kind.fileExtension()`을 쓰던 자리를 바꾼다.
+`kind.fileExtension()`을 쓰던 자리를 바꾼다.
 
 ```kotlin
 val target: File = fileRecentImageLocalDataSource.getTargetFile(bytes, extensionOf(kind, bytes))
@@ -477,9 +490,8 @@ private fun extensionOf(
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests '*RecentImageRepositoryImplTest*'`
-Expected: PASS. 기존 케이스 둘(`.jpg` SOURCE·`.png` CUTOUT)도 함께 통과해야 한다.
-기존 SOURCE 케이스의 바이트가 `byteArrayOf(1, 2)` 같은 판정 불가 값이면 폴백으로 `jpg`가 나와 그대로
-통과한다. JPEG 시그니처로 바뀌어야 통과한다면 그 케이스의 바이트를 JPEG 시그니처로 고친다.
+Expected: PASS. **기존 케이스는 손대지 않는다** — SOURCE 케이스의 바이트가 `byteArrayOf(1, 2, 3)`이라
+`ofBytes`가 `null`을 주고 폴백 `"jpg"`로 그대로 통과한다.
 
 - [ ] **Step 5: 전체 검사와 커밋**
 
@@ -493,81 +505,182 @@ git commit -m "fix: 최근 원본의 확장자를 이름이 아니라 내용으�
 
 ---
 
-# 2단계 — 측정 게이트
+# 2단계 — 버리는 스파이크
 
-## Task 5: 고정 사진 세트로 판정한다
+## Task 5: 측정 대상을 만든다 (커밋하지 않는다)
 
 **Files:**
-- 코드 변경 없음. 결과를 `parfait/specs/2026-08-23-segmentation-preprocessing.md`에 기록한다.
+- 4단계 Task 9~13이 만들 코드를 **임시로** 얹는다. 목록은 그 태스크들을 보라.
 
 **Interfaces:**
 - Consumes: Task 1~4의 결과물
-- Produces: **3단계 실행 여부**와 **회전 보정 범위**를 정하는 판정 결과
+- Produces: 측정 가능한 빌드. **정식 산출물이 아니다.**
+
+측정하려면 측정 대상이 있어야 하는데, 무엇을 정식으로 넣을지는 측정이 정한다. 그 순환을
+**버리는 스파이크**로 끊는다.
+
+- [ ] **Step 1: 스파이크 브랜치를 딴다**
+
+```bash
+git checkout -b spike/segmentation-preprocessing
+```
+
+- [ ] **Step 2: 4단계 코드를 얹는다**
+
+Task 9·10(확대)과 Task 11·12·13(PNG)의 **구현만** 옮겨 적는다.
+**테스트·KDoc·ktlint·커밋을 요구하지 않는다.** 이 브랜치는 버린다. 여기서 다듬으면 4단계를 두 번 한다.
+
+⚠️ **PNG를 재려면 Task 11·12·13이 모두 필요하다.** Task 11까지만 하면 아무도 PNG를 안 넘긴다.
+
+- [ ] **Step 3: 두 빌드를 준비한다**
+
+- **A 빌드**: 1단계 팁(스파이크 없음)
+- **B 빌드**: 스파이크 브랜치
+
+Task 6이 둘을 비교한다. 확대만 켠 빌드와 PNG만 켠 빌드를 따로 만들 수 있으면 더 좋으나, 두
+항목의 판정이 서로 독립이므로 **한 번에 켜 놓고 각 사진이 어느 항목을 판정하는지로 가른다.**
+512 미만 사진은 확대를, 경계 복잡 사진은 PNG를 판정한다.
+
+- [ ] **Step 4: 스파이크임을 확인한다**
+
+Run: `git log --oneline -1`
+Expected: 커밋이 없거나(작업 트리에만 있음) 스파이크 커밋 하나. **이 브랜치는 어느 경우에도
+머지하지 않는다.**
+
+---
+
+# 3단계 — 측정과 판정
+
+## Task 6: 고정 사진 세트로 판정한다
+
+**Files:**
+- 코드 변경 없음.
+
+**Interfaces:**
+- Consumes: Task 5의 A·B 빌드
+- Produces: 4단계 실행 범위를 정하는 판정 결과
 
 ⚠️ **이 태스크는 사람이 실기기에서 해야 한다. 서브에이전트가 대신할 수 없다.**
-결과를 받기 전에는 3단계로 넘어가지 않는다.
 
 - [ ] **Step 1: 사진 여섯 장을 준비한다**
 
 | 사진 | 판정 대상 |
 |---|---|
-| EXIF 회전 태그가 붙은 세로 사진 | 회전 정합 |
-| 짧은 변 512 미만 이미지 | 확대 가드의 효과 |
-| 머리카락·털·잎사귀처럼 경계가 복잡한 피사체 | 촬영 품질과 저장 포맷 |
-| 피사체가 뷰파인더 변에 걸친 촬영 | 크롭의 영향(기준선만) |
-| 저대비·역광 | 조도의 영향(기준선만) |
+| EXIF 회전 태그가 붙은 세로 사진 | 회전 정합(Task 8이 쓴다) |
+| 짧은 변 512 미만 이미지 | 확대의 효과(Task 9·10) |
+| 머리카락·털·잎사귀처럼 경계가 복잡한 피사체 | 촬영 품질과 저장 포맷(Task 11~13) |
+| 피사체가 뷰파인더 변에 걸친 촬영 | 이번엔 안 고친다. 기준선만 |
+| 저대비·역광 | 이번엔 안 고친다. 기준선만 |
 | 다중 피사체 | 기존 다중 후보 회귀 |
 
 **회전 사진은 태그가 실제로 붙어 있는지 먼저 확인한다.** 많은 카메라 앱이 픽셀에 회전을 굽고
 태그는 정상으로 쓴다. 그런 사진으로 시험하면 두 API 대역 모두 문제없다고 나오고 아무것도 배우지
 못한다.
 
-Run: `adb shell` 또는 `exiftool <파일>`로 Orientation 값이 6 또는 8인지 확인한다.
+Run: `exiftool <파일>`로 Orientation 값이 6 또는 8인지 확인한다.
 
 - [ ] **Step 2: 회전을 판정한다**
 
 API 27 에뮬레이터와 API 28 이상 기기에서 각각 회전 사진을 갤러리 경로로 넣고 C-103 후보 화면을 본다.
 
 - API 27에서 세워져 나오면 Task 3이 동작한 것이다.
-- **API 28 이상에서도 누워 나오면** 회전 보정을 전 버전으로 넓힌다(3단계 Task 6에 항목을 더한다).
-  세워져 나오면 그대로 둔다.
-- 결과를 OQ-P-280의 해소 메모에 적는다.
+- **API 28 이상에서도 누워 나오면** Task 8을 실행한다. 세워져 나오면 Task 8을 건너뛴다.
 
-- [ ] **Step 3: 손실을 세 벌로 가른다**
+- [ ] **Step 3: 손실을 가른다**
 
-같은 피사체를 같은 구도로 세 조건에서 촬영해 최종 누끼를 나란히 둔다.
+같은 피사체를 같은 구도로 촬영해 최종 누끼를 나란히 둔다.
 
 1. Task 1 이전 빌드 (기준선)
-2. Task 1 이후 빌드, JPEG 저장 그대로
-3. Task 1 이후 빌드 + 3단계 Task 8까지 임시 적용(PNG 저장)
+2. A 빌드 (촬영 품질만 상향, 저장은 JPEG 95 그대로)
+3. B 빌드 (촬영 품질 상향 + PNG 저장)
 
-3번을 위한 임시 적용이 부담이면 **1번과 2번만 먼저 본다.** 2번에서 이미 충분히 좋아졌으면
-3단계의 PNG 관련 태스크를 버린다.
+2번과 3번의 차이가 눈에 보이면 PNG를 채택한다. **확신이 안 서면 버린다** — 스펙의 기본값이
+그쪽이고, 버린 기록도 결과다.
 
 함께 잰다 — PNG 저장 시간, 파일 크기, 셔터에서 확인 화면까지의 공백.
 
 - [ ] **Step 4: 확대를 판정한다**
 
-짧은 변 512 미만 사진을 갤러리 경로로 넣는다. 3단계 Task 6·7을 임시 적용한 빌드와 안 한 빌드에서
-후보 화면을 비교한다. **차이가 없으면 3단계 Task 6·7을 버린다.**
+짧은 변 512 미만 사진을 갤러리 경로로 넣고 A·B 빌드의 후보 화면을 비교한다. **후보 개수와 박스
+위치**를 본다(면적 1% 필터가 걸러 내던 것이 살아나는지가 가장 큰 신호다).
 
-같은 사진으로 **배치까지 끝내서** 캔버스에 박힌 토핑 크기가 전후로 달라지는지도 본다(OQ-P-282).
+같은 사진으로 **배치까지 끝내서** 캔버스에 박힌 토핑 크기가 A·B에서 달라지는지도 본다(OQ-P-282).
 
-- [ ] **Step 5: 결과를 스펙에 적는다**
+여기서도 확신이 안 서면 버린다.
 
-`parfait/specs/2026-08-23-segmentation-preprocessing.md`의 근거 등급 표에 판정 결과 열을 채우고,
-버리기로 한 항목은 그 이유와 함께 남긴다. **버린 기록이 다음 사람에게는 결과다.**
-OQ-P-278·OQ-P-280의 상태도 갱신한다.
+- [ ] **Step 5: 결과를 적는다**
+
+`parfait/specs/2026-08-23-segmentation-preprocessing.md`의 근거 등급 표에 판정 결과를 채운다.
+OQ-P-278·280·282의 상태도 갱신한다.
+
+- [ ] **Step 6: 스파이크를 버린다**
+
+```bash
+git checkout <1단계 팁 브랜치>
+git branch -D spike/segmentation-preprocessing
+```
 
 ---
 
-# 3단계 — 측정이 통과한 것만
+## Task 7: 판정을 실행 범위로 옮긴다
 
-> **게이트**: Task 5 Step 4가 확대의 효과를 확인했을 때만 Task 6·7을 한다.
-> Task 5 Step 3이 PNG의 추가 이득을 확인했을 때만 Task 8·9·10을 한다.
-> 둘 다 아니면 3단계 전체를 건너뛰고 Task 11로 간다.
+**Files:**
+- 코드 변경 없음. 이 계획 문서의 체크박스를 정리한다.
 
-## Task 6: 확대 치수를 계산하는 순수 함수
+- [ ] **Step 1: 조합에 따라 실행할 태스크를 정한다**
+
+| 확대 | PNG | 실행 |
+|---|---|---|
+| 채택 | 채택 | Task 9·10·11·12·13 |
+| 채택 | 기각 | Task 9·10만 |
+| 기각 | 채택 | Task 11·12·13만 |
+| 기각 | 기각 | 없음. Task 14로 간다 |
+
+**Task 8(회전 범위 확장)은 이 표와 독립이다.** Task 6 Step 2가 따로 정한다.
+
+- [ ] **Step 2: 버리기로 한 태스크에 표시를 남긴다**
+
+실행하지 않는 태스크의 제목 옆에 `[버림 — 근거: Task 6 Step N 판정]`을 적는다. 계획 문서가
+그대로 실행 기록이 된다.
+
+---
+
+## Task 8: 회전 보정을 전 버전으로 넓힌다 (조건부)
+
+**Files:**
+- Modify: `core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/extension/ContentResolver.kt`
+
+**Interfaces:**
+- Consumes: `rotatedToUpright`·`readExifDegrees` (Task 3)
+- Produces: 없음
+
+> **게이트**: Task 6 Step 2에서 **API 28 이상에서도 사진이 누워 나온 경우에만** 한다.
+> 세워져 나왔으면 이 태스크를 건너뛰고 OQ-P-280을 "API 28 이상은 `ImageDecoder`가 적용한다"로 닫는다.
+> **확대·PNG 게이트와 무관하다.**
+
+- [ ] **Step 1: API 분기를 걷는다**
+
+`decodeUriToBitmap`의 `if` 갈래 결과에도 `.rotatedToUpright(this, uri)`를 붙인다. `ExifOrientationTest`는
+그대로 통과한다.
+
+- [ ] **Step 2: 전체 검사와 커밋**
+
+Run: `./gradlew test ktlintCheck :app:assembleDebug`
+
+```bash
+git add core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/extension/ContentResolver.kt
+git commit -m "fix: 모든 API 대역에서 누운 사진을 세운다"
+```
+
+- [ ] **Step 3: 미결을 닫는다**
+
+`parfait/synthesis/open-questions.md`의 OQ-P-280에 관찰 결과와 처분을 적는다.
+
+---
+
+# 4단계 — 판정이 통과한 것만
+
+## Task 9: 확대 치수를 계산하는 순수 함수
 
 **Files:**
 - Create: `data/src/main/java/com/teamyg/parfait/data/repository/image/SegmentationInputNormalizer.kt`
@@ -575,9 +688,11 @@ OQ-P-278·OQ-P-280의 상태도 갱신한다.
 
 **Interfaces:**
 - Consumes: 없음
-- Produces: `internal data class ScaledSize(val width: Int, val height: Int)`와
+- Produces: `internal data class ScaledSize(val width: Int, val height: Int)`,
   `internal fun computeUpscaleTarget(width: Int, height: Int): ScaledSize?` —
-  `data.repository.image` 패키지. Task 7이 부른다.
+  `data.repository.image` 패키지. Task 10이 부른다.
+
+Task 5 스파이크에서 이미 써 본 코드를 정식으로 다시 넣는 자리다. 테스트와 KDoc이 여기서 붙는다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -600,7 +715,7 @@ class SegmentationInputNormalizerTest {
 
     @Test
     fun computeUpscaleTarget_shortSideIsExactlyTheFloor_isNull() {
-        // Then 하한을 만족하면 아무것도 하지 않는다 — null 이 "확대 없음"이다
+        // Then 하한을 만족하면 아무것도 하지 않는다. null 이 "확대 없음"이다
         assertNull(computeUpscaleTarget(width = 1024, height = 512))
     }
 
@@ -620,11 +735,11 @@ class SegmentationInputNormalizerTest {
 
     @Test
     fun computeUpscaleTarget_extremeAspectRatio_isNullBecauseOfThePixelCap() {
-        // Given 짧은 변만 보면 5.12 배로 키워야 하는 파노라마 조각
-        // 그대로 키우면 512 × 10240 = 약 524만 픽셀, ARGB 로 약 21MB 다
+        // Given 짧은 변만 보면 5.12 배로 키워야 하는 파노라마 조각.
+        // 그대로 키우면 512 × 10240 = 5,242,880 픽셀이다
         val target = computeUpscaleTarget(width = 2000, height = 100)
 
-        // Then 확대하지 않는다 — 확대해서 죽는 것보다 확대를 안 하는 편이 낫다
+        // Then 확대하지 않는다. 확대해서 죽는 것보다 확대를 안 하는 편이 낫다
         assertNull(target)
     }
 
@@ -654,8 +769,8 @@ internal const val MIN_SEGMENTATION_SIDE = 512
 /**
  * 확대 후 총 픽셀 상한. 약 16MB(ARGB) 어치다.
  *
- * 짧은 변만 보고 키우면 극단 종횡비에서 긴 변이 폭증한다. 그 뒤 세그멘테이션이 원본과
- * 후보 판들을 함께 들고 저장이 같은 크기 캔버스를 하나 더 만든다.
+ * 짧은 변만 보고 키우면 극단 종횡비에서 긴 변이 폭증한다
+ * (`parfait/synthesis/open-questions.md` OQ-P-228 의 피크 위에 얹힌다).
  */
 internal const val MAX_UPSCALED_PIXELS = 4_000_000L
 
@@ -674,7 +789,7 @@ internal fun computeUpscaleTarget(
     if (shortSide >= MIN_SEGMENTATION_SIDE) return null
 
     val ratio = MIN_SEGMENTATION_SIDE.toDouble() / shortSide
-    // 올림한다 — 내림하면 짧은 변이 511 로 떨어져 하한을 다시 밑돈다
+    // 올림한다. 내림하면 짧은 변이 511 로 떨어져 하한을 다시 밑돈다
     val scaledWidth = ceil(width * ratio).toInt()
     val scaledHeight = ceil(height * ratio).toInt()
 
@@ -701,39 +816,37 @@ git commit -m "feat: 세그멘테이션 입력 확대 치수를 계산한다"
 
 ---
 
-## Task 7: 디코드에 확대를 결선한다
+## Task 10: 디코드에 확대를 결선한다
 
 **Files:**
-- Modify: `data/src/main/java/com/teamyg/parfait/data/repository/image/ImageSegmentationRepositoryImpl.kt`
 - Modify: `domain/src/main/java/com/teamyg/parfait/domain/repository/image/ImageSegmentationRepository.kt`
+- Modify: `data/src/main/java/com/teamyg/parfait/data/repository/image/ImageSegmentationRepositoryImpl.kt`
 
 **Interfaces:**
-- Consumes: `computeUpscaleTarget`·`ScaledSize` (Task 6),
-  `ContentResolver.decodeUriToBitmap` (Task 3)
+- Consumes: `computeUpscaleTarget`·`ScaledSize` (Task 9), `decodeUriToBitmap` (Task 3)
 - Produces: 없음(계약 문구만 넓어진다).
 
-정규화를 `segmentImage`가 아니라 `decodeImage`에 두는 이유는 **일관성**이다. `SegmentationViewModel`과
-`ToppingEditViewModel`이 같은 `DecodeImageUseCase`를 타므로, 디코드 지점에 두면 같은 URI가 두 곳에서
-같은 픽셀로 열린다. `segmentImage`에만 두면 두 곳이 갈리고, 지금은 `buildCutoutBitmap`의 늘려 그리기가
-그것을 덮어 주지만 그 방어에 기대는 설계가 된다.
+**테스트가 없는 이유**: `Bitmap`이 걸려 JVM에서 못 돈다. 판단은 Task 9가 덮었다.
+`SegmentationViewModelTest`는 `DecodeImageUseCase`를 목으로 두므로 영향받지 않는다.
 
-- [ ] **Step 1: 인터페이스 계약을 넓힌다**
+- [ ] **Step 1: 계약 KDoc 을 넓힌다 (기존 문장을 지우지 않는다)**
 
-`ImageSegmentationRepository.kt`의 `decodeImage`에 KDoc을 단다.
+⚠️ `ImageSegmentationRepository.decodeImage`에 **이미 KDoc 이 있다.** 실패 처리 계약이 적혀 있으므로
+지우지 말고 앞에 한 문단을 더한다.
 
 ```kotlin
 /**
  * 세그멘테이션 입력 규격으로 정규화해 디코드한다 — 방향을 세우고 짧은 변 하한을 맞춘다.
+ * 색공간과 `Bitmap.Config` 는 건드리지 않는다(OQ-P-281).
  *
- * 색공간과 `Bitmap.Config` 는 건드리지 않는다
- * (`parfait/synthesis/open-questions.md` OQ-P-281).
+ * (기존 KDoc 본문을 여기에 그대로 이어 붙인다 — 실패 처리 계약을 지우지 않는다)
  */
 suspend fun decodeImage(uri: String): BitmapWrapper
 ```
 
 - [ ] **Step 2: 확대를 적용한다**
 
-`ImageSegmentationRepositoryImpl.kt`의 `decodeImage`를 바꾼다.
+`decodeImage`를 바꾸고 비공개 확장을 더한다.
 
 ```kotlin
 override suspend fun decodeImage(uri: String): BitmapWrapper {
@@ -747,20 +860,16 @@ private fun Bitmap.upscaledForSegmentation(): Bitmap {
 
     val scaled = Bitmap.createScaledBitmap(this, target.width, target.height, true)
 
-    // createScaledBitmap 은 치수가 같으면 원본 인스턴스를 그대로 돌려준다.
-    // 그때 회수하면 방금 받은 판이 사라진다
-    if (scaled !== this) recycle()
+    // 목표 치수는 언제나 원본보다 커서 새 인스턴스가 나온다. 원본을 여기서 닫는다
+    recycle()
 
     return scaled
 }
 ```
 
-- [ ] **Step 3: 전체 검사**
+- [ ] **Step 3: 전체 검사와 커밋**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
-Expected: BUILD SUCCESSFUL. 기존 `SegmentationViewModelTest`가 깨지지 않아야 한다.
-
-- [ ] **Step 4: 커밋**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/repository/image/ImageSegmentationRepositoryImpl.kt \
@@ -770,24 +879,30 @@ git commit -m "feat: 하한 미만 이미지를 세그멘테이션 규격으로 
 
 ---
 
-## Task 8: 캐시 파일 포맷을 어휘로 만든다
+## Task 11: 캐시 파일 포맷을 어휘로 만든다
 
 **Files:**
 - Create: `domain/src/main/java/com/teamyg/parfait/domain/model/camera/CameraCacheFormat.kt`
+  (부모 디렉토리 `model/camera/`가 없다. 만든다)
 - Modify: `domain/src/main/java/com/teamyg/parfait/domain/usecase/camera/CreateCameraCacheFileUseCase.kt`
+- Modify: `domain/src/main/java/com/teamyg/parfait/domain/repository/camera/CameraCacheFileRepository.kt`
+- Modify: `data/src/main/java/com/teamyg/parfait/data/repository/camera/CameraCacheFileRepositoryImpl.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/source/file/local/FileCameraCacheLocalDataSource.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/source/file/local/FileCameraCacheLocalDataSourceImpl.kt`
-- Modify: `data/src/main/java/com/teamyg/parfait/data/repository/camera/CameraCacheFileRepositoryImpl.kt`
-- Modify: `domain/src/main/java/com/teamyg/parfait/domain/repository/camera/CameraCacheFileRepository.kt`
 
 **Interfaces:**
 - Consumes: 없음
-- Produces: `enum class CameraCacheFormat { JPEG, PNG }`(`domain.model.camera`)와
+- Produces: `enum class CameraCacheFormat { JPEG, PNG }`(`domain.model.camera`),
   `CreateCameraCacheFileUseCase.invoke(format: CameraCacheFormat = CameraCacheFormat.JPEG): File`.
-  Task 9·10이 쓴다.
+  Task 12·13이 쓴다.
 
-기본값을 JPEG로 두는 것이 핵심이다. `CreateCameraCacheUriUseCase`가 인자 없이 파일 use case를
-부르므로, 기본값이 있으면 **시스템 카메라 경로는 한 글자도 안 바뀐다.**
+**소비자 0인 계층을 먼저 만든다.** 이 저장소의 확립된 관례다(c103 PR1의 `persistSubject`, c106 PR1·PR2).
+리뷰 초점을 계층 관통 하나로 좁힌다. **동작은 안 바뀐다** — 아무도 PNG를 안 넘긴다.
+
+**테스트가 없는 이유**: 확장자 매핑은 판단이 든 변환이 아니다(저장소 규약: 변환 단독 테스트를 만들지 않는다).
+
+기본값 JPEG가 핵심이다. `CreateCameraCacheUriUseCase`가 인자 없이 파일 use case를 부르므로
+**시스템 카메라 경로는 한 글자도 안 바뀐다.**
 
 - [ ] **Step 1: 포맷 어휘를 만든다**
 
@@ -803,24 +918,20 @@ enum class CameraCacheFormat {
 
 - [ ] **Step 2: 계층을 따라 인자를 흘린다**
 
-`CreateCameraCacheFileUseCase`:
+`CreateCameraCacheFileUseCase.invoke`에 `format: CameraCacheFormat = CameraCacheFormat.JPEG`를 더하고
+`cameraCacheFileRepository.createCameraCacheFile(format)`로 넘긴다. 나머지 본문은 그대로 둔다.
+
+`CameraCacheFileRepository.createCameraCacheFile`, `CameraCacheFileRepositoryImpl`,
+`FileCameraCacheLocalDataSource.createFile`에 같은 인자를 더한다.
+**`CreateCameraCacheUriUseCase`는 건드리지 않는다.**
+
+`FileCameraCacheLocalDataSourceImpl`은 시그니처만 바꾸고 **본문과 애노테이션을 유지한다.**
+
+⚠️ `override fun createFile` 위의 `@OptIn(FormatStringsInDatetimeFormats::class)`를 **지우지 않는다.**
+본문의 `byUnicodePattern`이 error 수준 opt-in을 요구해서, 빠지면 `:data` 컴파일이 깨진다.
 
 ```kotlin
-operator fun invoke(format: CameraCacheFormat = CameraCacheFormat.JPEG): File {
-    val makeCondition: Boolean = cameraCacheFileRepository.makeCameraCacheFileDirs()
-    useCaseLogger.d { "CreateCameraCacheFileUseCase - makeCondition: $makeCondition" }
-
-    return cameraCacheFileRepository.createCameraCacheFile(format)
-}
-```
-
-`CameraCacheFileRepository`(domain 인터페이스)와 `CameraCacheFileRepositoryImpl`,
-`FileCameraCacheLocalDataSource`(인터페이스)의 `createFile`에 같은 인자를 더한다.
-`CreateCameraCacheUriUseCase`는 **건드리지 않는다** — 인자 없이 부르면 기본값 JPEG를 받는다.
-
-`FileCameraCacheLocalDataSourceImpl`:
-
-```kotlin
+@OptIn(FormatStringsInDatetimeFormats::class)
 override fun createFile(format: CameraCacheFormat): File {
     val timestamp = Clock.System
         .now()
@@ -841,12 +952,9 @@ private val CameraCacheFormat.extension: String
     }
 ```
 
-- [ ] **Step 3: 전체 검사**
+- [ ] **Step 3: 전체 검사와 커밋**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
-Expected: BUILD SUCCESSFUL. 동작은 아직 그대로다 — 아무도 PNG를 안 넘긴다.
-
-- [ ] **Step 4: 커밋**
 
 ```bash
 git add domain/src/main/java/com/teamyg/parfait/domain/model/camera/CameraCacheFormat.kt \
@@ -860,23 +968,32 @@ git commit -m "feat: 카메라 캐시 파일 포맷을 고를 수 있게 한다"
 
 ---
 
-## Task 9: 촬영 저장을 포맷에 맞춰 압축한다
+## Task 12: 촬영 저장이 포맷을 받아 압축한다
 
 **Files:**
 - Modify: `feature/camera/impl/src/main/java/com/teamyg/parfait/feature/camera/impl/util/CameraCrop.kt`
 - Modify: `feature/camera/impl/src/main/java/com/teamyg/parfait/feature/camera/impl/route/CustomCameraRoute.kt`
 
 **Interfaces:**
-- Consumes: `CameraCacheFormat` (Task 8)
-- Produces: `saveViewfinderCapture(..., format: CameraCacheFormat, file: File)` — Task 10이 호출부를
-  마저 결선한다.
+- Consumes: `CameraCacheFormat` (Task 11)
+- Produces: `saveViewfinderCapture(captured, rotationDegrees, viewfinderRect, feedRect, isFrontFacing, format, file)`
+  — Task 13이 `format` 인자의 값만 바꾼다.
+
+`feature/camera/impl`은 컨벤션 플러그인이 `:domain`을 주므로 `CameraCacheFormat`이 보인다.
+
+**동작은 안 바뀐다.** 호출부가 JPEG를 넘기고, **JPEG 품질도 95 그대로 유지한다.**
+품질을 100으로 올리면 Task 6의 3벌 비교에서 "촬영 품질 상향의 기여"와 "저장 품질 상향의 기여"가
+섞인다. 이 라운드의 가설은 첫 세대 손실이고 두 번째 세대 JPEG 품질이 아니다.
+
+**테스트가 없는 이유**: `feature/camera/impl`에 유닛 테스트 소스셋이 없고(Task 13이 만든다),
+`CompressFormat` 매핑은 판단이 든 변환이 아니다.
 
 - [ ] **Step 1: 압축을 포맷에 맞춘다**
 
-`CameraCrop.kt`의 `JPEG_QUALITY` 상수를 지운다. 그 상수는 `computeCropRect`의 KDoc과 함수 선언 사이에
-끼어 있으므로, 지우면 KDoc이 제자리를 찾는다.
+`JPEG_QUALITY` 상수는 **지우지 않고 그대로 쓴다.** 다만 그 상수가 `computeCropRect`의 KDoc과 함수
+선언 사이에 끼어 있으므로, KDoc 바로 아래로 자리를 옮겨 KDoc이 제 함수에 붙게 한다.
 
-`saveViewfinderCapture`를 바꾼다.
+`saveViewfinderCapture`에 파라미터를 더한다.
 
 ```kotlin
 internal fun saveViewfinderCapture(
@@ -901,7 +1018,8 @@ internal fun saveViewfinderCapture(
     }
 
     file.outputStream().use { output ->
-        rotated.crop(cropRect).compress(format.compressFormat, format.quality, output)
+        // PNG 는 무손실이라 품질 인자를 무시한다
+        rotated.crop(cropRect).compress(format.compressFormat, JPEG_QUALITY, output)
     }
 }
 
@@ -910,19 +1028,12 @@ private val CameraCacheFormat.compressFormat: Bitmap.CompressFormat
         CameraCacheFormat.JPEG -> Bitmap.CompressFormat.JPEG
         CameraCacheFormat.PNG -> Bitmap.CompressFormat.PNG
     }
-
-/** PNG 는 무손실이라 이 값을 무시한다 */
-private val CameraCacheFormat.quality: Int
-    get() = when (this) {
-        CameraCacheFormat.JPEG -> 100
-        CameraCacheFormat.PNG -> 100
-    }
 ```
 
-- [ ] **Step 2: 호출부를 임시로 JPEG 고정으로 맞춘다**
+- [ ] **Step 2: 호출부를 JPEG 고정으로 맞춘다**
 
 `CustomCameraRoute.kt`의 `saveViewfinderCapture` 호출에 `format = CameraCacheFormat.JPEG`를 더한다.
-Task 10이 이 자리를 진짜 분기로 바꾼다. **이 태스크에서는 동작이 안 바뀐다.**
+**저장 블록의 나머지는 손대지 않는다** — 뒤따르는 `viewModel.processIntent(...)` 호출이 그대로 있어야 한다.
 
 - [ ] **Step 3: 전체 검사와 커밋**
 
@@ -936,27 +1047,123 @@ git commit -m "refactor: 촬영 저장이 포맷을 받아 압축한다"
 
 ---
 
-## Task 10: 토핑 경로만 무손실로 가르고 셔터를 잠근다
+## Task 13: 토핑 경로만 무손실로 가르고 셔터를 잠근다
 
 **Files:**
+- Modify: `feature/camera/impl/build.gradle.kts`
 - Modify: `feature/camera/impl/src/main/java/com/teamyg/parfait/feature/camera/impl/viewmodel/CustomCameraViewModel.kt`
+- Create: `feature/camera/impl/src/test/java/com/teamyg/parfait/feature/camera/impl/viewmodel/CustomCameraViewModelTest.kt`
 - Modify: `feature/camera/impl/src/main/java/com/teamyg/parfait/feature/camera/impl/route/CustomCameraRoute.kt`
 - Modify: `feature/camera/impl/src/main/java/com/teamyg/parfait/feature/camera/impl/screen/CustomCameraScreen.kt`
+- Modify: `feature/camera/impl/src/main/java/com/teamyg/parfait/feature/camera/impl/component/CameraControlComponent.kt`
+- Modify: `core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygcamerashutter/YGCameraShutter.kt`
 
 **Interfaces:**
-- Consumes: `CameraCacheFormat` (Task 8), `saveViewfinderCapture(..., format, file)` (Task 9)
+- Consumes: `CameraCacheFormat` (Task 11), `saveViewfinderCapture(..., format, file)` (Task 12)
 - Produces: `CustomCameraIntent.OnClickShutter(format: CameraCacheFormat)`(기존 `data object`를
-  `data class`로 바꾼다), `CustomCameraState.isCapturing: Boolean`
+  `data class`로 바꾼다), `CustomCameraState.isCapturing: Boolean`,
+  `YGCameraShutter(onClick, modifier, enabled, interactionSource)`
 
 커스텀 카메라의 소비자가 둘이다. 토핑 만들기와 **C-301 배경 촬영**(`returnResultOnly = true`)이다.
 뒤엣것은 누끼를 안 타고 곧장 서버로 올라가므로 무손실의 이득이 0이고 업로드 용량만 커진다.
-`CustomCameraRoute`가 `returnResultOnly`를 이미 파라미터로 받으므로 거기서 가른다.
 
-셔터 잠금이 함께 들어가는 이유는 **PNG 인코딩이 셔터와 확인 화면 사이에 끼기 때문**이다. 이동은
-저장이 끝난 뒤에 일어나는데 지금은 진행 표시도 연타 가드도 없고, 파일명이 초 단위라 같은 초의 두
-촬영은 서로를 덮는다. PNG 없이는 필요 없고 PNG와 함께면 필수다.
+셔터 잠금이 함께 들어가는 이유는 **PNG 인코딩이 셔터와 확인 화면 사이에 끼기 때문**이다.
+근거는 `parfait/specs/2026-08-23-segmentation-preprocessing.md` 「설계 1」에 있다.
 
-- [ ] **Step 1: 의도와 상태를 바꾼다**
+⚠️ **비활성 시각 표현은 이 라운드에서 정하지 않는다.** 디자인 근거가 없다. 클릭만 막는다.
+
+- [ ] **Step 1: 테스트 소스셋을 연다**
+
+`feature/camera/impl/build.gradle.kts`의 `plugins` 블록에 더한다.
+
+```kotlin
+alias(libs.plugins.parfait.test.unit)
+```
+
+이 모듈에는 유닛 테스트가 한 건도 없었다. 연타 가드는 순수 ViewModel 로직이라 JVM으로 덮을 수 있고,
+깨지면 조용히 열려서 실기기에서도 재현이 까다롭다.
+
+- [ ] **Step 2: 실패하는 테스트를 쓴다**
+
+```kotlin
+package com.teamyg.parfait.feature.camera.impl.viewmodel
+
+import com.teamyg.parfait.domain.model.camera.CameraCacheFormat
+import com.teamyg.parfait.domain.usecase.camera.CreateCameraCacheFileUseCase
+import com.teamyg.parfait.domain.usecase.camera.CreateCameraCacheUriUseCase
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.test.runTest
+import java.io.File
+import kotlin.test.Test
+
+class CustomCameraViewModelTest {
+    private val createFile: CreateCameraCacheFileUseCase = mockk()
+    private val createUri: CreateCameraCacheUriUseCase = mockk()
+
+    private fun viewModel() = CustomCameraViewModel(
+        createCameraCacheFileUseCase = createFile,
+        createCameraCacheUriUseCase = createUri,
+    )
+
+    @Test
+    fun onClickShutter_pressedTwiceBeforeSaving_createsOnlyOneFile() = runTest {
+        // Given 저장이 아직 안 끝난 상태
+        every { createFile(CameraCacheFormat.PNG) } returns File("IMG_1.png")
+        val sut = viewModel()
+
+        // When 셔터를 두 번 누른다
+        sut.processIntent(CustomCameraIntent.OnClickShutter(CameraCacheFormat.PNG))
+        sut.processIntent(CustomCameraIntent.OnClickShutter(CameraCacheFormat.PNG))
+
+        // Then 파일은 한 번만 만든다. 파일명이 초 단위라 두 번 만들면 서로를 덮는다
+        verify(exactly = 1) { createFile(CameraCacheFormat.PNG) }
+    }
+
+    @Test
+    fun onClickShutter_afterCaptureSaved_capturesAgain() = runTest {
+        // Given 한 번 찍고 저장까지 끝난 상태
+        val file = File("IMG_1.png")
+        every { createFile(CameraCacheFormat.PNG) } returns file
+        every { createUri(file = file) } returns "content://camera/IMG_1.png"
+        val sut = viewModel()
+        sut.processIntent(CustomCameraIntent.OnClickShutter(CameraCacheFormat.PNG))
+        sut.processIntent(CustomCameraIntent.OnCaptureSaved(file))
+
+        // When 다시 누른다
+        sut.processIntent(CustomCameraIntent.OnClickShutter(CameraCacheFormat.PNG))
+
+        // Then 잠금이 풀려 있다
+        verify(exactly = 2) { createFile(CameraCacheFormat.PNG) }
+    }
+
+    @Test
+    fun onCaptureFailed_unlocksTheShutter() = runTest {
+        // Given 찍었는데 저장이 실패한 상태
+        every { createFile(CameraCacheFormat.PNG) } returns File("IMG_1.png")
+        val sut = viewModel()
+        sut.processIntent(CustomCameraIntent.OnClickShutter(CameraCacheFormat.PNG))
+        sut.processIntent(CustomCameraIntent.OnCaptureFailed)
+
+        // When 다시 누른다
+        sut.processIntent(CustomCameraIntent.OnClickShutter(CameraCacheFormat.PNG))
+
+        // Then 실패가 셔터를 영영 잠그지 않는다
+        verify(exactly = 2) { createFile(CameraCacheFormat.PNG) }
+    }
+}
+```
+
+> `CustomCameraIntent.OnCaptureSaved`·`OnCaptureFailed`의 실제 생성 형태를
+> `CustomCameraViewModel.kt`에서 확인하고 맞춘다. `runTest`가 필요 없으면 뺀다.
+
+- [ ] **Step 3: 테스트가 실패하는 것을 확인한다**
+
+Run: `./gradlew :feature:camera:impl:testDebugUnitTest`
+Expected: 컴파일 실패 — `OnClickShutter`가 인자를 안 받는다
+
+- [ ] **Step 4: 의도와 상태를 바꾼다**
 
 `CustomCameraViewModel.kt`:
 
@@ -964,18 +1171,12 @@ git commit -m "refactor: 촬영 저장이 포맷을 받아 압축한다"
 data class OnClickShutter(val format: CameraCacheFormat) : CustomCameraIntent
 ```
 
-`CustomCameraState`에 필드를 더한다.
-
-```kotlin
-val isCapturing: Boolean = false,
-```
-
-핸들러를 바꾼다.
+`CustomCameraState`에 `val isCapturing: Boolean = false,`를 더한다.
 
 ```kotlin
 private fun handleOnClickShutter(intent: CustomCameraIntent.OnClickShutter) {
-    // 저장이 끝나야 화면이 넘어간다. 그 사이 다시 누르면 새 파일을 만들어 또 촬영하고,
-    // 파일명이 초 단위라 같은 초의 두 촬영은 서로를 덮는다
+    // 저장이 끝나야 화면이 넘어간다. 그 사이의 재입력을 여기서 막는다
+    // (근거: parfait/specs/2026-08-23-segmentation-preprocessing.md 「설계 1」)
     if (state.value.isCapturing) return
 
     updateState { copy(isCapturing = true) }
@@ -997,9 +1198,23 @@ private fun handleOnCaptureFailed() {
 
 `processIntent`의 분기를 `is CustomCameraIntent.OnClickShutter -> handleOnClickShutter(intent)`로 바꾼다.
 
-- [ ] **Step 2: Route 가 포맷을 정한다**
+- [ ] **Step 5: 테스트가 통과하는 것을 확인한다**
 
-`CustomCameraRoute.kt`에서 포맷을 한 번 계산해 두 곳에 쓴다.
+Run: `./gradlew :feature:camera:impl:testDebugUnitTest`
+Expected: PASS
+
+- [ ] **Step 6: 셔터 컴포넌트에 `enabled` 를 뚫는다**
+
+`YGCameraShutter`에 `enabled: Boolean = true`를 더하고 내부 `clickableYGNoRipple`에 넘긴다.
+그 modifier는 이미 `enabled`를 받는다. 기본값이 `true`라 기존 Preview 호출부는 안 깨진다.
+
+`CameraControlComponent`에도 같은 파라미터를 더해 중계하고, `CustomCameraScreen`이
+`state.isCapturing`을 읽어 `enabled = !state.isCapturing`으로 내려보낸다.
+중간의 `CameraContent`도 파라미터를 하나 더 받는다.
+
+- [ ] **Step 7: Route 가 포맷을 정하고 실패 시 파일을 지운다**
+
+`CustomCameraRoute.kt`에 포맷을 한 번 계산한다.
 
 ```kotlin
 // 배경 촬영은 누끼를 안 타고 곧장 업로드된다. 무손실의 이득이 없고 용량만 커진다
@@ -1012,45 +1227,29 @@ val cacheFormat = if (returnResultOnly) CameraCacheFormat.JPEG else CameraCacheF
 onClickShutter = { viewModel.processIntent(CustomCameraIntent.OnClickShutter(cacheFormat)) },
 ```
 
-Task 9에서 임시로 넣은 `format = CameraCacheFormat.JPEG`를 `format = cacheFormat`으로 바꾼다.
+Task 12에서 넣은 `format = CameraCacheFormat.JPEG`를 `format = cacheFormat`으로 바꾼다.
 
-- [ ] **Step 3: 실패하면 만든 파일을 지운다**
-
-`CustomCameraRoute.kt`의 촬영 저장 블록에서 실패 갈래에 삭제를 더한다. 쓰다 끊기면 잘린 파일이
-캐시에 남고 그 디렉토리에는 지우는 코드가 없다(OQ-P-279).
+저장 블록에 삭제를 더한다. ⚠️ **뒤따르는 `viewModel.processIntent(...)` 호출을 지우지 않는다.**
+`file.delete()`를 그 **앞**에 둔다.
 
 ```kotlin
-val saved = runCatching {
-    withContext(Dispatchers.IO) {
-        saveViewfinderCapture(
-            captured = captured,
-            rotationDegrees = rotation,
-            viewfinderRect = viewfinderRect,
-            feedRect = feedRect,
-            isFrontFacing = isFrontFacing,
-            format = cacheFormat,
-            file = file,
-        )
-    }
-}.isSuccess
+val saved = runCatching { /* 기존 saveViewfinderCapture 호출 그대로 */ }.isSuccess
 
+// 쓰다 끊긴 파일이 남는다. 이 디렉토리를 지우는 코드가 없다(OQ-P-279)
 if (!saved) {
     withContext(Dispatchers.IO) { file.delete() }
 }
+
+// 기존 processIntent 호출을 여기 그대로 둔다
 ```
 
-- [ ] **Step 4: 셔터를 잠근다**
-
-`CustomCameraScreen`이 셔터 버튼을 그리는 자리에 `enabled = !state.isCapturing`(또는 그 컴포넌트가
-받는 동등한 파라미터)을 준다. 컴포넌트가 `enabled`를 안 받으면 `onClick`을 빈 람다로 바꾸지 말고
-**컴포넌트에 `enabled` 파라미터를 더한다** — 눌리는 것처럼 보이는데 아무 일도 안 나는 것이 더 나쁘다.
-
-- [ ] **Step 5: 전체 검사와 커밋**
+- [ ] **Step 8: 전체 검사와 커밋**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 
 ```bash
-git add feature/camera/impl/src/main/java/com/teamyg/parfait/feature/camera/impl/
+git add feature/camera/impl/ \
+  core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygcamerashutter/YGCameraShutter.kt
 git commit -m "feat: 토핑 촬영만 무손실로 남기고 저장 중 셔터를 잠근다"
 ```
 
@@ -1058,43 +1257,38 @@ git commit -m "feat: 토핑 촬영만 무손실로 남기고 저장 중 셔터�
 
 # 마무리
 
-## Task 11: 실기기 확인과 문서 갱신
+## Task 14: 실기기 확인과 문서 갱신
 
 **Files:**
 - Modify: `parfait/specs/2026-08-23-segmentation-preprocessing.md`
 - Modify: `parfait/specs/README.md`
+- Modify: `parfait/plans/README.md`
 - Modify: `parfait/synthesis/open-questions.md`
-
-**Interfaces:**
-- Consumes: 1~10의 결과
-- Produces: as-built 기록
 
 ⚠️ 문서는 `TJYG-Android`가 아니라 **이 계획이 있는 repo**에 있다. 브랜치를 따로 딴다.
 
 - [ ] **Step 1: 회귀를 확인한다**
 
-토핑 만들기 전체 흐름과 C-301 배경 편집 흐름을 실기기에서 한 번씩 통과시킨다. 특히 본다.
-
-- 배경 촬영이 여전히 JPEG로 저장되고 업로드가 성공하는가
-- 최근 이미지 목록에서 고른 배경이 올라가는가(Task 4가 확장자를 바꿨다)
-- 셔터 연타가 파일을 덮지 않는가(Task 10을 했다면)
+- 토핑 만들기 전체 흐름이 통과하는가
+- **배경 촬영이 여전히 JPEG로 저장되고 업로드가 성공하는가**
+- 최근 이미지 목록에서 고른 배경이 올라가는가(Task 4)
+- **Task 4 이전에 저장해 둔 PNG 원본을 다시 골랐을 때 목록이 어떻게 되는가**(OQ-P-283)
+- 셔터 연타가 파일을 덮지 않는가(Task 13을 했다면)
 
 - [ ] **Step 2: 스펙에 as-built 절을 더한다**
 
 근거 등급 표의 각 항목이 **들어갔는지 버려졌는지**를 적는다. 버린 것은 이유와 측정 결과를 함께
-적는다. 버린 기록이 다음 사람에게는 결과다.
+적는다. **버린 기록이 다음 사람에게는 결과다.**
 
 - [ ] **Step 3: 미결을 갱신한다**
 
-- OQ-P-278 — 확대 가드의 판정 결과
-- OQ-P-279 — PNG를 넣었다면 실제 크기 증가분
-- OQ-P-280 — API 대역별 회전 관찰 결과
-- OQ-P-282 — 배치 토핑 크기 전후 비교 결과
+OQ-P-278(확대 판정) · OQ-P-279(PNG 크기 증가분) · OQ-P-280(회전 관찰) · OQ-P-282(배치 크기) ·
+OQ-P-283(최근 이미지 중복).
 
 - [ ] **Step 4: 인덱스와 커밋**
 
-`parfait/specs/README.md`의 해당 행에 as-built 요약을 더하고 `status`를 `implemented`로 바꾼 뒤
-`specs/archive/`로 옮긴다. 계획 문서도 `plans/archive/`로 옮기고 `plans/README.md`에 등록한다.
+스펙 `status`를 `implemented`로 바꿔 `specs/archive/`로, 계획을 `plans/archive/`로 옮기고 두
+README를 갱신한다.
 
 ```bash
 git add parfait/
@@ -1111,31 +1305,34 @@ git commit -m "docs: 세그멘테이션 전처리 as-built 를 기록한다"
 |---|---|
 | `ImageCapture` 촬영 품질 상향 | Task 1 |
 | API 26·27 EXIF 회전 보정 | Task 2·3 |
-| API 28 이상 추가 보정(조건부) | Task 5 Step 2가 판정, 필요하면 Task 3 확장 |
-| 짧은 변 512 하한(조건부) | Task 6·7 |
-| 확대 총 픽셀 상한 | Task 6 |
-| 촬영 저장 PNG(조건부) | Task 8·9·10 |
-| 배경 촬영 경로 분리 | Task 10 |
-| 최근 이미지 확장자 바이트 판정 | Task 4 (스펙보다 앞당겼다 — 지금도 참인 결함이다) |
-| 촬영 중 상태·셔터 비활성 | Task 10 |
-| PNG 저장 실패 시 파일 삭제 | Task 10 Step 3 |
+| API 28 이상 추가 보정(조건부) | **Task 8**(Task 6 Step 2가 게이트) |
+| 짧은 변 512 하한(조건부) | Task 9·10 |
+| 확대 총 픽셀 상한 | Task 9 |
+| 촬영 저장 PNG(조건부) | Task 11·12·13 |
+| 배경 촬영 경로 분리 | Task 13 Step 7 |
+| 최근 이미지 확장자 바이트 판정 | Task 4 (스펙보다 앞당겼다) |
+| 촬영 중 상태·셔터 비활성 | Task 13 Step 4·6 |
+| PNG 저장 실패 시 파일 삭제 | Task 13 Step 7 |
 | 회전 전 판 회수 | Task 3 Step 2 |
 | EXIF URI 재개방과 실패 로그 | Task 3 Step 2 |
-| `decodeImage` KDoc 경계 명시 | Task 7 Step 1 |
-| 순수 함수 2종 JVM 테스트 | Task 2·6 |
-| 고정 사진 세트 6장 | Task 5 |
-| 손실 3벌 비교 | Task 5 Step 3 |
-| 배치까지 끝내는 확인 | Task 5 Step 4 |
+| `decodeImage` KDoc 경계 명시 | Task 10 Step 1 |
+| 순수 함수 2종 JVM 테스트 | Task 2·9 |
+| 연타 가드 JVM 테스트 | Task 13 Step 1~5 |
+| 고정 사진 세트 6장 | Task 6 |
+| 손실 3벌 비교 | Task 6 Step 3 |
+| 배치까지 끝내는 확인 | Task 6 Step 4 |
 
 **스펙이 범위 밖으로 둔 것은 태스크가 없다** — 다운샘플, 뷰파인더 크롭, 색공간·`Bitmap.Config`·HEIC,
 대비 정규화, 후처리, EXIF 미러링, 갤러리 원본 손실, `SystemCameraRoute` 저장 포맷.
 
 **타입 일관성**
 
-- `CameraCacheFormat` — Task 8이 정의하고 9·10이 쓴다. 이름이 같다.
-- `computeUpscaleTarget`·`ScaledSize` — Task 6이 정의하고 7이 쓴다.
-- `exifOrientationToDegrees` — Task 2가 정의하고 3이 쓴다.
-- `CustomCameraIntent.OnClickShutter` — Task 10에서 `data object`에서 `data class`로 바뀐다.
-  Task 9까지는 기존 형태 그대로다.
-- `saveViewfinderCapture` — Task 9가 `format` 파라미터를 더하고 같은 태스크에서 호출부를 맞춘다.
-  Task 10이 그 인자의 값만 바꾼다.
+- `CameraCacheFormat` — Task 11이 정의하고 12·13이 쓴다.
+- `computeUpscaleTarget`·`ScaledSize` — Task 9가 정의하고 10이 쓴다.
+- `exifOrientationToDegrees` — Task 2가 정의하고 3·8이 쓴다.
+- `CustomCameraIntent.OnClickShutter` — Task 13에서 `data object`에서 `data class`로 바뀐다.
+  값으로 쓰는 자리가 선언·`processIntent` 분기·Route 호출 셋뿐이고 전부 Task 13이 고친다.
+- `saveViewfinderCapture` — Task 12가 `format` 파라미터를 더하고 같은 태스크에서 호출부를 맞춘다.
+  Task 13이 그 인자의 값만 바꾼다.
+- `YGCameraShutter` — Task 13이 `enabled: Boolean = true`를 더한다. 기본값이 있어 기존 호출부는
+  안 깨진다.
