@@ -1,7 +1,7 @@
 ---
 id: c103-multi-subject-selection
 title: C-103 다중 피사체 후보 선택 (ML Kit enableMultipleSubjects)
-status: draft
+status: in-progress
 category: ui-spec
 platforms: android
 verified: 2026-08-23
@@ -24,7 +24,9 @@ related_code:
   - SegmentationConfirmViewModel.kt#collectDraft
   - SegmentationScreen.kt#SegmentationScreen
   - SegmentationSubjectHighlight.kt#SegmentationSubjectHighlight
-  - SegmentationSubjectHighlight.kt#subjectRect
+  - SegmentationHighlightGeometry.kt#ScaledRect
+  - SegmentationHighlightGeometry.kt#scaledRectOrNull
+  - SegmentationHighlightGeometry.kt#pickCandidateIndex
   - SegmentationRoute.kt#SegmentationRoute
   - NavKeySegmentationConfirm
 related_adr: ADR-0026
@@ -42,6 +44,18 @@ tags: [spec, parfait, segmentation, topping, c103]
 - **화면 ID**: C-103-select
 - **대상 모듈**: `feature/segmentation/impl` + `domain`(모델·Repository·UseCase) +
   `data`(`ImageSegmentationRepositoryImpl`)
+
+> 📌 **구현 완료·미머지(2026-08-23)** — 스택 둘 다 구현됐다. PR1 `feature/c103-multi-subject-domain`
+> (develop `d634efd3` + 커밋 4개, `..1d03b772`), PR2 `feature/c103-multi-subject-ui`(PR1 팁 위
+> 커밋 4개, `..ab196483`). 두 브랜치 각각 `./gradlew test ktlintCheck :app:assembleDebug` 통과.
+> 신규 유닛: 필터 7건 · 하이라이트 기하 8건 · `SegmentationViewModelTest` 22건(전환 전 13건).
+> **실기기 확인은 13항목 전부 미수행이다.**
+>
+> 구현이 이 스펙과 갈린 자리 둘. ① `bounds`의 `right`·`bottom`을 ML Kit의 `subject.width`가 아니라
+> **비트맵의 실제 치수**에서 뽑는다 — 「ML Kit 값을 후보로 옮기는 규칙」이 둘의 일치를 보장할 수
+> 없다고 적어 두고 KDoc은 "반드시 bounds 크기"를 못 박아, 두 경로 중 폴백만 그 불변식을 강제하고
+> 있었다(PR1 최종 리뷰가 잡았다). ② 좌표 계산이 `subjectRect`를 `internal`로 올리는 대신 신설
+> 파일 `SegmentationHighlightGeometry.kt`로 옮겨 갔다(Compose 타입을 걷어 JVM 테스트가 닿게 했다).
 
 ## 목표
 
@@ -298,12 +312,17 @@ sealed interface SegmentationEffect : UiSideEffect {
 
 딤은 후보 사각형을 모두 담은 `Path`를 만들어 `clipPath(path, ClipOp.Difference)` 한 번으로 뺀다.
 `clipRect(ClipOp.Difference)`를 후보 수만큼 중첩해도 결과가 같지만(각각 빼는 것과 교집합이 같다),
-재귀 없이 평평하게 쓰려면 `Path` 쪽이다. `Path`는 후보 목록과 캔버스 크기를 키로 `remember`해
-프레임마다 새로 만들지 않는다. 테두리는 후보마다 지금과 같은 흰 dashed `Stroke`다.
+재귀 없이 평평하게 쓰려면 `Path` 쪽이다. `Path`는 그리기 블록 안에서 매번 만든다 — 이 화면은
+정적인 사진 위의 오버레이라 프레임이 계속 돌지 않는다. 애니메이션이 붙으면 그때 `remember`로
+올린다. 테두리는 후보마다 지금과 같은 흰 dashed `Stroke`다.
 
-원본 픽셀 좌표를 `ContentScale.Fit` 화면 좌표로 옮기는 `subjectRect` 계산은 그대로 두고, 그리기와
-탭 판정이 같은 계산을 공유하는 구조도 그대로다. 이미지 치수가 유효하지 않을 때 `null`을 돌려주는
-가드도 유지한다 — `Path.addRect`는 좌표가 `NaN`이면 예외를 던진다.
+원본 픽셀 좌표를 `ContentScale.Fit` 화면 좌표로 옮기는 계산은 `SegmentationSubjectHighlight` 안의
+`private fun subjectRect`에서 **새 파일 `SegmentationHighlightGeometry.kt`의 `scaledRectOrNull`로
+옮긴다.** 그리기와 탭 판정이 같은 계산을 공유하는 구조는 그대로다. 이미지 치수가 유효하지 않을 때
+`null`을 돌려주는 가드도 유지한다 — `Path.addRect`는 좌표가 `NaN`이면 예외를 던진다.
+
+Compose 타입(`Size`·`Rect`·`Offset`)을 쓰지 않고 `Float`와 자체 `ScaledRect`로 주고받는다. 그래야
+JVM 단위 테스트가 이 계산에 닿는다.
 
 **탭 판정은 맞는 후보 중 면적이 가장 작은 것을 고른다.** 목록이 면적 내림차순이라 "뒤에서부터
 훑어 처음 맞는 것"과 결과가 같지만, 그렇게 쓰면 **컴포넌트의 올바름이 필터의 정렬 기준에 몰래
@@ -332,6 +351,14 @@ sealed interface SegmentationEffect : UiSideEffect {
 투명 캔버스를 새로 만들어도 총량이 현행보다 작은 것은, 현행이 `IntArray`와 `Bitmap`을 동시에 들고
 있기 때문이다. 늘어나는 것은 후보 상주분이고 그것이 OQ-P-266이다. 여기에 정상 경로에서도 지불하는
 전경 마스크 `FloatBuffer`(순간 8wh, 복사 포함)가 더해진다(OQ-P-268).
+
+⚠️ **표의 "화면 상주" 열은 PR2 이후를 말한다.** PR1만 머지된 상태에서는 후보 목록이 상태에 실리지
+않아 `init`이 끝나면 도달 불가가 되고, 상주는 `originBitmap` 그대로다.
+
+⚠️ **`MAX_SUBJECT_COUNT`는 피크 할당을 막지 못한다.** 그 상수가 자르는 것은 **우리가 들고 있는
+수**이고, `enableSubjectBitmap()`을 켠 이상 필터가 돌기 전에 ML Kit가 **모든** subject의 비트맵을
+이미 만들어 둔다. 세그멘테이션 직후의 순간 봉우리(원본 + 전체 subject 비트맵 + 전경 마스크
+`FloatBuffer`)는 위 표에 없다 → OQ-P-268.
 
 ## 정책 대조
 
@@ -383,8 +410,9 @@ C-103-select 분리 → 부분 이행".
   의미가 뒤집힌다**(더 이상 `init`이 적지 않는다) — 탭 시점 기준으로 다시 쓴다.
   신규 케이스: 저장 성공 시 `record` 후 `GoToConfirm`이 나가는 **순서**, 저장 실패 시 목록 유지와
   `ShowError`, 저장 후 `isLoading` 해제, 저장 중 중복 탭 무시, 범위 밖 인덱스 무시.
-- `subjectRect`를 `internal`로 올려 JVM에서 덮는다 — **탭 판정(면적 최소 선택)과 좌표 변환은
-  이 설계에서 가장 조용히 깨지는 자리인데 지금 세그멘테이션 화면에는 UI 테스트가 한 건도 없다.**
+- `SegmentationHighlightGeometryTest`(신규, JVM) — 좌표 변환과 탭 대상 선택을 `internal` 순수
+  함수로 빼내 덮는다. **탭 판정(면적 최소 선택)과 좌표 변환은 이 설계에서 가장 조용히 깨지는
+  자리인데 지금 세그멘테이션 화면에는 UI 테스트가 한 건도 없다.**
 - `ImageSegmentationRepositoryImpl`의 캔버스 합성 좌표는 `Bitmap`·`Canvas` 의존이라 JVM 유닛
   대상이 아니다. 순수 함수로 뺄 수 있는 부분이 없으므로 **실기기 확인으로 덮는다.**
 
@@ -398,6 +426,10 @@ C-103-select 분리 → 부분 이행".
 3. 폴백을 탄 사진의 결과물이 어긋나지 않는가(크롭이 맞는지).
 4. `segmenter.close()` 이후에도 후보 비트맵을 그릴 수 있는가(OQ-P-269).
 5. 겹친 후보에서 안쪽·바깥쪽을 모두 고를 수 있는가.
+6. 확인 화면에서 뒤로 와 **같은 후보를 다시 고르면** 앞서 두른 테두리가 어떻게 되는가(OQ-P-277).
+7. 후보 사각형의 정확한 경계에서 탭이 의도대로 잡히는가 — `ScaledRect.contains`는 우측·하단을
+   **포함**하고 Compose의 `Rect.contains`는 **배제**한다. 경계 1픽셀에서 인접 후보 둘이 함께
+   걸릴 수 있고, 그때는 면적 최소 규칙이 가른다.
 
 ## 미결 신규
 
@@ -406,6 +438,8 @@ C-103-select 분리 → 부분 이행".
 - **OQ-P-268** — 다중 모드에서 전경 마스크가 채워지는지 미검증이고, 정상 경로에서도 그 비용을
   지불한다.
 - **OQ-P-269** — `segmenter.close()` 이후 ML Kit가 준 비트맵의 수명이 문서에 없다.
+- **OQ-P-277** — 같은 후보를 다시 고르면 초안에 적힌 테두리가 조용히 덮인다. 저장이 탭 시점으로
+  옮겨 오면서 생긴 새 동작이다.
 
 ## 연관
 

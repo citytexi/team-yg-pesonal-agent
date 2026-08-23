@@ -80,7 +80,7 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
 | 위키 화면 | 코드 | 비고 |
 |---|---|---|
 | C-103-loading | `NavKeySegmentation` → `SegmentationLoadingScreen` | `state.isLoading` 분기 |
-| C-103-select | `NavKeySegmentation` → `SegmentationScreen` 본문 | 단일 bounding box 하이라이트 탭. **다중 검출 분기 없음** |
+| C-103-select | `NavKeySegmentation` → `SegmentationScreen` 본문 | 단일 bounding box 하이라이트 탭. ~~**다중 검출 분기 없음**~~ 🔁 |
 | C-103 | `NavKeySegmentationConfirm` → `SegmentationConfirmScreen` | 잘라낸 결과 확인 + "사진 편집"/"다음" |
 | C-104 | `NavKeyToppingEdit` → `ToppingEditScreen` **영역 탭** | 브러시로 마스크 가감 |
 | C-105 | 같은 목적지의 **테두리 탭** | 색·굵기 선택. 별도 화면이 아니라 탭 |
@@ -92,6 +92,12 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
 > 함께 지워진 `SegmentationErrorScreen`은 이 표에 대응 화면이 없었다 — 위키가 정의한 실패 처리
 > (재시도·원본 사용)를 담은 적이 없기 때문이고(OQ-P-153), 지금은 공통 에러 토스트가 대신한다 →
 > [ygscaffold-v2 스펙 "제외 철회"](2026-08-16-ygscaffold-v2-common-loading-error.md#제외-철회-2026-08-22-화면-고유-로딩과-에러-화면-흡수).
+
+> 🔁 **C-103-select 행의 "다중 검출 분기 없음"이 거짓이 됐다(2026-08-23)** — 같은
+> `NavKeySegmentation` 목적지가 이제 후보 수만큼 점선 박스를 그리고 탭으로 하나를 고르게 한다.
+> **목적지를 쪼개지는 않았다** — 두 상태의 UI가 같은 형태라 화면 ID의 구분이 코드의 구분으로
+> 이어지지 않는다. 후보가 1개면 이 표를 쓸 당시와 픽셀 단위로 같은 화면이다 →
+> [c103-multi-subject-selection 스펙](../2026-08-23-c103-multi-subject-selection.md).
 
 ## 범위
 
@@ -118,7 +124,10 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
     `Int.fadeArgb`/`mixArgb`·`FloatArray.fillWithSquaredDistance`(jvm) + 유닛 테스트 2파일.
   - `feature/segmentation/impl` `strings.xml` 신설(안내·로딩·에러·버튼·탭·라벨 14종).
 - **제외**(이번 라운드에서 안 함)
-  - 다중 피사체 선택(C-103-select 본래 의미) — ML Kit `foregroundConfidenceMask` 단일 전경만 쓴다.
+  - ~~다중 피사체 선택(C-103-select 본래 의미) — ML Kit `foregroundConfidenceMask` 단일 전경만 쓴다.~~
+    🔁 **닫혔다(2026-08-23)** — `enableMultipleSubjects` + `enableSubjectBitmap`으로 바꿔 후보를
+    목록으로 받는다. 전경 마스크는 후보가 0건일 때의 폴백으로만 남는다 →
+    [c103-multi-subject-selection 스펙](../2026-08-23-c103-multi-subject-selection.md).
   - 플로우 종료 경로 — 세 화면의 `onClickClose`가 전부 빈 람다 + TODO다.
   - 세그멘테이션 실패 후 재시도·원본 사용 — 에러 화면에 닫기뿐이다.
   - 확인 화면 디자인 — 코드 주석이 "디자인 확정 후 문구와 레이아웃 조정 필요"라고 남긴 임시 배치다.
@@ -250,7 +259,11 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
    → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
 2. **브러시·테두리 굵기 단위가 정책과 다르다** — 위키 [[누끼-편집]]은 2~50 **px**, 코드는 2~50 **dp**다.
    코드 주석이 "사진 해상도·기기 밀도가 달라도 체감 굵기가 같도록" dp를 골랐다고 근거를 남겼다.
-3. **C-103-select가 사실상 없다** — 다중 검출 분기 없이 단일 bounding box 하나를 탭하는 화면이다.
+3. ~~**C-103-select가 사실상 없다** — 다중 검출 분기 없이 단일 bounding box 하나를 탭하는 화면이다.~~
+   🔁 **해소(2026-08-23)** — 후보가 여럿이면 점선 박스가 그 수만큼 뜨고 탭으로 고른다. 다만
+   1번(Safe Margin 부재)은 **그대로 열려 있다** — 저장이 `persistSubject`로 갈렸어도 만드는 판은
+   여전히 원본 전체 크기와 여백 0% 둘이다 →
+   [c103-multi-subject-selection 스펙](../2026-08-23-c103-multi-subject-selection.md) 정책 대조 표.
 4. **테두리 색 9종의 정책 근거가 없다** — 4종은 `YGAtomicColors`(투명·흰·검·`Cherry200`)지만 5종은
    `Color(0xFF……)` 리터럴이고, 위키에 C-105 색 팔레트 정책 문서가 없다.
 5. **死코드 2건** — `BitmapUtils.kt`의 `mapViewToBitmap`·`mapBitmapToViewFloat`가 사용처 0건이다.
@@ -285,7 +298,7 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
 | [[누끼-따기]] 입력 = C-101 촬영 / C-102 갤러리 | 두 진입점이 C-101-confirm에서 합류해 여기로 온다 | 일치 |
 | [[누끼-따기]] 피사체 마스킹 → 투명 PNG | ML Kit 마스크(임계 0.5) → `cacheDir` PNG | 일치 |
 | [[누끼-따기]] C-103-Selected 캔버스 = 바운딩 박스 **+20% Safe Margin**·투명 확장 | 원본 전체 크기 유지, 크롭 없음 | ⚠️ **미이행** |
-| [[누끼-따기]] C-103-loading / C-103-select 분리 | loading 있음, select는 단일 대상 하이라이트로 축약 | 부분 이행 |
+| [[누끼-따기]] C-103-loading / C-103-select 분리 | ~~loading 있음, select는 단일 대상 하이라이트로 축약~~ 🔁 loading은 공통 오버레이(PR #311), select는 다중 후보 탭으로 채워졌다(2026-08-23). 목적지는 여전히 `NavKeySegmentation` 하나다 | 이행(화면 ID는 통합) |
 | [[누끼-따기]] 실패 시 재시도 또는 원본 사용 | 에러 화면에 닫기뿐(#309로 캔버스 되감기 결선). 재시도·원본 사용은 없다 | 미이행 |
 | [[누끼-편집]] 초기 렌더 Aspect Fit + 세로/가로 중앙 | `BitmapViewMapping.fitCenter` | 일치 |
 | [[누끼-편집]] 2핑거 확대 허용 / **Scale 1.0 미만 축소 차단** | `MIN_ZOOM = 1f`, `MAX_ZOOM = 3f` | 일치(상한은 코드가 먼저 확정) |
