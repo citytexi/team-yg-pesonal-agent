@@ -50,12 +50,13 @@ tags: [spec, parfait, segmentation, topping, c103]
 
 > 📌 **구현 완료·미머지(2026-08-23)** — 스택 둘 다 구현됐다. PR1 `feature/c103-multi-subject-domain`
 > (develop `d634efd3` + 커밋 4개, `..1d03b772`), PR2 `feature/c103-multi-subject-ui`(PR1 팁 위
-> 커밋 6개, `..71bd62da`). 두 브랜치 각각 `./gradlew test ktlintCheck :app:assembleDebug` 통과.
+> 커밋 8개, `..2f57b54d`). 두 브랜치 각각 `./gradlew test ktlintCheck :app:assembleDebug` 통과.
 > 신규 유닛: 필터 7건 · 하이라이트 기하 8건 · `SegmentationViewModelTest` 22건(전환 전 13건).
 >
 > ✅ **실기기에서 다중 후보가 확인됐다**(2026-08-23, Galaxy A35) — 점선 박스가 둘 이상 뜬다.
 > 그 과정에서 **네이티브 크래시 하나가 드러나 고쳤고**(옵션 조합, 아래 「ML Kit 옵션」 절),
-> 실패 화면 디자인이 나와 **`C-103-Error`를 함께 넣었다**. PR2 브랜치에 커밋 둘이 더 얹혀 있다.
+> 실패 화면 디자인이 나와 **`C-103-Error`를 함께 넣었다**. 계획 밖에서 들어온 이 둘과 주석 정리·
+> 아이콘 tint 수정까지 PR2 브랜치에 커밋 넷이 더 얹혀 있다.
 >
 > 구현이 이 스펙과 갈린 자리 둘. ① `bounds`의 `right`·`bottom`을 ML Kit의 `subject.width`가 아니라
 > **비트맵의 실제 치수**에서 뽑는다 — 「ML Kit 값을 후보로 옮기는 규칙」이 둘의 일치를 보장할 수
@@ -495,7 +496,9 @@ C-103-select 분리 → 부분 이행".
 4. 겹친 후보에서 안쪽·바깥쪽을 모두 고를 수 있는가.
 5. 확인 화면에서 뒤로 와 **같은 후보를 다시 고르면** 앞서 두른 테두리가 어떻게 되는가(OQ-P-277).
 6. 후보 사각형의 정확한 경계에서 탭이 의도대로 잡히는가.
-7. `C-103-Error` 화면이 실제로 뜨는가 — 인식이 안 되는 사진이 필요하다.
+7. ~~`C-103-Error` 화면이 실제로 뜨는가~~ ✅ **확인**(2026-08-23) — 화면이 뜨고 경고 아이콘 색도
+   맞다. 처음엔 검게 나왔는데 `ic_warning_round` 가 `fillColor="#000000"` 벡터라 쓰는 쪽이 tint 를
+   걸어야 했다(같은 아이콘을 같은 색으로 쓰는 `CameraPermissionRequestComponent` 선례가 있었다).
 
 ## 미결 신규
 
