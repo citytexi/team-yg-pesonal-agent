@@ -28,6 +28,9 @@ related_code:
   - SegmentationHighlightGeometry.kt#scaledRectOrNull
   - SegmentationHighlightGeometry.kt#pickCandidateIndex
   - SegmentationRoute.kt#SegmentationRoute
+  - SegmentationErrorScreen.kt#SegmentationErrorScreen
+  - ImageSegmentationRepositoryImpl.kt#runSegmenter
+  - ImageSegmentationRepositoryImpl.kt#fallbackCandidates
   - NavKeySegmentationConfirm
 related_adr: ADR-0026
 related_spec: c103-segmentation-topping-edit, segmentation-pipeline-hardening, c106-topping-place-api
@@ -47,9 +50,12 @@ tags: [spec, parfait, segmentation, topping, c103]
 
 > 📌 **구현 완료·미머지(2026-08-23)** — 스택 둘 다 구현됐다. PR1 `feature/c103-multi-subject-domain`
 > (develop `d634efd3` + 커밋 4개, `..1d03b772`), PR2 `feature/c103-multi-subject-ui`(PR1 팁 위
-> 커밋 4개, `..ab196483`). 두 브랜치 각각 `./gradlew test ktlintCheck :app:assembleDebug` 통과.
+> 커밋 6개, `..71bd62da`). 두 브랜치 각각 `./gradlew test ktlintCheck :app:assembleDebug` 통과.
 > 신규 유닛: 필터 7건 · 하이라이트 기하 8건 · `SegmentationViewModelTest` 22건(전환 전 13건).
-> **실기기 확인은 13항목 전부 미수행이다.**
+>
+> ✅ **실기기에서 다중 후보가 확인됐다**(2026-08-23, Galaxy A35) — 점선 박스가 둘 이상 뜬다.
+> 그 과정에서 **네이티브 크래시 하나가 드러나 고쳤고**(옵션 조합, 아래 「ML Kit 옵션」 절),
+> 실패 화면 디자인이 나와 **`C-103-Error`를 함께 넣었다**. PR2 브랜치에 커밋 둘이 더 얹혀 있다.
 >
 > 구현이 이 스펙과 갈린 자리 둘. ① `bounds`의 `right`·`bottom`을 ML Kit의 `subject.width`가 아니라
 > **비트맵의 실제 치수**에서 뽑는다 — 「ML Kit 값을 후보로 옮기는 규칙」이 둘의 일치를 보장할 수
@@ -102,6 +108,8 @@ C-103-select를 **별도 목적지로 만들지 않는다.** `NavKeySegmentation
 | `repository/image/SegmentationMask.kt` | `data` | 유지(폴백이 쓴다) |
 | `model/SegmentationResult.kt` · `repository/image/ImageSegmentationRepository.kt` · `usecase/image/SegmentImageUseCase.kt` | `domain` | 수정 |
 | `viewmodel/SegmentationViewModel.kt` · `screen/SegmentationScreen.kt` · `component/SegmentationSubjectHighlight.kt` · `route/SegmentationRoute.kt` | `feature/segmentation/impl` | 수정 |
+| `component/SegmentationHighlightGeometry.kt` | `feature/segmentation/impl` | 신설(`internal`) |
+| `screen/SegmentationErrorScreen.kt` | `feature/segmentation/impl` | 신설 |
 
 필터를 `:data`의 `internal`로 두는 것은 `SegmentationMask.kt`의 선례를 따른 것이다. ML Kit가 돌려준
 값을 어디까지 신뢰할지는 그 라이브러리를 다루는 구현의 관심사이지 도메인 규칙이 아니다.
@@ -119,8 +127,10 @@ C-103-select를 **별도 목적지로 만들지 않는다.** `NavKeySegmentation
   - `SegmentationResult.subjectBounds` 제거.
   - 다중 하이라이트 렌더링과 탭 판정.
   - 선택 결과의 화면 이동을 Route 직접 호출에서 side effect 수신으로 이동.
+  - **`C-103-Error` 실패 화면 신설** — 대상을 아예 못 얻은 실패를 토스트가 아니라 화면으로 받는다.
 - **제외**(이번 라운드에서 안 함)
   - **Safe Margin +20% 캔버스** — 정책 대조 표 참고. OQ-P-150이 계속 열려 있다.
+  - **실패 화면의 재시도·원본 사용 버튼** — 디자인에 없다. 위키 정책과 갈리며 OQ-P-153 ④가 추적한다.
   - **후보가 1개일 때 확인 화면 직행** — 위 "화면 ID 대응" 절의 근거.
   - **후보 비트맵의 명시적 해제**(OQ-P-266).
   - **원본 다운샘플**(OQ-P-228) — 이 라운드가 상주 메모리를 늘려 그 미결의 무게를 키운다.
@@ -138,22 +148,26 @@ SubjectSegmenterOptions.Builder()
         SubjectSegmenterOptions.SubjectResultOptions.Builder()
             .enableSubjectBitmap()
             .build(),
-    )
-    .enableForegroundConfidenceMask()
-    .build()
+    ).build()
 ```
 
 `enableSubjectBitmap()`을 켜면 `Subject.getBitmap()`이 이미 bounds 크기로 잘린 판을 준다. 후보마다
 전체 픽셀을 훑어 마스킹하고 다시 자르는 일이 사라진다. `Subject.getConfidenceMask()`는 쓰지 않는다 —
 마스크를 받아 우리가 자르는 대안과 결과가 같은데 코드가 길다.
 
-`enableForegroundConfidenceMask()`는 폴백 경로 때문에 함께 켠다. ⚠️ **정상 경로에서도 원본
-해상도 `FloatBuffer`(픽셀당 4바이트) 할당을 매번 지불한다** — 대개 안 쓰는 값이다(OQ-P-268).
+> ⚠️ **`enableForegroundConfidenceMask()`를 함께 켜면 안 된다.** 두 옵션을 한 요청에 실으면 ML Kit
+> 다이나마이트 모듈이 **`SIGSEGV`로 죽는다**(2026-08-23 실기기 확인, Galaxy A35 / Android 16).
+> 크래시가 `drishti_gl_runn`과 Binder `onTransact` 양쪽에서 나고 스택이 전부 모듈 네이티브라
+> **JVM 예외 핸들러를 타지 않는다** — `try/catch`로도 못 잡고 로그도 `logcat -b crash`에만 남는다.
+> 공식 문서의 설정 예시 다섯 가지도 두 계열을 한 번도 함께 쓰지 않는다(OQ-P-268).
+>
+> 그래서 전경 마스크는 **후보가 0건일 때 별도 요청으로** 받는다. 아래 폴백 절 참고.
 
 ### ML Kit 값을 후보로 옮기는 규칙
 
-- `bounds = SegmentationBounds(left = startX, top = startY, right = startX + width, bottom = startY + height)`.
-  `SegmentationBounds`의 `right`·`bottom`은 **exclusive**이므로 `-1`을 붙이지 않는다.
+- `left`·`top`은 `startX`·`startY`를 그대로 쓰고, `right`·`bottom`은 **비트맵의 실제 치수**를 더한다
+  (`startX + bitmap.width`). `SegmentationBounds`의 `right`·`bottom`은 **exclusive**이므로 `-1`을
+  붙이지 않는다. ML Kit의 `getWidth()`가 아니라 비트맵에서 뽑는 이유는 아래 세 번째 불릿에 있다.
 - `getBitmap()`은 `@Nullable`이다. 옵션을 켰다는 이유로 비널을 단정하지 않는다 — **null인 subject는
   후보에서 제외**하고, 그래서 후보가 0건이 되면 아래 폴백을 탄다.
 - **위치는 `bounds`로 잡고 크기는 비트맵 그대로 쓴다.** `getWidth()`·`getHeight()`와
@@ -227,19 +241,31 @@ UseCase도 대칭으로 `SegmentImageUseCase`와 `PersistSubjectUseCase` 둘이 
 **필터를 통과한 후보가 0건이면** 폴백을 탄다. `getSubjects()`가 비었을 때뿐 아니라 **후보는 있었으나
 전부 임계 미만이라 걸러진 경우도 포함**한다. 뒤엣것을 빼면 이 절이 막으려는 회귀가 그대로 열린다.
 
-폴백은 기존 `maskSubjectPixels` 경로로 후보 1개를 만든다. ⚠️ **그 경로가 만드는 비트맵은 원본
-전체 크기이므로 반드시 `bounds`로 크롭한 뒤** 후보에 싣는다. 자르지 않고 실으면
-`persistSubject`가 그 판을 `(left, top)`만큼 밀어 그려 오른쪽과 아래가 잘린다 — 크래시가 아니라
-조용한 파손이라 눈에 늦게 띈다.
+**폴백은 세그멘테이션을 한 번 더 돌린다.** 전경 마스크 옵션을 다중 후보 옵션과 함께 켤 수 없기
+때문이다(위 옵션 절). 그래서 `enableForegroundConfidenceMask()`만 켠 새 요청을 보내고, 그 결과의
+마스크로 `maskSubjectPixels` 경로를 태워 후보 1개를 만든다.
+
+이 설계의 비용은 **후보가 0건인 사진에서만** 든다. 정상 경로는 오히려 가벼워졌다 — 쓰지도 않는
+원본 해상도 `FloatBuffer`를 매번 받던 것이 사라졌다.
+
+세그멘터를 열고 optional module을 확인하고 한 장을 처리한 뒤 닫는 부분은 `runSegmenter`로 뽑아
+두 호출이 같은 방어를 공유한다.
+
+⚠️ **`maskSubjectPixels`가 만드는 비트맵은 원본 전체 크기이므로 반드시 `bounds`로 크롭한 뒤**
+후보에 싣는다. 자르지 않고 실으면 `persistSubject`가 그 판을 `(left, top)`만큼 밀어 그려 오른쪽과
+아래가 잘린다 — 크래시가 아니라 조용한 파손이라 눈에 늦게 띈다.
+
+2차 요청이 실패하면 값으로 접는다 — 1차는 이미 성공한 흐름이고, 화면에는 "대상 없음"과 같은
+결과로 보이면 된다.
 
 폴백이 없으면 **지금 잘 되던 사진이 다중 전환 이후 실패로 바뀌는 회귀**가 열린다. 대가는 코드
 경로가 둘이 되는 것이고, 그 둘째 경로의 bounds 계산은 이미 테스트가 덮고 있다(크롭은 새로 붙는
 부분이라 덮이지 않는다 — 아래 테스트 절 참고).
 
-폴백까지 비면 지금과 같다 — 에러 토스트 한 번, 원본 사진만 남는다.
+폴백까지 비면 아래 「실패 화면」 절로 간다.
 
-⚠️ **폴백이 실제로 도달 가능한지 미검증이다** — 다중 모드에서 전경 마스크가 채워지는지, 그리고
-후보가 0건인 사진에서 전경 마스크는 차 있는지를 기기 없이 확인할 수 없다(OQ-P-268).
+⚠️ **폴백이 실제로 도달하는지는 아직 못 봤다** — 후보가 0건이 되는 사진을 만나지 못했다. 다만
+2차가 별개 요청이라 전경 마스크가 채워질 여지는 커졌다(OQ-P-268).
 
 ### 상태·의도·효과
 
@@ -334,6 +360,39 @@ JVM 단위 테스트가 이 계산에 닿는다.
 ⚠️ **판정 기준이 마스크가 아니라 bounds 사각형이다** — 대각선으로 놓인 두 물체처럼 박스가 크게
 겹치는 배치에서는 빈 배경을 탭했는데 후보가 잡히는 체감이 난다. 알려진 한계로 남긴다.
 
+### 실패 화면 (`C-103-Error`)
+
+**실패를 둘로 가른다.**
+
+| 실패 | 표현 | 근거 |
+|---|---|---|
+| 대상을 아예 못 얻음(디코드 실패·세그멘테이션 실패·폴백까지 0건) | **화면 전체가 `C-103-Error`** | 화면에 할 수 있는 것이 없는 막다른 곳이다 |
+| 고른 뒤의 저장 실패 | 토스트 | 후보 목록이 살아 있어 다른 대상을 고를 수 있다. 화면을 덮으면 그 길이 막힌다 |
+
+앞엣것은 **효과가 아니라 상태**(`SegmentationState.isError`)다. 화면이 그 상태로 남아야 하는데
+효과는 1회성이라 재구성에서 사라진다.
+
+디자인은 Figma `C-103-Error`다. 상단 바에 닫기 하나, 중앙에 경고 아이콘과 문구 두 줄이 있다.
+
+| 요소 | 디자인 | 구현 |
+|---|---|---|
+| 상단 바 | 닫기만 | `YGFloatingBarClose` |
+| 아이콘 | `Ic_Warning_Round` 44 | `ic_warning_round` + `SizeTokens.Size44` |
+| 제목 | `T03_SB` · `gray-900` | `typography.title.t03SB` · `Gray.Gray900` |
+| 부제 | `B02_R` · `gray-500` | `typography.body.b02R` · `Gray.Gray500` |
+| 배경 | `base/white` | `Gray.White` |
+| 간격 | 아이콘↔문구 8, 문구 사이 2 | `layout.gap.gap3` · `gap1` |
+
+문구는 "사진 편집에 실패했어요" + "다른 사진을 선택하거나 다시 시도해 주세요"다. 기존 토스트 문구
+("…잠시 후 다시 시도해 주세요")와 안내하는 행동이 다르므로 문자열을 새로 둔다.
+
+⚠️ **재시도·원본 사용 버튼은 없다.** 디자인에 없기 때문이고, 이것은 위키 [[누끼-따기]]
+([link](../../wiki/concepts/누끼-따기.md))의 "실패 시 재시도 또는 원본 사용 옵션"과 **정면으로
+갈린다.** 어느 쪽이 정본인지는 OQ-P-153 ④가 추적한다. 이 라운드는 디자인을 따랐다.
+
+이 화면은 **PR #311이 삭제했던 `SegmentationErrorScreen`을 되살리는 것**이다. 그때의 근거가 "그
+화면이 위키가 정의한 실패 처리를 담은 적이 없다"였는데, 디자인이 나오면서 담을 것이 생겼다.
+
 ### 문구
 
 `GuideBanner`의 "토핑으로 사용할 대상을 하나 선택해 주세요"는 손대지 않는다. 후보가 여럿인 상황에서
@@ -420,16 +479,23 @@ C-103-select 분리 → 부분 이행".
 
 기기 없이 판정할 수 없어 미검증으로 남는 것들이다.
 
+- ✅ **다중 후보가 실제로 뜬다**(2026-08-23, Galaxy A35) — 점선 박스가 둘 이상 뜨는 것을 확인했다.
+  이 라운드의 목적 자체가 여기서 처음 확인됐다.
+- ✅ **크래시가 없다** — 옵션 조합을 가른 뒤 같은 동선에서 `logcat -b crash`가 0건이다.
+- ✅ **`segmenter.close()` 이후에도 후보 비트맵을 그릴 수 있다**(OQ-P-269) — 위 확인이 곧 이것이다.
+  하이라이트가 그려진다는 것은 닫힌 뒤의 비트맵이 유효하다는 뜻이다. 확인 화면까지 다녀오는
+  동선은 아직 안 봤다.
+
+남은 것:
+
 1. 배경이 복잡한 사진에서 후보가 몇 개, 어떤 크기로 잡히는가(OQ-P-267의 두 상수를 여기서 조정).
-2. 후보가 0건인 사진에서 `getForegroundConfidenceMask()`가 값을 주는가 — 폴백이 도달 가능한
-   경로인지가 여기서 갈린다(OQ-P-268).
+2. 후보가 0건인 사진에서 2차 요청의 전경 마스크가 값을 주는가 — 폴백이 도달하는 경로인지가
+   여기서 갈린다(OQ-P-268). 그런 사진을 아직 못 만났다.
 3. 폴백을 탄 사진의 결과물이 어긋나지 않는가(크롭이 맞는지).
-4. `segmenter.close()` 이후에도 후보 비트맵을 그릴 수 있는가(OQ-P-269).
-5. 겹친 후보에서 안쪽·바깥쪽을 모두 고를 수 있는가.
-6. 확인 화면에서 뒤로 와 **같은 후보를 다시 고르면** 앞서 두른 테두리가 어떻게 되는가(OQ-P-277).
-7. 후보 사각형의 정확한 경계에서 탭이 의도대로 잡히는가 — `ScaledRect.contains`는 우측·하단을
-   **포함**하고 Compose의 `Rect.contains`는 **배제**한다. 경계 1픽셀에서 인접 후보 둘이 함께
-   걸릴 수 있고, 그때는 면적 최소 규칙이 가른다.
+4. 겹친 후보에서 안쪽·바깥쪽을 모두 고를 수 있는가.
+5. 확인 화면에서 뒤로 와 **같은 후보를 다시 고르면** 앞서 두른 테두리가 어떻게 되는가(OQ-P-277).
+6. 후보 사각형의 정확한 경계에서 탭이 의도대로 잡히는가.
+7. `C-103-Error` 화면이 실제로 뜨는가 — 인식이 안 되는 사진이 필요하다.
 
 ## 미결 신규
 
