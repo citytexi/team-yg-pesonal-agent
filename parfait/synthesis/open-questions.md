@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-23
-related_spec: c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+related_spec: segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -4477,4 +4477,109 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   결함으로 세지 않는다. **실기기 확인 때 함께 본다**)
 - **해소 메모**: ①이 문제로 판명되면 같은 후보 재선택을 걸러 내는 것이 가장 작은 처방이다.
 
-<!-- oq-next: 278 -->
+### [2026-08-23] 짧은 이미지를 512로 확대하면 세그멘테이션이 실제로 나아지는가
+
+- **ID**: OQ-P-278
+- **출처**: [segmentation-preprocessing 스펙](../specs/2026-08-23-segmentation-preprocessing.md)
+  근거 등급 표 — ML Kit Android 가이드 "Tips to improve performance" 절이 "For ML Kit to get an
+  accurate segmentation result, the image should be at least 512x512 pixels."라고 적는다.
+- **항목**: ① 그 문장은 **하한 미만이면 정확하지 않다**는 말이고, **확대하면 회복된다**는 말이
+  아니다. 확대는 정보를 늘리지 않으므로 모델이 내부에서 어차피 같은 처리를 한다면 이득이 0일 수
+  있다. ② 모델의 실제 입력 해상도와 내부 다운스케일 여부는 공개 문서에 없어 추론으로 메울 수 없다.
+  ③ 그래서 이 항목은 스펙에서 **조건부 구현**으로 표시했다 — 사진 세트에서 차이가 안 보이면 넣지 않는다.
+- **상태**: 미해결 (구현 전 판정 대상. 짧은 변 512 미만 사진 1장으로 갈린다)
+- **해소 메모**: 효과가 없으면 스펙의 해당 절과 `computeUpscaleTarget`을 함께 걷는다. 반대로
+  효과가 크면 하한을 512보다 올릴 여지도 같은 사진으로 본다.
+
+### [2026-08-23] PNG 전환이 온디스크 누적을 키우는데 지우는 코드가 없는 자리가 둘이다
+
+- **ID**: OQ-P-279
+- **출처**: [segmentation-preprocessing 스펙](../specs/2026-08-23-segmentation-preprocessing.md)
+  에러 처리 절 × `FileCameraCacheLocalDataSourceImpl` × `RecentImageRepositoryImpl` —
+  세그멘테이션 캐시는
+  [pipeline-hardening 라운드](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)가
+  전용 디렉토리 + 진입 시 통째 비우기로 정리했으나 **나머지 둘은 그 라운드가 안 건드렸다.**
+- **항목**: ① **카메라 캐시**(`cacheDir/camera`)를 지우는 코드가 없고 파일명이 초 단위라 충돌도
+  남는다. 촬영 결과가 PNG가 되면 더 큰 파일이 그 자리에 쌓인다. ② **최근 이미지**
+  (`filesDir/recent_images`, 상한 9장)는 `cacheDir`가 아니라 `filesDir`이라 **OS가 저장 공간
+  압박에서 회수하지도 않는다.** `SegmentationViewModel`이 진입마다 원본을 `SOURCE`로 복사하므로
+  PNG 촬영본이 그대로 아홉 칸을 채운다. ③ 실제 증가 폭을 재지 않았다 — 스펙의 사진 세트가 함께 잰다.
+  ④ 최근 이미지 저장이 파일 전체를 `ByteArray`로 읽는 것도 같은 자리에서 커진다.
+- **상태**: 미해결 (기존 결함이나 PNG를 채택하면 부담이 커진다. 크기 측정이 선행)
+- **해소 메모**: 스펙이 PNG를 조건부로 내렸으므로 이 항목의 급함도 그 판정에 달렸다. ①은
+  세그멘테이션 캐시와 같은 처방(전용 디렉토리 + 진입 시 정리 + `File.createTempFile`)을 쓸 수
+  있는지 보면 되고, ②는 상한을 장수가 아니라 바이트로 두는 편이 맞을 수 있다.
+
+### [2026-08-23] ImageDecoder가 EXIF orientation을 자동 적용하는지 문서로 확인하지 못했다
+
+- **ID**: OQ-P-280
+- **출처**: [segmentation-preprocessing 스펙](../specs/2026-08-23-segmentation-preprocessing.md)
+  설계 3절 × `ContentResolver.kt#decodeUriToBitmap` — API 28 이상은 `ImageDecoder`, 미만은
+  `MediaStore.Images.Media.getBitmap`을 탄다. 후자가 EXIF를 적용하지 않는다는 것은 널리 알려져
+  있고 `minSdk`가 26이라 그 갈래는 살아 있다. **전자가 적용한다는 문장은 공식 문서에서 찾지 못했다.**
+- **항목**: ① 확인 못 한 것을 전제로 삼으면 `InputImage.fromBitmap(bitmap, 0)`의 회전 0 단정이
+  API 28 이상에서 참인지 알 수 없다. ② 보정 범위가 갈린다 — API 28 미만만 보정할지, 버전 분기 없이
+  항상 보정할지. ③ 항상 보정하는 쪽은 이미 정립된 이미지를 또 돌릴 위험이 있어 EXIF 값을 그대로
+  믿어야 한다.
+- **상태**: 미해결 (실기기·에뮬레이터 확인으로 갈린다. 스펙이 사진 세트에 그 사진을 넣어 두었다)
+- **해소 메모**: EXIF 회전이 붙은 세로 사진 1장을 두 API 대역에서 각각 통과시키면 답이 나온다.
+  API 28 이상에서 이미 정립돼 나오면 분기 보정, 아니면 무조건 보정이다. **스펙은 판정 전까지
+  API 28 이상을 보정하지 않는 쪽을 기본값으로 둔다** — 확인 못 한 것을 근거로 이중 회전 위험이
+  있는 쪽으로 기울지 않는다.
+
+### [2026-08-23] decodeImage 가 색공간·Bitmap.Config·HEIC 를 다루지 않는데 계약은 "정규화"라고 말한다
+
+- **ID**: OQ-P-281
+- **출처**: [segmentation-preprocessing 스펙](../specs/2026-08-23-segmentation-preprocessing.md)
+  범위 제외 절 × `ContentResolver.kt#decodeUriToBitmap` ×
+  `ImageSegmentationRepositoryImpl#segmentImage` — 스펙이 `decodeImage`의 계약을 "세그멘테이션
+  입력 규격으로 정규화"로 넓히면서 내용은 회전과 해상도 하한 둘만 담았다.
+- **항목**: ① **`Bitmap.Config`.** `InputImage.fromBitmap`이 요구하는 것은 ARGB_8888인데
+  `ImageDecoder`는 소스에 따라 `RGBA_F16`(10-bit HEIC·AVIF)을 낼 수 있다. 정상 경로에 가드가 없다.
+  폴백 경로만 `Bitmap.createBitmap(pixels, …, ARGB_8888)`이라 우연히 보증된다.
+  ② **색공간.** `ImageDecoder`는 Display P3 같은 소스 색공간을 보존한다. 모델이 sRGB 전제라면 같은
+  피사체가 색공간에 따라 다른 신뢰도를 받는다. 이것은 대비 조정이 아니라 **형식 정합**이라
+  "대비 정규화는 근거가 없어 제외"와 같은 처분을 받을 항목이 아니다.
+  ③ **HEIC.** 최근 기기 갤러리 기본 포맷인데 `MediaStore.Images.Media.getBitmap`(API 26·27 갈래)이
+  열지 못한다. 이 스펙이 손대는 바로 그 갈래다.
+- **상태**: 미해결 (스펙이 명시적으로 범위 밖에 두었다. 검증 수단이 사진 세트와 달라 분리했다)
+- **해소 메모**: 가장 작은 처방은 정규화 첫 단계에 `config != ARGB_8888`이면 `copy(ARGB_8888, true)`를
+  넣는 것이다. ③은 API 26·27 갈래를 `ImageDecoder` 이전 세대의 다른 API로 바꾸는 것이 근본 처방이나
+  그쪽은 회전 처리와 함께 봐야 한다.
+
+### [2026-08-23] 배치 화면의 초기 토핑 크기가 알맹이의 절대 픽셀에서 나와 서버 scale 로 굳는다
+
+- **ID**: OQ-P-282
+- **출처**: [segmentation-preprocessing 스펙](../specs/2026-08-23-segmentation-preprocessing.md)
+  설계 2절 × `ToppingHandleComponents.kt#rememberToppingBaseSize` × `ToppingPlacement.kt` —
+  `rememberToppingBaseSize`가 알맹이 PNG의 인트린식 픽셀 치수를 그대로 dp로 환산하고, 그 값이
+  배치 화면의 초기 크기이자 `toToppingTransform`이 계산하는 `scale`의 분자가 된다. 그 `scale`이
+  서버에 저장된다([c106-topping-place-api](../specs/archive/2026-08-20-c106-topping-place-api.md)).
+- **항목**: ① 세그멘테이션 입력을 확대하면 알맹이의 절대 픽셀이 커지고, 사용자가 배치 화면에서
+  손대지 않아도 **같은 사진에서 만든 토핑이 전보다 크게 캔버스에 박힌다.** 크래시가 아니라 무증상
+  회귀다. ② 확대와 무관하게도, 토핑의 캔버스 내 크기가 소스 이미지 해상도에 좌우되는 것이
+  의도인지 확인이 필요하다. 저해상도 사진에서 만든 토핑이 항상 작게 들어간다는 뜻이다.
+  ③ 처방 후보는 배치 기본 크기를 픽셀이 아니라 정규화 기준으로 옮기는 것이다.
+- **상태**: 미해결 (②는 확대를 안 넣어도 이미 참인 동작이다. ①은 확대 채택 시 새로 생긴다)
+- **해소 메모**: 스펙의 사진 세트가 "짧은 변 512 미만 사진으로 배치까지 끝내 전후 비교"를 넣어
+  ①을 판정한다. ②는 그 결과와 무관하게 정책 확인이 필요한 별개 질문이다.
+
+### [2026-08-23] 확장자 판정을 고쳐도 이미 .jpg 로 앉은 PNG 는 그대로 남는다
+
+- **ID**: OQ-P-283
+- **출처**: [segmentation-preprocessing 계획](../plans/2026-08-23-segmentation-preprocessing.md) Task 4 ×
+  `FileRecentImageLocalDataSourceImpl#getTargetFile` × `RecentImageRepositoryImpl` — 최근 이미지의
+  파일명이 `sha256 + "." + extension` 이라 **확장자가 바뀌면 같은 바이트가 다른 파일명**이 된다.
+  그리고 목록의 중복 판정 키는 파일명이 아니라 uri 다.
+- **항목**: ① Task 4 이전에 저장된 PNG 원본은 `<sha>.jpg` 로 앉아 있고, 같은 사진을 다시 고르면
+  `<sha>.png` 가 새로 만들어져 **최근 목록에서 두 칸을 먹는다.** 상한이 9칸인데 토핑 흐름 하나가
+  이미 두 칸씩 쓴다(OQ-P-258). ② 옛 `.jpg` 항목을 배경으로 고르면 **Task 4 가 고치려던 결함이
+  그대로 재현된다** — `ImageFileLocalDataSourceImpl#formatOf` 가 확장자에서 유도된 MIME 을 바이트
+  스니핑보다 먼저 믿는다. ③ 마이그레이션(기존 파일 재판정·개명)을 할지, 상한에 밀려 사라지기를
+  기다릴지.
+- **상태**: 미해결 (계획이 **마이그레이션 안 함**으로 감수했다. 목록 상한이 9칸이라 곧 밀려난다는 판단)
+- **해소 메모**: ③을 하기로 하면 저장 디렉토리를 훑어 바이트로 재판정하고 개명하는 1회성 경로가
+  필요하고, 목록의 uri 도 함께 갱신해야 한다. 그보다 싼 처방은 중복 판정 키를 uri 가 아니라
+  **바이트 해시**로 옮기는 것이다 — 그러면 확장자가 달라도 같은 사진으로 본다. ①과 ②가 함께 닫힌다.
+
+<!-- oq-next: 284 -->
