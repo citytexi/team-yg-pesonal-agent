@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-23
-related_spec: c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+related_spec: segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -4477,4 +4477,49 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   결함으로 세지 않는다. **실기기 확인 때 함께 본다**)
 - **해소 메모**: ①이 문제로 판명되면 같은 후보 재선택을 걸러 내는 것이 가장 작은 처방이다.
 
-<!-- oq-next: 278 -->
+### [2026-08-23] 짧은 이미지를 512로 확대하면 세그멘테이션이 실제로 나아지는가
+
+- **ID**: OQ-P-278
+- **출처**: [segmentation-preprocessing 스펙](../specs/2026-08-23-segmentation-preprocessing.md)
+  근거 등급 표 — ML Kit Android 가이드 "Tips to improve performance" 절이 "For ML Kit to get an
+  accurate segmentation result, the image should be at least 512x512 pixels."라고 적는다.
+- **항목**: ① 그 문장은 **하한 미만이면 정확하지 않다**는 말이고, **확대하면 회복된다**는 말이
+  아니다. 확대는 정보를 늘리지 않으므로 모델이 내부에서 어차피 같은 처리를 한다면 이득이 0일 수
+  있다. ② 모델의 실제 입력 해상도와 내부 다운스케일 여부는 공개 문서에 없어 추론으로 메울 수 없다.
+  ③ 그래서 이 항목은 스펙에서 **조건부 구현**으로 표시했다 — 사진 세트에서 차이가 안 보이면 넣지 않는다.
+- **상태**: 미해결 (구현 전 판정 대상. 짧은 변 512 미만 사진 1장으로 갈린다)
+- **해소 메모**: 효과가 없으면 스펙의 해당 절과 `computeUpscaleTarget`을 함께 걷는다. 반대로
+  효과가 크면 하한을 512보다 올릴 여지도 같은 사진으로 본다.
+
+### [2026-08-23] 카메라 캐시가 PNG로 커지는데 지우는 코드가 없다
+
+- **ID**: OQ-P-279
+- **출처**: [segmentation-preprocessing 스펙](../specs/2026-08-23-segmentation-preprocessing.md)
+  에러 처리 절 × `FileCameraCacheLocalDataSourceImpl` — 세그멘테이션 캐시는
+  [pipeline-hardening 라운드](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)가
+  전용 디렉토리 + 진입 시 통째 비우기로 정리했으나, **카메라 캐시는 그 라운드가 안 건드렸다.**
+  누구도 지우지 않고 파일명이 초 단위라 충돌도 남는다.
+- **항목**: ① 촬영 결과가 JPEG에서 PNG로 바뀌면 같은 사진이 여러 배 커진다. 지우는 코드가 없는
+  디렉토리에 더 큰 파일이 쌓인다. ② 세그멘테이션 캐시와 같은 처방(전용 디렉토리 + 진입 시 정리)을
+  쓸 수 있는지, 아니면 카메라 흐름은 재진입 경로가 달라 다른 시점이 필요한지. ③ 실제 증가 폭이
+  얼마인지 재지 않았다 — 스펙의 사진 세트가 함께 잰다.
+- **상태**: 미해결 (기존 결함이나 이번 변경이 부담을 키운다. 크기 측정이 선행)
+- **해소 메모**: PNG 전환 자체를 막을 사유는 아니다. 정확도를 위해 치르기로 한 대가이고, 정리
+  경로가 없다는 것은 그 전에도 참이었다. 다만 측정치가 크면 정리 라운드의 우선순위가 올라간다.
+
+### [2026-08-23] ImageDecoder가 EXIF orientation을 자동 적용하는지 문서로 확인하지 못했다
+
+- **ID**: OQ-P-280
+- **출처**: [segmentation-preprocessing 스펙](../specs/2026-08-23-segmentation-preprocessing.md)
+  설계 3절 × `ContentResolver.kt#decodeUriToBitmap` — API 28 이상은 `ImageDecoder`, 미만은
+  `MediaStore.Images.Media.getBitmap`을 탄다. 후자가 EXIF를 적용하지 않는다는 것은 널리 알려져
+  있고 `minSdk`가 26이라 그 갈래는 살아 있다. **전자가 적용한다는 문장은 공식 문서에서 찾지 못했다.**
+- **항목**: ① 확인 못 한 것을 전제로 삼으면 `InputImage.fromBitmap(bitmap, 0)`의 회전 0 단정이
+  API 28 이상에서 참인지 알 수 없다. ② 보정 범위가 갈린다 — API 28 미만만 보정할지, 버전 분기 없이
+  항상 보정할지. ③ 항상 보정하는 쪽은 이미 정립된 이미지를 또 돌릴 위험이 있어 EXIF 값을 그대로
+  믿어야 한다.
+- **상태**: 미해결 (실기기·에뮬레이터 확인으로 갈린다. 스펙이 사진 세트에 그 사진을 넣어 두었다)
+- **해소 메모**: EXIF 회전이 붙은 세로 사진 1장을 두 API 대역에서 각각 통과시키면 답이 나온다.
+  API 28 이상에서 이미 정립돼 나오면 분기 보정, 아니면 무조건 보정이다.
+
+<!-- oq-next: 281 -->
