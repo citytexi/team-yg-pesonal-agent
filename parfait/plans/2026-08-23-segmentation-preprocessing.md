@@ -14,6 +14,19 @@
 
 **Spec:** [`parfait/specs/2026-08-23-segmentation-preprocessing.md`](../specs/2026-08-23-segmentation-preprocessing.md)
 
+> ✅ **1단계(Task 1~4)가 develop 에 들어갔다** — PR #349 `feature/segmentation-preprocessing`
+> (`a5e8a760`, 2026-08-24 머지). 커밋 다섯·9파일 **삽입 177줄·삭제 6줄**이고 계획이 지정한 커밋
+> 메시지 넷이 그대로 남았다. **2단계 이후(Task 5~14)는 전부 미착수다** — 스파이크·사진 세트 측정이
+> 사람 손을 필요로 하고, 4단계는 그 판정을 통과한 것만 한다. 그래서 이 계획은 아카이브로 가지 않고
+> active 에 남는다.
+>
+> **as-built 이탈 둘**(둘 다 Task 3, 후속 커밋 `be657892`가 고쳤다):
+> ① `readExifDegrees` 의 KDoc 근거가 `ImageDecoder.createSource` 가 스트림을 소비한다는 것에서
+> **`MediaStore.Images.Media.getBitmap` 이 EXIF 를 적용하지 않는다**는 것으로 바뀌었다 — 이 함수는
+> API 28 미만 갈래에서만 불리므로 `ImageDecoder` 는 애초에 그 경로에 없었다.
+> ② `openInputStream` 이 `null` 을 주는 갈래에 경고 로그가 붙었다(계획은 조용히 `0` 이었다).
+> 두 이탈 모두 계약을 넓히거나 좁히지 않는다.
+
 ## Global Constraints
 
 - **작업 저장소는 `TJYG-Android`다**(이 계획 문서가 있는 repo와 다르다).
@@ -98,7 +111,7 @@
 
 **테스트가 없는 이유**: CameraX 빌더 설정이고 이 저장소에 Robolectric이 없다. 검증은 Task 6 사진 세트가 한다.
 
-- [ ] **Step 1: 빌더에 품질 설정을 넣는다**
+- [x] **Step 1: 빌더에 품질 설정을 넣는다**
 
 `imageCapture` 생성부(현재 `ImageCapture.Builder().build()`)를 바꾼다.
 
@@ -118,12 +131,12 @@ val imageCapture: ImageCapture = ImageCapture
 private const val MAX_JPEG_QUALITY = 100
 ```
 
-- [ ] **Step 2: 전체 검사**
+- [x] **Step 2: 전체 검사**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 3: 커밋**
+- [x] **Step 3: 커밋**
 
 ```bash
 git add feature/camera/impl/src/main/java/com/teamyg/parfait/feature/camera/impl/component/CameraPreviewComponent.kt
@@ -148,7 +161,7 @@ git commit -m "fix: 촬영을 최대 품질로 받는다"
 같은 모듈 유닛 테스트가 `internal`을 본다. 이 모듈에 선례는 없지만 `data` 모듈의
 `SegmentationMask.kt#maskSubjectPixels`가 같은 컨벤션 플러그인 조합에서 그렇게 동작한다.
 
-- [ ] **Step 1: 의존성을 추가한다**
+- [x] **Step 1: 의존성을 추가한다**
 
 `gradle/libs.versions.toml`의 `[versions]` 절 `#Android` 부근에 넣는다.
 
@@ -168,7 +181,7 @@ androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterfa
 implementation(libs.androidx.exifinterface)
 ```
 
-- [ ] **Step 2: 실패하는 테스트를 쓴다**
+- [x] **Step 2: 실패하는 테스트를 쓴다**
 
 `ExifOrientationTest.kt`를 만든다.
 
@@ -215,12 +228,12 @@ class ExifOrientationTest {
 }
 ```
 
-- [ ] **Step 3: 테스트가 실패하는 것을 확인한다**
+- [x] **Step 3: 테스트가 실패하는 것을 확인한다**
 
 Run: `./gradlew :core:util:android:testDebugUnitTest`
 Expected: 컴파일 실패 — `Unresolved reference: exifOrientationToDegrees`
 
-- [ ] **Step 4: 최소 구현을 쓴다**
+- [x] **Step 4: 최소 구현을 쓴다**
 
 ```kotlin
 package com.teamyg.parfait.core.util.android.extension
@@ -241,12 +254,12 @@ internal fun exifOrientationToDegrees(orientation: Int): Int = when (orientation
 }
 ```
 
-- [ ] **Step 5: 테스트가 통과하는 것을 확인한다**
+- [x] **Step 5: 테스트가 통과하는 것을 확인한다**
 
 Run: `./gradlew :core:util:android:testDebugUnitTest`
 Expected: PASS
 
-- [ ] **Step 6: 전체 검사와 커밋**
+- [x] **Step 6: 전체 검사와 커밋**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 
@@ -277,7 +290,7 @@ Robolectric이 없다. 판단은 Task 2의 순수 함수가 덮었고 픽셀 효
 문서로 확인하지 못했다(OQ-P-280). 이미 적용된 판을 또 돌리면 두 번 돌아간다. 판정 못 한 상태의
 기본값은 "보정하지 않음"이다. 넓힐지는 Task 8이 정한다.
 
-- [ ] **Step 1: 모듈 로거를 만든다**
+- [x] **Step 1: 모듈 로거를 만든다**
 
 `data/src/main/java/com/teamyg/parfait/data/utils/Logger.kt`와 같은 형태다.
 
@@ -292,7 +305,7 @@ internal val coreUtilAndroidLogger: Logger by lazy {
 }
 ```
 
-- [ ] **Step 2: `ContentResolver.kt` 를 고친다 (전문 교체 금지)**
+- [x] **Step 2: `ContentResolver.kt` 를 고친다 (전문 교체 금지)**
 
 ⚠️ **이 파일에는 `decodeUriToBitmap` 말고 `readBytes`도 있다.** 소비자가
 `FileRecentImageLocalDataSourceImpl`과 `ImageFileLocalDataSourceImpl` 둘이다.
@@ -370,12 +383,12 @@ private fun ContentResolver.readExifDegrees(uri: Uri): Int = try {
 `Logger.w(throwable: Throwable? = null, tag: String? = null, message: () -> String)`이 실제
 시그니처다. 위 호출이 그대로 컴파일된다.
 
-- [ ] **Step 3: `readBytes` 가 그대로 있는지 확인한다**
+- [x] **Step 3: `readBytes` 가 그대로 있는지 확인한다**
 
 Run: `grep -n "fun ContentResolver.readBytes" core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/extension/ContentResolver.kt`
 Expected: 한 줄이 나온다. 안 나오면 지운 것이므로 되살린다.
 
-- [ ] **Step 4: 전체 검사와 커밋**
+- [x] **Step 4: 전체 검사와 커밋**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 
@@ -409,7 +422,7 @@ git commit -m "fix: API 28 미만에서 누운 사진을 세워서 디코드한�
 `.jpg`와 `.png` 두 이름으로 남을 수 있고, 최근 목록의 중복 판정 키가 uri라 **두 칸을 먹는다.**
 마이그레이션은 하지 않는다 — 목록 상한이 9칸이라 곧 밀려난다. 이 감수를 OQ-P-283으로 남긴다.
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 기존 `store_withAbsolutePath_readsThroughFilePathAndKeepsPngExtension` 아래에 더한다.
 `File`·`assertEquals`는 이미 import되어 있다.
@@ -456,13 +469,13 @@ fun store_sourceFormatIsUnknown_fallsBackToJpg() = runTest {
 }
 ```
 
-- [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
+- [x] **Step 2: 테스트가 실패하는 것을 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests '*RecentImageRepositoryImplTest*'`
 Expected: `store_sourceIsActuallyPng_namesItPngNotJpg` FAIL —
 `getTargetFile(bytes, "png")`가 안 불렸다는 MockK 검증 실패
 
-- [ ] **Step 3: 구현을 고친다**
+- [x] **Step 3: 구현을 고친다**
 
 `kind.fileExtension()`을 쓰던 자리를 바꾼다.
 
@@ -488,13 +501,13 @@ private fun extensionOf(
 
 `import com.teamyg.parfait.data.model.image.UploadImageFormat`를 더한다.
 
-- [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
+- [x] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests '*RecentImageRepositoryImplTest*'`
 Expected: PASS. **기존 케이스는 손대지 않는다** — SOURCE 케이스의 바이트가 `byteArrayOf(1, 2, 3)`이라
 `ofBytes`가 `null`을 주고 폴백 `"jpg"`로 그대로 통과한다.
 
-- [ ] **Step 5: 전체 검사와 커밋**
+- [x] **Step 5: 전체 검사와 커밋**
 
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 
