@@ -1,10 +1,11 @@
 ---
 id: c103-pr2-multi-subject-ui
 title: C-103 다중 후보 PR2 — 후보 여럿을 그리고 고르게 한다
-status: ready
+status: done
+archived_reason: PR #342(`34bf1939`)로 develop 머지 — PR1 스택을 안은 채 한 PR로 들어왔다
 type: work-order
 created: 2026-08-23
-updated: 2026-08-23
+updated: 2026-08-24
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0026
@@ -32,7 +33,7 @@ tags: [plan, parfait, segmentation, topping, c-103]
 
 **Tech Stack:** Kotlin · Jetpack Compose · Hilt · Navigation3 · kotlinx-coroutines-test · MockK · Turbine · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-23-c103-multi-subject-selection.md`](../specs/2026-08-23-c103-multi-subject-selection.md) — 「PR 분할」 표 **2번 행**
+**Spec:** [`parfait/specs/archive/2026-08-23-c103-multi-subject-selection.md`](../../specs/archive/2026-08-23-c103-multi-subject-selection.md) — 「PR 분할」 표 **2번 행**
 
 **베이스는 PR1 브랜치의 팁이다.** develop이 아니다. PR1이 `segmentImage`의 반환 타입과 `persistSubject`를 만들어 두지 않으면 이 계획의 어느 Task도 컴파일되지 않는다.
 
@@ -859,7 +860,7 @@ Expected: 전부 통과
 - 드리프트 3의 "C-103-select가 사실상 없다"
 - 정책 대조 표의 "C-103-loading / C-103-select 분리 → 부분 이행"
 
-표기 형식은 같은 파일의 기존 `📌`·`🔁` 각주를 따른다. 새 스펙([c103-multi-subject-selection](../specs/2026-08-23-c103-multi-subject-selection.md))을 가리킨다.
+표기 형식은 같은 파일의 기존 `📌`·`🔁` 각주를 따른다. 새 스펙([c103-multi-subject-selection](../../specs/archive/2026-08-23-c103-multi-subject-selection.md))을 가리킨다.
 
 - [ ] **Step 3: 새 스펙의 드리프트 한 줄을 고친다**
 

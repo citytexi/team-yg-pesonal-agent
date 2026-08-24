@@ -97,7 +97,7 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
 > `NavKeySegmentation` 목적지가 이제 후보 수만큼 점선 박스를 그리고 탭으로 하나를 고르게 한다.
 > **목적지를 쪼개지는 않았다** — 두 상태의 UI가 같은 형태라 화면 ID의 구분이 코드의 구분으로
 > 이어지지 않는다. 후보가 1개면 이 표를 쓸 당시와 픽셀 단위로 같은 화면이다 →
-> [c103-multi-subject-selection 스펙](../2026-08-23-c103-multi-subject-selection.md).
+> [c103-multi-subject-selection 스펙](2026-08-23-c103-multi-subject-selection.md).
 
 ## 범위
 
@@ -127,7 +127,7 @@ tags: [spec, parfait, segmentation, topping, c103, c104, c105]
   - ~~다중 피사체 선택(C-103-select 본래 의미) — ML Kit `foregroundConfidenceMask` 단일 전경만 쓴다.~~
     🔁 **닫혔다(2026-08-23)** — `enableMultipleSubjects` + `enableSubjectBitmap`으로 바꿔 후보를
     목록으로 받는다. 전경 마스크는 후보가 0건일 때의 폴백으로만 남는다 →
-    [c103-multi-subject-selection 스펙](../2026-08-23-c103-multi-subject-selection.md).
+    [c103-multi-subject-selection 스펙](2026-08-23-c103-multi-subject-selection.md).
   - 플로우 종료 경로 — 세 화면의 `onClickClose`가 전부 빈 람다 + TODO다.
   - 세그멘테이션 실패 후 재시도·원본 사용 — 에러 화면에 닫기뿐이다.
   - 확인 화면 디자인 — 코드 주석이 "디자인 확정 후 문구와 레이아웃 조정 필요"라고 남긴 임시 배치다.
@@ -263,7 +263,7 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
    🔁 **해소(2026-08-23)** — 후보가 여럿이면 점선 박스가 그 수만큼 뜨고 탭으로 고른다. 다만
    1번(Safe Margin 부재)은 **그대로 열려 있다** — 저장이 `persistSubject`로 갈렸어도 만드는 판은
    여전히 원본 전체 크기와 여백 0% 둘이다 →
-   [c103-multi-subject-selection 스펙](../2026-08-23-c103-multi-subject-selection.md) 정책 대조 표.
+   [c103-multi-subject-selection 스펙](2026-08-23-c103-multi-subject-selection.md) 정책 대조 표.
 4. **테두리 색 9종의 정책 근거가 없다** — 4종은 `YGAtomicColors`(투명·흰·검·`Cherry200`)지만 5종은
    `Color(0xFF……)` 리터럴이고, 위키에 C-105 색 팔레트 정책 문서가 없다.
 5. **死코드 2건** — `BitmapUtils.kt`의 `mapViewToBitmap`·`mapBitmapToViewFloat`가 사용처 0건이다.

@@ -1669,9 +1669,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**①②③ 해소, ④만 남았다** — 아래 2026-08-23 표기 참고)
   > ✅ **①②③이 닫혔다(2026-08-23)** — ① 다중 피사체 선택을 **지원한다.** `subjects`로 갈아탔고
   > 결과 모델이 `SegmentationCandidate` 목록이 됐다. 실기기에서 점선 박스가 둘 이상 뜨는 것까지
-  > 확인했다 → [c103-multi-subject-selection 스펙](../specs/2026-08-23-c103-multi-subject-selection.md).
+  > 확인했다 → [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md).
   > ② 폐기 표기는 필요 없어졌다(지원하기로 했으므로). ③ **실패 표현이 다시 화면이 됐다** —
   > 디자인 `C-103-Error`가 나와 `SegmentationErrorScreen`이 되살아났고, PR #311의 판단이 뒤집혔다.
+  > **셋 다 develop 코드다(2026-08-24, PR #342 = `34bf1939`).**
   >
   > ⚠️ **④는 남았고, 오히려 나빠졌다.** 디자인에 재시도·원본 사용 버튼이 **하나도 없다** — 문구로만
   > "다른 사진을 선택하거나 다시 시도해 주세요"라고 안내한다. 그리고 실패가 화면 전체를 덮으면서
@@ -4238,7 +4239,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-23] 다중 후보를 들고 있는 동안 비트맵을 해제하지 않는다
 
 - **ID**: OQ-P-266
-- **출처**: [c103-multi-subject-selection 스펙](../specs/2026-08-23-c103-multi-subject-selection.md)
+- **출처**: [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md)
   — 후보 선택 화면이 `SegmentationCandidate` 목록을 상태에 들고 있고, 각 후보가 자기 bounds
   크기의 비트맵을 물고 있다. `SegmentationState.originBitmap`과 **겹쳐 살아 있다.**
   기존에도 `originBitmap`을 명시적으로 해제하지 않아 관례를 따랐으나, 이 라운드가 그 위에
@@ -4253,11 +4254,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**실측 없음** — 후보가 실제로 몇 개, 어떤 크기로 잡히는지 아직 안 봤다.
   OQ-P-267과 같은 실기기 1회로 함께 갈린다)
 - **해소 메모**: 면적 필터와 개수 상한이 총량을 누르는 것이 지금의 유일한 방어다.
+  > 📌 **브랜치가 아니라 develop 이야기가 됐다(2026-08-24, PR #342 = `34bf1939`)** — 이 스펙이
+  > 낳은 미결 넷(OQ-P-266·267·269·277)의 출처는 이제 전부 develop 코드다. 넷 다 실기기 확인
+  > 항목이라 머지 자체로 닫히는 것은 없다.
 
 ### [2026-08-23] 후보 필터 상수 둘의 근거가 실측이 아니다
 
 - **ID**: OQ-P-267
-- **출처**: [c103-multi-subject-selection 스펙](../specs/2026-08-23-c103-multi-subject-selection.md)
+- **출처**: [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md)
   후보 필터 절 — `MIN_SUBJECT_AREA_RATIO`(원본 면적 대비 1%)와 `MAX_SUBJECT_COUNT`(5)를
   실기기 분포를 보지 않고 정했다. ML Kit `SubjectSegmenter`에는 신뢰도 점수 필드도, 개수
   상한 옵션도 없어서 앱이 직접 자를 수밖에 없다.
@@ -4271,7 +4275,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-23] 다중 모드에서 전경 마스크가 채워지는지 확인하지 못했다
 
 - **ID**: OQ-P-268
-- **출처**: [c103-multi-subject-selection 스펙](../specs/2026-08-23-c103-multi-subject-selection.md)
+- **출처**: [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md)
   후보 0건 폴백 절 — 아티팩트(`play-services-mlkit-subject-segmentation` 16.0.0-beta1)를 열어
   확인한 것은 옵션 플래그 다섯이 서로 배타적이지 않고 결과 조립도 독립적이라는 것까지다.
   실제로 값을 채우는 것은 Play 서비스가 내려주는 dynamite 모듈이라 아티팩트에 없다.
@@ -4297,7 +4301,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-23] segmenter를 닫은 뒤 ML Kit가 준 비트맵의 수명이 문서에 없다
 
 - **ID**: OQ-P-269
-- **출처**: [c103-multi-subject-selection 스펙](../specs/2026-08-23-c103-multi-subject-selection.md)
+- **출처**: [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md)
   — `ImageSegmentationRepositoryImpl#segmentImage`은 `segmenter.use { }`로 process 직후 닫는다.
   지금은 결과에서 뽑은 마스크만 쓰고 그 자리에서 비트맵을 새로 만들어 문제가 없지만, 이 설계는
   **닫힌 뒤에도 ML Kit가 준 `Subject.getBitmap()`을 화면 수명 내내 들고 그린다.**
@@ -4305,9 +4309,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   매핑되므로 실무적으로 안전할 공산이 크지만 **문서로 보장된 바가 없다.** ② 위험하다면 선택지는
   둘이다 — 후보를 만들 때 우리 비트맵으로 복사하거나(메모리를 한 번 더 쓴다), segmenter를 화면
   수명 동안 열어 두거나(자원 점유가 길어진다).
-- **상태**: 미해결 (**실기기 1회로 갈린다** — 후보를 들고 확인 화면까지 다녀오면 드러난다)
+- **상태**: 미해결 (**①은 한 번 통과했다** — 아래 참고. 확인 화면까지 다녀오는 동선이 남았다)
 - **해소 메모**: 같은 API를 쓰는 프로덕션 사례(Telegram `StickerMakerView`)는 segmenter를 아예
   닫지 않는다. 그것이 우연인지 필요 때문인지가 이 항목의 답이다.
+  > ✅ **닫은 뒤에도 그려진다(2026-08-23, Galaxy A35)** — 후보 하이라이트가 뜬다는 것이 곧
+  > `segmenter.use { }`를 빠져나온 뒤의 비트맵이 유효하다는 뜻이다. ①의 답이 실무적으로는
+  > "유효하다" 쪽이다. 다만 **문서 보장이 없다는 사실은 그대로**이고, 화면 수명 내내 들고 있다가
+  > 확인 화면을 다녀와 되돌아온 뒤에도 유효한지는 아직 안 봤다 — 그 동선에서 깨지면 예외가 아니라
+  > **빈 자리**로 드러날 공산이 크다. ②(복사할지 segmenter를 열어 둘지)는 손대지 않았다.
 
 ### [2026-08-23] 토핑 삭제만 즉시 영구인데, 실패는 화면에 닿지 않는다
 
@@ -4464,7 +4473,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-23] 후보를 다시 고르면 초안에 적힌 편집 결과가 조용히 덮인다
 
 - **ID**: OQ-P-277
-- **출처**: [c103-multi-subject-selection 스펙](../specs/2026-08-23-c103-multi-subject-selection.md)
+- **출처**: [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md)
   선택 시점 절 × PR2 최종 리뷰(2026-08-23) — 저장과 초안 기록이 화면 진입에서 **탭 시점으로**
   옮겨 오면서 생긴 새 동작이다. 이전에는 재탭이 이동만 했다.
 - **항목**: ① 확인·편집 화면에서 테두리를 두른 뒤 뒤로 와 **같은 후보를 다시 탭**하면

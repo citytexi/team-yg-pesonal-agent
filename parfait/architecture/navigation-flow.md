@@ -4,8 +4,8 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-22
-related_spec: segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
+verified: 2026-08-24
+related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
 related_code: core:navigation, Navigator, Navigator.kt#popUpTo, NavTransition
@@ -229,6 +229,15 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
   로딩·에러·본문 세 화면이 콜백 하나를 공유해 **한 자리를 채우자 셋이 함께 출구를 얻었다.**
 - 엔트리 3개는 Route를 부르기만 하고 **스캐폴드(`YGScaffoldV2`)는 Route가 소유한다**(2026-08-20,
   PR #309 이관). 빌더 하나(`featureSegmentationEntryBuilder`)가 세 entry를 등록하는 것은 그대로다.
+- 📌 **C-103-select를 별도 목적지로 만들지 않았다**(2026-08-24, PR #342). 위키 정책이 다중 검출
+  분기를 별도 화면 ID로 가르지만 **`NavKeySegmentation` 하나가 후보 수에 따라 점선 박스를 1개
+  또는 N개 그린다** — 두 상태의 UI가 같은 형태라 목적지를 쪼개면 NavKey·Route·EntryBuilder·
+  ViewModel이 한 벌 늘고 거의 같은 코드가 복제된다. 실패 화면(`C-103-Error`)도 같은 목적지 안에서
+  **상태(`SegmentationState.isError`)로 갈린다**(엔트리 수 불변).
+  같은 라운드에서 **다음 화면으로 가는 시점이 Route의 직접 호출에서 이펙트 수신으로 옮겨 갔다** —
+  저장이 탭 시점으로 내려오면서 이동이 비동기 결과에 걸렸기 때문이다(`GoToConfirm`이 저장된 경로
+  둘을 싣는다). 그 순서가 곧 계약인 이유는 [state-management](state-management.md)와
+  [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md).
 
 > 📌 **마지막 목적지가 실물로 바뀌었다(2026-08-19, PR #290)** — 확인 화면의 "다음"이 자리채움이던
 > `NavKeyCanvasMove`를 버리고 **`NavKeyCanvasToppingPlace`**로 간다(당시엔 `imageUri` 인자를 실었고, PR #334가 그것을 초안으로 옮기며 인자를 걷었다). 넘기는 값도 파일

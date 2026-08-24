@@ -1,10 +1,10 @@
 ---
 id: c103-multi-subject-selection
 title: C-103 다중 피사체 후보 선택 (ML Kit enableMultipleSubjects)
-status: in-progress
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-23
+verified: 2026-08-24
 related_code:
   - ImageSegmentationRepositoryImpl.kt#segmentImage
   - ImageSegmentationRepositoryImpl.kt#persistSubject
@@ -48,10 +48,16 @@ tags: [spec, parfait, segmentation, topping, c103]
 - **대상 모듈**: `feature/segmentation/impl` + `domain`(모델·Repository·UseCase) +
   `data`(`ImageSegmentationRepositoryImpl`)
 
-> 📌 **구현 완료·미머지(2026-08-23)** — 스택 둘 다 구현됐다. PR1 `feature/c103-multi-subject-domain`
-> (develop `d634efd3` + 커밋 4개, `..1d03b772`), PR2 `feature/c103-multi-subject-ui`(PR1 팁 위
-> 커밋 8개, `..2f57b54d`). 두 브랜치 각각 `./gradlew test ktlintCheck :app:assembleDebug` 통과.
-> 신규 유닛: 필터 7건 · 하이라이트 기하 8건 · `SegmentationViewModelTest` 22건(전환 전 13건).
+> 📌 **develop 머지(2026-08-24, PR #342 = `34bf1939`)** — 스택 둘이 **한 PR로 합쳐져** 들어왔다.
+> 브랜치 `feature/c103-multi-subject-ui`가 PR1 커밋 넷을 안은 채 develop을 대상으로 열렸고, 머지
+> 트리가 브랜치 팁 `8fe67476`과 같아 충돌 해소 편집이 0건이다. 그래서 develop 이력에는 PR1이
+> 별도 머지로 남지 않는다. 17파일 삽입 1074줄·삭제 211줄.
+> 신규 유닛: 필터 7건 · 하이라이트 기하 8건 · `SegmentationViewModelTest` 22건(전환 전 13건) —
+> 저장소 전체 유닛이 751 → **775건**, 테스트 클래스 87 → **89개**가 됐다.
+>
+> 브랜치에는 스펙이 적어 둔 `..2f57b54d` 뒤로 커밋 하나(`8fe67476`)가 더 붙었다 — 최종 리뷰가
+> 실패 화면 분기 위치와 폴백 이름을 지적한 것을 반영한 것이고, 그 결과가 아래 「실패 화면」 절이
+> 말하는 대로 **Route가 `state.isError`로 두 화면을 고르는** 지금의 형태다.
 >
 > ✅ **실기기에서 다중 후보가 확인됐다**(2026-08-23, Galaxy A35) — 점선 박스가 둘 이상 뜬다.
 > 그 과정에서 **네이티브 크래시 하나가 드러나 고쳤고**(옵션 조합, 아래 「ML Kit 옵션」 절),
@@ -70,10 +76,10 @@ tags: [spec, parfait, segmentation, topping, c103]
 
 ## 왜 지금 없는가
 
-정책에는 처음부터 있었다. 위키 [[누끼-따기]] ([link](../../wiki/concepts/누끼-따기.md))가
+정책에는 처음부터 있었다. 위키 [[누끼-따기]] ([link](../../../wiki/concepts/누끼-따기.md))가
 기능정의서 v5를 근거로 "누끼가 다중으로 잡히면 C-103-select로, 단일이면 C-103으로" 갈리는 서브
 화면을 정의한다. 구현이 그 갈래를 만들지 않았을 뿐이고,
-[c103-segmentation-topping-edit 스펙](archive/2026-08-15-c103-segmentation-topping-edit.md)이
+[c103-segmentation-topping-edit 스펙](2026-08-15-c103-segmentation-topping-edit.md)이
 제외 항목에 "다중 피사체 선택(C-103-select 본래 의미)"으로 적어 두었다.
 
 구현이 후보를 하나로 접는 자리는 **ML Kit 옵션 한 곳**이다. `segmentImage`가
@@ -90,7 +96,7 @@ C-103-select를 **별도 목적지로 만들지 않는다.** `NavKeySegmentation
 
 정책이 화면 ID를 둘로 가른 것은 식별 체계상의 구분이고, 두 상태의 UI가 같은 형태라 목적지를
 쪼개면 NavKey·Route·EntryBuilder·ViewModel이 한 벌 늘고 두 화면이 거의 같은 코드를 복제한다.
-[c103-segmentation-topping-edit 스펙](archive/2026-08-15-c103-segmentation-topping-edit.md)의
+[c103-segmentation-topping-edit 스펙](2026-08-15-c103-segmentation-topping-edit.md)의
 화면 ID 대응 표가 이미 `NavKeySegmentation` 하나에 C-103-loading과 C-103-select를 함께 매핑해
 둔 것과 같은 판단이다.
 
@@ -378,7 +384,7 @@ JVM 단위 테스트가 이 계산에 닿는다.
 | 요소 | 디자인 | 구현 |
 |---|---|---|
 | 상단 바 | 닫기만 | `YGFloatingBarClose` |
-| 아이콘 | `Ic_Warning_Round` 44 | `ic_warning_round` + `SizeTokens.Size44` |
+| 아이콘 | `Ic_Warning_Round` 44 | `ic_warning_round` + `SizeTokens.Size44` + `ColorFilter.tint` |
 | 제목 | `T03_SB` · `gray-900` | `typography.title.t03SB` · `Gray.Gray900` |
 | 부제 | `B02_R` · `gray-500` | `typography.body.b02R` · `Gray.Gray500` |
 | 배경 | `base/white` | `Gray.White` |
@@ -388,7 +394,7 @@ JVM 단위 테스트가 이 계산에 닿는다.
 ("…잠시 후 다시 시도해 주세요")와 안내하는 행동이 다르므로 문자열을 새로 둔다.
 
 ⚠️ **재시도·원본 사용 버튼은 없다.** 디자인에 없기 때문이고, 이것은 위키 [[누끼-따기]]
-([link](../../wiki/concepts/누끼-따기.md))의 "실패 시 재시도 또는 원본 사용 옵션"과 **정면으로
+([link](../../../wiki/concepts/누끼-따기.md))의 "실패 시 재시도 또는 원본 사용 옵션"과 **정면으로
 갈린다.** 어느 쪽이 정본인지는 OQ-P-153 ④가 추적한다. 이 라운드는 디자인을 따랐다.
 
 이 화면은 **PR #311이 삭제했던 `SegmentationErrorScreen`을 되살리는 것**이다. 그때의 근거가 "그
@@ -453,7 +459,7 @@ PR1의 "보이는 변화"가 완전한 무변화는 아니다. 옵션 전환 자
 그리기와 탭 판정과 순서 계약에 각각 집중된다.
 
 계획을 쓸 때 **선행 스펙에 갱신 표기를 다는 태스크를 함께 넣는다.**
-[c103-segmentation-topping-edit 스펙](archive/2026-08-15-c103-segmentation-topping-edit.md)의
+[c103-segmentation-topping-edit 스펙](2026-08-15-c103-segmentation-topping-edit.md)의
 네 자리가 이 라운드로 거짓이 된다 — 범위 제외의 "다중 피사체 선택", 화면 ID 대응 표의 "다중 검출
 분기 없음", 드리프트 3의 "C-103-select가 사실상 없다", 정책 대조 표의 "C-103-loading /
 C-103-select 분리 → 부분 이행".
@@ -512,11 +518,11 @@ C-103-select 분리 → 부분 이행".
 
 ## 연관
 
-- 정책: 위키 [[누끼-따기]] ([link](../../wiki/concepts/누끼-따기.md)) —
+- 정책: 위키 [[누끼-따기]] ([link](../../../wiki/concepts/누끼-따기.md)) —
   C-103-loading / C-103-select 분기 정의(기능정의서 v5)
-- 선행: [c103-segmentation-topping-edit](archive/2026-08-15-c103-segmentation-topping-edit.md) —
+- 선행: [c103-segmentation-topping-edit](2026-08-15-c103-segmentation-topping-edit.md) —
   제외 항목으로 적힌 다중 선택을 이 라운드가 닫는다
-- 선행: [segmentation-pipeline-hardening](archive/2026-08-18-segmentation-pipeline-hardening.md) —
+- 선행: [segmentation-pipeline-hardening](2026-08-18-segmentation-pipeline-hardening.md) —
   `maskSubjectPixels` 순수 함수 분리·캐시 정리가 이 라운드의 전제다
-- [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md) — 초안 DataStore SSOT. 선택 시점 순서
+- [ADR-0026](../../adr/0026-topping-draft-datastore-ssot.md) — 초안 DataStore SSOT. 선택 시점 순서
   계약이 이 결정 위에 선다

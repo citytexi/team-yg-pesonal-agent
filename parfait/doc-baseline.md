@@ -5,8 +5,63 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `d634efd3` (`Merge pull request #336 from mash-up-kr/feature/topping-edit-c305`)
-- **요약**: **편집 결과가 처음으로 남는다 — 그리고 남지 않은 것만 조용해졌다**(delta 1건).
+- **커밋**: `34bf1939` (`Merge pull request #342 from mash-up-kr/feature/c103-multi-subject-ui`)
+- **요약**: **사진에 피사체가 여럿이면 이제 고를 수 있다 — 그리고 실패가 다시 화면이 됐다**(delta 1건).
+  #342가 커밋 열셋·17파일 **삽입 1074줄·삭제 211줄**로 들어왔고, **머지 트리가 브랜치 팁
+  `8fe67476`과 같아** 충돌 해소 편집이 0건이다. **선작성 스펙·플랜이 있는 첫 라운드가 여섯 회차
+  만에 돌아왔다** — 스택 둘(PR1 data·domain / PR2 UI)이 **한 PR로 합쳐져** 들어와, develop 이력에는
+  스택 경계가 남지 않았고 문서 쪽에서는 **스펙 하나와 플랜 둘이 함께 아카이브로 갔다**.
+  정책에는 처음부터 있었다 — 위키가 기능정의서 v5를 근거로 "다중이면 C-103-select, 단일이면
+  C-103"을 정의했고 구현이 그 갈래를 만들지 않았을 뿐이다. **후보를 하나로 접던 자리는 ML Kit
+  옵션 한 곳**이었고(전경 전체를 합친 마스크 1장을 받아 bounding box를 하나만 누적했다), 이번에
+  `enableMultipleSubjects` + `enableSubjectBitmap`으로 옮겨 가며 그 위에 선 경계들을 함께 넓혔다.
+  **화면 ID는 쪼개지 않았다** — `NavKeySegmentation` 하나가 후보 수에 따라 점선 박스를 1개 또는
+  N개 그린다(후보 1개면 전과 픽셀 단위로 같다).
+  설계에서 값진 부분은 셋이다. **① 탐지와 저장이 갈렸다** — `segmentImage`가 디스크를 아예 안
+  건드리고 신설 `persistSubject`가 **탭한 하나만** 저장한다. 진입 즉시 후보 수만큼 PNG를 떨구지
+  않으므로 후보가 늘어도 진입 비용이 그대로다. **② 판단이 드는 자리를 순수 함수로 뺐다** —
+  후보 필터(`filterCandidates`)와 좌표 변환·탭 판정(`scaledRectOrNull`·`pickCandidateIndex`)이
+  Compose·`Bitmap` 비의존이라 JVM 유닛 15건이 덮는다. **이 화면에는 UI 테스트가 한 건도 없어서**
+  탭 판정은 깨져도 조용한 자리였다. 탭은 맞는 후보 중 **면적 최소**를 고른다 — 목록이 면적
+  내림차순이라 "뒤에서부터 첫 히트"와 결과가 같지만, 그렇게 쓰면 컴포넌트의 올바름이 필터의
+  정렬 기준에 몰래 의존하고, 앞에서부터면 **큰 후보 안의 작은 대상을 아예 못 고른다**.
+  **③ 선택 시점의 순서가 계약이 됐다** — 저장 → 초안 기록 **완료** → 로딩 해제 → 이동. 확인
+  화면이 정상 진입에서 초안을 구독만 하므로 **이 화면이 유일한 writer**이고, 기록보다 이동이
+  앞서면 다음 화면이 "다음"을 잠근 채 뜬다. 이동이 `goTo`라 화면이 백스택에 남아 `isLoading`은
+  성공·실패·예외 세 갈래에서 각각 내린다(켠 채 나가면 돌아왔을 때 오버레이에 갇힌다).
+  ⚠️ **실기기가 네이티브 크래시 하나를 드러냈다**(OQ-P-268 해소) — 전경 마스크 옵션과 다중 후보
+  옵션을 **한 요청에 함께 켜면 ML Kit 다이나마이트 모듈이 `SIGSEGV`로 죽는다**(Galaxy A35 /
+  Android 16). 스택이 전부 모듈 네이티브라 **`try/catch`도 Crashlytics도 못 잡고 `logcat -b crash`에만
+  남는다.** 그래서 전경 마스크 경로는 지우지 않고 **후보가 0건일 때의 2차 요청**으로 남겼다 —
+  대가는 세그멘터를 한 흐름에서 두 번 열 수 있다는 것이고, 정상 경로는 쓰지도 않던 원본 해상도
+  `FloatBuffer`가 사라져 **오히려 가벼워졌다**.
+  ✅ **실기기 확인이 0회가 아닌 드문 라운드다** — 점선 박스가 둘 이상 뜨는 것과 `C-103-Error`
+  화면이 실제로 뜨는 것을 봤다. 계획 밖에서 들어온 것이 그 실패 화면이고, 디자인이 나오면서
+  **PR #311이 삭제했던 `SegmentationErrorScreen`이 되살아났다**(OQ-P-153 ①②③ 해소). 토스트가
+  통째로 대체되지는 않았다 — **대상을 아예 못 얻은 실패만 화면**이고(1회성 효과가 아니라
+  `isError` 상태여야 재구성에서 살아남는다), 고른 뒤의 저장 실패는 후보 목록이 살아 있으므로
+  토스트다.
+  ⚠️ 남은 위험 넷은 전부 실기기 항목이다 — **후보 비트맵을 명시적으로 해제하지 않는다**(OQ-P-266,
+  화면이 최대 5장을 원본과 겹쳐 든다) · **필터 상수 둘이 실측이 아니다**(OQ-P-267) ·
+  **`segmenter.close()` 이후 비트맵 수명이 문서에 없다**(OQ-P-269 — 하이라이트가 그려지는 것으로
+  ①은 한 번 통과했고 확인 화면 왕복이 남았다) · **같은 후보를 다시 고르면 초안에 적힌 테두리가
+  조용히 덮인다**(OQ-P-277, 저장이 탭 시점으로 옮겨 오며 생긴 새 동작).
+  문서 쪽 결과는 **아카이브 셋 + architecture 넷 + ADR 둘**이다. 스펙은 `implemented`로 아카이브
+  이동, 플랜 둘은 `done`이다. [data-layer](architecture/data-layer.md)는 계약이 넷에서 **다섯**이
+  되고 `SegmentationResult`가 `subjectBounds`를 잃은 것을,
+  [design-system](architecture/design-system.md)은 **#311 판정이 이틀 만에 절반 뒤집힌 것**을
+  (실패 화면만 돌아왔고 로딩 화면은 여전히 0개), [state-management](architecture/state-management.md)는
+  **순서가 계약이 되는 사례**를, [navigation-flow](architecture/navigation-flow.md)는 **정책이 가른
+  화면 ID를 목적지로 쪼개지 않은 판단**을 받았다. [ADR-0012](adr/0012-mlkit-subject-segmentation.md)는
+  옵션 전환과 위 크래시 제약을, [ADR-0011](adr/0011-cross-module-bitmap-abstraction.md)은
+  **도메인 모델이 `BitmapWrapper`를 다시 물었다**는 사실을 받았다(`SegmentationCandidate.bitmap` —
+  파일이 아직 없는 구간을 비트맵으로 나를 수밖에 없다. 2026-08-14의 "적용 범위가 줄었다"가
+  되돌아온 자리다). 계약 문서(`api/`)는 원격 연동 코드가 delta에 없어 **손대지 않았다.**
+  겸해 [전처리 계획](plans/2026-08-23-segmentation-preprocessing.md)의 베이스를 `develop`으로
+  정정했다 — 그 계획이 스택 위에 쌓게 한 근거가 이번 머지로 사라졌다. 유닛 751 → **775건**(+24),
+  테스트 클래스 87 → **89개**.
+  직전 회차 요약: **편집 결과가 처음으로 남는다 — 그리고 남지 않은 것만 조용해졌다**(delta 1건,
+  기준선 `d634efd3`).
   #336이 커밋 하나(+브랜치 안 develop 병합 하나)·6파일 **삽입 318줄·삭제 32줄**로 들어왔고,
   **머지 트리가 브랜치의 develop 병합 커밋 `dd29dce5`와 같아** 충돌 해소 편집이 0건이다. 선작성
   스펙·플랜이 없어 **아카이브 이동도 0건**이다. C-301 편집 탭은 2026-08-16에 생긴 뒤 일주일 동안
@@ -665,17 +720,29 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-22 (42회차)
-- **미머지 제외 항목**: **없다**(두 회차 연속). 41회차가 "`origin`에 화면 전환 브랜치가 있다"고
-  적어 둔 그것이 이번 delta이고, 문서가 걸려 있지 않았으므로 추적 표에는 애초에 없었다.
+- **검증일**: 2026-08-24 (47회차)
+
+  📌 **이 줄 자체가 다섯 회차 동안 낡아 있었다** — 43~46회차(`8eb2af7d`·`96dc215c`·`f31b8c30`·
+  `d634efd3`)가 기준선 해시와 이력 표는 갱신하면서 이 두 줄만 건너뛰어 `2026-08-22 (42회차)`로
+  멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
+  적이 있다) **직전 회차의 이 줄 + 1**이다.
+- **미머지 제외 항목**: **없다**(세 회차 연속). 다만 이번 회차는 앞의 둘과 이유가 다르다 —
+  앞의 둘은 애초에 추적할 문서가 없었고, **이번에는 추적하던 스택 하나가 실제로 들어와 비었다.**
+  C-103 다중 후보 스펙·플랜 둘이 2026-08-23에 "구현 완료·미머지"로 등재됐다가 하루 만에 #342로
+  머지됐다.
 
   ⚠️ **"추적 항목 0"이 "미머지 브랜치 0"이 아니라는 단서는 그대로다.** `origin`에는 develop보다
-  앞선 브랜치가 여럿 남아 있다(C-305 토핑 편집·토핑 삭제·갤러리 store·C-301 배경 API 등). 이 줄이
-  세는 것은 **parfait 문서가 걸려 있는 브랜치**뿐이다.
+  앞선 브랜치가 여럿 남아 있다. 이 줄이 세는 것은 **parfait 문서가 걸려 있는 브랜치**뿐이다.
 
-  **이번 회차가 확인한 것 하나** — 문서가 없는 PR도 문서를 만든다. #326은 선작성 스펙·플랜이 없어
-  아카이브 이동이 0건인데, 대신 **최종 커밋이 지운 KDoc**이 architecture 절 하나를 낳았다. 코드에서
-  주석을 걷는 라운드는 그 정보가 문서에 있는지 확인할 자리이기도 하다는 뜻이다.
+  📌 **미착수 계획은 미머지 항목이 아니다** — [전처리 계획](plans/2026-08-23-segmentation-preprocessing.md)은
+  active에 남아 있지만 대응 브랜치가 없다(스펙이 `draft`이고 실행 전이다). 이번 회차가 그 계획에서
+  고친 것은 **베이스 지정**뿐이다 — 초판이 `feature/c103-multi-subject-ui` 팁 위에 쌓게 한 근거가
+  이번 머지로 사라져 `develop`으로 정정했다.
+
+  **이번 회차가 확인한 것 하나** — **선작성 문서가 있는 라운드는 아카이브 이동이 곧 점검의 절반이
+  아니다.** 스펙 하나·플랜 둘을 옮기는 것은 기계적이었고, 실제로 손이 많이 간 곳은 그 스펙이
+  건드린 **상시 문서**였다(architecture 넷·ADR 둘). 계약 시그니처가 바뀌는 라운드는 스펙이 아무리
+  상세해도 architecture·ADR 쪽 드리프트를 스스로 닫아 주지 않는다.
 
 
 ## 점검 절차 (다음 요청 시)
@@ -755,5 +822,6 @@
 | 2026-08-22 | `a0d584ef` | Merge #326 (nav screen transition) | delta 1건, 커밋 5·5파일 156/1, **머지 트리 = 브랜치 팁 `07f0a6a2`**(충돌 해소 편집 0건). **전환이 처음으로 앱의 결정이 됐다** — 라이브러리 기본(페이드+축소)에서 **오른쪽에서 덮고 오른쪽으로 빠지는** 밀기로 바뀌었다. `NavTransition`(`core:navigation`)이 `push`·`pop`·`predictivePop`을 한 값으로 묶고(방향이 짝을 이뤄야 하나의 동작으로 읽힌다) `metadata`로 화면별 override를 연다 — 붙는 대상이 **위에 놓이는 화면**이라는 것이 이 API의 함정이다. ⚠️ **산출물을 아무도 본 적이 없다**(OQ-P-260): 테스트가 잠그는 것은 세 슬롯이 비지 않았다는 것뿐이고, 유일한 예외 `Fade`가 붙은 `NavKeyCanvasEdit`은 짝인 `NavKeyCanvasImageSelect`와 함께 **도달 불가**라(OQ-P-129 ②) 그 근거인 공유 요소 전환도 실행되지 않는다. ⚠️ 앱 기본을 무는 세 줄이 `MainRoute`·`RootRoute`(app-preview) **두 곳에 복제**됐다(OQ-P-259 — 데코레이터 셋도 이미 같은 형태다). 문서 결과는 **최종 커밋이 지운 `Fade` KDoc을 받아 낸 것** — [navigation-flow](architecture/navigation-flow.md) 「화면 전환」 신설 + 등록 체크리스트 8번. 선작성 스펙·플랜 없어 **아카이브 이동 0건**, `api/` 무변경. 유닛 694 → **696건**, 클래스 80 → **81개**. 미머지 추적 항목 **0** |
 | 2026-08-22 | `8eb2af7d` | Merge #329 (canvas bg edit api + test) | delta 1건, 커밋 13·44파일 1677/218, **머지 트리 = 브랜치 팁**(충돌 해소 편집 0건). **고른 배경이 처음으로 남고, 편집 화면이 mock을 버렸다.** 확인이 세 갈래로 갈린다 — 색은 `#RRGGBB` PATCH, 기기 사진은 **캐시 복사 → 발급 → S3 PUT → confirm** 뒤 `imageId` PATCH, 서버에 이미 있던 배경은 **요청 0건**(https는 기기가 못 읽어 다시 못 올린다). **저장이 끝나야 화면을 넘긴다**(먼저 넘기면 저장 안 된 배경을 그린 채 서 있다가 다음 조회에서 되돌아간다). 앱이 서버에 쓰는 **두 번째 경로**이고 `api/parfait.md`가 **`done`**(회전 제외 5/5). OQ-P-173 **해소**, OQ-P-193(성공 널 → 실패로 안 다루고 고른 값으로 그린다)·OQ-P-194(②는 UseCase 둘로 조율, ③은 재조회) **부분 해소** — 다만 널 폴백은 Route가 이펙트 값을 안 써서 **아직 아무것도 안 바꾼다**. **토핑 탭이 서버 캔버스를 그린다**(OQ-P-199 ① 해소) — 좌표가 Dp 오프셋 → **0~1 중심점**, 배치 규칙 셋이 `util/ToppingGeometry.kt`로 올라가 캔버스 메인·편집 탭·배치 화면이 같은 값을 본다. `NavKeyCanvasBGEdit`가 `data class(groupId, parfaitId)`로 승격되고 C-001은 **오늘 캔버스를 못 받았으면 편집을 안 연다**. entry의 `YGScaffold` 껍질을 걷고 Route가 `YGScaffoldV2`를 직접 든다(토스트 자리·인셋 이중 적용 회피). `AppError` **네 번째 갈래 `UnsupportedImage`** — 서버가 아니라 **기기에서 오는 실패**의 첫 사례이고 그 갈래만 재시도가 무의미하다. 형식 판정이 `UploadImageFormat`(확장자·contentType·시그니처) 한 자리로 모이고, 캐시 복사가 **시스템 MIME → 바이트 앞머리** 순으로 판정한다. ⚠️ **소유 판정이 축이 다른 두 id를 견준다**(OQ-P-250 — 편집 화면에서는 그 판정이 곧 게이트다). ⚠️ 마감 409가 "잠시 후 다시"로 접힌다(**OQ-P-261 신설**, C-106 배치와 처분이 갈렸다). 조치: 스펙 as-built 2건(c301 배경·c301 토핑 탭, 둘 다 드리프트 1 닫힘·`verified` 2026-08-22, **아카이브 이동 0건**), api 3표면(parfait `android_status: partial`→**`done`**·엔드포인트 표 5칸·Android 매핑 4블록 / image Android 매핑에 `BACKGROUND` 첫 소비·형식 판정·캐시 / README 도메인 표 + 소비 24건 문단. `verified`·conventions 불일치 표 불변 — 0건 유지), architecture 3건(data-layer `UnsupportedImage`·`ImageFileLocalDataSource`·Repository 인벤토리 2행·DI 2줄·`UploadImageFormat` / navigation-flow 인자 승격·entry 예외·Assisted 목록 / state-management 실패 enum 네 번째 사례·UI 타입 근거 변경). open-questions: **해소 1건**(OQ-P-173) · **부분 해소 3건**(OQ-P-193·194·199) · 마커 5건(OQ-P-146 실기기 신규 4항목·OQ-P-190 첫 실사례·OQ-P-250·OQ-P-254·OQ-P-256) · **신규 3건**(OQ-P-261 마감 409 처분 갈림 · OQ-P-262 업로드 캐시 정리 없음 · OQ-P-263 6자리 HEX 변환 함수 둘·알파 처리 정반대·로케일 결함). 유닛 696 → **737건**(+41), 클래스 81 → **87개**. 미머지 추적 항목 **0**. ⚠️ 실기기·실서버 확인 0회 |
 | 2026-08-22 | `96dc215c` | Merge #339 (portrait lock + version/dependency bump) | delta 1건, 커밋 7·6파일 42/17, **머지 트리 = 브랜치 팁 `cab38993`**(충돌 해소 편집 0건). **`.kt` 0건인 첫 라운드** — 매니페스트 둘·문자열 둘·버전 카탈로그·wrapper뿐이라 테스트도 안 변했다(유닛 737·클래스 87 유지). **① 세로 고정**([ADR-0027](adr/0027-portrait-orientation-lock.md) 신설): `MainActivity`(`app`·`app-preview`)와 **카카오 `AuthCodeHandlerActivity`**에 `screenOrientation="portrait"`, `<application>`에 `PROPERTY_COMPAT_ALLOW_RESTRICTED_ORIENTATION_AND_ASPECT_RATIO_OPT_OUT`. 리다이렉트까지 붙인 이유가 알맹이다 — 빼면 **로그인 구간에서만** 회전이 살아 있고 그 구간이 A-002 리뷰의 로그인 유실 경로다(OQ-P-146 ⑨ **재현 경로 닫힘**, 다른 구성 변경은 남아 항목 자체는 유지). opt-out을 붙인 이유는 `targetSdk 36`이 sw600dp 이상에서 `screenOrientation`을 무시해 폰과 대화면 거동이 갈리기 때문. **② 표기·버전**: `app_name` 대문자화(프리뷰 포함), `appVersionName` **하향**(`versionCode`·프리뷰 버전 불변 — 스토어 미배포라 되돌릴 수 있는 자리). **③ 의존성 일괄 상향**: AGP·Kotlin·KSP·Compose BOM·OkHttp·Kakao SDK·Navigation3(alpha 계열 내)·Lottie·Hilt Navigation Compose·Kermit·Firebase BOM·Crashlytics·Gradle wrapper — 코드 수정 0건인 채 **CI `lint`·`unit-test` 통과**. 조치: **ADR-0027 신설 + README 등록**, [ADR-0006](adr/0006-navigation3-custom-navigator.md) alpha 버전 핀 문구 정정(이번 상향으로 실제로 어긋났다), open-questions **신규 2건**(OQ-P-264 opt-out이 `targetSdk 37`에 사라지는데 대화면 방침 없음·추적처가 매니페스트 TODO 한 줄뿐 / OQ-P-265 세로 고정으로 카메라 촬영이 기기 방향을 안 따른다 — `targetRotation`·`OrientationEventListener` 없음, 정책 근거도 없음) + 마커 1건(OQ-P-146 ⑨). 선작성 스펙·플랜 없고 화면 변경도 없어 **아카이브 이동 0건**, 계약 문서(`api/`)는 원격 연동 코드가 delta에 없어 무변경. 미머지 추적 항목 **0**. ⚠️ 실기기 0회 — 이번 라운드는 **유닛으로 덮을 수 없는 종류**(매니페스트 속성)이고 대화면 opt-out은 폰에서 드러나지 않는다 |
-| 2026-08-23 | `f31b8c30` | Merge #324(gallery-store) · #335(topping-delete) | delta 2건, **둘 다 머지 트리 = 브랜치 팁**(#324 = `20295ba8`, #335 = `122d950b`, 충돌 해소 편집 0건)이고 **선작성 스펙·플랜 없음 → 아카이브 이동 0건**. 라운드를 묶는 축은 **오래 걸려 있던 `TODO` 둘이 같은 날 닫힌 것**이고, 닫는 방식이 갈린다 — 하나는 없던 계층을 새로 쌓았고 하나는 이미 있던 표면에 소비자를 붙였다. **#324**(12파일 416/26): 지난 캔버스의 "갤러리에 저장"이 로그 한 줄에서 **실제 저장**이 됐다(OQ-P-211 **해소**, 네 항목 전부 답). 설계의 핵심 둘 — **한 동작이 MVI 왕복 두 번**으로 갈린다(비트맵은 컴포지션만 만들 수 있어 ViewModel이 `RequestCanvasCapture`로 요청만 보내고 화면이 `toImageBitmap()`을 `SaveCapturedCanvas`로 되돌린다), 그리고 **캡처 레이어를 배경·토핑만 담는 안쪽 `Box`에 건다**(테두리·컷 도형·빈 캔버스 문구·날짜 버튼 제외) — `YGCanvas`가 "그림 vs 프레임"을 처음 갈랐고 그 경계가 곧 저장 이미지의 경계다. 쓰기는 `IS_PENDING` 등록 → 바이트 → 내림이고 중간 실패는 등록을 지운다. 권한은 API 29 미만 전용(`GalleryWritePermissionManager`, 매니페스트 `maxSdkVersion="28"`, `minSdk` 26이라 살아 있는 갈래)이고 Activity가 필요해 **Route가 캡처 비트맵을 들고 기다린다**. **#335**(6파일 163/9): 삭제 확인 모달이 곧 `DELETE`이고 **성공해야 목록에서 뺀다** — `ToppingRepository` 둘째 갈래가 소비 화면과 함께 열려 `parfait-image` 미소비가 셋 → **둘**(위치·테두리 수정), **앱이 서버 데이터를 지우는 첫 경로**다(OQ-P-199 ③ 해소 = "확인 모달 시점에 즉시"). ⚠️ **삭제만 즉시 영구이고 실패가 화면에 안 닿는다**(OQ-P-270 — "그만두기"로 나가도 안 돌아오는데 403·409·404가 전부 로그 한 줄, 같은 화면 배경 저장은 토스트라 처분이 갈렸고 409는 같은 코드에 **세 번째 처분**). ⚠️ **같은 커밋이 `TOPPING_MAX_SCALE`을 근거 없이 삭제**해 상·하한 없는 축이 둘이 됐다(OQ-P-271). ⚠️ 캡처가 **지금 그려진 것**을 복사해 배경 로딩 전이면 그대로 담기고 해상도도 기기 종속(OQ-P-272) · **얼럿 호스트·문자열 셋이 트리거 없이 유입**(OQ-P-273) · **저장이 API 29를 경계로 위치도 보호도 갈림**(OQ-P-274). 조치: 사후 스펙 1건 작성(`implemented`·archive) [c001-canvas-gallery-save](specs/archive/2026-08-23-c001-canvas-gallery-save.md) + README 등록, [c301-topping-edit-tab](specs/archive/2026-08-16-c301-topping-edit-tab.md)에 as-built 재정정 절(드리프트 2 부분 해소 · **드리프트 4의 "크기는 클램프한다" 전제 정정**) + README 행 갱신, [c201-canvas-calendar-server](specs/archive/2026-08-17-c201-canvas-calendar-server.md) 드리프트 1 해소 마커, `api/parfait-image.md` Android 매핑(소비처 배치+삭제 둘 · 실패 무반응 경고 · 배율 상한 소멸 마커)·`api/README.md` 도메인 표 + 소비 25건 문단(**`verified`·`android_status` 불변**), architecture 2건(data-layer 시스템 미디어가 **읽기 전용이 아니게 됨** + `ToppingRepository` 인벤토리 / design-system `captureGraphicsLayer`·`overlayContent` 호스트 둘). open-questions: **OQ-P-211 해소됨**, OQ-P-199 **③ 해소 + ② 전제 정정**(좌표 PATCH는 2026-08-15부터 계약에 있다), **신규 5건**(OQ-P-270~274), `oq-next` 270 → 275. 유닛 737 → **745건**(+8), 클래스 87 유지. ⚠️ **실기기·실서버 확인 0회 — 캡처 결과물·권한 다이얼로그·`MediaStore` 쓰기가 한 줄도 안 잠겼다.** 미머지: 없음(as-built 대기 브랜치 0건 — 활성 계획 [c103 다중 후보 PR1·PR2](plans/2026-08-23-c103-pr1-multi-subject-domain.md)는 아직 브랜치가 없다) |
+| 2026-08-23 | `f31b8c30` | Merge #324(gallery-store) · #335(topping-delete) | delta 2건, **둘 다 머지 트리 = 브랜치 팁**(#324 = `20295ba8`, #335 = `122d950b`, 충돌 해소 편집 0건)이고 **선작성 스펙·플랜 없음 → 아카이브 이동 0건**. 라운드를 묶는 축은 **오래 걸려 있던 `TODO` 둘이 같은 날 닫힌 것**이고, 닫는 방식이 갈린다 — 하나는 없던 계층을 새로 쌓았고 하나는 이미 있던 표면에 소비자를 붙였다. **#324**(12파일 416/26): 지난 캔버스의 "갤러리에 저장"이 로그 한 줄에서 **실제 저장**이 됐다(OQ-P-211 **해소**, 네 항목 전부 답). 설계의 핵심 둘 — **한 동작이 MVI 왕복 두 번**으로 갈린다(비트맵은 컴포지션만 만들 수 있어 ViewModel이 `RequestCanvasCapture`로 요청만 보내고 화면이 `toImageBitmap()`을 `SaveCapturedCanvas`로 되돌린다), 그리고 **캡처 레이어를 배경·토핑만 담는 안쪽 `Box`에 건다**(테두리·컷 도형·빈 캔버스 문구·날짜 버튼 제외) — `YGCanvas`가 "그림 vs 프레임"을 처음 갈랐고 그 경계가 곧 저장 이미지의 경계다. 쓰기는 `IS_PENDING` 등록 → 바이트 → 내림이고 중간 실패는 등록을 지운다. 권한은 API 29 미만 전용(`GalleryWritePermissionManager`, 매니페스트 `maxSdkVersion="28"`, `minSdk` 26이라 살아 있는 갈래)이고 Activity가 필요해 **Route가 캡처 비트맵을 들고 기다린다**. **#335**(6파일 163/9): 삭제 확인 모달이 곧 `DELETE`이고 **성공해야 목록에서 뺀다** — `ToppingRepository` 둘째 갈래가 소비 화면과 함께 열려 `parfait-image` 미소비가 셋 → **둘**(위치·테두리 수정), **앱이 서버 데이터를 지우는 첫 경로**다(OQ-P-199 ③ 해소 = "확인 모달 시점에 즉시"). ⚠️ **삭제만 즉시 영구이고 실패가 화면에 안 닿는다**(OQ-P-270 — "그만두기"로 나가도 안 돌아오는데 403·409·404가 전부 로그 한 줄, 같은 화면 배경 저장은 토스트라 처분이 갈렸고 409는 같은 코드에 **세 번째 처분**). ⚠️ **같은 커밋이 `TOPPING_MAX_SCALE`을 근거 없이 삭제**해 상·하한 없는 축이 둘이 됐다(OQ-P-271). ⚠️ 캡처가 **지금 그려진 것**을 복사해 배경 로딩 전이면 그대로 담기고 해상도도 기기 종속(OQ-P-272) · **얼럿 호스트·문자열 셋이 트리거 없이 유입**(OQ-P-273) · **저장이 API 29를 경계로 위치도 보호도 갈림**(OQ-P-274). 조치: 사후 스펙 1건 작성(`implemented`·archive) [c001-canvas-gallery-save](specs/archive/2026-08-23-c001-canvas-gallery-save.md) + README 등록, [c301-topping-edit-tab](specs/archive/2026-08-16-c301-topping-edit-tab.md)에 as-built 재정정 절(드리프트 2 부분 해소 · **드리프트 4의 "크기는 클램프한다" 전제 정정**) + README 행 갱신, [c201-canvas-calendar-server](specs/archive/2026-08-17-c201-canvas-calendar-server.md) 드리프트 1 해소 마커, `api/parfait-image.md` Android 매핑(소비처 배치+삭제 둘 · 실패 무반응 경고 · 배율 상한 소멸 마커)·`api/README.md` 도메인 표 + 소비 25건 문단(**`verified`·`android_status` 불변**), architecture 2건(data-layer 시스템 미디어가 **읽기 전용이 아니게 됨** + `ToppingRepository` 인벤토리 / design-system `captureGraphicsLayer`·`overlayContent` 호스트 둘). open-questions: **OQ-P-211 해소됨**, OQ-P-199 **③ 해소 + ② 전제 정정**(좌표 PATCH는 2026-08-15부터 계약에 있다), **신규 5건**(OQ-P-270~274), `oq-next` 270 → 275. 유닛 737 → **745건**(+8), 클래스 87 유지. ⚠️ **실기기·실서버 확인 0회 — 캡처 결과물·권한 다이얼로그·`MediaStore` 쓰기가 한 줄도 안 잠겼다.** 미머지: 없음(as-built 대기 브랜치 0건 — 활성 계획 [c103 다중 후보 PR1·PR2](plans/archive/2026-08-23-c103-pr1-multi-subject-domain.md)는 아직 브랜치가 없다) |
 | 2026-08-23 | `d634efd3` | Merge #336 (topping-edit-c305 api) | delta 1건, 커밋 1(+브랜치 안 develop 병합 1)·6파일 318/32, **머지 트리 = 브랜치의 develop 병합 커밋 `dd29dce5`**(충돌 해소 편집 0건)이고 **선작성 스펙·플랜 없음 → 아카이브 이동 0건**. **편집 결과가 처음으로 남는다 — 그리고 남지 않은 것만 조용해졌다.** C-301 편집 탭이 2026-08-16 이후 일주일 동안 고친 것을 버리던 화면이었고, 하루 전 #335가 삭제 하나만 열어 둔 상태에서 이번에 **이동·크기·회전이 확인 버튼에서 PATCH로 나간다** — `ToppingRepository.update`·`UpdateToppingUseCase` 신설로 `parfait-image` 미소비가 둘 → **하나**(테두리 수정)가 되고 **OQ-P-199가 세 항목 전부 답을 얻어 해소됨**. 설계 핵심 셋: **① 바뀐 것만 보낸다**(조회 응답 스냅샷 `confirmedToppings`를 렌더링과 별도로 들고 확인 시점에 대조 — 안 건드린 토핑은 요청 0건), **② 토핑끼리는 `async`+`awaitAll` 병렬이되 배경 저장보다 완전히 앞**(둘을 얽으면 한쪽만 실패한 경우를 갈라 다뤄야 해서다 — 코드 주석이 그 판단을 적어 두었다), **③ `positionZ`를 안 보낸다**(부분 병합이라 서버 겹침 순서 유지, 앱에 z 조작 경로 없음). 확인 버튼이 한 단위가 되며 코루틴 키 `SAVE_BACKGROUND_KEY` → `CONFIRM_KEY`. ⚠️ **실패가 화면에 안 닿는데 확인은 성공한다**(OQ-P-275 — 로그 한 줄 뒤 배경 저장이 이어져 성공하면 화면이 넘어가고, 캔버스 메인은 재조회로 옛 좌표를 그린다. 같은 버튼 안에서 배경은 토스트+잔류, 토핑은 무반응+이동이고 마감 캔버스에서는 **같은 409가 한 번의 확인에서 두 처분** — OQ-P-261의 처분이 넷이 됐다). ⚠️ **다섯 중 테두리 재편집만 혼자 남았다**(OQ-P-276 — 변경 판정이 넷만 비교하고 `borderLayers`·`editedImagePath`는 요청에도 없다. 표시 쪽 OQ-P-254와 같은 값을 두고 갈라져 있다). ⚠️ **어제 근거 없이 지운 상한이 오늘 요청 값이 되고 회귀 테스트로 굳었다**(OQ-P-271 — 되살리려면 그 테스트를 함께 지워야 한다). 회전 무제한도 화면 안 문제가 아니게 됐다(OQ-P-241 ③). 조치: 스펙 as-built 2건([c301-topping-edit-tab](specs/archive/2026-08-16-c301-topping-edit-tab.md) 재정정 절 — 드리프트 2 거의 해소·드리프트 4 마커, related_code 6줄 추가 / [c301 배경 스펙](specs/archive/2026-08-15-c301-canvas-background-edit.md) 재정정 절 — 확인 버튼이 더는 배경만 다루지 않음, `verified` 2026-08-23) + specs README 2행, api 2표면(`parfait-image.md` Android 매핑 — 소비처 셋·미소비 하나·실패 무반응 경고·요청 값이 된 두 축 / `api/README.md` 도메인 표 + 소비 26건 문단. **`verified`·`android_status` 불변**), architecture 1건(data-layer `ToppingRepository` 인벤토리에 `update` + 셋째 갈래 노트). open-questions: **OQ-P-199 해소됨**, 마커 5건(OQ-P-241·OQ-P-254·OQ-P-261·OQ-P-270·OQ-P-271), **신규 2건**(OQ-P-275 저장 실패가 성공처럼 보임 · OQ-P-276 테두리만 안 나감), `oq-next` 275 → 277. 유닛 745 → **751건**(+6), 클래스 87 유지. ⚠️ **실기기·실서버 확인 0회 — 부분 실패(토핑 셋 중 하나만 403)가 유닛으로 안 잠겼다.** 미머지: 없음 |
+| 2026-08-24 | `34bf1939` | Merge #342 (c103-multi-subject-ui) | delta 1건, 커밋 13·17파일 1074/211, **머지 트리 = 브랜치 팁 `8fe67476`**(충돌 해소 편집 0건). **선작성 스펙·플랜이 있는 첫 라운드가 여섯 회차 만에 돌아왔고, 스택 둘(PR1 data·domain / PR2 UI)이 한 PR로 합쳐져 들어와** develop 이력에 스택 경계가 남지 않았다. **사진에 피사체가 여럿이면 이제 고를 수 있다** — 정책에는 처음부터 있던(위키 [[누끼-따기]], 기능정의서 v5의 C-103-select) 갈래를 열었다. 후보를 하나로 접던 자리는 **ML Kit 옵션 한 곳**이었고 `enableMultipleSubjects` + `enableSubjectBitmap`으로 옮기며 그 위에 선 경계들을 함께 넓혔다. **화면 ID는 쪼개지 않았다**(`NavKeySegmentation` 하나가 후보 수에 따라 박스를 1개 또는 N개, 후보 1개면 전과 픽셀 단위로 같다). 설계 핵심 셋: **① 탐지와 저장이 갈렸다**(`segmentImage`는 디스크를 안 건드리고 신설 `persistSubject`가 **탭한 하나만** 저장 — 진입 즉시 후보 수만큼 PNG를 떨구지 않는다. `SegmentationResult`는 `subjectBounds`를 잃고 경로 둘만 남고, 좌표는 새 도메인 모델 `SegmentationCandidate`가 나른다) · **② 판단이 드는 자리를 순수 함수로 뺐다**(`filterCandidates` · `scaledRectOrNull`·`pickCandidateIndex`, JVM 유닛 15건. **이 화면에는 UI 테스트가 0건**이라 탭 판정은 깨져도 조용한 자리였다. 탭은 **면적 최소**를 고른다 — "뒤에서부터 첫 히트"와 결과가 같지만 그러면 컴포넌트의 올바름이 필터 정렬에 매달리고, 앞에서부터면 큰 후보 안의 작은 대상을 아예 못 고른다) · **③ 선택 시점의 순서가 계약이다**(저장 → 초안 기록 **완료** → 로딩 해제 → 이동. 확인 화면이 구독만 하므로 이 화면이 초안의 유일한 writer이고, 어기면 다음 화면이 "다음"을 잠근 채 뜬다. 이동이 `goTo`라 `isLoading`은 성공·실패·예외 세 갈래에서 각각 내린다). ⚠️ **실기기가 네이티브 크래시를 드러냈다**(OQ-P-268 해소) — 전경 마스크 옵션과 다중 후보 옵션을 **한 요청에 함께 켜면 `SIGSEGV`**(Galaxy A35 / Android 16). 스택이 전부 모듈 네이티브라 `try/catch`도 Crashlytics도 못 잡고 `logcat -b crash`에만 남는다. 전경 마스크는 **후보 0건일 때의 2차 요청**으로 남겼고(세그멘터를 한 흐름에서 두 번 열 수 있다), 정상 경로는 쓰지도 않던 `FloatBuffer`가 사라져 **오히려 가벼워졌다.** ✅ **실기기 확인이 0회가 아닌 드문 라운드**(다중 박스·`C-103-Error` 화면). 계획 밖에서 들어온 실패 화면이 **PR #311이 삭제했던 `SegmentationErrorScreen`을 되살려**(OQ-P-153 ①②③ 해소) 이틀 만에 그 판정이 절반 뒤집혔다 — **대상을 아예 못 얻은 실패만 화면**(1회성 효과가 아니라 `isError` 상태여야 재구성에서 산다)이고 고른 뒤의 저장 실패는 토스트 그대로다. 조치: **아카이브 3건**(스펙 `implemented` + 플랜 둘 `done`), **architecture 4건**(data-layer 계약 4→**5**·`subjectBounds` 제거·필터 계층 / design-system #311 판정 절반 뒤집힘, **로딩 화면 0개는 유지** / state-management 순서 계약 사례 / navigation-flow 화면 ID를 목적지로 안 쪼갠 판단 + 이동이 이펙트 수신으로), **ADR 2건**(0012 옵션 전환·크래시 제약 / 0011 **도메인 모델이 `BitmapWrapper`를 다시 물었다** — 2026-08-14의 "적용 범위가 줄었다"가 되돌아왔다), 전처리 계획 베이스 `develop` 정정. `api/`는 원격 연동 코드가 delta에 없어 **미변경**. open-questions: **해소 0건**(OQ-P-269 ①만 부분 확인), 신규 0건 — 이 라운드의 미결 다섯은 스펙 작성 시점에 이미 등재됐다(OQ-P-266·267·268·269·277). 유닛 751 → **775건**(+24), 클래스 87 → **89개**. ⚠️ 남은 넷은 전부 실기기 항목이다. |
