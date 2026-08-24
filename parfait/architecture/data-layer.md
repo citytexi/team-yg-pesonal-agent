@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-23
-related_spec: c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
+verified: 2026-08-24
+related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -18,7 +18,7 @@ tags: [architecture, parfait]
 > 근거는 파일명+심볼명으로만.
 
 ## 레이어 배치
-- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, 원격 예시 `PolicyVO`·`MyParfaitGroupVO`) + 도메인 예외(sealed `SegmentationException` — `ImageNotFound`·`ClientInit`·`ModuleNotReady`·`Process` / `SignUpException.RequiredPolicyNotAgreed`).
+- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, `SegmentationCandidate`, 원격 예시 `PolicyVO`·`MyParfaitGroupVO`) + 도메인 예외(sealed `SegmentationException` — `ImageNotFound`·`ClientInit`·`ModuleNotReady`·`Process` / `SignUpException.RequiredPolicyNotAgreed`).
   - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드가 추가한 VO·value class만 하위 패키지로 들어갔고(PR #197의 `auth/`·`group/`·`id/`·`policy/`에 PR #230이 `image/`·`member/`·`topping/`을, PR #250이 `canvas/`를 더했다), 그 이전 선언 8개는 루트에 남았다. 하위 패키지가 넷에서 여덟이 되며 **비율은 더 기울었는데 규약은 여전히 없다** — 어디에 새 모델을 둘지 매번 판단해야 하는 상태 → [open-questions](../synthesis/open-questions.md).
     2026-08-15~16 라운드가 `session/`(PR #260, `SessionEvent` — **원격 VO가 아닌 첫 하위 패키지**)과
     `parfait/`(PR #259, `ParfaitHistory`)를 더해 **열이 됐다**. "원격 API 라운드가 만든 것만 하위
@@ -84,7 +84,7 @@ tags: [architecture, parfait]
 `RecentImageRepositoryImpl`이 `RecentImageLocalDataSource`(DataStore, URI 메타)와 `FileRecentImageLocalDataSource`(파일 저장)를 조합. 파일 last-modified로 캐시 축출, `DayWindow`로 날짜 윈도잉.
 
 ## 예: 이미지 세그멘테이션(누끼)
-`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]]), subject 이미지는 `cacheDir`의 **세그멘테이션 전용 하위 디렉토리**에 PNG로 저장해 경로를 반환. 실패는 `Result<SegmentationResult>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`SaveEditedImageUseCase`·`ClearSegmentationCacheUseCase`.
+`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]]), subject 이미지는 `cacheDir`의 **세그멘테이션 전용 하위 디렉토리**에 PNG로 저장해 경로를 반환. 실패는 `Result<…>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`PersistSubjectUseCase`·`SaveEditedImageUseCase`·`ClearSegmentationCacheUseCase`.
 
 **결과 모델 재편(2026-08-14, PR #221)** — `SegmentationResult`가 `BitmapWrapper`를 더 이상 담지 않는다.
 `subjectImagePath`(파일 경로) + `subjectBounds: SegmentationBounds?`(원본 픽셀 좌표계 바운딩 박스,
@@ -103,12 +103,34 @@ tags: [architecture, parfait]
 > ([open-questions](../synthesis/open-questions.md) OQ-P-003 ③·OQ-P-228) →
 > [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md).
 
-**메서드 4개**다 — `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
+> 📌 **탐지와 저장이 갈렸다(2026-08-24, PR #342)** — `segmentImage`가 `Result<List<SegmentationCandidate>>`를
+> 주고 **디스크를 아예 건드리지 않는다.** 파일은 새 계약 `persistSubject(candidate)`가 만들고, 그
+> 호출 시점이 화면 진입이 아니라 **사용자가 후보를 탭한 순간**이다(진입 즉시 후보 수만큼 저장
+> 비용을 치르지 않는다 → [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md)).
+> `SegmentationResult`는 이때 `subjectBounds`를 잃고 **경로 두 값만** 남는다 — 화면이 좌표를
+> 후보에서 직접 읽으므로 저장 결과에서 되받을 이유가 없어졌다. 좌표를 나르는 것은 새 도메인 모델
+> `SegmentationCandidate`(`bounds` + `bitmap` + 원본 좌표계 `canvasWidth`·`canvasHeight`)이고,
+> **후보 하나만 넘겨도 좌표계가 따라가므로** 다른 크기를 실어 보내 그림이 어긋나는 조합이 성립하지
+> 않는다. ⚠️ 그 `bitmap`이 `BitmapWrapper`라 **도메인 모델이 비트맵 추상을 다시 물었다**
+> ([[0011-cross-module-bitmap-abstraction]] 영향 절).
+>
+> **판단이 드는 자리는 `:data`의 `internal` 순수 함수로 뺐다** — `SegmentationCandidateFilter.kt#filterCandidates`
+> (면적 임계·개수 상한·결정적 정렬·동일 bounds 중복 제거)가 `SegmentationMask.kt`의 선례를 따른다.
+> ML Kit가 돌려준 값을 어디까지 신뢰할지는 그 라이브러리를 다루는 구현의 관심사이지 도메인
+> 규칙이 아니다. 상수 둘의 근거가 실측이 아닌 것은 미결이다([open-questions](../synthesis/open-questions.md) OQ-P-267).
+>
+> **필터를 통과한 후보가 0건이면 세그멘테이션을 한 번 더 돌린다** — 전경 마스크 옵션을 다중 후보
+> 옵션과 **한 요청에 함께 켤 수 없기 때문**이고(모듈이 네이티브에서 죽는다 →
+> [[0012-mlkit-subject-segmentation]]), 그 2차 결과로 `maskSubjectPixels` 경로를 태워 후보 하나를
+> 만든다. 두 요청이 세그멘터 개폐·optional module 확인·예외 변환을 `runSegmenter`로 공유한다.
+
+**메서드 5개**다 — `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
+`persistSubject(candidate)`(고른 후보를 캐시에 PNG 두 장으로 떨군다) ·
 `saveEditedImage(bitmapWrapper)`(손편집 결과를 캐시에 PNG로 떨구고 절대 경로 반환) ·
 `clearSegmentationCache()`(PR #309 신설, 아래 캐시 정리 절).
 `saveEditedImage`는 **넘겨받은 비트맵을 recycle하지 않는다**(수명은 넘겨준 쪽 몫, 코드 주석에 명시).
 
-**계약 셋 중 `decodeImage`만 `Result`가 아니다 — 감싸는 자리를 UseCase로 올렸다(2026-08-20, PR #309).**
+**값을 돌려주는 계약 넷 중 `decodeImage`만 `Result`가 아니다 — 감싸는 자리를 UseCase로 올렸다(2026-08-20, PR #309).**
 `DecodeImageUseCase`가 `runSuspendCatching`으로 감싸 `Result<BitmapWrapper>`를 주고, 리포지토리
 시그니처는 던지는 채로 남았다. 호출부마다 감싸던 것을 한 자리로 모은 이유는 **두 호출부가 쓰던 stdlib
 `runCatching`이 `CancellationException`까지 삼켜** 이미 떠난 화면이 자기를 "디코드 실패"로 보고했기

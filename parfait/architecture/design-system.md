@@ -4,8 +4,8 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-23
-related_spec: c001-canvas-gallery-save, c202-canvas-spotlight, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
+verified: 2026-08-24
+related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c202-canvas-spotlight, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0007, ADR-0010, ADR-0018, ADR-0025
 related_architecture:
 related_code: core:designsystem, YGTheme
@@ -205,6 +205,19 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > 반례이기도 하다** — 세그멘테이션은 온디바이스 추론이라 네트워크 왕복이 아닌데 오버레이를 켠다.
 > 아래 "네트워크 왕복인가"는 그래서 **"사용자가 기다려야 하는 비동기 작업인가"**로 읽는 편이 맞고,
 > 규약 승격 여부는 여전히 OQ-P-205 ②다.
+>
+> 🔁 **둘 중 실패 화면만 이틀 만에 되돌아왔다(2026-08-24, PR #342 develop 머지)** —
+> `SegmentationErrorScreen`이 다시 생겼다. 뒤집힌 근거는 판단이 아니라 **디자인이 나온 것**이다
+> (Figma `C-103-Error`: 닫기만 있는 상단 바 + 경고 아이콘 + 문구 두 줄). #311이 삭제할 때의
+> 이유가 "그 화면이 위키가 정의한 실패 처리를 담은 적이 없다"였는데, 담을 것이 생겼다.
+> **토스트가 통째로 대체되지는 않았다** — 실패를 둘로 가른다: 대상을 아예 못 얻어 화면에서 할 수
+> 있는 것이 없으면 **화면**(`SegmentationState.isError`, 1회성 효과가 아니라 상태여야 재구성에서
+> 살아남는다), 고른 뒤의 저장 실패는 후보 목록이 살아 있으므로 **토스트**다.
+> **로딩 화면 0개는 그대로다**(되살아난 것은 실패 화면뿐이고 `isLoading`은 계속 `YGScaffoldV2`가
+> 받는다). ⚠️ 재시도·원본 사용 버튼은 디자인에 없어 넣지 않았고, 위키 [[누끼-따기]]
+> ([link](../../wiki/concepts/누끼-따기.md)) 정책과
+> 갈리는 그 자리는 OQ-P-153 ④로 남았다 →
+> [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md).
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.

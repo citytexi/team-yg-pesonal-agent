@@ -4,8 +4,8 @@ title: 상태 관리 (MVI) · 데이터 흐름
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-20
-related_spec: c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, group-ssot, intro-term-agree
+verified: 2026-08-24
+related_spec: c103-multi-subject-selection, c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, group-ssot, intro-term-agree
 related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: data-layer, navigation-flow
 related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase, GetMyGroupsFlowUseCase, GetGroupDetailUseCase, GroupListViewModel, GroupSettingViewModel, CanvasMainViewModel, TermAgreeViewModel, TermAgreeError
@@ -183,6 +183,19 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
   > 안 된다"를 뜻하고, 그 갈래만 **재시도가 무의미**해서 문구가 "다른 사진을 골라 주세요"로 갈린다.
   > 나머지 실패는 전부 `UNKNOWN`으로 접히는데, 그래서 마감된 캔버스의 409도 "잠시 후 다시"가 된다
   > → [open-questions](../synthesis/open-questions.md) OQ-P-261.
+- **이동 전에 끝내야 하는 일이 있으면 순서가 계약이 된다** — C-103 후보 선택(2026-08-24, PR #342)이
+  그 사례다. 탭 하나가 **저장 → 초안 기록 완료 → `isLoading` 해제 → `GoToConfirm` post** 순으로
+  돌고, 이 순서를 지키는 이유는 다음 화면에 있다: `SegmentationConfirmViewModel`은 정상 진입에서
+  스스로 초안을 적지 않고 **구독만** 하므로 이 화면이 초안의 **유일한 writer**이고, 기록보다 이동이
+  앞서면 그 화면이 첫 방출에서 `DraftMissing`으로 "다음"을 잠근 채 뜬다. 기록이 실패하거나 흐름
+  미개시를 알리면 **이동하지 않고** 실패 이펙트로 접는다.
+  - **로딩 해제가 갈래마다 따로 놓인다** — 성공·`Result.failure`·`launch(onError)` 셋이다.
+    이동이 `goTo`라 이 화면과 ViewModel이 백스택에 남고, 켠 채 나가면 **돌아왔을 때 오버레이에
+    갇힌다.** 아래 "안티패턴" 1번이 금지하는 것은 마지막 줄 한 곳에 몰아 두는 형태이고, 여기서는
+    세 갈래가 각각 내린다.
+  - **중복 탭 방어는 `launch(key)`만으로 끝냈다** — 위 로그아웃 사례와 달리 State 플래그를 한 겹
+    더 두지 않는다. 눌리는 것이 버튼이 아니라 사진 위 점선 박스이고, `isLoading` 오버레이 자체가
+    이미 "받는 중"을 그리기 때문이다 → [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md).
 - ⚠️ **UI 타입 보유 사례(2026-08-15, PR #231)** — C-301 배경 편집의 `CanvasBGEditUiState`가 Compose
   `Color`를, `CanvasBGEditEffect.ConfirmBackground`가 디자인시스템 타입 `YGCanvasBackground`를 든다.
   선택 팔레트(`CanvasBackgroundPaletteColors`)도 ViewModel 파일의 public 상수다. 위 "표시 문자열을

@@ -7,7 +7,7 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr:
-related_spec: c103-segmentation-topping-edit
+related_spec: c103-segmentation-topping-edit, c103-multi-subject-selection, segmentation-pipeline-hardening
 related_architecture: data-layer
 platforms: android
 tags: [adr, parfait]
@@ -110,3 +110,33 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
   (`get(index)`가 실제로 경계로 삼는 `limit` 기준 값)으로 정정했다. 그 방어가 `Exception`을
   통째로 잡던 탓에 `CancellationException`까지 삼켜 취소된 흐름을 실패로 보고하던 것도, 재던지는
   분기를 앞세워 갈랐다(`BaseViewModel.launch`와 같은 관용구).
+
+## As-built 갱신 (2026-08-24, PR #342 develop 머지)
+
+**이 ADR이 결정 절에 적어 둔 옵션이 바뀌었다.** `SubjectSegmenter`를 여는 옵션이
+`enableForegroundConfidenceMask()` 하나에서
+`enableMultipleSubjects(SubjectResultOptions.Builder().enableSubjectBitmap().build())`로 옮겨 갔다.
+라이브러리·좌표·온디바이스 채택이라는 **결정 자체는 그대로**이고, 바뀐 것은 같은 라이브러리에서
+무엇을 받아 오는가다 — 전경 전체를 합친 마스크 1장이 아니라 **피사체별 subject 목록**이고,
+`enableSubjectBitmap()`을 켜면 `Subject.getBitmap()`이 이미 bounds 크기로 잘린 판을 준다.
+소비 화면과 설계 근거는
+[c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md).
+
+⚠️ **두 옵션 계열을 한 요청에 함께 켜면 안 된다.** ML Kit 다이나마이트 모듈이 `SIGSEGV`로 죽는다
+(2026-08-23 실기기 확인, Galaxy A35 / Android 16). 크래시가 `drishti_gl_runn`과 Binder
+`onTransact` 양쪽에서 나고 스택이 전부 모듈 네이티브라 **JVM 예외 핸들러를 타지 않는다** —
+`try/catch`로도 Crashlytics의 Java 핸들러로도 못 잡고 `logcat -b crash`에만 남는다. 공식 문서의
+설정 예시 다섯 가지도 두 계열을 한 번도 함께 쓰지 않는다(명시적 금지 문구는 없다).
+그래서 전경 마스크 경로는 지우지 않고 **후보가 0건일 때의 2차 요청**으로만 남겼다 —
+`SegmentationMask.kt#maskSubjectPixels`와 위 절이 닫아 둔 방어가 그 경로에서 계속 쓰인다.
+그 대가로 **세그멘터를 한 흐름에서 두 번 열 수 있다**(개폐·optional module 확인·예외 변환은
+`runSegmenter`가 공유한다). 정상 경로는 오히려 가벼워졌다 — 쓰지도 않는 원본 해상도
+`FloatBuffer`를 매번 받던 것이 사라졌다([open-questions](../synthesis/open-questions.md) OQ-P-268 해소).
+
+⚠️ **저장이 이 계약에서 빠졌다** — `segmentImage`는 더 이상 PNG를 떨구지 않고, 위 절들이 서술한
+저장 구간 방어는 신설 `persistSubject`로 옮겨 갔다(같은 `try`/`finally` 모양을 유지한다).
+`SegmentationResult.subjectImagePath`를 만드는 코드가 어디인지가 바뀐 것이지 결과의 의미는 같다
+→ [data-layer](../architecture/data-layer.md).
+
+⚠️ **`segmenter.close()` 이후 ML Kit가 준 비트맵의 수명이 문서에 없다**(OQ-P-269). 이 라운드부터
+그 비트맵을 화면 수명 내내 들고 그린다.

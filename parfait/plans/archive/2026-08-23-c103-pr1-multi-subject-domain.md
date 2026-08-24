@@ -1,10 +1,11 @@
 ---
 id: c103-pr1-multi-subject-domain
 title: C-103 다중 후보 PR1 — data·domain 다중화 (ML Kit enableMultipleSubjects)
-status: ready
+status: done
+archived_reason: PR #342(`34bf1939`)로 develop 머지 — PR2 브랜치가 이 스택을 안은 채 한 PR로 들어왔다
 type: work-order
 created: 2026-08-23
-updated: 2026-08-23
+updated: 2026-08-24
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0026
@@ -33,7 +34,7 @@ tags: [plan, parfait, segmentation, topping, c-103]
 
 **Tech Stack:** Kotlin · Hilt · ML Kit Subject Segmentation 16.0.0-beta1 · kotlinx-coroutines-test · MockK · Turbine · kotlin.test
 
-**Spec:** [`parfait/specs/2026-08-23-c103-multi-subject-selection.md`](../specs/2026-08-23-c103-multi-subject-selection.md) — 「PR 분할」 표 **1번 행**
+**Spec:** [`parfait/specs/archive/2026-08-23-c103-multi-subject-selection.md`](../../specs/archive/2026-08-23-c103-multi-subject-selection.md) — 「PR 분할」 표 **1번 행**
 
 **작업 대상 저장소:** `TJYG-Android` (이 저장소가 아니다). 브랜치는 `develop`에서 새로 판다.
 
@@ -806,4 +807,4 @@ git commit -m "feat: 세그멘테이션이 피사체 후보를 여러 개 돌려
 - 저장·초안 기록을 탭 시점으로 옮기는 것 — PR2. **이 라운드에서는 `init`에서 즉시 저장한다.**
 - 후보 비트맵의 명시적 해제(OQ-P-266).
 - Safe Margin +20% 캔버스(OQ-P-150).
-- 선행 스펙([c103-segmentation-topping-edit](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md))의 갱신 표기 — PR2 머지 시점에 한 번에 단다.
+- 선행 스펙([c103-segmentation-topping-edit](../../specs/archive/2026-08-15-c103-segmentation-topping-edit.md))의 갱신 표기 — PR2 머지 시점에 한 번에 단다.

@@ -7,7 +7,7 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr:
-related_spec: c103-segmentation-topping-edit
+related_spec: c103-segmentation-topping-edit, c103-multi-subject-selection
 related_architecture: module-structure, data-layer
 platforms: android
 tags: [adr, parfait]
@@ -62,3 +62,21 @@ tags: [adr, parfait]
   직접 담는다**. 이 ADR이 규정하는 것은 domain 경계뿐이라 규약 위반은 아니지만, 다운캐스트가
   data 레이어 밖으로 나온 첫 사례다 →
   [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 드리프트 9.
+
+## As-built 갱신 (2026-08-24, PR #342)
+
+**위 "적용 범위가 줄었다"가 되돌아왔다.** 도메인 **모델**이 `BitmapWrapper`를 다시 문다 —
+신설된 `SegmentationCandidate.bitmap`이 그것이고, 화면이 후보를 골라 탭할 때까지 파일을 만들지
+않으므로 **경로가 아직 없는 구간을 비트맵으로 나를 수밖에 없다**
+([c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md)
+Repository 계약 절). 대신 `SegmentationResult`는 반대로 더 가벼워져 경로 두 값만 남았다
+(`subjectBounds` 제거).
+
+- **Repository 시그니처는 넷이 됐다** — `decodeImage(uri): BitmapWrapper` ·
+  `segmentImage(bitmapWrapper): Result<List<SegmentationCandidate>>` ·
+  `persistSubject(candidate)`(신설, `candidate.bitmap`을 다운캐스트한다) ·
+  `saveEditedImage(bitmapWrapper)`. 다운캐스트 지점이 셋이다.
+- ⚠️ **화면이 이제 `BitmapWrapper`를 목록으로 들고 있다** — `SegmentationState.candidates`가
+  최대 5개를 상태에 담고 각각이 자기 비트맵을 문다. 위 문단이 적은 "추상이 화면 경계에서
+  벗겨진다"에 **수명 문제가 더해진 셈**이고, 명시적 해제가 없는 것은 미결로 남았다
+  ([open-questions](../synthesis/open-questions.md) OQ-P-266·OQ-P-269).
