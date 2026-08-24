@@ -2,8 +2,8 @@
 id: parfait-image
 title: 토핑 배치(배치 확정·위치/크기/각도 수정·테두리 수정·삭제)
 server_module: http/parfaitimage
-server_commit: efbf98f
-verified: 2026-08-20
+server_commit: a404ac2
+verified: 2026-08-24
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
@@ -80,6 +80,13 @@ tags: [api, parfait, server-contract, parfait-image]
   클라이언트를 생성하면 전 필드가 nullable로 떨어지는데 실제로는 비우면 400이다. ② **좌표·배율·각도의
   범위 검증이 서버에 없다** — 음수 `scale`, 캔버스 밖 좌표, 360을 넘는 `rotation`이 그대로 저장된다
   → [미결](#미결).
+
+  ⚠️ **2026-08-24 — 이 엔드포인트가 운영에서 500이었다.** 요청·응답 형태와는 무관하고 원인은 운영 DB
+  스키마다. Flyway가 꺼져 있던 기간에 `ddl-auto: update`가 스키마를 대신 관리해 제약·기본값을 바꾸는
+  마이그레이션이 반영되지 않았고, 그 상태에서 `parfait_image` INSERT가 실패했다(`#110` 커밋 본문이
+  증상만 적고 어느 제약이 걸렸는지는 밝히지 않는다). `V16`이 그 차이를 메운다 — 이 도메인에 걸린 것은
+  `parfait_image`의 `placed_by_group_member_id` FK 복원이다. 계약 자체는 한 글자도 안 바뀌었다
+  → [conventions.md 스키마 소유권](conventions.md#스키마-소유권--코드가-정본이어도-운영-응답은-다를-수-있다).
 
   ⚠️ **`borderType`이 enum 밖 값이면 Jackson 역직렬화가 먼저 깨져** `HttpMessageNotReadableException`을
   타고 `INVALID_REQUEST`(400)가 된다. 도메인 코드가 아니라 공통 코드다([image.md](image.md)의

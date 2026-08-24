@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: efbf98f
-verified: 2026-08-20
+server_commit: a404ac2
+verified: 2026-08-24
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -210,6 +210,37 @@ TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTr
 
 해결은 서버 HTTPS 적용(권장) 또는 debug 빌드 한정 `network_security_config.xml`로 해당 호스트만
 허용하는 것이다 → [open-questions](../synthesis/open-questions.md).
+
+## 스키마 소유권 — 코드가 정본이어도 운영 응답은 다를 수 있다
+
+**2026-08-24, 세 번째 근거 축이 드러났다.** 이 체계는 지금까지 근거를 둘로만 봤다 — 서버 코드(정본)와
+OpenAPI 스키마(보조). 그런데 **운영 DB 스키마**가 코드와 어긋나 있으면 코드대로 읽은 계약이 실제 응답과
+다르다.
+
+Flyway 마이그레이션이 운영 히스토리에는 V4까지만 기록돼 있었고, 그 뒤로는 `ddl-auto: update`가 스키마를
+대신 관리했다. `update`는 컬럼·인덱스를 **추가만 하고 삭제하지 않으므로** DROP을 포함한 V5·V6·V8·V10과
+제약·기본값을 바꾸는 V7·V11·V15, 그리고 데이터 이관을 포함한 V14가 운영에 반영되지 않았다. 이 문서들이
+"서버가 이렇게 한다"고 적은 것 중 최소 둘이 운영에서는 거짓이었다 —
+[그룹 내 닉네임 중복 허용](parfait-group.md#get-apiparfait-groupsjoin-preview)과
+[토핑 배치](parfait-image.md#post-apiv1groupsgroupidparfaitsparfaitidimages) 성공이다.
+
+`#110`이 그 소유권을 Flyway로 되돌렸다.
+
+- **`ddl-auto: validate`** — 어긋나면 **기동 시점에 실패**한다. 조용한 드리프트가 끝났다는 뜻이고,
+  앞으로 "코드가 정본"이 운영에서도 성립할 근거다.
+- **`V16__reconcile_ddl_auto_schema_drift.sql`** — 그 차이만 메운다. 고아 컬럼 제거(`member.email`·
+  `member.apple_refresh_token`), 그룹 닉네임 유니크 인덱스 제거, `parfait_image` FK 복원,
+  `image_meta.image_type`·`status`와 `parfait.status`의 기본값 복원, `nametag_chip` 백필과 `NOT NULL`.
+  신규 DB에서도 도는 조건부 SQL이라 두 경로가 같은 스키마로 수렴한다(`FlywayMigrationTest`가 잠근다).
+- 배치 메타테이블 `initialize-schema`가 `always` → `never`로 되돌아가고 소유권이 V12로 갔다.
+  `always`는 Flyway가 꺼져 있어 V12가 안 돌던 기간의 임시 방편이었다.
+- `JpaConfigurationTest`가 `ddl-auto`·`flyway.enabled`·`batch.initialize-schema` 세 값을 고정한다.
+
+⚠️ **이 전환은 배포만으로 끝나지 않는다.** 운영 히스토리가 V1~V4뿐이라 Flyway가 V5부터 재실행하려 하고,
+`ddl-auto`가 이미 만들어 둔 컬럼을 다시 ADD 하다 죽는다. **사람이 1회성으로 baseline SQL을 실행**해야
+한다(서버 `docs/operations/flyway-cutover.md`). 그 절차가 언제 돌았는지 앱 쪽에서 알 방법이 없어
+**"이 문서의 서술이 운영에서 언제부터 참인가"는 확정되지 않는다** →
+[open-questions](../synthesis/open-questions.md).
 
 ## OpenAPI
 

@@ -2,8 +2,8 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: efbf98f
-verified: 2026-08-20
+server_commit: a404ac2
+verified: 2026-08-24
 android_status: done
 related_spec: s101-group-setting-api
 related_adr: ADR-0017
@@ -195,6 +195,13 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   `GROUP_NICKNAME_ALREADY_USED`가 제거됐고(포트·어댑터·리포지토리 메서드·에러 코드까지 함께 삭제),
   **같은 그룹 안에서 닉네임이 겹쳐도 허용**된다. 서버 설명은 "정책상 허용해야 한다"이나 대응 정책 문서는
   아직 없다 → [미결](#미결).
+
+  > ⚠️ **2026-08-24 — 이 서술이 운영에서는 거짓이었다.** 코드에서 검사가 사라진 뒤에도 운영 DB에는
+  > 유니크 인덱스 `uk_parfait_group_member_group_nickname`이 남아 있었다. V2가 만들고 V6이 지우는
+  > 인덱스인데 **V6이 운영에 적용되지 않았고**, 검사를 걷어낸 코드가 그 위로 INSERT 하다
+  > **처리되지 않은 500**을 냈다. 겹치는 닉네임으로 참여하거나 닉네임을 바꾸면 409가 아니라 500이었다는
+  > 뜻이다. `V16`이 인덱스를 지워 코드와 운영을 맞췄다 — 다만 그 반영에는 사람이 실행하는 baseline
+  > 절차가 선행한다([conventions.md 스키마 소유권](conventions.md#스키마-소유권--코드가-정본이어도-운영-응답은-다를-수-있다)).
 
 ### POST /api/parfait-groups/join
 
