@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-23
+verified: 2026-08-24
 related_spec: segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -4582,4 +4582,44 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   필요하고, 목록의 uri 도 함께 갱신해야 한다. 그보다 싼 처방은 중복 판정 키를 uri 가 아니라
   **바이트 해시**로 옮기는 것이다 — 그러면 확장자가 달라도 같은 사진으로 본다. ①과 ②가 함께 닫힌다.
 
-<!-- oq-next: 284 -->
+### [2026-08-24] 계약 문서의 서술이 운영에서 언제부터 참인지 확정되지 않는다
+
+- **ID**: OQ-P-284
+- **출처**: 서버 `#110`(`a404ac2`) × `bootstrap/src/main/resources/application.yaml` ×
+  `V16__reconcile_ddl_auto_schema_drift.sql` × 서버 `docs/operations/flyway-cutover.md` —
+  Flyway가 꺼져 있던 기간에 `ddl-auto: update`가 운영 스키마를 대신 관리했고, `update`는 추가만 하고
+  삭제하지 않으므로 DROP·제약·기본값·데이터 이관을 담은 마이그레이션이 반영되지 않았다.
+  이 라운드가 `ddl-auto: validate` + V16으로 소유권을 Flyway에 되돌렸다
+  ([api/conventions.md 스키마 소유권](../api/conventions.md#스키마-소유권--코드가-정본이어도-운영-응답은-다를-수-있다)).
+- **항목**: ① **전환이 배포만으로 끝나지 않는다** — 운영 히스토리가 V1~V4뿐이라 Flyway가 V5부터
+  재실행하려 하고 `ddl-auto`가 만들어 둔 컬럼을 다시 ADD 하다 죽는다. V5~V15를 적용된 것으로 기록하는
+  baseline SQL을 **사람이 1회성으로** 실행해야 한다. ② 그 절차가 언제 돌았는지(혹은 돌았는지) 앱 쪽에서
+  알 방법이 없다 — 계약 문서가 "서버가 이렇게 한다"고 적어도 **그 시점 이전 운영에서는 거짓**일 수 있다.
+  실제로 최소 둘이 그랬다([parfait-group.md](../api/parfait-group.md) 닉네임 중복 허용 ·
+  [parfait-image.md](../api/parfait-image.md) 토핑 배치 500). ③ 전환 전에 앱이 붙어 실패를 만나면
+  원인이 **계약이 아니라 운영 스키마**인데, 앱 쪽 증상(500)은 그 둘을 구분하지 못한다.
+- **상태**: 미해결 (서버 소관. 앱은 baseline 실행 완료 여부를 확인받아야 한다)
+- **해소 메모**: 서버팀에 baseline 절차 실행 시점을 확인해 기록하면 ①②가 닫힌다. ③은 앱이 할 일이
+  없다 — `validate` 전환 뒤로는 스키마가 어긋나면 **서버가 기동 자체를 못 하므로** 500이 아니라 연결
+  실패로 드러난다.
+
+### [2026-08-24] 이 감사가 코드만 보고 운영 스키마를 안 본다
+
+- **ID**: OQ-P-285
+- **출처**: [server-baseline.md](../api/server-baseline.md) 점검 절차 × 서버 `#110` —
+  절차가 대조하는 것은 컨트롤러·DTO·에러 코드 enum·`SecurityConfig`·`ApiResponse`·
+  `GlobalExceptionHandler`, 전부 **코드**다. 마이그레이션 SQL과 운영 스키마 상태는 대조 대상이 아니다.
+- **항목**: ① 2026-08-15 라운드는 "그룹 내 닉네임 중복이 허용된다"를 코드 근거로 정확히 적었는데
+  **운영에는 유니크 인덱스가 남아 500이었다.** 아홉 라운드 동안 이 감사가 그것을 못 잡았다.
+  ② OQ-P-180("계약 문서에 서버 초대코드 자릿수를 안 적어 대조로도 못 잡았다")과 같은 계열이지만
+  이쪽은 **문서에 적어도 못 잡는다** — 근거 축 자체가 없었다. ③ 마이그레이션 파일을 감사 대상에
+  넣을지, 넣는다면 어디까지인지(전체 스키마 미러 vs 계약에 닿는 제약만).
+- **상태**: 부분 해소 (①② 절차에 축 추가, ③ 범위는 최소선으로 잡았고 실효는 다음 라운드에 드러난다)
+- **해소 메모**: `validate` 전환이 이 결함의 재발을 대부분 막는다 — 코드와 운영이 어긋나면 서버가
+  기동에 실패하므로 **드리프트가 조용히 살아 있을 수 없다.** 그래서 처방은 스키마 전체를 미러하는
+  것이 아니라, delta에 `resources/db/migration/` 변경이 있으면 **그것이 계약 서술을 뒤집는지만**
+  보는 것이다. 그 한 줄을 [server-baseline.md](../api/server-baseline.md) 점검 절차 3에 넣었다.
+  남은 것은 그 최소선이 충분한지다 — 제약·기본값·컬럼 삭제 밖의 변경(인덱스·타입 확장)이 계약을
+  건드리는 사례가 나오면 범위를 다시 본다.
+
+<!-- oq-next: 286 -->

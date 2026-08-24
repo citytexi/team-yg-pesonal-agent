@@ -4,8 +4,8 @@ title: 로그아웃
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#45"
-server_commit: efbf98f
-verified: 2026-08-20
+server_commit: a404ac2
+verified: 2026-08-24
 related_api: auth.md
 tags: [api, parfait, spec, auth]
 ---
