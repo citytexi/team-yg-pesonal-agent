@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-24
-related_spec: segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+related_spec: segmentation-mask-postprocessing, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -4631,4 +4631,155 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   남은 것은 그 최소선이 충분한지다 — 제약·기본값·컬럼 삭제 밖의 변경(인덱스·타입 확장)이 계약을
   건드리는 사례가 나오면 범위를 다시 본다.
 
-<!-- oq-next: 286 -->
+### [2026-08-24] 누끼 마스크에 내부 구멍이 실물에서 얼마나 생기는지 모른다
+
+- **ID**: OQ-P-286
+- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+  근거 등급 표 — 이진 컷이 내부 구멍을 남기는 것은 원리상 맞으나 관찰된 사례가 없다.
+- **항목**: ① 구멍 메우기(테두리 배경 flood fill)를 넣을 값어치가 있는가. ② 축소 판정이라
+  블록 폭 미만 구멍은 애초에 안 보이는데, 실물 구멍이 그보다 큰가. ③ 초판이 실루엣을 덮어 칠하지
+  않으려 넣은 filled-mask 침식이 **작은 구멍을 아예 못 메우고 중간 구멍에는 반투명 링을 남겼다.**
+  그 링은 다음 단계 침식의 표적이라 구멍이 오히려 커진다. ④ 반대로 **큰 구멍은 그대로 메워진다** —
+  손을 허리에 얹은 사람의 팔과 몸통 사이처럼 테두리에 닿지 않는 정당한 배경까지 칠해진다.
+  침식이 유용한 쪽만 죽이고 해로운 쪽은 못 막는다.
+- **상태**: 미해결 (**이번 라운드에서 제외**. 철회 조건을 사진 세트 판정 전에 선행 적용했다)
+- **해소 메모**: 실물에서 구멍이 눈에 보이면 다시 연다. 그때는 침식 대신 **축소판으로 구멍 위치만
+  찾고 각 구멍 bbox 안에서 원본 해상도 flood를 다시 돌려 확정**하는 형태여야 ③이 안 생긴다.
+  ④는 별개 가드가 필요하다 — 구멍 면적이 감싸는 성분 면적의 일정 비율을 넘으면 메우지 않는다.
+  제외 결정으로 filled-mask와 적용 규칙의 세 값이 함께 사라져 커널이 단순해졌다.
+
+### [2026-08-24] 폴백 알파 램프가 만드는 부분 알파 띠의 실제 폭을 모른다
+
+- **ID**: OQ-P-287
+- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+  「폴백 경로 배선」 — 신뢰도 0.35~0.65를 알파 0~255로 사상하면 경계에 띠가 생기는데, 그 폭은
+  신뢰도 기울기에 달렸고 측정한 적이 없다.
+- **항목**: ① 띠가 1픽셀 이하면 램프가 하드컷과 사실상 같아 값어치가 없다. ② 띠가 넓으면
+  `ToppingEditMask#trimTransparentBounds`가 그 띠까지 포함해 잘라 편집·저장 경로의 판이 종전보다
+  커진다. ③ keep-mask 한 블록 팽창이 띠를 살리는데, 팽창 폭(원본 4픽셀)이 띠보다 좁으면 여전히
+  잘린다.
+- **상태**: 미해결 (사진 세트에서 띠 폭을 잰다)
+- **해소 메모**: 1픽셀 이하로 나오면 램프를 빼고 하드컷으로 되돌린다. 넓으면 램프 구간을
+  0.4~0.6으로 좁히거나 팽창 폭을 맞춘다.
+
+### [2026-08-24] 알파 침식은 흰 테의 원인인 RGB 오염을 못 고친다
+
+- **ID**: OQ-P-288
+- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+  근거 등급 표 경고 — 원 제안의 "1픽셀 erode로 색 오염 제거"가 실제로는 알파만 건드린다.
+- **항목**: ① 흰 테의 정체는 알파가 낮은 픽셀이 배경색에 오염된 RGB를 갖고 있는 것이라, 바깥 한
+  겹을 지워도 안쪽 부분 알파 픽셀의 색은 그대로다. ② 진짜 처방은 색 디컨태미네이션(부분 알파
+  픽셀의 RGB를 이웃 불투명 픽셀 색으로 대체)인데 이번 라운드에 없다. ③ Android 비트맵이
+  premultiplied라 `getPixels` 왕복에서 저알파 픽셀의 색 정밀도가 떨어지는데, 램프가 저알파 픽셀을
+  늘리므로 그 손실이 눈에 보일 수 있다.
+- **상태**: 미해결 (이번 라운드는 목표를 "경계 한 겹 침식"으로 줄여 적었다)
+- **해소 메모**: 사진 세트의 "밝은 배경의 밝은 물체"에서 알파 침식만으로 흰 테가 사라지는지 본다.
+  안 사라지면 색 디컨태미네이션을 다음 라운드로 올린다.
+  ⚠️ **판정 조건이 초판에서 바뀌었다.** 초판은 침식 대상을 "알파 1~254"로 잡았는데, 그러면 흰 테가
+  가장 심한 조건(밝은 배경 + 하드 매트)에서 단계가 통째로 no-op이라 이 미결을 판정할 수 없었다.
+  능선 보호 조건으로 바꿔 하드 매트 경계도 침식되므로 이제 판정이 성립한다. 판정 근거는 관측
+  3번(부분 알파 픽셀 비율)이다 — 비율이 0에 가까운데 흰 테가 남으면 원인은 RGB 오염이 맞다.
+
+### [2026-08-24] 사각형 IoU가 교차하는 얇은 피사체를 같은 후보로 오판한다
+
+- **ID**: OQ-P-289
+- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+  「필터 판정」 — `SegmentationCandidateFilter#filterCandidates`의 중복 판정을 사각형 IoU로 바꾼다.
+- **항목**: ① 서로 교차하는 대각선 가닥 두 개는 bounds가 같아 IoU가 1이지만 실제 마스크 교집합은
+  거의 없다. 별개 피사체가 병합되어 사라진다. ② 마스크 IoU로 바꾸면 해결되고 비용도 작으나(두
+  후보의 bounds 교집합 영역만 훑으면 된다) 코드가 늘어난다. ③ 임계 0.9가 "거의 같은 박스"만 잡는
+  보수적 값이라, ML Kit이 실제로 내놓는 중복이 그 위에 있는지 아래에 있는지 모른다.
+- **상태**: 미해결 (사각형 IoU 0.9로 시작한다)
+- **해소 메모**: 사진 세트에서 ①이 보이거나 중복이 안 잡히면 마스크 IoU로 승격한다.
+
+### [2026-08-24] bounds 축소 후 얇은 피사체의 탭 타깃이 너무 작아진다
+
+- **ID**: OQ-P-290
+- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+  「화면 쪽 파급」 × `SegmentationHighlightGeometry#pickCandidateIndex` —
+  후처리가 bounds를 실제 객체에 붙이면 얇은 피사체의 탭 사각형이 몇 dp가 된다.
+- **항목**: ① 판정용 사각형만 최소 크기로 넓히고 그리기는 tight로 두는 방법이 있다. ② 그러면
+  겹친 후보의 우선순위가 흔들린다 — `pickCandidateIndex`가 bbox 면적 최소로 승자를 고르는데,
+  넓힌 사각형끼리 겹치면 어느 쪽이 이길지 규칙이 새로 필요하다. ③ 승자 선택 기준을 면적에서
+  커버리지로 옮길지도 함께 봐야 한다.
+- **상태**: 미해결 (이번 라운드 범위 밖)
+- **해소 메모**: 후처리를 넣은 뒤 실기기에서 얇은 피사체를 실제로 못 누르는지 먼저 확인한다.
+  증상이 없으면 열어 두지 않는다.
+
+### [2026-08-24] 후보 선택 화면에 semantics가 없어 스크린리더로 후보를 고를 수 없다
+
+- **ID**: OQ-P-291
+- **출처**: `SegmentationSubjectHighlight` × `SegmentationScreen` — `Canvas`와
+  `detectTapGestures`만 쓰고 semantics가 전혀 없다. 이미지도 `contentDescription`이 null이다.
+- **항목**: ① 스크린리더 사용자는 후보를 인지할 수도 고를 수도 없다. ② bounds 축소와 무관한
+  **기존 결함**이라 마스크 후처리 라운드에서 고치지 않았다. ③ 후보마다 semantics 노드를 얹으려면
+  현재의 단일 `Canvas` 구조를 바꿔야 하는지, `semantics { }` 블록으로 충분한지 확인이 필요하다.
+- **상태**: 미해결 (기존 결함. 안 넣기로 한 기록)
+- **해소 메모**: C-103 후보 선택 UI를 다시 손대는 라운드에 함께 본다.
+
+### [2026-08-24] 후보 커버리지 임계의 근거가 측정이 아니다
+
+- **ID**: OQ-P-292
+- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+  「필터 판정」 × `SegmentationCandidateFilter.kt#filterCandidates` — 면적 판정을 bounds 사각형에서
+  커버리지(알파 총합 ÷ 255)로 바꾸면서 임계를 새로 정했다.
+- **항목**: ① 초판은 "채움비가 대략 절반이니 종전의 절반"이라는 계산으로 값을 정했다가 철회했다.
+  실제 채움비는 솔리드 제품과 비스듬히 놓인 가늘고 긴 물체 사이에서 자릿수로 벌어진다.
+  ② **그 자리를 채운 값도 측정이 아니라 같은 종류의 추정이다.** ③ 커버리지는 채움비를 곱한 값이라
+  같은 임계가 **가늘고 긴 물체에는 엄격해지고 솔리드 물체에는 느슨해진다.** 지금 값은 얇은 정당
+  피사체를 살리는 쪽으로 골랐고, 그 대가로 작은 솔리드 물체가 종전보다 훨씬 많이 후보로 올라온다.
+  ④ OQ-P-267이 "후보 필터 상수의 근거가 실측이 아니다"로 이미 열려 있고 이 라운드가 그 상수를
+  갈아치운다 — 같은 계열이다.
+- **상태**: 미해결 (값을 계약으로 박되 근거 등급은 조건부로 두었다)
+- **해소 메모**: 사진 세트에서 두 방향을 각각 본다 — 비스듬히 놓인 가늘고 긴 물체가 후보로 남는가,
+  그리고 잡스러운 작은 솔리드 물체가 상한을 잡아먹지 않는가. `MAX_SUBJECT_COUNT` 상한이 후자를
+  받아 내므로 실질 위험은 전자 쪽이다. 관측 1번(후처리 전후 후보 수)이 판정 자료가 된다.
+
+### [2026-08-24] 관측 로그가 릴리즈 빌드에서 남는지 확인이 안 됐다
+
+- **ID**: OQ-P-293
+- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+  「관측」 × `Logger.kt#repositoryLogger` × [ADR-0017](../adr/0017-remote-network-datasource.md)
+- **항목**: ① 이 라운드가 심는 로그 세 줄의 목적은 **필드에서 인식 실패의 원인이 ML Kit인지 우리
+  후처리인지 가르는 것**이다. 디버그 빌드에서만 남으면 목적을 달성하지 못한다. ② 저장소에 빌드
+  타입별 로거 게이팅 관행이 있는지, 있다면 이 세 줄을 예외로 둘지 판단이 필요하다. ③ 예외로 둔다면
+  개인정보가 섞이지 않는지도 함께 봐야 한다(후보 수·픽셀 비율뿐이라 문제없어 보이나 확인 대상이다).
+- **상태**: 미해결 (구현 전 확인)
+- **해소 메모**: `Loggers.create` 구현과 릴리즈 빌드 설정을 확인하면 ①②가 닫힌다. 안 남는다면
+  이 라운드의 관측 항목은 사진 세트 검증용으로만 쓰이고 필드 진단에는 못 쓴다는 사실을 스펙에
+  적어야 한다.
+
+### [2026-08-24] 판정 버퍼 축소를 적용하지 않는 크기 하한을 실측으로 못 정했다
+
+- **ID**: OQ-P-294
+- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+  「처리 해상도」 × 앞 라운드 [segmentation-preprocessing](../specs/2026-08-23-segmentation-preprocessing.md)
+  「해상도 하한」(OQ-P-278)
+- **항목**: ① 축소의 근거는 런 개수 폭증과 그로 인한 OOM인데, **작은 판에서는 그 위험이 없고 판정
+  해상도만 잃는다.** 즉 작은 이미지에서 축소는 순손실이다. ② 그래서 크기 하한을 두었으나 그 값은
+  추정이고, 런 개수가 실제로 위험해지는 지점을 재 본 적이 없다. ③ 앞 라운드가 조건부로 두고 있는
+  "짧은 변 512 확대"가 채택되면 긴 변이 짧은 사진에서 판정 버퍼가 세 자릿수로 내려간다. 하한이
+  그 조합을 자동으로 막지만, **두 라운드의 상수가 서로를 전제하는 관계**가 되므로 어느 한쪽이
+  바뀌면 다른 쪽을 함께 봐야 한다.
+- **상태**: 미해결 (하한값을 계약으로 박되 근거 등급은 조건부로 두었다)
+- **해소 메모**: 사진 세트의 "짧은 변 512 미만"과 "잡티가 많은 텍스처 배경"이 각각 ②③을 판정한다.
+  후자에서 런 개수를 한 번 재면 하한값의 근거가 추정에서 실측으로 바뀐다.
+
+### [2026-08-24] area opening 은 크고 떨어진 덩어리 둘을 못 가른다
+
+- **ID**: OQ-P-295
+- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+  「범위 - 제외」 — 앞 라운드가 후처리로 미룬 "최대 연결 요소만 남기기"를 채택하지 않았다.
+- **항목**: ① area opening 은 임계 **미만** 성분만 버리고 임계 이상은 모두 남긴다. 그래서 한 후보
+  안에 크고 떨어진 덩어리가 둘 있으면 **bounds 가 여전히 둘을 함께 감싼다.** 이 라운드가 고치려는
+  증상("구석 한 점이 bounds 를 넓힌다")의 큰 판본이 그대로 남는 셈이다. ② 최대 연결 요소만 남기면
+  그것이 닫히지만 **분리된 가는 구조와 정당한 다중 성분**(사람 둘, 사람과 든 물건)을 잃는다.
+  이 라운드는 후자를 택했다. ③ **OR 풀링에 따르는 별개 한계도 있다** — 실루엣에서 배율의 두 배
+  이내에 있는 잡티는 본체와 같은 성분으로 묶여 구조적으로 제거할 수 없다.
+- **상태**: 미해결 (교환을 의식적으로 택했고 잔여를 추적한다)
+- **해소 메모**: 사진 세트에서 ①이 실제로 보이면 "가장 큰 성분 대비 일정 비율 미만인 성분을
+  버린다"처럼 절대 임계가 아니라 상대 임계를 쓰는 절충을 본다. 최대 연결 요소로 되돌리는 것은
+  마지막 수단이다 — ②의 손실이 이 기능의 목적(사용자가 어느 피사체를 오릴지 고른다)과 정면으로
+  부딪친다.
+
+<!-- oq-next: 296 -->
