@@ -624,9 +624,10 @@ internal fun guidedCoefficients(
 Run: `./gradlew test ktlintCheck :app:assembleDebug`
 Expected: PASS
 
-⚠️ **마지막 두 `boxMean`을 지우면 두 테스트가 다 깨진다.** `constantGuidance`가 기대하는 것이
-"두 번 평균한 값"이고, `inputEqualsGuidance`도 평탄한 계수를 전제한다. 그 두 줄이 가이드 필터의
-핵심이므로 **테스트가 빨개지면 기대값이 아니라 구현을 의심해라.**
+⚠️ **마지막 두 `boxMean`을 지우면 `constantGuidance`가 깨진다.** 그 테스트가 기대하는 것이
+"두 번 평균한 값"이기 때문이다. (`inputEqualsGuidance`는 이 변이를 잡지 못한다 — 평균을 한 번
+빼도 `a = 1`, `b = 0`이 그대로 나온다. 최종 리뷰가 실측으로 정정한 사항이다.) 그 두 줄이 가이드
+필터의 핵심이므로 **테스트가 빨개지면 기대값이 아니라 구현을 의심해라.**
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1551,9 +1552,14 @@ git commit -m "feat: 두 경로에 원본 안내자를 대고 정련 시간을 �
 `AlphaPostProcessor.kt`의 동명 상수와 파일이 달라 충돌하지 않는다.
 
 **검수가 잡은 변이 생존 자리** — 세로 보간(Task 4의 세로 되올림 테스트), 계수의 마지막 창
-평균(Task 3의 두 기대값 + Task 5의 탐침 위치 20), `changed` 항상 참(Task 4의 무변화 테스트),
+평균(Task 3의 `constantGuidance` 기대값), `changed` 항상 참(Task 4의 무변화 테스트),
 녹·청 계수 교환(Task 2의 순수색 테스트), 축소의 세로 인덱싱(Task 2의 3×3 테스트), `refineEdges`
 플래그(Task 6의 켬·끔 비교)가 각각 대응한다.
+
+**최종 리뷰가 정정한 것** — Task 5의 탐침 위치 20은 마지막 창 평균 변이를 잡지 못한다(두 경우 다
+255다). 그 변이를 실제로 죽이는 것은 Task 3의 `constantGuidance` 하나다. 그리고 Task 5의 배율
+왕복 테스트(`keepTheEdgeAtTheSamePlace`)는 반픽셀 중심 정렬 삭제와 가로 보간 삭제를 **둘 다
+통과한다.** 가로 축 되올림은 별도 대칭 테스트로 덮었다(최종 리뷰 뒤 수정 커밋).
 
 **남는 것** — 사진 세트 판정(OQ-P-296·297·298·299·300)은 이 계획에 넣지 않는다. 실기기에서 사람이
 돌려야 한다.
