@@ -1,11 +1,11 @@
 ---
 id: segmentation-preprocessing
 title: 세그멘테이션 입력 전처리 — 촬영 손실·해상도 하한·회전 정합 (Subject Segmentation input preprocessing)
-status: draft
+status: in-progress
 category: behavior-spec
 platforms: android
-verified: 2026-08-23
-related_code: ImageSegmentationRepositoryImpl#decodeImage, ContentResolver.kt#decodeUriToBitmap, CameraPreviewComponent.kt, CameraCrop.kt#saveViewfinderCapture, FileCameraCacheLocalDataSourceImpl#createFile, CreateCameraCacheFileUseCase, CreateCameraCacheUriUseCase, RecentImageRepositoryImpl#fileExtension, ImageFileLocalDataSourceImpl, DecodeImageUseCase, SegmentationViewModel, ToppingEditViewModel, ToppingEditMask.kt#buildCutoutBitmap, NavKeyToppingEdit
+verified: 2026-08-25
+related_code: ImageSegmentationRepositoryImpl#decodeImage, ContentResolver.kt#decodeUriToBitmap, CameraPreviewComponent.kt, CameraCrop.kt#saveViewfinderCapture, FileCameraCacheLocalDataSourceImpl#createFile, CreateCameraCacheFileUseCase, CreateCameraCacheUriUseCase, RecentImageRepositoryImpl#extensionOf, ExifOrientation.kt#exifOrientationToDegrees, ContentResolver.kt#rotatedToUpright, ImageFileLocalDataSourceImpl, DecodeImageUseCase, SegmentationViewModel, ToppingEditViewModel, ToppingEditMask.kt#buildCutoutBitmap, NavKeyToppingEdit
 related_adr: ADR-0012
 related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, c106-topping-place-api
 related_architecture: data-layer
@@ -18,6 +18,19 @@ tags: [spec, parfait]
 
 ## 목표
 
+> ✅ **as-built 1단계(2026-08-25, PR #349 `a5e8a760` develop 머지)** — **근거가 확정돼 있던 항목만
+> 들어갔다.** 촬영 품질 상향(`CAPTURE_MODE_MAXIMIZE_QUALITY` + `setJpegQuality(100)`), API 28 미만
+> 갈래의 EXIF 회전 보정(`rotatedToUpright`·`readExifDegrees`·`exifOrientationToDegrees` + 모듈 로거
+> `coreUtilAndroidLogger` 신설), `androidx.exifinterface` 의존 추가, 그리고 최근 이미지 `SOURCE`
+> 확장자의 바이트 판정(`extensionOf`)이다. **마지막 항목은 아래 표가 "PNG 채택 시"로 분류했으나
+> 계획이 1단계로 앞당겼다** — PNG 없이도 갤러리에서 고른 PNG 원본이 `.jpg` 이름으로 앉는 것이
+> 지금도 참인 결함이기 때문이다(그 감수는 OQ-P-283).
+>
+> **조건부 항목 넷은 아직 하나도 안 들어갔다** — 짧은 변 512 확대, PNG 저장 전환, API 28 이상 회전
+> 보정, 그리고 그 판정을 내리는 고정 사진 세트 측정이 전부 미착수다. 아래 본문에서 현재 코드를
+> 단정하는 문장은 **1단계가 이미 고친 자리에 한해** 낡았다(촬영 빌더·`fileExtension`). 근거로서의
+> 서술은 그대로 두고 바뀐 자리에만 표시를 달았다.
+
 누끼의 **정확도**를 올린다. 대상을 더 잘 얻는 것이 목표이고 지연·메모리는 목표가 아니다.
 세그멘테이션이 보는 픽셀이 만들어지는 자리를 손봐서, 모델에게 원본에 가장 가까운 입력을 준다.
 
@@ -29,11 +42,11 @@ tags: [spec, parfait]
 
 | 항목 | 근거 | 판정 |
 |---|---|---|
-| `ImageCapture` 촬영 품질 상향 | 손실이 실제로 처음 생기는 자리다. 비용이 설정 한 줄이다 | 무조건 넣는다 |
-| API 26·27 EXIF 회전 보정 | 그 갈래가 EXIF를 안 먹인다는 것이 코드로 확정된다 | 무조건 넣는다 |
-| API 28 이상 추가 회전 보정 | `ImageDecoder`의 EXIF 적용 여부를 확인하지 못했다 | 조건부(OQ-P-280) |
-| 짧은 변 512 하한 확대 | 문서가 하한을 명시하나 확대로 회복된다고는 말하지 않는다 | 조건부(OQ-P-278) |
-| 촬영 저장을 PNG로 | 손실의 두 번째 세대만 없앤다. 첫 세대가 더 크다 | 조건부(아래 경고) |
+| `ImageCapture` 촬영 품질 상향 | 손실이 실제로 처음 생기는 자리다. 비용이 설정 한 줄이다 | 무조건 넣는다 → ✅ 머지(#349) |
+| API 26·27 EXIF 회전 보정 | 그 갈래가 EXIF를 안 먹인다는 것이 코드로 확정된다 | 무조건 넣는다 → ✅ 머지(#349) |
+| API 28 이상 추가 회전 보정 | `ImageDecoder`의 EXIF 적용 여부를 확인하지 못했다 | 조건부(OQ-P-280) → 미착수 |
+| 짧은 변 512 하한 확대 | 문서가 하한을 명시하나 확대로 회복된다고는 말하지 않는다 | 조건부(OQ-P-278) → 미착수 |
+| 촬영 저장을 PNG로 | 손실의 두 번째 세대만 없앤다. 첫 세대가 더 크다 | 조건부(아래 경고) → 미착수 |
 
 > ⚠️ **PNG 전환은 처음 생각보다 근거가 약하다.** `CameraPreviewComponent.kt`의
 > `ImageCapture.Builder().build()`가 출력 포맷·품질·capture mode를 아무것도 지정하지 않아
@@ -88,7 +101,8 @@ tags: [spec, parfait]
 ### 1. 손실이 처음 생기는 자리를 먼저 고친다
 
 `ImageCapture.Builder().build()`가 아무 설정도 하지 않아 기본값으로 동작한다. 출력은 JPEG이고
-capture mode는 지연 최소화 쪽이다. **`saveViewfinderCapture`가 다루는 비트맵은 이미 그 압축을
+capture mode는 지연 최소화 쪽이다. (🔁 **이 서술은 #349 이전의 코드다** — 지금 빌더는
+`CAPTURE_MODE_MAXIMIZE_QUALITY`와 `setJpegQuality(100)`을 명시한다. 출력이 JPEG인 것은 그대로다.) **`saveViewfinderCapture`가 다루는 비트맵은 이미 그 압축을
 한 번 거친 픽셀이다.**
 
 그래서 순서를 뒤집는다. **`ImageCapture` 쪽 품질을 먼저 올린다**(`setJpegQuality`를 상향하거나
@@ -111,7 +125,8 @@ WebP 무손실은 쓰지 않는다. `WEBP_LOSSLESS`의 API 하한을 문서로 �
 - **촬영 중 상태와 셔터 비활성.** 화면 이동은 저장이 끝난 뒤에 일어난다. PNG 인코딩이 끼면 셔터에서
   확인 화면까지의 공백이 눈에 띄게 길어지는데 지금은 진행 표시도 연타 가드도 없다. 파일명이 초
   단위라 같은 초의 두 촬영은 서로를 덮는다.
-- **`RecentImageRepositoryImpl#fileExtension`의 확장자 판정.** 지금은 `SOURCE`를 `"jpg"`로 못박고
+- **`RecentImageRepositoryImpl#fileExtension`의 확장자 판정**(🔁 **#349에서 `extensionOf`로 바뀌며
+  먼저 들어갔다** — PNG 채택을 기다리지 않았다). 당시에는 `SOURCE`를 `"jpg"`로 못박고
   있고 바로 위 KDoc이 "이름이 거짓이면 업로드가 content type을 잘못 정한다"고 경고한다.
   PNG 촬영본이 그 이름으로 앉으면, C-301 배경 편집이 최근 목록에서 그것을 골랐을 때
   `ImageFileLocalDataSourceImpl`이 확장자 기반 MIME을 먼저 믿어 **PNG 바이트가 `image/jpeg`로**
@@ -211,9 +226,9 @@ internal fun exifOrientationToDegrees(orientation: Int): Int
 
 | 파일 | 역할 | 조건 |
 |---|---|---|
-| `CameraPreviewComponent.kt` | `ImageCapture` 품질 설정 | 무조건 |
-| `core/util/android/.../ContentResolver.kt` | EXIF 각도 보정. 회전 전 판 회수 | 무조건(API 26·27) |
-| `gradle/libs.versions.toml` | `androidx.exifinterface` 추가 | 무조건 |
+| `CameraPreviewComponent.kt` | `ImageCapture` 품질 설정 | 무조건 → ✅ #349 |
+| `core/util/android/.../ContentResolver.kt` | EXIF 각도 보정. 회전 전 판 회수 | 무조건(API 26·27) → ✅ #349 |
+| `gradle/libs.versions.toml` | `androidx.exifinterface` 추가 | 무조건 → ✅ #349 (`core/util/android/build.gradle.kts` 결선과 모듈 로거 `Logger.kt` 신설이 함께 들어갔다) |
 | `data/.../image/SegmentationInputNormalizer.kt` | 신설. `computeUpscaleTarget`·하한·픽셀 상한 | 512 항목 채택 시 |
 | `ImageSegmentationRepositoryImpl#decodeImage` | 확대 적용. 중간 비트맵 회수. KDoc 경계 명시 | 512 항목 채택 시 |
 | `domain/.../camera/CameraCacheFormat.kt` | 신설. 포맷 어휘 | PNG 채택 시 |
@@ -221,7 +236,7 @@ internal fun exifOrientationToDegrees(orientation: Int): Int
 | `FileCameraCacheLocalDataSource(+Impl)` | `createFile`이 포맷을 받아 확장자를 고른다 | PNG 채택 시 |
 | `CameraCrop.kt#saveViewfinderCapture` | 포맷을 받아 압축. `JPEG_QUALITY` 상수 정리 | PNG 채택 시 |
 | `CustomCameraViewModel` | `returnResultOnly`로 포맷을 가른다. 촬영 중 상태·셔터 비활성 | PNG 채택 시 |
-| `RecentImageRepositoryImpl#fileExtension` | `SOURCE` 확장자를 이름이 아니라 바이트로 판정 | PNG 채택 시 |
+| `RecentImageRepositoryImpl#extensionOf` | `SOURCE` 확장자를 이름이 아니라 바이트로 판정 | ~~PNG 채택 시~~ → ✅ #349 (계획이 1단계로 앞당겼다) |
 
 ## 에러 처리
 

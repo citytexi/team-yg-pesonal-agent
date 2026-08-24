@@ -235,6 +235,13 @@ PR #329). C-301 배경 편집이 고른 사진을 `ImageType.BACKGROUND`로 올�
 보이기 때문이다. 서버가 받지 않는 형식은 발급 요청을 보내기 전에 걸러진다(400 `INVALID_CONTENT_TYPE`
 왕복이 줄었다).
 
+📌 **판정이 한 자리 앞으로 더 갔다**(2026-08-25, PR #349) — 최근 이미지 저장
+(`RecentImageRepositoryImpl#extensionOf`)이 `SOURCE`의 확장자를 종류가 아니라 **바이트**로 정한다.
+`UploadImageFormat.ofBytes`를 업로드 경로 밖에서 처음 쓰는 자리이고, 여기가 `.jpg`로 못박고 있던
+동안에는 갤러리에서 고른 PNG가 그 이름으로 앉아 나중에 배경으로 고를 때
+`ImageFileLocalDataSourceImpl#formatOf`의 **확장자 우선** 판정이 `image/jpeg`를 실었다.
+⚠️ **이미 `.jpg`로 앉은 파일은 그대로 남는다** → [open-questions](../synthesis/open-questions.md) OQ-P-283.
+
 ⚠️ **캐시가 쌓이기만 한다** — 복사본은 `cacheDir/upload`에 UUID 이름으로 남고 지우는 코드가 없다
 (세그멘테이션 캐시와 달리 정리 경로가 아직 없다) → [open-questions](../synthesis/open-questions.md) OQ-P-262.
 
