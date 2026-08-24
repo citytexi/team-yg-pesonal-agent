@@ -6,7 +6,7 @@ category: behavior-spec
 platforms: android
 verified: 2026-08-24
 related_code: ImageSegmentationRepositoryImpl#toCandidates, ImageSegmentationRepositoryImpl#toForegroundCandidate, ImageSegmentationRepositoryImpl#segmentForeground, ImageSegmentationRepositoryImpl#segmentImage, SegmentationMask.kt#maskSubjectPixels, SegmentationCandidateFilter.kt#filterCandidates, SegmentationCandidate, SegmentationBounds, SegmentationHighlightGeometry.kt#pickCandidateIndex, ToppingEditMask.kt#trimTransparentBounds, RunSuspendCatching.kt, Logger.kt#repositoryLogger, ContentResolver.kt#decodeUriToBitmap, CameraCrop.kt#saveViewfinderCapture
-related_adr: ADR-0012, ADR-0017
+related_adr: ADR-0012, ADR-0011
 related_spec: segmentation-preprocessing, c103-multi-subject-selection, segmentation-pipeline-hardening
 related_architecture: data-layer
 supersedes:
@@ -264,19 +264,20 @@ internal data class AlphaPostProcessOptions(
     val binaryThreshold: Int = 127,
     val areaOpeningMinPixels: Int = AREA_OPENING_MIN_PIXELS,
     val erodeEdge: Boolean = true,
+    val minPixelsForDownscale: Int = MIN_PIXELS_FOR_DOWNSCALE,
 )
 
 /**
  * 남은 알파의 tight 영역과 커버리지.
  *
  * @param alphaSum 침식까지 끝낸 알파의 총합. 커버리지 판정이 쓴다
- * @param alphaSumBeforeErode 되돌리기 후보의 커버리지를 채우는 데 쓴다
  * @param partialAlphaPixels 알파가 1~254인 픽셀 수. 관측 전용
+ * @param changed 거짓이면 호출부가 원본 판을 그대로 쓸 수 있다. 단 tight bounds 가 판 전체와
+ *   같을 때만이다 — 알파를 안 바꿔도 원판에 투명 여백이 있으면 판 치수와 `bounds` 가 어긋난다
  */
 internal data class AlphaPostProcessResult(
     val bounds: SegmentationBounds,
     val alphaSum: Long,
-    val alphaSumBeforeErode: Long,
     val partialAlphaPixels: Int,
     val changed: Boolean,
 )
@@ -301,6 +302,7 @@ internal fun postProcessAlpha(
 
 | 파일 | 변경 |
 |---|---|
+| `data/.../repository/image/AlphaCoverage.kt` | 신설. 픽셀 배열의 알파 총합 |
 | `data/.../repository/image/AlphaPostProcessor.kt` | 신설. 위 API와 단계 구현 |
 | `data/.../repository/image/AlphaComponents.kt` | 신설. 런 추출·union-find·area opening |
 | `data/.../repository/image/SegmentationMask.kt` | `maskSubjectPixels`를 램프 사상 + 커널 호출로 재작성 |
@@ -315,8 +317,9 @@ internal fun postProcessAlpha(
 
 **후처리 전에 값싼 사전 절단을 한다.** bbox 픽셀 수는 커버리지의 상계이므로(알파가 255를 넘지
 않는다), **bbox가 커버리지 임계 미만인 후보는 후처리 없이 버려도 최종 판정을 바꾸지 않는다.**
-bbox는 `subject.startX`와 판 치수로 공짜로 얻는다. 그리고 후처리 대상 개수에 상한을 두고, 넘치면
-bbox 내림차순으로 자르고 **잘린 개수를 로그로 남긴다.** 후처리가 `take(MAX_SUBJECT_COUNT)` 앞에
+bbox는 `subject.startX`와 판 치수로 공짜로 얻는다. 그리고 후처리 대상 개수를 `MAX_SUBJECT_COUNT + 3` 으로 막고, 넘치면
+bbox 내림차순으로 자르고 **잘린 개수를 로그로 남긴다.** 여유 3은 근거가 없는 값이라 조건부다 —
+잘린 후보가 최종 다섯에 들었을 사례가 로그에 보이면 늘린다. 후처리가 `take(MAX_SUBJECT_COUNT)` 앞에
 있어 ML Kit이 준 subject 전부에 적용되기 때문이다.
 
 ⚠️ **자르기는 알파를 바꾸지 않는다.** 후처리 결과를 픽셀에 반영하려면 새 판을 만들어야 한다.
@@ -340,7 +343,8 @@ ML Kit이 준 비트맵에 되쓰는 것은 안 된다. 그 판의 수명은 `Su
 후보를 **하나씩 처리하고 즉시 알파 전멸 여부만 판정한다.** 정렬·상한 절단·IoU 병합은 목록 전체를
 봐야 하므로 `filterCandidates`에 그대로 남는다.
 
-**`require`는 `ImageSegmentationRepositoryImpl`의 두 생성 지점에 둔다.** `BitmapWrapper`가
+**`require`는 `ImageSegmentationRepositoryImpl`의 **모든** 생성 지점에 둔다(주 경로의 후처리 판과
+되돌리기용 원본 판, 그리고 폴백 경로).** `BitmapWrapper`가
 치수 접근자 없는 빈 마커 인터페이스이고 domain이 `:core:util:android`를 의존하지 않아, domain
 모델의 `init` 블록에서는 치수를 읽을 수 없다. `SegmentationCandidate` KDoc이 "예외가 아니라
 조용한 파손이라 늦게 드러난다"고 경고한 조합이 이번 변경으로 열리므로, 경고를 코드로 승격시킨다.
@@ -384,8 +388,15 @@ KDoc이 담고 있던 초과·이상 구분은 이 등가식으로 이관되는 
 | 후처리가 후보의 알파를 전멸시켰다 | **후처리 이전 후보로 되돌린다** | 후처리는 개선 수단이지 후보를 없앨 권한이 아니다 |
 | `filterCandidates`가 전부 걸러 냈다 | 종전대로 폴백 | c103 라운드의 결정이고 테스트가 고정한다 |
 
-되돌린 후보의 커버리지는 커널이 함께 돌려준 `alphaSumBeforeErode`로 채운다. 추가 패스가 없다.
-되돌린 사실은 로그로 남긴다.
+⚠️ **되돌리기는 후보 단위다.** 목록 전체가 전멸했을 때만 되돌리면, 후보 넷 중 하나만 전멸한
+경우 그 후보는 되돌려지지 않고 조용히 사라진다. "후처리는 후보를 없앨 권한이 아니다"라는 논거를
+절반만 지키는 셈이다. `OutOfMemoryError` 로 후처리가 실패한 후보도 같은 경로로 되돌린다.
+
+되돌린 후보의 커버리지는 **후처리 이전 알파의 총합**이다. 커널이 돌려준 값을 쓸 수 없다 —
+전멸하면 커널이 `null` 을 돌려주므로 꺼낼 결과 자체가 없다. 알파 배열을 만드는 순환에서 총합을
+함께 누적하면 추가 패스가 없다.
+
+되돌린 개수는 로그로 남긴다.
 
 폴백 후보는 현행대로 `filterCandidates`를 타지 않는다. 그 후보의 커버리지도 커널이 채운다.
 
@@ -554,7 +565,8 @@ import 한 줄로 쓸 수 있다.
 | `SegmentationMaskTest` — 전부 객체 | 경계를 투명으로 치지 않으므로 통과한다. 확인만 한다 |
 | `SegmentationMaskTest` — 버퍼 limit 초과 | 램프 사상 중에도 같은 인덱스를 읽으므로 유지된다. 예외 발생 지점이 옮겨질 뿐이다 |
 | `SegmentationCandidateFilterTest` — 임계 경계 둘, 전부 미달, 상한 절단, 동률 정렬 | 헬퍼에 커버리지 인자를 먼저 넣는 커밋을 앞세우고 전부 재작성 |
-| `SegmentationCandidateFilterTest` — 중복 bounds | IoU 1이라 병합된다. 그대로 통과 |
+| `SegmentationCandidateFilterTest` — 중복 bounds | **다시 쓴다.** IoU 1이라 병합 자체는 되지만, 그 픽스처의 후보 크기가 새 커버리지 하한에 걸려 둘 다 탈락한다 |
+| `SegmentationCandidateFilterTest` — 상한 절단 | **다시 쓴다.** 같은 이유로 여섯 중 셋만 남아 상한 5를 검증하지 못한다 |
 | `SegmentationCandidateFilterTest` — 빈 입력 | 그대로 통과. 확인만 한다 |
 | `SegmentationViewModelTest` | 후보 생성 두 자리에 커버리지를 채운다 |
 | `SegmentationHighlightGeometryTest` | 축소·확대 양방향으로 승자가 바뀌는 케이스를 **추가**한다 |
