@@ -221,9 +221,17 @@ getter 이름이 아니라 **Kotlin 주 생성자 파라미터명**으로 프로
 
 **Android 쪽 서술을 함께 정정한다.** 이 절은 앱에 `usesCleartextTraffic`도 `networkSecurityConfig`도
 **없다**고 적어 왔으나, `app/src/main/AndroidManifest.xml`에 `android:usesCleartextTraffic="true"`가
-**2026-08-15(PR #241)부터 있다** — 로그인 실기기 검증을 막고 있어 넣은 임시 조치이고 main 매니페스트라
-릴리즈 빌드까지 따라간다(OQ-P-076). 서버가 HTTPS로 옮겨 가면 그 플래그의 **존재 이유가 사라지고
-평문 다운그레이드만 허용하는 자리로 남는다** — 제거는 앱 쪽 결정이다.
+**2026-08-15(PR #241)부터 있었다** — 로그인 실기기 검증을 막고 있어 넣은 임시 조치이고 main 매니페스트라
+릴리즈 빌드까지 따라갔다(OQ-P-076).
+
+✅ **앱이 같은 날 따라왔다(2026-08-25, PR #358).** `usesCleartextTraffic`이 빠지고
+`app/src/main/res/xml/network_security_config.xml`이 그 자리를 대신한다 — `base-config`가
+`cleartextTrafficPermitted="false"`에 시스템 인증서만 신뢰하고, `debug-overrides`가 평문을 허용하면서
+사용자 설치 인증서까지 신뢰한다. 즉 **릴리즈 빌드는 이제 HTTPS를 강제하고, 디버그 빌드만 평문
+개발 주소로 계속 붙는다.** 이 문서가 권고했던 순서(base URL 교체가 먼저)를 코드는 뒤집었지만
+`debug-overrides`가 그 위험을 흡수했다. ⚠️ 좁히기는 권고보다 넓다 — "개발 서버 도메인만"이 아니라
+**디버그 빌드의 모든 호스트**에 평문이 열려 있다. 앱 `YG_BASE_URL` 교체는 `local.properties`라 커밋
+delta로 확인할 수 없어 OQ-P-302가 계속 쥔다.
 
 ## 스키마 소유권 — 코드가 정본이어도 운영 응답은 다를 수 있다
 

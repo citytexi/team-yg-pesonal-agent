@@ -402,9 +402,11 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
   정확히 1회** 재전송한다. 서버가 끝내 실패해도 로컬은 정리하고 성공을 반환한다.
 - 204·envelope 없음이라는 이 문서의 서술대로 `safeApiCallNoContent`를 쓴다(변경 없음).
 
-**실제 서버 호출로는 아직 한 번도 검증되지 않았다** — 실기기 검증이 남아 있다. 개발 서버 평문 HTTP
-차단은 `usesCleartextTraffic`으로 뚫었으나 그 설정 자체가 미결이다
-→ [open-questions](../synthesis/open-questions.md).
+**실제 서버 호출로는 아직 한 번도 검증되지 않았다** — 실기기 검증이 남아 있다. 다만 **막고 있던
+것이 무엇인지가 바뀌었다**(2026-08-25, PR #358): 평문 HTTP를 뚫으려고 넣었던 `usesCleartextTraffic`이
+`network_security_config.xml`로 대체돼 **디버그 빌드는 평문이 열려 있고 릴리즈 빌드만 HTTPS를 강제**한다.
+서버도 HTTPS 도메인을 얻었으므로(→ [conventions](conventions.md) "전송") 남은 전제는 앱
+`YG_BASE_URL`뿐이다 → [open-questions](../synthesis/open-questions.md) OQ-P-076·OQ-P-302.
 
 **애플 로그인은 Android가 쓰지 않기로 했다**(2026-08-11 결정, 위 각주). 대응 심볼 0건이 공백이 아니라
 결론이므로 이 표에서 "앞으로 채울 자리"로 세지 않는다.

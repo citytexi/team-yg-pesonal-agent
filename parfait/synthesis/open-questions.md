@@ -472,8 +472,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-047
 - **출처**: `feature/groups/list/impl/route/GroupListParfaitLayout.kt`·`GroupListScreen.kt`·`GroupListViewModel.kt`·`route/component/GroupListTooltip.kt`(PR #173·#176·#180 develop 머지) — ① `GroupListUiState.groupList`가 `List<String>` placeholder고 렌더에 쓰이지 않아 [[무한-파르페-그리드]]의 지그재그 배치·인셋·y좌표·6타입 변형·활동순 정렬·상대시간이 전부 미구현이다. ② 크림 반복이 정책의 "토핑 0~3 → 3개, 4개부터 1:1" 규칙이 아니라 `content` 높이를 덮을 때까지의 올림 나눗셈이다. ③ 툴팁이 `LaunchedEffect(Unit) { show() }`로 **진입 시 무조건** 뜬다 — [[g-001-empty-툴팁]]의 노출 조건은 "그룹 0건". ④ `GroupListUiState.isTooltipVisible`은 死필드이고 실제 노출은 화면 로컬 `rememberTooltipState`가 쥔다. ⑤ 툴팁 문구·앵커가 코드에 리터럴로 확정됐는데 위키 정책은 문구·앵커를 미정으로 둔다(정책 소스 미수집).
 - **항목**: ① 목록 조회 API가 붙는 라운드에서 파르페 좌표 정책을 어디까지 컴포넌트(`YGToppingGroup`)로 흡수할지, ② 크림 개수 규칙을 정책대로 되돌릴지 레이아웃 파생값으로 유지할지, ③ 툴팁 노출 조건을 `groupList.isEmpty()`로 결선하고 상태 소유를 VM/화면 중 어디로 정할지(`isTooltipVisible` 존폐), ④ 툴팁 문구·앵커를 위키 정책으로 역수집할지.
-- **상태**: 미해결 — **①은 부분 해소(2026-08-07, PR #194)**, ②③④ 잔존
+- **상태**: 미해결 — **①은 부분 해소(2026-08-07, PR #194)**, **③은 해소(2026-08-25, PR #352)**, ②④ 잔존
 - **해소 메모**: **①**: 토핑 배치가 화면의 `ToppingLayout`(지그재그 커스텀 `Layout`)으로 들어왔고 좌·우 인셋 4·같은 side 갭 -12·`Right = Left + 86`·저개수 N≤3 +12가 전부 [[G-001-무한파르페-간격-정책-v0.3]]과 **일치**한다. 소유 갈림은 "컴포넌트(`YGToppingGroup`)는 한 토핑의 회전·오프셋만, 화면은 열·간격"으로 결론났다. 다만 **변형 타입은 정책의 랜덤 재부여가 아니라 index 순환**이라 별도 항목으로 뗀다([2026-08-07](#2026-08-07-토핑-변형-타입이-index-순환으로-부여됨--정책은-랜덤-재부여)). **②**: 크림 반복 기준이 접시 제외로 좁혀졌을 뿐 여전히 높이 파생이다. **③**: 조회가 아직 mock이라 그대로고, mock 기본값이 4건이라 **0건 아닌 상태에서도 툴팁이 뜬다**. **④**는 위키 소관이라 정책 소스 수집 요청이 먼저다([[open-questions]]의 툴팁 문구·앵커 미정 항목). 표 갱신은 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "정책 대조"에 반영했다.
+  **③**: ✅ **해소(2026-08-25, PR #352)** — 조건과 상태 소유가 한꺼번에 정해졌다. `observeGroups`가
+  캐시를 구독하면서 `isTooltipVisible = groups?.isEmpty() == true`를 같은 자리에서 세우므로
+  **死필드였던 `isTooltipVisible`이 실제 노출을 결정하는 값이 됐고**(출처 ④도 함께 닫힌다),
+  `GroupListTopBar`는 그 값과 "그룹 추가 칩이 보이는가"를 **둘 다** 만족할 때만 툴팁을 띄운다
+  (에러 화면 제외는 종전대로다). 미조회(`null`)에서 안 띄우는 것이 이 결선의 핵심이다 — 0건인지
+  모르는 채로 띄우면 그룹이 있는 사용자에게도 한 번 스친다(ADR-0023이 `null`과 `emptyList()`를
+  가른 이유가 여기서 실제로 쓰였다). 마지막 그룹을 나가면 다시 뜨고 첫 그룹을 만들면 재조회 없이
+  그 자리에서 접힌다. 유닛 4건이 네 갈래를 잠근다. **닫힘 비영속**은 상태를 저장하지 않으므로
+  종전대로이고, 화면을 떠났다 돌아오면 컴포지션이 새로 서면서 다시 뜬다.
 
 ### [2026-08-01] 테마 비의존 그리기 확장의 소유 모듈이 갈림
 - **ID**: OQ-P-048
@@ -724,7 +733,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-076
 - **출처**: 개발 서버 base URL이 `https`가 아니라 평문 `http`다(주소는 private submodule `project-paths.md` 참고). TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTraffic`·`networkSecurityConfig`가 **둘 다 없다** → [api/conventions.md](../api/conventions.md) "직렬화 규약".
 - **항목**: Android 9(API 28)부터 평문 HTTP는 기본 차단이라, 실제 연동을 시작하면 **모든 요청이 `CLEARTEXT communication not permitted`로 실패**한다. 서버에 HTTPS를 적용할지(권장), 아니면 debug 빌드 한정으로 `network_security_config.xml`에 해당 호스트만 허용할지 결정한다. 후자는 release 빌드가 HTTPS 전환 전까지 동작하지 않는다는 뜻이므로 서버 일정과 묶인다.
-- **상태**: **부분 해소** (2026-08-25 — ①이 서버에서 채택됐고, 앱 쪽 두 가지가 남았다)
+- **상태**: **해소됨** (2026-08-25, PR #358 — 서버가 ①을 채택하고 앱 매니페스트 조치가 같은 날 들어왔다)
   > 📌 **2026-08-14** — A-002 로그인 실기기 검증을 막고 있어 `app/src/main/AndroidManifest.xml`에
   > `android:usesCleartextTraffic="true"`를 넣었다(**PR #241로 2026-08-15 develop 머지**).
   > **main 매니페스트라 릴리즈 빌드까지 따라간다** — 앱
@@ -741,7 +750,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ② 그 뒤 `app/src/main/AndroidManifest.xml`의 `usesCleartextTraffic="true"`를 제거하는 것.
   ②를 미루면 릴리즈 빌드가 **평문 다운그레이드를 계속 허용**한다 — 서버가 HTTPS를 갖춘 뒤로는
   이 플래그에 남는 효용이 없다.
-- **해소 메모**: 결정 후 [api/conventions.md](../api/conventions.md)와 앱 매니페스트·`local.properties` 안내를 갱신한다.
+- **해소 메모**: ②가 같은 날 들어왔다(**PR #358**, 2026-08-25). `usesCleartextTraffic="true"`가
+  사라지고 `app/src/main/res/xml/network_security_config.xml`이 그 자리를 대신한다 —
+  `base-config`는 `cleartextTrafficPermitted="false"`에 시스템 인증서만 신뢰하고,
+  `debug-overrides`가 평문을 허용하면서 사용자 설치 인증서까지 신뢰한다.
+  **이 문서가 못 박아 둔 순서(① 먼저, ② 나중)를 코드는 뒤집었는데, 그 위험을 `debug-overrides`가
+  흡수했다** — 디버그 빌드는 평문 주소로 계속 붙고 릴리즈 빌드만 HTTPS를 강제하므로, ①이 아직
+  안 끝났어도 지금 붙어 있는 개발 경로가 끊기지 않는다. CI도 `YG_BASE_URL`을 주입하지 않아
+  `BASE_URL_FALLBACK`(이미 `https`)로 조립된다.
+  ⚠️ **다만 좁히기가 이 문서가 적어 둔 것보다 넓다** — 제안은 "개발 서버 도메인만 debug 한정"
+  이었으나 실제 설정은 **디버그 빌드의 모든 호스트**에 평문을 연다. 사용자 인증서 신뢰도
+  함께 붙어 디버그 빌드는 중간자 프록시로 트래픽을 볼 수 있는 상태다(디버깅 편의와 맞바꾼 자리).
+  ① `YG_BASE_URL` 교체는 `local.properties`라 커밋 delta로 확인할 수 없어 **OQ-P-302가 계속 쥔다**.
 
 ### [2026-08-03] `clickableYGNoRipple` 사용처 0 — 존치 여부
 - **ID**: OQ-P-077
@@ -765,6 +785,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (실연동 라운드로 이월)
   > 📌 **2026-08-06 (PR #197 머지) 갱신** — 이 표면이 develop에 들어왔다. 즉 미검증 코드가 브랜치가 아니라 **기본 브랜치에 있다**. 검증 조건(cleartext·`YG_BASE_URL`)은 하나도 바뀌지 않았고, 소비처가 0건이라 지금은 실행조차 되지 않는다.
 - **해소 메모**: 서버 HTTPS 전환 또는 `network_security_config.xml` 화이트리스트 결정(위 "개발 서버가 평문 HTTP" 항목)이 먼저 풀려야 이 항목도 풀린다. 확인 후 [specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "검증" 절과 `parfait/api/` 4개 계약 문서의 "Android 매핑" 절(`android_status`를 `partial`→`done`으로)을 갱신한다.
+  > 📌 **전송 갈래는 닫혔다(2026-08-25, PR #358)** — 디버그 빌드는 `debug-overrides`로 평문이
+  > 열려 있고 서버도 HTTPS를 갖췄으므로 **`CLEARTEXT communication not permitted`가 더는 이
+  > 항목을 막지 않는다.** 남은 전제는 `YG_BASE_URL` 하나이고, 그것이 채워지면 실요청 왕복을
+  > 실제로 해 볼 수 있다. 이 항목이 미해결인 근거는 이제 "막혀 있다"가 아니라
+  > **"아무도 아직 해 보지 않았다"**로 바뀐다.
 
 ### [2026-08-04] Top Bar의 두 우측 슬롯이 측정 의미가 다름 — `rightContent` vs `trailingContent`
 - **ID**: OQ-P-080
@@ -1007,9 +1032,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-09] 테스트 기반 구조에 검증되지 않은 표면 3건
 
 - **ID**: OQ-P-102
-- **출처**: PR #219 develop 머지([unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)). 유닛 테스트는 배선·통과했지만 세 표면이 실제로 동작하는지는 증명되지 않았다. ① `MainDispatcherRule`은 사용처가 0건이다 — 배선(`@get:Rule` + `runTest(rule.dispatcher)` 컴파일·통과)까지만 확인했고 `Dispatchers.setMain` 적용·복원과 스케줄러 공유가 무엇을 막아주는지는 미검증이다. 이번 범위(`domain`·`data`·`core:util:*`)에 ViewModel이 없어서다. ② 계측 테스트 2건(`YGThemeSmokeTest`·`ContextExtensionTest`)은 CI에서 `assembleDebugAndroidTest` 컴파일까지만 검증돼 런타임 오류가 드러나지 않는다. ③ `core:util:android`는 `parfait-test-unit`이 적용됐지만 unit 테스트가 0개다(내용물이 Compose Modifier·Context/Bitmap 확장이라 대상 없음).
+- **출처**: PR #219 develop 머지([unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)). 유닛 테스트는 배선·통과했지만 세 표면이 실제로 동작하는지는 증명되지 않았다. ① `MainDispatcherRule`은 사용처가 0건이다 — 배선(`@get:Rule` + `runTest(rule.dispatcher)` 컴파일·통과)까지만 확인했고 `Dispatchers.setMain` 적용·복원과 스케줄러 공유가 무엇을 막아주는지는 미검증이다. 이번 범위(`domain`·`data`·`core:util:*`)에 ViewModel이 없어서다. ② 계측 테스트 2건(`YGThemeSmokeTest`·`ContextExtensionTest`)은 CI에서 `assembleDebugAndroidTest` 컴파일까지만 검증돼 런타임 오류가 드러나지 않는다(**2026-08-25 기준 파일 5개·`@Test` 14건으로 늘었고 조건은 그대로다** — 아래 참고). ③ `core:util:android`는 `parfait-test-unit`이 적용됐지만 unit 테스트가 0개다(내용물이 Compose Modifier·Context/Bitmap 확장이라 대상 없음).
 - **항목**: ① 첫 ViewModel 테스트를 쓸 때 룰 자체를 검증하는 테스트를 함께 추가할지 — 계측 소스셋에서 코루틴을 다루려면 `bundles.test-android`에 `kotlinx-coroutines-test`를 넣어야 하고(현재 없고 `:core:testing`도 계측에 미배선), `runTest`를 인자 없이 부르면 스케줄러가 갈려 `advanceUntilIdle()`이 Main 큐를 비우지 못한다. ② CI에 기기·에뮬레이터를 붙일 시점. ③ Android 비의존 로직이 `core:util:android`에 생기는 시점에 채운다.
 - **상태**: 미해결 (셋 다 트리거 대기 — ViewModel 등장 / CI 기기 도입 / 대상 로직 추가)
+  > 📌 **②의 규모가 일곱 배가 됐는데 실행은 여전히 0회다(2026-08-25, PR #351)** — `YGCanvasTest`
+  > 2건이 붙어 계측 소스셋이 **파일 5개·`@Test` 14건**이 됐다(`YGThemeSmokeTest`·`ContextExtensionTest`
+  > ·`YGLoadingOverlayTest`·`YGScaffoldV2Test`·`YGCanvasTest`). CI `test.yml`은 그대로
+  > `:core:util:android:assembleDebugAndroidTest`·`:core:designsystem:assembleDebugAndroidTest`
+  > 두 줄이라 **컴파일만 되고 단언은 한 번도 실행되지 않는다.** 이번에 들어온 둘은 `YGCanvas`의
+  > 새 규칙(배경 미설정일 때만 빈 안내판)을 잠그려고 쓴 것이라, 잠갔다고 적기 어려운 상태가
+  > 새 규칙 하나를 더 덮는다. ②(CI 기기 도입)의 값어치가 라운드마다 커진다.
   > 📌 **①이 한 라운드 더 버텼다(2026-08-12, PR #230)** — `data` 유닛 테스트가 3건 늘었는데(`ImageRemoteDataSourceImplTest`·`MemberRemoteDataSourceImplTest`·`ParfaitImageRemoteDataSourceImplTest`) **`MainDispatcherRule` 사용처는 여전히 0건**이다. 셋 다 `runTest`만 쓰고 `Dispatchers.Main`을 건드리지 않는다 — 원인은 그대로 "테스트 대상에 ViewModel이 없다"이고 그 조건은 소비처 결선 라운드까지 안 바뀐다.
 - **해소 메모**: 해소 시 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "주의 / 열린 질문" 절의 대응 항목을 지운다.
 
@@ -2195,6 +2227,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ③의 판정이 실제로 필요해진 것도 여기다: 화면은 **미설정·미지 type·파싱 실패 셋을 같은 기본
   > 배경으로** 떨어뜨려 세 경우가 사용자에게 완전히 같아졌다. 매퍼가 접은 것(미지 type → `null`)과
   > 화면이 접은 것(파싱 실패 → 기본값)이 **다른 층에서 두 번** 일어난다는 점도 새로 드러났다.
+  > 📌 **화면이 접던 자리가 컴포넌트로 내려갔다(2026-08-25, PR #351)** — `CanvasMainScreen`의
+  > `DEFAULT_CANVAS_BACKGROUND`가 사라지고 파싱 실패가 **미설정과 같은 `null`로** 떨어진다.
+  > `YGCanvas`의 `background`가 nullable이 되어 `null`이면 흰 바탕을 깐다. **접히는 값이
+  > `Solid(Gray100)`에서 흰 바탕으로 바뀌었을 뿐 세 경우가 같아지는 성질은 그대로**이고,
+  > 화면에 복제돼 있던 기본값이 없어진 만큼 접는 층은 둘에서 **하나**로 줄었다.
+  > ③(미지 type과 미설정을 구분해야 하는가)은 값이 옮겨 갔을 뿐 그대로 열려 있다.
   > 📌 **③의 걱정 한 갈래는 구조로 닫혔고 다른 갈래가 늘었다(2026-08-16, PR #266)** — 앱이 배경을
   > 되돌려 보낼 때 **읽기 모델을 재사용하지 않는다**(쓰기 전용 `CanvasBackgroundEdit`). 그래서 "미지
   > type을 `null`로 접었다가 다음 저장 요청에서 조용히 사라진다"는 경로는 생기지 않는다. 대신
@@ -3726,10 +3764,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ② 기존 토핑을 그린다면 배치 중인 토핑과 시각적으로 어떻게 가를지(지금은 배경 전체에 `Black25` 딤을
   깔아 배치 대상만 도드라지게 한다 — 남의 토핑도 그 딤 아래로 갈지).
   ③ 겹침 규칙(z 순서)이 정책에도 코드에도 없다.
-- **상태**: 미해결
-- **해소 메모**: OQ-P-209 ③(얹은 직후 화면 갱신)과 같은 조회를 쓰게 될 가능성이 높다. 정하면
-  [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 드리프트 ④와
-  [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md)을 함께 본다.
+- **상태**: **해소됨** (2026-08-25, PR #357 — ①은 재조회, ②는 딤 아래, ③은 `positionZ` 오름차순)
+- **해소 메모**: 셋 다 코드가 답을 골랐다. **①** `CanvasToppingPlaceViewModel`이 초안에서 읽은
+  `groupId`로 `GetTodayParfaitUseCase`를 **다시 부른다**(NavKey·공유 캐시로 넘기는 안은 안 골랐다).
+  `groupId` 하나당 한 번만 부르도록 필드 하나로 가드하고, 조회 실패는 로그만 남긴 채 기본 배경·빈
+  토핑 목록으로 배치를 계속하게 둔다. 우려하던 **부작용 있는 `today` 재호출**은 KDoc이 "이 흐름에
+  들어왔다는 것 자체가 오늘 캔버스가 있다는 뜻"이라고 근거를 적어 두었다 — 발동할 일이 없다는 뜻이지
+  호출이 안전하다는 보장은 아니라는 단서까지 함께 적었다(OQ-P-129의 부작용 있는 GET은 그대로 열려
+  있다). **②** 남의 토핑도 딤 **아래**다 — 겹 순서가 배경 → 기존 토핑 → `Black25` 딤 → 배치 중인
+  토핑이라 지금 옮기는 것만 딤 위에 뜬다. **③** 그리는 순서를 `transform.positionZ` 오름차순으로
+  정렬해 `CanvasToppingLayer`의 계약(뒤에 오는 것이 위)에 맞춘다 — C-001과 같은 규칙이다.
+  배경 이미지도 C-001과 같은 `ContentScale.Crop`이라 두 화면의 그림이 갈리지 않는다.
+  ⚠️ **남는 것 셋**: 배치 화면의 캔버스 상자는 여전히 `YGCanvas`가 아니라 화면 자작 `Box`라
+  **좌상단 컷 도형이 없다**(OQ-P-174와 같은 자리) · 겹침 z 규칙은 **정책 소스가 아니라 서버 필드
+  해석**이라 위키에는 여전히 근거가 없다 · 이 라운드가 연 조회·매핑 경로에 **테스트가 0건**이다
+  (OQ-P-303). [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md) 드리프트 ④를
+  갱신했다.
 
 ### [2026-08-19] 회전과 리사이즈 한계를 정책이 말한 적이 없고 코드가 정했다
 
@@ -4401,8 +4451,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   그림이 **프레임 없는 배경+토핑**이라는 것이 의도인지 — 정책 소스가 없어 코드가 확정했다.
 - **상태**: 미해결 (**실기기 1회로 ①②가 함께 드러난다**)
 - **해소 메모**: ①은 저장을 누른 시점에 배경 준비 여부를 상태로 들고 있으면 풀리는데, 그 상태를
-  누가 소유할지가 `YGCanvas`(컴포넌트)와 화면 사이에서 갈린다 — 컴포넌트가 배경 폴백을 갖지 않기로
-  한 결정과 같은 자리다([architecture/design-system](../architecture/design-system.md) 캔버스 절).
+  누가 소유할지가 `YGCanvas`(컴포넌트)와 화면 사이에서 갈린다 — **그 갈림은 2026-08-25 PR #351로
+  컴포넌트 쪽으로 정해졌다**(배경 미설정을 컴포넌트가 흰 바탕으로 받는다,
+  [architecture/design-system](../architecture/design-system.md) 캔버스 절). 다만 그것은 **무엇을
+  그릴지**를 컴포넌트가 정한 것이고, **다 그려졌는지**를 아는 상태는 여전히 아무도 안 갖고 있다.
   이 경로는 유닛이 ViewModel 층에서 멈춰 **캡처·권한·`MediaStore` 쓰기가 한 줄도 안 잠겨 있다**는
   것도 함께 본다 →
   [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md).
@@ -4910,8 +4962,65 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   떨어진다. ③ 차단 전까지는 애플리케이션이 `X-Forwarded-*`를 무조건 신뢰하므로 프록시를 우회한
   평문 경로로 **스킴·클라이언트 IP를 위조**할 수 있다(런북이 지적한 위험이고, 차단이 그 답이다).
 - **상태**: 미해결 (서버팀에 전환 시점을 물어야 한다 — 앱 base URL 교체가 그 앞에 와야 한다)
-- **해소 메모**: 시점이 정해지면 앱 `local.properties`/CI의 `YG_BASE_URL`을 먼저 옮기고, 그다음
-  `usesCleartextTraffic` 제거를 OQ-P-076에서 닫는다. 순서를 뒤집으면 앱이 끊긴다.
+- **해소 메모**: 시점이 정해지면 앱 `local.properties`/CI의 `YG_BASE_URL`을 옮긴다.
+  > 📌 **순서가 뒤집혔고 그래도 앱이 안 끊겼다(2026-08-25, PR #358)** — 원래 이 메모는 "base URL을
+  > 먼저 옮기고 그다음 `usesCleartextTraffic`을 지운다"였는데 앱은 반대로 갔다. 지워도 끊기지 않은
+  > 이유는 `network_security_config.xml`의 `debug-overrides`가 **디버그 빌드에는 평문을 계속 열어
+  > 두기** 때문이다(OQ-P-076 해소 메모). 그래서 이 항목이 쥔 위험은 **릴리즈 빌드 하나로 좁아졌다** —
+  > 평문 주소로 조립된 릴리즈는 이제 서버 차단을 기다릴 것도 없이 **앱 자신이 먼저 막는다.**
+  > 차단 시점이 여전히 코드에 안 남는다는 사실은 그대로다.
   [api/conventions.md](../api/conventions.md) "전송" 절의 ⚠️ 문장도 그때 확정형으로 고친다.
 
-<!-- oq-next: 303 -->
+### [2026-08-26] 배치 화면이 새로 연 캔버스 조회·매핑 경로에 테스트가 0건
+
+- **ID**: OQ-P-303
+- **출처**: `CanvasToppingPlaceViewModel.kt#loadCanvasIfNeeded`·`#withCanvas`(PR #357) —
+  초안의 `groupId`로 `GetTodayParfaitUseCase`를 부르고 응답을 배경색·배경 이미지 URL·기존 토핑
+  목록으로 옮기는 경로가 통째로 들어왔는데, 같은 라운드가 `CanvasToppingPlaceViewModelTest`에
+  더한 것은 **새 의존을 생성자에 끼우고 조회를 조용히 실패시키는 스텁뿐**이다
+  (`Result.failure(...)` 고정). 즉 기존 테스트가 계속 초록인 이유는 **새 경로가 한 번도
+  성공하지 않기 때문**이다.
+- **항목**: ① 잠글 것이 넷 있다 — 배경이 `Color`면 색으로, `Image`면 URL로 갈리는 매핑 /
+  색 문자열을 못 읽으면 기본 배경을 유지하는 폴백 / 토핑을 `positionZ` 오름차순으로 정렬하는 것 /
+  `groupId`가 같으면 두 번 조회하지 않는 가드. ② 그중 마지막은 필드 하나(`canvasLoadedForGroupId`)로
+  구현돼 있어 **초안 흐름이 여러 번 방출되면 무엇이 보장되는지가 테스트 없이는 읽히지 않는다.**
+  ③ 조회 실패가 배치를 막지 않는다는 계약도 지금은 주석뿐이다.
+- **상태**: 미해결 (테스트를 안 쓴 이유가 기록돼 있지 않다)
+- **해소 메모**: 채우면 [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md)
+  드리프트 ④의 "테스트 0건" 문장을 지운다. OQ-P-240이 이 항목을 남기고 닫혔다.
+
+### [2026-08-26] 빈 캔버스 안내판의 노출 조건에 "배경 미설정"이 들어갔는데 정책 근거가 없다
+
+- **ID**: OQ-P-304
+- **출처**: `YGCanvas.kt#CanvasArea`(PR #351) — 빈 안내판 조건이 `isEmpty`에서
+  **`isEmpty && background == null`**이 됐다. 배경을 고른 캔버스는 토핑이 0개여도 안내 문구가
+  뜨지 않고 고른 배경만 보인다. 같은 라운드가 안내판을 `Gray100` **판**으로 만들어 배경 자리를
+  통째로 덮게 했고(그전에는 문구만 얹혔다), 배경 미설정의 기본 그림은 **흰 바탕**으로 갈렸다.
+- **항목**: ① 배경을 고른 빈 캔버스에 안내를 아예 안 보여 주는 것이 의도인지 — 첫 토핑을 올리라는
+  안내가 필요한 시점은 오히려 배경만 고르고 비어 있을 때다. ② 안내판 바탕(`Gray100`)과 미설정
+  기본 바탕(흰색)이 갈린 것이 의도인지 — 사용자에게는 "빈 캔버스"가 두 가지 색으로 보인다.
+  ③ 안내 문구 자체가 위키에 정책 소스가 없다(코드가 먼저 확정한 문구 목록에 하나 더 붙는다).
+- **상태**: 미해결 (정책 소스 수집이 선행 — 위키 [[캔버스-반응형-레이아웃]]에 빈 상태 조항이 없다)
+- **해소 메모**: 정해지면
+  [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md)의
+  `isEmpty` 파생 서술과 [architecture/design-system](../architecture/design-system.md) 캔버스 절을
+  함께 고친다.
+
+### [2026-08-26] 서명 키 부재 안내가 태스크 이름 일치에 걸려 있고 실제로 발화하는지 확인되지 않았다
+
+- **ID**: OQ-P-305
+- **출처**: `buildlogic/AndroidConfig.kt#failWhenStoreFileMissing`(PR #354) — 키가 없거나 가리키는
+  파일이 없을 때 **설정 단계에서 터뜨리지 않고** `validateSigningRelease`·`validateSigningDebug`에
+  `doFirst`를 얹어 그 태스크가 돌 때만 실패시킨다. 근거는 분명하다(설정 단계에서 막으면 키를 못 받은
+  사람과 CI가 ktlint·테스트조차 못 돌린다). 다만 `tasks.matching { it.name == … }.configureEach`는
+  **그 이름의 태스크가 없으면 아무 일도 하지 않는다** — 안내가 조용히 사라지는 형태다.
+- **항목**: ① 키 없이 `:app:assembleRelease`를 돌려 그 메시지가 실제로 나오는지 확인한 사람이 없다.
+  ② 서명 없이도 끝까지 가는 조립 경로(태스크 이름이 다르거나 그 태스크를 안 타는 경로)가 있는지.
+  ③ AGP는 debug 키가 비면 자기 기본 keystore로 떨어지는데, 이 안내는 그 경우에도 실패를 만든다 —
+  "기본 키로 조용히 디버그 빌드가 되는 것"과 "이름 있는 실패" 중 무엇을 원하는지가 안 적혀 있다.
+- **상태**: 미해결 (키 없는 릴리즈 조립을 한 번도 안 돌려 봤다)
+- **해소 메모**: 확인되면 [ADR-0003](../adr/0003-convention-plugins-version-catalog.md)의
+  as-built 문단에 결과를 적는다. `parfait-release.keystore`가 `.gitignore`에 올라간 것(PR #368)까지
+  같은 자리다 — 키를 어디서 받는지가 저장소 어디에도 안 적혀 있다.
+
+<!-- oq-next: 306 -->
