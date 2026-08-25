@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-25
+verified: 2026-08-26
 related_spec: segmentation-mask-postprocessing, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -719,6 +719,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ⚠️ **②가 develop에서 되살아났다(2026-08-04, PR #190)** — 위 수정(`consumer-rules.pro` 이관 + 컨벤션 플러그인 `consumerProguardFiles` 등록)은 `feature/sync-api-service` 브랜치 산출물이라 **develop 미머지**였다. 반면 먼저 머지된 PR #190은 keep 규칙을 **`data/proguard-rules.pro`**에 넣었고, 당시 develop의 `AndroidConfig.kt#setConfigAndroidLibrary`는 `consumerProguardFiles`도 `proguardFiles`도 등록하지 않았다 — 즉 keep 규칙이 어디에도 전달되지 않는 상태였다.
   > 📌 **②가 다시 닫혔다(2026-08-06, PR #197 머지)** — 그 브랜치가 머지되며 keep 규칙이 `data/consumer-rules.pro`로 옮겨지고 `setConfigAndroidLibrary`가 `consumerProguardFiles("consumer-rules.pro")`를 등록했다. develop의 라이브러리 모듈 전부가 이미 `consumer-rules.pro` 파일을 갖고 있어 이 등록이 다른 모듈을 깨지 않는다. 같은 PR로 `@NoAuth` 사용처도 0곳→4곳이 됐다. **다만 `:app:assembleRelease`로 실제 R8 결과를 확인한 기록은 여전히 없다** — 배치가 옳다는 것과 release에서 검증했다는 것은 다르다.
 - **상태**: 부분 해소 (② 해소 — 배치 정상화 확인, release 빌드 실행 검증은 미수행 / ① 잔존 — 다만 전제가 바뀌었다, 아래 참고)
+  > 📌 **release 빌드가 실제로 돌아간 첫 흔적이 남았다(2026-08-26, PR #372)** — 브랜치 이름이
+  > `feature/#283-check-release-build`이고, 커밋 하나가 **릴리즈에서만 터지는 lint 실패**
+  > (`Instantiatable` — 매니페스트가 직접 선언한 Kakao `AuthCodeHandlerActivity`의 상속 체인을
+  > 컴파일 클래스패스에 `appcompat`이 없어 풀지 못했다)를 고친다. 그 실패를 만나려면 릴리즈
+  > 조립을 실행해야 하므로 **"아무도 release를 만들어 본 적 없다"는 더는 참이 아니다.**
+  > ⚠️ **그래도 ②가 묻는 것은 안 확인됐다** — R8이 돌아간 산출물에서 `@NoAuth` keep이 살아
+  > 화이트리스트 4곳이 헤더 없이 나가는지는 **요청을 보내야 알 수 있고**, 실기기·실서버 확인은
+  > 여전히 0회다(OQ-P-146). 빌드가 성공했다는 것과 R8 결과가 옳다는 것은 다르다.
   > ⚠️ **①의 "그런 경로는 없다"가 곧 깨진다(2026-08-12, PR #230)** — `ImageService`가 develop에 들어오면서 **S3 presigned PUT이 예정된 경로가 됐다**(아직 앱 코드는 없다). 그 요청은 Retrofit이 아니라 raw OkHttp로 나가므로 `Invocation` 태그가 없어 `skipAuth = false`가 되고, `Authorization`이 실린 presigned URL을 **S3가 서명 불일치로 거절한다.** 즉 ①은 "언젠가 생길 수도 있는 경로"가 아니라 **업로드 라운드의 선행 조건**이고, 업로드 전용 `OkHttpClient` 분리는 성능 선택이 아니라 기능 전제다 → [image-api-service-layer 스펙](../specs/archive/2026-08-10-image-api-service-layer.md), [api/image.md](../api/image.md) "Android 매핑".
 - **해소 메모**: ② 반영처: [ADR-0017](../adr/0017-remote-network-datasource.md) "인증" R8 절·[data-layer](../architecture/data-layer.md) "인증"·[specs/archive/2026-08-03-data-api-service-layer.md](../specs/archive/2026-08-03-data-api-service-layer.md) "미결" 절을 머지 확정으로 갱신했다. ① 잔존 — 신규 OkHttp 직접 경로가 생기면 이 항목을 다시 연다.
 
@@ -1295,6 +1303,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: PR #218 develop 머지 — 브랜치가 애플 로그인 버튼을 넣었다가 같은 브랜치에서 지웠는데(`chore: 애플 로그인 관련 코드 삭제`) 부속물이 남았다. `core:designsystem` `theme/colors/AppleDesignGuideColors.kt`(신규 파일), `feature/login/impl` `res/drawable/icon_logo_apple.xml`, `feature/login/impl` `strings.xml`의 애플 버튼 라벨·`contentDescription` 2건. develop 전수 검색에서 **참조가 0건**이다. 바로 전날 **Android는 애플 로그인을 쓰지 않기로 확정**했으므로([2026-08-11] 서버 delta 항목의 ② 해소) 이 심볼들은 앞으로도 소비처가 생기지 않는다.
 - **항목**: ① 지금 걷어낼지, 아니면 "언젠가 붙을 수도"로 두고 死코드 목록에 올려둘지 — 사용처 0 공개 심볼을 남긴 선례가 이미 둘 있다(`clickableYGNoRipple` [2026-08-03] — **2026-08-17 #284로 존치 쪽 결말**, `animateToppingPlacement` [2026-08-07] — 미결). 다만 선례가 존치로 닫혔다고 이쪽까지 존치가 되는 건 아니다: 저쪽은 소비처가 실제로 생겼고 애플 로그인은 **Android가 안 쓰기로 확정**돼 소비처가 생길 길이 없다. ② 걷어낸다면 `AppleDesignGuideColors`는 `core:designsystem` 소관이라 로그인 PR과 별개 정리 대상이다. ③ 브랜치 안에서 되돌린 기능의 부속 리소스를 리뷰가 못 잡는다는 신호 — 체크 지점을 어디에 둘지(R8은 리소스 축소를 하지만 소스 심볼은 남는다).
 - **상태**: 미해결 (기능 영향 0 — 정리 시점 문제)
+  > 📌 **③의 괄호가 이제야 참이 됐다(2026-08-26, PR #372)** — "R8은 리소스 축소를 하지만"이라고
+  > 적었으나 그때 릴리즈는 `isMinifyEnabled = true`만 켜져 있었고 `isShrinkResources`는 기본값
+  > `false`였다. 즉 **리소스는 축소된 적이 없었다.** 이번에 그 스위치가 켜져 미사용 drawable·
+  > string이 실제로 릴리즈 산출물에서 빠지기 시작한다(소스 심볼이 남는다는 뒷문장은 그대로다).
+  > 그래도 이 항목의 처분은 안 바뀐다 — 축소는 **산출물에서만** 빼므로 저장소의 死심볼 셋은 그대로다.
 - **해소 메모**: 걷어내면 [design-system](../architecture/design-system.md) 색 트리의 `AppleDesignGuideColors` 줄과 [a002-login-onboarding 스펙](../specs/archive/2026-08-11-a002-login-onboarding.md) "드리프트" 1번을 함께 지운다. 서버 계약 쪽 애플 엔드포인트는 그대로 둔다(iOS 소관).
 
 ### [2026-08-11] A-002 치수 리터럴 4종 — 토큰 스케일에 없는 값을 코드가 자인한다
@@ -3972,7 +3985,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   (S-101은 `memberId`로 `isMe`를 판별한다). ② 판정이 생길 때까지 본인 토핑을 Spotlight에 넣어 둘지,
   아니면 탭을 무시할지 — 지금은 넣는 쪽이고 정책과 다르다. ③ C-305 목적지 자체가 없어 ①이 풀려도
   갈 곳이 없다(그 라운드가 오면 함께 닫힌다).
-- **상태**: 부분 해소 (**① 서버가 `ownerType`으로 답했다. ②③ 잔존 — 앱은 아직 그 값을 안 읽는다**)
+- **상태**: 부분 해소 (**①② 해소 — 서버가 `ownerType`으로 답했고 앱이 같은 날 읽었다. ③ 잔존 — C-305 목적지가 없다**)
   > ⚠️ **C-301 편집 탭이 판정을 시작했다(2026-08-22, PR #329)** — `CanvasBGEditViewModel`이
   > `MyAccountVO.memberId`(계정 id)와 `placedBy.groupMemberId`(그룹 멤버십 행 id)를 견주고, 코드
   > KDoc이 **두 값이 서로 다른 축이라는 사실을 스스로 적어 두었다**(`TODO(서버 응답 확장 대기)`).
@@ -3988,9 +4001,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 아니라 판정 결과를 준다.** 그래서 C-301 편집 탭의 축이 다른 비교도 함께 걷어낼 수 있다
   > → [api/parfait.md](../api/parfait.md). **남은 것은 ②③이다** — ②는 앱이 이 값을 읽는 순간
   > 자동으로 정해지고, ③(C-305 목적지 부재)은 그대로다.
-- **해소 메모**: ①은 2026-08-26 라운드에서 확인됐다. ②③이 닫히면
-  [c202-canvas-spotlight 스펙](../specs/archive/2026-08-20-c202-canvas-spotlight.md)의
-  정책 대조 표와 [api/parfait.md](../api/parfait.md) Android 매핑을 함께 고친다.
+  > ✅ **②가 같은 날 닫혔다(2026-08-26, PR #376 develop 머지)** — `PlacedByResponse.ownerType`이
+  > 생기고 `:data` 매퍼가 `"ME"` 여부를 `CanvasToppingVO.isMine`으로 접는다. 예고한 대로 ②는
+  > 선택이 아니라 **읽는 순간 정해졌다**: 본인 토핑은 Spotlight에서 빠지고, C-301 편집 탭은
+  > `GetMyAccountFlowUseCase` 의존과 축이 다른 비교를 통째로 버렸다. **판정이 게이트였던 화면에서
+  > 남의 토핑을 만질 수 있었던 가능성이 사라진 것이 이 라운드의 실질**이다.
+  > ⚠️ **③은 그대로이고, 증상만 바뀌었다** — 본인 토핑 탭이 "Spotlight로 잘못 들어간다"에서
+  > **"아무 일도 안 한다"**가 됐다. `TODO: C-305 토핑 편집 화면으로 이동` 뒤에 그냥 `return`한다.
+  > 정책([[C-202-토핑-편집자-확인-규칙-v0.1]])이 요구하는 편집 진입은 여전히 미구현이다.
+- **해소 메모**: ①②는 2026-08-26 라운드에서 닫혔고 반영처는
+  [c202-canvas-spotlight 스펙](../specs/archive/2026-08-20-c202-canvas-spotlight.md) 정책 대조 표와
+  as-built 재정정 절 · [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md) ·
+  [api/parfait.md](../api/parfait.md) Android 매핑이다. **③은 C-305 화면 라운드가 오면 닫힌다** —
+  그때 위 두 스펙의 "탭이 무반응이다" 서술을 함께 고친다.
 
 ### [2026-08-20] Spotlight 작성자 정보가 서버 값이 아니라 화면 목록 조인이다
 
@@ -4977,6 +5000,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 평문 주소로 조립된 릴리즈는 이제 서버 차단을 기다릴 것도 없이 **앱 자신이 먼저 막는다.**
   > 차단 시점이 여전히 코드에 안 남는다는 사실은 그대로다.
   [api/conventions.md](../api/conventions.md) "전송" 절의 ⚠️ 문장도 그때 확정형으로 고친다.
+  > 📌 **저장소가 가르치는 주소는 옮겨졌다(2026-08-26, PR #376)** — `http/README.md`의 `base_url`
+  > 예시가 평문 IP·포트에서 **HTTPS 도메인**으로 바뀌고, "앱에서는 아직 이 서버를 호출할 수 없다"던
+  > 절이 "`YG_BASE_URL`은 HTTPS 주소를 넣는다 / 프록시를 우회하는 평문 포트 주소를 넣지 말 것"으로
+  > 교체됐다. **그래도 이 항목은 안 닫힌다** — 실제 빌드가 어떤 주소를 쓰는지는 `local.properties`에
+  > 있어 커밋 delta로 안 보이고, ①(차단 시점이 코드에 안 남는다)은 성질상 그대로다. 바뀐 것은
+  > **새로 클론한 사람이 평문 주소를 집어넣을 확률**이다.
 
 ### [2026-08-26] 배치 화면이 새로 연 캔버스 조회·매핑 경로에 테스트가 0건
 
@@ -5064,4 +5093,80 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ①을 붙이면 [design-system](../architecture/design-system.md) 폰트 절에 검사 위치를
   적는다. ②가 확인되면 같은 절의 "기기마다 글자체가 섞인다" 문장을 관측 결과로 바꾼다.
 
-<!-- oq-next: 308 -->
+### [2026-08-26] 리소스 축소를 처음 켰는데 축소된 산출물을 실행해 본 사람이 없다
+
+- **ID**: OQ-P-308
+- **출처**: `build-logic/convention/.../buildlogic/AndroidConfig.kt#setConfigAndroidApplication`(#372) —
+  release 빌드 타입에 **`isShrinkResources = true`**가 신설됐다. 그전까지는 `isMinifyEnabled`만
+  켜져 있어 **코드만 줄고 리소스는 그대로 실렸다.** 이 컨벤션 플러그인은 `app`과 `app-preview`
+  두 애플리케이션 모듈에 함께 걸리므로 스위치도 둘 다에 걸린다.
+- **항목**: ① **리소스 축소의 실패는 빌드가 아니라 실행에서 드러난다** — 잘못 걷힌 리소스는
+  조립을 통과하고 그 화면에 들어갈 때 터진다. 릴리즈 APK를 설치해 화면을 돌아본 기록이 0건이다
+  (OQ-P-146과 같은 뿌리). ② **`keep.xml`이 없다.** 지금 develop에 `Resources.getIdentifier`
+  사용처가 0건이라 이름으로 찾는 리소스가 없어 당장은 안전하지만, 그런 코드가 들어오는 순간
+  방어가 아무 데도 없다 — 규약을 어디에 적을지. ③ 같은 커밋이 **debug 블록에도 `proguardFiles`를
+  넣었는데** `isMinifyEnabled = false`라 **아무 일도 안 한다**. 지울지, 나중에 켤 자리 표시로
+  남길지 정한다(남긴다면 그 뜻을 주석으로 적어야 다음 사람이 켜져 있다고 오해하지 않는다).
+- **상태**: 미해결 (**동작 영향은 릴리즈 산출물에만 있다** — 디버그 빌드는 축소를 안 한다)
+- **해소 메모**: ①이 확인되면 [ADR-0003](../adr/0003-convention-plugins-version-catalog.md)
+  as-built 절에 관측 결과를 적는다. ②를 정하면 같은 절에 `keep.xml` 위치를 함께 적는다.
+
+### [2026-08-26] NDK 크래시 수집기를 붙였는데 심볼이 없어 주소만 남는다
+
+- **ID**: OQ-P-309
+- **출처**: `app/build.gradle.kts`(#372) — `firebase-crashlytics-ndk`가 붙었다. 근거는 AAR로 들어오는
+  CameraX·DataStore 네이티브 라이브러리가 **시그널로 죽으면 JVM 예외가 없어 기본 수집기로는
+  안 잡힌다**는 것이다. 같은 주석이 `nativeSymbolUploadEnabled`를 **켜지 않는 이유**도 적었다 —
+  자체 네이티브 빌드가 없어 올릴 언스트립 심볼이 없고, 서드파티 `.so`는 주소만 남는다.
+- **항목**: ① **그러면 이 수집기가 무엇을 주는가** — 심볼 없는 주소 스택으로 CameraX·DataStore
+  네이티브 크래시의 원인을 어디까지 좁힐 수 있는지 아무도 확인하지 않았다(라이브러리 이름과
+  오프셋까지는 남는다). ② **리포트가 콘솔에 실제로 도착하는지 본 기록이 0건**이다 — 릴리즈를
+  설치해 크래시를 내 본 적이 없다. ③ NDK 수집기는 APK에 자기 `.so`를 더한다 — 그 크기 증가를
+  재지 않았고, 같은 라운드가 켠 리소스 축소(OQ-P-308)와 방향이 반대다.
+- **상태**: 미해결 (**수집 자체는 손해가 없다** — 안 붙였으면 그 크래시는 통째로 안 보였다)
+- **해소 메모**: ①②가 확인되면 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) as-built 절에
+  적는다. 자체 네이티브 코드가 생기면 그때 `nativeSymbolUploadEnabled`를 다시 본다.
+
+### [2026-08-26] 앱 버전이 1에서 3으로 뛰었다 — 결번 하나가 저장소 밖 산출물을 가리킨다
+
+- **ID**: OQ-P-310
+- **출처**: `gradle/libs.versions.toml`(#374) — `appVersionCode` **1 → 3**, `appVersionName`
+  **0.0.1 → 0.0.3**. 이 값을 바꾼 커밋은 저장소 전체에서 **도입 커밋과 이번 것(같은 내용이 브랜치와
+  머지 양쪽에 하나씩) 둘뿐**이라 **2는 어느 브랜치에도 존재한 적이 없다.** 태그는 하나 있다 —
+  경량 태그 `0.0.3`이고 develop이 아니라 **`release/version-0.0.3-3` 브랜치의 머지 커밋**을 가리킨다
+  (OQ-P-311).
+- **항목**: ① 2가 어디서 쓰였는가 — 저장소 밖에서 조립해 올린 산출물이 있다면 **어떤 코드가 어떤
+  버전으로 나갔는지가 저장소가 아니라 사람의 기억에 걸려 있다**는 뜻이다. 크래시 리포트는 버전으로
+  묶이므로(OQ-P-309) 이 축이 흐리면 리포트를 커밋에 되짚을 수 없다. ② **다음 올림을 무엇이
+  강제하는가** — 손으로 고치는 값이라 잊으면 스토어가 같은 `versionCode`를 거절한다. 지금 규율은
+  태그 하나뿐이고 그 태그도 **경량**이라 누가 언제 붙였는지 남지 않는다. ③ `previewVersionCode`는
+  1 그대로다 — `app-preview`는 `applicationId`가 달라 셈이 따로 간다.
+- **상태**: 미해결 (**빌드 영향 0** — 값이 무엇이든 조립은 된다. 배포 추적의 문제다)
+- **해소 메모**: ②를 정하면 [ADR-0003](../adr/0003-convention-plugins-version-catalog.md)
+  버전 카탈로그 절에 규칙을 적는다(태그를 쓸지, CI가 올릴지). ①은 사람에게 물어야 답이 나온다.
+
+### [2026-08-26] 릴리즈 계보가 develop 밖에 있다 — 배포된 0.0.3에 develop에 없는 45커밋이 들어 있다
+
+- **ID**: OQ-P-311
+- **출처**: `origin/release/version-0.0.3-3`(경량 태그 `0.0.3`이 이 브랜치의 머지 커밋을 가리킨다) —
+  이 브랜치는 `origin/develop`에 **없는 커밋 45개**를 담고 있고, 그중 머지 여덟이 feature 브랜치를
+  직접 받았다. 반대 방향(develop에만 있는 커밋)은 여섯이다. 받은 브랜치 중 **넷이 이 문서가
+  "미머지 추적 항목"으로 세 라운드째 세어 온 그 넷**이다 — `segmentation-candidate-coverage` ·
+  `segmentation-alpha-kernel` · `segmentation-postprocess-wiring` · `segmentation-alpha-refinement`.
+  다섯째 `feature/toast-position-fix`는 이 문서에 이름조차 없다.
+- **항목**: ① **이 감사 체계의 전제가 흔들린다** — [doc-baseline](../doc-baseline.md)은 `develop`을
+  기준선으로 잡고 그 delta만 본다. 사용자에게 실제로 나간 산출물이 develop이 아니라 release
+  브랜치에서 조립됐다면, **"문서가 검증한 코드"와 "배포된 코드"가 다른 트리**다. ② 저 넷을
+  develop에 되돌려 머지할 것인가, 아니면 release가 별도 계보로 계속 갈 것인가 — 전자면 이 항목은
+  다음 라운드에 저절로 닫히고, 후자면 기준선을 **둘로** 두거나 감사 대상을 바꿔야 한다.
+  ③ 선작성 스펙·계획 넷([전처리](../specs/2026-08-23-segmentation-preprocessing.md)·
+  [후처리](../specs/2026-08-24-segmentation-mask-postprocessing.md)·
+  [알파 정련](../specs/2026-08-25-segmentation-alpha-refinement.md)과 그 계획들)이 지금 `active`인데,
+  **구현이 release에는 있고 develop에는 없다** — 아카이브 판정 기준(`develop` 머지)을 그대로 둘지
+  정해야 한다.
+- **상태**: 미해결 (**문서 신뢰도에 직접 걸리는 자리다** — 코드가 아니라 감사 범위의 문제)
+- **해소 메모**: ②가 정해지면 [doc-baseline](../doc-baseline.md) "현재 기준선" 절에 감사 대상 브랜치를
+  명시하고, `sync-tjyg-develop-baseline` 스킬 문서의 범위 문장도 함께 고친다. **이번 라운드는
+  release 브랜치를 감사하지 않았다** — 기준선 규율이 develop만 보도록 돼 있어서다.
+
+<!-- oq-next: 312 -->

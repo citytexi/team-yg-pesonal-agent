@@ -4,7 +4,7 @@ title: C-301 캔버스 배경 편집 화면 (배경/토핑 탭 + 색 팔레트 +
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-23
+verified: 2026-08-26
 related_code: CanvasBGEditRoute, CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditError, CanvasEditTab, CanvasBackgroundPaletteColors, NavKeyCanvasBGEdit, PictureConfirmResult, NavKeyCameraCustom, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, CANVAS_ASPECT_RATIO, YGFloatingBarEditTab, YGModalPopup, YGCanvasBackground, YGScaffoldV2, ChangeCanvasBackgroundUseCase, UploadImageUseCase, ImageFileRepository, ImageFileLocalDataSource, UploadImageFormat, UnsupportedImageException, AppError.UnsupportedImage, Color.kt#toRgbHex, CanvasBGEditViewModel.kt#handleOnClickConfirm, CanvasBGEditViewModel.kt#saveBackground, CanvasBGEditViewModelTest
 related_adr: ADR-0002, ADR-0005, ADR-0006, ADR-0007
 related_spec: c001-canvas-main, c101-camera-picture-confirm, c102-custom-gallery-picker, c301-topping-edit-tab, designsystem-canvas-components, designsystem-bar-listdate-components
@@ -290,3 +290,15 @@ ViewModel이 진입 시 오늘 조회를 한 번 더 부르고(편집을 여는 
 - ⚠️ **두 축의 실패 처분이 갈렸다.** 배경 실패는 위 [실패 표현](#실패-표현)대로 토스트로 나가고
   화면이 남는데, 토핑 실패는 로그 한 줄이고 배경이 성공하면 화면이 넘어간다
   → [open-questions](../../synthesis/open-questions.md) OQ-P-275.
+
+
+## as-built 재정정 (2026-08-26, PR #376 develop 머지)
+
+> **이 화면의 의존 하나가 줄었다.** `CanvasBGEditViewModel`이 `GetMyAccountFlowUseCase`를 더는 받지
+> 않고, 진입 시 계정 SSoT를 `first()`로 기다리던 줄도 없어졌다. 토핑 소유 판정이 서버가 준 값
+> (`placedBy.ownerType` → `CanvasToppingVO.isMine`)으로 바뀌어 계정 id가 필요 없어졌기 때문이다.
+> 설계 서술은 [c301 토핑 탭 스펙](2026-08-16-c301-topping-edit-tab.md#as-built-재정정-2026-08-26-pr-376-develop-머지)에 있다.
+
+- 위 [유닛 테스트](#유닛-테스트) 절이 세는 **15건과 그 구성은 그대로**다(현재 이 클래스는 22건).
+  달라진 것은 픽스처다 — `MyAccountVO` 스텁이 사라지고 토핑 픽스처가 `isMine`을 직접 받는다.
+- 배경 축(저장 세 갈래·실패 표현·`CONFIRM_KEY`)은 이 delta에서 한 줄도 안 바뀌었다.

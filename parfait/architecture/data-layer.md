@@ -579,7 +579,14 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   타입 필드의 배선)은 **DataSource 테스트의 케이스로** 잠근다. 규약 본문과 개정 경위는
   [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "테스트 규약" 11번.
   develop의 `XxxRemoteDataSourceImplTest`는 **image·member·parfait·parfaitgroup·parfaitimage·policy 여섯**이다
-  (PR #250이 parfait를 신설하고 member·parfaitimage를 보강, PR #266이 parfait를 15 → 25 케이스로 보강).
+  (PR #250이 parfait를 신설하고 member·parfaitimage를 보강, PR #266이 parfait를 15 → 25 케이스로 보강,
+  PR #376이 소유 판정 몫 둘을 더해 **29 케이스**).
+
+  📌 **그 마지막 둘이 이 규약의 모양을 그대로 보여 준다**(2026-08-26, PR #376) — 캔버스 응답
+  `placedBy.ownerType`(`"ME"`·`"OTHER"`)을 `CanvasToppingVO.isMine`(`Boolean`)으로 접는 변환이
+  `VOMapper.kt`에 들어왔고, 잠근 자리는 DataSource 테스트다: `ME`는 참, **`null`과 모르는 값은 둘 다
+  거짓**. 매퍼 테스트는 만들지 않았다. 거짓 쪽으로 접은 근거는 매퍼 KDoc이 들고 있다 — 여는 쪽으로
+  틀리면 **남의 토핑을 만지게 된다** → [api/parfait.md](../api/parfait.md).
   ✅ **마지막 예외가 닫혔다(2026-08-20, PR #308·#310 develop 머지)** — `ParfaitGroupRemoteDataSourceImplTest`가
   신설되고 `MyParfaitGroupVOMapperTest`가 삭제돼 **저장소에 `XxxVOMapperTest`가 0개**다. 그 파일이 규약
   예외로 살아 있던 동안 무엇을 했는지가 삭제 사유다 — 오프셋 붙은 입력을 스스로 지어 넣고 단언해

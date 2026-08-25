@@ -233,6 +233,14 @@ getter 이름이 아니라 **Kotlin 주 생성자 파라미터명**으로 프로
 **디버그 빌드의 모든 호스트**에 평문이 열려 있다. 앱 `YG_BASE_URL` 교체는 `local.properties`라 커밋
 delta로 확인할 수 없어 OQ-P-302가 계속 쥔다.
 
+📌 **저장소가 가르치는 주소가 HTTPS로 옮겨졌다**(2026-08-26, PR #376). 앱 요청 모음 `http/README.md`가
+`base_url` 예시를 평문 IP·포트에서 **개발 서버 도메인**으로 바꾸고, "앱에서는 아직 이 서버를 호출할 수
+없다"던 절을 "`YG_BASE_URL`은 HTTPS 주소를 넣는다"로 교체했다. 같은 PR이 `network_security_config.xml`에
+**호스트를 가리지 않는다는 경고를 코드 주석으로** 박았다. 즉 위 ⚠️ 두 개가 문서에만 있던 상태를 벗어나
+저장소 안에서도 읽히게 됐다. **그래도 실제로 어떤 주소로 빌드되는지는 여전히 안 보인다** — 값은
+`local.properties`에 있고 CI(`restore-app-secrets`)는 이 키를 복원하지 않으므로 키가 없으면 빌드는
+`https://TODO.example.com/` 플레이스홀더로 조립된다.
+
 ## 스키마 소유권 — 코드가 정본이어도 운영 응답은 다를 수 있다
 
 **2026-08-24, 세 번째 근거 축이 드러났다.** 이 체계는 지금까지 근거를 둘로만 봤다 — 서버 코드(정본)와
@@ -357,6 +365,11 @@ DTO를 자기가 만들어 넣어 `@SerialName` 문자열도 날짜 포맷도 �
 > 모양을 소비자 없이 굳히지 않는다), 그룹 **생성** 응답의 `recentImageUrl`·`recentImageUploadedAt`·
 > `lastPlacedByNameTagChip`은 DTO에 거울로 두었지만 `CreatedGroupVO`가 그 셋을 갖지 않는다
 > (생성 직후 화면이 쓰지 않고, 같은 이름 필드가 목록 응답과 **다른 컬럼에서 나온다**).
+>
+> ✅ **2026-08-26 — 늘어난 필드가 같은 날 소비된 첫 사례가 나왔다.** 서버가 캔버스 응답
+> `images[].placedBy`에 `ownerType`을 더하고(PR #115), 앱이 같은 날 그것을 읽어
+> `CanvasToppingVO.isMine`으로 접었다(PR #376). 위 "남은 것은 둘"에 이 필드가 합류하지 않은 이유가
+> 그것이고, **기회와 소비 사이의 간격이 0일인 것도 처음**이다 → [parfait.md](parfait.md).
 >
 > ⚠️ **키 이름이 바뀐 것은 다른 문제였다.** 2026-08-19에 응답 JSON 키가 `nametagChip` → `nameTagChip`,
 > `lastPlacedByNametagChip` → `lastPlacedByNameTagChip`으로 바뀌었다(서버 코어 프로퍼티명은 그대로,
