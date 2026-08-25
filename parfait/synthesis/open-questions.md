@@ -724,7 +724,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-076
 - **출처**: 개발 서버 base URL이 `https`가 아니라 평문 `http`다(주소는 private submodule `project-paths.md` 참고). TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTraffic`·`networkSecurityConfig`가 **둘 다 없다** → [api/conventions.md](../api/conventions.md) "직렬화 규약".
 - **항목**: Android 9(API 28)부터 평문 HTTP는 기본 차단이라, 실제 연동을 시작하면 **모든 요청이 `CLEARTEXT communication not permitted`로 실패**한다. 서버에 HTTPS를 적용할지(권장), 아니면 debug 빌드 한정으로 `network_security_config.xml`에 해당 호스트만 허용할지 결정한다. 후자는 release 빌드가 HTTPS 전환 전까지 동작하지 않는다는 뜻이므로 서버 일정과 묶인다.
-- **상태**: ⚠️ **임시 조치됨, 미해결** (2026-08-14 — 뚫었으나 자리가 틀렸다)
+- **상태**: **부분 해소** (2026-08-25 — ①이 서버에서 채택됐고, 앱 쪽 두 가지가 남았다)
   > 📌 **2026-08-14** — A-002 로그인 실기기 검증을 막고 있어 `app/src/main/AndroidManifest.xml`에
   > `android:usesCleartextTraffic="true"`를 넣었다(**PR #241로 2026-08-15 develop 머지**).
   > **main 매니페스트라 릴리즈 빌드까지 따라간다** — 앱
@@ -732,6 +732,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 남은 결정은 그대로다: ① 서버 HTTPS 전환(권장, 그러면 이 줄을 지운다) ② 그 전에 릴리즈가
   > 나가야 하면 `app/src/debug/AndroidManifest.xml` 또는 `network_security_config.xml`로
   > **개발 서버 도메인만 debug 한정** 허용으로 좁힌다.
+  > ✅ **①이 서버에서 채택됐다(2026-08-25, 서버 #112·#113)** — 앞단 리버스 프록시가 TLS를 종단하고
+  > 도메인에 인증서가 붙었다 → [api/conventions.md](../api/conventions.md) "전송". **그러나 이 줄을
+  > 아직 지우지 않는다**: 앱이 새 HTTPS 주소로 옮기기 전까지 평문 주소가 유일한 경로이고,
+  > `usesCleartextTraffic="true"` 제거는 그 이전이 아니라 **이후**여야 한다(순서를 뒤집으면 앱이
+  > 즉시 끊긴다). 전환 시점 자체는 별도 항목으로 뗐다 — OQ-P-302.
+- **항목 갱신(2026-08-25)**: 남은 것은 둘이다. ① 앱 `YG_BASE_URL`을 새 HTTPS 주소로 바꾸는 것,
+  ② 그 뒤 `app/src/main/AndroidManifest.xml`의 `usesCleartextTraffic="true"`를 제거하는 것.
+  ②를 미루면 릴리즈 빌드가 **평문 다운그레이드를 계속 허용**한다 — 서버가 HTTPS를 갖춘 뒤로는
+  이 플래그에 남는 효용이 없다.
 - **해소 메모**: 결정 후 [api/conventions.md](../api/conventions.md)와 앱 매니페스트·`local.properties` 안내를 갱신한다.
 
 ### [2026-08-03] `clickableYGNoRipple` 사용처 0 — 존치 여부
@@ -4887,4 +4896,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   「권한 화면 as-built 갱신」의 실기기 미확인 문장을 지운다. 어긋나 있으면 ③이 먼저 답을 받아야
   한다 — 보정을 뺄지 값을 바꿀지는 디자인이 정한다.
 
-<!-- oq-next: 302 -->
+### [2026-08-25] 서버 평문 포트가 닫히는 시점을 앱이 알 수 없다
+
+- **ID**: OQ-P-302
+- **출처**: 서버 `deploy/caddy/Caddyfile` · `bootstrap/src/main/resources/application.yaml`
+  (`server.forward-headers-strategy`) · 서버 런북 `docs/operations/https-setup.md`(서버 #112·#113
+  `main` 머지) — TLS 종단이 앞단 리버스 프록시로 가고, 런북이 검증 뒤 **평문 포트를 차단하는
+  단계**를 절차에 둔다.
+- **항목**: ① **차단은 배포가 아니라 사람이 하는 1회성 인프라 조작이라 서버 커밋에 남지 않는다.**
+  이 감사는 커밋 delta를 보는 체계라 "언제부터 평문이 죽는가"를 코드에서 읽을 수 없다
+  (OQ-P-284와 같은 부류이고, 이번이 **두 번째**다). ② 차단되는 순간 **기존 `YG_BASE_URL`로 빌드된
+  앱은 전부 연결에 실패한다** — 서버 에러가 아니라 연결 실패라 `safeApiCall`의 네트워크 갈래로
+  떨어진다. ③ 차단 전까지는 애플리케이션이 `X-Forwarded-*`를 무조건 신뢰하므로 프록시를 우회한
+  평문 경로로 **스킴·클라이언트 IP를 위조**할 수 있다(런북이 지적한 위험이고, 차단이 그 답이다).
+- **상태**: 미해결 (서버팀에 전환 시점을 물어야 한다 — 앱 base URL 교체가 그 앞에 와야 한다)
+- **해소 메모**: 시점이 정해지면 앱 `local.properties`/CI의 `YG_BASE_URL`을 먼저 옮기고, 그다음
+  `usesCleartextTraffic` 제거를 OQ-P-076에서 닫는다. 순서를 뒤집으면 앱이 끊긴다.
+  [api/conventions.md](../api/conventions.md) "전송" 절의 ⚠️ 문장도 그때 확정형으로 고친다.
+
+<!-- oq-next: 303 -->
