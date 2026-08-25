@@ -4,7 +4,7 @@ title: 온보딩 약관 동의 화면 (TermAgree)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-20
+verified: 2026-08-26
 related_code:
   - NavKeyTermAgree
   - TermAgreeRoute.kt#TermAgreeRoute
@@ -175,10 +175,16 @@ class TermAgreeViewModel @AssistedInject constructor(
 |------|-------------------|
 | 상단 | `YGTopBarBack` |
 | 제목 | `typography.title.t01B` / `Gray.Gray900` |
-| 모두동의 박스 | 배경 `Gray.Gray100` + `shapes.radius.small`, 체크 tint 선택 `Gray.Black` / 비선택 `Gray.Gray200` |
+| 모두동의 박스 | 배경 `Gray.Gray100` **각짐**(🔁 #353, 2026-08-25 — `shapes.radius.small` + `clip`을 걷었다), 체크 tint 선택 `Gray.Black` / 비선택 `Gray.Gray200` |
 | 항목 라벨 | 선택 `Gray.Gray800` / 비선택 `Gray.Gray500`, `body.b02R`, 필수 접두 `R.string.prefix_required`("(필수)") |
 | 상세 진입 | `ic_caret_right`(tint `Gray.Gray500`) 탭 → `onClickTermLandingUrl` |
 | 확인 버튼 | `YGButton` `YGButtonType.Large` |
+
+> 🔁 **as-built 정정(2026-08-25, PR #353)** — 모두동의 행의 모서리가 각짐이 됐다. `background(color, shape)`의
+> `shape` 인자와 뒤따르던 `clip`이 함께 빠져 **둥근 모서리를 만들던 두 자리가 한 번에 사라졌다.**
+> 이 화면만의 변경이고 `YGTheme.shapes.radius.small` 자체는 그대로다. 저장소의 다른 각짐 사례
+> (`YGButtonType.radius` 삭제·`ProfileCard`의 `RectangleShape`)와 같은 방향이지만, 그 방향을 규약으로
+> 적어 둔 자리는 여전히 없다 → [open-questions](../../synthesis/open-questions.md) OQ-P-049.
 
 ### 실패 표현 (#242 → 🔁 #315 확정)
 

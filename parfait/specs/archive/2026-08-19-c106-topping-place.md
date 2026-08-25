@@ -4,7 +4,7 @@ title: C-106 토핑 배치 화면 — 정중앙·40%·48dp 초기 배치 + 드�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-19
+verified: 2026-08-26
 related_code:
   - NavKeyCanvasToppingPlace.kt#NavKeyCanvasToppingPlace
   - CanvasToppingPlaceRoute.kt#CanvasToppingPlaceRoute
@@ -115,6 +115,10 @@ tags: [spec, parfait, canvas, topping, c-106, ui]
 
 배경 전체에 `Black25` 딤을 깔아 배치 중인 토핑만 도드라지게 한다.
 
+> 🔁 **as-built 갱신(2026-08-25, PR #357)** — 딤이 덮는 것이 배경만이 아니게 됐다. 겹은
+> **배경(색 또는 이미지) → 기존 토핑 → `Black25` 딤 → 배치 중인 토핑** 순이라, 이미 올라간 남의
+> 토핑도 딤 아래로 들어가고 지금 옮기는 것만 그 위에 뜬다.
+
 ## 컴포넌트 추출
 
 `CanvasBGEditScreen`의 private 컴포저블 3종이 `component/ToppingHandleComponents.kt`로 올라가
@@ -153,8 +157,14 @@ tags: [spec, parfait, canvas, topping, c-106, ui]
 3. ⚠️ **`NavKeyCanvasMove` 계열이 도달 불가로 남았다** — 유일한 호출자였던
    `SegmentationConfirmRoute.onClickNext`가 새 목적지로 갈아탔는데 목적지·Route·Screen·엔트리는
    그대로다 → OQ-P-239.
-4. **배치 화면이 보여 주는 캔버스가 실제 캔버스가 아니다** — 배경은 흰색 고정(`TODO`)이고 이미
-   올라간 토핑도 안 그린다. 겹침을 못 본 채 자리를 고른다 → OQ-P-240.
+4. ~~**배치 화면이 보여 주는 캔버스가 실제 캔버스가 아니다**~~ — ✅ **대부분 해소(2026-08-25, PR #357)**.
+   `CanvasToppingPlaceViewModel`이 초안의 `groupId`로 `GetTodayParfaitUseCase`를 **다시 불러**
+   배경(색·이미지 URL)과 기존 토핑을 상태에 싣고, 화면이 `CanvasToppingLayer`로 그것을 그린다.
+   `groupId` 하나당 한 번만 조회하고, 실패는 로그만 남긴 채 기본 배경·빈 목록으로 배치를 계속하게
+   둔다. 배경 이미지는 C-001과 같은 `ContentScale.Crop`이고 기존 토핑은 `positionZ` 오름차순이라
+   두 화면의 그림이 갈리지 않는다 → OQ-P-240 해소. **남은 것 셋**: 캔버스 상자가 여전히 `YGCanvas`가
+   아닌 화면 자작 `Box`라 **좌상단 컷 도형이 없고**(OQ-P-174), 겹침 z 규칙에 정책 근거가 없으며,
+   이 라운드가 연 조회·매핑 경로에 **테스트가 0건**이다(OQ-P-303).
 5. **회전과 리사이즈 한계는 정책에 근거가 없다** — 위키 C-106은 초기 배치·이탈만 규정하고 회전을
    아예 다루지 않는다. 드래그 감도 상수 둘, 오버플로 상한, 회전 무제한이 전부 코드 판단이다
    → OQ-P-241.

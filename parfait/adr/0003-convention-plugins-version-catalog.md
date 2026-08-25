@@ -26,6 +26,19 @@ tags: [adr, parfait]
   🔁 **as-built(2026-08-16, PR #264)** — `setSigningConfig`이 `signingConfigs`를 만들기만 하던 것에서
   **release 빌드 타입에 release 설정을 결선**하는 데까지 갔다(`buildTypes.getByName("release")`).
   그전까지 release 산출물은 등록만 된 키를 쓰지 않았다. debug 타입은 종전대로 기본 결선을 쓴다.
+  🔁 **as-built(2026-08-25, PR #354)** — **키가 없을 때의 거동이 바뀌었다.** `loadReleaseKey`·
+  `loadDebugKey`가 `Key?`를 반환해 없으면 `null`이고, 예전처럼 `./error.jks`라는 **없는 경로로
+  채우지 않는다** — 가짜 경로를 채우면 AGP가 그것을 그대로 믿어 "어떤 프로퍼티가 비었는가"를
+  아무도 말해 주지 않았다. 대신 `failWhenStoreFileMissing`이 `validateSigningRelease`·
+  `validateSigningDebug`에 `doFirst`를 얹어 **서명이 실제로 필요한 순간에만** 비어 있는 프로퍼티
+  이름과 함께 실패시킨다. 설정 단계에서 터뜨리지 않는 근거는 **CI가 키를 주입하지 않는다**는 것이다
+  (`.github/actions/restore-app-secrets`는 카카오 키와 `google-services.json`만 복원한다) — 설정
+  단계에서 막으면 ktlint·테스트조차 못 돈다. 두 프로퍼티 키 상수(`YG_RELEASE_STORE_FILE`·
+  `YG_DEBUG_STORE_FILE`)가 그 메시지를 만들려고 `internal`에서 공개로 올라갔고, `findProperty` →
+  `local.properties` 순회와 `Properties` 로딩이 릴리즈·디버그 공용 함수 하나로 합쳐졌다
+  (`loadBaseUrl`도 같은 `localProperties()`를 쓴다). ⚠️ **이 안내가 실제로 발화하는지 확인되지
+  않았다** — 태스크 **이름 일치**에 걸려 있어 그 이름의 태스크가 없으면 조용히 아무 일도 하지 않는다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-305.
 - `JetpackComposeConventionPlugin` — Compose 활성 + Material3 + Coil.
 - `DaggerHiltCoreConventionPlugin` / `DaggerHiltComposeConventionPlugin` — Hilt + KSP([[0004-hilt-ksp-di]]).
 - `ModuleDataConventionPlugin`, `ModuleDomainConventionPlugin`, `ModuleFeatureApiConventionPlugin`, `ModuleFeatureImplConventionPlugin` — 레이어별 표준 의존·플러그인 묶음.

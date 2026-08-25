@@ -4,7 +4,7 @@ title: C-001 캔버스 오늘·날짜별 조회 결선 (ParfaitRepository + 토�
 status: implemented
 category: feature-spec
 platforms: android
-verified: 2026-08-18
+verified: 2026-08-26
 related_code: ParfaitRepository, ParfaitRepositoryImpl, GetTodayParfaitUseCase, GetParfaitDetailUseCase, parfaitToday, PARFAIT_TIME_ZONE, CanvasToppingLayer, CanvasMainViewModel, CanvasMainUiState, CanvasMainRoute, CanvasMainScreen, NavKeyCanvasMain, GroupListViewModel, GroupListScreen, GroupListRoute, String.toColorOrNull, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingBorder, YGCanvasBackground
 related_adr: ADR-0009, ADR-0017, ADR-0020
 related_spec: c001-canvas-main, c201-canvas-calendar, c201-canvas-calendar-server, c301-topping-edit-tab, parfait-canvas-topping-member-api-service-layer, canvas-detail-background-api-service-layer, g001-group-list, screen-resume-refetch
@@ -156,6 +156,15 @@ DI는 `RepositoryModule`에 `@Binds` 한 줄.
 
 **색을 못 읽으면 각각 다르게 떨어진다** — 테두리는 **안 그리고**, 배경은 **기본 배경**으로 간다.
 둘 다 "임의의 색을 골라 칠하는 것보다 덜 틀리다"는 같은 근거다.
+
+> 🔁 **as-built 정정(2026-08-25, PR #351)** — 배경 쪽 폴백의 **자리와 값이 둘 다 바뀌었다.**
+> 화면이 들고 있던 `DEFAULT_CANVAS_BACKGROUND`(`Solid(Gray100)`)가 사라지고, `toYGCanvasBackground()`가
+> 미설정·미지 type·색 파싱 실패 셋을 전부 **`null`로** 넘긴다. 폴백 그림을 그리는 주체는 이제
+> `YGCanvas`이고 그림도 `Gray100`이 아니라 **흰 바탕**이다 — 이 스펙이 "기본 배경"이라 적은 것은
+> 그때의 `Solid(Gray100)`이었다. 근거 문장("덜 틀리다")은 그대로 성립한다.
+> 함께 **`isEmpty`의 효력이 배경에 종속됐다** — 빈 안내판은 `isEmpty && background == null`일 때만
+> 뜬다. 배경을 고른 캔버스는 토핑이 0개여도 안내 없이 그 배경만 보인다. 그 조건은 정책 소스가
+> 없다 → [open-questions](../../synthesis/open-questions.md) OQ-P-304.
 
 ### 진입
 
