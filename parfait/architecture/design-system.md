@@ -54,11 +54,23 @@ screen/                   ← 화면 루트 컨테이너 (아래 "화면 컨테�
   YGScaffold.kt           Material3 Scaffold 래퍼 (구판, @Deprecated(WARNING) #267)
   YGScaffoldV2.kt         Scaffold + 로딩 오버레이 + 토스트 호스트 3층 (Route 소유, #267 develop 머지)
   YGScreenScope.kt        YGScreenScope + OnBack(@Composable, BackHandler 래핑)
-res/font/                 ← suit_regular/medium/semi_bold/bold.ttf
+res/font/                 ← suit_regular/medium/semi_bold/bold.ttf (SUIT **수정본**, #366 — 아래 참고)
 res/values/strings.xml    ← 모듈 최초의 문자열(#267) — 로딩 오버레이 접근성 contentDescription 1건
 res/raw/                  ← 로딩 로띠 2종(밝은 바탕용·어두운 바탕용, #305) — 모듈 최초의 raw 리소스
 res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-002 온보딩 일러스트 `image_onboarding_*` 추가, #264로 `ic_edit`·`ic_scale` 추가)
+(모듈 루트)
+  OFL.txt                 ← 번들 폰트의 SIL Open Font License 1.1 사본 + 수정 내역 고지 (#366 신설)
 ```
+
+> **번들 폰트는 원본이 아니라 수정본이다**(#366 develop 머지, 2026-08-26). SUIT 원본은 **빈
+> 글리프(zero-contour)로 향하는 cmap 매핑**을 갖고 있어 그 문자들이 화면에 **투명하게** 찍혔다.
+> 수정본은 그 매핑만 걷어내 플랫폼이 **시스템 폰트로 fallback** 하게 한다 — 글리프 아웃라인과
+> 폰트 버전은 그대로이고 파일명도 유지해 `R.font` 참조와 `YGFontFamily`는 손대지 않았다.
+> 두 가지가 이 교체에 딸려 온다. ① fallback 문자는 **기기 시스템 폰트로 그려지므로 기기마다
+> 글자체가 섞인다**(투명보다 낫다는 판단이지 같은 그림이라는 뜻이 아니다). ② OFL 1.1이 수정본
+> 배포 시 라이선스 사본 동봉을 요구해 모듈 루트에 `OFL.txt`가 생겼는데, **그 파일은 APK에 실리지
+> 않고 앱 안에 오픈소스 고지 화면도 없다** → [open-questions](../synthesis/open-questions.md)
+> OQ-P-306·OQ-P-307.
 
 > **에셋 소유가 갈린다** — 화면 전용 이미지가 여기 들어오는 경우(A-002 온보딩 일러스트)와 해당 feature
 > 모듈 `res/`에 두는 경우(같은 화면의 카카오·애플 로고 벡터)가 공존한다. 기준이 문서에 없다
