@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-24
+verified: 2026-08-25
 related_spec: segmentation-mask-postprocessing, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -517,6 +517,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 최초 진입 시 자동 요청 또는 "권한 허용" 버튼을 둘지, ② 최초 거부와 영구 거부 화면을 나눌지(`permanentlyDenied` 분기 부활), ③ 안 쓸 파라미터면 시그니처에서 뺄지.
 - **상태**: 미해결 (코드 수정 대상 — 최초 설치 후 카메라 진입 시 권한을 얻을 수 없다)
   > 📌 **갤러리 쪽 launcher 경로만 실물이 됐다(2026-08-04, PR #191)** — 死코드였던 부분 접근 배너 대신 화면 하단 "사진 재선택" `YGButton`이 PARTIAL일 때 노출돼 `OnRequestManageMedia` → `RequestPermission` → launcher를 탄다. 즉 **부분 접근 상태에서만** 시스템 다이얼로그가 뜨고, 미허용(DENIED/PERMANENTLY_DENIED) 상태의 `onClickGrantPermission`은 여전히 권한 화면에서 호출되지 않는다.
+  > 📌 **두 컴포넌트를 다시 짜고도 그대로다(2026-08-25, PR #350)** — 인셋 수정 라운드가 카메라·갤러리 권한 화면의 레이아웃을 통째로 고쳐 놓으면서 `onClickGrantPermission`·`permanentlyDenied`는 손대지 않았다. 두 파라미터는 여전히 받기만 하고 본문에서 쓰이지 않는다. **화면을 여는 사람이 이 자리를 지나갔는데도 안 열렸다**는 뜻이라, 이 항목은 "잊혀서 남아 있는 것"이 아니라 **결정이 없어서 남아 있는 것**이다.
 - **해소 메모**: 결정 후 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) "주의/열린 질문"과 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 권한 흐름 절을 정리한다.
 
 ### [2026-08-01] 갤러리 빈 상태 그래픽이 상시 노출되고 문구가 리터럴
@@ -975,6 +976,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 인셋 소유의 기본을 어디로 정할지(엔트리 컨테이너 / 화면 / 컴포넌트), ② 컴포넌트 흡수를 채택하면 나머지 탑바 3변형에도 `windowInsets`를 열지, ③ 흡수형을 쓰는 화면이 `YGScaffold` 상단을 빼는 것을 규약으로 강제할지(빼먹으면 이중 적용인데 컴파일로 못 막는다).
 - **상태**: 미해결 (코드 머지됨 — 규약 쪽 결정 필요)
   > 📌 **형태 선택이 화면 정책을 깎았다(2026-08-11, PR #199)** — C-001은 ①(엔트리 `YGScaffold` 기본)을 골랐고, 그 결과 배경 점 격자가 `innerPadding` 안쪽에만 그려져 위키 정책의 "화면 전체 뒤"를 못 지킨다(아래 [2026-08-12] Dot Grid 항목). `YGTopBarCanvas`에 `windowInsets`가 없어 G-001 관용구를 쓸 수도 없으니, ②는 이제 취향 문제가 아니라 **정책 이행을 막는 제약**이다.
+  > ⚠️ **③이 실제 결함으로 나타났다(2026-08-25, PR #350)** — 갤러리 권한 거부 화면이 Route의
+  > `YGScaffoldV2`가 준 `innerPadding` 위에 `windowInsetsPadding(systemBars)`을 한 번 더 걸어 닫기
+  > 버튼이 상태바 높이만큼 내려앉아 있었고, 이슈 #345로 사용자 눈에 먼저 띄었다. **같은 화면의
+  > 목록 갈래는 멀쩡했다** — 인셋 소유가 화면 단위가 아니라 **갈래(권한 / 콘텐츠) 단위로 갈릴 수
+  > 있다**는 것이 이 항목에 없던 결이다. 게다가 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md)이
+  > 2026-08-04에 "인셋 이중 적용이 사라졌다"고 적은 뒤로 안 걷힌 갈래가 세 주를 살아남았다.
+  > 같은 라운드가 카메라 권한 화면에서는 **무는 자리**(닫기 `Row` → 바깥 `Box`)를 옮겼다 — ①의
+  > "화면이 직접 무는" 형태는 무는 주체까지 정해야 재현 가능한 규약이 된다.
   > 📌 **4형태·5형태가 더 붙었다(2026-08-13, PR #223)** — S-101 그룹 설정 entry가 ①에 **`consumeWindowInsets(innerPadding)`**을 얹는 형태를 도입했다(하위 `imePadding()`이 인셋을 두 번 세지 않게). 소비를 빼면 확인 버튼이 내비게이션 바 높이만큼 떠오르는데 컴파일로 못 막는다 — ③과 같은 성질의 암묵 규약이 하나 더 생긴 셈이다. 대조적으로 `feature/groups/enter/impl`의 세 entry는 `contentWindowInsets = WindowInsets(0.dp)`로 인셋을 끄고 `statusBarsPadding()` + `navigationBarsAndImePadding()`을 직접 붙인다. 즉 develop의 인셋 관용구는 이제 **다섯 형태**다.
 - **해소 메모**: 결정 시 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번과 [design-system](../architecture/design-system.md) `YGTopBar`·"화면 컨테이너" 절, [ygtopbar 스펙](../specs/archive/2026-07-18-ygtopbar.md)을 함께 정리한다. [2026-08-01 화면 컨테이너 규약 이탈 항목](#2026-08-01-g-001-목록-화면이-화면-컨테이너-규약을-벗어남)과 같은 화면에 걸린다.
 
@@ -4859,4 +4868,23 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: OOM 이 실제로 나면 되돌리기가 받아 크래시는 아니지만 기능이 통째로 죽는다.
   그때는 정련을 경계 밴드로 한정하는 안(OQ-P-299의 대안)이 메모리도 같이 줄인다.
 
-<!-- oq-next: 301 -->
+### [2026-08-25] 권한 화면 인셋 수정을 실기기에서 확인하지 않았다
+
+- **ID**: OQ-P-301
+- **출처**: `feature/gallery/impl/.../component/GalleryPermissionRequestComponent.kt` ·
+  `feature/camera/impl/.../component/CameraPermissionRequestComponent.kt`(PR #350 develop 머지) —
+  이슈 #345가 지목한 인셋 이중 적용을 걷어냈고 카메라 쪽은 무는 자리를 바깥 `Box`로 옮겼다.
+- **항목**: ① **고친 결과를 실기기에서 본 사람이 없다.** PR 본문이 스스로 밝히듯 권한 거부 상태를
+  로컬에서 재현하지 못해 비교 이미지의 "After"는 실측이 아니라 이슈에 붙은 디자인 이미지다.
+  ② **테스트로도 안 잠긴다.** 인셋은 기기의 실제 시스템 바 높이에 붙는 값이라 유닛 테스트 대상이
+  아니고, 스크린샷 테스트도 없다. 즉 이 화면의 세로 정렬은 지금 **사람 눈 말고 검증 수단이 없다**.
+  ③ **카메라 쪽 안내 블록의 하단 `padding3` 보정에는 대응 디자인이 없다.** 이슈 이미지는 갤러리
+  화면 것이고, 코드 주석의 논증(닫기 줄을 쌓으면 블록이 줄 높이의 절반만큼 내려 보인다)이 유일한
+  근거다. 겹쳐 놓기로 바꾼 뒤에도 보정이 남아 있어야 하는지가 이미지로 확정되지 않았다.
+- **상태**: 미해결 (실기기 확인 필요 — 권한 거부 상태를 만들어 두 화면을 각각 본다)
+- **해소 메모**: 확인되면 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md)
+  「as-built 재정정」과 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)
+  「권한 화면 as-built 갱신」의 실기기 미확인 문장을 지운다. 어긋나 있으면 ③이 먼저 답을 받아야
+  한다 — 보정을 뺄지 값을 바꿀지는 디자인이 정한다.
+
+<!-- oq-next: 302 -->

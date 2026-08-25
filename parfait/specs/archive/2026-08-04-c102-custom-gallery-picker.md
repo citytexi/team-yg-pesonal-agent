@@ -4,7 +4,7 @@ title: C-102 커스텀 갤러리 선택 화면 (Custom Gallery Picker)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-04
+verified: 2026-08-25
 related_code: CustomGalleryPickerScreen, CustomGalleryPickerViewModel, CustomGalleryPickerRoute, GalleryImageGridComponent, GalleryPermissionRequestComponent, GalleryPartialAccessBanner, GalleryPermissionManager, GalleryRepository, GalleryMediaProvider, LoadFilterYGGalleryImageGroupsUseCase, LoadAllGalleryImageGroupsUseCase, GetRecentCacheImagesUseCase, GalleryImageGroup, DayWindow, DateTextFormat, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, PictureConfirmSource
 related_adr: ADR-0002, ADR-0006, ADR-0016
 related_spec: c101-camera-picture-confirm, c301-canvas-background-edit
@@ -115,7 +115,10 @@ tags: [spec, parfait, gallery, c102]
 ## 규약 대조 (parfait)
 - **화면 컨테이너**: `featureCustomGalleryEntryBuilder`는 `YGScaffold { innerPadding }`을 정상 적용한다
   (카메라의 의도적 예외와 다름). 이번 PR이 화면 안의 `windowInsetsPadding(systemBars)`을 걷어내
-  **인셋 이중 적용이 사라졌다**. 화면 최외곽 `YGScreen`은 쓰지 않는다(G-001·C-101과 같은 이탈).
+  **목록 갈래에서는 인셋 이중 적용이 사라졌다**. 화면 최외곽 `YGScreen`은 쓰지 않는다(G-001·C-101과 같은 이탈).
+  > ⚠️ **권한 갈래에는 이중 적용이 남아 있었다(2026-08-25, PR #350에서 해소)** — 위 문장이 세 주
+  > 동안 화면 전체를 말하는 것처럼 읽혔으나, `GalleryPermissionRequestComponent`의 닫기 줄은
+  > `windowInsetsPadding(WindowInsets.systemBars)`을 계속 걸고 있었다. 아래 「as-built 재정정」 참고.
   > 📌 **컨테이너가 Route로 내려갔다(2026-08-20, PR #309)** — 스캐폴드가 EntryBuilder의 `YGScaffold`에서
   > Route의 `YGScaffoldV2`가 됐고, `CustomGalleryPickerScreen`이 파라미터로 받아 직접 꽂던
   > `YGToastHost`·`toastPolicy`도 그때 걷혔다(정책 객체는 Route가 만들어 스캐폴드에 넘긴다).
@@ -147,13 +150,34 @@ tags: [spec, parfait, gallery, c102]
 | `data/.../repository/gallery/GalleryRepositoryImpl.kt`·`utils/GalleryMediaProvider.kt` | 그룹핑 키 `LocalDate` 반환, 표시 포맷 제거 |
 | `core/designsystem/res/drawable-*/image_gallery_empty.png` | 빈 상태 그래픽(벡터 → 밀도별 PNG 6종) |
 
+## as-built 재정정 (2026-08-25, PR #350 develop 머지)
+이슈 #345가 지목한 것은 **닫기 버튼이 설계보다 상태바 높이만큼 내려앉은 것**이었고, 원인은
+`YGScaffoldV2`가 `innerPadding`을 넘겨줄 뿐 인셋을 소비하지 않는다는 성질이다 — Route가 그
+`innerPadding`을 화면에 물린 위에서 권한 컴포넌트가 `windowInsetsPadding(systemBars)`을 한 번 더
+걸면 상단은 상태바만큼 밀리고, 하단은 내비게이션 바 인셋이 닫기 줄 **아래**의 빈칸이 되어 가운데
+안내 블록까지 밀려 내려간다.
+- **중복 `windowInsetsPadding`이 제거됐다.** 이제 이 갈래의 인셋 소유자는 Route의 `YGScaffoldV2`
+  하나이고, 권한이 있을 때 그려지는 `GalleryContent`와 같은 형태가 됐다. **카메라 권한 화면과는
+  방향이 반대다** — 카메라는 Scaffold가 인셋을 안 주므로 컴포넌트가 계속 직접 문다
+  → [c101 스펙](2026-08-01-c101-camera-picture-confirm.md). 「파일 구성」의 "카메라와 공통 형태"는
+  **레이아웃 골격에 한한 말**이고 인셋 소유는 두 화면이 다르다.
+- **최외곽이 `Column` → `Box`가 되고 닫기 줄이 겹쳐 놓인다.** 줄을 세로로 쌓으면 안내 블록이 줄
+  아래 남은 공간의 가운데로 앉아 화면 기준으로는 줄 높이의 절반만큼 내려가 보이기 때문이고,
+  안내 블록에는 하단 `padding3` 보정이 함께 붙었다.
+- **실기기 확인 없이 머지됐다.** PR 본문이 스스로 밝힌다 — 권한 거부 상태를 로컬에서 재현하지
+  못해 비교 이미지의 "After"가 실측이 아니라 이슈에 붙은 디자인 이미지다. 인셋은 기기의 실제
+  시스템 바 높이에 붙는 값이라 단위 테스트로도 잠기지 않았다 →
+  [open-questions](../../synthesis/open-questions.md) [2026-08-25].
+- 권한 흐름 자체(`onClickGrantPermission` 미호출)는 이 라운드에서 변하지 않았다.
+
 ## 주의 / 열린 질문
 - **로딩 인디케이터가 흰 배경 위 흰색**이다 — 배경이 흰색으로 확정된 이번 PR 이후에도 그대로라
   로딩 중 화면이 비어 보인다([2026-08-01 갤러리 빈 상태 항목](../../synthesis/open-questions.md) ② 잔존).
 - **死코드 2건**: `GalleryPartialAccessBanner`(부분 접근 배너 — 하단 버튼으로 대체됐으나 파일 잔존,
   색·문구도 리터럴), `LoadAllGalleryImageGroupsUseCase`(전체 조회 UseCase — 호출자 0건).
 - **최초 권한 요청 경로 부재**: `onClickGrantPermission`이 여전히 권한 화면에서 호출되지 않는다
-  (카메라와 동일, [2026-08-01 항목](../../synthesis/open-questions.md)).
+  (카메라와 동일, [2026-08-01 항목](../../synthesis/open-questions.md)). **#350이 이 컴포넌트를 다시
+  짜면서도 건드리지 않았다.**
 - **확인 화면 이후 미결선**: 갤러리 경로도 같은 확인 화면으로 합류하므로 "다음"·닫기 TODO의 영향
   범위가 두 진입점으로 늘었다.
 - 위 항목은 [open-questions](../../synthesis/open-questions.md)에서 추적한다.

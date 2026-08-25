@@ -4,8 +4,8 @@ title: C-101 커스텀 카메라 · C-101-confirm 사진 확인 화면 (Custom C
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-15
-related_code: PictureConfirmResult, CameraFeedLayer, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, PictureConfirmSource, GalleryPermissionRequestComponent, DateTextFormat
+verified: 2026-08-25
+related_code: PictureConfirmResult, CameraFeedLayer, CameraPermissionRequestComponent, CustomCameraRoute, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, PictureConfirmSource, GalleryPermissionRequestComponent, DateTextFormat
 related_adr: ADR-0018, ADR-0006
 related_spec: designsystem-button-missing-components, g001-group-list, c102-custom-gallery-picker, c103-segmentation-topping-edit, c301-canvas-background-edit
 related_architecture: navigation-flow, design-system, module-structure
@@ -105,6 +105,7 @@ tags: [spec, parfait, camera, c101]
   `NavKeyPictureConfirm`에 `returnResultOnly`가 붙었다. 둘 다 기본값이 있어 기존 호출부는 생성자
   호출로만 바뀌었다(동작 불변).
 - `showGuideToast = false`면 진입 가이드 토스트를 띄우지 않는다(`hasShownGuideToast` 게이트 앞에 조건 추가).
+  > 📌 **권한 게이트가 하나 더 붙었다(2026-08-25, PR #350)** — 아래 「권한 화면 as-built 갱신」 참고.
 - 확인 버튼이 갈린다 — `returnResultOnly`면 신설 `PictureConfirmResult(uri, source)`를
   `LocalResultEventBus`로 보내고 `onBack()`을 **두 번**(확인 화면 → 카메라) 부르고, 아니면 종전대로
   `goToAndPopCurrent(NavKeySegmentation)`으로 전진한다.
@@ -112,6 +113,31 @@ tags: [spec, parfait, camera, c101]
   갈렸고, `PictureConfirmResult`만 구독하는 호출자는 실패를 받지 못한다
   → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
 - 좌측 버튼 문구 분기(`PictureConfirmSource`)·닫기 빈 람다 TODO는 변하지 않았다.
+
+### 권한 화면 as-built 갱신 (2026-08-25, PR #350)
+이슈 #345는 갤러리 권한 화면의 닫기 버튼이 설계보다 상태바 높이만큼 내려앉은 것이었고, 같은 라운드가
+카메라 권한 화면의 같은 부류 결함을 함께 고쳤다. **두 화면의 결함은 기전이 서로 다르다** — 갤러리는
+Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 적용이었고, 카메라는 Scaffold가 인셋을
+주지 않으므로 컴포넌트가 무는 것 자체는 맞되 **무는 자리**가 틀렸다.
+- **인셋을 무는 자리가 닫기 `Row` → 바깥 `Box`로 옮겨졌다.** 닫기 줄에 물리면 하단 인셋이 버튼
+  **아래**의 빈칸으로 들어가, 세로 가운데 정렬인 안내 블록이 내비게이션 바 높이의 절반만큼 위로 떴다.
+  카메라 entry가 `innerPadding`을 화면에 먹이지 않는 예외(아래 「규약 대조」)의 하위 귀결이라,
+  이 컴포넌트가 인셋을 직접 무는 구조 자체는 유지된다.
+- **최외곽이 `Column` → `Box`가 되고 닫기 줄이 겹쳐 놓인다.** 줄을 세로로 쌓으면 안내 블록이 줄
+  아래 남은 공간의 가운데로 앉아 화면 기준으로는 줄 높이의 절반만큼 내려가 보인다. 안내 블록에는
+  하단 `padding3` 보정이 함께 붙었다. 갤러리 쪽도 같은 형태로 맞춰졌다 →
+  [c102 스펙](2026-08-04-c102-custom-gallery-picker.md).
+- **가이드 토스트가 권한을 기다린다.** `CustomCameraRoute`의 게이트가 `LaunchedEffect(Unit)` →
+  `LaunchedEffect(state.hasPermission)`이 되고 조건에 `state.hasPermission`이 들어갔다. 촬영 요령을
+  말하는 토스트가 **권한 거부 화면 위에** 뜨던 것을 막고, 설정에서 권한을 켜고 돌아온 시점에 처음
+  뜬다(`hasShownGuideToast`가 `rememberSaveable`이라 1회는 그대로다). 갤러리 Route는 진작
+  `state.access.hasPermission`을 게이트에 걸고 있었으므로 **카메라가 갤러리 쪽에 맞춰진 것**이고,
+  두 모듈에 각각 정의된 같은 문구의 토스트가 이제 같은 조건으로 뜬다.
+- **PR 요약이 이 토스트 변경을 다루지 않는다.** 인셋 수정만 적혀 있어 동작 변경 1건이 리뷰 서술
+  밖에 있었다. 또 인셋 수정은 **실기기 확인 없이** 머지됐다(PR 본문이 스스로 밝힌다) →
+  [open-questions](../../synthesis/open-questions.md) [2026-08-25].
+- `permanentlyDenied`·`onClickGrantPermission`은 **이번에도 본문에서 쓰이지 않는다** — 컴포넌트를
+  통째로 다시 짜면서도 권한 요청 경로 부재는 그대로다(아래 「주의 / 열린 질문」).
 
 ### 상태(MVI)
 `CustomCameraState`: `isInit` · `hasPermission` · `permanentlyDenied` · `lensFacing` · `zoomRatio` ·
@@ -141,6 +167,10 @@ tags: [spec, parfait, camera, c101]
   > 안에 얹고 있던 `YGToastHost`를 걷어 스캐폴드로 옮겼다 — **토스트가 상태바 인셋 아래 상단으로
   > 올라가 눈에 보이는 위치가 바뀌었고**, 위키 Toast 공통 정책("위→아래 노출")에는 이쪽이 맞는다.
   > 조용히 뒤로 가던 촬영 실패에도 `showError` 토스트가 붙었다.
+  > 📌 **권한 갈래도 이 예외를 따른다(2026-08-25, PR #350)** — 권한 거부 화면은 컨트롤 `Column`이
+  > 없는 갈래라 인셋을 무는 주체가 `CameraPermissionRequestComponent` 자신이고, 무는 자리를 바깥
+  > `Box`로 올려 각 변을 한 번씩만 물게 했다. 즉 **이 화면에서 "화면이 직접 무는" 형태는 갈래마다
+  > 주체가 다르다**(피드 갈래는 컨트롤 `Column`, 권한 갈래는 컴포넌트 최외곽).
   화면 최외곽 `YGScreen`은 카메라·확인 화면 모두 쓰지 않는다(G-001과 같은 이탈 → [navigation-flow](../../architecture/navigation-flow.md)).
 - **문자열**: 카메라·갤러리 모두 feature `strings.xml` 신설로 [module-structure](../../architecture/module-structure.md) 규약을 따랐다.
   단 갤러리 **빈 상태 문구만 코틀린 리터럴**로 남았다(#191로 해소).
@@ -189,4 +219,6 @@ tags: [spec, parfait, camera, c101]
   화면 1종), `onClickGrantPermission`을 부르는 UI도 없다. `CustomCameraIntent.OnRequestPermission`과
   `permissionLauncher`는 살아 있으나 **발신처가 없어** 시스템 권한 다이얼로그가 뜨지 않는다 —
   미허용 상태에서는 "설정으로 이동"만 보인다. 갤러리 쪽도 같은 형태다.
+  **#350(2026-08-25)이 두 컴포넌트의 레이아웃을 다시 짜면서도 이 둘은 건드리지 않았다** — 파라미터
+  둘은 여전히 받기만 하고 쓰이지 않는다.
 - 위 항목은 전부 [open-questions](../../synthesis/open-questions.md) [2026-08-01]에서 추적.

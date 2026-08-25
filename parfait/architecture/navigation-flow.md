@@ -4,7 +4,7 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-24
+verified: 2026-08-25
 related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
@@ -433,11 +433,25 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 > entry 단독으로 정리됐다. 같은 PR이 매니페스트에 **`android:windowSoftInputMode="adjustResize"`**를
 > 붙였는데, `MainActivity` 단일 액티비티라 **앱 전 화면에 걸리는 변경**이다(창이 줄어드는 방식이 바뀌므로
 > 다른 입력 화면의 인셋 체감도 함께 달라진다 — 실기기 확인 기록은 없다).
+>
+> ⚠️ **이중 적용이 다시, 다른 화면에서 드러났다(2026-08-25, PR #350)** — 갤러리 권한 거부 화면이
+> Route의 `YGScaffoldV2`가 준 `innerPadding` 위에 `windowInsetsPadding(systemBars)`을 한 번 더 걸어
+> 닫기 버튼이 상태바 높이만큼 내려앉아 있었다(이슈 #345). **같은 화면의 목록 갈래는 멀쩡했다** —
+> 인셋 소유가 화면 단위가 아니라 **갈래 단위로 갈릴 수 있다**는 뜻이고, 스펙에 "이중 적용이
+> 사라졌다"고 적힌 뒤에도 안 걷힌 갈래가 세 주를 살아남았다. `Scaffold`가 `innerPadding`을 넘겨줄
+> 뿐 소비하지 않는다는 성질이 [2026-08-13] 건과 같은 뿌리다 →
+> [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) ·
+> [open-questions](../synthesis/open-questions.md) [2026-08-07].
 
 > **의도적 예외(2026-08-01, PR #182)** — C-101 카메라 entry는 `YGScaffold`를 쓰되 **`innerPadding`을
 > 화면에 먹이지 않는다**. 카메라 피드가 시스템 바 아래까지 덮어야 하고 인셋은 컨트롤 영역이
 > `windowInsetsPadding`으로 직접 처리하기 때문이다(코드 주석에 근거 명시). 전체화면 카메라·미디어
 > 화면의 관용구로 볼지는 위 이탈 사례와 함께 정리 대상 → [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md).
+> 📌 **예외 안에서 무는 주체가 갈래마다 다르다(2026-08-25, PR #350)** — 피드 갈래는 컨트롤 `Column`이
+> 물고, 권한 거부 갈래는 컨트롤이 없어 `CameraPermissionRequestComponent` 최외곽이 문다. 이번
+> 라운드가 그 자리를 닫기 `Row`에서 바깥 `Box`로 올렸다 — 닫기 줄에 물리면 하단 인셋이 버튼 아래
+> 빈칸이 되어 세로 가운데 정렬 블록이 밀린다. **"화면이 직접 문다"는 형태는 무는 주체까지 정해야
+> 재현 가능한 규약이 된다**.
 
 ## 인자 있는 목적지 (`data class NavKey`)
 
