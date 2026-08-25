@@ -4,7 +4,7 @@ title: C-301 토핑 편집 탭 (선택·이동·크기·회전·삭제 + 테두�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-23
+verified: 2026-08-26
 related_code:
   - CanvasBGEditScreen.kt#CanvasBGEditScreen
   - CanvasBGEditScreen.kt#CanvasToppingImage
@@ -281,6 +281,8 @@ feature/segmentation/
   KDoc이 그 사실을 `TODO(서버 응답 확장 대기)`로 적어 두었다. **이 화면에서는 그 판정이 곧
   게이트**라, 참으로 새면 남의 토핑을 만지고 거짓으로 접히면 내 토핑도 못 만진다
   → [open-questions](../../synthesis/open-questions.md) OQ-P-250.
+  ✅ **닫혔다**(2026-08-26, PR #376 — 아래 [as-built 재정정](#as-built-재정정-2026-08-26-pr-376-develop-머지)).
+  그 `TODO`가 예고한 "응답에 isMine이 실리면 그것으로 갈아탄다"가 그대로 일어났다.
 - **테두리는 여전히 안 그린다** — `borderLayers`를 받아 두기만 하고 그리는 자리가 편집 결과
   이미지 하나만 읽는다 → [open-questions](../../synthesis/open-questions.md) OQ-P-254.
 - 드리프트 4(회전 한계 없음)·5(선택 상태가 목록 변화를 못 견딤)·6(접근성)은 그대로다. 5는
@@ -395,3 +397,30 @@ Repository는 여기서도 **에러 변환만** 하고 좌표를 손대지 않�
 굳었다.** 상한을 되살리려면 이제 그 테스트를 함께 지워야 한다.
 
 저장소 전체 유닛은 745 → **751건**, 테스트 클래스는 **87개**로 그대로다.
+
+## as-built 재정정 (2026-08-26, PR #376 develop 머지)
+
+> **게이트의 근거가 앱의 추측에서 서버의 판정으로 바뀌었다.** 화면 동작·레이어 구성은 한 줄도
+> 안 바뀌었고, `isMine`을 **누가 정하는가**만 바뀌었다.
+> 브랜치 `feature/#373-sync-backend-api-260825`, 머지 `c55e10bc`.
+
+- **`CanvasBGEditViewModel`이 계정 SSoT 의존을 통째로 버렸다.** 생성자에서
+  `GetMyAccountFlowUseCase`가 빠지고, `loadCanvas()` 첫 줄의 `getMyAccountFlowUseCase().first()`
+  대기도 사라졌다. `toToppingItem(myMemberId)`는 인자 없는 `toToppingItem()`이 되고 본문은
+  `isMine = isMine` — 도메인 모델이 이미 답을 들고 온다.
+- **그래서 축이 다른 비교가 사라졌다.** 계정 id와 그룹 멤버십 행 id를 견주던 자리가 없어졌고,
+  판정은 서버가 `placedBy.ownerType`으로 끝낸다([api/parfait.md](../../api/parfait.md)).
+  이 화면에서 판정은 표현이 아니라 **게이트**였으므로, 이 변경이 없앤 것은 색이 아니라
+  **남의 토핑을 만질 수 있었던 가능성**이다.
+- 부수 효과 하나 — 편집 화면 진입이 계정 SSoT가 값을 낼 때까지 기다리지 않는다. 그만큼 조회
+  시작이 앞당겨지고, 계정 값이 아직 없을 때 소유 판정이 전부 `false`로 접히던 경로도 함께 없어졌다.
+
+### 유닛 테스트
+
+**신규 0건이다.** `CanvasBGEditViewModelTest`는 `getMyAccountFlow` 스텁과 `MyAccountVO` 조립이
+빠지고, 상수 `MY_GROUP_MEMBER_ID`가 **`PLACER_GROUP_MEMBER_ID`**로 개명되며 픽스처가 `isMine`을
+직접 받는다(22건 그대로).
+
+⚠️ **그래서 이 탭 몫 다섯 중 "소유 판정"은 더는 판정을 안 덮는다** — 테스트가 넣은 불리언이
+그대로 나오는지 볼 뿐이다. 판정의 진짜 자리는 `:data` 매퍼로 옮겨졌고 그쪽을
+`ParfaitRemoteDataSourceImplTest` 두 케이스가 덮는다(`ME`는 참, `null`·모르는 값은 거짓).

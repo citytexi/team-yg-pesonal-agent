@@ -587,9 +587,16 @@ D−1). **정책상 옳은 쪽이 서버였으므로 앱을 옮겼다**(위키 [
 `false`**라 C-202의 본인 갈래가 통째로 비어 있었고(OQ-P-250), C-301 편집 탭은 계정 id와 그룹 멤버십
 행 id를 견주는 **축이 다른 비교**로 게이트를 열고 닫았다. `placedBy.ownerType`이 그 둘을 한꺼번에
 없앤다 — 판정을 서버가 끝내 주므로 앱이 자기 식별자를 구해 올 경로 자체가 필요 없다.
-⚠️ **develop은 아직 이 필드를 안 읽는다** — `PlacedByResponse`에 자리가 없고 `ToppingPlacerVO`에도
-없다. 읽지 않는 것뿐이라 `⚠️불일치`는 아니다(`ignoreUnknownKeys = true`)
-→ [open-questions](../synthesis/open-questions.md) OQ-P-250.
+✅ **앱이 같은 날 그 값을 읽기 시작했다**(2026-08-26, PR #376 develop 머지). `PlacedByResponse`에
+`ownerType: String?`이 붙고 `VOMapper`가 `ownerType == "ME"`를 **`CanvasToppingVO.isMine`**(비널
+`Boolean`)으로 접는다. 즉 **문자열은 `:data` 경계를 못 넘는다** — 도메인이 받는 것은 판정 결과
+하나이고, `OTHER`·모르는 값·필드 부재가 **한 갈래로 합쳐진다**(아래 미지 값 폴백).
+소비 자리가 둘 다 갈렸다 — `CanvasMainViewModel`의 상수 `false` 확장 함수가 사라지고
+`topping.isMine`을 그대로 보며, `CanvasBGEditViewModel`은 `GetMyAccountFlowUseCase` 의존과
+진입 시 `first()` 대기를 **통째로 버렸다**(축이 다른 비교가 그 자리에 있었다).
+⚠️ **판정이 붙어도 본인 토핑 탭은 여전히 아무 일도 안 한다** — 정책이 보내라는 C-305 편집 화면이
+아직 없어 갈래만 갈리고 `TODO`로 끝난다. 다만 **잘못된 갈래로는 안 간다**(본인 토핑이 Spotlight로
+들어가 자기 닉네임 토스트가 뜨던 것이 멎었다) → [open-questions](../synthesis/open-questions.md) OQ-P-250.
 
 ✅ **키 어긋남도 develop에서 닫혔다** — 2026-08-19 서버 delta가 응답 키를 `nameTagChip` 계열로 바꾼 뒤
 그 필드를 옛 키로 읽던 브랜치가 잠시 있었으나(기본값이 있어 예외 없이 **조용히 `null`**이 되는 부류),
@@ -676,16 +683,20 @@ DTO가 함께 새로 생겼다. **DI 등록 줄은 한 줄도 늘지 않았다**
   **미지 `type`을 `null`로 접는 규칙을 조회와 통일**했기 때문이다(뜻은 "저장은 됐는데 그릴 수 없다").
   echo를 버리지 않는 이유는 **이미지 배경일 때 앱이 URL을 모르기 때문**이다 — 요청은 id로 보내고 응답에
   저장된 URL이 실려 오며, 그 값이 화면이 그릴 값이다.
-- **미지 값 폴백 두 갈래**: `status`가 모르는 값이면 `CanvasStatus.UNKNOWN`(값 자체가 상태라 버릴 수 없다),
+- **미지 값 폴백 세 갈래**: `status`가 모르는 값이면 `CanvasStatus.UNKNOWN`(값 자체가 상태라 버릴 수 없다),
   `background.type`이 모르는 값이면 **`null`로 접는다**(미지와 미설정은 화면 처리가 같다).
   토핑 테두리도 `SOLID`인데 색·두께가 비면 `ToppingBorder.None`으로 떨어뜨린다 — 서버가 저장 시점에
   막지만 이미 저장된 행이 있을 수 있어서다.
+  세 번째가 `placedBy.ownerType`이다(2026-08-26, PR #376) — `"ME"`가 아닌 **모든 값**이 `isMine = false`다.
+  방향을 그쪽으로 고른 근거는 매퍼 KDoc이 적어 두었다: 여는 쪽으로 틀리면 **남의 토핑을 만지게 되고**
+  접는 쪽으로 틀리면 내 토핑을 못 만질 뿐이다. 계약상 이 필드는 비널이므로 `null` 갈래는 서버가
+  안 주는 경우가 아니라 **구 버전 앱이 새 서버를 만나는 반대 방향**을 위한 자리다.
 - **범위 파라미터는 `null` 그대로 보낸다** — `from`·`to`가 `null`이면 Retrofit이 쿼리를 URL에서 빼므로
   서버 기본값(오늘 − 30일 ~ 오늘)이 산다. 문자열 변환(`LocalDate.toString()`)은 DataSource가 한다.
 
 설계 근거는 [specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)와
 신규 둘의 사후 스펙 [specs/archive/2026-08-16-canvas-detail-background-api-service-layer](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md).
-DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조건부 필수 두 갈래를 `coVerify` 인자 비교로**
+DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조건부 필수 두 갈래를 `coVerify` 인자 비교로**
 잠근다(매퍼 단독 테스트를 만들지 않는 규약 그대로).
 
 **`today` 조회가 C-001 캔버스 결선의 선행이었다.** "배치 목록 조회 API가 없어 캔버스를 다시 그릴 수 없다"던
@@ -733,5 +744,6 @@ DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조
 → [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).
 
 ✅ **2026-08-26 해소 1건** — 앱이 "내 토핑"을 가려낼 재료가 계약에 없던 것을 서버가
-`placedBy.ownerType`으로 닫았다(OQ-P-250 ①). 남은 것은 **앱이 그 값을 읽는 일**과 **C-305 목적지가
-생기는 일** 둘이다 → [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).
+`placedBy.ownerType`으로 닫았다(OQ-P-250 ①). 예고했던 남은 둘 중 **앱이 그 값을 읽는 일은 같은 날
+닫혔고**(PR #376), **C-305 목적지가 생기는 일만 남았다** → [Android 매핑](#android-매핑) ·
+[open-questions](../synthesis/open-questions.md).

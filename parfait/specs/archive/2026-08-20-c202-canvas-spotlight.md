@@ -4,12 +4,13 @@ title: C-202 캔버스 토핑 Spotlight — 타인 토핑 탭 강조·Dim·작�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-21
+verified: 2026-08-26
 related_code:
   - CanvasToppingLayer.kt#CanvasToppingLayer
   - CanvasToppingLayer.kt#CanvasTopping
   - CanvasMainViewModel.kt#CanvasMainUiState.spotlightedToppingId
   - CanvasMainViewModel.kt#handleOnClickTopping
+  - CanvasToppingVO.kt#CanvasToppingVO.isMine
   - CanvasMainViewModel.kt#resetSpotlight
   - CanvasMainViewModel.kt#CanvasMainEffect.ShowSpotlightToast
   - CanvasMainViewModel.kt#GroupMemberChip
@@ -157,7 +158,7 @@ Dim·확장 메뉴·달력보다 위에 그려지고, 상단 여백은 캔버스
 | Spotlighted → Spotlighted 직접 전환 불가 | 일치 |
 | Dim 포함 강조 토핑 밖 탭 → Default | 일치 |
 | 앱 백그라운드 → 복귀 시 Default | 일치 |
-| **본인 토핑 탭 → C-305 편집 진입** | **미구현** — `isMine()`이 상수 `false`라 본인 토핑도 Spotlight로 들어가고 자기 닉네임이 뜬다 |
+| **본인 토핑 탭 → C-305 편집 진입** | **부분**(2026-08-26, PR #376) — 판정은 서버 `ownerType`으로 붙어 본인 토핑이 더는 Spotlight로 안 들어간다. 다만 **갈 곳이 없어 탭이 아무 일도 안 한다**(C-305 화면 부재, `TODO`) |
 | **탈퇴·이탈 사용자는 Toast에 "알 수 없음"** | **부분** — 서버가 탈퇴 멤버의 `placedBy.nickname`을 `(알수없음)`으로 주므로 뜻은 맞지만, 문장이 정책 예시(`알 수 없는 사용자가 …`)와 달리 `(알수없음)님이 …`가 된다 |
 | Pull-to-Refresh 시 먼저 Default 복귀 | 해당 없음(캔버스에 당겨 새로고침 없음) |
 | Toast 노출·소멸은 [[toast]] 공통 규칙 | 호스트는 공통(`YGToastHost`)이나 **자리가 화면 상단이 아니라 캔버스 프레임 상단**이다 |
@@ -168,6 +169,8 @@ Dim·확장 메뉴·달력보다 위에 그려지고, 상단 여백은 캔버스
 
 - ⚠️ **본인 토핑 판정 경로가 없다** — 서버 응답이 "내 `groupMemberId`"를 알려 주지 않아
   `isMine()`이 항상 `false`다. C-305 진입도 `TODO`로 남는다 → OQ-P-250.
+  ✅ **판정은 닫혔다**(2026-08-26, PR #376 — 아래 [as-built 재정정](#as-built-재정정-2026-08-26-pr-376-develop-머지)).
+  **C-305 진입은 그대로 `TODO`**다.
 - ⚠️ **작성자 칩이 서버 값이 아니라 화면 목록 조인이다** — `placedBy.nameTagChip`이 도메인까지 오면
   그 값으로 바꾼다는 `TODO`가 붙어 있다(OQ-P-224 잔여). 지금은 탈퇴 멤버에서도 두 경로의 결과가
   같아 **틀린 색이 보이지는 않는다** → OQ-P-251.
@@ -178,3 +181,29 @@ Dim·확장 메뉴·달력보다 위에 그려지고, 상단 여백은 캔버스
 - 상대 시각 갈래 경계와 `오래전` 문구에 정책 근거가 없다 → OQ-P-251 ③.
 - 토스트 폭이 캔버스가 아니라 화면 기준이라, 캔버스 좌우 여백 위까지 토스트가 걸친다.
 - 실기기 확인 없음.
+
+## as-built 재정정 (2026-08-26, PR #376 develop 머지)
+
+> **비어 있던 본인 갈래가 반쯤 찼다** — 판정이 붙었고 목적지는 아직 없다.
+> 브랜치 `feature/#373-sync-backend-api-260825`, 머지 `c55e10bc`, 커밋 둘.
+
+- **상수 `false`가 사라졌다.** `CanvasToppingVO.isMine()`(항상 `false`를 돌려주던 private 확장 함수)이
+  통째로 지워지고, `handleOnClickTopping`이 도메인 모델의 프로퍼티 `topping.isMine`을 그대로 읽는다.
+  값의 출처는 서버다 — 캔버스 응답 `images[].placedBy.ownerType`(`ME`·`OTHER`)을 `:data` 매퍼가
+  `"ME"`인지 여부로 접어 넣는다(계약은 [api/parfait.md](../../api/parfait.md)).
+- **그래서 "본인 토핑도 Spotlight로 들어간다"가 멎었다.** 정책이 Spotlight 대상에서 빼라고 한 갈래가
+  실제로 빠졌고, 자기 닉네임이 적힌 토스트가 자기에게 뜨던 것도 함께 사라졌다.
+- ⚠️ **그런데 간 곳이 없다.** 본인 갈래는 `TODO: C-305 토핑 편집 화면으로 이동` 한 줄 뒤에 그냥
+  `return`한다. 즉 **본인 토핑 탭은 무반응**이다 — 정책이 정한 "편집으로 보낸다"는 여전히 미구현이고,
+  이제는 판정이 없어서가 아니라 **목적지가 없어서**다 → OQ-P-250 ③.
+- 위 KDoc도 그 사실에 맞춰 고쳐졌다 — "경로가 없어 `isMine`이 항상 false다"라는 문장이 빠지고
+  "진입점이 아직 없어 아무 동작도 하지 않는다"만 남았다.
+
+### 유닛 테스트
+
+`CanvasMainViewModelTest`에 둘이 붙었다 — 남의 토핑 탭이 Spotlight와 작성자 토스트로 이어지는지,
+본인 토핑 탭이 **Default에 머무는지**(`spotlightedToppingId`가 `null`). 후자가 이번 변경의 회귀
+감지선이다. 이 클래스는 27건이 됐다.
+
+⚠️ **이 스펙이 적어 둔 신규 유닛 0건(OQ-P-252)은 그대로다** — 붙은 둘은 클릭 갈래를 덮고, 판단이
+몰린 순수 함수 둘(`toElapsedTimeBucket`·`toSpotlightToastNameColor`)은 여전히 안 덮였다.

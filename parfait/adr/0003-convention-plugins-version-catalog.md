@@ -22,6 +22,14 @@ tags: [adr, parfait]
 
 주요 플러그인:
 - `AndroidApplicationConventionPlugin`, `AndroidLibraryConventionPlugin` — compileSdk/minSdk/targetSdk·Java 17 공통.
+  🔁 **as-built(2026-08-26, PR #372)** — **릴리즈 빌드 타입이 축소까지 간다.** `setConfigAndroidApplication`의
+  `release`에 **`isShrinkResources = true`**와 `proguardFiles`가 붙었다. 그전까지 켜져 있던 것은
+  `isMinifyEnabled`뿐이라 **코드만 줄고 리소스는 그대로 실렸다** — 이 스위치가 그 절반을 채운다.
+  같은 블록이 `debug`를 **명시적으로 끈다**(`isMinifyEnabled = false`·`isShrinkResources = false`).
+  ⚠️ debug에도 `proguardFiles`가 함께 들어갔는데 minify가 꺼져 있어 **아무 일도 안 한다** — 켜져
+  있다고 오해하기 쉬운 자리다 → [open-questions](../synthesis/open-questions.md) OQ-P-308 ③.
+  ⚠️ 이 플러그인은 `app`과 `app-preview` 둘에 걸리므로 **축소도 둘 다에 걸린다.** 축소의 실패는
+  조립이 아니라 실행에서 드러나는데 릴리즈 산출물을 설치해 본 기록은 0건이다(OQ-P-308 ①).
 - `AndroidApplicationSigningConventionPlugin` — 서명 키를 `local.properties`에서 로드(`PropertySettingManager`).
   🔁 **as-built(2026-08-16, PR #264)** — `setSigningConfig`이 `signingConfigs`를 만들기만 하던 것에서
   **release 빌드 타입에 release 설정을 결선**하는 데까지 갔다(`buildTypes.getByName("release")`).
@@ -44,6 +52,18 @@ tags: [adr, parfait]
 - `ModuleDataConventionPlugin`, `ModuleDomainConventionPlugin`, `ModuleFeatureApiConventionPlugin`, `ModuleFeatureImplConventionPlugin` — 레이어별 표준 의존·플러그인 묶음.
 
 버전·의존 SoT = `gradle/libs.versions.toml`. `TYPESAFE_PROJECT_ACCESSORS` 활성으로 `projects.feature.login.api` 형태의 타입 안전 모듈 참조 사용.
+
+🔁 **as-built(2026-08-26, PR #372) — 카탈로그에 `androidx-appcompat`이 생긴 이유는 화면이 아니라 lint다.**
+`app`이 매니페스트에서 카카오 `AuthCodeHandlerActivity`를 직접 선언하는데(딥링크 스킴을 붙이려고),
+그 액티비티의 상위 타입이 `AppCompatActivity`라 **컴파일 클래스패스에 `appcompat`이 없으면 lint
+`Instantiatable`이 상속 체인을 못 풀어 릴리즈 빌드가 깨진다.** 런타임 의존은 카카오 SDK가 이미
+끌고 오고 있었고(그 액티비티의 테마 `TransparentCompat`도 SDK AAR이 매니페스트 병합으로 넣는다),
+이번에 더한 것은 **버전을 우리가 못 박는 컴파일 의존**이다. 즉 화면 코드가 AppCompat을 쓰기
+시작한 것이 아니다 — 이 선언을 "AppCompat 도입"으로 읽으면 안 된다.
+
+🔁 **as-built(2026-08-26, PR #374) — 앱 버전이 `appVersionCode` 1 → 3, `appVersionName` 0.0.1 → 0.0.3.**
+⚠️ **2는 어느 브랜치에도 없다**(→ [open-questions](../synthesis/open-questions.md) OQ-P-310) —
+이 값은 손으로 고치고, 저장소가 가진 유일한 배포 표식은 경량 태그 `0.0.3` 하나다.
 
 ## 대안
 - **모듈별 수기 build.gradle.kts** — 진입 장벽 낮음. 그러나 드리프트·중복.
