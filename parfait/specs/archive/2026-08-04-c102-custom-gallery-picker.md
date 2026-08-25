@@ -4,7 +4,7 @@ title: C-102 커스텀 갤러리 선택 화면 (Custom Gallery Picker)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-25
+verified: 2026-08-26
 related_code: CustomGalleryPickerScreen, CustomGalleryPickerViewModel, CustomGalleryPickerRoute, GalleryImageGridComponent, GalleryPermissionRequestComponent, GalleryPartialAccessBanner, GalleryPermissionManager, GalleryRepository, GalleryMediaProvider, LoadFilterYGGalleryImageGroupsUseCase, LoadAllGalleryImageGroupsUseCase, GetRecentCacheImagesUseCase, GalleryImageGroup, DayWindow, DateTextFormat, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, PictureConfirmSource
 related_adr: ADR-0002, ADR-0006, ADR-0016
 related_spec: c101-camera-picture-confirm, c301-canvas-background-edit
@@ -122,7 +122,12 @@ tags: [spec, parfait, gallery, c102]
   > 📌 **컨테이너가 Route로 내려갔다(2026-08-20, PR #309)** — 스캐폴드가 EntryBuilder의 `YGScaffold`에서
   > Route의 `YGScaffoldV2`가 됐고, `CustomGalleryPickerScreen`이 파라미터로 받아 직접 꽂던
   > `YGToastHost`·`toastPolicy`도 그때 걷혔다(정책 객체는 Route가 만들어 스캐폴드에 넘긴다).
-  > 갤러리 토스트는 이미 컨텐츠 영역 상단 정렬이라 보이는 위치는 사실상 그대로다.
+  > ⚠️ **이 문단의 마지막 줄이 틀렸다.** 그 자리에 "갤러리 토스트는 이미 컨텐츠 영역 상단
+  > 정렬이라 보이는 위치는 사실상 그대로다"라고 적어 왔는데, **실제로는 올라가서 닫기 버튼 행을
+  > 덮었다.** 두 상단이 같지 않다 — 스캐폴드 호스트는 **상태바 인셋 바로 아래**이고 갤러리가
+  > 말하던 "컨텐츠 영역 상단"은 **닫기 행 아래의 그리드 프레임 윗변**이다. 그 차이가 6일 뒤
+  > #371로 되돌려졌다 → 아래
+  > [as-built 재정정](#as-built-재정정-2026-08-26-pr-371-develop-머지).
 - **문자열**: 목록 헤더·빈 상태·재선택 버튼·가이드 토스트가 모두 `feature/gallery/impl` `strings.xml`로
   갔다 — [2026-07-26 문자열 리소스화 항목](../../synthesis/open-questions.md)이 지적한 갤러리 리터럴
   1건이 닫혔다. 단 **가이드 토스트 문구가 카메라 쪽과 문자 그대로 같은데 두 모듈에 각각 정의**된다.
@@ -181,3 +186,24 @@ tags: [spec, parfait, gallery, c102]
 - **확인 화면 이후 미결선**: 갤러리 경로도 같은 확인 화면으로 합류하므로 "다음"·닫기 TODO의 영향
   범위가 두 진입점으로 늘었다.
 - 위 항목은 [open-questions](../../synthesis/open-questions.md)에서 추적한다.
+
+## as-built 재정정 (2026-08-26, PR #371 develop 머지)
+
+> **토스트가 다시 그리드 프레임 안으로 들어갔다.** 권한 갈래·목록 갈래·PARTIAL 하단 버튼은 한 줄도
+> 안 바뀌었다. 카메라와 **같은 커밋 묶음**이고 처방도 같다.
+> 브랜치 `feature/toast-position-fix`, 머지 `bf06c830`.
+
+- **증상**: 진입 안내 토스트가 상태바 인셋 바로 아래에 떠서 **닫기 버튼 행을 덮었다.** 위
+  「규약 대조」의 "보이는 위치는 사실상 그대로다"가 이때 거짓이 됐고, 이 재정정이 그 문장을 고친다.
+- **처방**: `CustomGalleryPickerScreen`이 `toastPolicy: YGToastPolicy`를 **필수 파라미터로 받고**,
+  그리드 프레임 `Box`(닫기 행 + `gap5` 아래, `weight(1f)`) 안에 `YGToastHost`를 `TopCenter`로 심는다.
+  Route는 스캐폴드에 정책을 넘기지 않는다. 로딩·빈 상태·그리드 세 갈래가 그 `Box`의 안쪽 형제라
+  **셋 중 무엇이 그려져도 토스트 자리는 같다**.
+- ⚠️ 스캐폴드가 자기 기본 정책으로 만든 **발행 불가능한 호스트**가 하나 더 있고, 호스트가
+  **권한 허용 갈래 안에만** 있다(안내 토스트 조건이 이미 `access.hasPermission`을 요구해 지금은
+  증상이 없다) → OQ-P-312 ②④.
+- 이 화면은 `showError`를 쓰지 않는다 — 발행하는 것은 안내 토스트 하나뿐이다.
+
+### 유닛 테스트
+
+**0건이다**(저장소 전체 789·계측 14건 그대로). 배치 변경이라 유닛으로 덮을 수 없다.
