@@ -4,7 +4,7 @@ title: C-101 커스텀 카메라 · C-101-confirm 사진 확인 화면 (Custom C
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-25
+verified: 2026-08-26
 related_code: PictureConfirmResult, CameraFeedLayer, CameraPermissionRequestComponent, CustomCameraRoute, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, PictureConfirmSource, GalleryPermissionRequestComponent, DateTextFormat
 related_adr: ADR-0018, ADR-0006
 related_spec: designsystem-button-missing-components, g001-group-list, c102-custom-gallery-picker, c103-segmentation-topping-edit, c301-canvas-background-edit
@@ -167,6 +167,11 @@ Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 �
   > 안에 얹고 있던 `YGToastHost`를 걷어 스캐폴드로 옮겼다 — **토스트가 상태바 인셋 아래 상단으로
   > 올라가 눈에 보이는 위치가 바뀌었고**, 위키 Toast 공통 정책("위→아래 노출")에는 이쪽이 맞는다.
   > 조용히 뒤로 가던 촬영 실패에도 `showError` 토스트가 붙었다.
+  > 🔁 **토스트 자리는 되돌아왔다(2026-08-26, PR #371)** — 아래
+  > [as-built 재정정](#as-built-재정정-2026-08-26-pr-371-develop-머지) 참고. 위 문장의
+  > "위키 Toast 공통 정책에는 이쪽이 맞는다"는 **이 화면에는 안 맞았다.** 스캐폴드 호스트가
+  > 상태바 아래에 떠서 날짜·닫기 행을 덮었고, 위키 [[toast]]는 노출 방향만 정하지 어느 프레임의
+  > 위인지는 정하지 않는다. 인셋 예외 서술 자체는 그대로 유효하다.
   > 📌 **권한 갈래도 이 예외를 따른다(2026-08-25, PR #350)** — 권한 거부 화면은 컨트롤 `Column`이
   > 없는 갈래라 인셋을 무는 주체가 `CameraPermissionRequestComponent` 자신이고, 무는 자리를 바깥
   > `Box`로 올려 각 변을 한 번씩만 물게 했다. 즉 **이 화면에서 "화면이 직접 무는" 형태는 갈래마다
@@ -222,3 +227,31 @@ Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 �
   **#350(2026-08-25)이 두 컴포넌트의 레이아웃을 다시 짜면서도 이 둘은 건드리지 않았다** — 파라미터
   둘은 여전히 받기만 하고 쓰이지 않는다.
 - 위 항목은 전부 [open-questions](../../synthesis/open-questions.md) [2026-08-01]에서 추적.
+
+## as-built 재정정 (2026-08-26, PR #371 develop 머지)
+
+> **토스트가 다시 뷰파인더 프레임 안으로 들어갔다.** 촬영 흐름·권한 갈래·인셋 예외는 한 줄도
+> 안 바뀌었고, 바뀐 것은 **안내 토스트가 어느 상자를 기준으로 뜨는가**다.
+> 브랜치 `feature/toast-position-fix`, 머지 `bf06c830`, 커밋 둘(브랜치 안 develop 병합 1회 포함).
+
+- **증상**: 진입 안내 토스트가 상태바 인셋 바로 아래에 떠서 이 화면이 그 자리에 그리는
+  **날짜·닫기 버튼 행을 덮었다.** #309가 호스트를 Screen에서 스캐폴드로 옮긴 결과였다.
+- **처방**: `CustomCameraScreen`이 `toastPolicy: YGToastPolicy`를 **필수 파라미터로 받고**,
+  뷰파인더 자리 `Box` 안에 `YGToastHost`를 `TopCenter`로 심는다. Route는 스캐폴드에 정책을
+  넘기지 않고 Screen에 넘긴다. 그 `Box`는 `fillMaxWidth().weight(1f)`라 자식이 늘어도 크기가
+  안 변하므로 `onViewfinderRectChange`가 보고하는 좌표도 그대로다.
+- ⚠️ **브랜치 안에서 한 번 갈렸다.** 첫 커밋은 `YGScaffoldV2`에 `toastTopPadding`을 더하고 Route가
+  `padding6 + gap5 + 닫기 버튼 지름 + 뷰파인더 앞 간격`을 **직접 더해** 넘겼다 — 화면 레이아웃이
+  이미 쓰는 상수를 Route에 복제하는 형태다. 두 번째 커밋이 그것을 되돌렸고, 코드 주석이 근거를
+  남긴다: **위치 계산 없이** 프레임 윗변에 뜬다. `YGScaffoldV2`는 결국 안 바뀌었다.
+- ⚠️ **호스트가 둘이다** — Route가 스캐폴드에 정책을 안 넘기므로 스캐폴드는 자기 기본 정책으로
+  호스트를 하나 더 만들고, **그쪽에는 아무도 발행할 수 없다** → OQ-P-312 ②.
+- ⚠️ **호스트가 권한 허용 갈래 안에만 있다** — `CameraContent`가 그리는 자리라 권한 거부 화면에는
+  호스트가 없다. 지금은 안내 토스트도 촬영 실패 토스트도 **권한이 있어야** 발행되므로 증상이
+  없지만, **그 결합은 어디에도 적혀 있지 않다** → OQ-P-312 ④.
+
+### 유닛 테스트
+
+**0건이다.** 이 라운드가 바꾼 것은 배치라 유닛으로 덮을 수 없고, 계측도 안 붙었다
+(저장소 전체 유닛 789·계측 14건 그대로). 첫 커밋의 dp 계산 방식을 버린 이유 자체가
+**검증할 수 없는 중복을 만들지 않으려는 것**이었다. 확인 수단은 실기기 눈으로 보는 것뿐이다.
