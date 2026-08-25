@@ -2,8 +2,8 @@
 id: parfait
 title: 파르페(캔버스) 조회·배경·회전
 server_module: http/parfait
-server_commit: bd18af4
-verified: 2026-08-25
+server_commit: e7092a3
+verified: 2026-08-26
 android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server
 related_adr: ADR-0017
@@ -38,6 +38,12 @@ PR #109). 배경 변경과 토핑 네 엔드포인트([parfait-image.md](parfait
 형태는 그대로이고 **실패 경로만 늘었다** — 그전에는 03시 회전 직후 마감된 캔버스에 쓰기가 200으로
 성공하고도 뒤이은 `today` 조회가 새 캔버스를 줘서 편집이 사라진 것처럼 보였다. 이로써
 `PARFAIT_ALREADY_CLOSED`가 **공개 경로를 처음 얻었다**(아래 [도메인 에러 코드 전수](#도메인-에러-코드-전수)).
+
+✅ **2026-08-26 — 서버가 "이 토핑이 내 것인가"에 답하기 시작했다**(`[Feat/#114] 오늘/상세 캔버스 응답
+placedBy에 ownerType(ME/OTHER) 필드 추가`, PR #115). 오늘·상세 두 캔버스 응답의 `images[].placedBy`에
+`ownerType`이 붙는다. 서버가 요청자의 계정 id와 배치자의 계정 id를 직접 견주므로 **앱이 두 식별자의
+축을 맞출 일이 없어졌다** — 읽기만 하면 된다. 엔드포인트·요청 형태는 그대로이고 **응답 필드 하나가
+늘었다** → [Android 매핑](#android-매핑).
 
 ## 엔드포인트
 
@@ -159,7 +165,7 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   토핑 원소(`TodayParfaitImageResponse`) 필드: `parfaitImageId` · `imageId` · `imageUrl` ·
   `positionX`/`positionY`(Double) · `positionZ`(Int) · `scale`/`rotation`(Double) ·
   `borderType`(`NONE`·`SOLID`) · `borderColor`(String?) · `borderWidth`(Double?) ·
-  `placedBy`(`groupMemberId`·`nickname`·`nameTagChip`) · `createdAt`(LocalDateTime).
+  `placedBy`(`groupMemberId`·`nickname`·`nameTagChip`·`ownerType`) · `createdAt`(LocalDateTime).
 
   ✅ **`nameTagChip`이 두 목록 모두에 있다**(`placedBy` 2026-08-18 · `groupMembers` 2026-08-19). 값 집합·배정
   규칙은 [parfait-group.md](parfait-group.md) "Nametag-Chip 배정 규칙"이 정본이고, JSON에는 enum 이름
@@ -169,6 +175,18 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   🔁 **JSON 키가 `nametagChip`에서 `nameTagChip`으로 바뀌었다**(2026-08-19) — 서버 코어 프로퍼티명은
   그대로이고 HTTP 응답 DTO 경계에서만 바뀌었다.
   근거: `ParfaitControllerTest`가 `images[0].placedBy.nameTagChip`(`"TYPE6"`)을 `jsonPath`로 단언한다.
+
+  ✅ **`ownerType`이 소유 판정을 계약 안으로 들여왔다**(2026-08-26 신설). 값은 `ME`·`OTHER` 둘뿐이고
+  (`OwnerType`, 서버 `core/parfait/domain`) **비널**이다. `GetTodayParfaitService`·`GetParfaitDetailService`의
+  `buildImages`가 **배치자의 계정 id와 요청자의 계정 id를 견주어** 채운다 — 응답에 함께 실리는
+  `placedBy.groupMemberId`는 그룹 멤버십 행 id라 **축이 다르므로**, 소비 측이 그 값으로 소유를 판정하면
+  안 된다. 서버가 판정을 끝내 주는 덕분에 앱은 자기 식별자를 따로 구해 올 필요가 없다.
+  ⚠️ **요청자마다 값이 다르다** — 같은 캔버스라도 보는 사람에 따라 다른 JSON이므로 이 응답을
+  사용자 사이에 공유하거나 캐시해 돌려 쓰면 안 된다.
+  ⚠️ **탈퇴 필터가 없는 것은 그대로다** — 탈퇴한 멤버가 남긴 토핑에도 `ownerType`이 실리고, 그 값은
+  요청자가 그 사람이 아닌 한 `OTHER`다.
+  근거: `GetTodayParfaitServiceTest`·`GetParfaitDetailServiceTest`가 각각 본인·타인 두 갈래를 단언하고,
+  `ParfaitControllerTest`가 응답 JSON에 이 필드가 실리는 것을 확인한다.
 
   ⚠️ **`lastClosedDate`는 `EMPTY`를 세지 않는다.** `ParfaitAdapter.findLastClosedDateByGroupId`가
   `status = CLOSED` 행만 최신순으로 하나 집는다. 토핑 0건으로 마감된 날은 `EMPTY`라 여기 잡히지 않으므로,
@@ -257,6 +275,8 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 - **요청 필드**: 경로 변수 `groupId`·`parfaitId`(쿼리·바디 없음)
 - **응답 필드**: `today`와 동일 → [위 표](#get-apiv1groupsgroupidparfaitstoday) 참고.
   `lastClosedDate`·`groupMembers`·`background`·`images`의 널 규칙(0건이 빈 배열이 아니라 `null`)도 같다.
+  `placedBy.ownerType`(2026-08-26 신설)도 같은 규칙으로 채워진다 — **요청자 기준**이라 과거 캔버스를
+  봐도 보는 사람에 따라 값이 갈린다.
 
   **`today`와 다른 점은 셋이다.**
   ① **부작용이 없다** — `EnsureActiveCanvasUseCase`를 부르지 않고 `@Transactional(readOnly = true)`다.
@@ -562,6 +582,15 @@ D−1). **정책상 옳은 쪽이 서버였으므로 앱을 옮겼다**(위키 [
 `(알수없음)님이 …에 쌓았어요`로 뜬다. 응답 필드를 안 읽는 것뿐이라 `⚠️불일치`는
 아니다(앱 JSON은 `ignoreUnknownKeys = true`) → [open-questions](../synthesis/open-questions.md) [2026-08-18].
 
+✅ **본인 판정의 재료가 서버에서 왔다**(2026-08-26 서버 delta). 그전까지 앱에는 "내 토핑"을 가려낼
+근거가 없었다 — `CanvasMainViewModel#handleOnClickTopping`의 `CanvasToppingVO.isMine()`이 **상수
+`false`**라 C-202의 본인 갈래가 통째로 비어 있었고(OQ-P-250), C-301 편집 탭은 계정 id와 그룹 멤버십
+행 id를 견주는 **축이 다른 비교**로 게이트를 열고 닫았다. `placedBy.ownerType`이 그 둘을 한꺼번에
+없앤다 — 판정을 서버가 끝내 주므로 앱이 자기 식별자를 구해 올 경로 자체가 필요 없다.
+⚠️ **develop은 아직 이 필드를 안 읽는다** — `PlacedByResponse`에 자리가 없고 `ToppingPlacerVO`에도
+없다. 읽지 않는 것뿐이라 `⚠️불일치`는 아니다(`ignoreUnknownKeys = true`)
+→ [open-questions](../synthesis/open-questions.md) OQ-P-250.
+
 ✅ **키 어긋남도 develop에서 닫혔다** — 2026-08-19 서버 delta가 응답 키를 `nameTagChip` 계열로 바꾼 뒤
 그 필드를 옛 키로 읽던 브랜치가 잠시 있었으나(기본값이 있어 예외 없이 **조용히 `null`**이 되는 부류),
 PR #310이 세 DTO의 키를 맞추고 반납 값 이름도 `RELEASED` → `DEFAULT`로 따라간 상태로 머지됐다.
@@ -702,3 +731,7 @@ DataSource 테스트는 25 케이스이고, 배경 변경 요청 바디의 **조
 막았다(OQ-P-189). 앱이 "막는 것은 화면 책임"이라고 적어 둔 자리 일곱 곳이 그 순간 거짓이 됐고,
 **같은 날 PR #318이 그 일곱을 전부 고쳤다**(경로가 아니라 서술의 문제라 `⚠️불일치`였던 적은 없다)
 → [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).
+
+✅ **2026-08-26 해소 1건** — 앱이 "내 토핑"을 가려낼 재료가 계약에 없던 것을 서버가
+`placedBy.ownerType`으로 닫았다(OQ-P-250 ①). 남은 것은 **앱이 그 값을 읽는 일**과 **C-305 목적지가
+생기는 일** 둘이다 → [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).

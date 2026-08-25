@@ -2,8 +2,8 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: bd18af4
-verified: 2026-08-25
+server_commit: e7092a3
+verified: 2026-08-26
 android_status: done
 related_spec: s101-group-setting-api
 related_adr: ADR-0017
