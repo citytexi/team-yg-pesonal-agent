@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: a404ac2
-verified: 2026-08-24
+server_commit: bd18af4
+verified: 2026-08-25
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -199,17 +199,31 @@ getter 이름이 아니라 **Kotlin 주 생성자 파라미터명**으로 프로
 `spring.jackson.default-property-inclusion: always`(`application.yaml`)라, 분기 응답에서 채워지지 않은
 쪽도 **키가 `null` 값으로 실려 온다.** 키 존재 여부로 분기를 판정하면 안 된다는 뜻이다.
 
-### 서버는 평문 HTTP로 서비스된다
+### 전송 — 서버가 HTTPS 도메인으로 옮겨 가고 평문 경로는 닫힌다
 
-개발 서버 base URL이 `https`가 아니라 **평문 `http`**다(포트 지정, 주소는 private submodule
-`project-paths.md`·앱 `local.properties` 참고).
+**2026-08-25 delta(#112·#113)가 이 절의 전제를 뒤집었다.** 그전까지 서버는 IP + 포트의 **평문
+`http`**로 서비스됐고(주소는 private submodule `project-paths.md`·앱 `local.properties` 참고),
+이 절은 그것을 사실로 적고 있었다.
 
-TJYG-Android는 `targetSdk = 36`이고 `AndroidManifest.xml`에 `usesCleartextTraffic`도
-`networkSecurityConfig`도 **없다.** Android 9(API 28)부터 평문 HTTP는 기본 차단이므로 실제 연동을
-시작하면 **모든 요청이 `CLEARTEXT communication not permitted`로 실패한다.**
+- **TLS 종단이 앞단 리버스 프록시(Caddy)로 갔다.** 도메인에 Let's Encrypt 인증서가 붙고 갱신은
+  자동이며, 프록시가 애플리케이션 컨테이너의 평문 포트로 넘긴다. 애플리케이션 자체는 여전히
+  평문으로 듣는다 — **HTTPS는 프록시가 만들어 주는 것**이라 서버 코드에는 흔적이 없다.
+- **`server.forward-headers-strategy: framework`가 붙었다**(`application.yaml`). 이게 없으면
+  애플리케이션이 스킴을 `http`로 인식해 OpenAPI 문서가 광고하는 `servers[0].url` 같은 **절대 URL이
+  `http://`로 나간다.** 즉 이 설정은 계약 문서가 읽는 스키마의 정확성에도 걸린다.
+- ⚠️ **그 대가로 `X-Forwarded-*`를 무조건 신뢰한다.** 프록시를 우회하는 평문 포트가 열려 있는
+  동안에는 스킴·클라이언트 IP를 위조할 수 있어, 서버 런북이 검증 뒤 **평문 포트를 닫는 단계**를
+  절차에 두었다.
+- ⚠️ **그 차단이 앱을 끊는다.** 지금까지 앱이 붙던 주소는 평문 포트고, 닫히는 순간 **기존
+  `YG_BASE_URL`로 빌드된 앱은 전부 연결에 실패한다.** 앱이 새 HTTPS 주소로 옮겨야 하는데 그
+  시점을 서버 커밋만 봐서는 알 수 없다(1회성 인프라 절차라 코드에 남지 않는다) →
+  [open-questions](../synthesis/open-questions.md) OQ-P-302.
 
-해결은 서버 HTTPS 적용(권장) 또는 debug 빌드 한정 `network_security_config.xml`로 해당 호스트만
-허용하는 것이다 → [open-questions](../synthesis/open-questions.md).
+**Android 쪽 서술을 함께 정정한다.** 이 절은 앱에 `usesCleartextTraffic`도 `networkSecurityConfig`도
+**없다**고 적어 왔으나, `app/src/main/AndroidManifest.xml`에 `android:usesCleartextTraffic="true"`가
+**2026-08-15(PR #241)부터 있다** — 로그인 실기기 검증을 막고 있어 넣은 임시 조치이고 main 매니페스트라
+릴리즈 빌드까지 따라간다(OQ-P-076). 서버가 HTTPS로 옮겨 가면 그 플래그의 **존재 이유가 사라지고
+평문 다운그레이드만 허용하는 자리로 남는다** — 제거는 앱 쪽 결정이다.
 
 ## 스키마 소유권 — 코드가 정본이어도 운영 응답은 다를 수 있다
 

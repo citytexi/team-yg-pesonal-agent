@@ -8,7 +8,7 @@
 > 추적 브랜치는 서버 **`main`** — 기준 커밋과 갱신 절차는 [server-baseline.md](server-baseline.md).
 
 ## 전역 계약
-- [conventions.md](conventions.md) — 응답 envelope(**204 예외 2건**)·성공/에러 코드 체계(전역 405 포함)·인증·URL 규약·직렬화 규약·**Android 불일치**(2026-08-20 기준 **0건** — 그룹 목록 업로드 시각 파싱과 "오늘"의 경계 둘 다 닫혔다)
+- [conventions.md](conventions.md) — 응답 envelope(**204 예외 2건**)·성공/에러 코드 체계(전역 405 포함)·인증·URL 규약·직렬화 규약·**전송**(2026-08-25 — 서버가 HTTPS 도메인으로 옮겨 가고 평문 포트는 닫힌다)·**Android 불일치**(2026-08-20 기준 **0건** — 그룹 목록 업로드 시각 파싱과 "오늘"의 경계 둘 다 닫혔다)
 
 ## 팀 명세 원문
 - [spec/](spec/README.md) — 서버팀이 작성한 **API 명세**를 텍스트로 옮긴 것. 이 디렉토리의 도메인 문서가
@@ -231,6 +231,14 @@
 > 한 줄 + 화면 이동이라 **사용자가 성공했다고 믿는다**
 > → [parfait-image.md](parfait-image.md) Android 매핑 ·
 > [open-questions](../synthesis/open-questions.md) OQ-P-275.
+
+> ⚠️ **2026-08-25 — 계약은 그대로인데 붙는 주소가 바뀐다**(서버 #112·#113 `main` 머지, 계약 파일
+> 변경 0건). 앞단 리버스 프록시가 TLS를 종단해 서버가 **HTTPS 도메인**을 얻었고, 검증 뒤 **평문
+> 포트를 닫는 단계**가 런북 절차에 있다. 엔드포인트·필드·에러 코드는 한 글자도 안 바뀌었지만
+> **모든 도메인이 같은 전제 위에 있다** — 차단되는 순간 기존 `YG_BASE_URL`로 빌드된 앱은 전부
+> 연결에 실패한다. 그 시점은 1회성 인프라 조작이라 서버 커밋에서 읽을 수 없다
+> → [conventions.md](conventions.md) "전송" ·
+> [open-questions](../synthesis/open-questions.md) OQ-P-302·OQ-P-076.
 
 테스트 전용 회전 엔드포인트(`POST /api/v1/test/parfait-canvas/rotate`)는 인증 없이 전 그룹 캔버스를
 마감·재생성하며 서버가 프로덕션 오픈 전 제거를 예고했다 — 문서상 위치는 [parfait.md](parfait.md)지만
