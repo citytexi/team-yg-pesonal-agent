@@ -306,7 +306,7 @@ internal fun postProcessAlpha(
 
 | 파일 | 변경 |
 |---|---|
-| `data/.../repository/image/AlphaCoverage.kt` | 신설. 픽셀 배열의 알파 총합 |
+| `core/util/jvm/.../extension/ArgbExtension.kt` | `Int.argbAlpha`·`IntArray.sumArgbAlpha` 추가. 픽셀 배열의 알파 총합 (계획은 `data`에 `AlphaCoverage.kt`를 신설했고, #359 리뷰가 이리로 옮겼다) |
 | `data/.../repository/image/AlphaPostProcessor.kt` | 신설. 위 API와 단계 구현 |
 | `data/.../repository/image/AlphaComponents.kt` | 신설. 런 추출·union-find·area opening |
 | `data/.../repository/image/SegmentationMask.kt` | `maskSubjectPixels`를 램프 사상 + 커널 호출로 재작성 |
