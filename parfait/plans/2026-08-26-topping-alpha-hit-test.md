@@ -933,7 +933,9 @@ git commit -m "feat: 대상별 토핑 연타 방어를 추가한다"
 
 **Interfaces:**
 - Consumes: `ToppingHitTarget`, `rememberToppingAlphaMasks`, `toppingImageSize`, `toppingCenter`, `toppingLongSide`
-- Produces: `internal data class ToppingHitEntry(val topping: CanvasToppingVO, val painter: Painter, val target: ToppingHitTarget)`
+- Produces: `internal data class ToppingHitEntry(val topping: CanvasToppingVO, val painter: AsyncImagePainter, val target: ToppingHitTarget)`
+  — 타입이 `Painter` 가 아니라 **`AsyncImagePainter`** 다. `Painter` 에는 `state` 가 없어 테두리 조건을
+  볼 수 없다.
 
 **배경:** 판정에 필요한 비율은 painter 의 고유 크기에서 나오는데, 지금은 그 값이 자식 컴포저블 안에 갇혀 있다. painter 를 레이어에서 만들어 자식에게 넘기면 비율도 얻고 이미지도 한 번만 로드한다.
 
@@ -954,7 +956,8 @@ git checkout -b feature/canvas-main-alpha-hit
 ```kotlin
 internal data class ToppingHitEntry(
     val topping: CanvasToppingVO,
-    val painter: Painter,
+    // Painter 로 좁히면 state 를 잃어 테두리 조건을 볼 수 없다
+    val painter: AsyncImagePainter,
     val target: ToppingHitTarget,
 )
 
@@ -1032,7 +1035,6 @@ import 를 더한다. `toColorOrNull` 은 이 파일에 **이미 있으므로** 
 ```kotlin
 import androidx.compose.runtime.key
 import androidx.compose.ui.geometry.isSpecified
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
 import com.teamyg.parfait.feature.groups.canvas.impl.util.ToppingHitTarget
 import com.teamyg.parfait.feature.groups.canvas.impl.util.rememberToppingAlphaMasks
@@ -1269,7 +1271,7 @@ private fun CanvasTopping(
 ```kotlin
 @Composable
 private fun ToppingImage(
-    painter: Painter,
+    painter: AsyncImagePainter,
     border: ToppingBorder,
 ) {
     val painterState by painter.state.collectAsState()
@@ -1358,7 +1360,9 @@ git commit -m "feat: 캔버스 메인 토핑을 누끼 모양으로 판정한다
 
 **Interfaces:**
 - Consumes: `ToppingHitTarget`, `rememberToppingAlphaMasks`, `toppingImageSize`
-- Produces: `private data class BGEditHitEntry(val topping: CanvasToppingItem, val painter: Painter, val target: ToppingHitTarget)`
+- Produces: `private data class BGEditHitEntry(val topping: CanvasToppingItem, val painter: AsyncImagePainter, val target: ToppingHitTarget)`
+  — 타입이 `Painter` 가 아니라 **`AsyncImagePainter`** 다. 기존 `rememberToppingPainter` 는 반환 타입이
+  `Painter` 라 `state` 를 잃는다. 그 함수는 이 태스크에서 지운다.
 
 **배경:** 딤에 클릭이 걸린 채로 두면 딤이 먼저 down 을 소비해 **레이어 판정이 한 번도 실행되지 않는다.**
 "남의 토핑 영역 탭 = 선택 해제"는 딤이 아니라 레이어의 미스 분기가 만든다.
@@ -1385,7 +1389,8 @@ git checkout -b feature/bgedit-alpha-hit
 ```kotlin
 private data class BGEditHitEntry(
     val topping: CanvasToppingItem,
-    val painter: Painter,
+    // Painter 로 좁히면 state 를 잃어 테두리 조건을 볼 수 없다
+    val painter: AsyncImagePainter,
     val target: ToppingHitTarget,
 )
 
@@ -1452,23 +1457,26 @@ private fun rememberBGEditHitEntries(
 }
 ```
 
-import 를 더한다. `Painter`·`isSpecified`·`LocalDensity`·`DpSize`·`Offset`·`Color` 는 이 파일에
-**이미 있으므로** 넣지 않는다.
+import 를 더한다. `isSpecified`·`LocalDensity`·`DpSize`·`Offset`·`Color`·`AsyncImagePainter` 는 이 파일에
+**이미 있으므로** 넣지 않는다(`AsyncImagePainter` 는 Task 1 이 넣었다). `Painter` 는 `rememberToppingPainter`
+를 지우면 미사용이 될 수 있으니 확인하고 정리한다.
 
 ```kotlin
 import androidx.compose.runtime.key
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import com.teamyg.parfait.feature.groups.canvas.impl.component.toppingDragInput
-import com.teamyg.parfait.feature.groups.canvas.impl.component.toppingTapInput
+import com.teamyg.parfait.feature.groups.canvas.impl.R
 import com.teamyg.parfait.feature.groups.canvas.impl.util.ToppingHitTarget
-import com.teamyg.parfait.feature.groups.canvas.impl.util.containsPoint
 import com.teamyg.parfait.feature.groups.canvas.impl.util.rememberToppingAlphaMasks
 import com.teamyg.parfait.feature.groups.canvas.impl.util.toppingImageSize
 ```
+
+⚠️ `toppingTapInput`·`toppingDragInput`·`containsPoint` 는 **여기서 import 하지 않는다.** 이 태스크에서는
+아직 쓰지 않아 ktlint 의 `no-unused-imports` 에 걸린다. Task 10 이 함께 넣는다.
 
 - [ ] **Step 3: 캔버스 안에서 판정 대상을 만들어 둔다**
 
@@ -1494,18 +1502,29 @@ val selectedEntry = myEntries.firstOrNull { it.topping.parfaitImageId == uiState
 ```kotlin
 // 남의 토핑
 entries.filterNot { it.topping.isMine }.forEach { entry ->
-    CanvasToppingImage(entry = entry, canvasWidth = canvasWidth, canvasHeight = canvasHeight)
+    CanvasToppingImage(
+        entry = entry,
+        canvasWidth = canvasWidth,
+        canvasHeight = canvasHeight,
+        onClick = onClickDeselectTopping,
+    )
 }
 
 // (딤)
 
 // 내 토핑
 myEntries.forEach { entry ->
-    CanvasToppingImage(entry = entry, canvasWidth = canvasWidth, canvasHeight = canvasHeight)
+    CanvasToppingImage(
+        entry = entry,
+        canvasWidth = canvasWidth,
+        canvasHeight = canvasHeight,
+        onClick = { onClickTopping(entry.topping) },
+    )
 }
 ```
 
-`onClick`·`onDrag` 인자는 사라진다. 판정은 Task 10 이 다는 입력 레이어가 맡는다.
+`onDrag` 인자는 사라진다. 포인터 판정은 Task 10 이 다는 입력 레이어가 맡고, `onClick` 은
+**접근성 시맨틱스 액션 전용**이다 — 화면과 같은 동작을 접근성 서비스에도 열어 둔다.
 
 - [ ] **Step 5: `CanvasToppingImage` 를 바꾼다**
 
@@ -1517,6 +1536,7 @@ private fun CanvasToppingImage(
     entry: BGEditHitEntry,
     canvasWidth: Dp,
     canvasHeight: Dp,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -1538,9 +1558,14 @@ private fun CanvasToppingImage(
                 ),
             ).requiredSize(size)
             .graphicsLayer(rotationZ = entry.topping.rotationDegrees)
+            // 판정은 입력 레이어가 하지만, 접근성 서비스에는 토핑이 개별 버튼으로 보여야 한다
             .semantics(mergeDescendants = true) {
                 role = Role.Button
                 contentDescription = description
+                onClick {
+                    onClick()
+                    true
+                }
             },
     ) {
         YGToppingCutoutImage(
