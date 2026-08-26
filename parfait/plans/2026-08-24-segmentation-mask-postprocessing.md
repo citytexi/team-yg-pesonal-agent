@@ -963,6 +963,11 @@ Expected: 컴파일 실패 — `Unresolved reference: downscaleMask`
 
 `AlphaComponents.kt`:
 
+> **as-built(#360 리뷰 반영)** — `ceilDiv` 는 아래 지시대로 만들었으나, 리뷰 지적을 받아
+> `require(divisor > 0)` 과 KDoc 을 더했다. 0 을 돌려주고 넘어가는 방식은 쓰지 않았다 —
+> `factor` 로 나누는 나머지 세 자리가 그대로라 같은 예외가 더 안쪽으로 밀릴 뿐이다.
+> 같은 라운드에서 `AlphaPostProcessOptions` 에도 `require(downscaleFactor >= 1)` 이 붙었다.
+
 ```kotlin
 package com.teamyg.parfait.data.repository.image
 

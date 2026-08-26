@@ -269,7 +269,14 @@ internal data class AlphaPostProcessOptions(
     val areaOpeningMinPixels: Int = AREA_OPENING_MIN_PIXELS,
     val erodeEdge: Boolean = true,
     val minPixelsForDownscale: Int = MIN_PIXELS_FOR_DOWNSCALE,
-)
+) {
+    init {
+        // 배율은 ceilDiv 말고도 downscaleMask 의 y/factor·x/factor, applyKeepMask 의 x/factor,
+        // minComponentPixels 의 factor*factor 에서 나눈다. 만들어지는 자리에서 막아야 네 자리가
+        // 한 번에 보호되고 실패 지점이 호출부가 된다 (#360 리뷰)
+        require(downscaleFactor >= 1) { "downscaleFactor must be >= 1 but was $downscaleFactor" }
+    }
+}
 
 /**
  * 남은 알파의 tight 영역과 커버리지.
