@@ -67,8 +67,8 @@ tags: [plan, parfait]
 
 | 파일 | 책임 | 단계 |
 |---|---|---|
-| `data/.../repository/image/AlphaCoverage.kt` (신설) | 픽셀 배열의 알파 총합 | 1 |
-| `data/src/test/.../repository/image/AlphaCoverageTest.kt` (신설) | 위 함수의 유닛 | 1 |
+| `data/.../repository/image/AlphaCoverage.kt` (신설) | 픽셀 배열의 알파 총합 — **#359 리뷰로 `core:util:jvm`의 `extension/ArgbExtension.kt`로 옮겼다**(Task 1 as-built 참고) | 1 |
+| `data/src/test/.../repository/image/AlphaCoverageTest.kt` (신설) | 위 함수의 유닛 — **같은 이유로 `ArgbExtensionTest.kt`로 옮겼다** | 1 |
 | `domain/.../model/SegmentationCandidate.kt` | `coverageAlphaSum: Long` 추가 | 1 |
 | `data/.../repository/image/SegmentationCandidateFilter.kt` | 커버리지 판정·IoU 병합·전순서 정렬 | 1 |
 | `data/src/test/.../repository/image/SegmentationCandidateFilterTest.kt` | 위 판정의 유닛 (재작성) | 1 |
@@ -173,6 +173,11 @@ import 경로는 `com.teamyg.parfait.data.utils.repositoryLogger`다.
 `git checkout develop && git pull && git checkout -b feature/segmentation-candidate-coverage`
 
 ## Task 1: 알파 총합 순수 함수
+
+> **as-built(#359 리뷰 반영)** — 아래 작업 지시대로 `data`에 `AlphaCoverage.kt#sumAlpha`를 만들었으나,
+> 리뷰 지적을 받아 `core:util:jvm`의 `extension/ArgbExtension.kt`로 옮기고 `IntArray.sumArgbAlpha`
+> 확장으로 바꿨다. 알파를 꺼내는 부분은 `Int.argbAlpha`로 갈랐다. 아래 본문은 당시 작업 지시
+> 그대로 두고 고치지 않는다.
 
 **Files:**
 - Create: `data/src/main/java/com/teamyg/parfait/data/repository/image/AlphaCoverage.kt`
@@ -957,6 +962,11 @@ Expected: 컴파일 실패 — `Unresolved reference: downscaleMask`
 - [ ] **Step 3: 구현한다**
 
 `AlphaComponents.kt`:
+
+> **as-built(#360 리뷰 반영)** — `ceilDiv` 는 아래 지시대로 만들었으나, 리뷰 지적을 받아
+> `require(divisor > 0)` 과 KDoc 을 더했다. 0 을 돌려주고 넘어가는 방식은 쓰지 않았다 —
+> `factor` 로 나누는 나머지 세 자리가 그대로라 같은 예외가 더 안쪽으로 밀릴 뿐이다.
+> 같은 라운드에서 `AlphaPostProcessOptions` 에도 `require(downscaleFactor >= 1)` 이 붙었다.
 
 ```kotlin
 package com.teamyg.parfait.data.repository.image

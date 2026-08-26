@@ -269,7 +269,14 @@ internal data class AlphaPostProcessOptions(
     val areaOpeningMinPixels: Int = AREA_OPENING_MIN_PIXELS,
     val erodeEdge: Boolean = true,
     val minPixelsForDownscale: Int = MIN_PIXELS_FOR_DOWNSCALE,
-)
+) {
+    init {
+        // 배율은 ceilDiv 말고도 downscaleMask 의 y/factor·x/factor, applyKeepMask 의 x/factor,
+        // minComponentPixels 의 factor*factor 에서 나눈다. 만들어지는 자리에서 막아야 네 자리가
+        // 한 번에 보호되고 실패 지점이 호출부가 된다 (#360 리뷰)
+        require(downscaleFactor >= 1) { "downscaleFactor must be >= 1 but was $downscaleFactor" }
+    }
+}
 
 /**
  * 남은 알파의 tight 영역과 커버리지.
@@ -306,7 +313,7 @@ internal fun postProcessAlpha(
 
 | 파일 | 변경 |
 |---|---|
-| `data/.../repository/image/AlphaCoverage.kt` | 신설. 픽셀 배열의 알파 총합 |
+| `core/util/jvm/.../extension/ArgbExtension.kt` | `Int.argbAlpha`·`IntArray.sumArgbAlpha` 추가. 픽셀 배열의 알파 총합 (계획은 `data`에 `AlphaCoverage.kt`를 신설했고, #359 리뷰가 이리로 옮겼다) |
 | `data/.../repository/image/AlphaPostProcessor.kt` | 신설. 위 API와 단계 구현 |
 | `data/.../repository/image/AlphaComponents.kt` | 신설. 런 추출·union-find·area opening |
 | `data/.../repository/image/SegmentationMask.kt` | `maskSubjectPixels`를 램프 사상 + 커널 호출로 재작성 |

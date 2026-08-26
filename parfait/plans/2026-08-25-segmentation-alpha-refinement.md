@@ -99,6 +99,10 @@ internal fun ceilDiv(
 ): Int = (value + divisor - 1) / divisor
 ```
 
+> **as-built(#360 리뷰 반영)** — 위 인용은 당시 베이스 브랜치의 본문이다. 이후 `require(divisor > 0)`
+> 이 붙었고 계산식은 그대로다. 이 계획이 쓰는 `ceilDiv(width, downscale)` 는 `refineAlpha` 가
+> 이미 `require(downscale >= 1)` 로 막고 있어 호출 결과가 달라지지 않는다.
+
 `AlphaPostProcessor.kt`의 현재 조립부:
 
 ```kotlin
