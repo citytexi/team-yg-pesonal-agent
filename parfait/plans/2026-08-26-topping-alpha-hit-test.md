@@ -44,6 +44,22 @@
 
 PR 2와 3의 산출물은 그 PR 안에서 화면에 쓰이지 않는다. 스택 PR에서 흔한 형태이고, 유닛 테스트가 그 자리의 검증을 대신한다. 리뷰어에게 "PR 4에서 배선된다"를 PR 설명에 적는다.
 
+## 실행 뒤 달라진 것
+
+이 계획대로 실행한 뒤, 리뷰와 사용자 요청으로 아래를 바꿨다. 계획 본문의 코드 블록은 실행 당시의
+것이므로 지금 코드와 다르다 — **현재 형태는 코드가 정본이다.**
+
+| 무엇 | 왜 |
+|---|---|
+| `ToppingHitTest.kt` → `ToppingHitTarget.kt` | ktlint 파일명 규칙(단일 최상위 타입명과 파일명 일치) |
+| `ToppingHitEntry.painter`·`BGEditHitEntry.painter` 타입을 `AsyncImagePainter`로 | `Painter`로 좁히면 `state`를 잃어 테두리 조건을 볼 수 없다. 그대로 갔으면 컴파일이 깨졌다 |
+| `toppingAlphaMaskOf`·임계값·`BITS_PER_WORD`를 `ToppingAlphaMask`의 companion으로 | 생성자가 `internal`이라 팩토리가 유일한 공개 생성 경로인데 그 관계가 파일 배치로만 암시됐다. 임계값은 `ALPHA_THRESHOLD`로 줄어 접두사 중복이 사라졌다 |
+| `ToppingCorners`를 `impl.model`로 분리 | 프로젝트의 기존 `model` 패키지 관례를 따른다 |
+| 드래그에서 `positionChange()`를 읽고 나서 소비하도록 순서 교정 | **계획의 코드가 소비를 먼저 해 이동량이 항상 0이었다.** 최종 리뷰가 잡은 회귀 |
+| 탭 판정을 up 좌표에서 **down 좌표**로 | `detectTapGestures`의 `onTap` 인자는 뗀 지점이다. 미끄러져 떼면 미스 분기가 오발했다 |
+| 겹침 순서 선택을 `pickToppingHit` 순수 함수로 추출 | 기능 목표 절반인 겹침 통과에 유닛 테스트가 닿지 않았다 |
+| 마스크 접기를 기본 디스패처로, 메모리 캐시 끄기, 배경 편집은 내 토핑만 요청 | 메인 스레드 점유와 불필요한 디코딩 |
+
 ---
 
 ## File Structure
@@ -53,10 +69,11 @@ PR 2와 3의 산출물은 그 PR 안에서 화면에 쓰이지 않는다. 스택
 | 파일 | 책임 |
 |---|---|
 | `util/ToppingAlphaMask.kt` | 불투명 픽셀만 접은 비트셋과 좌표 조회. 순수 코틀린 |
-| `util/ToppingHitTest.kt` | 판정 대상 자료구조와 점 판정. 순수 코틀린 |
+| `util/ToppingHitTarget.kt` | 판정 대상 자료구조와 점 판정. 순수 코틀린 (ktlint 파일명 규칙에 맞춰 `ToppingHitTest.kt` 대신 이 이름) |
 | `util/ToppingAlphaMaskCache.kt` | Coil로 마스크를 디코딩하고 LRU에 담는다. Android·Coil |
 | `util/ToppingClickThrottle.kt` | 대상별 연타 방어 |
 | `component/ToppingHitTestInput.kt` | 탭·드래그 포인터 입력 모디파이어 |
+| `model/ToppingCorners.kt` | 회전이 반영된 네 꼭짓점. 실행 뒤 `ToppingGeometry.kt`에서 분리했다 |
 
 **고치는 파일**
 
