@@ -4,7 +4,7 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-25
+verified: 2026-08-27
 related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016, ADR-0025
 related_architecture:
@@ -79,6 +79,14 @@ app / app-preview
   > 캔버스 비율은 도메인 규칙이 아니라 **표시 규격**이라 소유가 이쪽이다. 상수가 하나뿐이라
   > 갈라짐을 막을 단언도 필요 없어졌다 — 컴파일이 보증한다.
   > 화면 규격 상수 **전반**의 소유 규칙은 여전히 정해지지 않았다(OQ-P-177 ③).
+  > 📌 **같은 기준이 판정 코드에도 적용됐다**(2026-08-27 develop 머지, PR #388) — 토핑 알파 판정
+  > (`ToppingAlphaMask`·`ToppingHitTarget`·`pickToppingHit`)은 Android 의존이 없어 `domain`으로
+  > 올릴 수 있었지만 **표시 규격이라 feature에 남겼다.** 가르는 기준이 Android 의존 유무가 아니라
+  > 도메인 규칙이냐 표시 규격이냐라는 것이 위 두 사례에서 이미 정해졌기 때문이다. 더해서 테두리
+  > 방향 수는 그리는 쪽이 정본을 갖는 것이 설계 결정이라, `domain`으로 올리면서 그 값을 파라미터로
+  > 빼면 판정 모양과 외형이 갈라질 자리가 열린다 — 지금 컴파일이 보증하는 것을 사람 규율로 바꾸는
+  > 셈이다. 근거 전문은 [구현 계획서](../plans/archive/2026-08-26-topping-alpha-hit-test.md)
+  > "검토했으나 하지 않기로 한 것"에 있다.
 - **feature `impl`이 다른 feature `:api`에 의존하는 경우가 하나 늘었다**(2026-08-15, PR #260) —
   `feature/app/setting/impl` → `feature/login/api`(강제·사용자 로그아웃 뒤 `NavKeyLogin`으로 간다).
   규약대로 `:api`만 본다.
@@ -101,6 +109,11 @@ app / app-preview
   > **디자인시스템으로 올리지는 않았다** — 소비처가 한 모듈 안 두 화면이라
   > `feature/common/*` 승격 기준("2개 이상 소비처")과 같은 판단을 모듈 안에서 한 셈이다.
   > 컴포저블이 아닌 기하 계산은 종전대로 `util/ToppingGeometry.kt`에 남는다.
+  > 📌 **같은 모듈에 `model/`이 생겼다**(2026-08-27, PR #388) — `ToppingGeometry.kt`가 들고 있던
+  > `ToppingCorners`가 `canvas/impl/model/`로 나왔다. 자료구조는 `model/`, 계산은 `util/`,
+  > 컴포저블은 `component/`라는 이 저장소의 기존 갈래를 feature 안에서도 따른 것이다.
+  > 판정 입력 모디파이어(`component/ToppingHitTestInput.kt`)는 컴포저블이라 `component/`에 있고,
+  > 같은 모듈 화면 둘(캔버스 메인·배경 편집)이 나눠 쓴다.
   > 📌 **소비처가 모듈 경계를 넘으면 `:core:designsystem`으로 올린다**(2026-08-22 develop 머지,
   > PR #334) — 토핑 테두리를 그리는 8방향 스탬프가
   > `component/ygtoppingcutout/YGToppingCutoutImage`로 올라갔다. 나눠 쓰는 화면이 누끼 확인

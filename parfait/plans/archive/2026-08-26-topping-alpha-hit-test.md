@@ -1,3 +1,36 @@
+---
+id: topping-alpha-hit-test
+title: 토핑 누끼 모양 터치 판정 Implementation Plan
+status: done
+archived_reason: PR #388·#390·#389 로 develop 머지(2026-08-27) — 스택 PR 다섯 갈래가 세 머지로 들어왔다
+type: work-order
+created: 2026-08-26
+updated: 2026-08-27
+platforms: android
+owner: Parfait 팀
+related_adr: ADR-0025
+related_spec: topping-alpha-hit-test
+related_code:
+  - ToppingAlphaMask.kt#ToppingAlphaMask
+  - ToppingHitTarget.kt#ToppingHitTarget
+  - ToppingHitTarget.kt#pickToppingHit
+  - ToppingAlphaMaskCache.kt#loadToppingAlphaMask
+  - ToppingAlphaMaskCache.kt#rememberToppingAlphaMasks
+  - ToppingClickThrottle.kt#ToppingClickThrottle
+  - ToppingHitTestInput.kt#toppingTapInput
+  - ToppingHitTestInput.kt#toppingDragInput
+  - ToppingCorners.kt#ToppingCorners
+  - ToppingGeometry.kt#toppingImageSize
+  - CanvasToppingLayer.kt#CanvasToppingLayer
+  - CanvasToppingLayer.kt#ToppingHitEntry
+  - CanvasBGEditScreen.kt#BGEditHitEntry
+  - CanvasBGEditScreen.kt#CanvasToppingImage
+  - CanvasToppingPlaceScreen.kt
+  - YGToppingCutoutImage.kt#TOPPING_OUTLINE_STAMP_COUNT
+related_architecture: design-system
+tags: [plan, parfait, canvas, topping]
+---
+
 # 토핑 누끼 모양 터치 판정 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -8,7 +41,7 @@
 
 **Tech Stack:** Kotlin, Jetpack Compose (BOM 2026.08.00), Coil 3.5.0, kotlin.test (JVM 유닛)
 
-**Spec:** [`parfait/specs/2026-08-26-topping-alpha-hit-test.md`](../specs/2026-08-26-topping-alpha-hit-test.md)
+**Spec:** [`parfait/specs/archive/2026-08-26-topping-alpha-hit-test.md`](../../specs/archive/2026-08-26-topping-alpha-hit-test.md)
 
 ## Global Constraints
 
@@ -105,7 +138,7 @@ PR 2와 3의 산출물은 그 PR 안에서 화면에 쓰이지 않는다. 스택
 | `component/CanvasToppingLayer.kt` | 판정 주인이 된다. `clickable` 제거, painter를 레이어가 만든다 |
 | `screen/CanvasBGEditScreen.kt` | 테두리 렌더링, 딤 클릭 제거, 판정·드래그 레이어로 이동 |
 | `util/ToppingGeometry.kt` | 그림 사각형 계산 함수 추가 |
-| `core/designsystem/.../ygtoppingcutout/YGToppingCutoutImage.kt` | `OUTLINE_STAMP_COUNT` 공개 |
+| `core/designsystem/.../ygtoppingcutout/YGToppingCutoutImage.kt` | 방향 수 상수를 `TOPPING_OUTLINE_STAMP_COUNT` 로 개명하며 공개 |
 | `screen/CanvasToppingPlaceScreen.kt` | 판정을 달지 않도록 `hitTestEnabled = false` 를 넘긴다 |
 | `res/values/strings.xml` | 토핑 접근성 문구 |
 

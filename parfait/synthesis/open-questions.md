@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-26
-related_spec: segmentation-mask-postprocessing, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+verified: 2026-08-27
+related_spec: topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -2823,6 +2823,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ③ 편집 화면용 치수(60·14·2·7.5·9·7dp)를 토큰 스케일에 올릴지 — A-002·C-201이 남긴 "스케일 공백"
   지적과 같은 자리다.
 - **상태**: 부분 해소 (② 해소, ①③ 잔존 — **③은 두 번째 화면으로 복제됐다**)
+  > 📌 **②의 대상이 아예 사라졌다(2026-08-27, PR #390)** — 토핑·딤의 클릭 모디파이어가 판정
+  > 오버레이의 `pointerInput` 하나로 합쳐졌다. 관용구를 강제할지 묻던 자리가 없어진 것이지
+  > 규약이 달라진 것은 아니다.
   > 📌 **③이 복사됐다(2026-08-19, PR #290)** — C-106 배치 화면이 캔버스 영역에 **같은 값**
   > (상단 60dp·하단 14dp)을 리터럴로 다시 적고 **"공통에 없음" 주석까지 그대로 옮겼다.** 리터럴이 두
   > 화면에 흩어졌으므로 토큰으로 올릴 때 고칠 자리도 둘이다. ①(회전 가능한 점선 테두리)은 이번에
@@ -4090,7 +4093,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   그릴지 — 값도 컴포저블도 이미 있어 붙이는 일만 남는다. ② 아니면 C-301 라운드가 이 화면의 미리보기를
   다시 설계할 때 함께 볼지(지금 미리보기는 컷 도형·Dot Grid·날짜 라벨이 없는 목업이고 그 어긋남은
   OQ-P-174가 쥐고 있다).
-- **상태**: 미해결 (**C-301 라운드가 왔는데도 표시는 안 붙었다**)
+- **상태**: 해소됨 (2026-08-27, PR #388 — ①로 닫혔다. **저장 쪽 OQ-P-276은 잔존**)
+  > ✅ **①이 그대로 일어났다(2026-08-27, PR #388)** — `CanvasToppingImage`가 맨 `Image` 대신
+  > `YGToppingCutoutImage`를 쓰고 `borderLayers` 첫 겹의 색·두께를 넘긴다. 계기는 이 항목이 아니라
+  > [토핑 알파 판정](../specs/archive/2026-08-26-topping-alpha-hit-test.md)이었다 — 판정 모양을 외형과
+  > 맞추려면 두 화면이 같은 그림을 그려야 해서, 렌더링 수정이 그 스펙의 범위로 들어왔다. 색을 못 읽거나
+  > painter가 성공 상태가 아니면 안 그리는 조건이 캔버스 메인과 같다. **받아 두고 안 보내는 쪽(OQ-P-276)은
+  > 그대로다.** 새로 보이게 된 테두리와 코너 스트로크·버튼의 관계는 OQ-P-315가 쥔다.
   > ⚠️ **그 화면을 다시 만진 라운드가 이것을 건너뛰었다(2026-08-22, PR #329)** — 토핑 그리는 자리가
   > 통째로 재작성돼(mock → 서버 URL, 오프셋 → 비율, 새 크기 계산) `rememberToppingPainter`가 생겼는데도
   > 여전히 **편집 결과 이미지 하나만 읽는다.** ①(`YGToppingCutoutImage`로 갈아태우기)이 붙을 자리가
@@ -4099,7 +4108,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ⚠️ **같은 값이 저장 쪽에서도 빠졌다(2026-08-23, PR #336)** — 확인 버튼이 이동·크기·회전을
   > PATCH 하면서 `borderLayers`는 비교에도 요청에도 넣지 않았다. 이제 이 값은 **받아 두고 안 그리고,
   > 받아 두고 안 보낸다** → OQ-P-276. 둘은 한 라운드에서 함께 닫는 편이 낫다.
-- **해소 메모**: 이 화면이 테두리를 **그린 적은 없다.** 그전에는 편집이 돌려주던 파일에 테두리가 이미
+- **해소 메모**: 붙일 때 함께 걷기로 했던 `CanvasToppingItem`의 KDoc도 같은 라운드에서
+  사실에 맞게 고쳐졌다 — `editedImagePath`를 "테두리를 새로 구운 이미지"라고 적던 문장이
+  "테두리는 픽셀에 굽지 않고 `borderLayers`로 따로 나른다"로 바뀌었다 — ADR-0025 전환(PR #334)
+  이후로 거짓이던 문장이다. 아래는 닫히기 전의 기록이다.
+  이 화면이 테두리를 **그린 적은 없다.** 그전에는 편집이 돌려주던 파일에 테두리가 이미
   구워져 있어 화면이 아무것도 하지 않아도 반영된 것처럼 보였고,
   [ADR-0025](../adr/0025-topping-border-as-server-field.md) 전환이 굽기를 멈추면서 **표시 경로가 없다는
   사실이 드러났다.** 그래서 이 라운드는 필드 이름만 맞추고(그 자리가 받는 것이 구운 판에서 알맹이로
@@ -5206,4 +5219,76 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ⚠️ **이번 라운드는 신규 테스트가 0건이고 확인 수단이 실기기 눈뿐이다** — 배치는 유닛으로 못 덮고
   CI는 계측을 컴파일만 한다(OQ-P-102 ②). 첫 커밋이 시도한 dp 복제 계산을 버린 이유도 같다.
 
-<!-- oq-next: 313 -->
+### [2026-08-27] 마스크 해상도와 알파 임계값이 측정 없이 굳었다
+
+- **ID**: OQ-P-313
+- **출처**: PR #388 develop 머지 — `ToppingAlphaMaskCache.kt#MASK_LONG_SIDE`(256)와
+  `ToppingAlphaMask.ALPHA_THRESHOLD`(128). 두 값 다 [토핑 알파 판정 스펙](../specs/archive/2026-08-26-topping-alpha-hit-test.md)이
+  "실기기 확인 뒤 조정한다"고 적은 채로 들어왔다.
+- **항목**: ① 해상도 256px에서 판정과 외형의 어긋남이 손가락으로 느껴지는지 — 오차 상한이
+  `그림 긴 변 ÷ 마스크 긴 변`이라 큰 토핑일수록 커진다. ② 임계값 절반이 부드럽게 깎인 누끼의
+  가장자리 한 겹을 못 누르게 만드는지. ③ 얇거나 작은 토핑이 여유분 없는 실루엣 판정에서
+  실제로 눌리는지 — 스펙이 "여유분 없음"을 결정 사항으로 두고 최소 터치 크기 보장을 뺐다.
+- **상태**: 미해결 (**확인 수단이 실기기 눈뿐이다** — 유닛 테스트는 손으로 만든 마스크를 덮을 뿐
+  실제 누끼의 알파 분포를 모른다)
+- **해소 메모**: 두 값은 상수 하나씩이라 판정 뒤 숫자만 고치면 된다. ③이 문제로 드러나면
+  여유분이나 최소 터치 크기를 별도 라운드로 다룬다(스펙 리스크 표 첫 행).
+
+### [2026-08-27] 토핑과 스포트라이트 딤을 스크린리더가 뭐라 읽을지 정해지지 않았다
+
+- **ID**: OQ-P-314
+- **출처**: PR #389 develop 머지 — `feature/groups/canvas/impl` `strings.xml`의
+  `canvas_topping_content_description`("토핑", `TODO(접근성)` 주석 동반)·`canvas_spotlight_dismiss`
+  ("토핑 강조 닫기"). 판정이 레이어로 올라가면서 토핑별 `clickable`이 사라져, 그것이 붙여 주던
+  클릭 시맨틱스를 `semantics(mergeDescendants = true)`로 다시 만들어야 했고 그때 읽을 문구가
+  필요해졌다.
+- **항목**: ① 토핑을 무엇으로 읽어 줄지 — 지금은 열두 개가 전부 "토핑"이라 스크린리더 사용자가
+  서로를 구분할 수 없다. 작성자 닉네임이 후보이지만 캔버스 메인은 이미 `placedBy` 조인이 임시다
+  (OQ-P-224 잔여). ② 딤 해제 액션 문구. ③ 배경 편집의 토핑도 같은 문자열을 공유하는데 그 화면의
+  탭은 선택이지 강조가 아니라, 같은 문구가 맞는지 확인되지 않았다.
+- **상태**: 미해결 (임시 문자열로 머지됨 — 시맨틱스 자체는 있으므로 포커스는 잡힌다)
+- **해소 메모**: 문구가 정해지면 `strings.xml` 두 항목과 `TODO(접근성)` 주석을 함께 지운다.
+
+### [2026-08-27] 배경 편집에 테두리가 생겼는데 코너 스트로크·버튼과의 관계를 확인하지 않았다
+
+- **ID**: OQ-P-315
+- **출처**: PR #388 develop 머지 — `CanvasBGEditScreen.kt#CanvasToppingImage`가 맨 `Image`에서
+  `YGToppingCutoutImage`로 바뀌어 테두리를 그린다. 선택 스트로크와 네 버튼 좌표는 여전히
+  `computeToppingStrokeCorners`·`computeToppingButtonPoints`가 **그림 사각형**에서 계산한다.
+- **항목**: ① 스트로크·버튼이 테두리 바깥이 아니라 그림 가장자리에 붙어 테두리를 파고드는 모양이
+  되는데 그대로 둘지. ② 토핑 박스가 그림에 딱 맞아 **테두리 스탬프가 박스를 넘어가므로** 잘리는지.
+  ③ 테두리가 새로 보이면서 배경 편집의 토핑이 캔버스 메인과 같아졌지만, 사용자에게는 편집 화면의
+  토핑이 갑자기 커진 것으로 보인다.
+- **상태**: 미해결 (**의도된 렌더링 변경이고 판정과 외형을 맞추기 위한 전제다** — 확인이 안 됐을 뿐)
+- **해소 메모**: ①②는 실기기 눈으로 판정한다. 여백을 주기로 하면 `ToppingGeometry`의
+  `STROKE_MARGIN_*`이 테두리 두께를 함께 받아야 한다.
+
+### [2026-08-27] 그룹 목록 토핑만 누끼 판정·테두리 밖에 남았다
+
+- **ID**: OQ-P-316
+- **출처**: PR #389 develop 머지 — 알파 판정과 테두리 렌더가 캔버스 메인·배경 편집 두 화면에만
+  적용됐다. G-001은 `GET /api/parfait-groups`의 `MyParfaitGroupResponse`에 테두리 필드가 없어
+  앱이 만들어 낼 수 없고, `YGToppingGroup`이 `ContentScale.Crop`으로 그려 실루엣이 사각으로 잘린다.
+- **항목**: ① 서버가 목록 응답에 테두리 필드를 줄지. ② 주더라도 `Crop`을 `Fit`으로 바꿔야
+  실루엣이 살아나는데 그러면 지금 배치가 달라진다. ③ 템플릿 6종과 조회 실패 그래픽에도 테두리를
+  두를지는 정책이 비어 있다. ④ 판정까지 옮길지 — 목록 토핑은 클릭 경로 자체가 아직 없다(OQ-P-099).
+- **상태**: 미해결 (스펙이 명시적으로 범위 밖에 둔 항목)
+- **해소 메모**: ①이 먼저다. 서버 계약이 바뀌면 [api/parfait.md](../api/parfait.md)와
+  [design-system](../architecture/design-system.md)의 `YGToppingGroup` 서술을 함께 고친다.
+
+### [2026-08-27] 알파 마스크 캐시가 프로세스 전역인데 비우는 호출부가 0건이다
+
+- **ID**: OQ-P-317
+- **출처**: PR #388 develop 머지 — `ToppingAlphaMaskCache.kt`의 `maskCache`(최상위 `private val`
+  `LinkedHashMap`)·`inFlightMasks`·`maskLoadScope`(`SupervisorJob` + `Dispatchers.Default`)가 모두
+  파일 최상위 상태다. `clearToppingAlphaMasks()`는 열려 있지만 부르는 곳이 없고, 코드 주석이
+  "항목 수에 상한이 있어 누수가 아니라서 호출부 신설을 미뤘다"고 적는다.
+- **항목**: ① 화면이 죽어도 로드가 끝까지 가는 것은 **의도**(합류한 쪽이 같이 죽지 않게)인데,
+  아무도 안 기다리는 로드를 취소할 수단이 없다. ② 캐시가 전역이라 유닛·계측 테스트 사이에
+  상태가 넘어간다 — 지금 판정 테스트는 손으로 만든 마스크만 써서 닿지 않지만, 캐시를 태우는
+  테스트를 쓰는 순간 격리가 깨진다. ③ 메모리 압박 신호(`onTrimMemory`)에 붙일지.
+- **상태**: 미해결 (**동작 영향 0** — 상한 64로 메모리는 묶여 있다. 수명 주체가 없는 것이 문제다)
+- **해소 메모**: ②가 먼저 걸린다. 테스트가 붙는 시점에 `@After`에서 `clearToppingAlphaMasks()`를
+  부르거나, 캐시를 최상위 상태가 아니라 주입되는 홀더로 바꾼다.
+
+<!-- oq-next: 318 -->
