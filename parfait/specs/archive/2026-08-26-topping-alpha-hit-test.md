@@ -1,11 +1,11 @@
 ---
 id: topping-alpha-hit-test
 title: 토핑 누끼 모양 터치 판정 (Alpha-based topping hit test)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-26
-related_code: ToppingAlphaMask.kt#ToppingAlphaMask, ToppingHitTarget.kt#ToppingHitTarget, ToppingHitTarget.kt#pickToppingHit, ToppingAlphaMaskCache.kt#loadToppingAlphaMask, ToppingClickThrottle.kt#ToppingClickThrottle, ToppingHitTestInput.kt#toppingTapInput, ToppingHitTestInput.kt#toppingDragInput, ToppingCorners.kt#ToppingCorners, ToppingGeometry.kt#toppingImageSize, CanvasToppingLayer.kt#CanvasToppingLayer, CanvasToppingLayer.kt#CanvasTopping, CanvasBGEditScreen.kt#CanvasToppingImage, CanvasBGEditScreen.kt#rememberToppingPainter, CanvasBGEditScreen.kt#rememberToppingSize, CanvasBGEditScreen.kt#ToppingCornerButtons, CanvasBGEditViewModel.kt#CanvasToppingItem, CanvasBGEditViewModel.kt#toBorderLayers, CanvasToppingPlaceScreen.kt, ToppingHandleComponents.kt#ToppingDragHandleButton, ToppingGeometry.kt#toppingCenter, ToppingGeometry.kt#toppingLongSide, YGToppingCutoutImage.kt#YGToppingCutoutImage, YGToppingCutoutImage.kt#ToppingOutline, YGCanvas.kt#YGCanvas, Modifier.kt#dragBy, Modifier.kt#centeredAt, YGClickable.kt#YGClickThrottleGate
+verified: 2026-08-27
+related_code: ToppingAlphaMask.kt#ToppingAlphaMask, ToppingHitTarget.kt#ToppingHitTarget, ToppingHitTarget.kt#pickToppingHit, ToppingAlphaMaskCache.kt#loadToppingAlphaMask, ToppingClickThrottle.kt#ToppingClickThrottle, ToppingHitTestInput.kt#toppingTapInput, ToppingHitTestInput.kt#toppingDragInput, ToppingCorners.kt#ToppingCorners, ToppingGeometry.kt#toppingImageSize, CanvasToppingLayer.kt#CanvasToppingLayer, CanvasToppingLayer.kt#CanvasTopping, CanvasBGEditScreen.kt#CanvasToppingImage, CanvasBGEditScreen.kt#rememberToppingPainter, CanvasBGEditScreen.kt#rememberToppingSize, CanvasBGEditScreen.kt#ToppingCornerButtons, CanvasBGEditViewModel.kt#CanvasToppingItem, CanvasBGEditViewModel.kt#toBorderLayers, CanvasToppingPlaceScreen.kt, ToppingHandleComponents.kt#ToppingDragHandleButton, ToppingGeometry.kt#toppingCenter, ToppingGeometry.kt#toppingLongSide, YGToppingCutoutImage.kt#YGToppingCutoutImage, YGToppingCutoutImage.kt#ToppingOutline, YGCanvas.kt#YGCanvas, Modifier.kt#dragBy, Modifier.kt#centeredAt, YGClickable.kt#YGClickThrottleGate, ToppingAlphaMaskCache.kt#rememberToppingAlphaMasks, ToppingAlphaMaskCache.kt#clearToppingAlphaMasks, YGToppingCutoutImage.kt#TOPPING_OUTLINE_STAMP_COUNT, CanvasToppingLayer.kt#ToppingHitEntry, CanvasBGEditScreen.kt#BGEditHitEntry, CanvasBGEditScreen.kt#drawnModel
 related_adr: ADR-0025
 related_spec: c001-canvas-main, c202-canvas-spotlight, c301-canvas-background-edit, c106-topping-place
 related_architecture: design-system
@@ -15,6 +15,23 @@ tags: [spec, parfait]
 ---
 
 # Spec: 토핑 누끼 모양 터치 판정
+
+> **구현 완료 — develop 머지 2026-08-27** (PR #388·#390·#389, 스택 PR 다섯 갈래가 세 머지로 들어왔다).
+> 본문은 설계 당시의 서술이고, 실행하며 갈린 자리는 아래 [as-built](#as-built)에 적었다.
+> 실행 중 바꾼 코드 형태의 전모는 [구현 계획서](../../plans/archive/2026-08-26-topping-alpha-hit-test.md)의
+> "실행 뒤 달라진 것" 표에 있다.
+
+## as-built
+
+| 설계 | 실제 |
+|---|---|
+| 방향 수 상수를 `OUTLINE_STAMP_COUNT`로 연다 | 공개하면서 `TOPPING_OUTLINE_STAMP_COUNT`로 개명했다. 디자인시스템 최상위에 놓이는 이름이라 무엇의 스탬프인지가 이름에 있어야 한다 |
+| 배치 화면은 "클릭 콜백이 없으면"을 레이어가 스스로 판단한다 | `CanvasToppingLayer(hitTestEnabled: Boolean = true)` 파라미터로 명시했다. 콜백은 언제나 넘어오는 값이라 비었는지를 레이어가 볼 수 없고, 빈 람다를 넘기는 것과 판정을 끄는 것이 코드에서 구분되지 않는다 |
+| 마스크는 그 화면이 그리는 모델로 요청한다 | 배경 편집은 거기에 더해 **내 토핑만** 요청한다. 남의 토핑은 탭 대상도 드래그 대상도 아니라 마스크가 없어도 화면이 달라지지 않는다 |
+| 알파 임계값 0.5 | 8비트 알파를 그대로 비교해 `ALPHA_THRESHOLD = 128`이다 |
+| — | 마스크 요청은 Coil **메모리 캐시를 끈다**. 비트셋으로 접고 나면 버릴 비트맵이고 표시용과 크기가 달라 키도 다르므로, 얹어 두면 토핑 수만큼 쓸모없는 항목이 표시용 비트맵을 밀어낸다 |
+| — | 비트셋으로 접는 픽셀 순회를 `Dispatchers.Default`로 옮겼다. Coil의 `execute` 뒤는 호출자 컨텍스트라 그대로 두면 메인 스레드가 토핑 수만큼 잡힌다 |
+| 판정 함수를 확장으로 둔다 | `containsPoint`는 `ToppingHitTarget`의 멤버다. 겹침 순서 선택만 `pickToppingHit` 순수 함수로 따로 뽑아 유닛 테스트로 덮었다 |
 
 ## 목표
 
@@ -169,7 +186,7 @@ maskY = floor((localY + 그림높이 / 2) * 마스크세로 / 그림높이)
 
 ### 테두리
 
-`ToppingOutline`은 같은 그림을 테두리 색으로 물들여 `OUTLINE_STAMP_COUNT` 방향으로
+`ToppingOutline`은 같은 그림을 테두리 색으로 물들여 `TOPPING_OUTLINE_STAMP_COUNT` 방향으로
 `borderWidth`만큼 밀어 찍는다. 따라서 어떤 화면 점이 테두리에 덮이려면 **그 점에서 같은
 방향으로 되민 지점**의 원본 알파가 불투명해야 한다.
 
@@ -177,7 +194,7 @@ maskY = floor((localY + 그림높이 / 2) * 마스크세로 / 그림높이)
 명시해 두는 이유는, 방향 수가 짝수인 지금은 부호를 뒤집어도 결과가 같아 실수가 드러나지 않기
 때문이다. 방향 수가 홀수로 바뀌는 순간 부호가 진짜 버그가 된다.
 
-방향 수는 그리는 쪽이 정본을 갖는다. `OUTLINE_STAMP_COUNT`를 디자인시스템 밖에서 읽을 수
+방향 수는 그리는 쪽이 정본을 갖는다. `TOPPING_OUTLINE_STAMP_COUNT`를 디자인시스템 밖에서 읽을 수
 있게 열고 판정이 그것을 읽는다. 양쪽이 각자 상수를 들면 언젠가 어긋난다.
 
 **테두리를 부풀리는 조건은 렌더링과 같은 식이어야 한다.** 지금 캔버스 메인은 색을 읽지 못하거나
@@ -248,6 +265,9 @@ painter가 성공 상태가 아니면 테두리를 그리지 않는다. 판정�
 디코딩만 한 번 더 일어난다. 표시용 이미지는 하드웨어 비트맵 그대로 두어 렌더링 성능이 지금과 같다.
 
 Coil의 기본 스케일이 긴 변을 맞추므로 마스크의 가로·세로 비가 원본 비와 같다.
+
+**요청 대상은 판정에 실제로 쓰는 토핑으로 좁힌다.** 배경 편집은 내 토핑만 판정하므로 남의 토핑
+마스크는 뜨지 않는다.
 
 ### 형태와 임계값
 
@@ -332,8 +352,8 @@ Coil의 기본 스케일이 긴 변을 맞추므로 마스크의 가로·세로 
 입력과 마스크 로딩이 들어가면 그대로 상속된다. 쓰지도 않는 기존 토핑의 마스크를 디코딩하고,
 캔버스 전면에 보이지 않는 이벤트 싱크가 생긴다.
 
-**클릭 콜백이 없으면 포인터 입력과 마스크 로딩을 아예 달지 않는다.** 레이어가 이 조건을 스스로
-판단한다.
+**판정을 켤지 끌지는 레이어가 파라미터로 받는다.** `hitTestEnabled`가 꺼져 있으면 포인터 입력도
+마스크 로딩도 달지 않고, 배치 화면이 그 값을 꺼서 넘긴다.
 
 ### 접근성
 
@@ -370,7 +390,7 @@ Coil의 기본 스케일이 긴 변을 맞추므로 마스크의 가로·세로 
 배경 편집의 `CanvasToppingImage`는 렌더링을 `YGToppingCutoutImage`로 바꾸고, painter와 고유
 크기 계산을 레이어로 넘긴다.
 
-디자인시스템은 `OUTLINE_STAMP_COUNT`를 여는 것 하나만 바꾼다.
+디자인시스템은 `TOPPING_OUTLINE_STAMP_COUNT`를 여는 것 하나만 바꾼다.
 
 `core/util/android`는 바꾸지 않는다. 대상별 스로틀은 동작이 달라 기존 게이트를 재사용할 수 없고,
 그 게이트는 최상위 `private`에 감싸는 함수도 `internal`이라 다른 Gradle 모듈에서 쓰려면 공개 API를
@@ -411,11 +431,14 @@ TDD로 진행하며 테스트를 먼저 쓴다. 손으로 만든 마스크로 �
 
 ## 미결
 
-- 마스크 해상도 256px과 알파 임계값 0.5는 측정한 적이 없다. 실기기 확인 뒤에 조정한다.
-- **그룹 목록(G-001) 토핑의 테두리.** 서버가 `GET /api/parfait-groups` 응답에 테두리 필드를 주지
+머지 뒤 네 항목 모두 열려 있고 [parfait open-questions](../../synthesis/open-questions.md)에
+OQ-P-313~316으로 등록했다. 마스크 캐시의 수명 주체 부재(OQ-P-317)는 실행 중에 새로 드러난 것이다.
+
+- 마스크 해상도 256px과 알파 임계값 0.5는 측정한 적이 없다. 실기기 확인 뒤에 조정한다(OQ-P-313).
+- **그룹 목록(G-001) 토핑의 테두리(OQ-P-316).** 서버가 `GET /api/parfait-groups` 응답에 테두리 필드를 주지
   않아 앱만으로는 그릴 수 없다. 서버 필드 추가가 먼저이고, `YGToppingGroup`의 `ContentScale.Crop`을
   `Fit`으로 바꿀지, 템플릿 6종과 조회 실패 그래픽에도 테두리를 두를지는 정책이 비어 있다.
-- 배경 편집에 테두리를 그리면 토핑이 지금보다 커 보인다. 코너 스트로크·버튼이 테두리 바깥이 아니라
+- 배경 편집에 테두리를 그리면 토핑이 지금보다 커 보인다(OQ-P-315). 코너 스트로크·버튼이 테두리 바깥이 아니라
   그림 가장자리에 붙는데, 그대로 둘지 확인하지 않았다.
-- 토핑에 읽어 줄 콘텐츠 설명을 무엇으로 할지 정하지 않았다. 스포트라이트 딤을 닫는 액션에 읽어 줄
+- 토핑에 읽어 줄 콘텐츠 설명을 무엇으로 할지 정하지 않았다(OQ-P-314). 스포트라이트 딤을 닫는 액션에 읽어 줄
   문구도 같은 상태라, 둘 다 임시 문자열을 두고 있다.

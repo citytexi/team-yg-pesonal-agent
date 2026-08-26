@@ -4,7 +4,7 @@ title: C-301 토핑 편집 탭 (선택·이동·크기·회전·삭제 + 테두�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-26
+verified: 2026-08-27
 related_code:
   - CanvasBGEditScreen.kt#CanvasBGEditScreen
   - CanvasBGEditScreen.kt#CanvasToppingImage
@@ -112,6 +112,13 @@ C-301 편집 모드의 **토핑 탭**에서, 캔버스에 이미 놓인 **내 �
   그 위 딤이 먼저 받으므로 결과적으로 선택 해제다.
 - 같은 토핑을 다시 탭하면 `selectedToppingId`가 `null`이 된다(토글).
 
+🔁 **탭을 받는 자리가 바뀌었다 (2026-08-27, PR #390·#389).**
+[토핑 알파 판정](2026-08-26-topping-alpha-hit-test.md)이 토핑과 딤의 클릭을 전부 걷어내고,
+[2]와 [3] 사이에 **전면을 덮는 판정 오버레이**를 하나 끼웠다. 이 표의 "탭=…" 결과는 그대로이되
+만들어 내는 주체가 다르다 — 내 토핑 실루엣에 맞으면 선택 토글, 아무것도 안 맞으면 선택 해제이고,
+남의 토핑은 결과가 어차피 선택 해제라 판정 대상에서 빠졌다. 드래그도 같은 오버레이가 받는다
+(`Modifier.dragBy` 호출은 이 화면에서 걷혔고, 코너 드래그 핸들과 배치 화면은 그대로 쓴다).
+
 ### 조작 3종
 | 조작 | 인텐트 | 환산 |
 |---|---|---|
@@ -183,6 +190,8 @@ NavKeyCanvasBGEdit ─(편집 버튼)─▶ NavKeyToppingEdit(source, segmentati
 - **State가 UI 타입을 든다**: `CanvasToppingItem`이 `@DrawableRes Int`·`Dp`·Compose `Offset` 계열을
   들고 화면 목록이 곧 도메인 목록이다(배경 팔레트가 `Color`를 든 것과 같은 부류).
 - **클릭 규약 이탈**: 토핑·딤이 `clickable(indication = null)`을 직접 쓴다(`clickableYG` 미사용).
+  ✅ **소멸했다(2026-08-27, PR #390)** — 두 클릭이 판정 오버레이의 `pointerInput` 하나로 합쳐져
+  이 화면에 클릭 모디파이어가 남지 않았다(팔레트 원형 둘은 `clickableYGNoRipple`을 쓴다).
 - **그리기 프리미티브**: 점선 스트로크를 `core:designsystem`의 `dashedBorder()`가 아니라 화면이
   `drawBehind` + `dashPathEffect`로 직접 그린다. 같은 층위가 또 한 곳 늘었다
   → [design-system](../../architecture/design-system.md).
@@ -283,11 +292,16 @@ feature/segmentation/
   → [open-questions](../../synthesis/open-questions.md) OQ-P-250.
   ✅ **닫혔다**(2026-08-26, PR #376 — 아래 [as-built 재정정](#as-built-재정정-2026-08-26-pr-376-develop-머지)).
   그 `TODO`가 예고한 "응답에 isMine이 실리면 그것으로 갈아탄다"가 그대로 일어났다.
-- **테두리는 여전히 안 그린다** — `borderLayers`를 받아 두기만 하고 그리는 자리가 편집 결과
-  이미지 하나만 읽는다 → [open-questions](../../synthesis/open-questions.md) OQ-P-254.
-- 드리프트 4(회전 한계 없음)·5(선택 상태가 목록 변화를 못 견딤)·6(접근성)은 그대로다. 5는
-  목록이 실제로 서버에서 오기 시작해 **전제가 현실이 됐다** — 다시 조회하는 경로가 진입 1회뿐이라
-  아직 증상이 없을 뿐이다.
+- ~~**테두리는 여전히 안 그린다**~~ → ✅ **그린다(2026-08-27, PR #388)**. `CanvasToppingImage`가
+  `YGToppingCutoutImage`로 갈아타고 `borderLayers` 첫 겹의 색·두께를 넘긴다. 판정 모양을 외형과
+  맞추려는 [토핑 알파 판정](2026-08-26-topping-alpha-hit-test.md)이 렌더링까지 범위에 넣은 결과다
+  → [open-questions](../../synthesis/open-questions.md) OQ-P-254 해소. **저장 쪽(`borderLayers`가
+  PATCH에 안 실린다, OQ-P-276)은 그대로다.**
+- 드리프트 4(회전 한계 없음)·5(선택 상태가 목록 변화를 못 견딤)는 그대로다. 5는 목록이 실제로
+  서버에서 오기 시작해 **전제가 현실이 됐다** — 다시 조회하는 경로가 진입 1회뿐이라 아직 증상이
+  없을 뿐이다. **6(접근성)은 부분 해소다** — 2026-08-27 라운드가 토핑마다 자손 병합
+  시맨틱스(역할·콘텐츠 설명·클릭 액션)를 붙여 스크린리더가 토핑을 잡을 수 있게 됐다. 읽어 줄
+  문구는 임시 문자열이다(OQ-P-314).
 
 ### 유닛 테스트
 

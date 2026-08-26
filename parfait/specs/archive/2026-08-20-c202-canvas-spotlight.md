@@ -4,7 +4,7 @@ title: C-202 캔버스 토핑 Spotlight — 타인 토핑 탭 강조·Dim·작�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-26
+verified: 2026-08-27
 related_code:
   - CanvasToppingLayer.kt#CanvasToppingLayer
   - CanvasToppingLayer.kt#CanvasTopping
@@ -75,18 +75,25 @@ Default ↔ Spotlighted 두 상태를 코드로 옮긴 첫 라운드다.
 
 ## 렌더링 — 순서가 곧 우선순위다
 
-`CanvasToppingLayer`가 한 `BoxWithConstraints` 안에서 세 덩어리를 순서대로 놓는다.
+`CanvasToppingLayer`가 한 `BoxWithConstraints` 안에서 네 덩어리를 순서대로 놓는다.
 
 1. 강조 대상이 **아닌** 토핑 전부(목록 순서 = `positionZ` 오름차순 유지)
-2. Dim 레이어 — `matchParentSize` · `Transparency.Black50` · `clickableYGNoRipple`
+2. Dim 레이어 — `matchParentSize` · `Transparency.Black50`
 3. 강조 토핑 하나
+4. 판정 오버레이 — `matchParentSize` · `toppingTapInput`(🔁 2026-08-27, 아래)
 
 결과 z는 정책이 적은 **Spotlight 토핑 > Dim > 나머지 토핑 > 배경**과 같다. 배경은 이 레이어 밖
 `YGCanvas`가 그리므로 Dim이 캔버스 배경까지 덮지는 않는다 — 정책의 "선택 토핑 제외 전체 영역"을
 **토핑 레이어 범위로 읽은 것**이고, 그림상 캔버스 배경은 어두워지지 않는다.
 
-토핑마다 `clickableYGNoRipple`이 붙는다. 강조 중인 토핑을 눌러도 위 전이 표대로 아무 일도 일어나지
-않는다(Spotlighted에서 들어온 탭은 전부 무시).
+🔁 **클릭이 붙는 자리가 바뀌었다 (2026-08-27, PR #389).** 이 스펙이 적은 형태는 토핑마다
+`clickableYGNoRipple`이 붙고 Dim에도 하나 붙는 것이었다. [토핑 알파 판정](2026-08-26-topping-alpha-hit-test.md)이
+그 클릭을 전부 걷어내고 **전면을 덮는 판정 오버레이 하나**로 옮겼다 — 누끼 실루엣으로 판정하려면
+겹친 토핑을 한자리에서 훑어야 하기 때문이다. 이 스펙의 **동작은 그대로다**: 강조 토핑이 히트면 그
+토핑의 클릭이고(뷰모델이 Spotlighted에서 온 탭을 무시하는 것도 그대로), 미스면 Dim 아래를 보지 않고
+곧바로 해제다. 달라진 것 둘 — ① **강조된 토핑의 투명한 여백**을 누르면 이제 해제된다(전에는 토핑
+박스가 받아 아무 일도 없었다), ② Dim이 클릭을 잃으면서 스크린리더용 해제 액션이 **Dim 자체의
+시맨틱스**로 남았다.
 
 ## 토스트
 
@@ -140,7 +147,7 @@ Dim·확장 메뉴·달력보다 위에 그려지고, 상단 여백은 캔버스
 | `core/util/jvm/.../extension/InstantExtension.kt` | `ElapsedTimeBucket` + `toElapsedTimeBucket` |
 | `core/designsystem/.../ygcanvas/YGCanvas.kt` | `overlayContent` 슬롯 |
 | `core/designsystem/.../ygtoast/YGToast.kt` | `Record.userNameColor` · 문구 조립 변경 |
-| `feature/.../canvas/impl/component/CanvasToppingLayer.kt` | Dim·그리기 순서·탭 수신 |
+| `feature/.../canvas/impl/component/CanvasToppingLayer.kt` | Dim·그리기 순서·탭 수신(2026-08-27부터 판정 오버레이) |
 | `feature/.../canvas/impl/util/SpotlightToastColor.kt` | 칩 타입 → 토스트 닉네임 색 |
 | `feature/.../canvas/impl/util/SpotlightTimeLabel.kt` | 갈래 → 문구(`Context.getString`) |
 | `feature/.../canvas/impl/viewmodel/CanvasMainViewModel.kt` | 상태·전이·이펙트 |
