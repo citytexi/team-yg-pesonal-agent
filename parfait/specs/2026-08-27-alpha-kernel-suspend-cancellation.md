@@ -306,3 +306,10 @@ private 넷은 시그니처를 새로 `suspend` 로 바꿔야 하므로 기계�
   지점이 생겨** ① 테스트 하니스의 전제가 깨지고(위 함정 4번의 단언이 이를 잡는다)
   ② `refineElapsedNanos` 가 디스패치 대기까지 포함하는 벽시계 값으로 의미가 달라진다. 지금
   구조에서는 `ensureActive()` 가 중단 지점이 아니라 그 값의 의미가 보존된다.
+- **확인 없이 오래 도는 루프가 여전히 남아 있다.** 이 스펙은 「범위 · 제외」에서 확인 지점·빈도
+  변경을 범위 밖에 뒀으므로 이 전환에서는 고치지 않고 사실만 남긴다. `AlphaComponents.kt` 의
+  `applyAreaOpening` 은 `countRuns` 와 `fillRuns` 로 마스크 전체를 **두 번** 훑은 뒤에야 첫
+  확인(`unionAdjacentRows`)에 닿고, union 이후의 성분 집계·마스크 소거 루프에도 확인이 없다.
+  `AlphaRefine.kt` 의 `downscale` 마지막 나눗셈 루프와 `guidedCoefficients` 의 배열 생성
+  람다도 같다. 큰 판에서는 첫 확인 전에 전체 두 패스가 그대로 지나가므로, 확인 지점을 더
+  촘촘히 할지는 이 스펙과 별도의 판단이 필요하다.
