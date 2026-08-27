@@ -1,16 +1,16 @@
 ---
 id: segmentation-mask-postprocessing
 title: 세그멘테이션 마스크 후처리 구현 계획 (3 PR)
-status: draft
+status: done
 type: work-order
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-27
 platforms: android
 owner: android
 related_adr: ADR-0012, ADR-0011
 related_spec: segmentation-mask-postprocessing, segmentation-preprocessing
-related_code: SegmentationCandidateFilter.kt#filterCandidates, SegmentationCandidate, SegmentationMask.kt#maskSubjectPixels, ImageSegmentationRepositoryImpl#toCandidates, ImageSegmentationRepositoryImpl#toForegroundCandidate, ImageSegmentationRepositoryImpl#segmentImage, SegmentationHighlightGeometry.kt#pickCandidateIndex, Logger.kt#repositoryLogger
-archived_reason:
+related_code: SegmentationCandidateFilter.kt#filterCandidates, SegmentationCandidate, SegmentationMask.kt#maskSubjectAlpha, AlphaPostProcessor.kt#postProcessAlpha, AlphaComponents.kt#applyAreaOpening, AlphaComposite.kt#applyAlphaInPlace, ArgbExtension.kt#sumArgbAlpha, ImageSegmentationRepositoryImpl#toCandidatePairs, ImageSegmentationRepositoryImpl#buildCandidatePair, ImageSegmentationRepositoryImpl#toForegroundCandidate, ImageSegmentationRepositoryImpl#segmentImage, SegmentationHighlightGeometry.kt#pickCandidateIndex, Logger.kt#repositoryLogger
+archived_reason: Task 1~13 이 PR #363(`4da18230`, 2026-08-27)으로 develop 에 머지됐다. Task 14 의 사진 세트 판정은 실기기에서 사람이 하는 일이라 OQ-P-287~295 가 이어받는다
 tags: [plan, parfait]
 ---
 
@@ -27,7 +27,15 @@ tags: [plan, parfait]
 
 **Tech Stack:** Kotlin, ML Kit Subject Segmentation, Hilt, kotlin.test + JUnit4(JVM 유닛)
 
-**Spec:** [`parfait/specs/2026-08-24-segmentation-mask-postprocessing.md`](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+**Spec:** [`parfait/specs/archive/2026-08-24-segmentation-mask-postprocessing.md`](../../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
+
+> ✅ **Task 1~13 이 develop 에 들어갔다** — PR #363 `4da18230`(2026-08-27). 세 PR 로 나누기로 한
+> 스택이 뒤 라운드 둘(알파 정련·커널 취소 확인 전환)까지 함께 접혀 **머지 하나**로 왔다. 계획이
+> 지정한 커밋 메시지는 그대로 남아 있고, 실행 중 리뷰가 되돌린 자리(`AlphaCoverage.kt` → `:core`
+> 의 `ArgbExtension.kt`, `ceilDiv` 의 `require` 위치)는 아래 각 Task 의 as-built 주석에 이미 적혀
+> 있다. **Task 14 는 Step 4~5(문서 이동·커밋)만 이 회차가 수행했다** — Step 1~3 의 사진 세트 판정은
+> 실기기에서 사람이 해야 하고, 그 판정을 기다리는 항목은 [open-questions](../../synthesis/open-questions.md)
+> 의 OQ-P-287~295 로 남아 있다. 근거 등급 표의 조건부 항목을 아직 아무도 철회하지 않았다.
 
 ## Global Constraints
 

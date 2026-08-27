@@ -1,11 +1,11 @@
 ---
 id: alpha-kernel-suspend-cancellation
 title: 알파 후처리 커널의 취소 확인을 콜백에서 suspend + ensureActive 로 옮긴다
-status: draft
+status: implemented
 category: refactor-spec
 platforms: android
 verified: 2026-08-27
-related_code: AlphaComponents.kt#downscaleMask, AlphaComponents.kt#applyAreaOpening, AlphaComponents.kt#dilateMask, AlphaPostProcessor.kt#postProcessAlpha, AlphaPostProcessor.kt#applyKeepMask, AlphaPostProcessor.kt#measureAlpha, AlphaPostProcessor.kt#erodeEdge, AlphaPostProcessor.kt#refineWithin, AlphaRefine.kt#refineAlpha, AlphaRefine.kt#boxMean, SegmentationMask.kt#maskSubjectAlpha, ImageSegmentationRepositoryImpl#toCandidatePairs, ImageSegmentationRepositoryImpl#buildCandidatePair, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate
+related_code: AlphaComponents.kt#downscaleMask, AlphaComponents.kt#applyAreaOpening, AlphaComponents.kt#dilateMask, AlphaPostProcessor.kt#postProcessAlpha, AlphaPostProcessor.kt#applyKeepMask, AlphaPostProcessor.kt#measureAlpha, AlphaPostProcessor.kt#erodeEdge, AlphaPostProcessor.kt#refineWithin, AlphaRefine.kt#refineAlpha, AlphaRefine.kt#boxMean, SegmentationMask.kt#maskSubjectAlpha, ImageSegmentationRepositoryImpl#toCandidatePairs, ImageSegmentationRepositoryImpl#buildCandidatePair, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate, CountingJob.kt
 related_adr:
 related_spec: segmentation-mask-postprocessing, segmentation-alpha-refinement
 related_architecture: data-layer
@@ -15,6 +15,12 @@ tags: [spec, parfait, coroutines]
 ---
 
 # Spec: 알파 후처리 커널의 취소 확인 방식 전환
+
+> ✅ **as-built(2026-08-27, PR #363 `4da18230` develop 머지)** — 세 브랜치가 rebase 를 거쳐 정련
+> 브랜치 하나로 접혔고, 그 브랜치가 `develop` 으로 들어왔다. 그래서 **`--merges` 목록에는 이 스택이
+> 한 줄로만 뜬다**(커밋은 44개다). 「변환 규칙」·「전염 방향」 표는 아래 as-built 주석까지 포함해
+> 코드와 일치하고, `CountingJob` 도 테스트 소스에 그대로 있다. 이 회차가 새로 고친 자리는 없다 —
+> 「브랜치 배분」이 예고한 rebase 위험(`refineWithin` 이 커널 PR 에 없다)은 실행 중에 이미 처리됐다.
 
 ## 목표
 
@@ -295,6 +301,11 @@ rebase 가 컴파일 에러로 막힌다.
 private 넷은 시그니처를 새로 `suspend` 로 바꿔야 하므로 기계적이지 않다.
 
 ⚠️ rebase 후 force push 가 필요하다. 리모트로 나가는 작업이므로 실행 직전에 승인을 받는다.
+
+> ✅ **as-built** — 셋이 순서대로 rebase 되어 **정련 브랜치 하나로 접힌 채** PR #363 으로 머지됐다.
+> 위 표의 배분 자체는 커밋 단위로 그대로 남아 있으나(`refactor: 알파 커널의 취소 확인을 콜백에서
+> suspend 로 옮긴다` · `refactor: 결선 경로의 취소 확인을 suspend 로 옮긴다` · `refactor: 정련 커널의
+> 취소 확인을 suspend 로 옮긴다`), **`develop` 이 본 머지는 하나**다.
 
 ## 미결
 

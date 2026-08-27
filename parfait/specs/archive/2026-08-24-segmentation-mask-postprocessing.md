@@ -1,13 +1,13 @@
 ---
 id: segmentation-mask-postprocessing
 title: 세그멘테이션 마스크 후처리 — 잡티 제거·경계 정리·후보 판정 (Subject mask post-processing)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-24
-related_code: ImageSegmentationRepositoryImpl#toCandidates, ImageSegmentationRepositoryImpl#toForegroundCandidate, ImageSegmentationRepositoryImpl#segmentForeground, ImageSegmentationRepositoryImpl#segmentImage, SegmentationMask.kt#maskSubjectPixels, SegmentationCandidateFilter.kt#filterCandidates, SegmentationCandidate, SegmentationBounds, SegmentationHighlightGeometry.kt#pickCandidateIndex, ToppingEditMask.kt#trimTransparentBounds, RunSuspendCatching.kt, Logger.kt#repositoryLogger, ContentResolver.kt#decodeUriToBitmap, CameraCrop.kt#saveViewfinderCapture
+verified: 2026-08-27
+related_code: ImageSegmentationRepositoryImpl#toCandidatePairs, ImageSegmentationRepositoryImpl#buildCandidatePair, ImageSegmentationRepositoryImpl#originalCandidate, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate, ImageSegmentationRepositoryImpl#segmentForeground, ImageSegmentationRepositoryImpl#segmentImage, SegmentationMask.kt#maskSubjectAlpha, AlphaPostProcessor.kt#postProcessAlpha, AlphaComponents.kt#applyAreaOpening, ArgbExtension.kt#sumArgbAlpha, SegmentationCandidateFilter.kt#filterCandidates, SegmentationCandidate, SegmentationBounds, SegmentationHighlightGeometry.kt#pickCandidateIndex, ToppingEditMask.kt#trimTransparentBounds, RunSuspendCatching.kt, Logger.kt#repositoryLogger, ContentResolver.kt#decodeUriToBitmap, CameraCrop.kt#saveViewfinderCapture
 related_adr: ADR-0012, ADR-0011
-related_spec: segmentation-preprocessing, c103-multi-subject-selection, segmentation-pipeline-hardening
+related_spec: segmentation-preprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, c103-multi-subject-selection, segmentation-pipeline-hardening
 related_architecture: data-layer
 supersedes:
 superseded_by:
@@ -16,13 +16,34 @@ tags: [spec, parfait]
 
 # Spec: 세그멘테이션 마스크 후처리
 
+> ✅ **as-built(2026-08-27, PR #363 `4da18230` develop 머지)** — 이 스펙의 코드는 전부 들어왔다.
+> 다만 **혼자 들어오지 않았다** — 뒤 라운드인 [알파 정련](2026-08-25-segmentation-alpha-refinement.md)과
+> [커널 취소 확인 전환](2026-08-27-alpha-kernel-suspend-cancellation.md)이 같은 스택에 쌓여 한 머지로
+> 함께 왔고, 그 둘이 이 스펙이 정한 커널 표면을 다시 고쳤다. 그래서 아래 본문을 읽을 때는 **셋을
+> 겹쳐 봐야 develop 의 실제 형태가 나온다.** 이번 회차가 고친 자리는 넷이다.
+> ① **`toCandidates` 라는 이름은 남지 않았다** — 주 경로가 `toCandidatePairs`(0건 원인 로그·bbox
+> 사전 절단)와 `buildCandidatePair`(후보 하나의 후처리와 되돌리기)로 갈렸고, 되돌릴 후보를 만드는
+> 자리가 `originalCandidate` 로 따로 섰다. 「주 경로 배선」의 서술은 그대로 유효하고 이름만 다르다.
+> ② **`maskSubjectPixels` 는 `maskSubjectAlpha` 가 됐다** — 반환도 `MaskedAlpha`(알파 배열 + 커널
+> 결과)로 바뀌어 폴백 경로가 알파와 측정값을 함께 받는다.
+> ③ **「API / 인터페이스」 절의 시그니처는 뒤 두 라운드가 덮었다** — `postProcessAlpha` 는
+> `suspend` 가 되면서 `checkCancelled` 파라미터를 잃고 안내자 공급자(`GuidanceProvider?`)를 얻었고,
+> `AlphaPostProcessOptions` 에 정련 옵션 넷, `AlphaPostProcessResult` 에 `refineElapsedNanos` 가
+> 붙었다. 취소를 확인하는 주기와 지점은 그대로다.
+> ④ **파일이 하나 늘었다** — 폴백 OOM 가드를 넓히면서 알파 합성이 `AlphaComposite.kt`
+> (`applyAlphaInPlace`·`composeCroppedArgb`)로 빠졌다. 리뷰가 요구한 테스트 가능성이 이유다.
+>
+> **사진 세트 판정은 아직 없다**(계획 Task 14 Step 1~3). 근거 등급 표의 조건부 항목과 그 철회
+> 조건은 **판정 전이라 그대로 살아 있고**, 판정 주체는 [open-questions](../../synthesis/open-questions.md)
+> 의 OQ-P-287~295 다. 코드가 전부 들어왔다는 것과 그 값이 옳다는 것은 다른 문제다.
+
 ## 목표
 
-ML Kit이 내놓은 마스크를 다듬어 누끼의 **정확도**를 올린다. [segmentation-preprocessing](2026-08-23-segmentation-preprocessing.md)이
+ML Kit이 내놓은 마스크를 다듬어 누끼의 **정확도**를 올린다. [segmentation-preprocessing](../2026-08-23-segmentation-preprocessing.md)이
 「제외」절에서 "별도 라운드"로 미룬 후처리가 이 스펙이다. 앞 라운드가 모델에게 주는 입력을
 손봤다면, 이번에는 모델이 돌려준 결과를 손본다.
 
-미결은 전부 [open-questions](../synthesis/open-questions.md)에 등록한다.
+미결은 전부 [open-questions](../../synthesis/open-questions.md)에 등록한다.
 
 ## 근거 등급 (이 스펙의 성격)
 
@@ -46,7 +67,7 @@ ML Kit이 내놓은 마스크를 다듬어 누끼의 **정확도**를 올린다.
 > ⚠️ **커버리지 임계의 근거가 약하다.** 초판은 "채움비가 대략 절반이니 0.01의 절반"이라는
 > 계산으로 값을 정했다가 철회했다. 실제 채움비는 솔리드 제품이 높고 비스듬히 놓인 가늘고 긴
 > 물체가 매우 낮아 자릿수로 벌어진다. 그런데 **그 자리를 채운 것도 측정값이 아니라 같은 종류의
-> 추정이다.** [OQ-P-267](../synthesis/open-questions.md)이 이미 "후보 필터 상수의 근거가
+> 추정이다.** [OQ-P-267](../../synthesis/open-questions.md)이 이미 "후보 필터 상수의 근거가
 > 실측이 아니다"로 열려 있고 이 라운드가 그 상수를 갈아치우므로, 값을 계약으로 박되 등급은
 > 조건부로 두고 사진 세트가 판정하게 한다.
 
@@ -316,14 +337,15 @@ internal fun postProcessAlpha(
 | `core/util/jvm/.../extension/ArgbExtension.kt` | `Int.argbAlpha`·`IntArray.sumArgbAlpha` 추가. 픽셀 배열의 알파 총합 (계획은 `data`에 `AlphaCoverage.kt`를 신설했고, #359 리뷰가 이리로 옮겼다) |
 | `data/.../repository/image/AlphaPostProcessor.kt` | 신설. 위 API와 단계 구현 |
 | `data/.../repository/image/AlphaComponents.kt` | 신설. 런 추출·union-find·area opening |
-| `data/.../repository/image/SegmentationMask.kt` | `maskSubjectPixels`를 램프 사상 + 커널 호출로 재작성 |
+| `data/.../repository/image/SegmentationMask.kt` | `maskSubjectPixels`를 램프 사상 + 커널 호출로 재작성 (as-built: `maskSubjectAlpha` 로 개명, 반환은 `MaskedAlpha`) |
+| `data/.../repository/image/AlphaComposite.kt` | as-built 신설. 알파 합성(`applyAlphaInPlace`·`composeCroppedArgb`) — 리뷰가 폴백 OOM 가드와 함께 뺐다 |
 | `data/.../repository/image/SegmentationCandidateFilter.kt` | 커버리지 판정·IoU 병합·정렬 |
 | `data/.../repository/image/ImageSegmentationRepositoryImpl.kt` | 두 경로 배선, 전멸 분기, 관측 |
 | `domain/.../model/SegmentationCandidate.kt` | 커버리지 필드 추가 |
 
 ## 주 경로 배선
 
-`toCandidates`에서 후보마다 알파를 뽑아 커널에 태운다. 이진화 임계는 알파 127 초과다. 램프는
+`toCandidates`(as-built: `toCandidatePairs` + `buildCandidatePair`)에서 후보마다 알파를 뽑아 커널에 태운다. 이진화 임계는 알파 127 초과다. 램프는
 쓰지 않는다.
 
 **후처리 전에 값싼 사전 절단을 한다.** bbox 픽셀 수는 커버리지의 상계이므로(알파가 255를 넘지
@@ -343,7 +365,7 @@ ML Kit이 준 비트맵에 되쓰는 것은 안 된다. 그 판의 수명은 `Su
 패스에서 그 영역만 쓴다.
 
 ⚠️ **ML Kit 원판은 회수할 수 없으므로 새 판을 만드는 동안 판이 두 벌 산다.**
-[OQ-P-266](../synthesis/open-questions.md)이 이 소유권 문제를 이미 열어 두었다. 이 라운드는 그
+[OQ-P-266](../../synthesis/open-questions.md)이 이 소유권 문제를 이미 열어 두었다. 이 라운드는 그
 압력을 키우기만 하고 닫지 못한다. `changed`가 거짓일 때 새 판을 안 만드는 분기가 유일한 완화인데,
 경계 침식이 거의 항상 알파를 건드리므로 실제로는 잘 안 도달한다.
 
@@ -615,7 +637,7 @@ PR 3이 같은 스프린트에 붙는 것을 전제로 감수한다. **"아직 �
 
 ## 미결
 
-전체는 [open-questions](../synthesis/open-questions.md)에 있다.
+전체는 [open-questions](../../synthesis/open-questions.md)에 있다.
 
 | ID | 내용 |
 |---|---|

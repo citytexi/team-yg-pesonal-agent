@@ -1,16 +1,16 @@
 ---
 id: segmentation-alpha-refinement
 title: 세그멘테이션 알파 경계 정련 구현 계획 (1 PR)
-status: draft
+status: done
 type: work-order
 created: 2026-08-25
-updated: 2026-08-25
+updated: 2026-08-27
 platforms: android
 owner: android
 related_adr: ADR-0012
 related_spec: segmentation-alpha-refinement, segmentation-mask-postprocessing
-related_code: AlphaPostProcessor.kt#postProcessAlpha, AlphaPostProcessor.kt#erodeEdge, AlphaComponents.kt#ceilDiv, SegmentationMask.kt#maskSubjectAlpha, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate
-archived_reason:
+related_code: AlphaRefine.kt#refineAlpha, AlphaRefine.kt#boxMean, AlphaRefine.kt#guidedCoefficients, AlphaRefine.kt#applyCoefficients, AlphaPostProcessor.kt#postProcessAlpha, AlphaPostProcessor.kt#refineWithin, AlphaPostProcessor.kt#erodeEdge, AlphaComponents.kt#ceilDiv, SegmentationMask.kt#maskSubjectAlpha, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate
+archived_reason: Task 1~7 이 PR #363(`4da18230`, 2026-08-27)으로 develop 에 머지됐다. 사진 세트 판정(OQ-P-296~300)은 처음부터 이 계획 밖이다
 tags: [plan, parfait]
 ---
 
@@ -27,7 +27,14 @@ tags: [plan, parfait]
 
 **Tech Stack:** Kotlin, kotlin.test + JUnit4(JVM 유닛)
 
-**Spec:** [`parfait/specs/2026-08-25-segmentation-alpha-refinement.md`](../specs/2026-08-25-segmentation-alpha-refinement.md)
+**Spec:** [`parfait/specs/archive/2026-08-25-segmentation-alpha-refinement.md`](../../specs/archive/2026-08-25-segmentation-alpha-refinement.md)
+
+> ✅ **Task 1~7 이 develop 에 들어갔다** — PR #363 `4da18230`(2026-08-27). 이 브랜치가 스택의 맨
+> 위였고, 아래 둘을 품은 채 통째로 머지됐다. 설계와 어긋난 자리는 없고, 머지 시점의 코드가 이
+> 계획과 다른 유일한 자리는 **`refineAlpha` 계열이 `checkCancelled` 를 갖지 않는다**는 것이다 —
+> 뒤 라운드인 [커널 취소 확인 전환](2026-08-27-alpha-kernel-suspend-cancellation.md)이 rebase 로
+> 이 브랜치 위에 얹혀 함께 왔기 때문이다. 사진 세트 판정(OQ-P-296~300)은 이 계획이 처음부터
+> 범위 밖에 뒀고 여전히 사람 손을 기다린다.
 
 > **이 계획은 검수 2회를 받고 다시 쓴 판본이다.** 초판에서 뒤집힌 것: ① **주 경로 안내자가 원본이
 > 아니라 ML Kit이 배경을 도려낸 판이었다** — 그러면 `I ≡ p`가 되어 정련이 틀린 경계를 스스로

@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-25
+verified: 2026-08-27
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -121,8 +121,31 @@ tags: [architecture, parfait]
 >
 > **필터를 통과한 후보가 0건이면 세그멘테이션을 한 번 더 돌린다** — 전경 마스크 옵션을 다중 후보
 > 옵션과 **한 요청에 함께 켤 수 없기 때문**이고(모듈이 네이티브에서 죽는다 →
-> [[0012-mlkit-subject-segmentation]]), 그 2차 결과로 `maskSubjectPixels` 경로를 태워 후보 하나를
+> [[0012-mlkit-subject-segmentation]]), 그 2차 결과로 `maskSubjectAlpha` 경로를 태워 후보 하나를
 > 만든다. 두 요청이 세그멘터 개폐·optional module 확인·예외 변환을 `runSegmenter`로 공유한다.
+
+> 📌 **마스크가 다듬어져서 나온다(2026-08-27, PR #363)** — ML Kit이 준 알파를 그대로 쓰지 않고
+> `:data`의 순수 커널을 한 번 태운다. 단계는 **이진화 축소 → area opening → keep 마스크 팽창 →
+> 원본 알파에 적용 → 1차 측정 → 가이드 필터 정련 → 경계 한 겹 침식 → 2차 측정**이고, 그 결과가
+> 후보의 `bounds`와 커버리지를 정한다. 골격은 **판정은 축소판에서, 경계 모양은 원본 알파에서**다 —
+> 축소판이 정하는 것은 "이 영역이 살아남는 성분인가"뿐이다. 파일 넷이 새로 섰다:
+> `AlphaPostProcessor.kt`(커널 조립·keep 적용·측정·침식), `AlphaComponents.kt`(런 추출·union-find·
+> area opening·팽창), `AlphaRefine.kt`(박스 평균·가이드 필터 계수·되올림 적용), `AlphaComposite.kt`
+> (알파 합성). 픽셀 배열의 알파 총합은 `:core:util:jvm`의 `ArgbExtension.kt#sumArgbAlpha`다.
+> ⚠️ **커널은 `Bitmap`을 모른다** — 정련이 쓸 원본 휘도는 사각형을 받아 픽셀을 돌려주는
+> `GuidanceProvider`로 받고, **두 경로 모두 `origin`에서 읽는다**(ML Kit이 배경을 도려낸 판을 주면
+> 안내자 경계가 알파 경계와 겹쳐 정련이 틀린 경계를 스스로 강화한다).
+> ⚠️ **커널 전체가 `suspend`이고 취소는 행 경계마다 `currentCoroutineContext().job.ensureActive()`로
+> 확인한다** — 순수 CPU 루프라 중단 지점이 없어 `suspend` 표시만으로는 이 성질이 드러나지 않는다.
+> `get(Job)?` 계열을 쓰지 않는 이유는 `Job` 부재를 조용히 통과시켜 확인이 통째로 no-op이 되어도
+> 테스트가 초록으로 남기 때문이다. 후처리는 **개선 수단이지 후보를 없앨 권한이 아니다** — 실패하면
+> (`OutOfMemoryError` 포함) **그 후보만** 후처리 이전 원본으로 되돌아간다.
+> 후보 필터도 함께 바뀌었다 — 면적 판정이 사각형에서 **알파 커버리지**로, 중복 제거가 동일 bounds
+> 비교에서 **IoU 병합**으로 옮겼다(`SegmentationCandidate.coverageAlphaSum` 신설).
+> 근거와 미판정 항목은 [마스크 후처리](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)·
+> [알파 정련](../specs/archive/2026-08-25-segmentation-alpha-refinement.md)·
+> [커널 취소 확인 전환](../specs/archive/2026-08-27-alpha-kernel-suspend-cancellation.md) 스펙에 있고,
+> **임계·반경·정칙화의 값은 아직 실기기 사진 세트가 판정하지 않았다**(OQ-P-287~300).
 
 **메서드 5개**다 — `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
 `persistSubject(candidate)`(고른 후보를 캐시에 PNG 두 장으로 떨군다) ·

@@ -5,8 +5,50 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `5dc9fbec` (`Merge pull request #389 from mash-up-kr/feature/canvas-main-alpha-hit`)
-- **요약**: **한 스펙이 다섯 갈래로 나뉘어 들어왔고, 그 사이 스택의 머지 순서가 계획과 뒤집혔다**
+- **커밋**: `4da18230` (`Merge pull request #363 from mash-up-kr/feature/segmentation-alpha-refinement`)
+- **요약**: **세 라운드째 "미머지"로 세어 온 브랜치들이 마침내 develop 으로 들어왔다 — 다만
+  release 가 받은 그 커밋들이 아니다** (delta 1건, 커밋 44개·20파일 **삽입 3,685줄·삭제 223줄**).
+  `--merges` 는 **한 줄**만 세지만 그 안에 선작성 스펙 셋이 들어 있다:
+  [마스크 후처리](specs/archive/2026-08-24-segmentation-mask-postprocessing.md) ·
+  [알파 정련](specs/archive/2026-08-25-segmentation-alpha-refinement.md) ·
+  [커널 취소 확인 전환](specs/archive/2026-08-27-alpha-kernel-suspend-cancellation.md).
+  머지 트리가 정련 브랜치 팁과 같아 **충돌 해소 편집이 0건**이고, 유닛은 819 → **926건**(+107,
+  파일 94 → 100), 계측은 **14건** 그대로다.
+  **① 누끼가 처음으로 모델 출력을 고치기 시작했다** — ML Kit 이 준 알파를 그대로 쓰던 경로에
+  순수 커널이 붙어 **이진화 축소 → area opening → 팽창 → keep 적용 → 1차 측정 → 가이드 필터 정련 →
+  침식 → 2차 측정**을 돈다. 골격은 "판정은 축소판, 경계 모양은 원본 알파"이고, 커널은 `Bitmap` 도
+  ML Kit 타입도 모른다 — 정련이 쓸 원본 휘도는 사각형을 받아 픽셀을 돌려주는 `GuidanceProvider`
+  로만 들어온다. 그 대가로 [ADR-0012](adr/0012-mlkit-subject-segmentation.md) 가 열어 둔 질문
+  하나가 닫혔다: **온디바이스 모델 하나로는 충분하지 않다.**
+  **② 취소가 시그니처에서 읽히게 됐다** — 커널이 받던 `checkCancelled` 콜백이 전부 걷히고
+  `suspend` + `currentCoroutineContext().job.ensureActive()` 로 옮겼다. `get(Job)?` 계열을 안 쓰는
+  것이 계약인데, 이유가 성능이 아니라 **`Job` 이 없으면 조용히 no-op 이 되어 확인이 통째로 사라져도
+  테스트가 초록으로 남기 때문**이다. ⚠️ **`suspend` 가 CPU 루프의 취소를 만들어 주지는 않는다** —
+  확인을 넣는 부담은 콜백 때와 같고, 실제로 **확인 없이 두 패스를 도는 자리가 그대로 남아 있다**
+  (`applyAreaOpening` 의 `countRuns`·`fillRuns`) → **OQ-P-318 신설**.
+  **③ 스택 셋이 rebase 로 하나가 됐다** — 그래서 이 회차의 delta 는 머지 하나인데 스펙은 셋이다.
+  각 스펙의 본문을 그대로 읽으면 develop 의 형태가 나오지 않는다(뒤 라운드가 앞 라운드의 시그니처를
+  덮었다). 후처리 스펙에 그 겹침을 as-built 로 적었다 — `toCandidates` 가 `toCandidatePairs` +
+  `buildCandidatePair` 로 갈린 것, `maskSubjectPixels` 가 `maskSubjectAlpha` 가 된 것,
+  `postProcessAlpha` 가 `suspend` 가 되며 `checkCancelled` 를 잃고 안내자 공급자를 얻은 것,
+  리뷰가 알파 합성을 `AlphaComposite.kt` 로 뺀 것 넷이다.
+  **④ 릴리즈 계보 문제는 닫히지 않았고 한 겹 나빠졌다** — 세그멘테이션 넷이 develop 에 들어왔으니
+  OQ-P-311 ③(아카이브 판정 기준을 바꿀 것인가)은 닫혔다. 그런데 **develop 이 받은 것은 release 가
+  받은 그 커밋들이 아니다** — rebase 된 다른 커밋들이라 release-only 커밋 수는 **43 그대로**이고,
+  rebase 중에 커널이 `suspend` 로 바뀌었으므로 **두 계보는 이제 SHA 만이 아니라 내용이 다르다.**
+  배포된 `0.0.3` 은 콜백 방식 커널을 담고 있다. 반대 방향은 **85커밋**으로 벌어졌다.
+  **⑤ 코드가 다 들어왔다는 것과 값이 옳다는 것은 다르다** — 임계·반경·정칙화·축소 하한은 전부
+  **측정 없이 정한 값**이고, 판정 주체는 실기기 사진 세트다(OQ-P-287~300, 열넷 그대로 열려 있다).
+  후처리 계획의 Task 14 도 Step 4~5(문서 이동)만 이번에 수행했고 Step 1~3(판정)은 사람 몫으로 남았다.
+
+  **이번 회차가 확인한 것** — **`--merges` 한 줄이 스펙 하나라는 보장이 없다.** 직전 회차는 머지
+  셋이 스펙 하나였고, 이번에는 그 반대로 머지 하나가 스펙 셋이다. 세는 단위를 머지에 두면 어느
+  쪽이든 틀린다. 갈래를 가르는 것은 **브랜치 이름이 아니라 커밋 메시지의 계열**이었다 — 44개를
+  훑으면 후보 커버리지·커널·결선·정련·취소 전환이 순서대로 보이고, 그것이 곧 선작성 문서 셋의
+  경계다. 그러므로 delta 가 한 줄이어도 **커밋 목록을 먼저 펼치고**, 그 계열이 문서 몇 건에
+  걸리는지부터 센다.
+
+  직전 회차 요약: **한 스펙이 다섯 갈래로 나뉘어 들어왔고, 그 사이 스택의 머지 순서가 계획과 뒤집혔다**
   (delta 3건, 전부 [토핑 알파 판정](specs/archive/2026-08-26-topping-alpha-hit-test.md) 한 스펙).
   전체로 **17파일 삽입 1,208줄·삭제 129줄**이고, 세 머지 **전부 트리가 브랜치 팁과 같아** 충돌 해소
   편집이 0건이다. 신규 유닛 테스트로 **789 → 819**(+30), 계측은 14 그대로다.
@@ -965,7 +1007,10 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-27 (54회차)
+- **검증일**: 2026-08-27 (55회차)
+
+  📌 **하루에 세 회차가 돌았다** — 53~55회차가 전부 2026-08-27 이다. 회차 번호의 근거는 여전히
+  **직전 회차의 이 줄 + 1**이다.
 
   📌 **하루에 다섯 회차가 돌았다** — 50~53회차가 전부 2026-08-26이다. 날짜만으로는 구분되지 않으니
   회차 번호의 근거는 **직전 회차의 이 줄 + 1**이다.
@@ -982,7 +1027,15 @@
   `d634efd3`)가 기준선 해시와 이력 표는 갱신하면서 이 두 줄만 건너뛰어 `2026-08-22 (42회차)`로
   멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
   적이 있다) **직전 회차의 이 줄 + 1**이다.
-- **미머지 추적 항목**: **넷 그대로.**
+- **미머지 추적 항목**: **0.**
+  📌 **55회차에 넷이 다 들어왔다(2026-08-27, PR #363)** — 네 브랜치의 내용이 정련 브랜치 하나로
+  접혀 `develop` 에 머지됐다. 그래서 세 회차 연속 세어 온 이 줄이 이번에 비었고, 그 넷에 걸려
+  있던 선작성 스펙 셋·계획 셋도 아카이브로 갔다.
+  ⚠️ **그렇다고 두 계보가 만난 것은 아니다** — develop 이 받은 것은 release 가 받은 그 커밋들이
+  아니라 **rebase 된 다른 커밋들**이라 `origin/release/version-0.0.3-3` 이 develop 보다 앞선 폭은
+  **43커밋 그대로**다. 게다가 rebase 중에 커널 전체가 `suspend` 로 바뀌었으므로 **같은 기능이
+  양쪽에 있다는 말이 이 넷에는 성립하지 않는다**(배포된 `0.0.3` 은 콜백 방식 커널이다).
+  반대 방향은 develop 이 release 보다 **85커밋** 앞선다 → OQ-P-311 ①② 그대로 열려 있다.
   📌 **54회차 재확인(2026-08-27)** — 네 브랜치 다 여전히 `origin/develop`의 조상이 아니고,
   release 브랜치가 develop보다 앞선 폭도 **43커밋 그대로**다. 반대 방향은 이번 라운드만큼
   벌어져 develop이 release보다 41커밋 앞선다. 아래는 53회차의 기록이다.
@@ -997,10 +1050,10 @@
 
   | 브랜치 | 대응 문서 | 성격 |
   |---|---|---|
-  | `feature/segmentation-candidate-coverage` | [마스크 후처리 계획](plans/2026-08-24-segmentation-mask-postprocessing.md) 1단계 | 후보 면적 판정을 사각형에서 커버리지로 |
+  | `feature/segmentation-candidate-coverage` | [마스크 후처리 계획](plans/archive/2026-08-24-segmentation-mask-postprocessing.md) 1단계 | 후보 면적 판정을 사각형에서 커버리지로 |
   | `feature/segmentation-alpha-kernel` | 위 계획 2단계 | 잡티 제거·keep 마스크·침식 커널 |
   | `feature/segmentation-postprocess-wiring` | 위 계획 3단계 | 두 경로를 커널에 태우는 결선(커널 위에 쌓였다) |
-  | `feature/segmentation-alpha-refinement` | [알파 정련 계획](plans/2026-08-25-segmentation-alpha-refinement.md) | 가이드 필터 정련(결선 브랜치 위에 쌓였다) |
+  | `feature/segmentation-alpha-refinement` | [알파 정련 계획](plans/archive/2026-08-25-segmentation-alpha-refinement.md) | 가이드 필터 정련(결선 브랜치 위에 쌓였다) |
 
   ⚠️ **PR 순서가 계약인 스택이다** — 후처리 계획이 "1단계를 먼저 넣지 않고 커널을 배선하면 지금
   되던 사진이 실패로 바뀐다"를 명시한다. 다음 회차가 이 넷을 볼 때는 **머지된 순서**를 먼저 확인한다.
@@ -1151,3 +1204,4 @@
 | 2026-08-26 | `c55e10bc` | Merge #372(release build) · #374(version bump) · #376(sync backend api) | delta 3건, 13파일 144/54, **세 머지 전부 트리 = 브랜치 팁**(충돌 해소 편집 0건). 선작성 스펙·플랜 없어 **아카이브 이동 0건**, 유닛 785 → **789건**(전부 #376), 계측 **14건** 유지. **작은 라운드인데 그 옆에서 이 감사의 전제가 깨졌다.** **#374**가 앱 버전을 0.0.1/1 → **0.0.3/3**으로 올렸는데 **2가 어느 브랜치에도 없다** — 그 결번을 따라가니 경량 태그 `0.0.3`이 나오고, 그것이 가리키는 `origin/release/version-0.0.3-3`이 **develop에 없는 45커밋**을 담고 있다. 받은 머지 여덟 중 **넷이 이 문서가 세 회차 연속 "미머지"로 세어 온 세그멘테이션 브랜치들**(계획이 요구한 순서 그대로 들어갔다)이고 다섯째 `feature/toast-position-fix`는 문서에 이름조차 없다 → **OQ-P-311 신설**(감사 대상을 develop 하나로 둘지가 다음 회차의 첫 결정. 이번 회차는 그 브랜치를 감사하지 않았고, 넷의 스펙·플랜 `status`도 안 건드렸다 — 아카이브 기준이 develop 머지라서다). **#372**: 브랜치가 `#283-check-release-build`이고 커밋 하나가 **릴리즈에서만 터지는 lint 실패**(`Instantiatable` — 매니페스트가 직접 선언한 카카오 `AuthCodeHandlerActivity`의 상속 체인)를 고쳐 **"아무도 release를 만들어 본 적 없다"가 깨졌다**(OQ-P-074 ② 마커). ⚠️ `appcompat` 선언은 **AppCompat 도입이 아니다** — 런타임 의존과 테마(`TransparentCompat`)는 카카오 AAR이 이미 병합으로 넣고 있었고 더한 것은 컴파일 의존뿐. 같은 PR이 **리소스 축소를 처음 켰다**(`isShrinkResources`, 그전까지 minify만 → OQ-P-123 ③의 괄호가 이제야 참) — ⚠️ 축소는 조립이 아니라 **실행에서** 실패하는데 산출물 실행 기록 0건·`keep.xml` 없음(**OQ-P-308 신설**), debug의 `proguardFiles`는 무동작. `firebase-crashlytics-ndk`도 붙었으나 겨냥 대상이 CameraX·DataStore의 `.so`이고 심볼 업로드를 꺼 **주소만 남는다**(**OQ-P-309 신설**). **#376**: 하루 전 서버가 더한 `placedBy.ownerType`을 **같은 날 읽었다 — 계약 delta와 앱 반영이 같은 날 붙은 첫 사례**. 매퍼가 `"ME"` 여부를 `CanvasToppingVO.isMine`(비널 `Boolean`)으로 접어 **문자열이 `:data` 경계를 못 넘는다**(모르는 값·`null`은 거짓 — 여는 쪽으로 틀리면 남의 토핑을 만지게 된다). `CanvasMainViewModel`의 상수 `false` 확장 함수가 사라지고 `CanvasBGEditViewModel`은 `GetMyAccountFlowUseCase` 의존과 진입 `first()` 대기를 버렸다(**축이 다른 비교**가 그 자리였고 이 화면에서 판정은 게이트였다). OQ-P-250 **①② 해소·③ 잔존** — 본인 토핑 탭이 "잘못 Spotlight로 간다"에서 **"아무 일도 안 한다"**가 됐다(C-305 부재). 같은 PR이 `http/README.md` `base_url`을 HTTPS 도메인으로 옮기고 `network_security_config.xml`에 "호스트를 안 가린다" 경고를 주석으로 박았다(OQ-P-302 마커). 조치: 스펙 as-built 3건(c202·c301 토핑 탭·c301 배경, `verified` 2026-08-26) + specs README 3행, api 3표면(parfait Android 매핑·미지 값 폴백 셋·DataSource 29 케이스·미결 절 / README 도메인 문단 / conventions 필드 소비 간격 0일 + 전송 절 HTTPS 안내. **`verified`·`android_status`·불일치 표 0건 전부 불변**), ADR 2건 as-built(0003 릴리즈 빌드·appcompat·버전 / 0013 crashlytics-ndk) + ADR README 2행, architecture 1건(data-layer 매퍼 규약 실사례·DataSource 케이스 수). open-questions: **부분 해소 1건**(OQ-P-250 ②) · 마커 3건(OQ-P-074·123·302) · **신규 4건**(OQ-P-308~311), `oq-next` 308 → 312. ⚠️ **실기기·실서버 확인 0회 그대로** — 이번 라운드가 켠 축소·NDK 수집은 **유닛으로 덮을 수 없는 종류**다 |
 | 2026-08-26 | `bf06c830` | Merge #371 (toast position fix) | delta 1건, 커밋 2·4파일 37/3, **머지 트리 = 브랜치 팁**(브랜치가 develop 따라잡기 병합을 자기 안에 품는다, 충돌 해소 편집 0건). 선작성 스펙·플랜 없어 **아카이브 이동 0건**, **신규 테스트 0건**이라 유닛 789·계측 14건 유지. **여섯 날 전의 결정이 되돌려졌고, 그 결정을 적어 둔 문서 한 줄이 그동안 거짓이었다.** 카메라·갤러리가 `YGToastHost`를 **다시 자기 레이아웃 안**으로 가져갔다 — Route가 `rememberYGToastPolicy()`를 만들어 **Screen에 넘기고** Screen이 자기 프레임 `Box`(뷰파인더 자리·그리드 자리) 안에 `TopCenter`로 심는다. 2026-08-20 #309가 걷어 스캐폴드로 올렸던 그 형태이고, 되돌린 이유는 **스캐폴드 호스트가 상태바 인셋 바로 아래에 떠서 헤더 행(날짜·닫기)을 덮었기** 때문이다. ⚠️ **그래서 c102 스펙의 "보이는 위치는 사실상 그대로다"와 c101 스펙의 "위키 Toast 공통 정책에는 이쪽이 맞는다"가 둘 다 틀렸다** — 두 "상단"이 다른 상자였고(상태바 아래 vs 그리드 프레임 윗변), 위키 [[toast]]는 노출 방향만 정하지 기준 프레임을 정하지 않는다. **이번 회차가 고친 것이 그 두 문장이다.** ⚠️ **처방이 브랜치 안에서 갈렸다** — 첫 커밋은 `YGScaffoldV2`에 `toastTopPadding`을 더해 Route가 헤더 높이를 dp로 복제 계산했고, 두 번째 커밋이 통째로 되돌려 위치 계산 없이 프레임 안에 심었다(**스캐폴드는 결국 무변경**). 남긴 것 셋 → **OQ-P-312 신설**: 관용구가 셋이 됐고(스캐폴드 기본 호스트 / `YGCanvas.overlayContent` / Screen이 직접 심기) 규칙이 없다 · Route가 정책을 안 넘겨 스캐폴드가 **발행 불가능한 호스트**를 화면마다 하나씩 만든다(끄는 수단 없음) · 호스트가 **권한 허용 갈래 안에만** 있어 권한 거부 화면엔 없다(지금은 발행 조건이 권한을 요구해 증상 0, 그 결합이 코드에 안 적혀 있다). **미머지 넷은 그대로**이고 release 브랜치와의 격차는 45 → **43커밋**(줄어든 둘이 이 브랜치 — 두 계보에 각각 머지돼 **양쪽에 다 있다**, OQ-P-311 마커). 조치: 스펙 as-built 2건(c101·c102, `verified` 2026-08-26, **둘 다 낡은 단정 정정 포함**) + specs README 2행, architecture 1건(design-system `YGScaffoldV2` 절에 🔁 되돌림 블록), open-questions 마커 2건(OQ-P-167 ①의 전제가 두 화면에서 깨짐 · OQ-P-311) + **신규 1건**(OQ-P-312), `oq-next` 312 → 313. `api/` 무변경(원격 연동 코드 0건). ⚠️ **확인 수단이 실기기 눈뿐이다** — 배치는 유닛으로 못 덮고 CI는 계측을 컴파일만 한다(OQ-P-102 ②) |
 | 2026-08-27 | `5dc9fbec` | Merge #389 (canvas-main-alpha-hit) | delta 3건(#388·#390·#389) — 전부 [토핑 알파 판정](specs/archive/2026-08-26-topping-alpha-hit-test.md) 한 스펙의 스택 PR이고, **#390은 develop이 아니라 #389 브랜치로 머지**돼 develop 첫 부모 선에 붙은 것은 둘이다. 17파일 1,208/129, 세 머지 다 트리 = 브랜치 팁, 유닛 789→819(+30). 토핑마다 걸린 `clickableYGNoRipple`과 딤 클릭을 걷고 **레이어 전면 `pointerInput` 하나**가 알파 마스크로 겹침 순서를 판정한다 — "레이어가 캔버스 포인터를 독점한다"가 새 계약. 사라진 클릭 시맨틱스는 토핑·딤에 다시 붙이고 판정을 끈 배치 화면(`hitTestEnabled = false`)에는 안 붙인다. **계획의 "실행 뒤 달라진 것" 표가 리뷰 반영 열넷을 이미 담고 있어 드리프트는 셋**(상수 개명 `TOPPING_OUTLINE_STAMP_COUNT` · 콜백 유무 판단 → `hitTestEnabled` 파라미터 · 배경 편집 마스크를 내 토핑만 요청) → 스펙 as-built 표 신설. 스펙 `implemented`·계획 `done`(frontmatter 자체가 없어 신규 작성) + 양쪽 archive 이동(링크 `../`→`../../` 보정)·README 등록. 배경 편집이 `YGToppingCutoutImage`로 갈아타 **OQ-P-254 해소**, OQ-P-203 ②는 대상 소멸. c202·c301 아카이브 스펙 as-built 정정(딤·토핑 클릭 → 판정 오버레이, 테두리 그림, 접근성 부분 해소), design-system(상수 공개·소비처 넷째)·module-structure(판정을 domain으로 안 올린 근거·`model/` 신설)·ADR-0025 머지 마커. open-questions 신규 5건(OQ-P-313~317). 미머지: 세그멘테이션 넷 그대로(release에만, 43커밋 차) |
+| 2026-08-27 | `4da18230` | Merge #363 (segmentation-alpha-refinement) | delta 1건인데 **선작성 스펙 셋이 실렸다** — 커밋 44개·20파일 3685/223, **머지 트리 = 정련 브랜치 팁**(충돌 해소 편집 0건). 세 회차 연속 "미머지 추적 항목"이던 세그멘테이션 넷이 rebase 로 하나가 되어 develop 에 들어왔다. **누끼가 처음으로 모델 출력을 고친다** — `AlphaPostProcessor.kt`·`AlphaComponents.kt`·`AlphaRefine.kt`·`AlphaComposite.kt` 신설, 이진화 축소 → area opening → 팽창 → keep 적용 → 1차 측정 → 가이드 필터 정련 → 침식 → 2차 측정. 커널은 `Bitmap`·ML Kit 타입을 모르고 원본 휘도는 `GuidanceProvider` 로만 들어온다(주·폴백 둘 다 `origin` 에서 읽는다 — 도려낸 판을 주면 `I ≡ p` 라 정련이 틀린 경계를 강화한다). 후보 필터가 사각형 면적 → **알파 커버리지**, 동일 bounds → **IoU 병합**(`SegmentationCandidate.coverageAlphaSum` 신설). 취소 확인이 `checkCancelled` 콜백 → `suspend` + `currentCoroutineContext().job.ensureActive()`(⚠️ `get(Job)?` 계열은 `Job` 부재를 조용히 통과시켜 확인이 no-op 이 되고도 초록이라 배제). 조치: **스펙 3건 `implemented`·계획 3건 `done` + 양쪽 archive 이동**(링크 `../`→`../../` 보정, 알파 커널 계획은 **frontmatter 자체가 없어 신규 작성**, 전처리 계획도 같은 이유로 신규 작성하고 active 유지)·README 3행씩 아카이브 등록, 후처리 스펙에 **as-built 4건**(`toCandidates`→`toCandidatePairs`+`buildCandidatePair` · `maskSubjectPixels`→`maskSubjectAlpha` · API 절 시그니처를 뒤 두 라운드가 덮음 · `AlphaComposite.kt` 신설), data-layer 세그멘테이션 절에 커널 문단 + `related_code` 5심볼, ADR-0012 에 "모델 하나로 충분하지 않다" 절 + `related_spec` 3건. open-questions: **신규 2건**(OQ-P-318 확인 없이 두 패스 도는 루프 · OQ-P-319 콜백↔`suspend` 차이를 잴 하니스 없음), OQ-P-311 ③ **해소**·①② 유지(release-only 43커밋 그대로이고 **내용까지 갈렸다**), 출처 링크 16건 archive 경로 보정. 유닛 819 → **926건**(+107, 파일 94 → 100), 계측 14 그대로. `api/` 무변경(원격 연동 코드 0건). ⚠️ **값의 근거는 여전히 없다** — 임계·반경·정칙화·축소 하한을 판정할 실기기 사진 세트가 0회(OQ-P-287~300 열넷 그대로). 미머지 추적 항목 **0** |
