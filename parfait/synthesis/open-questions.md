@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-27
+verified: 2026-08-28
 related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -3997,7 +3997,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   (S-101은 `memberId`로 `isMe`를 판별한다). ② 판정이 생길 때까지 본인 토핑을 Spotlight에 넣어 둘지,
   아니면 탭을 무시할지 — 지금은 넣는 쪽이고 정책과 다르다. ③ C-305 목적지 자체가 없어 ①이 풀려도
   갈 곳이 없다(그 라운드가 오면 함께 닫힌다).
-- **상태**: 부분 해소 (**①② 해소 — 서버가 `ownerType`으로 답했고 앱이 같은 날 읽었다. ③ 잔존 — C-305 목적지가 없다**)
+- **상태**: **해소됨** (**① 서버 `ownerType`(2026-08-26) · ② 앱이 같은 날 읽음(PR #376) · ③ 목적지 확보(2026-08-27, PR #400)** — 다만 목적지가 새 C-305 화면이 아니고 조건이 하나 붙었다. 아래 참고)
   > ⚠️ **C-301 편집 탭이 판정을 시작했다(2026-08-22, PR #329)** — `CanvasBGEditViewModel`이
   > `MyAccountVO.memberId`(계정 id)와 `placedBy.groupMemberId`(그룹 멤버십 행 id)를 견주고, 코드
   > KDoc이 **두 값이 서로 다른 축이라는 사실을 스스로 적어 두었다**(`TODO(서버 응답 확장 대기)`).
@@ -4021,11 +4021,21 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ⚠️ **③은 그대로이고, 증상만 바뀌었다** — 본인 토핑 탭이 "Spotlight로 잘못 들어간다"에서
   > **"아무 일도 안 한다"**가 됐다. `TODO: C-305 토핑 편집 화면으로 이동` 뒤에 그냥 `return`한다.
   > 정책([[C-202-토핑-편집자-확인-규칙-v0.1]])이 요구하는 편집 진입은 여전히 미구현이다.
-- **해소 메모**: ①②는 2026-08-26 라운드에서 닫혔고 반영처는
+  > ✅ **③이 닫혔다(2026-08-27, PR #400 develop 머지)** — `handleOnClickMyTopping`이
+  > `NavKeyCanvasBGEdit`에 탭한 토핑 id를 실어 보내고, 편집 화면이 토핑 탭을 편 채 그 토핑을
+  > 선택한 상태로 열린다. ⚠️ **예고했던 "C-305 화면 라운드"는 오지 않았다** — 정책이 별도 화면으로
+  > 적은 목적지를 **기존 C-301 편집 화면의 토핑 탭**이 받았다. 위키 [[화면-ID-체계]]에서 C-305가
+  > 독립 화면인 것과 구현이 갈린 자리이고, 이 미결이 닫히면서 그 어긋남이 자리를 물려받았다
+  > → OQ-P-326 ③.
+  > ⚠️ **조건이 하나 붙었다** — `isViewingToday`가 거짓이면(지난 캔버스를 보는 중) 탭이 여전히
+  > 아무 일도 안 한다. 편집 대상이 언제나 오늘 캔버스라는 `NavKeyCanvasBGEdit`의 기존 계약을 따른
+  > 결과인데, 정책([[C-202-토핑-편집자-확인-규칙-v0.1]])은 그런 조건을 적지 않는다.
+- **해소 메모**: ①②는 2026-08-26 라운드에서, ③은 2026-08-27 라운드에서 닫혔다. 반영처는
   [c202-canvas-spotlight 스펙](../specs/archive/2026-08-20-c202-canvas-spotlight.md) 정책 대조 표와
-  as-built 재정정 절 · [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md) ·
-  [api/parfait.md](../api/parfait.md) Android 매핑이다. **③은 C-305 화면 라운드가 오면 닫힌다** —
-  그때 위 두 스펙의 "탭이 무반응이다" 서술을 함께 고친다.
+  as-built 재정정 두 절 · [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md) ·
+  [api/parfait.md](../api/parfait.md) Android 매핑 ·
+  [architecture/navigation-flow](../architecture/navigation-flow.md) 캔버스 배경 편집 플로우다.
+  **남은 두 가닥은 이 미결이 아니라 OQ-P-326이 잇는다** — 지난 캔버스 무반응과 화면 ID 어긋남이다.
 
 ### [2026-08-20] Spotlight 작성자 정보가 서버 값이 아니라 화면 목록 조인이다
 
@@ -4586,11 +4596,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [ADR-0025](../adr/0025-topping-border-as-server-field.md)가 굽기를 멈추고 테두리를 서버 필드로
   옮겼으므로 원칙적으로는 필드만 보내면 되는데, 그 결정 이후 이 화면이 실제로 무엇을 들고 오는지가
   확인된 적이 없다. ③ 보내지 않기로 한다면 이 화면의 편집 버튼을 왜 여는지.
-- **상태**: 미해결
-- **해소 메모**: **표시(OQ-P-254)와 저장이 같은 값을 두고 갈라져 있다** — 화면은 `borderLayers`를
-  받아 두고 안 그리며, 확인은 받아 두고 안 보낸다. 한 라운드에서 함께 닫는 편이 낫다. ①의 접는
-  자리를 정하면 [api/parfait-image.md](../api/parfait-image.md) Android 매핑의 "테두리 수정 미소비"가
-  닫히고 `android_status`가 `done`이 된다.
+- **상태**: 부분 해소 (**①③ 해소 — 2026-08-27, PR #369 develop 머지. ② 잔존**)
+  > ✅ **①이 닫혔다 — 접는 자리는 `CanvasBGEditViewModel.toToppingBorder`다.** 겹 목록의
+  > **마지막 겹**(가장 바깥)만 `ToppingBorder.Solid`로 보내고, 비면 `ToppingBorder.None`을 보낸다.
+  > 되읽는 방향(`toBorderLayers`)은 반대로 한 겹짜리 목록으로 편다.
+  > ✅ **③은 질문 자체가 소멸했다** — 편집 버튼이 여는 것이 실제로 서버까지 간다.
+  > `updateToppingIfChanged`가 하나였던 변경 판정을 **둘로 갈라** 위치·배율·각도(`update`)와
+  > 테두리(`updateBorder`)를 독립적으로 비교하고 독립적으로 보낸다. 서버 API가 두 엔드포인트로
+  > 갈라져 있는 것을 그대로 미러링한 결과다. 이로써 [api/parfait-image.md](../api/parfait-image.md)의
+  > `android_status`가 **`done`**이 됐다(4/4 소비).
+  > ⚠️ **②는 그대로다** — `editedImagePath`(테두리를 구워 넣은 새 이미지)와 `cutoutImagePath`는
+  > `handleOnToppingEditResult`가 상태에 적어 두기만 하고 어디로도 안 나간다.
+  > [ADR-0025](../adr/0025-topping-border-as-server-field.md)가 굽기를 멈춘 뒤 이 화면이 실제로
+  > 무엇을 들고 오는지는 여전히 확인된 적이 없다.
+  > ⚠️ **①의 답이 표시 쪽과 어긋난다** — 같은 화면이 그릴 때는 **첫 겹**을 쓴다(OQ-P-254를 닫은
+  > PR #388). 겹이 둘 이상이면 보이는 테두리와 저장되는 테두리가 갈린다 → OQ-P-324.
+- **해소 메모**: 남은 것은 ② 하나다. `editedImagePath`를 새로 업로드해 배치를 갈아 끼울지 정하면
+  [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md) as-built 재정정
+  절과 [api/parfait-image.md](../api/parfait-image.md) Android 매핑을 함께 고친다.
 
 ### [2026-08-23] 후보를 다시 고르면 초안에 적힌 편집 결과가 조용히 덮인다
 
@@ -5393,4 +5416,87 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 서버 구현을 확인해 ①을 먼저 닫는다. 막고 있으면 앱은 그 오류를 조용히 넘기고
   다음 주기 상세 조회로 회복하면 된다.
 
-<!-- oq-next: 324 -->
+### [2026-08-28] 토핑 테두리를 그리는 겹과 서버로 보내는 겹이 서로 다르다
+
+- **ID**: OQ-P-324
+- **출처**: `CanvasBGEditScreen`(그리기)과 `CanvasBGEditViewModel.toToppingBorder`(저장), 둘 다
+  develop. 앱은 테두리를 **겹 목록**(`ToppingBorderLayer`)으로 들고 서버는 **한 겹**만 받는데,
+  접는 규칙이 두 자리에서 갈렸다 — 그리는 쪽은 `borderLayers.firstOrNull()`, 보내는 쪽은
+  `lastOrNull()`이다. `ToppingEditViewModel`의 `borderHistory`가 `UndoRedoStack<ToppingBorderLayer>`
+  라 겹은 실제로 둘 이상 쌓일 수 있다(테두리 편집 화면은 그 겹을 겹겹이 그린다).
+- **항목**: ① 어느 쪽이 정본인지 — 테두리 편집 화면의 렌더링(`ToppingBorderEditScreen`)과
+  `SegmentationConfirmViewModel`은 **마지막 겹을 바깥으로** 보는 쪽이라 저장 규칙이 그것과 맞고,
+  캔버스 편집 화면의 렌더링만 첫 겹이다. ② 겹을 여러 장 유지하는 것 자체가 필요한지 — 서버가
+  한 겹만 받으므로 되읽으면 언제나 한 겹이 되고, 여러 겹은 **한 세션 안에서만 존재한다.**
+  ③ 정하면 감지선이 필요하다 — 지금 붙은 테스트가 전부 한 겹짜리 목록만 쓴다.
+- **상태**: 미해결 (**증상은 세션 안에서만 보인다** — 테두리를 두 번 이상 겹쳐 두른 뒤 확인을
+  누르면, 화면에 보이던 겹과 다른 겹이 저장되고 재조회 뒤 그것이 드러난다)
+- **해소 메모**: ①을 "마지막 겹이 바깥"으로 통일하면 고칠 자리는 `CanvasBGEditScreen` 한 곳이다.
+  반영처는 [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md)
+  as-built 재정정 절과 [api/parfait-image.md](../api/parfait-image.md) Android 매핑이다.
+
+### [2026-08-28] 토핑 배율 하한이 두 화면에서 갈렸고 편집 쪽 근거가 없다
+
+- **ID**: OQ-P-325
+- **출처**: PR #398(`[FIX] 배율 하한 수정`) — `CanvasBGEditViewModel`의 `TOPPING_MIN_SCALE`이
+  0.5에서 **0.05**가 됐다. 같은 저장소의 배치 화면은 상수가 아니라 **짧은 변 48dp**
+  (`CanvasToppingPlaceViewModel`의 `MIN_TOPPING_SHORT_SIDE`)에서 하한을 역산하고, 실측을 못 얻은
+  경우에만 `TOPPING_MIN_SCALE_FALLBACK = 0.5`로 물러난다. 위키
+  [[C-106-토핑-배치-정책-v0.1]]의 48px 최소 터치 방어가 그 역산의 근거다.
+- **항목**: ① 편집 탭의 새 하한에 근거가 없다 — 커밋 메시지와 KDoc이 "배율 하한 수정"이라고만
+  적는다. 무엇이 문제였는지(초기 배율이 커서 줄일 여지가 없었는지, 특정 이미지에서 걸렸는지)가
+  남아 있지 않다. ② 48dp 방어를 편집 탭에도 둘지 — 지금은 토핑을 최소 터치 크기 아래로 줄일 수
+  있고, 줄인 값이 그대로 PATCH로 나가 **다시 잡을 수 없는 토핑이 서버에 남는다.**
+  ③ 두 화면이 같은 규칙을 봐야 하는지 — 배치 규칙 셋은 이미 `ToppingGeometry`로 올라가 공유
+  중인데 하한만 갈라져 있다.
+- **상태**: 미해결 (**동작 영향 있음** — 편집 탭에서만 재현되고, 실기기 확인 0회)
+- **해소 메모**: ②가 참이면 처방은 `MIN_TOPPING_SHORT_SIDE` 역산을 편집 탭으로 옮기는 것이고,
+  그때 `ToppingGeometry`가 그 계산을 함께 든다. 반영처는
+  [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md) 드리프트 4다.
+
+### [2026-08-28] 선작성 문서 셋이 이번 델타를 모른다
+
+- **ID**: OQ-P-326
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)·
+  [PR3 계획](../plans/2026-08-27-canvas-polling.md)·
+  [세그멘테이션 입력 전처리 스펙](../specs/2026-08-23-segmentation-preprocessing.md)은 develop 머지
+  **전에** 쓰였고, 하루 뒤 PR #369·#400이 그 문서들이 전제한 코드를 바꿨다. 앞 둘은 아직
+  `status: draft`, 셋째는 `in-progress`다.
+- **항목**: ① **테두리 PATCH가 계획에서 사라진다** — 계획의 `updateDirtyToppings`가
+  `updateToppingUseCase` 하나만 부른다. 그대로 구현하면 PR #369가 붙인 테두리 저장이 **되돌아간다.**
+  스펙·계획 두 곳의 "테두리 PATCH는 아직 소비처가 없지만"이라는 서술도 이제 거짓이다.
+  ② **초기 선택 시딩이 매 방출마다 되돌아간다** — `withCanvas`가 `selectedTab`·`selectedToppingId`를
+  `initialToppingId`로 채우는데, 계획이 이 자리를 구독으로 바꾸면서 "최초 방출에만 시딩한다"고
+  적은 목록에 이 두 필드가 없다. 사용자가 탭을 옮기거나 선택을 풀어도 다음 주기에 되돌아간다.
+  ③ **정책의 C-305가 별도 화면인지 다시 물어야 한다** — OQ-P-250 ③이 "기존 화면이 받는다"로
+  닫혔으므로, 위키 [[화면-ID-체계]]·[[C-202-토핑-편집자-확인-규칙-v0.1]]과 구현의 화면 경계가
+  갈린 채로 남는다. 지난 캔버스에서 본인 토핑 탭이 무반응인 것도 이 갈림의 결과다.
+  ④ **[세그멘테이션 입력 전처리 스펙](../specs/2026-08-23-segmentation-preprocessing.md)의 전제도
+  깨졌다** — 그 스펙은 방향 보정과 하한 확대를 `decodeUriToBitmap` 안에 두면 된다고 적는데,
+  PR #369가 `decodeImage`를 스킴으로 갈라 원격 경로가 그 확장 함수를 타지 않게 됐다. 그대로
+  구현하면 **서버 토핑 재편집 경로만 정규화 밖에 남는다.** 그 스펙은 아직 `in-progress`다.
+- **상태**: 미해결 (**구현 전에 닫아야 한다** — ①은 구현하는 순간 회귀가 되고, ④는 조용히 갈래
+  하나를 빠뜨린다)
+- **해소 메모**: ①②는 계획을 고치는 일이라 다음 캔버스 폴링 라운드의 첫 작업이고, ④는 전처리
+  라운드의 첫 작업이다. ③은 위키
+  정책과의 대조라 [[화면-ID-체계]] 쪽 판단이 선행한다 — 구현이 옳으면 정책 문서가 따라오고,
+  정책이 옳으면 화면을 가르는 라운드가 따로 필요하다.
+
+### [2026-08-28] 원격 이미지 다운로드가 응답 본문을 통째로 힙에 올린다
+
+- **ID**: OQ-P-327
+- **출처**: `RemoteImageDownloadDataSourceImpl.download`(PR #369) — `response.body?.bytes()`로
+  전체를 읽어 `ByteArray`로 돌려주고, `ImageSegmentationRepositoryImpl.decodeImage`가 그것을
+  `BitmapFactory.decodeByteArray`에 넘긴다. 같은 저장소의 이웃인 `PresignedUploadDataSource`는
+  반대로 **스트리밍 `RequestBody`**를 써서 바이트를 힙에 통째로 올리지 않는 것이 명시된 결정이다.
+- **항목**: ① 상한이 없다 — 서버가 주는 토핑 이미지 크기의 실측이 0건이고,
+  `Content-Length` 확인도 없다. ② 디코드 직후 원본 `ByteArray`와 비트맵이 **동시에** 살아 있다
+  (누끼 파이프라인의 피크 메모리를 재지 않은 것은 OQ-P-320과 같은 계열이다).
+  ③ 파일로 떨군 뒤 경로로 넘기는 방식(`ImageFileLocalDataSource`가 이미 하는 일)과 어느 쪽이
+  맞는지 정해진 적이 없다.
+- **상태**: 미해결 (**실물 크기를 모른다** — 서버 이미지가 작으면 무해하고, 크면 이 경로가 먼저
+  터진다)
+- **해소 메모**: ①의 실측이 먼저다. 정하면 반영처는
+  [architecture/data-layer](../architecture/data-layer.md) "원격(raw HTTP)" 절이다.
+
+<!-- oq-next: 328 -->

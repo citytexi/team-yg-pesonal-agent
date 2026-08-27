@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-27
+verified: 2026-08-28
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -48,10 +48,19 @@ tags: [architecture, parfait]
   `Pictures/Parfait` 경로는 API 29부터만** 걸린다(그 아래는 권한도 함께 필요해
   `core:util:android`의 `GalleryWritePermissionManager`가 판정한다)
   → [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md).
-- **원격(raw HTTP)** — **`PresignedUploadDataSource`**(#322). 저장소에서 **Retrofit을 거치지 않고 raw
-  OkHttp `Request`를 만드는 유일한 자리**다(발급받은 presigned URL로 PUT). 그래서 `@NoAuth` 판정이
-  안 걸리고, 그 때문에 전용 `@UploadClient`가 기능 전제가 된다. 파일은 스트리밍 `RequestBody`로 태워
-  바이트를 힙에 통째로 올리지 않는다.
+- **원격(raw HTTP)** — **`PresignedUploadDataSource`**(#322)와 **`RemoteImageDownloadDataSource`**(#369).
+  저장소에서 **Retrofit을 거치지 않고 raw OkHttp `Request`를 만드는 두 자리**다(발급받은 presigned
+  URL로 PUT · 서버가 준 공개 이미지 URL에서 GET). 그래서 `@NoAuth` 판정이 안 걸리고, 그 때문에
+  전용 `@UploadClient`가 기능 전제가 된다. 업로드는 파일을 스트리밍 `RequestBody`로 태워 바이트를
+  힙에 통째로 올리지 않는다.
+  - **`RemoteImageDownloadDataSource`**(#369)는 `ImageSegmentationRepositoryImpl.decodeImage`가 서버
+    토핑을 다시 편집할 때 쓴다 — 그 `imageUrl`이 `https://`라 `ContentResolver`로는 열리지 않아서다.
+    `@DownloadClient`가 따로 있는 이유는 업로드와 달리 **기능 전제가 아니라 커넥션 풀·`Dispatcher`
+    격리**이고(타임아웃 프로필은 메인 클라이언트와 같다), 이 URL 들은 자격증명 없이 접근 가능한
+    공개 주소라 인터셉터도 로깅 하나만 단다. `execute()`가 아니라 `enqueue` +
+    `suspendCancellableCoroutine`을 쓰는 것이 취소 전파의 전부다.
+    ⚠️ **응답 본문을 `bytes()`로 통째 읽어 힙에 올린다** — 업로드 쪽 스트리밍과 대칭이 깨진 자리이고
+    상한도 없다 → [open-questions](../synthesis/open-questions.md) OQ-P-327.
 
 > **표시 포맷은 data가 만들지 않는다**(2026-08-04, PR #191) — `GalleryImageGroup.date`가 문자열에서
 > `LocalDate`로 바뀌고 `GalleryMediaProvider`의 날짜 포맷이 삭제됐다. 포맷은 화면이
@@ -74,7 +83,7 @@ tags: [architecture, parfait]
 | `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)·`ImageFileLocalDataSource` ↔ `ImageFileLocalDataSourceImpl`(#329)) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
-| `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) + **`@UploadClient` `OkHttpClient`**(#322 — S3 presigned PUT 전용. Retrofit이 없는 유일한 표면이고 인터셉터를 하나도 안 단다) |
+| `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) + **`@UploadClient` `OkHttpClient`**(#322 — S3 presigned PUT 전용. Retrofit이 없는 유일한 표면이고 인터셉터를 하나도 안 단다) + **`@DownloadClient` `OkHttpClient`**(#369 — 서버 공개 이미지 GET 전용. 로깅만 달고 타임아웃은 메인과 같으며, `newBuilder()` 파생이 아니라 새 `Builder`여야 `Dispatcher` 격리가 산다) |
 | `SessionModule` | `SessionEventBus` → `SessionEventSource` 바인딩(#260 신설) |
 | `DataStoreModule` | `DataStore<Preferences>` 싱글톤 |
 | `JsonModule` | `@LocalJson`·`@RemoteJson` `Json` 2종(현재 설정 동일: `ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`) |
@@ -239,7 +248,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `ParfaitRepository`(#268, #279, #329) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` · **`changeCanvasBackground`**(#329) | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입, C-301 편집 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) · `ChangeCanvasBackgroundUseCase`(C-301 확인) |
 | `ImageUploadRepository`(#322) | `upload(filePath, imageType): Result<ImageId>` — 발급·S3 PUT·확인 3단계를 하나로 닫고 **이미 `COMPLETED`인 `imageId`**를 준다 | `AddToppingUseCase`(C-106 배치) · `UploadImageUseCase`(#329, C-301 배경) |
 | **`ImageFileRepository`**(#329) | `copyToCache(uri): Result<String>` — `content://`를 캐시 파일로 떨구고 **절대경로**를 준다 | `UploadImageUseCase` |
-| `ToppingRepository`(#322, #335, #336) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` · **`delete(groupId, parfaitId, parfaitImageId): Result<Unit>`**(#335) · **`update(groupId, parfaitId, parfaitImageId, positionX?, positionY?, positionZ?, scale?, rotation?): Result<UpdatedToppingVO>`**(#336) | `AddToppingUseCase`(C-106 배치) · `DeleteToppingUseCase`(C-301 편집 탭 삭제) · `UpdateToppingUseCase`(C-301 편집 탭 확인) |
+| `ToppingRepository`(#322, #335, #336, #369) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` · **`delete(groupId, parfaitId, parfaitImageId): Result<Unit>`**(#335) · **`update(groupId, parfaitId, parfaitImageId, positionX?, positionY?, positionZ?, scale?, rotation?): Result<UpdatedToppingVO>`**(#336) · **`updateBorder(groupId, parfaitId, parfaitImageId, border): Result<UpdatedToppingBorderVO>`**(#369) | `AddToppingUseCase`(C-106 배치) · `DeleteToppingUseCase`(C-301 편집 탭 삭제) · `UpdateToppingUseCase`·`UpdateToppingBorderUseCase`(C-301 편집 탭 확인) |
 
 > 📌 **위 표는 develop 기준이다.** 마지막 두 행은 2026-08-20 PR #322로 들어왔고 **소비자가 0이라
 > 아직 아무 화면도 부르지 않는다** — 결선은
@@ -263,6 +272,13 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 > Repository는 여기서도 에러 변환만 하고 **좌표를 손대지 않는다** — 범위 판정 주체가 어디에도 없는
 > 상태가 그대로 서버까지 간다([open-questions](../synthesis/open-questions.md) OQ-P-271).
 > 남은 하나(테두리 수정)는 여전히 부르는 화면이 없다.
+>
+> ✅ **넷째 갈래가 열려 DataSource 넷 = Repository 넷이 됐다**(2026-08-27, PR #369) — `updateBorder`가
+> 같은 확인 버튼과 함께 올라왔다. `update`와 달리 **부분 병합이 아니라 통째 교체**라 파라미터가
+> 널 허용이 아니고 `ToppingBorder` 하나를 받는다(서버 계약이 세 필드를 통째로 덮는다). 이 메서드만
+> 응답 VO(`UpdatedToppingBorderVO`)가 따로인데 **읽는 자리는 아직 없다** — 화면이 실패만 로그로
+> 접는다. 접는 규칙(겹 목록 → 마지막 겹)이 그리는 규칙(첫 겹)과 어긋나는 것은
+> [open-questions](../synthesis/open-questions.md) OQ-P-324.
 
 **업로드가 받아 주는 형식은 `UploadImageFormat` 한 자리가 안다**(#329) — 확장자·contentType·파일
 시그니처를 enum 하나에 묶었다(`data/model/image/`). 셋을 함께 두는 이유는 **발급 요청과 S3 PUT

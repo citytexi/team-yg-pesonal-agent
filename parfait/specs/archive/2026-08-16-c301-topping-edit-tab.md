@@ -4,7 +4,7 @@ title: C-301 토핑 편집 탭 (선택·이동·크기·회전·삭제 + 테두�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-27
+verified: 2026-08-28
 related_code:
   - CanvasBGEditScreen.kt#CanvasBGEditScreen
   - CanvasBGEditScreen.kt#CanvasToppingImage
@@ -123,7 +123,7 @@ C-301 편집 모드의 **토핑 탭**에서, 캔버스에 이미 놓인 **내 �
 | 조작 | 인텐트 | 환산 |
 |---|---|---|
 | 이동 | `OnToppingMoveDrag(DpOffset)` | 화면이 px→dp로 바꿔 올리고 `offsetX/Y`에 그대로 더한다 |
-| 크기 | `OnToppingResizeDrag(Offset)` | 드래그 벡터를 **회전된 바깥 방향 단위벡터에 투영**해 배율 증분, 0.5~2.5로 클램프 |
+| 크기 | `OnToppingResizeDrag(Offset)` | 드래그 벡터를 **회전된 바깥 방향 단위벡터에 투영**해 배율 증분, 0.5~2.5로 클램프(**상한은 PR #335에서, 하한은 PR #398에서 바뀌었다** — 지금은 하한 0.05만 남았다) |
 | 회전 | `OnToppingRotateDrag(Offset)` | **가로 성분만** 각도로 환산, 상·하한 없음 |
 
 - 크기조절 핸들이 우측 상단에 고정이라, 토핑이 돌아 있으면 "바깥"도 같이 돌아야 한다.
@@ -226,6 +226,11 @@ NavKeyCanvasBGEdit ─(편집 버튼)─▶ NavKeyToppingEdit(source, segmentati
    > ⚠️ **"저장 계약이 생기면"이 같은 날 현실이 됐다(PR #336, 2026-08-23)** — 두 축의 값이 그대로
    > PATCH 본문에 실린다. 정규화 주체는 여전히 없고 서버도 범위를 검증하지 않는다
    > ([api/parfait-image.md](../../api/parfait-image.md) 미결).
+   > ⚠️ **남아 있던 하한마저 열 배 낮아졌다(PR #398, 2026-08-27)** — `TOPPING_MIN_SCALE`이
+   > 0.5에서 **0.05**가 됐다. 같은 저장소의 배치 화면(C-106)은 하한을 상수가 아니라 **짧은 변
+   > 48dp**에서 역산하는데(`CanvasToppingPlaceViewModel`의 `MIN_TOPPING_SHORT_SIDE`), 이 탭은
+   > 그 방어가 없어 두 화면의 하한이 크게 갈렸다. 줄인 결과는 그대로 PATCH로 나간다
+   > → [open-questions](../../synthesis/open-questions.md) OQ-P-325.
 5. **선택 상태가 목록 변화를 견디지 못한다** — `selectedToppingId`가 목록에서 사라진 id를 가리켜도
    화면은 조용히 아무것도 그리지 않는다(삭제 경로에서는 함께 비우지만, 목록이 서버에서 갱신되기
    시작하면 그 보장이 사라진다).
@@ -285,6 +290,8 @@ feature/segmentation/
   안에서 끝나고, 삭제는 `TODO(#271 대기)`로 화면에서만 사라지며, 토핑 편집 진입은
   `TODO(#274 대기)`다(서버 토핑은 https 주소라 편집 화면이 `ContentResolver`로 열지 못한다).
   확인 버튼은 배경만 저장한다 → OQ-P-199 ②③.
+  ✅ **`TODO(#274)`가 닫혔다**(2026-08-27, PR #369 — 아래
+  [as-built 재정정](#as-built-재정정-2026-08-27-라운드)).
 - ⚠️ **소유 판정이 축이 다른 두 id를 비교한다** — `isMine`이 상수 `false`를 벗어나
   `MyAccountVO.memberId`(계정 id)와 `placedBy.groupMemberId`(그룹 멤버십 행 id)를 견준다. 코드
   KDoc이 그 사실을 `TODO(서버 응답 확장 대기)`로 적어 두었다. **이 화면에서는 그 판정이 곧
@@ -296,7 +303,8 @@ feature/segmentation/
   `YGToppingCutoutImage`로 갈아타고 `borderLayers` 첫 겹의 색·두께를 넘긴다. 판정 모양을 외형과
   맞추려는 [토핑 알파 판정](2026-08-26-topping-alpha-hit-test.md)이 렌더링까지 범위에 넣은 결과다
   → [open-questions](../../synthesis/open-questions.md) OQ-P-254 해소. **저장 쪽(`borderLayers`가
-  PATCH에 안 실린다, OQ-P-276)은 그대로다.**
+  PATCH에 안 실린다, OQ-P-276)은 그대로다.** ✅ **그것도 닫혔다(2026-08-27, PR #369)** — 다만
+  **그리는 겹과 보내는 겹이 다르다**(첫 겹 vs 마지막 겹) → OQ-P-324.
 - 드리프트 4(회전 한계 없음)·5(선택 상태가 목록 변화를 못 견딤)는 그대로다. 5는 목록이 실제로
   서버에서 오기 시작해 **전제가 현실이 됐다** — 다시 조회하는 경로가 진입 1회뿐이라 아직 증상이
   없을 뿐이다. **6(접근성)은 부분 해소다** — 2026-08-27 라운드가 토핑마다 자손 병합
@@ -438,3 +446,39 @@ Repository는 여기서도 **에러 변환만** 하고 좌표를 손대지 않�
 ⚠️ **그래서 이 탭 몫 다섯 중 "소유 판정"은 더는 판정을 안 덮는다** — 테스트가 넣은 불리언이
 그대로 나오는지 볼 뿐이다. 판정의 진짜 자리는 `:data` 매퍼로 옮겨졌고 그쪽을
 `ParfaitRemoteDataSourceImplTest` 두 케이스가 덮는다(`ME`는 참, `null`·모르는 값은 거짓).
+
+## as-built 재정정 (2026-08-27 라운드)
+
+> **이 탭이 남겨 두었던 `TODO` 둘이 같은 날 닫혔다** — 토핑 편집 진입(#274)과 테두리 저장이다.
+> 머지 `c46bacab`(#369)·`84a89728`(#398)·`a22583a3`(#400), 세 머지 모두 트리가 브랜치 팁과 같다.
+
+- **`TODO(#274 대기)`가 사라졌다.** 서버 토핑의 `imageUrl`이 `https://`라 `ContentResolver`로 열지
+  못하던 것을, `ImageSegmentationRepositoryImpl.decodeImage`가 **스킴을 갈라** 원격이면
+  `RemoteImageDownloadDataSource`로 바이트를 받아 디코드하는 방식으로 풀었다. 편집 화면은 URL을
+  그대로 받아도 된다. 전용 `@DownloadClient`가 따로 있는 이유는 커넥션 풀·`Dispatcher` 격리이고,
+  업로드 쪽 `@UploadClient`처럼 기능 전제는 아니다
+  → [architecture/data-layer](../../architecture/data-layer.md).
+- **확인 버튼이 테두리도 보낸다.** `updateToppingIfChanged`가 하나의 `changed` 판정을 **둘로 갈라**
+  위치·배율·각도(`update`)와 테두리(`updateBorder`)를 독립적으로 비교하고 독립적으로 보낸다 —
+  서버 API 자체가 두 엔드포인트로 갈라져 있어서다. 겹 목록을 한 겹으로 접는 규칙은
+  `toToppingBorder`의 `lastOrNull()`(가장 바깥 겹)이고, 비면 `ToppingBorder.None`이다.
+  ⚠️ **같은 화면이 그릴 때는 `firstOrNull()`을 쓴다** — 겹이 둘 이상이면 보이는 테두리와 저장되는
+  테두리가 갈린다 → [open-questions](../../synthesis/open-questions.md) OQ-P-324.
+  ⚠️ **테두리를 구워 넣은 이미지(`editedImagePath`)는 여전히 아무 데로도 안 나간다** — OQ-P-276 ②는
+  그대로다.
+- **본인 토핑 탭의 목적지가 이 화면이 됐다.** `NavKeyCanvasBGEdit`에 `initialToppingId`가 붙고,
+  `withCanvas`가 첫 조회 결과에 `selectedTab = TOPPING`·`selectedToppingId = initialToppingId`를
+  얹는다. C-001에서 본인 토핑을 탭하면 이 탭이 그 토핑을 선택한 채로 열린다
+  → [c202 스펙](2026-08-20-c202-canvas-spotlight.md) as-built 재정정.
+  ⚠️ 시딩이 `withCanvas` 안에 있어 **조회가 한 번뿐인 지금은 문제가 없지만**, 선작성된 폴링 계획이
+  이 자리를 구독으로 바꾸면 매 방출마다 탭과 선택이 초기값으로 되돌아간다 → OQ-P-326 ②.
+- **배율 하한이 0.5에서 0.05가 됐다**(#398) — 위 드리프트 4 참고.
+
+### 유닛 테스트
+
+`CanvasBGEditViewModelTest`에 둘이 붙었다 —
+`init_withInitialToppingId_opensToppingTabWithThatToppingSelected`(진입 시 탭·선택 시딩)와
+`onClickConfirm_toppingBorderEdited_savesOnlyTheBorder`(테두리만 고치면 테두리 PATCH 하나만 나간다).
+`:data` 쪽은 `ToppingRepositoryImplTest`에 `updateBorder`의 성공·실패 두 케이스가 붙었다.
+⚠️ **`toToppingBorder`의 겹 접기 자체를 겹 둘 이상으로 덮은 테스트는 없다** — 붙은 케이스가
+한 겹짜리 목록만 쓴다(OQ-P-324의 감지선이 없다).

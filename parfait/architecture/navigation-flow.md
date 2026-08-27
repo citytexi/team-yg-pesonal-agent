@@ -4,7 +4,7 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-25
+verified: 2026-08-28
 related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
@@ -307,6 +307,14 @@ NavKeyCanvasMain ─▶ NavKeyCanvasBGEdit(groupId, parfaitId) ─┬─▶ NavK
   못 받았으면 편집을 아예 열지 않는다(로그만 남기고 버튼이 조용히 안 먹는다). 편집 화면이 스스로
   오늘 조회를 부르면 캔버스가 없는 날에는 서버가 캔버스를 새로 만들기 때문에, "화면 상태가 그대로
   다음 목적지의 인자"(그룹 설정과 같은 형태)를 여기서도 택했다.
+- **선택 상태를 실어 보내는 인자가 하나 더 붙었다**(2026-08-27, PR #400) —
+  `NavKeyCanvasBGEdit(groupId, parfaitId, initialToppingId: Long? = null)`이다. C-001에서 **본인
+  토핑을 탭하면** 그 id가 실려 오고, 편집 화면이 토핑 탭을 편 채 그 토핑을 선택한 상태로 열린다
+  (`CanvasBGEditViewModel`의 `withCanvas`가 첫 조회 결과에 이 값을 얹는다). ⚠️ **정책이 말하는
+  C-305 편집 화면이 새로 생긴 것이 아니라 기존 목적지가 그 역할을 받은 것**이고, 앞선 `groupId`·
+  `parfaitId`와 달리 이 인자는 **그릴 값도 동작 플래그도 아닌 초기 선택 상태**다. 기본값이 `null`
+  이라 편집 버튼으로 들어오는 기존 경로는 그대로다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-250.
 - **entry에서 `YGScaffold` 껍질이 걷혔다**(2026-08-22, PR #329) — 이 화면은 저장 실패를 토스트로
   알려야 해서 Route가 `YGScaffoldV2`를 직접 든다. 두 겹으로 씌우면 **인셋 패딩이 두 번 먹으므로**
   entry는 `Modifier.fillMaxSize()`만 넘긴다. 아래 [체크리스트](#신규-목적지-등록-체크리스트) 2번의
@@ -461,7 +469,7 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
 `NavKeyCanvasMain`(#268 승격 — `groupId`)·`NavKeyGroupSetting`(#285 승격 — `groupId`)·
 `NavKeyWebView`(#296 신설 — `title`·`url`)·`NavKeyCanvasToppingPlace`(#290 신설 — `imageUri`, **#334에서 인자를 잃고 `data object`로 되돌아갔다**)·
-`NavKeyCanvasBGEdit`(#329 승격 — `groupId`·`parfaitId`)).
+`NavKeyCanvasBGEdit`(#329 승격 — `groupId`·`parfaitId`, **#400에서 `initialToppingId` 추가**)).
 **목적지 둘이 인자 하나로 합쳐진 첫 사례가 #296이다** — `NavKeyServiceTerms`·`NavKeyPrivacyPolicy`
 두 `data object`가 삭제되고 `NavKeyWebView(title, url)` 하나가 됐다. 두 화면은 상단바 제목과 여는
 주소만 달랐고 그 둘이 이제 서버 응답 값이라(`GET /api/v1/policies`의 `title`·`url`,

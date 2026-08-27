@@ -594,9 +594,12 @@ D−1). **정책상 옳은 쪽이 서버였으므로 앱을 옮겼다**(위키 [
 소비 자리가 둘 다 갈렸다 — `CanvasMainViewModel`의 상수 `false` 확장 함수가 사라지고
 `topping.isMine`을 그대로 보며, `CanvasBGEditViewModel`은 `GetMyAccountFlowUseCase` 의존과
 진입 시 `first()` 대기를 **통째로 버렸다**(축이 다른 비교가 그 자리에 있었다).
-⚠️ **판정이 붙어도 본인 토핑 탭은 여전히 아무 일도 안 한다** — 정책이 보내라는 C-305 편집 화면이
-아직 없어 갈래만 갈리고 `TODO`로 끝난다. 다만 **잘못된 갈래로는 안 간다**(본인 토핑이 Spotlight로
-들어가 자기 닉네임 토스트가 뜨던 것이 멎었다) → [open-questions](../synthesis/open-questions.md) OQ-P-250.
+✅ **본인 토핑 탭이 목적지를 얻었다**(2026-08-27, PR #400 develop 머지). `handleOnClickMyTopping`이
+`NavKeyCanvasBGEdit`에 **탭한 토핑 id**를 실어 보내고, 편집 화면이 토핑 탭을 편 채 그 토핑을 선택한
+상태로 열린다. ⚠️ **새 C-305 화면이 생긴 것이 아니다** — 정책이 말하는 편집 진입을 **기존 C-301
+편집 화면의 토핑 탭**이 받는다. 그래서 갈 곳이 있는 것은 **오늘 캔버스뿐이고**, 지난 캔버스를 보는
+중이면 `isViewingToday` 가드에 걸려 탭이 여전히 아무 일도 안 한다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-250.
 
 ✅ **키 어긋남도 develop에서 닫혔다** — 2026-08-19 서버 delta가 응답 키를 `nameTagChip` 계열로 바꾼 뒤
 그 필드를 옛 키로 읽던 브랜치가 잠시 있었으나(기본값이 있어 예외 없이 **조용히 `null`**이 되는 부류),
@@ -745,5 +748,6 @@ DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조
 
 ✅ **2026-08-26 해소 1건** — 앱이 "내 토핑"을 가려낼 재료가 계약에 없던 것을 서버가
 `placedBy.ownerType`으로 닫았다(OQ-P-250 ①). 예고했던 남은 둘 중 **앱이 그 값을 읽는 일은 같은 날
-닫혔고**(PR #376), **C-305 목적지가 생기는 일만 남았다** → [Android 매핑](#android-매핑) ·
+닫혔고**(PR #376), **목적지는 하루 뒤에 생겼다**(2026-08-27 PR #400 — 새 화면이 아니라 C-301 편집
+화면의 토핑 탭이 받는다) → [Android 매핑](#android-매핑) ·
 [open-questions](../synthesis/open-questions.md).

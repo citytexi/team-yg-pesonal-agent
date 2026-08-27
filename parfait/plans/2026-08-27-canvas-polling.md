@@ -1424,7 +1424,9 @@ PR2가 `init`에 둔 `refreshCanvas()` 호출을 **지운다.** 폴러의 구독
         copy(dirtyToppingIds = dirtyToppingIds + toppingId)
 ```
 
-테두리 재편집도 넣는다. 테두리 PATCH는 아직 소비처가 없지만(OQ-P-276) 그 토핑의 로컬 값이 갱신에 덮이면 안 되는 것은 같다 — 위치 PATCH가 함께 나가는 것은 무해하다. 이 판단을 `OnToppingEditResult` 처리 자리에 한 줄로 남긴다.
+테두리 재편집도 넣는다. 그 토핑의 로컬 값이 갱신에 덮이면 안 되는 것은 같다. 이 판단을 `OnToppingEditResult` 처리 자리에 한 줄로 남긴다.
+
+⚠️ **이 계획이 쓰인 다음 날 테두리 PATCH에 소비처가 생겼다**(2026-08-27, PR #369 develop 머지 — OQ-P-276 ①③ 해소). 아래 Step 7의 `updateDirtyToppings`를 **적힌 그대로 구현하면 그 저장이 되돌아간다** → OQ-P-326 ①.
 
 삭제 성공 처리를 고친다. 그 스코프의 지역변수 이름은 **`selectedId`**이고, `showDeleteToppingDialog = false`는 `launch` 앞에서 이미 처리되므로 다시 쓰지 않는다.
 
@@ -1447,6 +1449,8 @@ PR2가 `init`에 둔 `refreshCanvas()` 호출을 **지운다.** 폴러의 구독
 - [ ] **Step 7: 확인의 PATCH 대상을 집합으로 바꾼다**
 
 `async`는 `CoroutineScope` 리시버 없이 부를 수 없다(coroutines 1.11.0에서 오류 수준 deprecation). 기존 `updateToppingIfChanged`는 `launch(key = CONFIRM_KEY) { … }` 블록 안에서 불려 리시버가 있었지만, 새 함수에는 없으므로 `coroutineScope`로 감싼다.
+
+⚠️ **아래 코드 블록은 develop보다 낡았다**(2026-08-28 문서 점검). PR #369 이후 `updateToppingIfChanged`는 위치(`updateToppingUseCase`)와 테두리(`updateToppingBorderUseCase`)를 **독립적으로 판정하고 독립적으로 보낸다.** 집합으로 옮길 때 두 갈래를 함께 옮겨야 한다 — 테두리는 집합에 든 토핑에 대해 `topping.borderLayers.toToppingBorder()`를 그대로 보내면 되고, 스냅샷 대조가 사라지므로 "테두리가 바뀌었는가"를 따로 볼 필요가 없어진다.
 
 ```kotlin
     /**
