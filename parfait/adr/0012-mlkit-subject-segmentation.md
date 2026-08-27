@@ -7,7 +7,7 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr:
-related_spec: c103-segmentation-topping-edit, c103-multi-subject-selection, segmentation-pipeline-hardening
+related_spec: c103-segmentation-topping-edit, c103-multi-subject-selection, segmentation-pipeline-hardening, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation
 related_architecture: data-layer
 platforms: android
 tags: [adr, parfait]
@@ -98,7 +98,7 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
   아니다. **"실패 표현은 여전히 완전하지 않다"는 문장을 지운다.**
 - **마스크 루프가 `getPixels` 1회 + 배열 내 마스킹으로 바뀌었다** — 픽셀당 `Bitmap.getPixel` JNI
   왕복이 사라지고, 같은 배열을 훑으며 객체가 아닌 자리를 지우고 bounding box를 넓힌다
-  (`SegmentationMask.kt#maskSubjectPixels`, `Bitmap` 비의존 순수 함수). 마스크 버퍼 용량이
+  (`SegmentationMask.kt#maskSubjectPixels` — 2026-08-27 PR #363 이 `maskSubjectAlpha` 로 개명하고 반환을 `MaskedAlpha` 로 바꿨다. `Bitmap` 비의존 순수 함수라는 성질은 그대로다). 마스크 버퍼 용량이
   `width * height`와 다르면 실패로 방어하는 것도 이때 붙었다 — 지금까지는 어긋나도 조용히
   잘못 읽었다. 그 가드는 라운드 안에서 한 번 더 손을 탔다(아래).
 - **`segmentImage`의 저장 구간까지 방어가 마저 닫혔다** — 위 null 마스크·크기 불일치 두 경로를
@@ -128,7 +128,7 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 `try/catch`로도 Crashlytics의 Java 핸들러로도 못 잡고 `logcat -b crash`에만 남는다. 공식 문서의
 설정 예시 다섯 가지도 두 계열을 한 번도 함께 쓰지 않는다(명시적 금지 문구는 없다).
 그래서 전경 마스크 경로는 지우지 않고 **후보가 0건일 때의 2차 요청**으로만 남겼다 —
-`SegmentationMask.kt#maskSubjectPixels`와 위 절이 닫아 둔 방어가 그 경로에서 계속 쓰인다.
+`SegmentationMask.kt#maskSubjectAlpha`(당시 이름 `maskSubjectPixels`)와 위 절이 닫아 둔 방어가 그 경로에서 계속 쓰인다.
 그 대가로 **세그멘터를 한 흐름에서 두 번 열 수 있다**(개폐·optional module 확인·예외 변환은
 `runSegmenter`가 공유한다). 정상 경로는 오히려 가벼워졌다 — 쓰지도 않는 원본 해상도
 `FloatBuffer`를 매번 받던 것이 사라졌다([open-questions](../synthesis/open-questions.md) OQ-P-268 해소).
@@ -140,3 +140,13 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 
 ⚠️ **`segmenter.close()` 이후 ML Kit가 준 비트맵의 수명이 문서에 없다**(OQ-P-269). 이 라운드부터
 그 비트맵을 화면 수명 내내 들고 그린다.
+
+⚠️ **모델이 준 마스크를 그대로 쓰지 않게 됐다**(2026-08-27, PR #363) — 이 결정이 고른 것은
+"전경을 누가 분리하는가"이고, 그 산출물의 **정확도를 어디까지 앱이 책임지는가**는 열려 있었다.
+이 라운드가 그 자리를 채웠다: ML Kit이 준 알파를 `:data` 의 순수 커널에 태워 잡티 성분을 지우고,
+원본 휘도를 안내자로 경계를 정련하고, 한 겹 침식한 뒤 tight bounds 와 커버리지를 다시 잰다.
+**ML Kit 교체 가능성이라는 이 ADR 의 전제는 오히려 강해졌다** — 커널이 `Bitmap` 도 ML Kit 타입도
+모르는 배열 연산이라 모델을 갈아도 그대로 남는다. 대신 **"온디바이스 모델 하나로 충분한가"라는
+질문의 답이 '아니다'로 확정**됐다는 사실은 기록해 둔다. 후처리의 임계·반경·정칙화 값은 아직
+실기기 사진 세트가 판정하지 않았다([open-questions](../synthesis/open-questions.md) OQ-P-287~300)
+→ [data-layer](../architecture/data-layer.md).

@@ -1,3 +1,19 @@
+---
+id: segmentation-preprocessing
+title: 세그멘테이션 입력 전처리 구현 계획 (14 Task, 4단계 스파이크 게이트)
+status: in-progress
+type: work-order
+created: 2026-08-23
+updated: 2026-08-27
+platforms: android
+owner: android
+related_adr: ADR-0012, ADR-0011, ADR-0014
+related_spec: segmentation-preprocessing, segmentation-mask-postprocessing
+related_code: ImageSegmentationRepositoryImpl#decodeImage, ContentResolver.kt#decodeUriToBitmap, ContentResolver.kt#rotatedToUpright, ExifOrientation.kt#exifOrientationToDegrees, CameraPreviewComponent.kt, CameraCrop.kt#saveViewfinderCapture, RecentImageRepositoryImpl#extensionOf, FileCameraCacheLocalDataSourceImpl#createFile
+archived_reason:
+tags: [plan, parfait]
+---
+
 # 세그멘테이션 입력 전처리 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -159,7 +175,8 @@ git commit -m "fix: 촬영을 최대 품질로 받는다"
   `com.teamyg.parfait.core.util.android.extension` 패키지. Task 3이 부른다.
 
 같은 모듈 유닛 테스트가 `internal`을 본다. 이 모듈에 선례는 없지만 `data` 모듈의
-`SegmentationMask.kt#maskSubjectPixels`가 같은 컨벤션 플러그인 조합에서 그렇게 동작한다.
+`SegmentationMask.kt` 의 `internal` 함수(당시 `maskSubjectPixels`, 현재 `maskSubjectAlpha`)가 같은
+컨벤션 플러그인 조합에서 그렇게 동작한다.
 
 - [x] **Step 1: 의존성을 추가한다**
 

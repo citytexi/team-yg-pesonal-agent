@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-27
-related_spec: topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+related_spec: topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -111,7 +111,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `data`의 `ImageSegmentationRepositoryImpl.segmentImage` — `Result<SegmentationResult>`/`SegmentationException` 패턴을 쓰면서도 `foregroundConfidenceMask`가 null이면 `error("...")`(raw `IllegalStateException`)로 throw. Result로 감싸지 않아 호출부(effect→Toast)가 못 잡을 수 있음.
 - **항목**: ① `Tasks.await` 예외를 `SegmentationException`으로 통합할지, ② null 마스크를 `Result.failure`로 바꿀지.
 - **상태**: 해소됨 (① **PR #221 develop 머지, 2026-08-14** — `toSegmentationException()`이 `ExecutionException`을 한 겹 벗겨 `MlKitException.UNAVAILABLE`이면 `ModuleNotReady`, 그 외는 `Process`로 매핑하고 `Result.failure`로 반환한다. / ② **PR #309 develop 머지, 2026-08-20** — `foregroundConfidenceMask == null`이 더는 `error("…")` raw throw가 아니라 `Result.failure(SegmentationException.Process)`를 탄다)
-- **해소 메모**: ②는 `segmentImage`가 픽셀 마스킹을 `SegmentationMask.kt#maskSubjectPixels`로 뽑아내며 함께 정리됐다 — [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절과 [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)에 반영 완료.
+- **해소 메모**: ②는 `segmentImage`가 픽셀 마스킹을 `SegmentationMask.kt` 의 순수 함수(당시 `maskSubjectPixels`, 현재 `maskSubjectAlpha`)로 뽑아내며 함께 정리됐다 — [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절과 [segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)에 반영 완료.
   **정확히는 같은 라운드 안에서 두 단계였다** — 위 커밋은 null 마스크·마스크 크기 불일치 두 경로만
   `Result`로 접었고, 같은 `withContext` 블록의 세 번째 경로(`saveToCacheAsPng`의 `IOException`)는
   여전히 새어나가고 있었다. 그 경로는 라운드 막바지 리뷰가 별도로 잡아 `try`로 마저 감쌌다 —
@@ -4762,7 +4762,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-24] 누끼 마스크에 내부 구멍이 실물에서 얼마나 생기는지 모른다
 
 - **ID**: OQ-P-286
-- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+- **출처**: [segmentation-mask-postprocessing.md](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
   근거 등급 표 — 이진 컷이 내부 구멍을 남기는 것은 원리상 맞으나 관찰된 사례가 없다.
 - **항목**: ① 구멍 메우기(테두리 배경 flood fill)를 넣을 값어치가 있는가. ② 축소 판정이라
   블록 폭 미만 구멍은 애초에 안 보이는데, 실물 구멍이 그보다 큰가. ③ 초판이 실루엣을 덮어 칠하지
@@ -4779,7 +4779,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-24] 폴백 알파 램프가 만드는 부분 알파 띠의 실제 폭을 모른다
 
 - **ID**: OQ-P-287
-- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+- **출처**: [segmentation-mask-postprocessing.md](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
   「폴백 경로 배선」 — 신뢰도 0.35~0.65를 알파 0~255로 사상하면 경계에 띠가 생기는데, 그 폭은
   신뢰도 기울기에 달렸고 측정한 적이 없다.
 - **항목**: ① 띠가 1픽셀 이하면 램프가 하드컷과 사실상 같아 값어치가 없다. ② 띠가 넓으면
@@ -4793,7 +4793,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-24] 알파 침식은 흰 테의 원인인 RGB 오염을 못 고친다
 
 - **ID**: OQ-P-288
-- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+- **출처**: [segmentation-mask-postprocessing.md](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
   근거 등급 표 경고 — 원 제안의 "1픽셀 erode로 색 오염 제거"가 실제로는 알파만 건드린다.
 - **항목**: ① 흰 테의 정체는 알파가 낮은 픽셀이 배경색에 오염된 RGB를 갖고 있는 것이라, 바깥 한
   겹을 지워도 안쪽 부분 알파 픽셀의 색은 그대로다. ② 진짜 처방은 색 디컨태미네이션(부분 알파
@@ -4811,7 +4811,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-24] 사각형 IoU가 교차하는 얇은 피사체를 같은 후보로 오판한다
 
 - **ID**: OQ-P-289
-- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+- **출처**: [segmentation-mask-postprocessing.md](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
   「필터 판정」 — `SegmentationCandidateFilter#filterCandidates`의 중복 판정을 사각형 IoU로 바꾼다.
 - **항목**: ① 서로 교차하는 대각선 가닥 두 개는 bounds가 같아 IoU가 1이지만 실제 마스크 교집합은
   거의 없다. 별개 피사체가 병합되어 사라진다. ② 마스크 IoU로 바꾸면 해결되고 비용도 작으나(두
@@ -4823,7 +4823,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-24] bounds 축소 후 얇은 피사체의 탭 타깃이 너무 작아진다
 
 - **ID**: OQ-P-290
-- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+- **출처**: [segmentation-mask-postprocessing.md](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
   「화면 쪽 파급」 × `SegmentationHighlightGeometry#pickCandidateIndex` —
   후처리가 bounds를 실제 객체에 붙이면 얇은 피사체의 탭 사각형이 몇 dp가 된다.
 - **항목**: ① 판정용 사각형만 최소 크기로 넓히고 그리기는 tight로 두는 방법이 있다. ② 그러면
@@ -4848,7 +4848,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-24] 후보 커버리지 임계의 근거가 측정이 아니다
 
 - **ID**: OQ-P-292
-- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+- **출처**: [segmentation-mask-postprocessing.md](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
   「필터 판정」 × `SegmentationCandidateFilter.kt#filterCandidates` — 면적 판정을 bounds 사각형에서
   커버리지(알파 총합 ÷ 255)로 바꾸면서 임계를 새로 정했다.
 - **항목**: ① 초판은 "채움비가 대략 절반이니 종전의 절반"이라는 계산으로 값을 정했다가 철회했다.
@@ -4866,7 +4866,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-24] 관측 로그가 릴리즈 빌드에서 남는지 확인이 안 됐다
 
 - **ID**: OQ-P-293
-- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+- **출처**: [segmentation-mask-postprocessing.md](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
   「관측」 × `Logger.kt#repositoryLogger` × [ADR-0017](../adr/0017-remote-network-datasource.md)
 - **항목**: ① 이 라운드가 심는 로그 세 줄의 목적은 **필드에서 인식 실패의 원인이 ML Kit인지 우리
   후처리인지 가르는 것**이다. 디버그 빌드에서만 남으면 목적을 달성하지 못한다. ② 저장소에 빌드
@@ -4880,7 +4880,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-24] 판정 버퍼 축소를 적용하지 않는 크기 하한을 실측으로 못 정했다
 
 - **ID**: OQ-P-294
-- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+- **출처**: [segmentation-mask-postprocessing.md](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
   「처리 해상도」 × 앞 라운드 [segmentation-preprocessing](../specs/2026-08-23-segmentation-preprocessing.md)
   「해상도 하한」(OQ-P-278)
 - **항목**: ① 축소의 근거는 런 개수 폭증과 그로 인한 OOM인데, **작은 판에서는 그 위험이 없고 판정
@@ -4896,7 +4896,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-24] area opening 은 크고 떨어진 덩어리 둘을 못 가른다
 
 - **ID**: OQ-P-295
-- **출처**: [segmentation-mask-postprocessing.md](../specs/2026-08-24-segmentation-mask-postprocessing.md)
+- **출처**: [segmentation-mask-postprocessing.md](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)
   「범위 - 제외」 — 앞 라운드가 후처리로 미룬 "최대 연결 요소만 남기기"를 채택하지 않았다.
 - **항목**: ① area opening 은 임계 **미만** 성분만 버리고 임계 이상은 모두 남긴다. 그래서 한 후보
   안에 크고 떨어진 덩어리가 둘 있으면 **bounds 가 여전히 둘을 함께 감싼다.** 이 라운드가 고치려는
@@ -4913,7 +4913,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-25] 휘도 1채널 안내가 흰 물체·흰 배경에서 충분한가
 
 - **ID**: OQ-P-296
-- **출처**: [segmentation-alpha-refinement.md](../specs/2026-08-25-segmentation-alpha-refinement.md)
+- **출처**: [segmentation-alpha-refinement.md](../specs/archive/2026-08-25-segmentation-alpha-refinement.md)
   「범위 - 제외」 — 컬러 3채널 안내를 채택하지 않고 휘도로 시작한다.
 - **항목**: ① 가이드 필터는 안내자에 경계가 있는 자리에서만 알파를 옮긴다. **휘도가 같고 색만
   다른 경계는 1채널 안내로 안 잡힌다.** ② 관측된 결함(파란 매트 위 흰 물체)은 휘도차가 있어
@@ -4926,7 +4926,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-25] 정련의 입력을 하드 매트가 아니라 신뢰도 마스크로 바꿀 것인가
 
 - **ID**: OQ-P-297
-- **출처**: [segmentation-alpha-refinement.md](../specs/2026-08-25-segmentation-alpha-refinement.md)
+- **출처**: [segmentation-alpha-refinement.md](../specs/archive/2026-08-25-segmentation-alpha-refinement.md)
   「설계 - 정련 알고리즘」 — 입력 `p` 를 하드 매트로 고정했다.
 - **항목**: ① 탐침에서 ML Kit 후보별 신뢰도 마스크가 **연속값을 갖는다**는 것을 확인했다(0과 1
   사이가 각각 약 26%·41%). 하드 매트를 쓰는 동안 그 정보를 버린다. ② 그런데 그 연속값의 대부분이
@@ -4940,7 +4940,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-25] 정련 반경과 정칙화 기본값의 근거가 없다
 
 - **ID**: OQ-P-298
-- **출처**: [segmentation-alpha-refinement.md](../specs/2026-08-25-segmentation-alpha-refinement.md)
+- **출처**: [segmentation-alpha-refinement.md](../specs/archive/2026-08-25-segmentation-alpha-refinement.md)
   「근거 등급」 — 조건부 항목.
 - **항목**: ① 반경이 너무 작으면 경계가 안 옮겨지고, 너무 크면 얇은 구조가 뭉개진다. ② 정칙화가
   너무 작으면 잡음까지 따라가고, 너무 크면 평균 필터로 퇴화해 경계가 흐려지기만 한다. ③ 두 값 다
@@ -4953,7 +4953,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-25] 원본 해상도 정련의 체감 지연을 재지 않았다
 
 - **ID**: OQ-P-299
-- **출처**: [segmentation-alpha-refinement.md](../specs/2026-08-25-segmentation-alpha-refinement.md)
+- **출처**: [segmentation-alpha-refinement.md](../specs/archive/2026-08-25-segmentation-alpha-refinement.md)
   「설계 - 처리 해상도」 — 계수는 축소판, 적용은 원본 해상도.
 - **항목**: ① 계수 산출은 축소판이라 싸지만 **적용은 원본 픽셀 전부를 훑는다.** 후보가 여럿이면
   그만큼 곱해진다. ② 촬영 후 후보 화면까지의 체감 지연이 이 라운드에서 늘어나는데 그 증가폭을
@@ -4967,7 +4967,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-25] 정련의 피크 메모리를 재지 않았다
 
 - **ID**: OQ-P-300
-- **출처**: [segmentation-alpha-refinement.md](../specs/2026-08-25-segmentation-alpha-refinement.md)
+- **출처**: [segmentation-alpha-refinement.md](../specs/archive/2026-08-25-segmentation-alpha-refinement.md)
   「설계 - 안내자 공급」 — 계획 검수가 초안의 메모리 계약이 사실이 아님을 밝혔다.
 - **항목**: ① 정련은 bounds 크기 안내자 `IntArray`(12MP 전면이면 48MB)와 패치 `ByteArray`(12MB),
   축소판 실수 배열 여섯(배율 4에서 약 19MB)을 **동시에** 든다. ② 초안 계획은 여기에 원본 해상도
@@ -5178,8 +5178,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   develop에 되돌려 머지할 것인가, 아니면 release가 별도 계보로 계속 갈 것인가 — 전자면 이 항목은
   다음 라운드에 저절로 닫히고, 후자면 기준선을 **둘로** 두거나 감사 대상을 바꿔야 한다.
   ③ 선작성 스펙·계획 넷([전처리](../specs/2026-08-23-segmentation-preprocessing.md)·
-  [후처리](../specs/2026-08-24-segmentation-mask-postprocessing.md)·
-  [알파 정련](../specs/2026-08-25-segmentation-alpha-refinement.md)과 그 계획들)이 지금 `active`인데,
+  [후처리](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)·
+  [알파 정련](../specs/archive/2026-08-25-segmentation-alpha-refinement.md)과 그 계획들)이 지금 `active`인데,
   **구현이 release에는 있고 develop에는 없다** — 아카이브 판정 기준(`develop` 머지)을 그대로 둘지
   정해야 한다.
 - **상태**: 미해결 (**문서 신뢰도에 직접 걸리는 자리다** — 코드가 아니라 감사 범위의 문제)
@@ -5192,6 +5192,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > release에만 있고**, 이 항목이 묻는 ②③은 아무것도 안 바뀌었다. 이번 사례가 보여 주는 것은
   > **한 브랜치가 두 계보에 각각 머지될 수 있다**는 것이고, 그러면 "어느 트리가 배포됐나"는 더
   > 흐려진다 — 같은 변경이 양쪽에 있어도 **주변 커밋이 달라 결과 트리가 같다는 보장은 없다.**
+  > 📌 **세그멘테이션 넷이 develop 으로도 들어왔다(2026-08-27, PR #363)** — ③은 닫혔다. 선작성
+  > 스펙·계획 중 셋([후처리](../specs/archive/2026-08-24-segmentation-mask-postprocessing.md)·
+  > [알파 정련](../specs/archive/2026-08-25-segmentation-alpha-refinement.md)·
+  > [커널 취소 확인 전환](../specs/archive/2026-08-27-alpha-kernel-suspend-cancellation.md))이
+  > **`develop` 머지라는 기존 기준 그대로** 아카이브로 갔고, 기준을 바꿀 필요가 없어졌다.
+  > ⚠️ **①②는 아무것도 안 바뀌었고, 오히려 한 겹 나빠졌다.** develop 이 받은 것은 release 가 받은
+  > 그 커밋들이 **아니라 rebase 된 다른 커밋들**이라 release-only 커밋 수는 **43 그대로**다.
+  > 게다가 rebase 과정에서 커널 전체가 `suspend` + `ensureActive()` 로 바뀌었으므로, 두 계보는
+  > 이제 **SHA 만이 아니라 내용이 다르다** — 배포된 `0.0.3` 은 콜백 방식 커널을 담고 있고 정련
+  > 라운드의 리뷰 반영 커밋 일부도 없다. 즉 "같은 기능이 양쪽에 있다"는 말이 이 넷에는 성립하지
+  > 않는다. 반대 방향(develop 만 가진 것)은 **85커밋**으로 벌어졌다.
 
 ### [2026-08-26] 토스트가 어느 프레임 위에 뜨는지를 정하는 규칙이 없다
 
@@ -5291,4 +5302,34 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ②가 먼저 걸린다. 테스트가 붙는 시점에 `@After`에서 `clearToppingAlphaMasks()`를
   부르거나, 캐시를 최상위 상태가 아니라 주입되는 홀더로 바꾼다.
 
-<!-- oq-next: 318 -->
+### [2026-08-27] 알파 커널에 확인 없이 오래 도는 루프가 남아 있다
+
+- **ID**: OQ-P-318
+- **출처**: [커널 취소 확인 전환 스펙](../specs/archive/2026-08-27-alpha-kernel-suspend-cancellation.md)
+  「미결」 — 그 스펙이 확인 지점·빈도 변경을 범위 밖에 두고 사실만 남겼는데, 스펙이 아카이브로
+  가면서 추적 주체가 사라진다.
+- **항목**: ① `AlphaComponents.kt#applyAreaOpening` 은 `countRuns` 와 `fillRuns` 로 마스크 전체를
+  **두 번** 훑은 뒤에야 첫 확인(`unionAdjacentRows`)에 닿는다. ② 같은 함수의 union 이후 성분
+  집계·마스크 소거 루프에도 확인이 없다. ③ `AlphaRefine.kt` 의 `downscale` 마지막 나눗셈 루프와
+  `guidedCoefficients` 의 배열 생성 람다도 같다. 큰 판에서는 사용자가 뒤로 나간 뒤에도 전체 두
+  패스가 그대로 지나간다.
+- **상태**: 미해결 (**전환 자체는 이 성질을 바꾸지 않았다** — 콜백 시절에도 같은 자리가 비어 있었다)
+- **해소 메모**: 붙들리는 시간이 실제로 문제가 되는지는 정련 소요 시간 로그(OQ-P-299)와 같은
+  근거로 판정된다. 넣는다면 `suspend` 전염이 이미 끝나 있어 추가 배관 없이 `job.ensureActive()`
+  한 줄씩이다.
+
+### [2026-08-27] 취소 확인 방식의 성능 차이를 잴 하니스가 없다
+
+- **ID**: OQ-P-319
+- **출처**: [커널 취소 확인 전환 스펙](../specs/archive/2026-08-27-alpha-kernel-suspend-cancellation.md)
+  「미결」·「배제한 대안」 — `yield()` 를 배제한 근거가 측정인데, 그 측정이 통상적인 프로파일링으로
+  재현되지 않는다.
+- **항목**: ① 콜백과 `suspend` + `ensureActive()` 의 차이가 프로파일러 해상도 아래라 실기기에서
+  확인할 방법이 지금 없다. ② 재려면 마이크로벤치마크 하니스를 세워야 하고, 이 크기의 차이를 위해
+  그 비용을 치를지는 정하지 않았다. ③ 그래서 `yield()` 배제 결정은 **다시 검증할 수단이 없는
+  상태로** 굳었다.
+- **상태**: 미해결 (**동작 영향 0** — 판단 근거의 재현성 문제다)
+- **해소 메모**: 하니스를 세운다면 그 자체가 별도 승인 사항이다(테스트 스캐폴딩 신설). 세우지
+  않기로 하면 이 항목을 닫고 스펙의 결정을 그대로 둔다.
+
+<!-- oq-next: 320 -->

@@ -1,3 +1,19 @@
+---
+id: alpha-kernel-suspend-cancellation
+title: 알파 커널 취소 확인 전환 구현 계획 (6 Task, 브랜치 3개)
+status: done
+type: work-order
+created: 2026-08-27
+updated: 2026-08-27
+platforms: android
+owner: android
+related_adr:
+related_spec: alpha-kernel-suspend-cancellation, segmentation-alpha-refinement, segmentation-mask-postprocessing
+related_code: AlphaComponents.kt#downscaleMask, AlphaComponents.kt#dilateMask, AlphaPostProcessor.kt#postProcessAlpha, AlphaPostProcessor.kt#erodeEdge, AlphaPostProcessor.kt#refineWithin, AlphaRefine.kt#refineAlpha, SegmentationMask.kt#maskSubjectAlpha, ImageSegmentationRepositoryImpl#postProcess, CountingJob.kt
+archived_reason: Task 1~6 이 PR #363(`4da18230`, 2026-08-27)으로 develop 에 머지됐다. 남은 수동 작업(force push 3회·리뷰 스레드 회신)은 머지로 소멸했다
+tags: [plan, parfait, coroutines]
+---
+
 # 알파 커널 취소 확인 전환 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -8,7 +24,13 @@
 
 **Tech Stack:** Kotlin 2.4.10 · kotlinx-coroutines 1.11.0 · kotlin.test + kotlinx-coroutines-test(`test-unit` 번들에 이미 있음) · Android Gradle 라이브러리 모듈 `:data`
 
-**Spec:** [`parfait/specs/2026-08-27-alpha-kernel-suspend-cancellation.md`](../specs/2026-08-27-alpha-kernel-suspend-cancellation.md)
+**Spec:** [`parfait/specs/archive/2026-08-27-alpha-kernel-suspend-cancellation.md`](../../specs/archive/2026-08-27-alpha-kernel-suspend-cancellation.md)
+
+> ✅ **Task 1~6 이 develop 에 들어갔다** — PR #363 `4da18230`(2026-08-27). 세 브랜치가 계획이 재설계한
+> 순서대로 rebase 된 뒤 **정련 브랜치 하나로 접혀** 머지됐다. 그래서 `develop` 이 본 머지는 하나이고,
+> 「남은 수동 작업」에 적어 둔 force push 3회와 리뷰 스레드 회신은 그 머지로 소멸했다.
+> 계획이 예고한 rebase 함정(결선은 충돌이 안 나고, 정련은 `--continue` 가 `checkCancelled` 를
+> 되살린다)은 실행 중에 그대로 나타났고 재설계한 방식으로 처리됐다.
 
 ## Global Constraints
 

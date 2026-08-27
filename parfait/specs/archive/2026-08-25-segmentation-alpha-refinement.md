@@ -1,13 +1,13 @@
 ---
 id: segmentation-alpha-refinement
 title: 세그멘테이션 알파 경계 정련 — 가이드 필터 (Guided alpha refinement)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-25
-related_code: AlphaPostProcessor.kt#postProcessAlpha, AlphaPostProcessor.kt#erodeEdge, AlphaComponents.kt, AlphaComposite.kt, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate, SegmentationMask.kt#confidenceToAlpha, SegmentationCandidate
+verified: 2026-08-27
+related_code: AlphaRefine.kt#refineAlpha, AlphaRefine.kt#boxMean, AlphaRefine.kt#guidedCoefficients, AlphaRefine.kt#applyCoefficients, AlphaPostProcessor.kt#postProcessAlpha, AlphaPostProcessor.kt#refineWithin, AlphaPostProcessor.kt#erodeEdge, AlphaPostProcessor.kt#GuidanceProvider, AlphaComponents.kt, AlphaComposite.kt, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate, SegmentationMask.kt#maskSubjectAlpha, SegmentationMask.kt#confidenceToAlpha, SegmentationCandidate
 related_adr: ADR-0012
-related_spec: segmentation-mask-postprocessing, segmentation-preprocessing
+related_spec: segmentation-mask-postprocessing, alpha-kernel-suspend-cancellation, segmentation-preprocessing
 related_architecture: data-layer
 supersedes:
 superseded_by:
@@ -15,6 +15,20 @@ tags: [spec, parfait]
 ---
 
 # Spec: 세그멘테이션 알파 경계 정련
+
+> ✅ **as-built(2026-08-27, PR #363 `4da18230` develop 머지)** — 설계대로 들어왔다. 파이프라인
+> 자리(정련이 침식 앞), 축소판 계수 + 원본 적용, 안내자를 `origin` 에서 읽는 두 경로, 옵션 넷,
+> 소요 시간 로그가 전부 코드에 있다. 이번 회차가 고칠 자리는 **취소를 확인하는 수단 하나**다.
+> **「API / 인터페이스」의 `refineAlpha` 는 `checkCancelled` 를 갖지 않는다** — 같은 스택의 뒤
+> 라운드([커널 취소 확인 전환](2026-08-27-alpha-kernel-suspend-cancellation.md))가 커널 전체를
+> `suspend` + `currentCoroutineContext().job.ensureActive()` 로 옮기면서 이 파라미터를 걷었다.
+> 확인 지점과 주기는 「취소 확인」 절이 적은 그대로이므로(네 패스의 행 루프마다), 그 절의 내용에서
+> 바뀐 것은 **누가 확인을 넣어 주는가**뿐이다. 정련 함수들이 실제로 `Job` 을 꺼내는 자리는
+> `boxMean` · `downscale` · `guidedCoefficients` · `applyCoefficients` 넷이고, `downscaleLuminance` ·
+> `downscaleAlpha` · `refineAlpha` 는 하위에 전달만 한다.
+>
+> **사진 세트 판정은 아직 없다.** OQ-P-296~300(안내 채널 수·입력 종류·반경과 정칙화·체감 지연·피크
+> 메모리)은 전부 실기기 관측이 판정 주체라 코드 머지로 닫히지 않는다.
 
 ## 목표
 
@@ -167,7 +181,7 @@ RGB가 0이고, 그러면 안내자의 경계가 지금 알파의 경계와 정�
 정련 자체는 배열만 만지는 순수 함수다.
 
 ```kotlin
-internal fun refineAlpha(
+internal suspend fun refineAlpha(   // as-built: suspend, checkCancelled 없음
     alpha: ByteArray,      // 제자리 수정. 커널이 이미 다듬은 알파
     guidance: IntArray,    // 같은 크기·같은 좌표계의 원본 ARGB
     width: Int,
@@ -175,7 +189,6 @@ internal fun refineAlpha(
     downscale: Int,        // 계수를 구할 배율. 1이면 축소 없이 원본에서 구한다
     radius: Int,           // 축소판 기준 창 반경
     epsilon: Float,
-    checkCancelled: () -> Unit = {},
 ): Boolean                 // 한 픽셀이라도 바뀌었으면 true
 ```
 
@@ -229,7 +242,8 @@ internal fun interface GuidanceProvider {
 
 ### 취소 확인
 
-정련은 네 패스(휘도 추출·박스 합·계수 산출·적용)이고, 각 패스의 행 루프마다 취소 콜백을 부른다.
+정련은 네 패스(휘도 추출·박스 합·계수 산출·적용)이고, 각 패스의 행 루프마다 취소를 확인한다
+(as-built: 콜백이 아니라 `suspend` + `job.ensureActive()` 다 — 위 as-built 블록 참고).
 커널의 다른 단계와 같은 주기다. 원본 해상도 적용은 이 라운드에서 가장 긴 순회이므로, 사용자가
 뒤로 나갔을 때 붙들고 있는 시간이 여기서 결정된다.
 
