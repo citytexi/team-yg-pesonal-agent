@@ -94,6 +94,10 @@ internal suspend fun downscaleMask(
 루프 밖에서 한 번만 꺼내는 것도 계약이다. 근거는 성능이 아니라 이 fail-fast 를 **함수당 한 번**만
 치르기 위해서다(성능 근거는 「측정」 3번 참고).
 
+조기 반환 가드가 있는 함수(`erodeEdge` 의 `if (width <= 0 || height <= 0) return false`)에서도
+호이스팅은 가드 **뒤**, 첫 사용 직전에 둔다. 조기 반환 경로에는 확인 루프가 없어 그 자리에서
+`Job` 부재를 미리 잡을 실익이 없고, 함수마다 위치가 달라지면 어디를 봐야 할지 다시 찾아야 한다.
+
 ### 전염 방향
 
 **잎 방향으로는 전염시키지 않는다.** 취소 확인이 없는 순수 함수(`ceilDiv` · `countRuns` ·
@@ -105,11 +109,15 @@ internal suspend fun downscaleMask(
 
 | 파일 | 자체 확인 | 전염 |
 |---|---|---|
-| `AlphaComponents.kt` | `downscaleMask` · `applyAreaOpening` · `unionAdjacentRows` · `dilateMask` | — |
-| `AlphaPostProcessor.kt` | `applyKeepMask` · `measureAlpha` · `erodeEdge` · `postProcessAlpha` | `refineWithin` |
-| `AlphaRefine.kt` | `boxMean` · `downscaleLuminance` · `downscaleAlpha` · `downscale` · `guidedCoefficients` · `applyCoefficients` | `refineAlpha` |
+| `AlphaComponents.kt` | `downscaleMask` · `unionAdjacentRows` · `dilateMask` | `applyAreaOpening` |
+| `AlphaPostProcessor.kt` | `applyKeepMask` · `measureAlpha` · `erodeEdge` | `postProcessAlpha` · `refineWithin` |
+| `AlphaRefine.kt` | `boxMean` · `downscale` · `guidedCoefficients` · `applyCoefficients` | `downscaleLuminance` · `downscaleAlpha` · `refineAlpha` |
 | `SegmentationMask.kt` | — | `maskSubjectAlpha` |
 | `ImageSegmentationRepositoryImpl` | — | `toCandidatePairs` · `buildCandidatePair` · `postProcess` · `toForegroundCandidate` |
+
+as-built: `applyAreaOpening` · `postProcessAlpha` · `downscaleLuminance` · `downscaleAlpha` 는
+설계 당시 「자체 확인」에 있었으나 실제로는 확인 루프가 없고 하위에 전달만 한다. 구현도 이 넷에는
+`Job` 을 꺼내지 않았다 — 위 표는 그 결과를 반영한다.
 
 `refineWithin` 과 `maskSubjectAlpha` 는 `checkCancelled` 를 자기 시그니처에 갖고 있으므로
 파라미터 제거 대상이기도 하다.
@@ -244,6 +252,23 @@ KDoc 에 코루틴 버전을 올릴 때 막힐 수 있다는 것을 남긴다.
 
 전체 파이프라인 카운팅만으로는 회귀가 났을 때 어느 함수인지 특정되지 않는다. 함수 단위 테스트가
 그 자리를 지목한다.
+
+### 개별 회귀 그물의 한계
+
+확인 루프가 **없는** 함수(`applyAreaOpening` · `postProcessAlpha` · `maskSubjectAlpha` ·
+`refineAlpha`)의 위 커널별 취소 테스트는 **서브트리가 확인을 전부 잃었을 때만** 실패한다. 한
+단계만 확인을 잃어도 다음 단계의 확인이 "첫 확인"이 되어 그대로 통과하므로, 이 넷의 취소 테스트는
+"함수가 취소를 어떻게든 존중하는가"만 보고 **개별 단계의 회귀는 잡지 못한다.**
+
+개별 단계의 회귀를 잡는 것은 **카운팅 테스트 둘뿐**이다.
+
+- `postProcessAlpha_countingChecks_isCalledPastTheDownscaleStage` — 하한 `> 40`(8×8·배율1 픽스처
+  실측 47)
+- `refineAlpha_countingChecks_visitsEveryStage` — 하한 `> 60`(4×4·배율1·반경1 픽스처 실측 64,
+  지점별 확인 제거 시 56/40/40/60/60)
+
+이 성질을 적어 두지 않으면 다음 사람이 카운팅 테스트를 커널별 취소 테스트와 "중복"으로 보고
+지운다. 위임 전용 함수의 회귀 감지선은 이 둘이 유일하다.
 
 ## 브랜치 배분
 

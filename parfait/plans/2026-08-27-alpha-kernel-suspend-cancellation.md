@@ -721,7 +721,9 @@ private suspend fun SubjectSegmentationResult.toForegroundCandidate(origin: Bitm
 
 각 본문에서 하위 호출로 넘기던 `checkCancelled` 인자를 지운다. 이 파일 쪽은 `checkCancelled = checkCancelled` 명명 인자다.
 
-`buildCandidatePair` 의 `catch (e: CancellationException) { throw e }` 순서와 `toForegroundCandidate` 의 `catch (e: OutOfMemoryError)` 는 그대로 둔다. 전환 후에도 같은 의미로 동작한다.
+as-built: `catch (e: CancellationException) { throw e }` 는 `buildCandidatePair` 안이 아니라 호출부
+`segmentImage`·`segmentForeground` 의 `try` 에 있다. `buildCandidatePair` 자신은 `catch (e: OutOfMemoryError)`
+만 갖는다. 두 자리 다 전환 후에도 같은 의미로 동작하므로 그대로 둔다.
 
 - [ ] **Step 4: 콜백 생성 두 곳을 지운다**
 
