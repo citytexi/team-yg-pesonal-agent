@@ -142,6 +142,13 @@ tags: [adr, parfait, canvas, state, cache, polling]
 - 배경 편집 화면이 "손댄 토핑"과 "지운 토핑" 상태를 새로 든다
 - 앱 재시작마다 캐시가 비어 있고 첫 조회를 기다린다
 - ADR-0023이 기각한 구독 기반 조회를 일부 되돌린다
+- `CanvasPoller`가 세션 정리 때 필요해지면서 `TokenAuthenticator → CanvasPoller →
+  ParfaitRemoteDataSource → 인증 Retrofit → OkHttpClient → TokenAuthenticator` DI 순환이
+  새로 생겼다. `TokenAuthenticator`가 `CanvasPoller`를 `dagger.Lazy`로 받아 끊는다 — 즉시
+  주입받으면 이 순환이 컴파일 타임에 걸린다
+- 하루 경계 판정에 쓸 시계가 이제 폴러·티커 여러 곳에서 필요해, 전역 `Clock` 싱글턴 바인딩
+  (`data/di/ClockModule.kt`)을 새로 둔다 — 소비처마다 각자 주입 방식을 정하면 테스트에서
+  시각을 고정하는 방법이 갈린다
 
 **위험·방어**
 

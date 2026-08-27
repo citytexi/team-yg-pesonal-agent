@@ -206,16 +206,21 @@ fun clearTodayCanvas()
 `refreshTodayCanvasDetail`과 같은 엔드포인트를 부르지만 저장 여부가 다르므로 표면을 갈라 둔다.
 `getYears`·`getPastCanvases`·`changeCanvasBackground`도 그대로다.
 
-> 🔧 **as-built**: 오늘 캔버스 관련 표면은 위 넷에서 여섯으로 늘었다.
+> 🔧 **as-built**: 오늘 캔버스 관련 표면은 최종적으로 위 넷이 아니라 아래 넷이다 — 개수는
+> 같지만 구성이 다르다.
 >
-> - `cachedTodayCanvasDate(groupId): LocalDate?` — 캐시에 실린 날짜만 peek 하는 표면이다.
->   `RefreshTodayParfaitUseCase`가 오늘 조회 응답 뒤 하루 경계를 넘겼는지 확인할 때 쓰는데,
->   `todayCanvas(groupId)`는 **한 번 구독하는 것만으로 폴링 수명이 걸려** 갱신이 나가므로
->   (「폴링 수명을 무엇에 매다는가」 참고) peek 용도로 쓸 수 없다. 값을 얻는 길이 하나라는
->   원칙은 유지된다 — 이 표면은 날짜만 내고 캔버스 값 자체는 내지 않는다.
+> - `refreshTodayCanvas(groupId)`는 **없앴다.** PR2가 만든 "하루 경계를 넘겨 받으면 한 번 더
+>   조회"하는 이 표면은 PR3에서 프로덕션 호출처가 0건이 됐다 — 폴러의 "캐시 날짜가 오늘이
+>   아니면 오늘 조회"가 다음 주기(최대 5초)에 같은 결과를 낸다. 함께 만들었던
+>   `cachedTodayCanvasDate(groupId): LocalDate?`(캐시 날짜 peek 용 표면)도 그 유일한
+>   소비처였던 `RefreshTodayParfaitUseCase`와 함께 지웠다.
 > - `requestTodayCanvasRefresh(groupId)` — 되감기 직전처럼 응답을 기다릴 수 없는 자리에서
 >   부르는 비동기 갱신 표면이다(PR3, `CanvasToppingPlaceViewModel`의 확인 처리). 즉시
->   반환하고 실제 갱신은 폴러의 스코프에서 끝까지 간다.
+>   반환하고 실제 갱신은 폴러의 스코프에서 끝까지 간다. `refreshTodayCanvasDetail`의 async
+>   판이다 — 둘 다 결국 `CanvasPoller.refreshNow(groupId)` 한 줄로 수렴한다.
+>
+> 최종 넷: `todayCanvas`(구독) · `refreshTodayCanvasDetail`(suspend 갱신) ·
+> `requestTodayCanvasRefresh`(async 갱신) · `clearTodayCanvas`(세션 정리).
 
 ### 갱신·무효화 규칙
 
@@ -310,6 +315,11 @@ PR2 단계의 병합 규칙은 **통째 대입**이다. 이 단계엔 폴링이 
 `:data`라 로컬 데이터소스를 바로 본다). 정리 순서는 group-ssot이 정한 as-built를 따른다 — 계정
 정보 정리는 DataStore IO라 던질 수 있으므로 **인메모리 캐시 정리를 그 앞에 둔다.**
 
+> 🔧 **as-built**: `clearTodayCanvas()`는 `clear()` 단독이 아니라 **`CanvasPoller.stopAll()`이
+> 먼저다.** 순서가 반대면(먼저 비우고 나중에 폴러를 세우면) 이미 출발한 갱신 응답이 도착해
+> 방금 비운 캐시를 되살릴 수 있다 — PR3의 세대(`generation`) 메커니즘이 이 순서에 의존한다
+> (「폴링을 어디에 두는가」·「세션 정리와 진행 중인 갱신」 참고).
+
 ### 검증
 
 `CanvasLocalDataSourceImpl`은 미조회(`null`)와 저장 후 값을 구분해 단언하고, 한 그룹의 저장이
@@ -351,13 +361,22 @@ PR2 단계의 병합 규칙은 **통째 대입**이다. 이 단계엔 폴링이 
 
 | 상황 | 부르는 것 |
 |------|-----------|
-| 캐시가 비었다(최초 획득) | 오늘 조회 `refreshTodayCanvas` |
-| 캐시에 실린 날짜가 오늘이 아니다(하루 경계를 넘겼다) | 오늘 조회 `refreshTodayCanvas` |
-| 그 밖의 모든 갱신 | 상세 조회 `refreshTodayCanvasDetail(groupId, 캐시의 parfaitId)` |
+| 캐시가 비었다(최초 획득) | 오늘 조회 |
+| 캐시에 실린 날짜가 오늘이 아니다(하루 경계를 넘겼다) | 오늘 조회 |
+| 그 밖의 모든 갱신 | 상세 조회(groupId, 캐시의 parfaitId) |
 
-`refreshTodayCanvasDetail`에 넘기는 `parfaitId`는 호출부가 "지금 캐시에 실린 그 캔버스"를
+> 🔧 **as-built**: 이 표는 "무엇을 부르는가"를 다루지 "누가 누구를 부르는가"가 아닌데, 애초
+> 표현이 뒤집혀 읽혔다. **실제 호출 방향은 반대다.** `ParfaitRepositoryImpl`의
+> `refreshTodayCanvasDetail`·`requestTodayCanvasRefresh`가 `CanvasPoller.refreshNow(groupId)`를
+> 부르고, `CanvasPoller`가 저장소를 거치지 않고 `ParfaitRemoteDataSource.getTodayCanvas`·
+> `getCanvasDetail`을 **직접** 부른다 — 저장소 표면 이름(`refreshTodayCanvas`·
+> `refreshTodayCanvasDetail`)이 폴러 내부에서 다시 불리는 일은 없다(`refreshTodayCanvas`
+> 표면 자체도 이후 없앴다, 위 Repository 절의 as-built 참고). 위 표는 폴러가 그 갈래에서
+> 실제로 여는 원격 호출을 가리킨다.
+
+호출부가 `refreshTodayCanvasDetail`에 넘기는 `parfaitId`는 "지금 캐시에 실린 그 캔버스"를
 갱신하겠다는 **의도 표시**일 뿐이다. 실제로 무엇을 갱신할지는 호출 시점에 **캐시가 다시** 정한다
-(위 표의 갈래 자체가 캐시를 다시 읽어 판단한 결과다).
+(위 표의 갈래 자체가 캐시를 다시 읽어 판단한 결과다) — 구현에서 이 파라미터는 완전히 무시된다.
 
 오늘 조회는 서버에 해당 날짜 파르페가 없으면 **만들어 저장하는 부작용**이 있고, 그 날이 캘린더·
 연도 목록에 즉시 나타난다(`api/parfait.md`). 주기 갱신마다 그것을 부르면 아무도 안 쓴 날의
@@ -383,7 +402,7 @@ PR2 단계의 병합 규칙은 **통째 대입**이다. 이 단계엔 폴링이 
 ```kotlin
 protected fun <T> launchWhileSubscribed(
     stopTimeout: Duration = SUBSCRIPTION_STOP_TIMEOUT,
-    flow: () -> Flow<T>,
+    source: () -> Flow<T>,
     collector: suspend (T) -> Unit,
 ): Job
 ```
@@ -558,8 +577,15 @@ z로 쓰게 된다.** ADR-0026이 "초안 없이 배치 시점에 재조회"를 
 | `data/source/parfait/local/CanvasLocalDataSourceImpl.kt` | `@Singleton` 인메모리 구현 |
 | `data/source/parfait/local/CanvasPoller.kt` | 그룹별 참조 계수 + 주기 갱신 루프(로컬 데이터소스가 아니라 트리거 소유자 — 패키지만 `local/`을 공유) |
 | `domain/usecase/parfait/GetTodayParfaitFlowUseCase.kt` | 구독 + 날짜 낡음 필터 |
-| `domain/usecase/parfait/RefreshTodayParfaitUseCase.kt` | 기존 `GetTodayParfaitUseCase` 이관 |
 | `domain/usecase/parfait/ObserveParfaitDayBoundaryUseCase.kt` | 하루 경계 티커 |
+| `domain/usecase/parfait/RefreshTodayParfaitDetailUseCase.kt` | 부작용 없는 상세 조회로 갱신(쓰기 직후 등 응답을 기다리는 자리) |
+| `domain/usecase/parfait/RequestTodayParfaitRefreshUseCase.kt` | `RefreshTodayParfaitDetailUseCase`의 async 판(되감기 직전 등 기다릴 수 없는 자리) |
+| `data/model/qualifier/ApplicationScope.kt` | 프로세스 수명 스코프 한정자 |
+| `data/di/ApplicationScopeModule.kt` | `@Singleton CoroutineScope`(`SupervisorJob + Dispatchers.IO`) 제공 — `CanvasPoller`가 주입받는다 |
+| `data/di/ClockModule.kt` | 전역 `Clock` 싱글턴 바인딩(`ADR-0029` 「영향」 참고) |
+
+> 🔧 **as-built**: `domain/usecase/parfait/RefreshTodayParfaitUseCase.kt`(기존 `GetTodayParfaitUseCase`
+> 이관분)는 신설된 뒤 PR3에서 다시 지웠다 — 아래 「삭제」 참고.
 
 **변경**
 
@@ -581,6 +607,14 @@ z로 쓰게 된다.** ADR-0026이 "초안 없이 배치 시점에 재조회"를 
 테스트의 `ParfaitRepository` 페이크 셋(`GetTodayParfaitUseCaseTest`·`GetParfaitHistoriesUseCaseTest`·
 `GetParfaitYearsUseCaseTest`)이 그 함수를 override하고 있어 함께 고친다. `ParfaitRepository`와
 `GetParfaitDetailUseCase`의 KDoc이 삭제 대상 심볼을 링크하고 있어 그것도 고친다.
+
+> 🔧 **as-built**: `RefreshTodayParfaitUseCase.kt`는 PR3에서 **다시 지운다.** PR3의 폴러가
+> "캐시 날짜가 오늘이 아니면 오늘 조회"를 매 주기 스스로 판단하면서 이 UseCase의 프로덕션
+> 호출처가 0건이 됐다 — 동작 손실은 없다(다음 폴링 주기, 최대 5초 안에 폴러가 같은 결과를
+> 낸다). 함께 지운 것: `ParfaitRepository`의 `refreshTodayCanvas`·`cachedTodayCanvasDate` 두
+> 표면과 그 구현, `CanvasPoller.refreshNow`/`refreshNowAsync`/`refresh`의 `forceToday`
+> 파라미터, `CanvasMainViewModel`의 그 주입과 관련 이펙트(`ShowTodayCanvasError` — 발행하는
+> 곳이 없어져 트리거가 사라졌다), `:domain` 테스트 페이크 셋의 해당 override.
 
 문서 산출물은 이 스펙과 [ADR-0029](../adr/0029-canvas-today-ssot-polling.md), 그리고 두
 `README.md` 인덱스 행이다(각각 같은 커밋에 등록).
