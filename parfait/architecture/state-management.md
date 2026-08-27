@@ -71,6 +71,23 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
 **SDK 다이얼로그처럼 `launch` 바깥에서 뜨는 조작**은 `launch(key)` 가드가 못 막는다. State의
 `isLoading` 가드를 한 겹 더 둔다 → [a002-kakao-login-api](../specs/archive/2026-08-13-a002-kakao-login-api.md).
 
+### 화면이 보는 동안만 살아야 하는 구독은 `launchWhileSubscribed`
+
+`BaseViewModel.launch`로 연 구독은 **ViewModel 수명**에 걸린다 — 백스택 아래에 깔린 화면에서도
+계속 돈다. 그것이 맞는 경우가 대부분이지만, 업스트림이 주기적으로 서버를 부르는 종류라면
+보이지 않는 화면 때문에 요청이 계속 나간다.
+
+그런 구독은 `launchWhileSubscribed`로 연다. 노출한 `state`의 구독자 수가 0보다 큰 동안에만
+업스트림이 살아 있고, 라우트가 `collectAsStateWithLifecycle()`을 쓰므로 화면이 백그라운드로
+가거나 컴포지션에서 빠지면 함께 끊긴다. 마지막 구독자가 떠난 뒤 유예를 두어 화면 전환의 짧은
+공백에서 업스트림이 껐다 켜지지 않게 한다.
+
+⚠️ **`source` 안에서 `state`를 수집하면 안 된다** — 열린 업스트림 자신이 구독자로 세어져
+계수가 0으로 내려가지 않는다. 화면 조건으로 업스트림을 가르려면 별도 flow를 둔다.
+
+**둘 중 하나를 임의로 고르지 않는다.** 기준은 "이 구독이 서버를 계속 부르는가"다.
+근거는 [ADR-0029](../adr/0029-canvas-today-ssot-polling.md).
+
 ## 신규 화면 추가 체크리스트
 1. **api 모듈**: `NavKeyXxx`(@Serializable) 정의([[navigation-flow]]).
 2. **impl 모듈**:
@@ -132,6 +149,7 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
     - **구독은 `viewModelScope.launch`가 아니라 `BaseViewModel.launch`로 연다.** 무한 구독이라 key
       가드가 의미 없어 보이지만, 구독 시작부에서 다른 SSoT(계정 정보, DataStore)를 읽으면 그 실패가
       가드 없는 코루틴에서는 그대로 크래시가 된다 — S-101이 실제로 그 회귀를 냈다.
+      (화면이 보는 동안만 살아야 하는 구독은 대신 [`launchWhileSubscribed`](#화면이-보는-동안만-살아야-하는-구독은-launchwhilesubscribed)다.)
 - **화면이 앞에 설 때마다 다시 묻는다**(2026-08-17, PR #297). `init` 조회는 화면 수명이 아니라
   **ViewModel 수명**에 걸린다 — 백스택 아래 엔트리는 컴포지션에서 빠져도 ViewModel이 살아 있어 돌아온
   화면이 낡은 값을 그대로 보여 준다. G-001·C-001은 `Enter` 인텐트를 두고 Route의

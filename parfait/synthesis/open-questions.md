@@ -5,8 +5,8 @@ category: meta
 status: living
 platforms: android
 verified: 2026-08-27
-related_spec: topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026
+related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
 tags: [meta, parfait]
@@ -3233,6 +3233,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 폴링 설계에서 정하고 [ADR-0023](../adr/0023-group-in-memory-ssot.md) "갱신 시점"과
   스펙의 갱신 규칙 표에 함께 반영한다. 같은 라운드에서 생성·참여 직후 목록 조회가 두 번 나가는 것
   (저장소 재조회 + G-001 `Enter` 재조회)도 그때 같이 볼 자리다.
+  **2026-08-27 — 캔버스 형태가 열렸다.** [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+  이 항목 ②(통째 대입을 병합으로)를 캔버스 **화면 상태 층**에서 답했다(dirty 집합 + 삭제 툼스톤).
+  항목 ①·③은 저장소 캐시 층의 문제라 그대로 열려 있고, 캔버스에서 나타난 형태를 OQ-P-321로
+  따로 등록했다. 두 항목은 같은 결정으로 함께 닫는 것이 맞다.
 
 ### [2026-08-17] 그룹 닉네임은 바뀌었는데 화면이 옛 이름을 든 채 확인 버튼이 되살아난다
 
@@ -5332,4 +5336,61 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 하니스를 세운다면 그 자체가 별도 승인 사항이다(테스트 스캐폴딩 신설). 세우지
   않기로 하면 이 항목을 닫고 스펙의 결정을 그대로 둔다.
 
-<!-- oq-next: 320 -->
+### [2026-08-27] 캔버스 폴링 주기 5초가 실측 전 값이고, 조정 트리거·실측 주체가 없다
+
+- **ID**: OQ-P-320
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md) 「폴링을
+  어디에 두는가」·「주의」 × [ADR-0029](../adr/0029-canvas-today-ssot-polling.md) — 주기를 상수 하나로
+  두기로 했을 뿐, 어떤 지표를 보고 언제 바꿀지는 정하지 않았다.
+- **항목**: ① 한 그룹에 몰리는 요청은 그때 캔버스를 보는 사람 수에 비례하고 주기에 반비례하는데
+  (정원 상한 12명), 실사용에서 그 수가 얼마나 되는지 모른다. ② 조정 근거가 될 지표(서버 응답 시간·
+  에러율·모바일 데이터 사용량)를 누가 어디서 보는지 정해지지 않았다. ③ 화면별로 주기를 달리할지
+  (배경 편집은 편집 중이라 더 길어도 되는지)도 열려 있다.
+- **상태**: 미해결 (구현 전 — 주기 값 자체는 스펙이 5초로 정했다)
+- **해소 메모**: 실서버 부하를 보고 정한다. 바꾸면 스펙의 「폴링을 어디에 두는가」 서술과 ADR-0029
+  트레이드오프를 함께 고친다.
+
+### [2026-08-27] 캔버스 캐시에서도 낡은 응답이 뒤늦게 도착해 과거로 되돌릴 수 있다
+
+- **ID**: OQ-P-321
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+  「폴링을 어디에 두는가」·「주의」 — 폴러는 진행 중인 갱신이 있으면 그 주기를 건너뛰지만, 그 가드는
+  **폴러를 통과하는 요청끼리만** 막는다. OQ-P-219가 그룹 목록에서 지적한 것과 같은 기전이 캔버스
+  캐시에서 나타난 형태다.
+- **항목**: ① 폴러 밖에서 나가는 경로와 겹치는 창을 어떻게 닫을지. ② 세대 카운터로 낡은 응답의
+  쓰기를 버릴지. ③ 배경 편집의 dirty 집합·툼스톤은 **화면 상태 층**의 방어라 저장소 캐시가 과거로
+  돌아가는 것 자체는 못 막는다 — 캐시 층 방어를 따로 둘지.
+- **상태**: 미해결 (구현 전)
+- **해소 메모**: OQ-P-219와 같은 결정으로 함께 닫는 것이 맞다. 정하면 ADR-0023·ADR-0029의 "갱신
+  시점"과 두 스펙의 갱신 규칙 표에 함께 반영한다.
+
+### [2026-08-27] positionZ 를 앱이 정하는 한 동시 배치의 깊이 겹침은 닫히지 않는다
+
+- **ID**: OQ-P-322
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+  「토핑 배치 화면의 positionZ」 × [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md) —
+  확정 시점 재계산은 **완화이지 해결이 아니다**. 재계산이 읽는 값은 최대 폴링 주기만큼 낡아, 두
+  사람이 그 안에 확인을 누르면 같은 최대 깊이를 읽는다.
+- **항목**: ① 서버가 `positionZ` 를 배정하게 할지(서버 계약 변경). ② 겹쳤을 때의 정렬 동률
+  타이브레이크를 앱이 정할지(생성 시각? 이미지 id?). ③ 하루 경계에서 구독 캔버스와 초안
+  `parfaitId` 가 갈리면 초안 값으로 물러서는데, 그때 실리는 z 가 그 캔버스 기준으로 낡았을 수 있다.
+- **상태**: 미해결 (구현 전 — 겹쳐도 거절되지는 않고 그리는 순서만 흔들린다)
+- **해소 메모**: ①은 서버 작업이라 [api/parfait-image.md](../api/parfait-image.md) 계약 변경과 함께
+  간다. 그 전까지는 완화 상태로 두고 스펙의 서술을 그대로 유지한다.
+
+### [2026-08-27] 하루 경계 직후 오늘 조회가 한 그룹에서 동시에 나가 캔버스를 중복 생성할 수 있다
+
+- **ID**: OQ-P-323
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+  「폴링을 어디에 두는가」·「하루 경계」 × [api/parfait.md](../api/parfait.md) — 오늘 조회는 해당
+  날짜 파르페가 없으면 만들어 저장한다. 경계 티커가 발화하면 그 그룹에서 캔버스를 보고 있는
+  클라이언트가 각자 한 번씩 오늘 조회를 태운다.
+- **항목**: ① 서버가 그룹·날짜 조합에 유니크 제약을 두어 중복 생성을 막는지 확인하지 못했다.
+  막지 않으면 중복 행이고, 막으면 일부 클라이언트가 오류를 받는다. ② 앱 쪽에서 경계 전환 조회에
+  무작위 지연을 줄지. ③ 폴링이 백그라운드에서 멎으므로 동시 클라이언트 수는 "그 순간 실제로
+  보고 있는 사람"으로 줄지만 0은 아니다.
+- **상태**: 미해결 (구현 전 — 서버 확인이 선행돼야 한다)
+- **해소 메모**: 서버 구현을 확인해 ①을 먼저 닫는다. 막고 있으면 앱은 그 오류를 조용히 넘기고
+  다음 주기 상세 조회로 회복하면 된다.
+
+<!-- oq-next: 324 -->
