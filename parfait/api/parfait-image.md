@@ -4,7 +4,7 @@ title: 토핑 배치(배치 확정·위치/크기/각도 수정·테두리 수�
 server_module: http/parfaitimage
 server_commit: e7092a3
 verified: 2026-08-26
-android_status: partial
+android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, parfait-image]
@@ -348,9 +348,22 @@ tags: [api, parfait, server-contract, parfait-image]
 
 ## Android 매핑
 
-**네 엔드포인트 전부 표면 있음.** 소비처는 **셋**이다 — 배치(POST, 2026-08-21 PR5) · 삭제(DELETE,
-2026-08-23 PR #335) · **위치 PATCH**(2026-08-23 PR #336). 남은 하나(테두리 PATCH)는 여전히
-**소비처 0건**이다(표면은 2026-08-12 PR #230 두 건 + **2026-08-15 PR #250 두 건**).
+**네 엔드포인트 전부 표면 있고, 소비처도 넷이 됐다**(2026-08-27 PR #369 develop 머지) — 배치(POST,
+2026-08-21 PR5) · 삭제(DELETE, 2026-08-23 PR #335) · **위치 PATCH**(2026-08-23 PR #336) ·
+**테두리 PATCH**(2026-08-27 PR #369). 마지막 하나는 `ToppingRepository.updateBorder` →
+`UpdateToppingBorderUseCase`를 거쳐 C-301 편집 탭의 확인 버튼에 걸렸다(표면은 2026-08-12 PR #230 두 건
++ **2026-08-15 PR #250 두 건**).
+
+⚠️ **앱의 겹 목록을 서버의 한 겹으로 접는 자리는 `CanvasBGEditViewModel.toToppingBorder`다** —
+`borderLayers`의 **마지막 겹**만 `ToppingBorder.Solid`로 보내고, 비면 `None`을 보낸다. 되읽는 방향
+(`toBorderLayers`)은 반대로 한 겹짜리 목록으로 편다. 같은 화면이 **그릴 때는 첫 겹**을 쓰고 있어
+겹이 둘 이상이면 보이는 테두리와 저장되는 테두리가 갈린다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-324.
+
+⚠️ **위치 PATCH와 테두리 PATCH가 확인 버튼 안에서 독립적으로 판정되고 독립적으로 나간다** —
+`updateToppingIfChanged`가 위치·배율·각도 넷과 `borderLayers`를 따로 비교하므로, 테두리만 고친
+토핑에는 테두리 PATCH 하나만 나간다. 계약이 두 엔드포인트로 갈라져 있는 것을 앱이 그대로 미러링한
+결과다. **응답 `UpdatedToppingBorderVO`는 여전히 아무도 읽지 않는다**(실패만 로그로 접는다).
 
 | 계약 | Android 심볼 |
 |---|---|

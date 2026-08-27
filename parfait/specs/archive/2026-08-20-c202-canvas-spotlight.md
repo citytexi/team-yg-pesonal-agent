@@ -4,7 +4,7 @@ title: C-202 캔버스 토핑 Spotlight — 타인 토핑 탭 강조·Dim·작�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-27
+verified: 2026-08-28
 related_code:
   - CanvasToppingLayer.kt#CanvasToppingLayer
   - CanvasToppingLayer.kt#CanvasTopping
@@ -165,7 +165,7 @@ Dim·확장 메뉴·달력보다 위에 그려지고, 상단 여백은 캔버스
 | Spotlighted → Spotlighted 직접 전환 불가 | 일치 |
 | Dim 포함 강조 토핑 밖 탭 → Default | 일치 |
 | 앱 백그라운드 → 복귀 시 Default | 일치 |
-| **본인 토핑 탭 → C-305 편집 진입** | **부분**(2026-08-26, PR #376) — 판정은 서버 `ownerType`으로 붙어 본인 토핑이 더는 Spotlight로 안 들어간다. 다만 **갈 곳이 없어 탭이 아무 일도 안 한다**(C-305 화면 부재, `TODO`) |
+| **본인 토핑 탭 → C-305 편집 진입** | **일치(오늘 캔버스 한정)**(2026-08-27, PR #400) — 판정은 서버 `ownerType`(2026-08-26, PR #376), 목적지는 **C-301 편집 화면의 토핑 탭**이다(새 C-305 화면이 아니다). ⚠️ 지난 캔버스를 보는 중이면 `isViewingToday` 가드에 걸려 **여전히 무반응**이다 |
 | **탈퇴·이탈 사용자는 Toast에 "알 수 없음"** | **부분** — 서버가 탈퇴 멤버의 `placedBy.nickname`을 `(알수없음)`으로 주므로 뜻은 맞지만, 문장이 정책 예시(`알 수 없는 사용자가 …`)와 달리 `(알수없음)님이 …`가 된다 |
 | Pull-to-Refresh 시 먼저 Default 복귀 | 해당 없음(캔버스에 당겨 새로고침 없음) |
 | Toast 노출·소멸은 [[toast]] 공통 규칙 | 호스트는 공통(`YGToastHost`)이나 **자리가 화면 상단이 아니라 캔버스 프레임 상단**이다 |
@@ -177,7 +177,8 @@ Dim·확장 메뉴·달력보다 위에 그려지고, 상단 여백은 캔버스
 - ⚠️ **본인 토핑 판정 경로가 없다** — 서버 응답이 "내 `groupMemberId`"를 알려 주지 않아
   `isMine()`이 항상 `false`다. C-305 진입도 `TODO`로 남는다 → OQ-P-250.
   ✅ **판정은 닫혔다**(2026-08-26, PR #376 — 아래 [as-built 재정정](#as-built-재정정-2026-08-26-pr-376-develop-머지)).
-  **C-305 진입은 그대로 `TODO`**다.
+  ✅ **진입도 닫혔다**(2026-08-27, PR #400 — 아래 [as-built 재정정](#as-built-재정정-2026-08-27-pr-400-develop-머지)).
+  **오늘 캔버스에서만 열린다**는 조건이 새로 붙었다.
 - ⚠️ **작성자 칩이 서버 값이 아니라 화면 목록 조인이다** — `placedBy.nameTagChip`이 도메인까지 오면
   그 값으로 바꾼다는 `TODO`가 붙어 있다(OQ-P-224 잔여). 지금은 탈퇴 멤버에서도 두 경로의 결과가
   같아 **틀린 색이 보이지는 않는다** → OQ-P-251.
@@ -203,6 +204,7 @@ Dim·확장 메뉴·달력보다 위에 그려지고, 상단 여백은 캔버스
 - ⚠️ **그런데 간 곳이 없다.** 본인 갈래는 `TODO: C-305 토핑 편집 화면으로 이동` 한 줄 뒤에 그냥
   `return`한다. 즉 **본인 토핑 탭은 무반응**이다 — 정책이 정한 "편집으로 보낸다"는 여전히 미구현이고,
   이제는 판정이 없어서가 아니라 **목적지가 없어서**다 → OQ-P-250 ③.
+  ✅ **하루 뒤에 닫혔다**(2026-08-27, PR #400 — 아래 절).
 - 위 KDoc도 그 사실에 맞춰 고쳐졌다 — "경로가 없어 `isMine`이 항상 false다"라는 문장이 빠지고
   "진입점이 아직 없어 아무 동작도 하지 않는다"만 남았다.
 
@@ -214,3 +216,34 @@ Dim·확장 메뉴·달력보다 위에 그려지고, 상단 여백은 캔버스
 
 ⚠️ **이 스펙이 적어 둔 신규 유닛 0건(OQ-P-252)은 그대로다** — 붙은 둘은 클릭 갈래를 덮고, 판단이
 몰린 순수 함수 둘(`toElapsedTimeBucket`·`toSpotlightToastNameColor`)은 여전히 안 덮였다.
+
+## as-built 재정정 (2026-08-27, PR #400 develop 머지)
+
+> **본인 갈래가 마침내 어딘가로 간다** — 다만 목적지는 새 화면이 아니라 이미 있던 화면이다.
+> 브랜치 `feat/canvas-touch-mine`, 머지 `a22583a3`, 커밋 하나.
+
+- **`TODO`가 `handleOnClickMyTopping`으로 바뀌었다.** `handleOnClickTopping`의 본인 갈래가
+  `CanvasMainEffect.NavigateToCanvasBGEdit`를 쏘고, 그 이펙트에 **탭한 토핑의 `parfaitImageId`**가
+  실린다(`toppingId: ParfaitImageId? = null` — 편집 버튼으로 들어오는 기존 경로는 이 값을 안 채운다).
+  Route가 그것을 `NavKeyCanvasBGEdit.initialToppingId`로 넘긴다.
+- ⚠️ **C-305라는 새 화면이 생긴 것이 아니다.** 정책([[C-202-토핑-편집자-확인-규칙-v0.1]])이 말하는
+  편집 진입을 **C-301 편집 화면의 토핑 탭**이 받는다. `CanvasBGEditViewModel`의 `withCanvas`가 첫
+  조회 결과에 `selectedTab = TOPPING`과 `selectedToppingId = initialToppingId`를 얹어, 화면이 그
+  토핑을 선택한 상태로 열린다. 위키 화면 ID 체계에서 C-305가 별도 화면인 것과 구현이 갈린 자리다
+  → [open-questions](../../synthesis/open-questions.md) OQ-P-250.
+- ⚠️ **오늘 캔버스에서만 열린다.** `handleOnClickMyTopping`이 `isViewingToday`와 `todayCanvas`를
+  둘 다 확인하고, 하나라도 어긋나면 조용히 반환한다 — 지난 캔버스를 보는 중에는 본인 토핑 탭이
+  **종전대로 무반응**이다. 편집 대상이 언제나 오늘 캔버스라는 `NavKeyCanvasBGEdit`의 기존 계약을
+  따른 결과이고, 정책은 그 조건을 적지 않는다.
+- 남의 토핑 갈래(Spotlight + 작성자 토스트)는 한 줄도 안 바뀌었다.
+
+### 유닛 테스트
+
+`CanvasMainViewModelTest`에서 "본인 토핑 탭이 Default에 머무는지"를 보던 회귀 감지선이
+`clickTopping_placedByMe_navigatesToCanvasBGEditInsteadOfSpotlighting`으로 바뀌어 **이동 이펙트와
+실린 토핑 id를 함께 단언한다.** 새 조건인 지난 날 무반응은
+`clickTopping_placedByMe_whileViewingAPastDate_doesNothing`이 `expectNoEvents()`로 잠갔고, 그
+테스트의 주석이 가드의 이유도 적는다 — 편집 화면은 넘겨받은 `parfaitId`와 무관하게 오늘 캔버스를
+다시 조회하므로 지난 날에서 열면 엉뚱한 캔버스가 열린다. `CanvasBGEditViewModelTest`에는
+`init_withInitialToppingId_opensToppingTabWithThatToppingSelected`가 붙었다. 저장소 유닛은
+926 → 931건이 됐다(이 PR과 PR #369·#398을 합친 수).

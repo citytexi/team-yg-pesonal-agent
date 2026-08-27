@@ -181,6 +181,13 @@ KDoc에 무엇을 하고 무엇을 안 하는지 함께 적는다(색공간과 `
 하나뿐이라 계약을 넓혀도 파급이 없고, API 버전 분기가 이미 그 안에 있어 갈라진 동작을 한자리에서 메운다.
 `androidx.exifinterface` 의존성을 새로 넣어야 한다.
 
+⚠️ **이 전제가 develop에서 깨졌다**(2026-08-27, PR #369) — `decodeImage`가 스킴으로 갈라져,
+`https://`면 `RemoteImageDownloadDataSource`가 받은 바이트를 `BitmapFactory.decodeByteArray`로
+디코드하고 **`decodeUriToBitmap`을 아예 타지 않는다.** 그래서 보정을 그 확장 함수 안에만 두면
+**서버 토핑을 다시 편집하는 경로에는 방향 보정도 하한 확대도 적용되지 않는다.** 구현할 때 정규화의
+자리를 `decodeImage` 본문(두 갈래가 합류한 뒤)으로 올릴지, 갈래마다 따로 부를지를 먼저 정한다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-326 ④.
+
 **EXIF를 어디서 읽는지를 계약에 적는다.** `ImageDecoder.createSource`가 스트림을 소비하므로 같은
 URI를 한 번 더 열어야 한다. 두 번째 열기는 실패할 수 있다(일회성 provider). **못 읽으면 회전 0으로
 진행한다** — 태그가 깨진 것과 이미지를 못 연 것은 다른 사건이다. 다만 재개방 실패가 상시 참이 되면
