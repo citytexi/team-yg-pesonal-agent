@@ -80,7 +80,7 @@ updated: 2026-08-20
 > 링크하지 않는다(아래 허브 포인터 1개만 예외). 구현과의 상충은 링크가 아니라
 > **플랫폼 + 심볼 데이터**로 적는다(예: "Android `YGColorChipType` 14종"). iOS 등 다른 플랫폼이
 > 붙어도 위키는 그대로 재사용된다.
-- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 27건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션·Firebase FCM·로깅 추상화·feature/common 공유 레이어·i18n 결과 매핑·토큰 재발급·계정/그룹 SSoT·토핑 테두리 서버 필드화·화면 세로 고정 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, 디자인시스템 컴포넌트 다수). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서. **repo 루트 `parfait/`로 분리**(2026-07-13), 링크는 repo-root Obsidian vault 기준 resolve.
+- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 28건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션·Firebase FCM·로깅 추상화·feature/common 공유 레이어·i18n 결과 매핑·토큰 재발급·계정/그룹 SSoT·토핑 테두리 서버 필드화·화면 세로 고정·시스템바 라이트 고정 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, 디자인시스템 컴포넌트 다수). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서. **repo 루트 `parfait/`로 분리**(2026-07-13), 링크는 repo-root Obsidian vault 기준 resolve.
 
 ## Synthesis (분석·결과)
 - [[open-questions]] — 정책·기획 미해결 모순 및 열린 질문 추적 (구현 미결은 [[parfait/synthesis/open-questions|parfait open-questions]]로 분리)

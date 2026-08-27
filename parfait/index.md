@@ -213,6 +213,7 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
 | 토핑 테두리를 굽지 않고 서버 필드로 | [ADR-0025](adr/0025-topping-border-as-server-field.md) |
 | 토핑 만들기 흐름 상태(초안 SSOT) | [ADR-0026](adr/0026-topping-draft-datastore-ssot.md) |
 | 화면 방향(세로 고정)·대화면 예외 | [ADR-0027](adr/0027-portrait-orientation-lock.md) |
+| 시스템바 아이콘 색·다크모드 미지원 | [ADR-0028](adr/0028-system-bar-light-fixed.md) |
 | Crashlytics·Analytics·Firebase 설정 (**푸시(FCM)는 2026-08-22 철회** — 되살릴 때 참고할 결정만 남아 있다) | [ADR-0013](adr/0013-firebase-fcm-crashlytics.md) |
 | 로깅·Logger 추상화(Kermit) | [ADR-0014](adr/0014-logging-abstraction-kermit.md) |
 | 유효성 결과·에러 문자열 다국어 매핑(domain 의미↔표시 분리) | [ADR-0016](adr/0016-domain-result-presentation-string-mapping.md) + [state-management](architecture/state-management.md) |
