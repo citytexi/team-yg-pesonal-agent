@@ -4,7 +4,7 @@ title: 오늘 캔버스 인메모리 SSoT · 배경 탭 토핑 렌더링 · 주�
 status: draft
 category: behavior-spec
 platforms: android
-verified: 2026-08-27
+verified: 2026-08-28
 related_code: CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditIntent, CanvasToppingItem, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainScreen, CanvasToppingLayer, CanvasToppingPlaceViewModel, CanvasToppingPlaceUiState, BaseViewModel, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, GetTodayParfaitUseCase, GetTodayParfaitFlowUseCase, RefreshTodayParfaitUseCase, GetParfaitDetailUseCase, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingDraft, ToppingDraftRepository, AddToppingUseCase, UpdateToppingUseCase, DeleteToppingUseCase, ChangeCanvasBackgroundUseCase, LogoutUseCase, TokenAuthenticator, ParfaitDay, parfaitToday
 related_adr: ADR-0029, ADR-0023, ADR-0026, ADR-0025, ADR-0020, ADR-0009
 related_spec: group-ssot, c001-canvas-today-detail, c001-canvas-main, c106-topping-place, c201-canvas-calendar-server, c202-canvas-spotlight, c301-canvas-background-edit, c301-topping-edit-tab, screen-resume-refetch, server-delta-nametag-chip-day-boundary
@@ -206,6 +206,17 @@ fun clearTodayCanvas()
 `refreshTodayCanvasDetail`과 같은 엔드포인트를 부르지만 저장 여부가 다르므로 표면을 갈라 둔다.
 `getYears`·`getPastCanvases`·`changeCanvasBackground`도 그대로다.
 
+> 🔧 **as-built**: 오늘 캔버스 관련 표면은 위 넷에서 여섯으로 늘었다.
+>
+> - `cachedTodayCanvasDate(groupId): LocalDate?` — 캐시에 실린 날짜만 peek 하는 표면이다.
+>   `RefreshTodayParfaitUseCase`가 오늘 조회 응답 뒤 하루 경계를 넘겼는지 확인할 때 쓰는데,
+>   `todayCanvas(groupId)`는 **한 번 구독하는 것만으로 폴링 수명이 걸려** 갱신이 나가므로
+>   (「폴링 수명을 무엇에 매다는가」 참고) peek 용도로 쓸 수 없다. 값을 얻는 길이 하나라는
+>   원칙은 유지된다 — 이 표면은 날짜만 내고 캔버스 값 자체는 내지 않는다.
+> - `requestTodayCanvasRefresh(groupId)` — 되감기 직전처럼 응답을 기다릴 수 없는 자리에서
+>   부르는 비동기 갱신 표면이다(PR3, `CanvasToppingPlaceViewModel`의 확인 처리). 즉시
+>   반환하고 실제 갱신은 폴러의 스코프에서 끝까지 간다.
+
 ### 갱신·무효화 규칙
 
 캐시가 바뀌는 시점은 아래 여섯뿐이다.
@@ -353,6 +364,12 @@ PR2 단계의 병합 규칙은 **통째 대입**이다. 이 단계엔 폴링이 
 캔버스가 생기고, 경계 직후 그 그룹의 여러 클라이언트가 동시에 생성을 태운다. 캔버스를 만들
 필요가 있는 것은 최초 획득과 캐시 날짜가 오늘이 아닐 때뿐이므로 그 둘에만 남긴다.
 
+**진입 시점의 명시적 갱신 호출은 세 화면 모두에서 사라진다.** `CanvasMainViewModel`의 `Enter`
+갱신 제거(아래 「폴링 수명을 무엇에 매다는가」)뿐 아니라, `CanvasBGEditViewModel`의 `loadCanvas()`와
+`CanvasToppingPlaceViewModel`의 `loadCanvasIfNeeded(groupId)`도 별도 조회를 걸지 않고 구독만
+연다 — 구독이 붙는 순간(계수 0 → 1) 폴러가 이미 즉시 1회를 부르므로, 화면이 또 걸면 갱신이
+두 번 나간다.
+
 ### 폴링 수명을 무엇에 매다는가
 
 **폴러의 참조 계수는 화면이 실제로 보고 있는 동안에만 올라간다.** 이 저장소에는 지금
@@ -377,7 +394,7 @@ protected fun <T> launchWhileSubscribed(
 유예가 없으면 캔버스 메인에서 배경 편집으로 옮기는 사이 계수가 0을 찍고, 새 구독이 붙을 때
 즉시 조회가 한 번 더 나간다.
 
-`ParfaitRepositoryImpl.todayCanvas(groupId)`가 `onSubscription`·`onCompletion`에서 폴러의 계수를
+`ParfaitRepositoryImpl.todayCanvas(groupId)`가 `onStart`·`onCompletion`에서 폴러의 계수를
 올리고 내린다. 화면은 폴러의 존재를 모른다.
 
 이 배선은 `core:ui`의 공용 표면이므로 `architecture/state-management.md`에 규약 한 절을 함께
@@ -454,8 +471,9 @@ val deletedToppingIds: Set<Long> = emptySet()
 `parfaitId` 이동도 같다.
 
 **확인 시 PATCH 대상**은 `toppings` 중 `dirtyToppingIds`에 든 것이다. 지금 `confirmedToppings`
-스냅샷과 대조해 골라내던 방식이 이것으로 대체되므로, `confirmedToppings`는 `CanvasBGEditUiState`
-에서 **제거한다** — 렌더링에 쓰이지 않던 필드라 화면에 영향이 없다.
+스냅샷과 대조해 골라내던 방식이 이것으로 대체되므로, `confirmedToppings`는 **제거한다** —
+`CanvasBGEditUiState`의 필드가 아니라 ViewModel의 `private var`였고, 렌더링에 쓰이지 않던
+값이라 화면에 영향이 없다.
 
 > 대조 방식을 바꾸는 것은 부수 효과도 닫는다. 지금 `updateToppingIfChanged`는 `toppings` 전체를
 > 순회하고 스냅샷에 없으면 무조건 바뀐 것으로 보므로, 갱신이 들어오면 남의 새 토핑이 그 조합에
@@ -518,6 +536,7 @@ z로 쓰게 된다.** ADR-0026이 "초안 없이 배치 시점에 재조회"를 
 - 강제 갱신이 들어오면 그 시점부터 주기가 다시 세어진다
 - 캐시 날짜가 오늘이면 상세 조회를, 캐시가 비었거나 캐시 날짜가 오늘이 아니면(하루 경계를
   넘겼다) 오늘 조회를 부른다
+- 진행 중인 갱신이 있으면 이번 주기를 건너뛴다(강제 갱신도 같은 가드를 지난다)
 - 정리 뒤 도착한 응답이 캐시를 되살리지 않는다
 
 병합은 `CanvasBGEditViewModelTest`에서 dirty 토핑이 덮이지 않는 것, dirty 아닌 토핑이 갱신되는 것,
