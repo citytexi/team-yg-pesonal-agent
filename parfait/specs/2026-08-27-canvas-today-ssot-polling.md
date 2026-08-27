@@ -319,7 +319,11 @@ PR2 단계의 병합 규칙은 **통째 대입**이다. 이 단계엔 폴링이 
 `CanvasPoller`는 그 값을 언제 다시 받을지 정하는 **트리거 소유자**다.
 
 `CanvasPoller`는 `@Singleton CoroutineScope`(`SupervisorJob + Dispatchers.IO`)를 주입받고, 그룹별로
-참조 계수와 폴링 `Job`을 든다. 계수 조작은 `Mutex`로 보호한다.
+참조 계수와 폴링 `Job`을 든다. **계수 조작은 코루틴 `Mutex`가 아니라 스레드 락인 `synchronized`로
+보호한다.** 이유는 둘이다 — `release`가 `Flow`의 `onCompletion`에서 불리는데 그 블록은 **취소된
+코루틴에서 돈다**, 거기서 `Mutex.withLock`처럼 서스펜드하면 취소된 코루틴이라 재개되지 않아
+계수가 안 내려간다. 또 `stopAll()`은 `TokenAuthenticator`가 OkHttp 스레드의 `runBlocking` 안에서
+부르므로, 코루틴 전용인 `Mutex`가 아니라 어느 스레드에서도 먹는 락이 필요하다.
 
 - 계수가 0 → 1이 되면 **즉시 1회** 갱신하고 이어서 주기 루프에 든다.
 - 계수가 1 → 0이 되면 그 그룹의 `Job`을 취소한다.
