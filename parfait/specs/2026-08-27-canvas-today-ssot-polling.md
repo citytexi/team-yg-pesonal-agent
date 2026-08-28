@@ -5,7 +5,7 @@ status: draft
 category: behavior-spec
 platforms: android
 verified: 2026-08-28
-related_code: CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditIntent, CanvasToppingItem, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainScreen, CanvasToppingLayer, CanvasToppingPlaceViewModel, CanvasToppingPlaceUiState, BaseViewModel, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, GetTodayParfaitUseCase, GetTodayParfaitFlowUseCase, RefreshTodayParfaitUseCase, GetParfaitDetailUseCase, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingDraft, ToppingDraftRepository, AddToppingUseCase, UpdateToppingUseCase, DeleteToppingUseCase, ChangeCanvasBackgroundUseCase, LogoutUseCase, TokenAuthenticator, ParfaitDay, parfaitToday
+related_code: CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditIntent, CanvasBGEditEffect, CanvasBGEditError, CanvasBGEditRoute, YGScaffoldV2, CanvasToppingItem, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainScreen, CanvasToppingLayer, CanvasToppingPlaceViewModel, CanvasToppingPlaceUiState, BaseViewModel, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, GetTodayParfaitUseCase, GetTodayParfaitFlowUseCase, RefreshTodayParfaitUseCase, GetParfaitDetailUseCase, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingDraft, ToppingDraftRepository, AddToppingUseCase, UpdateToppingUseCase, DeleteToppingUseCase, ChangeCanvasBackgroundUseCase, LogoutUseCase, TokenAuthenticator, ParfaitDay, parfaitToday
 related_adr: ADR-0029, ADR-0023, ADR-0026, ADR-0025, ADR-0020, ADR-0009
 related_spec: group-ssot, c001-canvas-today-detail, c001-canvas-main, c106-topping-place, c201-canvas-calendar-server, c202-canvas-spotlight, c301-canvas-background-edit, c301-topping-edit-tab, screen-resume-refetch, server-delta-nametag-chip-day-boundary
 related_architecture: data-layer, state-management
@@ -64,6 +64,8 @@ tags: [spec, parfait, canvas, state, cache, polling]
 - 파르페 하루 경계를 시간 축으로 들여 오늘 판정을 갱신
 - 토핑 배치 확정 시점의 `positionZ` 재계산
 - 세션 종료 시 캔버스 캐시 정리와 폴링 중단
+- **(2026-08-28 추가)** 배경 편집 화면의 확인·삭제에 진행 표시와 실패 안내를 달고, 삭제는
+  성공했을 때만 화면을 닫게 한다
 
 **제외**
 
@@ -531,9 +533,41 @@ PATCH 대상」이 스냅샷 대조를 집합으로 바꿀 때 **테두리 갈�
 승계하며 그 공백은 OQ-P-276 소관이다), 서버 목록에서 사라진 토핑. 그 밖에는 화면이 살아 있는
 동안 집합이 줄지 않는다.
 
+🔁 **as-built(2026-08-28 브랜치 `feature/canvas-polling`) — 실패한 토핑은 집합에 남는다.**
+위 규칙이 선 전제("화면이 이미 되감긴 뒤라 되살릴 자리가 없다")가 같은 브랜치에서 뒤집혔다.
+**확인은 하나라도 실패하면 화면을 닫지 않는다.** 그래서 되살릴 자리가 생겼고, 못 보낸 토핑을
+집합에서 빼면 다시 누른 확인이 그 토핑을 건너뛴다. 빠지는 시점은 **성공한 토핑과 서버 목록에서
+사라진 토핑 둘**이다. 승계하려던 OQ-P-275·OQ-P-270의 공백도 이 브랜치에서 함께 닫혔다
+(OQ-P-276 ②는 그대로다).
+
 > 이 병합 규칙은 [OQ-P-219](../synthesis/open-questions.md)의 **항목 ②(통째 대입을 병합으로 바꿀지)**
 > 를 캔버스 화면 상태 층에서 답한 것이다. **미결 자체는 닫히지 않는다** — 항목 ①·③(낡은 응답
 > 순서, 조작 직후 진행 중인 조회 취소)은 저장소 캐시 층의 문제이고 아래 「주의」에 남긴다.
+
+### 배경 편집 화면의 진행·실패 표현
+
+🔁 **as-built(2026-08-28 브랜치 `feature/canvas-polling`) — 스펙 밖에서 더해진 동작이다.**
+초판은 이 화면의 실패 표현을 "현 as-built 승계"로만 적었는데, 그 as-built가 **확인도 삭제도
+진행 표시가 없고 실패가 로그 한 줄**이라 폴링이 얹히면 더 나빠진다 — 갱신이 5초마다 화면을
+다시 그리는 동안 사용자는 자기가 누른 것이 도는 중인지 실패한 것인지 구분할 방법이 없다.
+그래서 같은 브랜치에서 다음 셋을 더했다.
+
+- **진행 중에는 화면을 덮는다.** `CanvasBGEditUiState.isLoading`을 확인과 삭제가 나눠 쓰고
+  라우트가 `YGScaffoldV2(isLoading = …)`에 넘긴다. 덮개가 입력을 삼키므로 두 흐름이 겹치지
+  않고, 그래서 깃발도 하나면 된다. 오버레이·입력 차단·접근성 숨김은 스캐폴드가 이미 하던 것이다.
+- **삭제는 성공했을 때만 나간다.** 강제 갱신을 기다린 뒤 `NavigateBack`을 쏜다(먼저 나가면
+  라우트가 되감기며 `viewModelScope`가 취소돼 그 갱신이 끊긴다 — 배경 저장이 이미 같은 순서다).
+  실패하면 화면에 남고 토스트만 나간다.
+- **확인은 하나라도 실패하면 닫지 않는다.** 토핑 PATCH와 배경 저장을 모두 시도하되, 배경만
+  저장되고 토핑이 남은 채 닫으면 사용자는 방금 옮긴 토핑이 되돌아간 캔버스를 보게 된다.
+
+`CanvasBGEditError`가 3종에서 5종이 됐다 — `NETWORK`·`UNSUPPORTED_IMAGE`는 그대로이고
+`UNKNOWN`이 요청별로 갈렸다(`BACKGROUND_SAVE_UNKNOWN`·`TOPPING_SAVE_UNKNOWN`·
+`TOPPING_DELETE_UNKNOWN`). 문구가 "배경을 저장하지 못했어요"라 삭제 실패에 그대로 쓸 수
+없어서다. `NETWORK`만 요청을 가리지 않는다.
+
+⚠️ **배경과 토핑이 함께 실패하면 배경 쪽 토스트만 나간다.** 둘을 겹쳐 띄우지 않기로 한
+결과이고, 부분 실패를 한 문구로 접는 것과 같은 판단이다(OQ-P-275 ②).
 
 ### 캔버스 메인의 스포트라이트
 
