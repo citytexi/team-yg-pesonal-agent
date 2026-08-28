@@ -11,6 +11,7 @@ related_code:
   - YGFloatingBar.kt#YGFloatingBarClose
   - YGFloatingBar.kt#YGFloatingBarEdit
   - YGFloatingBar.kt#YGFloatingBarEditTab
+  - YGFloatingBar.kt#YGFloatingBarTitle
   - YGTopBar.kt#YGTopBarCanvas
   - YGTopBar.kt#YGTopBarEmpty
   - YGTopBar.kt#YGTopBarContent
@@ -138,6 +139,34 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 >
 > 교훈: **호출부를 건드리는 Task는 그 호출부의 상태 보유 여부를 계획 단계에서 확인**하고,
 > 합성 컴포넌트를 설계할 때 **대응 정책 문서의 "예외" 조항을 시그니처 표에 함께 옮긴다.**
+
+> ➕ **Title 변형 추가(2026-08-28, 이슈 #381, 브랜치 `feature/#381-gallery-top-bar`, develop 미머지)** —
+> Figma `Floating Bar`에 `Status=Title`이 추가돼 공개 함수가 **5종**이 됐다.
+>
+> ```kotlin
+> @Composable fun YGFloatingBarTitle(title: String, onCloseClick: () -> Unit, modifier: Modifier = Modifier)
+> ```
+>
+> | 변형 | 컨테이너 | 좌 | 중앙 | 우 |
+> |---|---|---|---|---|
+> | `Title` | 공용 `Row` 아닌 전용 `Box` | — | `Text(body.b01R, Gray800, align(Center))` | Circle `ic_close` |
+>
+> **이 변형만 `YGFloatingBarContent`를 공유하지 않는다.** 그 `Row`는 좌우 버튼이 44dp로 대칭일 때만
+> 중앙이 실제 중앙이 되는데(아래 [공개 4종](#공개-4종)의 버튼 폭 항목), `Title`은 우측 버튼 하나뿐이라
+> 같은 방식으로는 제목이 버튼 반지름만큼 왼쪽으로 치우친다. Figma는 제목을 바 전체 폭의 정중앙에 두므로
+> 전용 `Box`로 조립하고, 패딩 3종(`padding7`·`padding6`·`padding7`)만 공용 컨테이너와 같은 값으로 맞춘다.
+> 높이는 상단 `padding6` + 버튼 44로 Figma의 60과 일치하므로 고정 높이를 박지 않는다.
+>
+> 제목의 잘림 처리는 `Edit`과 같은 `maxLines = 1` + `TextOverflow.Ellipsis`이지만, 겹침을 막는 방식이
+> 다르다. `Box`에서는 긴 제목이 버튼을 밀어내지 못하고 **버튼 아래로 깔리므로**, 좌우를 버튼 지름(`Size44`)만큼
+> 비워 그 폭 안에서 잘리게 한다. 이 이유로 `SizeTokens`가 이 파일의 새 import로 들어왔다.
+>
+> 첫 소비처는 C-102 갤러리다 → [c102 스펙](2026-08-04-c102-custom-gallery-picker.md)의 같은 날짜 개정.
+> 프리뷰는 `@YGPreview`에 정상·긴 제목 2건, `:app-preview` 갤러리 `Title` 섹션에 정상 1건을 등록했다.
+>
+> ⚠️ **이 라운드의 검증은 기계 검사뿐이다** — 세 모듈 `compileDebugKotlin`·`ktlintMainSourceSetCheck`와
+> `:feature:gallery:impl:testDebugUnitTest`를 통과했고, **프리뷰·실기기 육안 대조는 하지 않았다.** 위
+> "미검증"이 이월한 긴 제목의 실기기 렌더도 그대로 남는다.
 
 ## 목표
 
@@ -367,6 +396,8 @@ private fun YGFloatingBarContent(
 - 폭은 `modifier`로 호출자가 정한다. Figma의 375는 프레임 폭일 뿐이라 컴포넌트에 박지 않는다
 
 ### 공개 4종
+
+> 📌 이 표는 2026-08-01 라운드 기준이다. **`Title` 변형이 2026-08-28에 더해졌다** → 위 개정 블록.
 
 ```kotlin
 @Composable fun YGFloatingBarBackClose(onBackClick: () -> Unit, onCloseClick: () -> Unit, modifier: Modifier = Modifier)
