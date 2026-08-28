@@ -25,6 +25,26 @@ tags: [spec, parfait, gallery, c102]
 > 정리됨), 이번 PR이 **목록·헤더·빈 상태·부분 접근·선택 후 경로**를 실물로 채웠다. 아래는 머지 코드를
 > 역기록한 것이며 설계 대조가 아니라 **정책(위키)·규약(parfait) 대조**로 드리프트를 표기한다.
 
+> ➕ **상단바 개정(2026-08-28, 이슈 #381, 브랜치 `feature/#381-gallery-top-bar`, develop 미머지)** —
+> Figma C-102의 상단이 닫기 버튼만 있던 줄에서 **제목 "오늘 찍은 사진" + 우측 닫기**로 바뀌었다.
+> 화면이 직접 조립하던 `Row` + `YGCircleButton`을 걷어내고 디자인시스템 `YGFloatingBar`를 쓴다.
+>
+> | 상태 | 상단바 |
+> |---|---|
+> | 목록(로딩 포함) | `YGFloatingBarTitle(title = gallery_today_photos_title)` |
+> | 빈 상태(`isEmpty`) | `YGFloatingBarClose` — 제목 없음(작업자 지시) |
+> | 권한 미허용 | `YGFloatingBarClose` — 시각적 변화 없이 중복 조립만 제거 |
+>
+> `Title` 변형 자체는 이 라운드에 신설했다 →
+> [designsystem-bar-listdate-components 스펙](2026-08-01-designsystem-bar-listdate-components.md)의 같은 날짜 개정.
+>
+> **부수 효과**: 수제 닫기 버튼은 `contentDescription`이 `null`이었고 디자인시스템 버튼은 `"닫기"`를
+> 갖고 있어, 두 화면의 닫기 버튼에 접근성 레이블이 생겼다.
+>
+> 상단바 아래 `Spacer(gap5)`와 인셋 처리는 건드리지 않았다. 검증은 기계 검사뿐이다 —
+> `compileDebugKotlin`·`ktlintMainSourceSetCheck`·`:feature:gallery:impl:testDebugUnitTest` 통과,
+> **프리뷰·실기기 육안 대조는 하지 않았다.**
+
 ## 목표
 캔버스에 올릴 사진을 **앱 자체 갤러리 화면**에서 고르게 한다. 시스템 피커(`SystemGalleryPickerScreen`)
 대신 쓰는 커스텀 그리드이며, 고른 사진은 촬영 경로와 **같은 확인 화면**(C-101-confirm =
@@ -139,13 +159,14 @@ tags: [spec, parfait, gallery, c102]
   [data-layer](../../architecture/data-layer.md) 레이어 배치와 정합하는 방향의 변경이다.
 - **디자인시스템 재사용**: `YGCircleButton`(닫기)·`YGButton`(재선택)·`YGToastPolicy`/`YGToastHost`.
   그리드·헤더·빈 상태는 feature 로컬 컴포저블이고 대응 디자인시스템 컴포넌트가 없다.
+  (닫기는 2026-08-28 개정으로 `YGFloatingBarTitle`·`YGFloatingBarClose`가 대신한다 → 위 개정 블록.)
 
 ## 파일 구성
 | 파일 | 역할 |
 |---|---|
 | `feature/gallery/api/.../NavKeyCustomGalleryPicker.kt` | 목적지(인자 없음) |
 | `feature/gallery/impl/.../route/CustomGalleryPickerRoute.kt` | 권한 재확인·효과 소비·토스트 1회 노출·확인 화면 이동 |
-| `feature/gallery/impl/.../screen/CustomGalleryPickerScreen.kt` | 권한/목록 분기, 상단 닫기 행, 로딩·빈 상태·그리드, 토스트 호스트, PARTIAL 하단 버튼 |
+| `feature/gallery/impl/.../screen/CustomGalleryPickerScreen.kt` | 권한/목록 분기, 상단 바(2026-08-28 개정으로 `YGFloatingBar`), 로딩·빈 상태·그리드, 토스트 호스트, PARTIAL 하단 버튼 |
 | `feature/gallery/impl/.../component/GalleryImageGridComponent.kt` | 3열 그리드 + 날짜/최근 헤더 오버로드 2종 |
 | `feature/gallery/impl/.../component/GalleryPermissionRequestComponent.kt` | 권한 거부 화면(카메라와 공통 형태) |
 | `feature/gallery/impl/.../viewmodel/CustomGalleryPickerViewModel.kt` | MVI 상태·인텐트·효과 |
