@@ -141,9 +141,13 @@ suspend fun login(
 그린다. 문구는 `feature/login/impl`의 `strings.xml`에 `login_debug_mode_badge`로 넣고
 `stringResource`로 읽는다. 배지를 탭하면 `DisableDebugMode`가 나간다.
 
+⚠️ **배지의 탭 영역은 최소 터치 타깃(48dp)에 닿아야 한다.** 12sp 글자에 여백을 조금만 붙이면
+20dp 안팎이 되는데, 이 배지가 디버그 모드를 끄는 유일한 경로라 안 눌리는 것이 곧 갇히는 것이다.
+`clickable`을 `padding`보다 앞에 두어 여백까지 탭 영역에 넣고, 접근성 라벨을 함께 단다.
+
 `Box`는 `YGScaffoldV2`가 준 `innerPadding` 안에 놓이므로 배지가 시스템 상태바와 겹치지 않는다.
-타이포그래피와 색 토큰은 `YGTheme`에서 고르되 정확한 심볼은 계획 단계에서 디자인시스템을
-확인해 확정한다.
+토큰은 같은 모듈의 `OnboardingPager`가 쓰는 것을 따른다 — `YGTheme.typography.caption.c01R`과
+`YGAtomicColors.Gray.Gray300`이고, 여백은 터치 타깃을 위해 `YGTheme.layout.padding.padding6`이다.
 
 ## 파일 구성
 
@@ -175,7 +179,9 @@ suspend fun login(
   `DisableDebugMode`가 `setEnabled(false)`를 부른다.
 - `KakaoLoginHelperTest` — 신설. `forceAccountLogin = true`면 `isKakaoTalkLoginAvailable`이
   호출되지 않고 `loginWithKakaoAccount`만 불린다. `UserApiClient`가 이미 생성자 주입이라
-  MockK로 세울 수 있다.
+  MockK로 세울 수 있다. 다만 `Activity`를 목으로 만드는 것은 이 저장소에 선례가 없다 —
+  목 생성이 실패하면 이 테스트를 포기하고 수동 검증에 맡긴다. 프로덕션 코드를 테스트에
+  맞춰 비틀지 않는다.
 
 ## 주의 / 열린 질문
 
@@ -184,6 +190,15 @@ suspend fun login(
   DataStore에 남아 앱을 지우기 전까지 카카오톡 로그인이 웹 로그인으로 유지된다. 회복 경로는
   배지 탭 하나뿐이므로 배지는 디버그 모드가 켜진 동안 **항상 보여야 한다** — 배지를 조건부로
   숨기는 변경은 이 계약을 깬다.
+- ⚠️ **끄는 경로는 로그인 화면에 있는 동안에만 열려 있다.** 로그인에 성공해 화면을 떠나면
+  배지가 사라지므로, 다시 끄려면 로그아웃해 로그인 화면으로 돌아와야 한다. 로딩 오버레이가
+  떠 있는 동안에도 그 오버레이가 터치를 삼켜 배지를 누를 수 없다. 배지를 다른 화면으로
+  넓히는 것은 이 라운드의 범위 밖이므로 제약으로 남긴다.
+- **제스처와 배지에 자동 테스트가 없다.** `feature/login/impl`에는 `androidTest` 소스셋이 없고
+  이 라운드는 하니스를 신설하지 않는다. 히트 테스트 순서에 기대는 설계라 회귀를 수동 절차가
+  막는다.
 - 제스처 자체에는 잠금이 없다. 실사용자가 빈 영역에서 더블탭 7회와 롱프레스를 연달아 밟을
   확률이 사실상 없다는 판단에 기댄다.
-- 배지의 타이포그래피·색 토큰 심볼은 계획 단계에서 확정한다.
+- 더블탭 7회는 쌍 사이에 간격이 필요하다. `detectTapGestures`가 탭 둘을 한 쌍으로 묶고 쌍
+  사이에 더블탭 타임아웃 만료를 기다리므로, 14회를 균등하게 빠르게 치면 쌍 경계가 어긋난다.
+  롱프레스도 손가락이 터치 슬롭을 넘으면 페이저가 이동을 소비해 취소된다.
