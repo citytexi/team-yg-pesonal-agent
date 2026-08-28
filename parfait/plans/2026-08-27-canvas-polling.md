@@ -1357,6 +1357,8 @@ Expected: 컴파일 실패
 
 ViewModel의 `private var confirmedToppings`와 그것을 갱신·조회하던 자리를 지운다. **UiState 필드가 아니라 ViewModel의 스냅샷 필드다** — 스펙이 UiState라고 적은 것은 오기이고 Task 9에서 함께 고친다.
 
+🔁 **as-built(2026-08-28 스택 리베이스)** — 지우기는 지웠으나 **같은 자리에 `serverToppings`가 들어왔다.** 확인 시 축별 판정이 필요해서다(아래 Step 7 각주). 갱신 시점은 같다 — 구독이 방출할 때마다 서버 목록을 그대로 담는다.
+
 - [ ] **Step 4: 병합 함수를 쓴다**
 
 ```kotlin
@@ -1451,6 +1453,22 @@ PR2가 `init`에 둔 `refreshCanvas()` 호출을 **지운다.** 폴러의 구독
 `async`는 `CoroutineScope` 리시버 없이 부를 수 없다(coroutines 1.11.0에서 오류 수준 deprecation). 기존 `updateToppingIfChanged`는 `launch(key = CONFIRM_KEY) { … }` 블록 안에서 불려 리시버가 있었지만, 새 함수에는 없으므로 `coroutineScope`로 감싼다.
 
 ⚠️ **아래 코드 블록은 develop보다 낡았다**(2026-08-28 문서 점검). PR #369 이후 `updateToppingIfChanged`는 위치(`updateToppingUseCase`)와 테두리(`updateToppingBorderUseCase`)를 **독립적으로 판정하고 독립적으로 보낸다.** 집합으로 옮길 때 두 갈래를 함께 옮겨야 한다 — 테두리는 집합에 든 토핑에 대해 `topping.borderLayers.toToppingBorder()`를 그대로 보내면 되고, 스냅샷 대조가 사라지므로 "테두리가 바뀌었는가"를 따로 볼 필요가 없어진다.
+
+🔁 **위 문단의 마지막 절이 틀렸다 — as-built(2026-08-28 스택 리베이스).** "따로 볼 필요가 없어진다"고 적었지만, 축별 판정은 **없애면 안 되는 것**이었다. 집합은 어느 축을 만져서 dirty 가 됐는지 기억하지 않으므로, 판정을 빼면 위치만 옮긴 토핑에도 테두리 PATCH 가 따라 나간다. develop 의 `onClickConfirm_toppingBorderEdited_savesOnlyTheBorder` 가 그 반대 방향("테두리만 바꾸면 위치 PATCH 는 안 나간다")을 잠그고 있어 실제로 그 테스트가 깨졌다.
+
+그래서 스냅샷은 이름을 바꿔 남았다 — `confirmedToppings` 대신 `serverToppings`(서버가 마지막으로 준 그대로)를 들고, **집합이 이미 고른 토핑 안에서만** 축을 가린다. 이 계획이 스냅샷을 버리려던 이유("목록 전체를 견주면 남의 새 토핑이 스냅샷에 없음 = 바뀜으로 잡힌다")는 집합 필터가 앞에서 막으므로 되살아나지 않는다. 실제로 들어간 형태는 다음과 같다.
+
+```kotlin
+    private suspend fun updateDirtyToppings() = coroutineScope {
+        val current = state.value
+        current.toppings
+            .filter { it.parfaitImageId in current.dirtyToppingIds }
+            .map { topping -> async { updateToppingIfChanged(topping) } }
+            .awaitAll()
+    }
+```
+
+`updateToppingIfChanged` 자체는 PR #369 의 것을 그대로 쓰되, 대조 대상만 `confirmedToppings` 에서 `serverToppings` 로 바뀐다.
 
 ```kotlin
     /**

@@ -488,6 +488,9 @@ val deletedToppingIds: Set<Long> = emptySet()
 PATCH 대상」이 스냅샷 대조를 집합으로 바꿀 때 **테두리 갈래를 함께 옮겨야 한다** — 그러지 않으면
 방금 붙은 저장이 되돌아간다 → OQ-P-326 ①.
 
+✅ **as-built(2026-08-28 스택 리베이스)** — 테두리 갈래를 함께 옮겼다. 자세한 형태는 아래
+「확인 시 PATCH 대상」의 as-built 각주에 적는다.
+
 **배경.** `withCanvas`가 지금 `selectedImageUri`·`selectedImageSource`·`selectedColor`를 서버 값으로
 통째 대입한다. 구독으로 바뀌면 이것이 매 방출마다 돌아, **사용자가 갤러리에서 고른 배경이 주기마다
 서버 배경으로 되돌아간다.** 그래서 이 셋은 **최초 방출에만 시딩하고 이후 방출은 무시한다.**
@@ -498,10 +501,25 @@ PATCH 대상」이 스냅샷 대조를 집합으로 바꿀 때 **테두리 갈�
 구독으로 바뀌면 **사용자가 탭을 옮기거나 선택을 풀어도 다음 방출에 되돌아간다.** 위 "최초 방출에만
 시딩한다" 목록에 이 둘도 넣는다 → OQ-P-326 ②.
 
+✅ **as-built(2026-08-28 스택 리베이스)** — 그 둘을 시딩 목록에 넣었다. `withCanvas`가 시딩 가드
+(`hasSeededFromCanvas`) 뒤에서 `selectedTab`·`selectedToppingId`까지 함께 채우고, 이후 방출에서는
+토핑 목록만 `mergeToppings`가 갈아 끼운다.
+
 **확인 시 PATCH 대상**은 `toppings` 중 `dirtyToppingIds`에 든 것이다. 지금 `confirmedToppings`
 스냅샷과 대조해 골라내던 방식이 이것으로 대체되므로, `confirmedToppings`는 **제거한다** —
 `CanvasBGEditUiState`의 필드가 아니라 ViewModel의 `private var`였고, 렌더링에 쓰이지 않던
 값이라 화면에 영향이 없다.
+
+✅ **as-built(2026-08-28 스택 리베이스) — 스냅샷이 사라진 것이 아니라 대조 범위가 좁아졌다.**
+`confirmedToppings`는 예정대로 없앴지만, 그 자리를 `serverToppings`가 받는다. 둘의 역할이 다르다:
+전자는 **목록 전체**를 견줘 "무엇이 바뀌었나"를 가려냈고, 후자는 **집합이 이미 고른 토핑 안에서만**
+"어느 축이 바뀌었나"를 가린다. 남의 새 토핑이 "스냅샷에 없음 = 바뀜"으로 잡히던 문제는 집합 필터가
+앞에서 막으므로 다시 생기지 않는다.
+
+이 대조가 필요한 이유는 **요청이 둘로 갈려 있기 때문**이다. 집합은 어느 축을 만져서 dirty 가 됐는지
+기억하지 않으므로, 대조 없이는 위치만 옮긴 토핑에도 테두리 PATCH 가 따라 나간다. develop 의
+`onClickConfirm_toppingBorderEdited_savesOnlyTheBorder` 가 그 반대 방향("테두리만 바꾸면 위치 PATCH 는
+안 나간다")을 이미 잠그고 있어, 축별 판정을 빼면 그 테스트가 깨진다.
 
 > 대조 방식을 바꾸는 것은 부수 효과도 닫는다. 지금 `updateToppingIfChanged`는 `toppings` 전체를
 > 순회하고 스냅샷에 없으면 무조건 바뀐 것으로 보므로, 갱신이 들어오면 남의 새 토핑이 그 조합에
@@ -605,7 +623,7 @@ z로 쓰게 된다.** ADR-0026이 "초안 없이 배치 시점에 재조회"를 
 | `BaseViewModel.kt` | 구독 수에 수명을 매다는 헬퍼 추가 |
 | `ParfaitRepository.kt` / `ParfaitRepositoryImpl.kt` | `getTodayCanvas` → 구독·갱신·상세갱신·정리 넷으로 분리, 폴러 계수 연동 |
 | `CanvasMainViewModel.kt` | 구독 이관, `viewedCanvas` → `pastCanvas` + `displayedCanvas` 파생, 경계 티커 구독, 스포트라이트 해제, `Enter` 갱신 제거 |
-| `CanvasBGEditViewModel.kt` | 구독 이관, 병합 규칙, `confirmedToppings` 제거, 배경 최초 시딩 |
+| `CanvasBGEditViewModel.kt` | 구독 이관, 병합 규칙, `confirmedToppings` → `serverToppings`(대조 범위 축소), 배경·탭·선택 최초 시딩 |
 | `CanvasToppingPlaceViewModel.kt` | 구독 이관, 확인 시 `positionZ` 재계산 |
 | `LogoutUseCase.kt` / `TokenAuthenticator` | 캔버스 캐시 정리 추가 |
 | `architecture/state-management.md` | 구독 수명 헬퍼 규약 한 절 |

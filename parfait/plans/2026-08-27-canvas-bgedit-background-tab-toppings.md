@@ -549,6 +549,13 @@ private fun PreviewCanvasBGEditScreenBackgroundTab() {
 }
 ```
 
+🔁 **위 두 코드 블록의 콜백 이름은 2026-08-27(PR #397) 이전 것이다.** 그 라운드가 크기조절·회전
+환산을 화면으로 올리면서 `onToppingResizeDrag`·`onToppingRotateDrag` 가
+**`onToppingResize: (Float) -> Unit`·`onToppingRotate: (Float) -> Unit`** 으로 바뀌었고,
+`ToppingCornerButtons` 쪽 인자도 `onResize`·`onRotate` 다. 2026-08-28 스택 리베이스에서 실제 코드는
+새 이름으로 맞췄다 — 이 계획을 다시 읽을 때는 이름만 바꿔 읽으면 되고, 프리뷰를 두 탭으로 나누는
+이 Task 의 취지는 그대로다.
+
 그것을 복제해 `PreviewCanvasBGEditScreenToppingTab`을 만들고 `uiState`만 바꾼다.
 
 ```kotlin

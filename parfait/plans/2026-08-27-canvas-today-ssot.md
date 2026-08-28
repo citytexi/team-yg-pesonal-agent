@@ -684,6 +684,14 @@ git commit -m "feat: 오늘 캔버스 구독 유스케이스를 만든다"
 5. `viewedCanvas`를 읽는 단언 3건(`enter_loadsTodayCanvasAndThisYearsHistories`·`enter_beforeTheScreenIsShown_doesNotLoadTheCanvas`·`enter_whileViewingAPastDate_keepsThatDayAsIs`)을 `displayedCanvas`로 바꾼다.
 6. `enter_whileViewingAPastDate_dayChanges_clearsTodayCanvas`는 **그대로 둔다** — Step 4가 그 동작을 유지한다.
 
+🔁 **4번의 "14곳"은 이 계획이 쓰인 시점의 수다.** 2026-08-27 PR #400 이 같은 파일에 본인 토핑 탭
+테스트 둘을 더해, 2026-08-28 스택 리베이스 시점에는 옮길 자리가 그보다 많았다. 그중 하나
+(`clickTopping_placedByMe_navigatesToCanvasBGEditInsteadOfSpotlighting`)는 오늘 캔버스를 보는
+테스트라 지시대로 `todayCanvases.value = …` 로 옮겼고, 다른 하나
+(`clickTopping_placedByMe_whileViewingAPastDate_doesNothing`)는 **지난 날을 보는 테스트라 옮기지
+않았다** — 지난 날 조회는 이 라운드 뒤에도 `getParfaitDetail` 이 맡는다. 4번을 다시 적용할 때는
+"오늘 캔버스를 채우던 자리"만 대상임을 기준으로 삼는다.
+
 - [ ] **Step 2: 실패하는 테스트 셋을 더한다**
 
 ```kotlin
