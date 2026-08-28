@@ -198,6 +198,24 @@ class GroupCreateViewModel @AssistedInject constructor(
   프리뷰 파라미터에 모달 노출 케이스가 추가됐으나 Compose `Dialog`는 별도 window라 `@Preview`에 뜨지 않는다.
 - 엔트리는 `YGScaffold(containerColor = Gray.White, contentWindowInsets = WindowInsets(0.dp))` + `statusBarsPadding()`·`navigationBarsAndImePadding()`.
 
+> 🔁 **닉네임 필드·팝업·실패 안내는 2026-08-27(PR #393)에 바뀌었다.** 위 서술은 그 이전의 기록이다.
+> - **닉네임 필드가 열렸다** — `enabled = false` + no-op `onValueChange`가 아니라 `InputNickName`
+>   인텐트를 받고, 그룹명과 같은 `CheckNameValidUseCase` 검사를 거쳐 `nickNameError`를 필드 아래에
+>   띄운다. 상한은 그대로 그룹명과 다른 상수다(`NICKNAME_MAX_LENGTH`). NavKey로 받는 값은 읽기 전용
+>   표시값이 아니라 **초기값**이 됐고, 그래서 위 "서버로 나가는 닉네임이 mock이다" 경고가 가리키던
+>   자리도 성격이 달라졌다 — 무엇이 넘어오든 사용자가 그 화면에서 고쳐 보낸다.
+> - **확인은 두 이름을 함께 본다** — 그룹명만 검사하고 통과시키면 팝업을 연 뒤에 닉네임 에러가
+>   뒤늦게 떠 사용자가 두 번 걸린다. 둘 다 통과할 때만 `isConfirmPopupVisible`이 켜진다.
+> - **`isEnabledButton` 전달이 사라졌다** — 요청 직전에 팝업을 닫으므로 비활성으로 둘 버튼이 없다.
+>   `isCreating` 중 dismiss를 막던 가드도 같은 이유로 걷혔고, 진행은 `YGScaffoldV2` 로딩 오버레이가
+>   그린다(OQ-P-137 ④).
+> - **생성 실패가 로그에서 토스트로 나왔다** — `GroupCreateError` 2종(`NETWORK`·`UNKNOWN`) +
+>   `ShowError` 이펙트다. 서버 400 세 갈래를 나누지 않은 근거는 "사용자가 손쓸 수 없어 문구를 나눠도
+>   할 일이 달라지지 않는다"이고, 이름 유효성 에러는 토스트를 타지 않고 필드 아래에 남는다
+>   (OQ-P-167 ④).
+> - **엔트리가 스캐폴드를 벗었다** — 로딩·토스트가 화면 상태를 봐야 해서 Route가 `YGScaffoldV2`를
+>   쥔다(OQ-P-204). 텍스트 필드가 둘이 되어 `clearFocusOnTap`도 붙었다.
+
 ## 파일 구성
 
 - `api/NavKeyGroupCreate.kt` — 인자 있는 목적지 키.

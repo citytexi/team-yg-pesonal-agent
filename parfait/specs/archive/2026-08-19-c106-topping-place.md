@@ -19,7 +19,8 @@ related_code:
   - ToppingHandleComponents.kt#rememberToppingBaseSize
   - ToppingHandleComponents.kt#ToppingSelectionStroke
   - ToppingHandleComponents.kt#ToppingDragHandleButton
-  - ToppingGeometry.kt#resizeOutwardDirection
+  - ToppingGeometry.kt#resizeScaleFactor
+  - ToppingGeometry.kt#rotationDeltaDegrees
   - ToppingGeometryTest
   - CanvasToppingLayer.kt#TOPPING_BASE_LONG_SIDE_RATIO
   - SegmentationResult.kt#trimmedSubjectImagePath
@@ -90,6 +91,14 @@ tags: [spec, parfait, canvas, topping, c-106, ui]
   안쪽이면 작아진다. `resizeOutwardDirection(rotation)`이 회전을 반영한 단위 벡터를 주고 드래그
   변위를 거기에 투영해 증감을 낸다 — 거꾸로 선 토핑도 "바깥으로 끌면 커진다"가 성립한다.
 - **회전**: 가로 드래그 거리에 비례해 각도를 누적한다. 상·하한 없음.
+
+> 🔁 **위 리사이즈·회전 서술은 2026-08-27(PR #397) 이전의 기록이다.** 환산이 ViewModel에서 화면으로
+> 옮겨 가면서 인텐트가 `OnToppingResize(scaleFactor)`·`OnToppingRotate(deltaDegrees)`가 됐다.
+> 리사이즈는 바깥 방향 단위벡터에 투영하는 대신 **핸들이 중심에서 멀어진 비율**을 배율에 곱하고,
+> 회전은 가로 성분 대신 드래그를 **핸들 벡터의 접선에 투영**한다
+> (`ToppingGeometry#resizeScaleFactor`·`#rotationDeltaDegrees`). `resizeOutwardDirection`과 감도 상수
+> 둘은 그 라운드에 사라졌다. 상·하한 규칙 자체는 이 화면에서 바뀌지 않았다 — 48dp 역산 하한도
+> 오버플로우 상한도 그대로이고, 달라진 것은 클램프에 들어가기 전 값을 만드는 방법이다.
 - **상·하한(정책에 없는 것, 코드가 정했다)**:
   - 하한은 고정 배율이 아니라 **48dp 최소 터치 영역에서 역산**한다. 고정값(0.5)으로 두면 초기 배율이
     그보다 작은 큰 원본 사진은 리사이즈를 한 번 건드리는 순간 처음 크기로 되돌아갈 수 없다.

@@ -464,7 +464,7 @@ val deletedToppingIds: Set<Long> = emptySet()
 `ParfaitImageId`로 감싸는 자리는 지금처럼 API 호출 직전 한 곳뿐이다.
 
 `dirtyToppingIds`는 **아직 서버에 반영되지 않은 로컬 변경**만 담는다. 이동
-(`OnToppingMoveDrag`)·크기조절(`OnToppingResizeDrag`)·회전(`OnToppingRotateDrag`)·테두리 편집
+(`OnToppingMoveDrag`)·크기조절(`OnToppingResize`)·회전(`OnToppingRotate`)·테두리 편집
 결과(`OnToppingEditResult`)가 대상 id를 넣는다.
 
 **삭제는 여기 넣지 않는다.** 삭제는 모달 확인이 곧 DELETE라 이미 서버에 반영돼 있고
