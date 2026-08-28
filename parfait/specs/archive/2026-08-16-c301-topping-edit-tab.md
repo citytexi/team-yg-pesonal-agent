@@ -30,7 +30,8 @@ related_code:
   - ToppingGeometry.kt#computeToppingStrokeCorners
   - ToppingGeometry.kt#computeToppingButtonPoints
   - ToppingGeometry.kt#toppingStrokeSize
-  - ToppingGeometry.kt#resizeOutwardDirection
+  - ToppingGeometry.kt#resizeScaleFactor
+  - ToppingGeometry.kt#rotationDeltaDegrees
   - Modifier.kt#centeredAt
   - Modifier.kt#dragBy
   - NavKeyToppingEdit
@@ -125,6 +126,16 @@ C-301 편집 모드의 **토핑 탭**에서, 캔버스에 이미 놓인 **내 �
 | 이동 | `OnToppingMoveDrag(DpOffset)` | 화면이 px→dp로 바꿔 올리고 `offsetX/Y`에 그대로 더한다 |
 | 크기 | `OnToppingResizeDrag(Offset)` | 드래그 벡터를 **회전된 바깥 방향 단위벡터에 투영**해 배율 증분, 0.5~2.5로 클램프(**상한은 PR #335에서, 하한은 PR #398에서 바뀌었다** — 지금은 하한 0.05만 남았다) |
 | 회전 | `OnToppingRotateDrag(Offset)` | **가로 성분만** 각도로 환산, 상·하한 없음 |
+
+> 🔁 **위 두 줄은 2026-08-27(PR #397) 이전의 기록이다.** 인텐트가 픽셀이 아니라 환산된 값을 싣도록
+> 바뀌었다 — `OnToppingResize(scaleFactor: Float)`·`OnToppingRotate(deltaDegrees: Float)`이고,
+> 환산은 핸들 위치를 아는 **화면**이 하고 ViewModel은 곱하거나 더하기만 한다. 크기는 핸들이 중심에서
+> 멀어진 비율을, 회전은 드래그를 핸들 벡터의 **접선에 투영**한 값을 쓴다
+> (`ToppingGeometry#resizeScaleFactor`·`#rotationDeltaDegrees`). 아래 "바깥 방향 단위벡터" 설명과
+> `resizeOutwardDirection`도 그 라운드에 함께 사라졌다 — 감도 상수(`TOPPING_DRAG_DEGREES_PER_PX`)와
+> 바깥을 45도로 보던 가정이 둘 다 필요 없어졌기 때문이다. 고친 계기는 **결함**이다: 회전 핸들이
+> 우측 하단이라 가로 성분만 보면 시계방향으로 끌 때 반시계로 돌았고, 배율에 고정량을 더하던 탓에
+> 원본이 큰 사진에서 같은 손동작이 훨씬 크게 먹었다. 배율 하한은 손대지 않았다(OQ-P-325).
 
 - 크기조절 핸들이 우측 상단에 고정이라, 토핑이 돌아 있으면 "바깥"도 같이 돌아야 한다.
   `resizeOutwardDirection(rotationDegrees)`가 우상단 대각선 단위벡터를 같은 각만큼 돌려 주고,

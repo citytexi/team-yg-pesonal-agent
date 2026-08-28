@@ -201,6 +201,22 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
   > 안 된다"를 뜻하고, 그 갈래만 **재시도가 무의미**해서 문구가 "다른 사진을 골라 주세요"로 갈린다.
   > 나머지 실패는 전부 `UNKNOWN`으로 접히는데, 그래서 마감된 캔버스의 409도 "잠시 후 다시"가 된다
   > → [open-questions](../synthesis/open-questions.md) OQ-P-261.
+  > 📌 **다섯째 사례와 전달 축 하나가 한 라운드에 함께 들어왔다(2026-08-27, PR #393·#394).**
+  > A-005 그룹 생성이 `GroupCreateError` 2종(`NETWORK`·`UNKNOWN`)을 새로 들었고, 이로써 **실패를
+  > 로그로만 남기던 화면이 사라졌다**(OQ-P-167 ④). 둘로 접은 근거는 `TermAgreeError`와 같다 —
+  > 서버 400 세 갈래는 사용자가 손쓸 수 없어 문구를 나눠도 할 일이 달라지지 않는다.
+  > S-102 그룹 참여는 갈래가 아니라 **전달 축**이 바뀌었다. `GroupNickNameUiState.submitError`가
+  > 사라지고 `ShowError(error)` 이펙트가 그 자리를 받아, 입력칸 아래는 형식 오류(`nicknameError`)
+  > 전용이 됐다 — 한 화면이 인라인과 토스트를 함께 쓰는 형태로 S-101과 같아졌다.
+  > ⚠️ 그래서 [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)이 적어 둔
+  > "둘을 동시에 들고 `nicknameError ?: submitError`로 형식 오류를 먼저 보여준다"는 이제
+  > **S-002 계정 정보에만 남는 서술**이다.
+  > **새로 드러난 것은 갈래 하나가 실패가 아니라는 점이다** — `NICKNAME_NOT_APPLIED`는 참여가 이미
+  > 끝난 뒤 닉네임 `PATCH`만 실패한 경우라 흐름을 멈추지 않는다. 그래서 이펙트를 쏜 뒤
+  > **토스트가 스스로 사라질 때까지 기다렸다가 이동한다** — 토스트 호스트가 이 화면에 매여 있어
+  > 곧바로 넘기면 뜨자마자 함께 사라지기 때문이다. 실패 안내가 이동을 지연시키는 첫 사례이고,
+  > 기다리는 시간이 `YGToastPolicy`와 별개 상수라는 점은
+  > [open-questions](../synthesis/open-questions.md) OQ-P-328이 쥔다.
 - **이동 전에 끝내야 하는 일이 있으면 순서가 계약이 된다** — C-103 후보 선택(2026-08-24, PR #342)이
   그 사례다. 탭 하나가 **저장 → 초안 기록 완료 → `isLoading` 해제 → `GoToConfirm` post** 순으로
   돌고, 이 순서를 지키는 이유는 다음 화면에 있다: `SegmentationConfirmViewModel`은 정상 진입에서

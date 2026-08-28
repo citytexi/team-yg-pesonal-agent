@@ -183,6 +183,22 @@ class GroupNickNameViewModel @AssistedInject constructor(
   그대로 재사용**하고(`group_nickname_error_invalid`는 삭제), 남은 자기 문구는 `NETWORK`·`UNKNOWN` 둘뿐이다.
   갈래가 이렇게 생긴 이유는 **앞 화면 미리보기를 통과한 뒤에야 도달**하기 때문이다 — 미리보기와 참여 사이에
   그룹 상태가 바뀐 경우만 남는다(정원이 차거나 그룹이 사라지거나 이미 참여됨).
+
+> 🔁 **위 세 절은 2026-08-27(PR #394) 이전의 기록이다.** 실패를 어디에 보여 주는지가 바뀌었다.
+> - **`submitError`가 State에서 빠졌다** — 서버 사유는 `GroupNickNameSideEffect.ShowError(error)`로
+>   나가고 공통 토스트가 받는다. 입력칸 아래(`errorDescription`)는 **형식 오류 전용**이 됐으므로,
+>   위 "형식 오류가 우선하고 없으면 서버 사유"라는 규칙도 함께 사라졌다. 갈래 매핑 자체는 그대로다.
+> - **팝업을 요청 직전에 닫는다** — "모달을 닫고 사유만 붙인다"가 아니라, 부르기 전에 이미 닫혀 있다.
+>   진행 중임은 `isEntering` 하나가 말하고 `YGScaffoldV2` 로딩 오버레이가 그린다. 그래서
+>   `isEntering` 중 dismiss를 막던 가드도 걷혔다 — 막을 팝업이 없다.
+> - **엔트리가 아니라 Route가 스캐폴드를 쥔다** — 토스트 호스트가 필요해 `YGScaffold`에서
+>   `YGScaffoldV2`로 옮겼다(OQ-P-204).
+> - **예외로 튄 경로도 알린다** — `launch(key = KEY_ENTER_GROUP, onError = …)`가 붙어,
+>   `Result.failure`가 아니라 던져진 예외로 끝나던 경로가 `UNKNOWN` 토스트를 낸다.
+> - **닉네임 적용 실패 `TODO`가 닫혔다** — `NICKNAME_NOT_APPLIED` 갈래가 생겼다. 흐름을 멈추지
+>   않는다는 규칙은 그대로이고, 다만 **안내가 사라질 때까지 기다렸다가** 이동한다(토스트 호스트가
+>   이 화면에 매여 있다). 기다리는 시간이 토스트 정책과 별개 상수라는 점은 OQ-P-328이 쥔다.
+> - 텍스트 필드 밖을 탭하면 포커스가 풀린다(`clearFocusOnTap`).
   🔁 **#244·#250의 닉네임 400 갈래(`INVALID`)는 사라졌다** — 닉네임 실패가 더는 화면에 표시되지 않으므로
   `ServerErrorCode.INVALID_GROUP_NICKNAME`을 보는 분기가 이 화면에서 없어졌다(상수는 A-005가 계속 쓴다).
 - **모달 취소·바깥 탭**(`DismissConfirmPopup`, #261): 진행 중(`isEntering`)이면 무시, 아니면 모달만 닫는다

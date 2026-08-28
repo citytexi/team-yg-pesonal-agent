@@ -78,6 +78,11 @@ tags: [adr, parfait, i18n, domain, presentation]
 >   세 번째 화면이 같은 갈래를 복제하면 #179~#223과 같은 경로를 밟는다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 > - 이 매핑은 `NameValidResult`(입력 형식)와 **별개 축**이다 — S-102는 둘을 동시에 들고
 >   형식 오류를 우선 표시한다(`nicknameError ?: submitError`).
+>   🔁 **그 병기는 2026-08-27(PR #394)에 끝났다** — S-102의 `submitError`가 State에서 빠지고
+>   서버 사유는 `ShowError` 이펙트 + 토스트로 나간다. 입력칸 아래는 형식 오류 전용이다.
+>   위 문장이 그리는 "둘을 동시에 들고 `?:`로 고른다"는 형태는 이제 **S-002 계정 정보에만** 남는다
+>   (`AccountInfoUiState.submitError`). 별개 축이라는 원칙 자체는 그대로이고, 바뀐 것은
+>   두 축을 **같은 자리에 겹쳐 보일지 나눠 보일지**다.
 
 ## 맥락
 

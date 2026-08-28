@@ -54,6 +54,12 @@ tags: [adr, parfait, window, system-bar, theme]
 되돌릴 조건은 하나다. **다크모드를 실제로 지원하는 순간** 이 고정을 풀고 `YGCustomTheme`의
 `darkTheme`과 같은 값을 보게 해야 한다. `YGSemanticColorDefaults`의 TODO가 그 지점을 가리킨다.
 
+> ✅ **develop 머지(PR #395, 2026-08-27)** — 결정대로 들어왔다. 두 `MainActivity`가 상태바·내비게이션
+> 바 스타일을 명시하고, 스크림 값은 각 파일의 최상위 `private val`로 따로 선언된다(공용 헬퍼로 빼지
+> 않기로 한 결정의 귀결이다). 되돌릴 지점을 잃지 않도록 `YGSemanticColorDefaults`의 TODO에
+> **이 ADR을 가리키는 한 줄**이 함께 붙었다 — 다크모드를 여는 사람이 시스템바도 같이 열어야 한다는
+> 것을 그 자리에서 알게 된다.
+
 ## 대안
 
 - **대안 A: 다크모드를 제대로 지원한다** — 시스템바가 테마를 따라가는 것이 원래 옳은 모습이고
