@@ -28,6 +28,11 @@ tags: [spec, parfait, login, debug]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 
+> 📌 **구현이 release 계보에만 있다(2026-08-30 확인)** — `origin/feature/debug-mode` 가
+> `release/version-0.1.0-4` 에 머지됐고 `develop` 에는 `DebugMode*` 심볼이 0건이다. 아래 설계와
+> 실제 코드의 대조는 그 브랜치가 `develop` 에 들어오는 회차로 미룬다 →
+> [open-questions](../synthesis/open-questions.md) OQ-P-311 ③.
+
 ## 목표
 
 로그인 화면의 숨은 제스처로 디버그 모드를 켜고 끈다. 디버그 모드가 켜져 있으면 카카오

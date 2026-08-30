@@ -140,7 +140,7 @@ tags: [spec, parfait, designsystem, figma-sync, top-bar, floating-bar, c-201]
 > 교훈: **호출부를 건드리는 Task는 그 호출부의 상태 보유 여부를 계획 단계에서 확인**하고,
 > 합성 컴포넌트를 설계할 때 **대응 정책 문서의 "예외" 조항을 시그니처 표에 함께 옮긴다.**
 
-> ➕ **Title 변형 추가(2026-08-28, 이슈 #381, 브랜치 `feature/#381-gallery-top-bar`, develop 미머지)** —
+> ➕ **Title 변형 추가(2026-08-28 작성 · PR #406 develop 머지, 2026-08-30, 이슈 #381)** —
 > Figma `Floating Bar`에 `Status=Title`이 추가돼 공개 함수가 **5종**이 됐다.
 >
 > ```kotlin
@@ -397,7 +397,7 @@ private fun YGFloatingBarContent(
 
 ### 공개 4종
 
-> 📌 이 표는 2026-08-01 라운드 기준이다. **`Title` 변형이 2026-08-28에 더해졌다** → 위 개정 블록.
+> 📌 이 표는 2026-08-01 라운드 기준이다. **`Title` 변형이 2026-08-28에 더해져 #406으로 머지됐다**(2026-08-30) → 위 개정 블록.
 
 ```kotlin
 @Composable fun YGFloatingBarBackClose(onBackClick: () -> Unit, onCloseClick: () -> Unit, modifier: Modifier = Modifier)

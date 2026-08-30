@@ -18,6 +18,15 @@ tags: [plan, parfait, canvas, polling, coroutines]
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ⚠️ **이 계획은 2026-08-30 델타(PR #407)를 모른다.** `loadTodayCanvas()` 를 지우고 구독으로
+> 대신하자고 적는데, 그 함수가 그날 **첫 조회 덮개**(`isInitialLoading`)를 갖게 됐다. 그대로
+> 지우면 덮개도 함께 사라진다. release 계보가 이 충돌을 이미 한 번 풀었고 **답이 계획과 다르다**
+> — 덮개를 `try`/`finally` 가 아니라 구독 안에서 파생시킨다 →
+> [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
+>
+> 📌 브랜치 `origin/feature/canvas-polling`(PR2 를 품은 스택)은 **release 계보에 머지됐고**
+> `develop` 에는 아직 없다(OQ-P-311 ③).
+
 **Goal:** 오늘 캔버스 저장소 위에 주기 폴링을 얹어, 다른 멤버가 올린 토핑이 화면을 나갔다 오지 않아도 나타나게 한다.
 
 **Architecture:** 폴링 로직은 `:data`의 `CanvasPoller`(`@Singleton`) 하나가 소유하고, 수명은 `BaseViewModel`에 새로 세우는 **구독 수 기반 헬퍼**에 매단다. 라우트 셋이 모두 `collectAsStateWithLifecycle()`을 쓰므로 화면이 백그라운드로 가거나 컴포지션에서 빠지면 구독이 끊기고 폴러의 참조 계수도 내려간다. 주기 갱신은 **부작용 없는 상세 조회**를 쓰고, 캔버스를 만들어야 할 때만 오늘 조회를 쓴다. 모든 갱신이 폴러를 통과하며 갱신마다 주기를 다시 센다.

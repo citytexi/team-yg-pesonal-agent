@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-28
+verified: 2026-08-30
 related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -812,6 +812,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 캔버스·편집 화면 라운드에서 배치(위치·폭·safe area)를 어떻게 정할지, ② `Edit`의 중앙 문구가 무엇인지, ③ `EditTab`의 탭 문자열("영역"/"테두리")이 화면 소유인지 컴포넌트 기본값이어야 하는지.
 - **상태**: 부분 해소 (①③ **PR #221 develop 머지, 2026-08-14** / ② **잔존** — `Edit` 변형만 여전히 사용처 0건)
 - **해소 메모**: ① 배치가 확정됐다 — C-103~C-105 4화면이 전부 세로 `Column`의 맨 위/맨 아래에 `fillMaxWidth()`로 붙이는 형태이고 오버레이가 아니다(`BackClose` 추출·확인, `Close` 로딩·에러, `EditTab` 편집). safe area는 엔트리 `YGScaffold` 기본 `innerPadding`이 처리한다. ③ 탭 문자열은 **화면 소유**로 확정 — `ToppingEditTab` enum이 `@StringRes label`을 들고 화면이 `stringResource`로 풀어 넘긴다(feature `strings.xml`). ②는 `Edit` 변형에 첫 소비처가 생길 때 닫는다. [design-system](../architecture/design-system.md) 인벤토리 노트와 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md)에 반영했고, [bar-listdate 스펙](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) 열린 질문 3은 닫힌다.
+  > 📌 **변형이 5종이 되고 배치가 한 갈래 늘었다(2026-08-30, PR #406 develop 머지)** — Figma에
+  > `Status=Title`이 추가돼 `YGFloatingBarTitle`이 신설되고 C-102 갤러리 두 화면이 손으로 조립하던
+  > `Row` + `YGCircleButton`을 그것으로 바꿨다. ①의 답은 여기서도 같다 — 세로 `Column` 맨 위에
+  > `fillMaxWidth()`로 붙이고 오버레이가 아니다. **②(`Edit`의 중앙 문구)는 그대로 잔존**이고,
+  > `Title`의 중앙 문구는 화면 `strings.xml`이 갖는다(③이 탭 문자열에서 고른 것과 같은 쪽).
+  > 다만 **빈 상태에는 제목을 두지 않는데 그 근거가 작업자 지시뿐**이다 → OQ-P-331.
 
 ### [2026-08-04] Top Bar 날짜 표기가 영문 고정 — 로케일·포맷 규칙 미정
 - **ID**: OQ-P-082
@@ -2971,6 +2977,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 귀납 기준("네트워크 왕복인가")에 **왕복이 아닌 첫 사례**를 더했다 — 세그멘테이션은 온디바이스
   > ML Kit 추론이라 서버에 나가지 않는데 오버레이를 켠다. 기준을 규약으로 올린다면 "왕복"이 아니라
   > **"사용자가 기다려야 하는 비동기 작업인가"**에 가깝다. Dim 농도·문구 유무의 근거는 여전히 없다.
+  > 📌 **②의 사례가 "누른 작업" 밖으로 나갔다(2026-08-30, PR #407 develop 머지)** — G-001 그룹 목록과
+  > C-001 오늘 캔버스가 **화면에 들어오자마자 나가는 첫 조회**에 오버레이를 켠다. 그때까지 기준을
+  > 세우던 사례는 전부 사용자가 버튼을 눌러 시작한 작업이었다. 여기서 기준이 하나 더 갈라진다 —
+  > **"조회 중인가"가 아니라 "아직 한 번도 못 받은 조회인가"**다(재진입마다 조회가 나가는 두
+  > 화면이라 조건이 없으면 덮개가 번쩍인다). 그 판정이 지금 두 ViewModel에 각각 적혀 있다
+  > → OQ-P-330. ②를 규약으로 올릴 때 **"무엇을 덮는가"와 함께 "언제가 처음인가"도 함께 정해야
+  > 한다**는 것이 이 라운드가 더한 것이다.
 
 ### [2026-08-17] 토스트가 떠 있는 2초 동안 상단 띠의 탭이 삼켜지는 것이 전 화면 공통이 됐다
 
@@ -5266,6 +5279,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**빌드 영향 0** — 값이 무엇이든 조립은 된다. 배포 추적의 문제다)
 - **해소 메모**: ②를 정하면 [ADR-0003](../adr/0003-convention-plugins-version-catalog.md)
   버전 카탈로그 절에 규칙을 적는다(태그를 쓸지, CI가 올릴지). ①은 사람에게 물어야 답이 나온다.
+  > 📌 **두 번 더 올랐고 이번엔 develop 에도 들어왔다(2026-08-30, PR #409)** — 한 PR 이 커밋 둘로
+  > `3 → 4 → 5`(`0.0.3 → 0.1.0 → 0.1.1`)를 연달아 올렸고, `develop` 과 최신 release 브랜치가
+  > **같은 값 5/0.1.1** 을 든다. 즉 develop 이 이 축에서 처음으로 배포본과 맞았다.
+  > ⚠️ **②는 그대로다** — 여전히 손으로 고치는 값이고, 이번에도 결번은 아니지만 **한 PR 안에서 두
+  > 칸을 뛴 이유가 어디에도 안 적혀 있다**(브랜치 이름은 `build/bump-version-0.1.0-4` 인데 담긴 것은
+  > 5/0.1.1 까지다). 태그도 `0.1.0`·`0.1.1` 이 새로 붙었는데 **셋 다 경량이고 develop 이 아니라
+  > release 브랜치 쪽 커밋을 가리킨다**(OQ-P-311).
 
 ### [2026-08-26] 릴리즈 계보가 develop 밖에 있다 — 배포된 0.0.3에 develop에 없는 45커밋이 들어 있다
 
@@ -5307,6 +5327,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 이제 **SHA 만이 아니라 내용이 다르다** — 배포된 `0.0.3` 은 콜백 방식 커널을 담고 있고 정련
   > 라운드의 리뷰 반영 커밋 일부도 없다. 즉 "같은 기능이 양쪽에 있다"는 말이 이 넷에는 성립하지
   > 않는다. 반대 방향(develop 만 가진 것)은 **85커밋**으로 벌어졌다.
+  > ⚠️ **③이 다시 열렸고, 이번엔 계보가 둘 더 생겼다(2026-08-30)** — `release/version-0.1.0-4` 와
+  > `release/version-0.1.1-5` 가 새로 생겨 release 계보가 셋이 됐다. 최신 것을 기준으로 세면
+  > **release 만 가진 커밋 50개 · develop 만 가진 커밋 8개**다(그 여덟은 이번 회차의 delta 그 자체다).
+  > 즉 갈라진 방향이 **뒤집혔다** — 지금까지는 develop 이 앞서고 release 가 뒤처졌는데, 이제
+  > **배포 계보가 develop 이 아직 못 받은 것을 담고 있다.**
+  > release 는 이번 회차의 세 feature 브랜치(#391 스포트라이트 토스트 · #381 갤러리 상단바 ·
+  > init-loading)를 **develop 과 별개로 직접 받았고**, 그 위에 develop 에 **없는** 브랜치 셋을 더
+  > 받았다 — `feature/debug-mode` · `feature/cache-image` · `feature/canvas-polling`(PR2
+  > `feature/canvas-today-ssot` 를 품은 스택).
+  > **그래서 ③이 같은 형태로 되살아난다** — 선작성 문서 넷이 지금 `draft` 인데 구현은 release 에만
+  > 있다: [로그인 디버그 모드 스펙](../specs/2026-08-28-login-debug-mode.md) ·
+  > [그 계획](../plans/2026-08-28-login-debug-mode.md) · [PR2 계획](../plans/2026-08-27-canvas-today-ssot.md) ·
+  > [PR3 계획](../plans/2026-08-27-canvas-polling.md). 아카이브 판정을 `develop` 머지로 두는 한
+  > **구현이 끝난 문서가 계속 `draft` 로 남는다.**
+  > 태그도 둘 늘어(`0.1.0`·`0.1.1`) 셋이 됐고 **여전히 전부 경량**이며 셋 다 release 쪽 커밋을
+  > 가리킨다(OQ-P-310).
 
 ### [2026-08-26] 토스트가 어느 프레임 위에 뜨는지를 정하는 규칙이 없다
 
@@ -5598,6 +5634,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 아직 `in-progress` 다.
   > ⚠️ **세 브랜치는 아직 develop 에 머지되지 않았다** — 리베이스로 갱신된 것은 로컬 브랜치이고,
   > 원격에는 올라가 있지 않다.
+  > ⚠️ **⑥ 첫 조회 덮개가 계획의 코드블록에서 사라진다(2026-08-30, PR #407 develop 머지)** —
+  > [PR2 계획](../plans/2026-08-27-canvas-today-ssot.md)이 `loadTodayCanvas()` 를 **통째로 갈아 끼우는**
+  > 코드블록을 싣는데, 그 블록에는 이번에 붙은 `isInitialLoading` 이 없다. 적힌 그대로 구현하면
+  > **오늘 캔버스 첫 조회의 화면 덮개가 조용히 사라진다.** [PR3 계획](../plans/2026-08-27-canvas-polling.md)은
+  > 한 걸음 더 가서 그 함수를 지우자고 적는다(구독이 대신한다). release 계보는 이 충돌을 이미
+  > 한 번 풀었고 **답이 계획과 다르다** — 폴링을 받은 뒤의 release 쪽 `CanvasMainViewModel` 은
+  > 덮개를 `try`/`finally` 가 아니라 **구독 안에서 파생**시킨다. 계획을 고칠 때 베낄 자리가 이미
+  > 있다는 뜻이다.
+  > 📌 **PR2·PR3 브랜치가 원격에 올라왔다(2026-08-30)** — `origin/feature/canvas-today-ssot` ·
+  > `origin/feature/canvas-polling`(전자를 품은 스택). 다만 들어간 곳은 develop 이 아니라
+  > **release 계보**다 → OQ-P-311.
 
 ### [2026-08-28] 원격 이미지 다운로드가 응답 본문을 통째로 힙에 올린다
 
@@ -5636,4 +5683,56 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   "서버 실패 갈래" 절이고, ②는 [design-system](../architecture/design-system.md)의 `YGToast`·
   `YGScaffoldV2` 서술과 함께 본다. 토스트 호스트가 화면마다 갈리는 문제는 OQ-P-312가 따로 쥔다.
 
-<!-- oq-next: 329 -->
+### [2026-08-30] 토스트 교체 태그가 화면 소유 문자열이라 서로를 지울 수 있다
+
+- **ID**: OQ-P-329
+- **출처**: `YGToastPolicy#show(type, replaceTag)`·`CanvasMainRoute#SPOTLIGHT_TOAST_TAG`(PR #405) —
+  같은 태그를 단 토스트를 걷어내고 새것만 남기는 갈래가 생겼다. 태그는 **호출 화면이 정하는 평문
+  문자열**이고 정책 홀더는 그 값의 의미를 모른다. 지금 태그를 주는 곳은 캔버스 Spotlight 하나뿐이라
+  충돌이 없다.
+- **항목**: ① **같은 문자열을 고른 두 발행자는 서로의 토스트를 지운다** — 정책 객체가 화면 단위로
+  살아 있어 지금은 한 화면 안의 문제지만, 스캐폴드가 기본 정책을 만들어 주는 화면이 늘면 그 경계가
+  화면과 꼭 같지 않다(OQ-P-312 ②). 태그를 상수 한곳에 모을지, 타입 있는 키로 올릴지.
+  ② **"쌓인다"와 "교체된다"를 무엇으로 가르는지가 코드에만 있다** — 위키 [[Toast-공통-정책]]은
+  스택만 규정하고 교체를 말하지 않는다. Spotlight 가 교체여야 하는 근거는 "같은 자리에 포개져
+  못 읽는다"는 구현 사실이지 정책 문안이 아니다. ③ **감지선이 계측에만 있다** —
+  `YGToastHostTest` 3건이 이 규칙을 잠그는데 **CI 는 계측을 컴파일만 한다**(OQ-P-102 ②).
+- **상태**: 미해결 (**동작 영향 0** — 태그를 주는 호출자가 하나뿐이다. 두 번째가 생기는 날의 문제다)
+- **해소 메모**: ①을 정하면 [design-system](../architecture/design-system.md) `YGAlert`/`YGToast` 절과
+  [ygtoast 스펙](../specs/archive/2026-07-23-ygtoast.md) 노출 정책 절에 태그의 소유자를 적는다.
+  ②는 위키 [[Toast-공통-정책]] 갱신이 선행이다 — 정책이 교체를 인정하면 그때 컴포넌트 계약으로 내린다.
+
+### [2026-08-30] 첫 조회 덮개를 켜는 판정이 화면마다 복제됐고 정책 근거가 없다
+
+- **ID**: OQ-P-330
+- **출처**: `GroupListViewModel#isInitialLoad`·`CanvasMainViewModel#loadTodayCanvas`(PR #407) —
+  두 화면이 각자 `isInitialLoading` 필드를 두고 각자 조건을 적는다(`groupList == null` + 당김 제외 /
+  `todayCanvas == null`). 켜고 내리는 자리를 `launch` 블록 안으로 넣어야 한다는 것도 두 곳에 각각
+  주석으로만 적혀 있다 — 코루틴 키 가드에 막히면 블록이 안 돌아 `finally` 가 따라오지 않기 때문이다.
+- **항목**: ① 같은 판정을 세 번째 화면이 또 적을 것인가 — `BaseViewModel` 이나 스캐폴드 쪽으로
+  올릴 자리가 있는지(올리면 "무엇이 첫 조회인가"를 공통이 알아야 한다). ② **당겨서 새로고침을 빼는
+  규칙이 그룹 목록에만 있다** — 캔버스에는 당김이 없어 지금은 갈리지 않지만, 생기는 순간 같은 판단을
+  다시 해야 한다. ③ **정책 근거가 없다** — 위키 [[무한-파르페-그리드]]는 초기 로딩을 "인디케이터·
+  스켈레톤 대신 제작한 자체 그래픽"으로 적는데, 들어온 것은 **전 화면 공통 오버레이**(딤 +
+  `YGLoadingLottie`)다. 캔버스 쪽은 위키에 초기 로딩 조항 자체가 없다.
+- **상태**: 미해결 (**동작은 의도대로** — 복제와 근거 부재의 문제다)
+- **해소 메모**: ①②는 [state-management](../architecture/state-management.md) 에 "첫 조회 표현"
+  절을 두는 일이고 OQ-P-205 ②(오버레이를 켜는 기준의 규약 승격)와 같은 자리에서 정한다.
+  ③은 위키 판단이 선행이다 — 공통 오버레이로 갈음할 것이면 [[무한-파르페-그리드]] 문안을 고쳐야 하고,
+  전용 그래픽을 유지할 것이면 G-001 만 다른 표현을 갖는다.
+
+### [2026-08-30] 갤러리 빈 상태에만 제목이 없는 근거가 작업자 지시뿐이다
+
+- **ID**: OQ-P-331
+- **출처**: `CustomGalleryPickerScreen#GalleryContent`(PR #406) — 사진이 있으면
+  `YGFloatingBarTitle`("오늘 찍은 사진"), `isEmpty` 면 제목 없는 `YGFloatingBarClose` 다.
+  Figma 는 `Floating Bar` 에 `Status=Title` 을 추가했을 뿐 **어느 상태에 무엇을 쓰는지**를 주지 않았고,
+  스펙이 이 갈래의 출처로 적은 것은 작업자 지시 한 줄이다. 권한 미허용 갈래도 제목이 없다.
+- **항목**: ① 빈 상태에 제목이 없어야 하는가 — 같은 화면이 상태에 따라 머리글을 잃는 것이라
+  스크린리더에는 화면 이름이 사라지는 것과 같다. ② 문구 "오늘 찍은 사진"이 화면 이름인지 목록
+  머리글인지 — 위키에 C-102 문구 정책이 없다(빈 상태 안내문은 있고 제목은 없다).
+- **상태**: 미해결 (**동작 영향 0** — 육안 대조도 아직 없다. 이 라운드 검증은 기계 검사뿐이었다)
+- **해소 메모**: 정해지면 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 상단바
+  개정 블록의 표에 근거를 적고, 문구가 정책이 되면 위키 수집 대상으로 올린다.
+
+<!-- oq-next: 332 -->
