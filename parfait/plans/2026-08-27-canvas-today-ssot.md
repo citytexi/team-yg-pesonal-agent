@@ -20,8 +20,11 @@ tags: [plan, parfait, canvas, state, cache]
 
 > ⚠️ **이 계획은 2026-08-30 델타(PR #407)를 모른다.** 아래 Task 에서 `loadTodayCanvas()` 를 통째로
 > 갈아 끼우는 코드블록에 그날 붙은 `isInitialLoading` 이 없다. **적힌 그대로 구현하면 오늘 캔버스
-> 첫 조회의 화면 덮개가 조용히 사라진다.** 착수 전에 그 자리를 먼저 고칠 것 →
-> [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
+> 첫 조회의 화면 덮개가 조용히 사라진다** → [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
+>
+> ✅ **코드는 이미 그 자리를 풀었다(2026-08-30, 스택 3단을 `27e85d0d` 위로 리베이스).** 이 단계의
+> `loadTodayCanvas()` 는 갱신 호출을 `try`/`finally` 로 감싸 덮개를 들고, 갱신 실패는 캐시가 비어
+> 있을 때만 `ShowTodayCanvasError` 를 낸다. 아래 코드블록은 그 감싸기가 빠진 판본이다.
 >
 > 📌 브랜치 `origin/feature/canvas-today-ssot` 는 원격에 올라와 있고 **release 계보에 머지됐다** —
 > `develop` 에는 아직 없다. 그래서 이 계획은 구현이 끝난 채로 `draft` 에 남아 있다(OQ-P-311 ③).
