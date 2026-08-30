@@ -18,6 +18,14 @@ tags: [plan, parfait, canvas, state, cache]
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ⚠️ **이 계획은 2026-08-30 델타(PR #407)를 모른다.** 아래 Task 에서 `loadTodayCanvas()` 를 통째로
+> 갈아 끼우는 코드블록에 그날 붙은 `isInitialLoading` 이 없다. **적힌 그대로 구현하면 오늘 캔버스
+> 첫 조회의 화면 덮개가 조용히 사라진다.** 착수 전에 그 자리를 먼저 고칠 것 →
+> [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
+>
+> 📌 브랜치 `origin/feature/canvas-today-ssot` 는 원격에 올라와 있고 **release 계보에 머지됐다** —
+> `develop` 에는 아직 없다. 그래서 이 계획은 구현이 끝난 채로 `draft` 에 남아 있다(OQ-P-311 ③).
+
 **Goal:** 오늘 캔버스를 `:data`의 인메모리 저장소 한 벌에 두고, 캔버스 메인·배경 편집·토핑 배치 세 화면이 `Flow`로 구독하게 한다.
 
 **Architecture:** ADR-0023이 그룹에 세운 구조를 캔버스로 확장한다. `CanvasLocalDataSource`(`@Singleton` + `MutableStateFlow<Map<GroupId, CanvasVO>>`)를 신설하고, `ParfaitRepository`의 `getTodayCanvas`를 **구독·오늘 갱신·상세 갱신·정리·날짜 peek**으로 가른다. 값을 얻는 길이 둘이면 캐시가 곧 두 번째 출처가 되므로 갱신 함수는 `Result<Unit>`만 돌려준다. 세 화면은 조회 대신 구독한다.

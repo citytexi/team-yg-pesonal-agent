@@ -25,7 +25,7 @@ tags: [spec, parfait, gallery, c102]
 > 정리됨), 이번 PR이 **목록·헤더·빈 상태·부분 접근·선택 후 경로**를 실물로 채웠다. 아래는 머지 코드를
 > 역기록한 것이며 설계 대조가 아니라 **정책(위키)·규약(parfait) 대조**로 드리프트를 표기한다.
 
-> ➕ **상단바 개정(2026-08-28, 이슈 #381, 브랜치 `feature/#381-gallery-top-bar`, develop 미머지)** —
+> ➕ **상단바 개정(2026-08-28 작성 · PR #406 develop 머지, 2026-08-30, 이슈 #381)** —
 > Figma C-102의 상단이 닫기 버튼만 있던 줄에서 **제목 "오늘 찍은 사진" + 우측 닫기**로 바뀌었다.
 > 화면이 직접 조립하던 `Row` + `YGCircleButton`을 걷어내고 디자인시스템 `YGFloatingBar`를 쓴다.
 >
@@ -41,7 +41,12 @@ tags: [spec, parfait, gallery, c102]
 > **부수 효과**: 수제 닫기 버튼은 `contentDescription`이 `null`이었고 디자인시스템 버튼은 `"닫기"`를
 > 갖고 있어, 두 화면의 닫기 버튼에 접근성 레이블이 생겼다.
 >
-> 상단바 아래 `Spacer(gap5)`와 인셋 처리는 건드리지 않았다. 검증은 기계 검사뿐이다 —
+> 상단바 아래 `Spacer(gap5)`와 인셋 처리는 건드리지 않았다.
+>
+> 📌 **머지 확인(2026-08-30)** — 머지 트리가 브랜치 팁과 같아 위 표가 그대로 as-built다.
+> 빈 상태에 제목을 두지 않은 근거가 작업자 지시뿐인 것은 그대로 남는다 → OQ-P-331.
+>
+> 검증은 기계 검사뿐이다 —
 > `compileDebugKotlin`·`ktlintMainSourceSetCheck`·`:feature:gallery:impl:testDebugUnitTest` 통과,
 > **프리뷰·실기기 육안 대조는 하지 않았다.**
 

@@ -18,6 +18,11 @@ tags: [plan, parfait, login, debug]
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> 📌 **구현은 끝났고, 들어간 곳이 `develop` 이 아니다(2026-08-30 확인)** — `origin/feature/debug-mode`
+> 커밋 6개가 `release/version-0.1.0-4` 에 머지됐다. `develop` 에는 `DebugMode*` 심볼이 0건이라
+> 아카이브 판정(= `develop` 머지)이 서지 않아 이 계획은 `draft` 에 남는다 →
+> [open-questions](../synthesis/open-questions.md) OQ-P-311 ③.
+
 **Goal:** 로그인 화면 빈 영역의 더블탭 7회 + 롱프레스로 디버그 모드를 켜고, 켜져 있으면 카카오 로그인이 카카오톡을 건너뛰고 웹 로그인으로 들어가게 한다.
 
 **Architecture:** 플래그는 기존 `parfait_preferences` DataStore의 불린 하나이고, `DebugModeLocalDataSource` → `DebugModeRepository` 얇은 슬라이스로 노출한다(UseCase 없음). `LoginViewModel`이 그 저장소를 구독해 `LoginState.isDebugMode`로 투영하고, 배지 표시와 카카오 로그인 분기가 그 상태 하나를 읽는다. `KakaoLoginHelper`는 저장소를 모르고 `forceAccountLogin` 불린만 받는다.

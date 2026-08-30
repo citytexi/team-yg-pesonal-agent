@@ -27,6 +27,12 @@ tags: [spec, parfait, canvas, state, cache, polling]
 > 경계에만). ③ **하루 경계 판정**을 `Flow` 필터 하나에서 **명시적 시간 축(티커)**으로 바꿨다 —
 > 캐시가 조용하면 재방출이 없어 필터가 아예 평가되지 않았다.
 
+> ⚠️ **이 스펙과 그 계획 둘은 2026-08-30 델타(PR #407)를 모른다** — `loadTodayCanvas()` 의 조회를
+> 구독으로 바꾸는 자리가 그날 **첫 조회 덮개**(`CanvasMainUiState.isInitialLoading`)를 얻었다.
+> 구독으로 옮기면서 그 표현을 어떻게 잇는지가 이 문서에 없다. release 계보는 이미 한 번 풀었고
+> 그 답은 **구독 안에서 파생**시키는 것이다(`try`/`finally` 가 아니다) →
+> [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
+
 ## 목표
 
 같은 오늘 캔버스를 쓰는 세 화면이 지금은 각자 서버를 부르고, 받은 값을 각자의 `UiState`에만
