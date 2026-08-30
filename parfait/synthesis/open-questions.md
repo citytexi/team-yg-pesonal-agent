@@ -5609,8 +5609,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `OnToppingRotate(deltaDegrees)`가 됐다. 픽셀 환산이 화면으로 올라간 결과이고, 스펙이
   `dirtyToppingIds`에 id를 넣는 자리로 세어 둔 그 인텐트들이다. **스펙 본문은 이번 회차에
   현행 이름으로 정정했다**(2026-08-28). 계획 쪽은 `OnToppingMoveDrag`만 쓰므로 영향이 없다.
-- **상태**: 부분 해소 (**①②⑤는 2026-08-28 스택 리베이스에서 닫혔다** — 코드가 문서를 앞질러
-  풀었다 / ③④ 잔존)
+- **상태**: 부분 해소 (**①②⑤는 2026-08-28, ⑥은 2026-08-30 스택 리베이스에서 닫혔다** — 코드가
+  문서를 앞질러 풀었다 / ③④ 잔존)
 - **해소 메모**: ①②는 계획을 고치는 일이라 다음 캔버스 폴링 라운드의 첫 작업이고, ④는 전처리
   라운드의 첫 작업이다. ③은 위키
   정책과의 대조라 [[화면-ID-체계]] 쪽 판단이 선행한다 — 구현이 옳으면 정책 문서가 따라오고,
@@ -5645,6 +5645,29 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **PR2·PR3 브랜치가 원격에 올라왔다(2026-08-30)** — `origin/feature/canvas-today-ssot` ·
   > `origin/feature/canvas-polling`(전자를 품은 스택). 다만 들어간 곳은 develop 이 아니라
   > **release 계보**다 → OQ-P-311.
+
+  > ✅ **⑥이 닫혔다(2026-08-30, 스택 3단을 `27e85d0d` 위로 다시 리베이스)** — `feature/#392-canvas-topping`
+  > · `feature/canvas-today-ssot` · `feature/canvas-polling` 을 `--update-refs` 로 함께 옮기면서
+  > PR #407 의 덮개와 부딪히는 자리를 셋 다 풀었다. **답은 예상보다 한 겹 두껍다.**
+  > 예상대로 덮개는 구독 안에서 파생한다 — 구독이 열릴 때 `todayCanvas` 가 `null` 이면 켜고
+  > (이미 받아 둔 캔버스가 있으면 켜지 않는다 — 화면에 다시 붙을 때마다 번쩍이지 않도록),
+  > 구독이 캔버스를 실어 오면 내린다. **그러나 그것만으로는 갱신 실패에서 덮개가 풀리지 않는다**
+  > — 실패하면 캐시가 아무것도 방출하지 않아 화면이 로딩에 갇힌다. `try`/`finally` 가 늘 내려
+  > 주던 자리를 구독은 대신하지 못한다.
+  > 그래서 **폴러가 실패를 내보내는 축을 새로 냈다**: `CanvasPoller.refreshFailures` →
+  > `ParfaitRepository.todayCanvasRefreshFailures` → `ObserveTodayParfaitRefreshFailureUseCase`.
+  > 값은 싣지 않아 ADR-0023 의 "값을 얻는 길은 하나"는 그대로다. `stopAll()` 로 세대가 바뀐 뒤
+  > 도착한 실패는 내보내지 않는다.
+  > **PR3 계획이 "트리거를 잃었다"며 지우자고 적은 `ShowTodayCanvasError` 는 되살렸다** — 이펙트
+  > 선언·화면 처리·문자열 리소스 셋 다. 조건만 "보여 줄 캔버스가 없을 때"에서 "덮개가 걸려
+  > 있을 때"로 좁혔다. 폴링이 5초마다 도는 자리라 가드가 없으면 실패가 이어지는 동안 토스트가
+  > 쌓인다.
+  > **검증** — 세 브랜치 각각에서 clean 뒤 `./gradlew test ktlintCheck` 가 통과한다.
+  > 반영처는 [이 라운드의 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md) 머리말·「Repository」
+  > as-built·「실패 표현」 as-built·「삭제」 as-built · [ADR-0029](../adr/0029-canvas-today-ssot-polling.md)
+  > 「결정」·「영향」 · [PR2 계획](../plans/2026-08-27-canvas-today-ssot.md) ·
+  > [PR3 계획](../plans/2026-08-27-canvas-polling.md) 머리말이다.
+  > ⚠️ **이번 리베이스분도 원격에 올라가 있지 않다** — 로컬 브랜치만 갱신됐다.
 
 ### [2026-08-28] 원격 이미지 다운로드가 응답 본문을 통째로 힙에 올린다
 

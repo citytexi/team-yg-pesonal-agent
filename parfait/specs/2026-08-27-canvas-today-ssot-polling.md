@@ -4,8 +4,8 @@ title: 오늘 캔버스 인메모리 SSoT · 배경 탭 토핑 렌더링 · 주�
 status: draft
 category: behavior-spec
 platforms: android
-verified: 2026-08-28
-related_code: CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditIntent, CanvasBGEditEffect, CanvasBGEditError, CanvasBGEditRoute, YGScaffoldV2, CanvasToppingItem, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainScreen, CanvasToppingLayer, CanvasToppingPlaceViewModel, CanvasToppingPlaceUiState, BaseViewModel, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, GetTodayParfaitUseCase, GetTodayParfaitFlowUseCase, RefreshTodayParfaitUseCase, GetParfaitDetailUseCase, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingDraft, ToppingDraftRepository, AddToppingUseCase, UpdateToppingUseCase, DeleteToppingUseCase, ChangeCanvasBackgroundUseCase, LogoutUseCase, TokenAuthenticator, ParfaitDay, parfaitToday
+verified: 2026-08-30
+related_code: CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditIntent, CanvasBGEditEffect, CanvasBGEditError, CanvasBGEditRoute, YGScaffoldV2, CanvasToppingItem, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainScreen, CanvasToppingLayer, CanvasToppingPlaceViewModel, CanvasToppingPlaceUiState, BaseViewModel, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, GetTodayParfaitUseCase, GetTodayParfaitFlowUseCase, RefreshTodayParfaitUseCase, ObserveTodayParfaitRefreshFailureUseCase, GetParfaitDetailUseCase, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingDraft, ToppingDraftRepository, AddToppingUseCase, UpdateToppingUseCase, DeleteToppingUseCase, ChangeCanvasBackgroundUseCase, LogoutUseCase, TokenAuthenticator, ParfaitDay, parfaitToday
 related_adr: ADR-0029, ADR-0023, ADR-0026, ADR-0025, ADR-0020, ADR-0009
 related_spec: group-ssot, c001-canvas-today-detail, c001-canvas-main, c106-topping-place, c201-canvas-calendar-server, c202-canvas-spotlight, c301-canvas-background-edit, c301-topping-edit-tab, screen-resume-refetch, server-delta-nametag-chip-day-boundary
 related_architecture: data-layer, state-management
@@ -27,11 +27,12 @@ tags: [spec, parfait, canvas, state, cache, polling]
 > 경계에만). ③ **하루 경계 판정**을 `Flow` 필터 하나에서 **명시적 시간 축(티커)**으로 바꿨다 —
 > 캐시가 조용하면 재방출이 없어 필터가 아예 평가되지 않았다.
 
-> ⚠️ **이 스펙과 그 계획 둘은 2026-08-30 델타(PR #407)를 모른다** — `loadTodayCanvas()` 의 조회를
-> 구독으로 바꾸는 자리가 그날 **첫 조회 덮개**(`CanvasMainUiState.isInitialLoading`)를 얻었다.
-> 구독으로 옮기면서 그 표현을 어떻게 잇는지가 이 문서에 없다. release 계보는 이미 한 번 풀었고
-> 그 답은 **구독 안에서 파생**시키는 것이다(`try`/`finally` 가 아니다) →
-> [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
+> ✅ **첫 조회 덮개를 잇는 답이 정해졌다(2026-08-30, 스택 3단을 `27e85d0d` 위로 리베이스).**
+> `loadTodayCanvas()` 의 조회를 구독으로 바꾸는 자리가 PR #407 의 **첫 조회 덮개**
+> (`CanvasMainUiState.isInitialLoading`)와 부딪혔고, 리베이스 충돌을 푸는 자리에서 닫혔다.
+> 덮개는 구독 안에서 파생하되(`try`/`finally` 가 아니다), 그것만으로는 부족해
+> **폴러가 갱신 실패를 내보내는 표면을 새로 만들었다** — 아래 「실패 표현」 참고.
+> → [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
 
 ## 목표
 
@@ -227,8 +228,14 @@ fun clearTodayCanvas()
 >   반환하고 실제 갱신은 폴러의 스코프에서 끝까지 간다. `refreshTodayCanvasDetail`의 async
 >   판이다 — 둘 다 결국 `CanvasPoller.refreshNow(groupId)` 한 줄로 수렴한다.
 >
-> 최종 넷: `todayCanvas`(구독) · `refreshTodayCanvasDetail`(suspend 갱신) ·
-> `requestTodayCanvasRefresh`(async 갱신) · `clearTodayCanvas`(세션 정리).
+> - `todayCanvasRefreshFailures(groupId): Flow<Unit>` — 폴러의 갱신 **실패**만 흘리는 표면이다
+>   (2026-08-30 리베이스에서 신설). 값은 싣지 않아 "값을 얻는 길은 `todayCanvas` 하나"라는
+>   ADR-0023 규칙은 그대로다. 첫 조회를 기다리는 화면이 덮개를 내릴 계기로만 쓴다 — 갱신이
+>   실패하면 캐시가 아무것도 방출하지 않아, 구독만 보고 있으면 덮개가 풀릴 자리가 없다.
+>
+> 최종 다섯: `todayCanvas`(구독) · `todayCanvasRefreshFailures`(실패 구독) ·
+> `refreshTodayCanvasDetail`(suspend 갱신) · `requestTodayCanvasRefresh`(async 갱신) ·
+> `clearTodayCanvas`(세션 정리).
 
 ### 갱신·무효화 규칙
 
@@ -298,6 +305,20 @@ val displayedCanvas: CanvasVO?
 없을 때만 `ShowTodayCanvasError`. **폴링 실패는 어디에도 표현하지 않는다** — 사용자가 시키지
 않은 조회이고, 보여 줄 캐시 값이 이미 있다(`group-ssot`이 `Enter` 재조회 실패를 조용히 넘기는
 것과 같은 판단).
+
+> 🔧 **as-built(2026-08-30 리베이스) — 「첫 조회를 기다리는 동안」만 예외다.** 위 규칙은 캐시
+> 값이 이미 있다는 전제 위에 서 있는데, 첫 조회는 그 전제가 깨진 자리다. 갱신 하나가 실패하면
+> 캐시가 아무것도 방출하지 않아 덮개(`isInitialLoading`)가 풀릴 계기가 없고, 화면이 로딩에
+> 갇힌다. 그래서 폴러가 `todayCanvasRefreshFailures` 로 실패를 내보내고 화면이 그것을 받는다.
+>
+> **덮개를 켜고 내리는 자리는 셋이다.** ① 구독이 열릴 때 `todayCanvas` 가 `null` 이면 켠다
+> (`onStart`). 이미 받아 둔 캔버스가 있으면 켜지 않는다 — 그러지 않으면 화면에 다시 붙을
+> 때마다 그려진 캔버스 위로 덮개가 번쩍인다. ② 구독이 캔버스를 실어 오면 내린다.
+> ③ 실패 신호가 오면 내리고 `ShowTodayCanvasError` 를 낸다.
+>
+> ⚠️ **실패 신호를 받는 조건은 「덮개가 걸려 있을 때」로 좁힌다.** 폴링은 5초마다 돌아 조건 없이
+> 알리면 실패가 이어지는 동안 토스트가 쌓인다. 이 가드가 위 「폴링 실패는 표현하지 않는다」를
+> 그대로 지킨다 — 덮개가 없다는 것은 보여 줄 캔버스가 이미 있다는 뜻이다.
 
 **`CanvasBGEditViewModel`**
 
@@ -648,6 +669,7 @@ z로 쓰게 된다.** ADR-0026이 "초안 없이 배치 시점에 재조회"를 
 | `domain/usecase/parfait/ObserveParfaitDayBoundaryUseCase.kt` | 하루 경계 티커 |
 | `domain/usecase/parfait/RefreshTodayParfaitDetailUseCase.kt` | 부작용 없는 상세 조회로 갱신(쓰기 직후 등 응답을 기다리는 자리) |
 | `domain/usecase/parfait/RequestTodayParfaitRefreshUseCase.kt` | `RefreshTodayParfaitDetailUseCase`의 async 판(되감기 직전 등 기다릴 수 없는 자리) |
+| `domain/usecase/parfait/ObserveTodayParfaitRefreshFailureUseCase.kt` | 폴러의 갱신 실패 구독(2026-08-30 리베이스 신설, 첫 조회 덮개를 내리는 계기) |
 | `data/model/qualifier/ApplicationScope.kt` | 프로세스 수명 스코프 한정자 |
 | `data/di/ApplicationScopeModule.kt` | `@Singleton CoroutineScope`(`SupervisorJob + Dispatchers.IO`) 제공 — `CanvasPoller`가 주입받는다 |
 | `data/di/ClockModule.kt` | 전역 `Clock` 싱글턴 바인딩(`ADR-0029` 「영향」 참고) |
@@ -681,8 +703,12 @@ z로 쓰게 된다.** ADR-0026이 "초안 없이 배치 시점에 재조회"를 
 > 호출처가 0건이 됐다 — 동작 손실은 없다(다음 폴링 주기, 최대 5초 안에 폴러가 같은 결과를
 > 낸다). 함께 지운 것: `ParfaitRepository`의 `refreshTodayCanvas`·`cachedTodayCanvasDate` 두
 > 표면과 그 구현, `CanvasPoller.refreshNow`/`refreshNowAsync`/`refresh`의 `forceToday`
-> 파라미터, `CanvasMainViewModel`의 그 주입과 관련 이펙트(`ShowTodayCanvasError` — 발행하는
-> 곳이 없어져 트리거가 사라졌다), `:domain` 테스트 페이크 셋의 해당 override.
+> 파라미터, `CanvasMainViewModel`의 그 주입, `:domain` 테스트 페이크 셋의 해당 override.
+>
+> ⚠️ **`ShowTodayCanvasError` 는 지웠다가 되살렸다(2026-08-30 리베이스).** PR3 시점에는 발행하는
+> 곳이 없어 이펙트·화면 처리·문자열 리소스를 함께 지웠는데, 첫 조회 덮개를 잇느라 폴러의 실패
+> 신호가 생기면서 트리거가 돌아왔다. 셋 다 복원돼 있다 — 조건만 "보여 줄 캔버스가 없을 때"에서
+> "첫 조회를 기다리는 동안"으로 좁혀졌다(위 「실패 표현」 as-built).
 
 문서 산출물은 이 스펙과 [ADR-0029](../adr/0029-canvas-today-ssot-polling.md), 그리고 두
 `README.md` 인덱스 행이다(각각 같은 커밋에 등록).

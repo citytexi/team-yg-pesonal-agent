@@ -20,9 +20,14 @@ tags: [plan, parfait, canvas, polling, coroutines]
 
 > ⚠️ **이 계획은 2026-08-30 델타(PR #407)를 모른다.** `loadTodayCanvas()` 를 지우고 구독으로
 > 대신하자고 적는데, 그 함수가 그날 **첫 조회 덮개**(`isInitialLoading`)를 갖게 됐다. 그대로
-> 지우면 덮개도 함께 사라진다. release 계보가 이 충돌을 이미 한 번 풀었고 **답이 계획과 다르다**
-> — 덮개를 `try`/`finally` 가 아니라 구독 안에서 파생시킨다 →
-> [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
+> 지우면 덮개도 함께 사라진다 → [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
+>
+> ✅ **코드는 이미 그 자리를 풀었고, 답이 계획보다 한 겹 두껍다(2026-08-30 리베이스).** 덮개는
+> 구독 안에서 파생시키되(구독이 열릴 때 캔버스가 없으면 켜고, 캔버스가 실리면 내린다) 그것만으로는
+> 갱신 실패에서 덮개가 풀리지 않는다 — 캐시가 아무것도 방출하지 않기 때문이다. 그래서 폴러에
+> `refreshFailures` 를 더하고 `ParfaitRepository.todayCanvasRefreshFailures` ·
+> `ObserveTodayParfaitRefreshFailureUseCase` 로 화면까지 잇는다. 아래 Task 가 지우자고 적는
+> `ShowTodayCanvasError` 도 그 트리거를 얻어 되살아났다 → 스펙 「실패 표현」 as-built.
 >
 > 📌 브랜치 `origin/feature/canvas-polling`(PR2 를 품은 스택)은 **release 계보에 머지됐고**
 > `develop` 에는 아직 없다(OQ-P-311 ③).
