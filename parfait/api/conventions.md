@@ -434,7 +434,8 @@ PR #250이 닫았다. **벌어졌다 닫히는 왕복이 다섯 번째**이고, 
 (`ignoreUnknownKeys = true`, 읽는 화면 0건) → [parfait.md](parfait.md) ·
 [open-questions](../synthesis/open-questions.md) OQ-P-333 · OQ-P-334.
 
-✅ **2026-08-31 두 번째 라운드 — 두 공백 다 앱이 메웠다**(브랜치 `feature/#427-sync-backend-api-260831`).
+✅ **2026-08-31 두 번째 라운드 — 두 공백 다 앱이 메웠다**(브랜치 `feature/#427-sync-backend-api-260831`,
+**2026-09-01 develop 머지 — PR #428 `e870fb87`**).
 일괄 PATCH가 `:data` 표면(Service·DataSource)과 소비처(Repository·UseCase·확인 버튼)까지 얻고,
 대신 **위치/크기/각도 단건 수정 PATCH**가 표면을 잃었다(소비처가 그 화면 하나뿐이었는데 일괄로
 옮겨 탔다) — **표면 셈은 27/28로 그대로**이고 공백의 정체만 일괄에서 단건으로 옮겨 앉았다. `http/`

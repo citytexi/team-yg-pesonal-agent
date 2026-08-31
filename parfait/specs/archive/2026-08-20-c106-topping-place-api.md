@@ -389,7 +389,7 @@ KDoc이 "되돌리지 않고 알린다"로 처분을 미리 적어 뒀다(막 �
 | ① | `FileRecentImageLocalDataSourceImpl#readBytes`가 `contentResolver` 전용이라 스킴 없는 절대경로를 못 읽는다 | 절대경로를 읽는 `readFileBytes(path)`를 따로 둔다. 어느 쪽으로 읽을지는 `kind`가 가른다 |
 | ② | 확장자를 `.jpg`로 하드코딩한다 | `getTargetFile(bytes, extension)`으로 확장자를 인자화하고 알맹이는 `.png`를 받는다. 이름이 거짓이면 `ImageUploadRepositoryImpl#contentTypeOf`가 투명 PNG를 `image/jpeg`로 올린다 |
 | ③ | 목록 스키마를 넓히면 구 스키마 디코드 실패를 `runCatching { … }.getOrDefault(emptyList())`가 삼킨다 | 위 2단 폴백. 폴백이 없으면 기존 목록이 사라지고 `clearOutsideDayWindow`가 목록 기준이라 파일을 못 지운다 |
-| ④ | `NavKeySegmentationConfirm`이 인자 셋을 요구하고 "사진 편집"이 원본·마스크를 둘 다 쓴다 | `sourceImageUri`·`cutoutImagePath`를 nullable로 넓히고 트리밍 알맹이 경로만 필수로 남긴다. 재사용 항목에서는 편집 버튼이 잠긴다(🔁 2026-08-31 이슈 #424에서 뒤집힘 — 테두리 편집만 연다) |
+| ④ | `NavKeySegmentationConfirm`이 인자 셋을 요구하고 "사진 편집"이 원본·마스크를 둘 다 쓴다 | `sourceImageUri`·`cutoutImagePath`를 nullable로 넓히고 트리밍 알맹이 경로만 필수로 남긴다. 재사용 항목에서는 편집 버튼이 잠긴다(🔁 **2026-09-01 develop 머지로 뒤집힘 — 이슈 #424 · PR #425**. 잠그는 대신 테두리 편집만 열고, 원본 자리에는 알맹이를 같이 넣는다 → OQ-P-338) |
 
 ### 초안을 쓰는 주체가 새로 필요하다
 
@@ -469,7 +469,7 @@ B를 고르는 경로가 실재하고, 그때 초안에는 A가 적혀 있어 B�
 | 최근 목록 디코드(PR6) | 신 스키마·구 `List<String>`·깨진 값 셋 다에서 **기존 항목이 사라지지 않는다** |
 | 최근 이미지 저장(PR6) | 종류가 읽기 경로와 확장자를 가른다 · 알맹이 저장이 성공 이펙트·`clear()`보다 **먼저** 일어난다 · 저장 실패가 배치 성공을 뒤집지 않는다 |
 | 갤러리(PR6) | `returnResultOnly = true`면 알맹이가 목록에 없다 · 알맹이 클릭이 확인 화면으로 간다 |
-| 재사용 진입(PR6) | 초안 `record`가 구독보다 **먼저** 끝난다(없으면 `DraftMissing`이 잘못 뜬다) · 편집 버튼이 잠긴다 |
+| 재사용 진입(PR6) | 초안 `record`가 구독보다 **먼저** 끝난다(없으면 `DraftMissing`이 잘못 뜬다) · 편집 버튼이 잠긴다(🔁 2026-09-01 PR #425로 뒤집혀 테두리 편집만 연다. 초안 재기록 가드는 `SavedStateHandle` 표시로 옮겨 프로세스 사망 복원을 견딘다) |
 
 `Authorization` 부재 검증은 형식이 아니다. 그것이 붙으면 업로드가 **아예 동작하지 않는** 이
 라운드의 핵심 실패 모드다.

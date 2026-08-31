@@ -278,8 +278,8 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 > 것을 부르는 쪽이 직접 고르게 갈랐고, **배경 편집은 `SOURCE`·토핑 만들기는 `CUTOUT`**이다.
 > 겸해 최근 목록의 정원도 종류별로 갈렸다([data-layer](data-layer.md) 「예: 최근 이미지」, OQ-P-258).
 >
-> 🔁 **재사용 진입의 "사진 편집"이 열렸다(2026-08-31, 이슈 #424 — 브랜치 `feature/#424-topping-border`,
-> 미머지)** — 잠그는 대신 **`NavKeyToppingEdit(borderOnly = true)`로 테두리 편집만** 연다. 되살릴
+> 🔁 **재사용 진입의 "사진 편집"이 열렸다(2026-08-31 브랜치 작업 → **2026-09-01 develop 머지, 이슈 #424 ·
+> PR #425 `6a1da1b0`**)** — 잠그는 대신 **`NavKeyToppingEdit(borderOnly = true)`로 테두리 편집만** 연다. 되살릴
 > 원본이 없다는 사실은 그대로이므로 영역(잘라내기) 탭은 열리지 않는다. 원본 자리에는 알맹이를 같이
 > 넣는다 — 원본과 누끼가 같은 그림이면 `buildCutoutBitmap`의 SRC_IN 결과가 알맹이 그대로다.
 > 캔버스에 놓인 토핑을 다시 손보는 C-306이 쓰던 경로를 그대로 태운 것이라 편집 화면은 안 바뀌었다.
@@ -353,7 +353,9 @@ NavKeyCanvasBGEdit ─(선택된 토핑의 편집 버튼)─▶ NavKeyToppingEdi
 ```
 
 - **`NavKeyToppingEdit`의 세 번째 호출자**이자, 그 목적지를 **모드로 가른 첫 사례**다 —
-  `borderOnly = true`면 영역 탭 없이 테두리 편집만 열린다. `returnResultOnly`(#231)와 같은 부류의
+  `borderOnly = true`면 영역 탭 없이 테두리 편집만 열린다. **그 플래그의 뜻이 넓어졌다**(2026-09-01,
+  PR #425) — "이미 캔버스에 놓인 토핑"이 아니라 **"되살릴 원본이 없는 진입"**이 조건이고, 누끼 확인
+  화면의 재사용 진입이 같은 값으로 들어오는 네 번째 호출자다. `returnResultOnly`(#231)와 같은 부류의
   동작 플래그가 백스택 키에 하나 더 늘었다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
 - 결과는 종전대로 `ResultEventBus` 왕복이지만, **받는 쪽이 어느 토핑인지 알아야 한다.**
   그 id를 ViewModel이 아니라 Route의 `rememberSaveable`(`editingToppingId`)이 들고 있다가

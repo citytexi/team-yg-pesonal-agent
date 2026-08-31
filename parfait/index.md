@@ -9,6 +9,12 @@ Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data
 ⚠️ **2026-09-01 — 그룹 목록 `recentImageUrl`이 "오늘 캔버스의 토핑"으로 좁혀져 `api/conventions.md`의
 "Android 불일치"가 0건에서 1건이 됐다**(엔드포인트 증감 없음, 앱 코드도 그대로인데 뜻만 바뀐 자리 —
 OQ-P-336).
+**2026-09-01 — 토핑 변형 저장이 일괄 PATCH 한 번으로 접혔고, 되살린 알맹이도 테두리는 고칠 수 있게
+됐다**(#428·#425). C-301 확인 버튼이 단건 PATCH 를 토핑마다 부르던 자리를 `updateAll` 한 번이 대신하고
+단건 경로는 앱에서 걷혔다 — 저장을 가르는 축이 **토핑 단위에서 축 단위**(변형 일괄 1회 + 테두리 N회)로
+바뀌었고, 대가로 **부분 성공이 사라졌다**(OQ-P-334 ⑤). 최근 알맹이 재사용 진입의 "사진 편집"은
+`borderOnly` 편집으로 열려 `NavKeyToppingEdit` 의 그 플래그가 **"되살릴 원본이 없는 진입"**을 뜻하게
+됐다(OQ-P-337·OQ-P-338 신설).
 **2026-08-31 — 오늘 캔버스가 화면 셋의 소유물에서 저장소 한 벌로 내려갔다**(#404·#408).
 `ParfaitRepository.getTodayCanvas` 하나가 **구독·갱신 둘·정리·실패 축** 다섯으로 갈리고
 `GetTodayParfaitUseCase`가 사라졌다. `:data`의 `CanvasLocalDataSource`(인메모리 둘째)가 값을 들고
@@ -268,7 +274,7 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `afde8c4c`(2026-08-31 검증, #408까지 — **release 에만 있던 스택 둘이 develop 으로 건너왔다**. delta 2건(#404 캔버스 폴링 스택 3단 · #408 최근 목록 종류별 정원), 51파일 3045/871, **두 머지 다 트리 = 브랜치 팁**(충돌 해소 편집 0건). **아카이브 이동이 오랜만에 생긴 회차** — 선작성 스펙 1·계획 3이 한꺼번에 `implemented`/`done` 으로 갔고 ADR-0029 가 `accepted` 가 됐다. 유닛 949 → **996**(+47, 파일 100 → 101)·계측 **17** 유지. **오늘 캔버스가 저장소 한 벌로 내려갔다** — `getTodayCanvas` 하나가 구독·갱신 둘·정리·실패 축 다섯이 되고 `GetTodayParfaitUseCase` 가 사라졌으며, `CanvasLocalDataSource`·`CanvasPoller`·`launchWhileSubscribed` 가 신설됐다. 서버 계약은 불변이고 바뀐 것은 **부르는 주체**다. **최근 목록 정원이 종류별로 갈려 OQ-P-258 이 ② 로 닫혔다** — PR6 가 ② 를 기각한 근거(정렬·정리가 이중이 된다)는 실제로 발생하지 않았다. ⚠️ **OQ-P-311 ③ 은 넷 중 셋이 닫히고 `feature/debug-mode` 하나만 남았다** — release 만 50커밋 · develop 만 43커밋으로 갈림 자체는 그대로다. 총 상한 두 배의 저장소 사용량은 미측정 → OQ-P-332. 직전 회차(`27e85d0d`, #409까지) 요약은 doc-baseline 본문에 있다).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `6a1da1b0`(2026-09-01 검증, #425까지 — **브랜치에만 있던 하루짜리 문서가 develop 사실이 됐고, 잠가 두었던 버튼 하나가 열렸다**. delta 2건(#428 API 현행화 260831 · #425 최근 알맹이 테두리 편집), 37파일 997/437, **두 머지 다 트리 = 브랜치 팁**(충돌 해소 편집 0건). 선작성 스펙 1·계획 1이 아카이브로 갔고 **as-built 이탈 0건**이라 문서 일이 표기 갱신으로 끝났다. 유닛 996 → **1012**(+16)·계측 **17** 유지. **변형 저장이 일괄 1회로 접혔다** — `UpdateToppingsUseCase`·`updateAll`·`ToppingTransformUpdate` 신설, 단건 경로는 앱에서 소멸(서버 엔드포인트는 잔존 → OQ-P-335). 과거 캔버스 `status` 수용(달력 점 기준은 개수 유지 → OQ-P-333 ②③ 해소), 그룹 목록 `recentImageUrl` KDoc 정정(OQ-P-336 ③ 해소). **#425 는 선작성 문서 없이 들어와 신규 미결 둘이 전부 그쪽에서 나왔다** — OQ-P-337 테두리 여백 상수·렌더 규칙 · OQ-P-338 원본 자리의 알맹이. 직전 회차(`afde8c4c`, #408까지) 요약은 doc-baseline 본문에 있다).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md

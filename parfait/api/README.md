@@ -316,7 +316,7 @@ TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요�
 > 다르다).
 >
 > ✅ **`:data` 표면은 같은 날 닫혔지만 `http/`는 그대로 25/28로 남았다**(2026-08-31 두 번째 라운드,
-> 브랜치 `feature/#427-sync-backend-api-260831`). 일괄 PATCH가 Service·DataSource·Repository·UseCase까지
+> 브랜치 `feature/#427-sync-backend-api-260831` → **2026-09-01 develop 머지, PR #428 `e870fb87`**). 일괄 PATCH가 Service·DataSource·Repository·UseCase까지
 > 올라와 위 도메인 표의 공백은 닫혔다 — **두 표면이 처음으로 같이 뒤처졌다가 한쪽만 먼저 닫힌
 > 사례**다. `http/parfait-image.http`에 일괄 요청을 넣지 않은 것은 이 라운드의 결정이다 — 그
 > 모음은 손으로 쏴서 계약을 확인하는 자리인데 이번 라운드에 실서버 요청 계획 자체가 없어 채워도

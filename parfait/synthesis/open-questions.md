@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-31
+verified: 2026-09-01
 related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -4228,8 +4228,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `SOURCE`로 올려받으므로 기존 목록이 사라지지 않는다(목록을 둘로 가르는 안은 상한 9가 목록마다 따로
   걸려 최대 18장이 되고 시간순 병합이 이중으로 생겨 기각했다). ④는 **저장 대상을 알맹이 1장으로
   좁혀** 풀었다 — `NavKeySegmentationConfirm`의 원본·마스크 인자를 nullable로 넓히고 재사용 항목에서는
-  "사진 편집"을 잠갔다(🔁 **2026-08-31 뒤집힘, 이슈 #424** — 잠그는 대신 테두리 편집만 여는 것으로
-  바뀌었다. 저장 대상이 알맹이 1장뿐인 것은 그대로이고, 영역 편집이 여전히 불가능하다는 사실도 같다). 셋을 다 저장하면 용량이 3배가 되면서 `MAX_SIZE = 9`와 정면으로 부딪히고,
+  "사진 편집"을 잠갔다(🔁 **2026-09-01 develop 머지로 뒤집혔다, 이슈 #424 · PR #425** — 잠그는 대신
+  테두리 편집만 여는 것으로 바뀌었다. 저장 대상이 알맹이 1장뿐인 것은 그대로이고, 영역 편집이 여전히 불가능하다는 사실도 같다). 셋을 다 저장하면 용량이 3배가 되면서 `MAX_SIZE = 9`와 정면으로 부딪히고,
   다시 편집하는 길은 갤러리의 원본에서 새로 시작하는 형태로 이미 있다.
   설계 중 **선행 결함 하나가 더 드러났다** — 확인 화면은 초안에 알맹이가 적혀 있어야 다음 버튼이
   열리는데(`isDraftReady`) 재사용 진입은 그것을 적는 두 경로(세그멘테이션·편집 결과)를 모두 타지
@@ -5848,7 +5848,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   받아 `PastCanvasVO`에 올릴지, 지금처럼 개수로만 판정할지. ③ 올린다면 `today`·상세가 이미 쓰는
   `CanvasStatus`(미지 값 폴백 `UNKNOWN`)를 그대로 재사용할지.
 - **상태**: 부분 해소 (②③ 해소, ① 결정으로 종결 — 아래 참고)
-  > ✅ **②③ 해소, ①은 결정됐다(2026-08-31, 브랜치 `feature/#427-sync-backend-api-260831`)** —
+  > ✅ **②③ 해소, ①은 결정됐다(2026-08-31 브랜치 작업 → 2026-09-01 develop 머지, PR #428)** —
   > `status`를 `PastParfaitResponse`·`PastCanvasVO`까지 올렸다. 매퍼는 `today`·상세가 이미 쓰는
   > `toCanvasStatus()`를 그대로 재사용해 미지 값 폴백(`CanvasStatus.UNKNOWN`)도 같이 따라왔다
   > (②③). **달력 점 기준은 개수로 유지한다** — 위키 [[C-201-캘린더-정책-v0.1]]이 "토핑 1개 이상 =
@@ -5877,7 +5877,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   없다). 폴백 없이 간 근거는 선택 자체가 `isMine`으로 막혀 있어(`CanvasBGEditViewModel#handleOnClickTopping`)
   남의 토핑이 섞여 들어올 조건이 좁다는 것 — 막힌 것이 아니라 발생 표면이 좁다는 판단이다.
 - **상태**: 부분 해소 (① 해소 — 일괄로 옮겨 탔다 / ②③④⑤ 잔존)
-  > ✅ **①이 해소됐다(2026-08-31, 브랜치 `feature/#427-sync-backend-api-260831`)** — 확인 버튼이
+  > ✅ **①이 해소됐다(2026-08-31 브랜치 작업 → 2026-09-01 develop 머지, PR #428)** — 확인 버튼이
   > `UpdateToppingsUseCase` → `ToppingRepository.updateAll`로 변형을 일괄 1회에 접는다. **지금
   > 처분은 로그 한 줄이 아니다** — 실패하면 `CanvasBGEditViewModel.handleOnClickConfirm`이 보낸
   > 토핑 전부의 id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고,
@@ -5893,7 +5893,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-31] 단건 위치 PATCH가 서버에 살아 있는데 앱 표면이 사라졌다
 
 - **ID**: OQ-P-335
-- **출처**: 브랜치 `feature/#427-sync-backend-api-260831` — 토핑 일괄 수정으로 옮겨 타면서
+- **출처**: PR #428(2026-09-01 develop 머지) — 토핑 일괄 수정으로 옮겨 타면서
   `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId`·
   `ParfaitImageRemoteDataSource.updateTopping`·`ToppingRepository.update`·`UpdateToppingUseCase`·
   wire DTO `UpdateParfaitImageRequest`를 함께 걷었다. 서버 `PATCH .../images/{parfaitImageId}`
@@ -5923,9 +5923,47 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   정책은 템플릿을 **"첫 토핑 등록 전까지"**로 적는다(그 뜻이면 어제 활동한 그룹은 템플릿이 아니어야
   한다). ② 의도가 아니라면 날짜 제한 없는 최근 이미지를 서버에 되물을지, 앱이 다른 신호로 가를지.
   ③ 어느 쪽으로 정하든 앱 KDoc 두 곳이 옛 뜻을 가르치는 것은 고쳐야 한다.
-- **상태**: 미해결 (**화면에 이미 보인다** — 앱 코드는 한 줄도 안 바뀌었고 서버 delta만으로 값이 바뀌었다)
+- **상태**: 부분 해소 (③ 해소 — KDoc 두 곳이 바뀐 뜻을 적는다 / ①② 잔존)
+  > ✅ **③이 닫혔다(2026-09-01 develop 머지, PR #428 문서 커밋 `a8d2efd5`)** — `MyParfaitGroupVO`의
+  > `recentImageUrl`·`recentImageUploadedAt` KDoc과 `ToppingImage.kt#toToppingImage` KDoc이 "오늘
+  > 캔버스 것만 온다"와 "어제까지 활동한 그룹도 템플릿에 걸린다"를 적는다. **화면 동작은 그대로다** —
+  > 어느 것을 그릴지(①)와 무엇으로 가를지(②)는 여전히 결정 전이다.
 - **해소 메모**: 정하면 [api/parfait-group.md](../api/parfait-group.md) 목록 응답 절과
   [api/conventions.md](../api/conventions.md) "Android 불일치" 행에 반영한다. ①은 정책 소관이라 위키
   [[open-questions]]와 갈리는 자리다 — 여기는 앱이 무엇을 그리는지만 추적한다.
 
-<!-- oq-next: 337 -->
+### [2026-09-01] 테두리 미리보기 여백이 굵기 상한과 따로 굳었고, 세 화면의 테두리 렌더 규칙이 갈렸다
+
+- **ID**: OQ-P-337
+- **출처**: `ToppingBorderEditScreen`의 `MAX_BORDER_PADDING_DP`(PR #425 develop 머지) ×
+  `ToppingEditViewModel`의 `MAX_BORDER_WIDTH_DP` — 미리보기가 알맹이 사방에 여백을 두고 그 판 위에
+  테두리를 그려 가장자리에서 깎이던 것을 고쳤다. 여백 값과 굵기 상한은 **같은 값인데 서로를 모르는
+  별개 상수**이고 파일도 갈라져 있다.
+- **항목**: ① 굵기 상한이 올라가면 미리보기가 **말없이 다시 깎인다** — 두 상수를 잇거나 여백을
+  굵기에서 파생시킬지. ② 여백을 둔 화면은 편집 미리보기 하나뿐이다 — 누끼 확인 화면과 캔버스는
+  `YGToppingCutoutImage`(여덟 방향 스탬프, [ADR-0025](../adr/0025-topping-border-as-server-field.md))로
+  그리므로 **한 흐름 안에서 테두리를 그리는 규칙이 둘**이고, 같은 굵기가 화면마다 다르게 잘릴 수
+  있다. ③ 실기기에서 두 화면을 나란히 본 사람이 없다 — 어긋남의 크기를 잰 적이 없다.
+- **상태**: 미해결 (**깎이던 것은 고쳐졌다** — 남은 것은 값의 근거와 화면 간 일관성이다)
+- **해소 메모**: ②를 정하면 [design-system](../architecture/design-system.md)
+  `YGToppingCutoutImage` 항목과 [c103-segmentation-topping-edit
+  스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 테두리 절에 함께 적는다.
+
+### [2026-09-01] 되살린 알맹이 편집은 원본 자리에도 알맹이를 넣어, 재편집 좌표계 전제가 진입마다 다르다
+
+- **ID**: OQ-P-338
+- **출처**: `SegmentationConfirmRoute#onClickEditPhoto`·`SegmentationConfirmState.editImagePath`
+  (PR #425 develop 머지) — 최근 목록에서 되살린 알맹이는 원본도 재편집 마스크도 없어,
+  `NavKeyToppingEdit`의 `sourceImageUri`·`segmentationImageUri`에 **같은 알맹이 경로**가 들어간다.
+  `borderOnly = true`라 영역 탭이 안 열리므로 지금은 스트로크가 0건이고 `buildCutoutBitmap` 결과가
+  알맹이 그대로다.
+- **항목**: ① 그 편집이 돌려주는 `cutoutImagePath`는 **트리밍된 알맹이 기준**이라, "재편집 좌표계를
+  지키려 원본 크기를 유지한다"는 `completeEdit`의 전제가 이 진입에서만 다른 뜻이 된다(두 번 되살리면
+  기준이 또 한 번 좁아진다). ② `borderOnly` 가드가 느슨해지는 순간 사용자가 **알맹이를 원본으로 알고**
+  지운 영역을 되살리려 하게 된다 — 가드가 유일한 방어인데 그 사실이 코드 한 곳에만 있다.
+- **상태**: 미해결 (**동작 영향 0** — 가드가 서 있는 동안은 결과가 알맹이 그대로다)
+- **해소 메모**: 정하면 [navigation-flow](../architecture/navigation-flow.md)의 재사용 진입 항목과
+  [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md)
+  「누끼 알맹이 재사용 (PR6)」 절에 적는다.
+
+<!-- oq-next: 339 -->

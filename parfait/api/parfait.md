@@ -734,7 +734,7 @@ DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조
 따로 규율을 지킬 필요가 없다. 다만 **경계 티커가 발화하면 그 그룹을 보고 있는 클라이언트가 각자 한 번씩
 `today`를 태우므로** 서버 쪽 중복 생성 방지 여부는 여전히 확인되지 않았다(OQ-P-323).
 
-✅ **2026-08-31 서버 delta가 낸 공백을 같은 날 닫았다** — 과거 목록 원소의 `status`를 앱 DTO
+✅ **2026-08-31 서버 delta가 낸 공백을 같은 날 닫았고 이튿날 develop에 들어왔다**(PR #428 `e870fb87`) — 과거 목록 원소의 `status`를 앱 DTO
 `PastParfaitResponse`와 `PastCanvasVO`가 받는다. 매핑은 `today`·상세가 이미 쓰던
 `toCanvasStatus()` 재사용이라 미지 값 폴백(`CanvasStatus.UNKNOWN`)도 그대로다.
 
