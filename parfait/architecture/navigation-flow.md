@@ -213,7 +213,7 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
                           NavKeySegmentationConfirm(sourceImageUri?, subjectImagePath?, trimmedSubjectImagePath)
                                      ▲              │  ▲ ToppingEditResult(ResultEventBus)  │
    갤러리 "최근"의 알맹이 ────────────┘              ▼  │                                    ▼
-   (앞의 둘이 null — 사진 편집 잠김)  NavKeyToppingEdit(source, segmentation, borderLayers)   NavKeyCanvasToppingPlace
+   (앞의 둘이 null — 테두리만 편집)   NavKeyToppingEdit(source, segmentation, borderLayers)   NavKeyCanvasToppingPlace
                                                                                              │ popUpTo<NavKeyCanvasMain>()
                                                                                              ▼
                                                                                         C-001 캔버스
@@ -267,7 +267,7 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 > ✅ **흐름에 두 번째 입구가 생겼다(2026-08-22, PR #334)** — 배치에 성공한 알맹이가 갤러리 "최근"에
 > 남고, 그것을 고르면 촬영·세그멘테이션을 건너뛰어 **확인 화면으로 직행**한다. 그래서
 > `NavKeySegmentationConfirm`의 `sourceImageUri`·`subjectImagePath`가 nullable로 넓어졌고, 둘이 없는
-> 진입에서는 "사진 편집"이 잠긴다. 확인 화면은 초안이 이번 알맹이를 가리키지 않으면 **스스로 초안을
+> 진입에서는 "사진 편집"이 잠겼다(🔁 2026-08-31 뒤집힘, 아래 항목). 확인 화면은 초안이 이번 알맹이를 가리키지 않으면 **스스로 초안을
 > 먼저 적은 뒤** 구독을 연다 — 순서를 뒤집으면 첫 방출의 `null`이 없는 실패를 알린다.
 > 노출은 `returnResultOnly = false`인 토핑 만들기 진입에서만이라 배경 선택(C-301)에는 안 섞인다 →
 > [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) 「누끼 알맹이 재사용 (PR6)」.
@@ -277,6 +277,15 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 > `NavKeyCustomGalleryPicker`가 받아 화면이 그대로 쓴다. 두 플래그가 우연히 같은 방향을 가리키던
 > 것을 부르는 쪽이 직접 고르게 갈랐고, **배경 편집은 `SOURCE`·토핑 만들기는 `CUTOUT`**이다.
 > 겸해 최근 목록의 정원도 종류별로 갈렸다([data-layer](data-layer.md) 「예: 최근 이미지」, OQ-P-258).
+>
+> 🔁 **재사용 진입의 "사진 편집"이 열렸다(2026-08-31, 이슈 #424 — 브랜치 `feature/#424-topping-border`,
+> 미머지)** — 잠그는 대신 **`NavKeyToppingEdit(borderOnly = true)`로 테두리 편집만** 연다. 되살릴
+> 원본이 없다는 사실은 그대로이므로 영역(잘라내기) 탭은 열리지 않는다. 원본 자리에는 알맹이를 같이
+> 넣는다 — 원본과 누끼가 같은 그림이면 `buildCutoutBitmap`의 SRC_IN 결과가 알맹이 그대로다.
+> 캔버스에 놓인 토핑을 다시 손보는 C-306이 쓰던 경로를 그대로 태운 것이라 편집 화면은 안 바뀌었다.
+> 함께 **재사용 진입의 초안 재기록 가드가 `SavedStateHandle` 표시로 옮겼다** — 편집을 열면서
+> "초안의 알맹이는 진입 인자에서 벗어나지 않는다"는 전제가 깨졌고, 그대로 두면 프로세스 사망 복원이
+> 진입 인자로 편집 결과와 테두리를 덮어쓴다.
 >
 > ⚠️ **`NavKeyCanvasMove`·`CanvasMoveRoute`·`CanvasMoveScreen`은 호출자를 잃은 채 남았다** — 엔트리도
 > 등록돼 있어 컴파일은 되지만 도달할 수 없다 → OQ-P-239.

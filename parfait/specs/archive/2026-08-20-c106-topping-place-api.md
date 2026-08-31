@@ -389,7 +389,7 @@ KDoc이 "되돌리지 않고 알린다"로 처분을 미리 적어 뒀다(막 �
 | ① | `FileRecentImageLocalDataSourceImpl#readBytes`가 `contentResolver` 전용이라 스킴 없는 절대경로를 못 읽는다 | 절대경로를 읽는 `readFileBytes(path)`를 따로 둔다. 어느 쪽으로 읽을지는 `kind`가 가른다 |
 | ② | 확장자를 `.jpg`로 하드코딩한다 | `getTargetFile(bytes, extension)`으로 확장자를 인자화하고 알맹이는 `.png`를 받는다. 이름이 거짓이면 `ImageUploadRepositoryImpl#contentTypeOf`가 투명 PNG를 `image/jpeg`로 올린다 |
 | ③ | 목록 스키마를 넓히면 구 스키마 디코드 실패를 `runCatching { … }.getOrDefault(emptyList())`가 삼킨다 | 위 2단 폴백. 폴백이 없으면 기존 목록이 사라지고 `clearOutsideDayWindow`가 목록 기준이라 파일을 못 지운다 |
-| ④ | `NavKeySegmentationConfirm`이 인자 셋을 요구하고 "사진 편집"이 원본·마스크를 둘 다 쓴다 | `sourceImageUri`·`cutoutImagePath`를 nullable로 넓히고 트리밍 알맹이 경로만 필수로 남긴다. 재사용 항목에서는 편집 버튼이 잠긴다 |
+| ④ | `NavKeySegmentationConfirm`이 인자 셋을 요구하고 "사진 편집"이 원본·마스크를 둘 다 쓴다 | `sourceImageUri`·`cutoutImagePath`를 nullable로 넓히고 트리밍 알맹이 경로만 필수로 남긴다. 재사용 항목에서는 편집 버튼이 잠긴다(🔁 2026-08-31 이슈 #424에서 뒤집힘 — 테두리 편집만 연다) |
 
 ### 초안을 쓰는 주체가 새로 필요하다
 
