@@ -2,8 +2,8 @@
 id: auth
 title: 인증(카카오·애플 로그인·회원가입·토큰 재발급·로그아웃)
 server_module: http/auth
-server_commit: e7092a3
-verified: 2026-08-26
+server_commit: de3a99a
+verified: 2026-08-31
 android_status: done
 related_spec: a002-kakao-login-api, session-token-refresh-infra
 related_adr: ADR-0017

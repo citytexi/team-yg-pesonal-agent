@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: e7092a3
-verified: 2026-08-26
+server_commit: de3a99a
+verified: 2026-08-31
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -412,5 +412,12 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 PR #250이 닫았다. **벌어졌다 닫히는 왕복이 다섯 번째**이고, 이번에는 `:data` 표면만 닫히고 `http/` 요청
 모음은 25/27로 남아 **두 표면이 처음으로 갈렸다**. 소비처는 두 도메인 전부 0건이다
 → [open-questions](../synthesis/open-questions.md).
+
+📌 **2026-08-31 delta로 공백이 다시 하나 벌어졌다 — 29 + 테스트 전용 1이 됐고 표면 셈은 27/28이다.**
+신설된 **토핑 일괄 수정 PATCH**([parfait-image.md](parfait-image.md))에 `:data` 표면이 없고 `http/`
+요청 모음도 25/28로 함께 벌어졌다 — 두 표면이 갈리지 않고 같이 뒤처진 것은 2026-08-16 이후 처음이다.
+같은 delta가 과거 캔버스 목록 응답에 붙인 `status`는 앱 DTO가 받지 않으나 **`⚠️불일치`가 아니다**
+(`ignoreUnknownKeys = true`, 읽는 화면 0건) → [parfait.md](parfait.md) ·
+[open-questions](../synthesis/open-questions.md) OQ-P-333 · OQ-P-334.
 
 새 간극이 발견되면 이 절에 표를 다시 세운다.

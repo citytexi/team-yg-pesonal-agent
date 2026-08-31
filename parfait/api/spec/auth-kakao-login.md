@@ -4,8 +4,8 @@ title: 카카오 로그인 / 회원가입
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#48"
-server_commit: e7092a3
-verified: 2026-08-26
+server_commit: de3a99a
+verified: 2026-08-31
 related_api: auth.md
 tags: [api, parfait, spec, auth]
 ---

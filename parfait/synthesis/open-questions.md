@@ -5820,4 +5820,39 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ①을 재고 나서야 정원 값을 다시 정할 수 있다. 바꾸면
   [data-layer](../architecture/data-layer.md) 「예: 최근 이미지」와 OQ-P-258 해소 메모를 함께 고친다.
 
-<!-- oq-next: 333 -->
+### [2026-08-31] 과거 캔버스 목록의 `status`를 앱이 받지 않고 빈 날을 따로 추론한다
+
+- **ID**: OQ-P-333
+- **출처**: 서버 `00622cb`(`feat: 캔버스 리스트 조회 응답에 status 추가`)가 `PastParfaitResponse`에
+  `status`(`ACTIVE`·`CLOSED`·`EMPTY`)를 붙였는데, 앱 `PastParfaitResponse`(`data/service/model/response/parfait/`)에
+  대응 필드가 없다. `ignoreUnknownKeys = true`라 파싱은 안 깨진다. 한편 `PastCanvasVO.isEmpty`가
+  `toppingCount == 0`으로 "빈 날"을 스스로 판정하고, C-201 캘린더가 점을 찍는 기준이 그 값이다.
+- **항목**: ① 두 판정이 같은 것을 뜻하지 않는다 — 서버 `EMPTY`는 **토핑 0건으로 마감된 날**이고,
+  앱 판정에는 **진행 중인 오늘 캔버스**도 걸린다(`ACTIVE` + `imageCount == 0`). ② 앱이 `status`를
+  받아 `PastCanvasVO`에 올릴지, 지금처럼 개수로만 판정할지. ③ 올린다면 `today`·상세가 이미 쓰는
+  `CanvasStatus`(미지 값 폴백 `UNKNOWN`)를 그대로 재사용할지.
+- **상태**: 미해결 (**동작 영향 미확인** — 읽는 화면이 없어 지금은 갈리지 않는다)
+- **해소 메모**: 정하면 [api/parfait.md](../api/parfait.md) 과거 목록 절·Android 매핑과
+  [api/README.md](../api/README.md) 도메인 표를 함께 고친다. 필드를 올리면 달력 점 기준이 바뀌므로
+  C-201 스펙도 같이 본다.
+
+### [2026-08-31] 토핑 일괄 수정 API가 생겼는데 앱은 단건을 병렬로 N번 부른다
+
+- **ID**: OQ-P-334
+- **출처**: 서버 `79a6d35`(`feat: 토핑 여러 개를 한 번에 수정하는 배치 API 추가`, PR #119) —
+  `UpdateParfaitImagesController`가 컬렉션 경로에 `@PatchMapping`으로 붙었다. 커밋 본문이 밝힌 동기가
+  "클라이언트가 단건 수정 API를 개수만큼 반복 호출해야 했다"이고, 앱 `CanvasBGEditViewModel`이 실제로
+  `async` + `awaitAll`로 그렇게 부른다(PR #336). 앱에 이 엔드포인트의 표면은 0건이다.
+- **항목**: ① 옮겨 탈지 — 옮기면 **부분 성공이 사라진다**(서버가 `@Transactional` 하나로 묶어 항목
+  하나가 걸리면 전부 롤백). 지금은 토핑별로 성공·실패가 갈린다. ② 실패 응답에 **어느 항목이 걸렸는지가
+  없다** — 코드만 오고 `parfaitImageId`는 안 온다. 화면이 "무엇을 되돌릴지" 알 수 없다.
+  ③ 단건과 일괄의 **검사 순서가 반대**라 마감된 캔버스의 남의 토핑에 단건은 403
+  `PARFAIT_IMAGE_NOT_OWNED`, 일괄은 409 `PARFAIT_ALREADY_CLOSED`를 낸다 — 처분을 코드로 가르는 화면은
+  옮겨 타는 순간 갈래가 바뀐다(OQ-P-261과 같은 자리). ④ `items` 개수 상한이 서버에 없다.
+- **상태**: 미해결 (**동작 영향 0** — 표면이 없어 아직 아무것도 안 바뀌었다)
+- **해소 메모**: 옮겨 타기로 하면 실패 처분을 먼저 정해야 한다 — 지금 위치 PATCH 실패는 로그 한 줄로
+  접히고 있어(OQ-P-275) 일괄로 바꾸면 **한 토핑의 실패가 전부를 되돌리는데도 화면은 조용하다**.
+  결정 후 [api/parfait-image.md](../api/parfait-image.md) Android 매핑과 `http/parfait-image.http`
+  요청 모음을 함께 채운다.
+
+<!-- oq-next: 335 -->

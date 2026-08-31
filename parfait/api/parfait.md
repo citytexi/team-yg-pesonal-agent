@@ -2,8 +2,8 @@
 id: parfait
 title: 파르페(캔버스) 조회·배경·회전
 server_module: http/parfait
-server_commit: e7092a3
-verified: 2026-08-26
+server_commit: de3a99a
+verified: 2026-08-31
 android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server
 related_adr: ADR-0017
@@ -243,7 +243,19 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 |---|---|---|---|
 | `parfaits` | List<객체> | 아니오 | 0건이면 **빈 배열**(`today`와 반대다) |
 
-  원소 필드: `parfaitId`(Long) · `date`(LocalDate) · `thumbnailUrl`(String?) · `imageCount`(Int).
+  원소 필드: `parfaitId`(Long) · `date`(LocalDate) · `status`(String(enum), **2026-08-31 신설**) ·
+  `thumbnailUrl`(String?) · `imageCount`(Int).
+
+  ✅ **2026-08-31 — 목록 원소가 `status`를 싣는다**(`feat: 캔버스 리스트 조회 응답에 status 추가`).
+  값 집합은 `today`·상세와 같은 `ACTIVE`·`CLOSED`·`EMPTY`이고 널이 아니다. 경량 프로젝션
+  `ParfaitSummary`가 상태를 안 읽던 것이 원인이었고, `ParfaitSummary` → `PastParfaitResult` →
+  `PastParfaitResponse` 세 층에 같은 필드를 관통시켰다. 엔드포인트 수·요청·에러는 그대로다.
+  근거: `ParfaitControllerTest`가 `$.data.parfaits[0].status`를 `"CLOSED"`로 단언하고,
+  `ParfaitAdapterTest`가 프로젝션이 상태를 채우는 것을 잠근다.
+
+  ⚠️ **`imageCount == 0`과 `status == EMPTY`는 같은 뜻이 아니다.** `EMPTY`는 **토핑 0건으로 마감된
+  날**이고, 진행 중인 `ACTIVE` 캔버스도 아직 아무도 안 올렸으면 `imageCount`가 0이다. 두 값을
+  한 조건으로 접으면 오늘 캔버스가 마감된 날로 보인다 → [Android 매핑](#android-매핑).
 
   ⚠️ **`thumbnailUrl`은 항상 `null`이다.** `GetPastParfaitsService`가 `thumbnailUrl = null`을 리터럴로 넣는다 —
   필드만 있고 채우는 코드가 없다. 앱이 목록 썸네일을 그리려면 다른 값을 써야 한다 → [미결](#미결).
@@ -722,8 +734,17 @@ DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조
 따로 규율을 지킬 필요가 없다. 다만 **경계 티커가 발화하면 그 그룹을 보고 있는 클라이언트가 각자 한 번씩
 `today`를 태우므로** 서버 쪽 중복 생성 방지 여부는 여전히 확인되지 않았다(OQ-P-323).
 
+⚠️ **2026-08-31 서버 delta가 과거 목록에 공백 하나를 냈다** — 원소에 붙은 `status`를 앱 DTO
+`PastParfaitResponse`가 받지 않는다(`ignoreUnknownKeys = true`라 파싱은 안 깨진다). 읽는 화면이
+아직 없어 `⚠️불일치`는 아니지만, **`PastCanvasVO.isEmpty`가 `toppingCount == 0`으로 "빈 날"을
+추론하는 자리**가 이 필드와 겹친다 — 서버 `EMPTY`는 **토핑 0건으로 마감된 날**이고 앱의 판정에는
+진행 중인 오늘 캔버스도 걸린다. C-201 캘린더가 점을 찍는 기준이 그 값이다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-333.
+
 ## 미결
 
+- 과거 목록 원소의 `status`를 앱이 받지 않고, `isEmpty`를 `toppingCount == 0`으로 따로 추론한다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-333
 - **경로 세그먼트 `year`(단수) vs 응답 필드 `years`(복수) 불일치.** 서버 코드로는 의도된 설계인지 실수인지
   확인할 수 없다 — 근거 자료(PR 설명·이슈) 조사는 이번 범위 밖. → [open-questions](../synthesis/open-questions.md)
 - `GET .../today`가 조회인데 캔버스 행을 만든다(부작용 있는 GET), 그리고 오늘 날짜가 이미 마감돼 있으면
