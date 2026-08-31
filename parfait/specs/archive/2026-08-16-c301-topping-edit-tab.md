@@ -170,6 +170,9 @@ NavKeyCanvasBGEdit ─(편집 버튼)─▶ NavKeyToppingEdit(source, segmentati
         └───────────────────────────────────────────────────┘
 ```
 - `borderOnly = true`면 `ToppingEditViewModel`이 초기 탭을 `BORDER`로 세우고 `isBorderOnly`를 켠다.
+  > 🔁 **as-built(PR #425, 2026-09-01)** — 이 플래그의 뜻이 "이미 캔버스에 놓인 토핑"에서
+  > **"되살릴 원본이 없는 진입"**으로 넓어졌다. 누끼 확인 화면의 최근 알맹이 재사용 진입이 같은 값으로
+  > 들어와 호출자가 넷이 됐다(→ OQ-P-338).
   화면은 `YGFloatingBarEditTab`(영역|테두리) 대신 **`YGFloatingBarEdit`(제목 "테두리 편집")**을 그려
   탭 전환 자체를 없앤다. 이미 캔버스에 놓인 토핑의 잘라내기 영역은 다시 건드릴 수 없다는 규칙이
   UI 부재로 강제된다.

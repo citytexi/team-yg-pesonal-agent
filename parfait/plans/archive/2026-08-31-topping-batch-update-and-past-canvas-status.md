@@ -1,5 +1,15 @@
 # 토핑 일괄 수정 전환 및 과거 캔버스 status 수용 Implementation Plan
 
+> ✅ **완료·develop 머지(2026-09-01, PR #428 `e870fb87` — 브랜치 `feature/#427-sync-backend-api-260831`
+> 팁 `a8d2efd5`와 트리가 같아 충돌 해소 편집이 0건)** — 5 Task 전량이 develop에 있다. 체크박스는
+> 실행 기록을 이 블록에 모으는 관례대로 미체크로 둔다.
+>
+> 계획과 갈린 것은 설계가 아니라 표기 정정뿐이다 — 브리프가 준 검증 명령
+> (`:domain:testDebugUnitTest`·`:domain:compileDebugKotlin`)이 실제로 없는 태스크라
+> `:domain:test`·`:domain:compileKotlin`으로 대체 실행했고, ktlint 120자 규칙에 걸린 줄을 값 변경 없이
+> 재포맷했다. 머지 뒤 문서 커밋 둘(`850a5be5`·`a8d2efd5`)이 주석 군더더기를 걷고 그룹 목록
+> `recentImageUrl`의 바뀐 뜻을 KDoc에 반영했다(OQ-P-336 ③). 유닛 996 → **1012건**.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** C-301 편집 탭 확인 버튼이 토핑 위치 수정을 단건 PATCH N회 대신 일괄 PATCH 1회로 보내게 하고, 과거 캔버스 목록 응답의 `status`를 도메인 VO까지 받는다.
@@ -8,7 +18,7 @@
 
 **Tech Stack:** Kotlin, Retrofit, kotlinx.serialization, Hilt, kotlinx-coroutines-test, MockK, kotlin.test, Turbine
 
-**Spec:** [`parfait/specs/2026-08-31-topping-batch-update-and-past-canvas-status.md`](../specs/2026-08-31-topping-batch-update-and-past-canvas-status.md)
+**Spec:** [`parfait/specs/archive/2026-08-31-topping-batch-update-and-past-canvas-status.md`](../../specs/archive/2026-08-31-topping-batch-update-and-past-canvas-status.md)
 
 **대상 저장소·브랜치:** `TJYG-Android`, 브랜치 `feature/#427-sync-backend-api-260831`(이미 생성돼 있고 `origin/develop`과 같은 지점이다). 경로는 `wiki/personal-private/project-paths.md`의 `TJYG-Android` 값.
 
@@ -22,7 +32,7 @@
   - **다른 컴포넌트의 현재 상태를 단정하지 않는다**(낡는다). 써야 하면 근거 문서를 가리킨다.
 - **매퍼 단독 테스트를 만들지 않는다.** 판단이 든 변환은 DataSource 테스트의 케이스로 잠근다.
 - **라인번호·색 hex·변동 수치를 문서에 적지 않는다.** 근거는 파일명 + 심볼명으로 적는다.
-- 서버 계약의 정본은 [`parfait/api/parfait-image.md`](../api/parfait-image.md)와 [`parfait/api/parfait.md`](../api/parfait.md)다.
+- 서버 계약의 정본은 [`parfait/api/parfait-image.md`](../../api/parfait-image.md)와 [`parfait/api/parfait.md`](../../api/parfait.md)다.
 - 검증 명령: `./gradlew :data:testDebugUnitTest :domain:test :feature:groups:canvas:impl:testDebugUnitTest` 및 `./gradlew ktlintCheck`.
 
 ---
@@ -1260,14 +1270,14 @@ Android 매핑 절 끝의 "⚠️ **2026-08-31 서버 delta가 과거 목록에 
 "토핑 1개 이상 = True, 0개 = False"로 규정하고 그 판정이 정본과 일치한다. 서버 `EMPTY`는
 "0건으로 마감된 날"이라 뜻이 좁아, 옮기면 진행 중인 오늘의 빈 캔버스에 점이 찍힌다. 두 값이
 같지 않다는 것을 `PastCanvasVO.isEmpty` KDoc이 담는다. **읽는 화면은 아직 0건이다**
-→ [open-questions](../synthesis/open-questions.md) OQ-P-333.
+→ [open-questions](../../synthesis/open-questions.md) OQ-P-333.
 ```
 
 `## 미결`의 `OQ-P-333` 줄은 이렇게 바꾼다.
 
 ```markdown
 - 과거 목록 원소의 `status`를 VO까지 받았으나 읽는 화면이 0건이다(달력 점은 개수 축을 그대로 쓴다)
-  → [open-questions](../synthesis/open-questions.md) OQ-P-333
+  → [open-questions](../../synthesis/open-questions.md) OQ-P-333
 ```
 
 - [ ] **Step 4: `README.md`와 `conventions.md`의 표면 셈을 고친다**
@@ -1323,5 +1333,5 @@ git commit -m "docs: 토핑 일괄 수정 전환을 계약 문서와 미결에 �
 
 **`http/parfait-image.http`에 일괄 요청을 넣지 않는다**(이 라운드 결정). 그 모음은 손으로 쏴서 계약을
 확인하는 자리인데, 이번 라운드에는 실서버 요청 계획 자체가 없어 넣어도 아무도 돌리지 않는다. 커버가
-25/28로 벌어진 채 남는 것을 [api/README.md](../api/README.md)가 기록한다 — 채우는 것은 실서버 검증을
+25/28로 벌어진 채 남는 것을 [api/README.md](../../api/README.md)가 기록한다 — 채우는 것은 실서버 검증을
 하는 라운드의 일이다.

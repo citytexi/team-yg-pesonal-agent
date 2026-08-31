@@ -1,20 +1,24 @@
 ---
 id: topping-batch-update-and-past-canvas-status
 title: 토핑 일괄 수정 전환 및 과거 캔버스 status 수용 (Topping Batch Update)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-31
+verified: 2026-09-01
 related_code:
-  - ParfaitImageService.kt#patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId
-  - ParfaitImageRemoteDataSource.kt#updateTopping
-  - ParfaitImageRemoteDataSourceImpl.kt#updateTopping
-  - VOMapper.kt#toUpdatedToppingVO
-  - ToppingRepository.kt#update
+  - ParfaitImageService.kt#patchGroupsByGroupIdParfaitsByParfaitIdImages
+  - UpdateParfaitImagesRequest.kt
+  - UpdateParfaitImagesResponse.kt
+  - ParfaitImageRemoteDataSource.kt#updateToppings
+  - ParfaitImageRemoteDataSourceImpl.kt#updateToppings
+  - VOMapper.kt#toUpdateRequest
+  - VOMapper.kt#toUpdatedToppingVOList
+  - ToppingTransformUpdate.kt
+  - ToppingRepository.kt#updateAll
   - ToppingRepositoryImpl.kt
-  - UpdateToppingUseCase.kt
+  - UpdateToppingsUseCase.kt
   - CanvasBGEditViewModel.kt#updateDirtyToppings
-  - CanvasBGEditViewModel.kt#updateToppingIfChanged
+  - CanvasBGEditViewModel.kt#saveTransforms
   - PastParfaitsResponse.kt#PastParfaitResponse
   - PastCanvasVO.kt#PastCanvasVO
   - CanvasMainViewModel.kt#uploadedDates
@@ -32,16 +36,17 @@ tags: [spec, parfait, topping, canvas, server-contract]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 
-> 📌 **구현이 로컬 브랜치에만 있다(2026-08-31 확인)** — TJYG-Android `feature/#427-sync-backend-api-260831`에
-> 커밋 5개(`4d03cdd6`·`32ccca76`·`afa98099`·`0605b4ee`·`1b795131`)가 올라갔지만 **푸시도 develop 머지도
-> 안 됐다**. 아래 설계와 실제 코드의 대조는 그 브랜치가 `develop`에 들어오는 회차로 미룬다.
+> ✅ **구현이 develop에 들어왔다(2026-09-01, PR #428 `e870fb87` — 트리가 브랜치 팁 `a8d2efd5`와 같아
+> 충돌 해소 편집이 0건이다).** 브랜치에 있던 커밋 5개가 그대로 올라왔고 문서 커밋 둘(`850a5be5`·`a8d2efd5`)이
+> 뒤따랐다. **as-built가 이 설계와 갈린 자리는 없다** — 아래 설계의 심볼·계약·저장 흐름이 머지된 코드와
+> 일치한다. 실행 결과가 계획과 갈린 것은 검증 명령 표기 정정과 ktlint 재포맷뿐이다.
 
 ## 목표
 
 서버 `main` `de3a99a` delta 두 건을 앱에 반영한다.
 
 **① 토핑 일괄 수정 PATCH로 갈아탄다.** 서버가 `PATCH .../parfaits/{parfaitId}/images`를 신설했고
-([api/parfait-image.md](../api/parfait-image.md)), 그 커밋 본문이 밝힌 동기가 "클라이언트가 단건 수정
+([api/parfait-image.md](../../api/parfait-image.md)), 그 커밋 본문이 밝힌 동기가 "클라이언트가 단건 수정
 API를 개수만큼 반복 호출해야 했다"이다. C-301 편집 탭의 확인 버튼이 정확히 그렇게 동작한다 —
 `updateDirtyToppings`가 `async` + `awaitAll`로 바뀐 토핑 수만큼 요청을 낸다. 그 자리를 요청 한 번으로
 접는다.
@@ -69,7 +74,7 @@ API를 개수만큼 반복 호출해야 했다"이다. C-301 편집 탭의 확�
 
 ## API / 인터페이스
 
-### 서버 계약 (정본: [api/parfait-image.md](../api/parfait-image.md))
+### 서버 계약 (정본: [api/parfait-image.md](../../api/parfait-image.md))
 
 `PATCH /api/v1/groups/{groupId}/parfaits/{parfaitId}/images` — 성공 200 · envelope `code` = `"OK"`.
 
@@ -167,10 +172,10 @@ suspend fun updateAll(
 `UpdateToppingUseCase`는 `UpdateToppingsUseCase`로 교체한다. 소비처가
 `CanvasBGEditViewModel` 하나뿐이라 단건 경로를 남기지 않는다 — 쓰지 않는 갈래를 열어 두면 계약이
 바뀌어도 아무도 고치지 않는다는 이 저장소의 규약을 따른다. 단건이 다시 필요해지면
-[api/parfait-image.md](../api/parfait-image.md)에 스펙이 그대로 남아 있으니 그것을 보고 되살린다.
+[api/parfait-image.md](../../api/parfait-image.md)에 스펙이 그대로 남아 있으니 그것을 보고 되살린다.
 
 **빈 목록은 요청을 보내지 않는다.** 서버가 빈 `items`를 200으로 받아 주기는 하지만
-([api/parfait-image.md](../api/parfait-image.md) — 검증을 하나도 안 돌고 빈 배열을 준다) 보낼 이유가
+([api/parfait-image.md](../../api/parfait-image.md) — 검증을 하나도 안 돌고 빈 배열을 준다) 보낼 이유가
 없다. Repository가 `updates`가 비면 `Result.success(emptyList())`로 곧장 끊는다.
 
 ## 동작 / 상태

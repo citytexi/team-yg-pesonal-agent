@@ -440,10 +440,10 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 
 ## Android 매핑
 
-**계약이 다섯이 되면서 표면이 다시 갈렸다** — 넷은 표면·소비처를 갖췄고(2026-08-27 PR #369 develop
-머지) 2026-08-31 신설된 **일괄 PATCH는 표면이 0건**이다. 갖춘 넷은 배치(POST,
-2026-08-21 PR5) · 삭제(DELETE, 2026-08-23 PR #335) · **위치 PATCH**(2026-08-23 PR #336) ·
-**테두리 PATCH**(2026-08-27 PR #369)다. 마지막 하나는 `ToppingRepository.updateBorder` →
+**계약이 다섯이 되면서 표면이 갈렸고, 갈린 자리가 한 번 옮겨 앉았다** — 지금 표면·소비처를 갖춘 것은
+배치(POST, 2026-08-21 PR5) · 삭제(DELETE, 2026-08-23 PR #335) · **일괄 PATCH**(2026-09-01 PR #428) ·
+**테두리 PATCH**(2026-08-27 PR #369) 넷이고, **위치/크기/각도 단건 PATCH가 표면 0건**이다. 단건은
+2026-08-23 PR #336으로 표면·소비처를 얻었다가 그 소비처가 일괄로 옮겨 타면서 함께 걷혔다. 마지막 하나는 `ToppingRepository.updateBorder` →
 `UpdateToppingBorderUseCase`를 거쳐 C-301 편집 탭의 확인 버튼에 걸렸다(표면은 2026-08-12 PR #230 두 건
 + **2026-08-15 PR #250 두 건**).
 
@@ -453,10 +453,11 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 겹이 둘 이상이면 보이는 테두리와 저장되는 테두리가 갈린다
 → [open-questions](../synthesis/open-questions.md) OQ-P-324.
 
-⚠️ **위치 PATCH와 테두리 PATCH가 확인 버튼 안에서 독립적으로 판정되고 독립적으로 나간다** —
-`updateToppingIfChanged`가 위치·배율·각도 넷과 `borderLayers`를 따로 비교하므로, 테두리만 고친
-토핑에는 테두리 PATCH 하나만 나간다. 계약이 두 엔드포인트로 갈라져 있는 것을 앱이 그대로 미러링한
-결과다. **응답 `UpdatedToppingBorderVO`는 여전히 아무도 읽지 않는다**(실패만 로그로 접는다).
+⚠️ **변형과 테두리가 확인 버튼 안에서 독립적으로 판정되고 독립적으로 나간다** —
+`updateDirtyToppings`가 dirty 토핑을 `hasTransformChange`·`hasBorderChange` 둘로 갈라, 변형이 바뀐
+토핑은 `saveTransforms`가 **일괄 PATCH 1회**로 한꺼번에 보내고 테두리가 바뀐 토핑은 `saveBorder`가
+토핑마다 보낸다. 테두리만 고친 토핑에는 테두리 PATCH 하나만 나간다. 계약이 두 엔드포인트로 갈라져
+있는 것을 앱이 축 단위로 미러링한 결과다. **응답 `UpdatedToppingBorderVO`는 여전히 아무도 읽지 않는다**(실패만 로그로 접는다).
 
 | 계약 | Android 심볼 |
 |---|---|
@@ -594,8 +595,7 @@ id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `C
 서버 검증 부재가 이 라운드부터 실제로 닿는다. 앱 쪽 상한도 없다(OQ-P-271).
 `android_status`는 여전히 `partial`이다 — 테두리 PATCH의 소비 화면이 없다.
 
-✅ **일괄로 옮겨 탔다**(2026-08-31, 브랜치 `feature/#427-sync-backend-api-260831` — develop 머지
-여부 미확인) — 확인 버튼이 변형(위치·배율·각도)을 일괄 PATCH 한 번으로 접는다. 위 PR #336 항목이
+✅ **일괄로 옮겨 탔다**(2026-08-31 브랜치 작업 → **2026-09-01 develop 머지, PR #428 `e870fb87`**) — 확인 버튼이 변형(위치·배율·각도)을 일괄 PATCH 한 번으로 접는다. 위 PR #336 항목이
 적은 `async` + `awaitAll` 단건 병렬 호출은 사라졌고, `ToppingRepository.update`·`UpdateToppingUseCase`도
 함께 걷혔다(각각 `updateAll`·`UpdateToppingsUseCase`로 교체). **부분 성공이 사라진 대가는 그대로
 받았다** — 서버가 항목 하나만 걸려도 전부 롤백하고 응답이 어느 항목인지 안 알려주므로, 실패하면
