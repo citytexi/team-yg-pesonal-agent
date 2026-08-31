@@ -267,7 +267,7 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > 미머지) — 폴링이 얹히면 오늘 캔버스 조회가 화면의 `launch` 에서 저장소 구독으로 옮겨 가
 > `finally` 를 둘 자리가 없어진다. 그 자리의 규칙은 **구독이 열릴 때 캔버스가 없으면 켜고, 캔버스가
 > 실리거나 갱신 실패 신호가 오면 내린다**로 바뀐다. 그룹 목록은 그대로다
-> → [canvas-today-ssot-polling 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md) 「실패 표현」.
+> → [canvas-today-ssot-polling 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md) 「실패 표현」.
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.

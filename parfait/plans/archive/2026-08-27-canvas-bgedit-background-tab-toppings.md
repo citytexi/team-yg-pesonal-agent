@@ -1,20 +1,25 @@
 ---
 id: canvas-bgedit-background-tab-toppings
 title: PR1 — 배경 편집 화면 배경 탭 토핑 렌더링
-status: draft
+status: done
 type: work-order
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-31
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0029
 related_spec: canvas-today-ssot-polling
 related_code: CanvasBGEditScreen, CanvasToppingItem, CanvasEditTab, CanvasBGEditUiState, ToppingGeometry, ToppingHitTarget, YGToppingCutoutImage, ToppingCornerButtons
-archived_reason:
+archived_reason: PR #404 로 develop 머지(2026-08-31) — 배경 탭 토핑 렌더링이 스택 3단의 첫 단으로 함께 들어왔다
 tags: [plan, parfait, canvas, compose]
 ---
 
 # PR1 — 배경 편집 화면 배경 탭 토핑 렌더링 Implementation Plan
+
+> ✅ **develop 에 머지됐다(2026-08-31, PR #404 `2c7bb31b`)** — 스택 3단이 한 머지로 들어왔고
+> 머지 커밋의 트리가 브랜치 팁(`6bd21fb7`)과 같아 **충돌 해소 편집이 0건**이다. 아래 머리말이
+> "release 계보에만 있다"고 적던 상태는 끝났다(OQ-P-311 ③). Task 의 체크는 완료 표시이고,
+> 「수동 확인」은 실기기 확인 기록이 없어 그대로 둔다.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -24,7 +29,7 @@ tags: [plan, parfait, canvas, compose]
 
 **Tech Stack:** Kotlin, Jetpack Compose, Coil 3(`rememberAsyncImagePainter`)
 
-**Spec:** [`parfait/specs/2026-08-27-canvas-today-ssot-polling.md`](../specs/2026-08-27-canvas-today-ssot-polling.md) 「PR1 — 배경 탭 토핑 렌더링」
+**Spec:** [`parfait/specs/2026-08-27-canvas-today-ssot-polling.md`](../../specs/archive/2026-08-27-canvas-today-ssot-polling.md) 「PR1 — 배경 탭 토핑 렌더링」
 
 **작업 저장소:** `TJYG-Android` (remote `mash-up-kr/TJYG-Android`). 로컬 절대경로는 `wiki/personal-private/project-paths.md`에 있다. 브랜치 `feature/#392-canvas-topping` 위에 쌓는다 — 그 브랜치는 지금 `develop`과 같고 작업 트리는 깨끗하다.
 
@@ -72,7 +77,7 @@ tags: [plan, parfait, canvas, compose]
   - `private data class BGEditHitEntry(val draw: BGEditDrawEntry, val target: ToppingHitTarget)` — `topping`은 `draw`로 위임
   - `@Composable private fun rememberBGEditHitEntries(drawEntries: List<BGEditDrawEntry>): List<BGEditHitEntry>`
 
-- [ ] **Step 1: import를 더한다**
+- [x] **Step 1: import를 더한다**
 
 이 파일에는 `androidx.compose.ui.unit.DpOffset` import가 **없다.** `toppingCenter`가 `DpOffset`을 돌려주므로 반드시 추가한다.
 
@@ -80,7 +85,7 @@ tags: [plan, parfait, canvas, compose]
 import androidx.compose.ui.unit.DpOffset
 ```
 
-- [ ] **Step 2: `BGEditDrawEntry`와 그리기 정보 추출 함수를 만든다**
+- [x] **Step 2: `BGEditDrawEntry`와 그리기 정보 추출 함수를 만든다**
 
 기존 `BGEditHitEntry` 선언 바로 위에 넣는다.
 
@@ -141,7 +146,7 @@ private fun rememberBGEditDrawEntries(
 }
 ```
 
-- [ ] **Step 3: `BGEditHitEntry`가 그리기 정보를 품게 바꾼다**
+- [x] **Step 3: `BGEditHitEntry`가 그리기 정보를 품게 바꾼다**
 
 ```kotlin
 private data class BGEditHitEntry(
@@ -152,7 +157,7 @@ private data class BGEditHitEntry(
 }
 ```
 
-- [ ] **Step 4: `rememberBGEditHitEntries`가 그리기 함수의 결과를 받게 바꾼다**
+- [x] **Step 4: `rememberBGEditHitEntries`가 그리기 함수의 결과를 받게 바꾼다**
 
 ⚠️ 시그니처를 **한 줄로** 쓴다. `.editorconfig`가 `ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 2`이고 이 선언은 한 줄로 합쳐도 120자 미만이라, 멀티라인으로 두면 ktlint가 잡는다.
 
@@ -189,7 +194,7 @@ private fun rememberBGEditHitEntries(drawEntries: List<BGEditDrawEntry>): List<B
 }
 ```
 
-- [ ] **Step 5: 호출부와 `CanvasToppingImage`의 painter 접근을 고친다**
+- [x] **Step 5: 호출부와 `CanvasToppingImage`의 painter 접근을 고친다**
 
 `BoxWithConstraints` 안, 기존 `val entries = rememberBGEditHitEntries(...)` 자리를 두 줄로 가른다.
 
@@ -206,17 +211,17 @@ val entries = rememberBGEditHitEntries(drawEntries = drawEntries)
 
 **`ToppingCornerButtons`는 손대지 않는다.** 그 함수는 `entry.target`과 `entry.topping`만 읽고 `painter`를 읽지 않으며, Step 3의 `topping` 위임 덕에 그대로 컴파일된다.
 
-- [ ] **Step 6: 컴파일과 ktlint를 확인한다**
+- [x] **Step 6: 컴파일과 ktlint를 확인한다**
 
 Run: `./gradlew :feature:groups:canvas:impl:compileDebugKotlin :feature:groups:canvas:impl:ktlintMainSourceSetCheck`
 Expected: 둘 다 BUILD SUCCESSFUL. ktlint가 실패하면 `./gradlew :feature:groups:canvas:impl:ktlintFormat`으로 고친 뒤 diff를 확인한다.
 
-- [ ] **Step 7: 기존 테스트가 그대로 통과하는지 확인한다**
+- [x] **Step 7: 기존 테스트가 그대로 통과하는지 확인한다**
 
 Run: `./gradlew :feature:groups:canvas:impl:test`
 Expected: PASS (화면만 바꿨으므로 ViewModel 테스트는 영향 없음)
 
-- [ ] **Step 8: 커밋**
+- [x] **Step 8: 커밋**
 
 ```bash
 git add feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/screen/CanvasBGEditScreen.kt
@@ -234,7 +239,7 @@ git commit -m "refactor: 배경 편집의 토핑 그리기 정보를 판정 정�
 - Consumes: Task 1의 `BGEditDrawEntry`
 - Produces: `@Composable private fun CanvasToppingImage(entry: BGEditDrawEntry, alpha: Float, onClick: (() -> Unit)?, modifier: Modifier = Modifier)`
 
-- [ ] **Step 1: 불투명도 상수를 둔다**
+- [x] **Step 1: 불투명도 상수를 둔다**
 
 이 파일에는 최상위 상수가 하나도 없다. **import 블록 바로 아래, `@Composable internal fun CanvasBGEditScreen` 선언 위에** 새로 둔다.
 
@@ -243,7 +248,7 @@ git commit -m "refactor: 배경 편집의 토핑 그리기 정보를 판정 정�
 private const val BACKGROUND_TAB_TOPPING_ALPHA = 0.5f
 ```
 
-- [ ] **Step 2: `CanvasToppingImage`를 고친다**
+- [x] **Step 2: `CanvasToppingImage`를 고친다**
 
 중심점·크기는 `BGEditDrawEntry`에 이미 있으므로 다시 계산하지 않는다. `alpha`에 기본값을 주지 않는다 — Compose 관례상 `modifier`가 첫 선택 파라미터여야 하고, 호출부 셋이 모두 값을 명시하므로 기본값이 필요 없다(스펙 「불투명도」는 `= 1f`로 적었으나 의도적으로 다르게 간다).
 
@@ -309,7 +314,7 @@ private fun CanvasToppingImage(
 
 `Modifier.let { … }`으로 조건부 수정자를 붙이는 방식은 같은 파일의 캔버스 박스에 선례가 있다.
 
-- [ ] **Step 3: 토핑 탭 호출부 둘을 새 시그니처에 맞춘다**
+- [x] **Step 3: 토핑 탭 호출부 둘을 새 시그니처에 맞춘다**
 
 ```kotlin
 entries.filterNot { it.topping.isMine }.forEach { entry ->
@@ -331,12 +336,12 @@ myEntries.forEach { entry ->
 }
 ```
 
-- [ ] **Step 4: 컴파일과 ktlint 확인**
+- [x] **Step 4: 컴파일과 ktlint 확인**
 
 Run: `./gradlew :feature:groups:canvas:impl:compileDebugKotlin :feature:groups:canvas:impl:ktlintMainSourceSetCheck`
 Expected: 둘 다 BUILD SUCCESSFUL
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/screen/CanvasBGEditScreen.kt
@@ -354,7 +359,7 @@ git commit -m "feat: 토핑 이미지가 불투명도와 클릭 없음을 받게
 - Consumes: Task 1의 두 `remember*` 함수, Task 2의 `CanvasToppingImage`
 - Produces: 없음(화면 내부)
 
-- [ ] **Step 1: 캔버스 박스 안의 토핑 레이어를 다시 짠다**
+- [x] **Step 1: 캔버스 박스 안의 토핑 레이어를 다시 짠다**
 
 지금은 `if (uiState.selectedTab == CanvasEditTab.TOPPING) { BoxWithConstraints { … } }` 한 덩어리다. `BoxWithConstraints`는 탭과 무관하게 항상 들어가고, 그 **안에서** 탭이 갈린다.
 
@@ -450,17 +455,17 @@ BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
 
 `uiState.toppings`는 `CanvasBGEditViewModel`이 `positionZ` 오름차순으로 채운다. 배경 탭이 그 순서를 그대로 쓰는 것은 캔버스 메인과 같은 규칙이다.
 
-- [ ] **Step 2: 컴파일과 ktlint 확인**
+- [x] **Step 2: 컴파일과 ktlint 확인**
 
 Run: `./gradlew :feature:groups:canvas:impl:compileDebugKotlin :feature:groups:canvas:impl:ktlintMainSourceSetCheck`
 Expected: 둘 다 BUILD SUCCESSFUL
 
-- [ ] **Step 3: Android Lint 확인 — 판정 기준이 다르다**
+- [x] **Step 3: Android Lint 확인 — 판정 기준이 다르다**
 
 Run: `./gradlew :feature:groups:canvas:impl:lintDebug`
 Expected: **BUILD FAILED가 정상이다.** 이 모듈의 lint는 기준선에서 이미 `CanvasToppingPlaceRoute.kt`의 `LocalContextGetResourceValueCall` 4건으로 실패한다. 판정 기준은 **`CanvasBGEditScreen.kt`에 새 지적이 없을 것**이다. `feature/groups/canvas/impl/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt`를 열어 파일명으로 걸러 확인한다. **기존 4건은 손대지 않는다.**
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/screen/CanvasBGEditScreen.kt
@@ -482,7 +487,7 @@ git commit -m "feat: 배경 탭에서도 토핑을 반투명으로 그린다"
 - Consumes: `CanvasBGEditUiState`, `CanvasToppingItem`, `ToppingBorderLayer`, `YGPreview`, `PreviewBox`
 - Produces: 없음
 
-- [ ] **Step 1: Preview용 토핑 표본을 만든다**
+- [x] **Step 1: Preview용 토핑 표본을 만든다**
 
 `imageUrl`에 빈 문자열을 두지 않는다. 실제 리소스를 넘겨야 painter가 `Success`에 닿고 테두리도 함께 그려져, 불투명도가 이미지와 테두리에 한 번에 적용되는지(스펙 「불투명도」)를 눈으로 판정할 수 있다. 이 모듈이나 `:core:designsystem`의 기존 drawable 하나를 고른다.
 
@@ -512,7 +517,7 @@ private val previewToppings = listOf(
 
 `ToppingBorderLayer`의 실제 생성자 파라미터 이름·타입을 `feature/segmentation/api`에서 확인해 맞춘다. drawable 이름과 패키지도 실제 리소스로 맞춘다.
 
-- [ ] **Step 2: 기존 Preview를 개명하고 복제한다**
+- [x] **Step 2: 기존 Preview를 개명하고 복제한다**
 
 `PreviewCanvasBGEditScreen`을 **`PreviewCanvasBGEditScreenBackgroundTab`**으로 바꾸고 `uiState`에 탭과 토핑을 넣는다. `modifier = Modifier.fillMaxSize()`는 기존대로 유지한다 — 두 Preview에서 캔버스 박스 크기가 같아야 "두 탭에서 상대 위치가 같다"를 판정할 수 있다.
 
@@ -568,17 +573,17 @@ private fun PreviewCanvasBGEditScreenBackgroundTab() {
 
 콜백 17개는 위 목록이 실제 시그니처와 이름·개수 모두 일치한다.
 
-- [ ] **Step 3: 컴파일·ktlint·테스트 확인**
+- [x] **Step 3: 컴파일·ktlint·테스트 확인**
 
 Run: `./gradlew :feature:groups:canvas:impl:compileDebugKotlin :feature:groups:canvas:impl:ktlintCheck :feature:groups:canvas:impl:test`
 Expected: 셋 다 BUILD SUCCESSFUL. `ktlintCheck`는 테스트 소스셋까지 본다.
 
-- [ ] **Step 4: Android Lint — Task 3 Step 3과 같은 기준**
+- [x] **Step 4: Android Lint — Task 3 Step 3과 같은 기준**
 
 Run: `./gradlew :feature:groups:canvas:impl:lintDebug`
 Expected: 기존 4건 외에 `CanvasBGEditScreen.kt` 지적이 없을 것.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/screen/CanvasBGEditScreen.kt

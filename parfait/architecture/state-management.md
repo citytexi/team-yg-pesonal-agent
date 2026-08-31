@@ -4,11 +4,11 @@ title: 상태 관리 (MVI) · 데이터 흐름
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-24
+verified: 2026-08-31
 related_spec: c103-multi-subject-selection, c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, group-ssot, intro-term-agree
-related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022, ADR-0023
+related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: data-layer, navigation-flow
-related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase, GetMyGroupsFlowUseCase, GetGroupDetailUseCase, GroupListViewModel, GroupSettingViewModel, CanvasMainViewModel, TermAgreeViewModel, TermAgreeError
+related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase, GetMyGroupsFlowUseCase, GetGroupDetailUseCase, GroupListViewModel, GroupSettingViewModel, CanvasMainViewModel, CanvasBGEditViewModel, CanvasToppingPlaceViewModel, TermAgreeViewModel, TermAgreeError
 tags: [architecture, parfait]
 ---
 # 상태 관리 (MVI) · 데이터 흐름
@@ -88,6 +88,13 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
 **둘 중 하나를 임의로 고르지 않는다.** 기준은 "이 구독이 서버를 계속 부르는가"다.
 근거는 [ADR-0029](../adr/0029-canvas-today-ssot-polling.md).
 
+> ✅ **코드가 들어왔다(2026-08-31, PR #404)** — 이 절은 구현 전에 쓰였고, 이제 `BaseViewModel`이
+> 실제로 `launchWhileSubscribed(stopTimeout, source, collector)`를 들고 있다. 활성 판정은
+> `state.subscriptionCount > 0`이고 유예는 상수 하나다. 쓰는 곳은 캔버스 세 화면
+> (`CanvasMainViewModel`·`CanvasBGEditViewModel`·`CanvasToppingPlaceViewModel`)이며, 폴러의
+> 참조 계수는 저장소 층이 구독의 `onStart`/`onCompletion`에 걸어 올리고 내린다 — 화면은 폴러의
+> 존재를 모른다.
+
 ## 신규 화면 추가 체크리스트
 1. **api 모듈**: `NavKeyXxx`(@Serializable) 정의([[navigation-flow]]).
 2. **impl 모듈**:
@@ -117,7 +124,8 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
     내리면 로직이 갈린다 → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) ·
     [open-questions](../synthesis/open-questions.md) [2026-08-16].
   - ⚠️ **같은 State가 계산 프로퍼티 일곱으로 늘었다(2026-08-17, PR #279)** — 저장 필드를
-    **원천 둘**(`todayCanvas`·`viewedCanvas`)과 **캐시 하나**(`parfaitHistoriesByYear`)로 줄이고
+    **원천 둘**(`todayCanvas`·`viewedCanvas` — 뒤엣것은 PR #404에서 `pastCanvas`로 개명되고
+    `displayedCanvas` 파생이 갈라져 나왔다)과 **캐시 하나**(`parfaitHistoriesByYear`)로 줄이고
     배경·토핑·날짜 라벨·빈 여부·오늘 여부·그 해 목록을 전부 파생으로 돌렸다. 방향 자체는 원천을
     하나로 모으는 것이라 이 규약의 취지와 어긋나지 않지만, **파생이 캐시가 가른 구분을 다시 뭉개는
     자리**(`parfaitHistories`의 `orEmpty()`)가 생겼다 → OQ-P-214 ·
