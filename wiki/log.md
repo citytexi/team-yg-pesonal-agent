@@ -140,3 +140,4 @@ append-only. 새 항목은 파일 끝에 추가.
 ## [2026-08-01] query | parfait develop 기준선 점검(#183·#185·#186)의 하류 반영 — 보류하던 Grouptag-Chip 그레이 타입 Timestamp 색 상충을 위키에 등록. 예약 조건(해당 코드 develop 머지)이 #186 머지로 충족됨. open-questions [2026-08-01] 신규 1건(정책 White vs 디자인 파일 Gray-200, 나머지 5행 일치) + nametag-chip ② 표에 ⚠️ 마커. 위키 정책 자체 변경 없음(디자인 파일과의 상충 기록만), 판본·소스 변경 0건.
 
 ## [2026-08-20] lint | parfait 허브 포인터의 ADR 개수를 16건 → 26건으로 정정(구현 문서 라운드 누적분 반영)
+## [2026-08-31] ingest | 프로필 이미지 및 토스트 닉네임 텍스트 컬러 규칙 v0.4 (Nametag-Chip Default 상태 추가)
