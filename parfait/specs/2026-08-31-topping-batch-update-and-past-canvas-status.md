@@ -77,11 +77,15 @@ API를 개수만큼 반복 호출해야 했다"이다. C-301 편집 탭의 확�
 
 - **부분 성공이 없다.** 트랜잭션 하나라 항목 하나가 걸리면 전부 롤백된다.
 - **실패 항목을 알려주지 않는다.** 에러 코드만 오고 `parfaitImageId`는 응답에 없다.
-- **검사 순서가 단건과 반대다.** 마감된 캔버스의 남의 토핑에 단건은 403
-  `PARFAIT_IMAGE_NOT_OWNED`, 일괄은 409 `PARFAIT_ALREADY_CLOSED`를 낸다. 다만 이 화면의
+- **검사 순서가 단건과 반대다.** 정확히는 **항목별 소유권**이 마감 검사보다 뒤로 밀린 것이다 —
+  그룹 소속 검사는 일괄에서도 여전히 마감보다 앞이라 미참여는 `PARFAIT_IMAGE_NOT_OWNED`(403)다.
+  결과로 마감된 캔버스의 남의 토핑에 단건은 403 `PARFAIT_IMAGE_NOT_OWNED`, 일괄은 409
+  `PARFAIT_ALREADY_CLOSED`가 온다(호출자가 그룹 멤버일 때 — 이 화면은 항상 그렇다). 다만
   `toCanvasBGEditError`가 네트워크·이미지 외 전부를 `unknown`으로 접으므로 **사용자에게 보이는
   문구는 안 바뀐다.**
-- **응답 순서를 계약이 보장하지 않는다.** 소비 측은 `parfaitImageId`로 맞춰야 한다.
+- **응답 순서를 계약이 보장하지 않는다.** 소비 측이 응답 원소를 읽는다면 `parfaitImageId`로 맞춰야
+  한다. 지금 화면은 성공·실패만 보고 `UpdatedToppingVO`를 버리므로 이 성질에 걸리지 않는다 —
+  읽는 소비처가 생길 때를 위한 기록이다.
 
 ### `:data`
 
@@ -246,9 +250,15 @@ suspend fun updateAll(
   빈 응답)
 - 수정: `data/.../parfait/remote/ParfaitRemoteDataSourceImplTest.kt` — 과거 목록 `status` 매핑과
   미지 값 폴백
+- 수정: `data/.../repository/topping/ToppingRepositoryImplTest.kt` — `update_` 케이스 둘을 `updateAll_`
+  케이스로 옮기고 **빈 목록 단축**을 잠근다(매퍼 단독 테스트를 안 만드는 규약상 그 판단의 유일한 서식지다)
 - 수정: `feature/.../CanvasBGEditViewModelTest.kt` — 변형이 바뀐 토핑들이 **한 번의 호출**로 나감 ·
   테두리만 바뀐 토핑은 일괄에 안 실림 · 일괄 실패 시 변형을 보낸 토핑 전부가 dirty로 남음 ·
-  테두리 실패는 그 토핑만 남음
+  테두리 실패는 그 토핑만 남음. `updateTopping` 목을 참조하는 기존 케이스 **여섯**을 전부 처리해야
+  컴파일된다
+- 수정: `CanvasMainViewModelTest.kt`(생성자 호출 셋) · `GetParfaitHistoriesUseCaseTest.kt`(하나) —
+  `PastCanvasVO` 인자 추가. ⚠️ `GetParfaitYearsUseCaseTest`·`GetTodayParfaitFlowUseCaseTest`는 타입만
+  참조하므로 건드리지 않는다
 - 매퍼 단독 테스트는 만들지 않는다. 판단이 든 변환은 DataSource 테스트의 케이스로 잠근다.
 
 **문서** (코드가 `develop`에 들어간 뒤가 아니라 이 라운드에서 함께 고친다 — 근거는 아래 주의)
@@ -257,20 +267,37 @@ suspend fun updateAll(
   Android 매핑 표·서술 갱신
 - `api/parfait.md` — 과거 목록 `status` 수용 반영
 - `api/README.md`·`api/conventions.md` — 표면 셈
-- `synthesis/open-questions.md` — OQ-P-334 해소, OQ-P-333 부분 해소
+- `architecture/data-layer.md` — Repository 표의 `ToppingRepository` 행이 지워지는 `update` 시그니처와
+  `UpdateToppingUseCase`를 철자 그대로 싣고 있다
+- `synthesis/open-questions.md` — OQ-P-334 부분 해소, OQ-P-333 부분 해소
 
 ## 주의 / 열린 질문
 
 ⚠️ **계약 문서에 낡은 서술이 있다.** `api/parfait-image.md`의 PR #336·#335 항목이 위치 PATCH와
-삭제의 실패를 "로그 한 줄로 접힌다 · 화면에 닿지 않는다"로 적는데, 현재 `develop`은 실패 id를
-`dirtyToppingIds`에 남기고 `TOPPING_SAVE_UNKNOWN` 토스트를 낸다. 2026-08-31 서버 라운드에서 등록한
+삭제의 실패를 "로그 한 줄로 접힌다 · 화면에 닿지 않는다"로 적는데 둘 다 틀렸다. **정정문은 서로
+다르다** — 위치 PATCH 실패는 실패 id를 `dirtyToppingIds`에 남기고 `TOPPING_SAVE_UNKNOWN` 토스트를
+내며 화면을 닫지 않고(`handleOnClickConfirm`), 삭제 실패는 `TOPPING_DELETE_UNKNOWN` 토스트를 내고
+로딩만 내린다(`failToDeleteTopping`, dirty 축과 무관하다). 2026-08-31 서버 라운드에서 등록한
 OQ-P-334도 그 낡은 서술을 그대로 옮겼다. 이 라운드에서 함께 정정한다 — 서버 delta 반영과 별개로
 **지금 develop에 대해 이미 틀린 서술**이라, 다음 `sync-tjyg-develop-baseline` 회차까지 미룰 이유가
 없다.
 
+같은 절의 PR #336 항목이 스냅샷 필드를 `confirmedToppings`로 적는데 실제 이름은 `serverToppings`다.
+함께 고친다.
+
 ⚠️ **재시도 입도가 거칠어진다.** 변형 저장이 실패하면 그 회차에 변형을 보낸 토핑이 전부 dirty로
 남는다. 지금은 실패한 토핑만 남는다. 서버가 실패 항목을 응답에 실어 주면 되돌릴 수 있는 자리다 —
 서버 쪽 개선 요청으로 남길지는 이 라운드에서 정하지 않는다.
+
+⚠️ **실패가 반복 가능하면 그 화면에서 위치 저장이 통째로 막힌다.** dirty 집합에 다시 시도해도 계속
+실패할 항목이 하나라도 섞이면(예: 남이 같은 `imageId`로 다시 배치해 소유자가 넘어간 토핑) 같은
+회차에 변형을 보낸 나머지 토핑까지 롤백되고, 그 토핑들이 dirty로 남아 다음 확인도 같은 요청을
+만들어 또 전부 실패한다. 단건일 때는 막힌 토핑 하나만 실패했다.
+
+**그럼에도 폴백을 넣지 않는다.** 발생 조건이 좁다 — `handleOnClickTopping`이 `isMine`으로 선택을
+막아 남의 토핑은 애초에 dirty에 들어가지 않고, 소유자가 넘어가려면 그 사이 남이 같은 `imageId`로
+재배치해야 한다. 폴백(일괄 실패 시 단건 N회)은 지운 경로를 되살려 두 방식을 영구히 유지하게
+만드는데, 그 비용이 이 시나리오의 확률보다 크다. 실사용에서 이 봉쇄가 관측되면 그때 다시 연다.
 
 ⚠️ **요청 수가 절반만 준다.** 변형은 1회로 접히지만 테두리는 여전히 토핑마다 나간다. 확인 한 번에
 두 방식이 섞이는 모양이 남는다.

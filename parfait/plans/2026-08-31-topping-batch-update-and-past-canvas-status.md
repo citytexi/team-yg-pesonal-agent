@@ -101,7 +101,7 @@
     }
 ```
 
-`import com.teamyg.parfait.domain.model.canvas.CanvasStatus`를 테스트 파일 상단에 더한다. `assertTrue`는 이미 import돼 있다.
+`CanvasStatus`와 `assertTrue`는 이 파일이 이미 import하고 있다(오늘 조회·상세 케이스가 쓴다). **더 넣지 마라** — 중복 import는 ktlint `no-duplicate-imports`에서 걸린다.
 
 - [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
 
@@ -188,12 +188,12 @@ internal fun PastParfaitsResponse.toPastCanvasVOList(): List<PastCanvasVO> = par
 
 - [ ] **Step 6: `PastCanvasVO`를 부르는 기존 테스트를 고친다**
 
-생성자 인자가 늘어 아래 넷이 컴파일되지 않는다. 각 호출에 `status = CanvasStatus.CLOSED`를 넣고(과거 목록의 일반적인 상태다) `CanvasStatus` import를 더한다. 값이 판정에 쓰이는 곳은 없다.
+생성자 인자가 늘어 아래 **두 파일**이 컴파일되지 않는다. 각 호출에 `status = CanvasStatus.CLOSED`를 넣고(과거 목록의 일반적인 상태다) 그 파일에 `CanvasStatus` import가 없으면 더한다. 값이 판정에 쓰이는 곳은 없다.
 
-- `feature/groups/canvas/impl/src/test/kotlin/.../CanvasMainViewModelTest.kt`
-- `domain/src/test/java/.../GetParfaitHistoriesUseCaseTest.kt` (`private fun canvas(date: LocalDate)` 헬퍼)
-- `domain/src/test/java/.../GetParfaitYearsUseCaseTest.kt`
-- `domain/src/test/java/.../GetTodayParfaitFlowUseCaseTest.kt`
+- `feature/groups/canvas/impl/src/test/kotlin/.../CanvasMainViewModelTest.kt` — **생성자 호출이 세 곳이다.** 하나만 고치면 나머지 둘이 깨진다.
+- `domain/src/test/java/.../GetParfaitHistoriesUseCaseTest.kt` — `private fun canvas(date: LocalDate)` 헬퍼 한 곳.
+
+⚠️ **`GetParfaitYearsUseCaseTest.kt`와 `GetTodayParfaitFlowUseCaseTest.kt`는 건드리지 마라.** 두 파일은 페이크의 반환 타입 `Result<List<PastCanvasVO>>`만 쓰고 생성자를 부르지 않는다 — `CanvasStatus` import를 넣으면 미사용 import가 되어 Step 8의 `ktlintCheck`가 깨진다.
 
 각 파일에서 `PastCanvasVO(`를 찾아 인자를 더한다. 예:
 
@@ -411,7 +411,7 @@ import를 바꾼다 — `UpdateParfaitImageRequest`를 빼고 `UpdateParfaitImag
 
     @Test
     fun updateToppings_alreadyClosed_returnsBusinessException() = runTest {
-        // Given 마감된 캔버스다 — 일괄은 마감 검사가 소유권보다 앞이라 단건과 다른 코드가 온다
+        // Given 마감된 캔버스다 — 일괄은 마감 검사가 항목별 소유권보다 앞이라 단건과 다른 코드가 온다
         // (`api/parfait-image.md` 검사 순서)
         coEvery {
             parfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImages(any(), any(), any())
@@ -582,6 +582,8 @@ git rm data/src/main/java/com/teamyg/parfait/data/service/model/request/parfaiti
 
 `UpdateParfaitImageResponse.kt`는 **지우지 않는다** — 일괄 응답의 원소로 계속 쓴다.
 
+같은 디렉토리의 `UpdateParfaitImageBorderRequest.kt` KDoc이 "위치 수정(`UpdateParfaitImageRequest`)과 달리…"로 사라질 타입을 이름으로 가리킨다. 그 한 자리를 `UpdateParfaitImagesRequest`로 고친다(컴파일에는 영향이 없지만 낡은 채로 남는다).
+
 - [ ] **Step 5: Service를 바꾼다**
 
 `ParfaitImageService.kt`에서 단건 PATCH 메서드를 지우고 컬렉션 PATCH를 넣는다. import도 `UpdateParfaitImageRequest` → `UpdateParfaitImagesRequest`, `UpdateParfaitImageResponse` → `UpdateParfaitImagesResponse`로 바꾼다.
@@ -635,8 +637,8 @@ import를 더한다 — `UpdateParfaitImageItemRequest`, `UpdateParfaitImagesReq
      * 테두리는 이 API 로 바꿀 수 없다(요청에 필드가 없다) — [updateToppingBorder] 가 맡는다.
      *
      * 그룹에 참여하지 않았을 때도 본인 배치가 아닐 때와 같은 코드(PARFAIT_IMAGE_NOT_OWNED,
-     * 403)가 온다. 마감된 캔버스는 소유권보다 먼저 걸려 409 PARFAIT_ALREADY_CLOSED 다 —
-     * 이 검사 순서는 단건 수정과 반대다(`api/parfait-image.md`).
+     * 403)가 온다. 그룹 멤버라면 마감된 캔버스가 항목별 소유권보다 먼저 걸려 409
+     * PARFAIT_ALREADY_CLOSED 다 — 그 둘의 순서가 단건 수정과 반대다(`api/parfait-image.md`).
      */
     suspend fun updateToppings(
         groupId: GroupId,
@@ -668,15 +670,11 @@ import를 더한다 — `com.teamyg.parfait.domain.model.topping.ToppingTransfor
     )
 ```
 
-- [ ] **Step 9: 테스트를 돌려 통과를 확인한다**
+- [ ] **Step 9: 검증하지 않고 넘어간다 (의도된 것)**
 
-Run: `./gradlew :data:compileDebugKotlin`
-Expected: PASS (`:domain`·`:feature`는 아직 깨져 있다 — Task 3·4가 닫는다)
+⚠️ **이 Task는 자체 검증이 없다.** `ToppingRepositoryImpl.update`가 `:data` main에서 방금 지운 `updateTopping`을 직접 부르므로 `:data:compileDebugKotlin`이 **확정적으로 실패한다.** 여기서 gradle을 돌리지 마라 — 실패가 정상이고, 고치려 들면 Task 3의 일을 앞당겨 하게 된다.
 
-Run: `./gradlew :data:testDebugUnitTest --tests '*ParfaitImageRemoteDataSourceImplTest*'`
-Expected: PASS
-
-> `:data` 모듈이 `ToppingRepositoryImpl`을 품고 있어 이 시점에 `:data` 컴파일이 함께 깨질 수 있다. 그러면 Step 9를 건너뛰고 Task 3 Step 3까지 진행한 뒤 두 검증을 함께 돌린다.
+`:data`가 다시 컴파일되는 것은 **Task 3 Step 5**에서다. 이 Task의 산출물은 그때 함께 검증된다.
 
 - [ ] **Step 10: 커밋한다**
 
@@ -694,6 +692,9 @@ git commit -m "feat: 토핑 일괄 수정 wire 계약과 DataSource 를 신설�
 - Delete: `domain/src/main/java/com/teamyg/parfait/domain/usecase/topping/UpdateToppingUseCase.kt`
 - Modify: `domain/src/main/java/com/teamyg/parfait/domain/repository/topping/ToppingRepository.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/repository/topping/ToppingRepositoryImpl.kt`
+- Test: `data/src/test/java/com/teamyg/parfait/data/repository/topping/ToppingRepositoryImplTest.kt`
+
+⚠️ **`ToppingRepositoryImplTest`를 함께 고쳐야 `:data` 테스트 소스셋이 컴파일된다.** 그 파일의 `update_` 케이스 둘이 `repository.update(...)`와 `parfaitImageRemoteDataSource.updateTopping(any() 8개)`를 직접 부른다. **Task 2가 끝난 시점부터 `:data:testDebugUnitTest`가 막혀 있고, 이 Task의 Step 3이 그것을 푼다.**
 
 **Interfaces:**
 - Consumes: Task 2의 `ToppingTransformUpdate`, `ParfaitImageRemoteDataSource.updateToppings`.
@@ -739,7 +740,84 @@ git commit -m "feat: 토핑 일괄 수정 wire 계약과 DataSource 를 신설�
     }
 ```
 
-- [ ] **Step 3: UseCase를 교체한다**
+- [ ] **Step 3: `ToppingRepositoryImplTest`의 단건 케이스를 일괄 케이스로 바꾼다**
+
+`update_dataSourceSucceeds_returnsSameValue`와 `update_dataSourceFailsWithBusiness_convertsToAppErrorServer` 둘을 아래 셋으로 대체한다. `updateBorder_`·`place_`·`delete_` 케이스는 건드리지 않는다.
+
+**빈 목록 단축은 이 파일이 잠그는 유일한 자리다** — 매퍼 단독 테스트를 만들지 않는 규약상 Repository 테스트가 그 판단의 서식지다.
+
+```kotlin
+    @Test
+    fun updateAll_dataSourceSucceeds_returnsSameValue() = runTest {
+        // Given 서버가 수정된 배치 둘을 준다
+        val updated = listOf(
+            UpdatedToppingVO(parfaitImageId = PARFAIT_IMAGE_ID, transform = transform),
+            UpdatedToppingVO(parfaitImageId = ParfaitImageId(43L), transform = transform),
+        )
+        val updates = listOf(
+            ToppingTransformUpdate(
+                parfaitImageId = PARFAIT_IMAGE_ID,
+                positionX = transform.positionX,
+                positionY = transform.positionY,
+                scale = transform.scale,
+                rotation = transform.rotation,
+            ),
+            ToppingTransformUpdate(parfaitImageId = ParfaitImageId(43L), scale = 2.0),
+        )
+        coEvery {
+            parfaitImageRemoteDataSource.updateToppings(GROUP_ID, PARFAIT_ID, updates)
+        } returns Result.success(updated)
+
+        // When 둘을 한 번에 수정한다
+        val result = repository.updateAll(groupId = GROUP_ID, parfaitId = PARFAIT_ID, updates = updates)
+
+        // Then 값을 가공 없이 그대로 전달한다
+        assertEquals(updated, result.getOrThrow())
+    }
+
+    @Test
+    fun updateAll_emptyUpdates_shortCircuitsWithoutCallingDataSource() = runTest {
+        // Given 보낼 것이 없다
+
+        // When 빈 목록으로 부른다
+        val result = repository.updateAll(groupId = GROUP_ID, parfaitId = PARFAIT_ID, updates = emptyList())
+
+        // Then 서버가 빈 items 를 200 으로 받아 주더라도 요청 자체를 안 만든다
+        assertEquals(emptyList(), result.getOrThrow())
+        coVerify(exactly = 0) { parfaitImageRemoteDataSource.updateToppings(any(), any(), any()) }
+    }
+
+    @Test
+    fun updateAll_dataSourceFailsWithBusiness_convertsToAppErrorServer() = runTest {
+        // Given 항목 중 하나가 본인이 배치한 토핑이 아니다 — 서버가 전부 롤백한다
+        coEvery {
+            parfaitImageRemoteDataSource.updateToppings(any(), any(), any())
+        } returns Result.failure(
+            ApiException.Business(
+                code = "PARFAIT_IMAGE_NOT_OWNED",
+                serverMessage = "본인이 배치한 토핑이 아닙니다",
+                statusCode = 403,
+                errorDetail = null,
+            ),
+        )
+
+        // When 수정한다
+        val result = repository.updateAll(
+            groupId = GROUP_ID,
+            parfaitId = PARFAIT_ID,
+            updates = listOf(ToppingTransformUpdate(parfaitImageId = PARFAIT_IMAGE_ID, positionX = 100.0)),
+        )
+
+        // Then 코드와 상태 코드가 함께 살아 있다
+        val error = assertIs<AppError.Server>(result.exceptionOrNull())
+        assertEquals("PARFAIT_IMAGE_NOT_OWNED", error.code)
+        assertEquals(403, error.statusCode)
+    }
+```
+
+import를 더한다 — `com.teamyg.parfait.domain.model.topping.ToppingTransformUpdate`. `coVerify`·`assertIs`·`AppError`·`ApiException`·`UpdatedToppingVO`·`ParfaitImageId`는 이미 있다.
+
+- [ ] **Step 4: UseCase를 교체한다**
 
 Create `domain/src/main/java/com/teamyg/parfait/domain/usecase/topping/UpdateToppingsUseCase.kt`:
 
@@ -772,15 +850,19 @@ class UpdateToppingsUseCase @Inject constructor(
 git rm domain/src/main/java/com/teamyg/parfait/domain/usecase/topping/UpdateToppingUseCase.kt
 ```
 
-- [ ] **Step 4: `:data`·`:domain` 컴파일과 `:data` 테스트를 확인한다**
+- [ ] **Step 5: `:data`·`:domain` 컴파일과 `:data` 테스트를 확인한다**
+
+여기가 **Task 2와 Task 3을 함께 검증하는 첫 게이트**다. Task 2에서 미뤄 둔 것이 여기서 초록이 된다.
 
 Run: `./gradlew :domain:compileDebugKotlin :data:testDebugUnitTest`
 Expected: PASS (`:feature:groups:canvas:impl`은 아직 깨져 있다 — Task 4가 닫는다)
 
-- [ ] **Step 5: 커밋한다**
+- [ ] **Step 6: 커밋한다**
 
 ```bash
-git add domain/src/main data/src/main/java/com/teamyg/parfait/data/repository/topping/ToppingRepositoryImpl.kt
+git add domain/src/main \
+        data/src/main/java/com/teamyg/parfait/data/repository/topping/ToppingRepositoryImpl.kt \
+        data/src/test/java/com/teamyg/parfait/data/repository/topping/ToppingRepositoryImplTest.kt
 git commit -m "feat: 토핑 수정 Repository·UseCase 를 일괄 계약으로 바꾼다"
 ```
 
@@ -812,7 +894,18 @@ git commit -m "feat: 토핑 수정 Repository·UseCase 를 일괄 계약으로 �
 
 import를 `UpdateToppingUseCase` → `UpdateToppingsUseCase`로 바꾸고 `com.teamyg.parfait.domain.model.topping.ToppingTransformUpdate`를 더한다.
 
-기존 케이스 여섯을 아래로 대체한다 — `onClickConfirm_toppingMoved_updatesOnlyThatTopping`, `onClickConfirm_toppingBorderEdited_savesOnlyTheBorder`의 `coVerify(exactly = 0) { updateTopping(...) }` 줄, `onClickConfirm_toppingUpdateFails_keepsTheScreenAndTellsWhy`, `onClickConfirm_toppingUpdateFails_keepsDirtyForRetry`, `onClickConfirm_everythingSaved_clearsDirtyAndConfirms`, `confirm_patchesOnlyDirtyToppings`.
+`updateTopping` 목을 참조하는 기존 케이스는 **여섯**이고 전부 처리해야 한다. 하나라도 남기면 미해결 참조로 `:feature:groups:canvas:impl` 테스트 소스셋 전체가 컴파일되지 않는다.
+
+| 기존 케이스 | 처분 |
+|---|---|
+| `onClickConfirm_toppingMoved_updatesOnlyThatTopping` | 아래 새 케이스로 대체 |
+| `onClickConfirm_toppingUpdateFails_keepsTheScreenAndTellsWhy` | 아래 새 케이스로 대체 |
+| `onClickConfirm_toppingUpdateFails_keepsDirtyForRetry` | 아래 새 케이스로 대체 |
+| `onClickConfirm_everythingSaved_clearsDirtyAndConfirms` | 아래 새 케이스로 대체 |
+| `confirm_patchesOnlyDirtyToppings` | 아래 `onClickConfirm_multipleToppingsMoved_...`가 대신한다 — **삭제** |
+| `onClickConfirm_noToppingChanges_doesNotCallUpdate` | 아래 `onClickConfirm_nothingDirty_sendsNoUpdateRequest`가 대신한다 — **삭제** |
+
+`onClickConfirm_toppingBorderEdited_savesOnlyTheBorder`는 **남긴다** — 마지막 `coVerify` 한 줄만 아래에서 고친다.
 
 ```kotlin
     @Test
@@ -872,8 +965,6 @@ import를 `UpdateToppingUseCase` → `UpdateToppingsUseCase`로 바꾸고 `com.t
             result = Result.success(null),
         )
         val viewModel = viewModel()
-        backgroundScope.launch { viewModel.state.collect { } }
-        advanceUntilIdle()
 
         listOf(MY_IMAGE_ID, SECOND_IMAGE_ID).forEach { id ->
             viewModel.processIntent(
@@ -942,8 +1033,6 @@ import를 `UpdateToppingUseCase` → `UpdateToppingsUseCase`로 바꾸고 `com.t
             result = Result.success(null),
         )
         val viewModel = viewModel()
-        backgroundScope.launch { viewModel.state.collect { } }
-        advanceUntilIdle()
 
         listOf(MY_IMAGE_ID, SECOND_IMAGE_ID).forEach { id ->
             viewModel.processIntent(
@@ -993,7 +1082,9 @@ import를 `UpdateToppingUseCase` → `UpdateToppingsUseCase`로 바꾸고 `com.t
         coVerify(exactly = 0) { updateToppings(any(), any(), any()) }
 ```
 
-`private fun updatedTopping(): UpdatedToppingVO = mockk()` 헬퍼는 더 이상 쓰이지 않으면 지운다. `assertNull`·`slot`·`launch` import가 없으면 더한다.
+`private fun TestScope.viewModel(...)` 헬퍼가 이미 상태 구독과 `advanceUntilIdle()`을 해 주므로 그 뒤에 `backgroundScope.launch { ... }`를 다시 넣지 않는다(기존 `confirm_patchesOnlyDirtyToppings`가 그렇게 하고 있었다 — 물려받지 마라).
+
+`private fun updatedTopping(): UpdatedToppingVO = mockk()` 헬퍼는 더 이상 쓰이지 않으면 지운다. `assertNull`·`slot` import가 없으면 더한다.
 
 - [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
 
@@ -1041,6 +1132,9 @@ import를 `UpdateToppingUseCase` → `UpdateToppingsUseCase`로 바꾸고 `com.t
     /**
      * 일괄이라 부분 성공이 없다 — 하나가 걸리면 서버가 전부 롤백하고 실패한 항목이 무엇인지
      * 응답에 없다(`api/parfait-image.md`). 그래서 실패하면 보낸 토핑 전부를 대상으로 남긴다.
+     *
+     * 되풀이되는 실패가 섞이면 나머지 토핑까지 계속 막히는 것을 감수한 설계다 — 근거는
+     * 스펙의 「주의」 절에 있다.
      *
      * @return 저장하지 못한 토핑의 id.
      */
@@ -1127,6 +1221,7 @@ git commit -m "feat: 확인 버튼이 토핑 변형을 일괄 요청 한 번으�
 - Modify: `parfait/api/parfait.md`
 - Modify: `parfait/api/README.md`
 - Modify: `parfait/api/conventions.md`
+- Modify: `parfait/architecture/data-layer.md`
 - Modify: `parfait/synthesis/open-questions.md`
 
 **Interfaces:**
@@ -1141,11 +1236,15 @@ Android 매핑 절의 표에서도 단건 행의 심볼을 `**없음**(2026-08-3
 
 - [ ] **Step 2: `parfait-image.md`의 낡은 실패 처분 서술을 고친다**
 
-PR #336 항목의 "⚠️ **그런데 실패가 화면에 닿지 않고, 확인은 그대로 성공한다**"와 PR #335 항목의 "⚠️ **그런데 실패가 화면에 닿지 않는다**" 두 서술은 현재 `develop`에 대해 틀렸다. `CanvasBGEditViewModel`이 실패한 토핑 id를 `dirtyToppingIds`에 남기고 `CanvasBGEditError.TOPPING_SAVE_UNKNOWN` 토스트를 낸다.
+두 서술이 현재 `develop`에 대해 틀렸다. **다만 정정문이 서로 다르다 — 같은 문장을 양쪽에 붙이지 마라.**
 
-두 자리를 그 사실로 고치되 **삭제 쪽은 따로 확인한다** — `handleFailToDeleteTopping`이 `ShowError`를 쏘므로 삭제도 토스트가 나간다. 두 서술 다 "로그 한 줄"이라는 단정을 걷고, 지금 처분(실패 id 유지 + 토스트)을 적는다.
+**PR #336(위치 PATCH) 항목** — "⚠️ **그런데 실패가 화면에 닿지 않고, 확인은 그대로 성공한다**"를 걷고 이렇게 적는다. `CanvasBGEditViewModel.handleOnClickConfirm`이 실패한 토핑 id를 `dirtyToppingIds`에 남겨 다음 확인에서 재시도하고, `CanvasBGEditError.TOPPING_SAVE_UNKNOWN` 토스트를 내며 화면을 닫지 않는다.
 
-같은 절에 일괄 전환을 새 항목으로 더한다 — 변형은 요청 하나로 접혔고, 부분 성공이 사라져 실패 시 변형을 보낸 토핑 전부가 dirty로 남는다는 것, 테두리는 여전히 토핑마다 나간다는 것.
+**PR #335(삭제) 항목** — "⚠️ **그런데 실패가 화면에 닿지 않는다**"를 걷고 이렇게 적는다. `failToDeleteTopping`이 `CanvasBGEditError.TOPPING_DELETE_UNKNOWN` 토스트를 내고 로딩만 내린다. **dirty 집합과는 무관하다**(삭제는 dirty 축을 안 쓴다) — 위치 PATCH와 처분이 다르다.
+
+같은 절의 PR #336 항목에 있는 **`confirmedToppings`는 실제 이름이 아니다** — `serverToppings`로 고친다.
+
+그 절에 일괄 전환을 새 항목으로 더한다 — 변형은 요청 하나로 접혔고, 부분 성공이 사라져 실패 시 변형을 보낸 토핑 전부가 dirty로 남는다는 것, 테두리는 여전히 토핑마다 나간다는 것.
 
 - [ ] **Step 3: `parfait.md`에 `status` 수용을 반영한다**
 
@@ -1181,18 +1280,28 @@ Android 매핑 절 끝의 "⚠️ **2026-08-31 서버 delta가 과거 목록에 
 
 `conventions.md`의 2026-08-31 블록도 같은 취지로 고친다.
 
-- [ ] **Step 5: 미결을 갱신한다**
+- [ ] **Step 5: `architecture/data-layer.md`를 갱신한다**
+
+Repository 표의 `ToppingRepository` 행이 지워지는 시그니처를 철자 그대로 싣고 있다.
+
+- `**`update(groupId, parfaitId, parfaitImageId, positionX?, positionY?, positionZ?, scale?, rotation?): Result<UpdatedToppingVO>`**(#336)`를 `**`updateAll(groupId, parfaitId, updates): Result<List<UpdatedToppingVO>>`**`로 바꾼다.
+- 소비 UseCase 열의 `UpdateToppingUseCase`를 `UpdateToppingsUseCase`로 바꾼다.
+- frontmatter `related_code`에 `UpdateToppingBorderUseCase`는 있고 단건은 없으므로 손댈 것이 없다. `ToppingTransformUpdate`를 더할지는 그 목록의 기준(도메인 모델을 다 싣지는 않는다)에 맞춰 판단한다.
+
+`architecture/state-management.md`는 저장 흐름을 적지 않으므로 손대지 않는다.
+
+- [ ] **Step 6: 미결을 갱신한다**
 
 `open-questions.md`:
-- **OQ-P-334**를 "부분 해소"로 바꾼다 — ① 옮겨 탔고 ②③④는 남는다(실패 항목 미식별·검사 순서 차이·`items` 상한 없음). 상태 줄에 "지금 그 실패는 로그 한 줄로 접히고 있어(OQ-P-275)"라는 **틀린 전제를 걷는다.**
+- **OQ-P-334**를 "부분 해소"로 바꾼다 — ① 옮겨 탔고 ②③④는 남는다(실패 항목 미식별·검사 순서 차이·`items` 상한 없음). 상태 줄에 "지금 그 실패는 로그 한 줄로 접히고 있어(OQ-P-275)"라는 **틀린 전제를 걷고**, 지금 처분(실패 id 유지 + `TOPPING_SAVE_UNKNOWN` 토스트)으로 바꾼다. **새 항목 하나를 더한다** — 되풀이되는 실패가 섞이면 그 화면에서 위치 저장이 통째로 막힌다는 것과, 폴백 없이 가기로 한 근거(선택이 `isMine`으로 막혀 발생 조건이 좁다).
 - **OQ-P-333**을 "부분 해소"로 바꾼다 — `status`를 VO까지 받았고, 달력 점 기준을 개수로 유지한 결정과 그 근거(위키 정본)를 적는다. 남는 것은 `status`의 화면 소비처가 0건이라는 사실뿐이다.
 - **신규 1건**: 단건 위치 PATCH가 서버에 살아 있는데 앱 표면이 사라졌다는 것. 소비처가 생기면 되살려야 하고, 그때 검사 순서 차이(403 vs 409)를 다시 봐야 한다. `<!-- oq-next: -->` 값을 하나 올린다.
 
-- [ ] **Step 6: 스펙·계획 문서의 상태를 갱신한다**
+- [ ] **Step 7: 스펙·계획 문서의 상태를 갱신한다**
 
 `parfait/specs/2026-08-31-topping-batch-update-and-past-canvas-status.md`의 frontmatter `status`를 `draft` → `implemented`로 바꾸고, `parfait/specs/README.md`·`parfait/plans/README.md`의 해당 행에 as-built 한 줄을 더한다(어느 브랜치에 들어갔는지, 계획과 달라진 점이 있으면 그것).
 
-- [ ] **Step 7: 커밋한다**
+- [ ] **Step 8: 커밋한다**
 
 ```bash
 git add parfait/
