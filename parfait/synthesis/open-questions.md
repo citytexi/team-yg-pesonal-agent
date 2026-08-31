@@ -4369,6 +4369,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 최종) · 일반 오류 토스트(배경 저장·토핑 저장·토핑 삭제)다. **①(409를 "마감된 캔버스"로 갈라
   > 말할지)은 그대로 열려 있다** — 이번 라운드는 셋을 한 문구로 접는 쪽을 택했고, 그 선택이
   > 409를 다른 서버 코드와 같은 자리에 두었다.
+  > ✅ **셋으로 줄어든 처분이 실제로 코드에 있다(2026-08-31 확인, 브랜치
+  > `feature/#427-sync-backend-api-260831`)** — `CanvasBGEditViewModel.handleOnClickConfirm`·
+  > `failToDeleteTopping`·`failToSave`를 직접 읽어 셋 다 토스트 + 화면 잔류인 것을 확인했다.
+  > **다만 "완전히 같다"는 아니다** — ⓐ 배경 실패는 `toCanvasBGEditError`로 원인별 코드
+  > (`NETWORK`·`UNSUPPORTED_IMAGE`·`BACKGROUND_SAVE_UNKNOWN`)를 가르는데 토핑 저장 실패는 원인을
+  > 안 가리고 늘 `TOPPING_SAVE_UNKNOWN`이다. ⓑ **같은 확인에서 배경과 토핑이 함께 실패하면 배경
+  > 쪽 토스트만 뜬다** — `handleOnClickConfirm`의 `when`이 `savedBackground == null`을 토핑 실패
+  > 분기보다 먼저 매칭해서다(토핑 실패는 `dirtyToppingIds`에는 남아 재시도되지만 그 사실을 이
+  > 확인에서는 안 알린다). ①은 여전히 열려 있다 → [api/parfait-image.md](../api/parfait-image.md)
+  > Android 매핑.
 - **해소 메모**: ①을 정하면 [c301 배경 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md)의
   as-built 절 "실패 표현"과 [api/parfait.md](../api/parfait.md) Android 매핑을 함께 고친다. ③은 OQ-P-167이
   쥔 "안내를 캔버스 쪽 토스트 호스트로 보내기"와 같은 자리다.
@@ -5820,4 +5830,76 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ①을 재고 나서야 정원 값을 다시 정할 수 있다. 바꾸면
   [data-layer](../architecture/data-layer.md) 「예: 최근 이미지」와 OQ-P-258 해소 메모를 함께 고친다.
 
-<!-- oq-next: 333 -->
+### [2026-08-31] 과거 캔버스 목록의 `status`를 앱이 받지 않고 빈 날을 따로 추론한다
+
+- **ID**: OQ-P-333
+- **출처**: 서버 `00622cb`(`feat: 캔버스 리스트 조회 응답에 status 추가`)가 `PastParfaitResponse`에
+  `status`(`ACTIVE`·`CLOSED`·`EMPTY`)를 붙였는데, 앱 `PastParfaitResponse`(`data/service/model/response/parfait/`)에
+  대응 필드가 없다. `ignoreUnknownKeys = true`라 파싱은 안 깨진다. 한편 `PastCanvasVO.isEmpty`가
+  `toppingCount == 0`으로 "빈 날"을 스스로 판정하고, C-201 캘린더가 점을 찍는 기준이 그 값이다.
+- **항목**: ① 두 판정이 같은 것을 뜻하지 않는다 — 서버 `EMPTY`는 **토핑 0건으로 마감된 날**이고,
+  앱 판정에는 **진행 중인 오늘 캔버스**도 걸린다(`ACTIVE` + `imageCount == 0`). ② 앱이 `status`를
+  받아 `PastCanvasVO`에 올릴지, 지금처럼 개수로만 판정할지. ③ 올린다면 `today`·상세가 이미 쓰는
+  `CanvasStatus`(미지 값 폴백 `UNKNOWN`)를 그대로 재사용할지.
+- **상태**: 부분 해소 (②③ 해소, ① 결정으로 종결 — 아래 참고)
+  > ✅ **②③ 해소, ①은 결정됐다(2026-08-31, 브랜치 `feature/#427-sync-backend-api-260831`)** —
+  > `status`를 `PastParfaitResponse`·`PastCanvasVO`까지 올렸다. 매퍼는 `today`·상세가 이미 쓰는
+  > `toCanvasStatus()`를 그대로 재사용해 미지 값 폴백(`CanvasStatus.UNKNOWN`)도 같이 따라왔다
+  > (②③). **달력 점 기준은 개수로 유지한다** — 위키 [[C-201-캘린더-정책-v0.1]]이 "토핑 1개 이상 =
+  > True"로 규정하고 지금 `PastCanvasVO.isEmpty`(토핑 개수)가 그 정본과 일치한다. 서버 `EMPTY`
+  > (0건으로 마감된 날)로 옮기면 진행 중인 오늘의 빈 캔버스에 점이 찍힌다. **남는 것은 `status`를
+  > 읽는 화면이 아직 0건이라는 사실뿐이다** → [api/parfait.md](../api/parfait.md) Android 매핑.
+- **해소 메모**: 화면 소비처가 생기면 그때 [c201-canvas-calendar-server
+  스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md)과 [api/parfait.md](../api/parfait.md)를
+  다시 본다.
+
+### [2026-08-31] 토핑 일괄 수정 API가 생겼는데 앱은 단건을 병렬로 N번 부른다
+
+- **ID**: OQ-P-334
+- **출처**: 서버 `79a6d35`(`feat: 토핑 여러 개를 한 번에 수정하는 배치 API 추가`, PR #119) —
+  `UpdateParfaitImagesController`가 컬렉션 경로에 `@PatchMapping`으로 붙었다. 커밋 본문이 밝힌 동기가
+  "클라이언트가 단건 수정 API를 개수만큼 반복 호출해야 했다"이고, 앱 `CanvasBGEditViewModel`이 실제로
+  `async` + `awaitAll`로 그렇게 부른다(PR #336). 앱에 이 엔드포인트의 표면은 0건이다.
+- **항목**: ① 옮겨 탈지 — 옮기면 **부분 성공이 사라진다**(서버가 `@Transactional` 하나로 묶어 항목
+  하나가 걸리면 전부 롤백). 지금은 토핑별로 성공·실패가 갈린다. ② 실패 응답에 **어느 항목이 걸렸는지가
+  없다** — 코드만 오고 `parfaitImageId`는 안 온다. 화면이 "무엇을 되돌릴지" 알 수 없다.
+  ③ 단건과 일괄의 **검사 순서가 반대**라 마감된 캔버스의 남의 토핑에 단건은 403
+  `PARFAIT_IMAGE_NOT_OWNED`, 일괄은 409 `PARFAIT_ALREADY_CLOSED`를 낸다 — 처분을 코드로 가르는 화면은
+  옮겨 타는 순간 갈래가 바뀐다(OQ-P-261과 같은 자리). ④ `items` 개수 상한이 서버에 없다.
+  ⑤ **되풀이되는 실패가 다른 토핑까지 막을 수 있다** — 일괄이 한 요청으로 묶이므로, 한 토핑이 계속
+  걸리면 같은 확인에 함께 실린 나머지 dirty 토핑도 매번 같이 롤백된다(그 토핑만 골라 빼는 폴백은
+  없다). 폴백 없이 간 근거는 선택 자체가 `isMine`으로 막혀 있어(`CanvasBGEditViewModel#handleOnClickTopping`)
+  남의 토핑이 섞여 들어올 조건이 좁다는 것 — 막힌 것이 아니라 발생 표면이 좁다는 판단이다.
+- **상태**: 부분 해소 (① 해소 — 일괄로 옮겨 탔다 / ②③④⑤ 잔존)
+  > ✅ **①이 해소됐다(2026-08-31, 브랜치 `feature/#427-sync-backend-api-260831`)** — 확인 버튼이
+  > `UpdateToppingsUseCase` → `ToppingRepository.updateAll`로 변형을 일괄 1회에 접는다. **지금
+  > 처분은 로그 한 줄이 아니다** — 실패하면 `CanvasBGEditViewModel.handleOnClickConfirm`이 보낸
+  > 토핑 전부의 id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고,
+  > `CanvasBGEditError.TOPPING_SAVE_UNKNOWN` 토스트를 낸다(이 항목의 초판 해소 메모가 "지금 그
+  > 실패는 로그 한 줄로 접히고 있다"고 적은 것은 그 시점에도 이미 낡은 전제였다). ②③④는 서버
+  > 계약 그대로라 잔존이고, ⑤가 이 결정의 새 대가로 남는다.
+- **해소 메모**: ②는 서버가 응답에 실패 항목을 실어야 풀린다(앱 단독으로는 못 고친다). ③은
+  `toCanvasBGEditError`가 403·409를 둘 다 `unknown`으로 접어 문구엔 안 드러나지만 계약 문서의
+  사실로는 남는다. ④·⑤는 서버 상한과 화면 폴백을 각각 다시 논의할 사안이다 —
+  결정 후 [api/parfait-image.md](../api/parfait-image.md) Android 매핑과 `http/parfait-image.http`
+  요청 모음을 함께 채운다.
+
+### [2026-08-31] 단건 위치 PATCH가 서버에 살아 있는데 앱 표면이 사라졌다
+
+- **ID**: OQ-P-335
+- **출처**: 브랜치 `feature/#427-sync-backend-api-260831` — 토핑 일괄 수정으로 옮겨 타면서
+  `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId`·
+  `ParfaitImageRemoteDataSource.updateTopping`·`ToppingRepository.update`·`UpdateToppingUseCase`·
+  wire DTO `UpdateParfaitImageRequest`를 함께 걷었다. 서버 `PATCH .../images/{parfaitImageId}`
+  엔드포인트 자체는 그대로 있다([api/parfait-image.md](../api/parfait-image.md)) — 앱만 그
+  표면을 접었다.
+- **항목**: ① 소비처가 다시 생기면(예: 토핑 하나만 옮기는 세밀한 상호작용) wire 계약·매퍼·테스트를
+  처음부터 다시 만들어야 한다. ② 되살릴 때 단건과 일괄의 **검사 순서 차이**(마감된 캔버스의 남의
+  토핑에 단건은 403 `PARFAIT_IMAGE_NOT_OWNED`, 일괄은 409 `PARFAIT_ALREADY_CLOSED`)를 다시 봐야
+  한다 — 두 표면이 같은 화면에 공존하면 같은 상황에 다른 코드가 뜬다.
+- **상태**: 미해결 (**동작 영향 0** — 지금은 어느 화면도 단건 PATCH를 부르지 않는다)
+- **해소 메모**: 단건 소비처가 다시 필요해지면 [api/parfait-image.md](../api/parfait-image.md)
+  엔드포인트 표의 Android 열을 되돌리고 `:data`(Service·DataSource·wire DTO)부터 다시 만든다.
+  검사 순서 차이는 OQ-P-334 ③과 같은 자리다.
+
+<!-- oq-next: 336 -->

@@ -1,22 +1,23 @@
 ---
 id: parfait-image
-title: 토핑 배치(배치 확정·위치/크기/각도 수정·테두리 수정·삭제)
+title: 토핑 배치(배치 확정·위치/크기/각도 수정·일괄 수정·테두리 수정·삭제)
 server_module: http/parfaitimage
-server_commit: e7092a3
-verified: 2026-08-26
+server_commit: de3a99a
+verified: 2026-08-31
 android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, parfait-image]
 ---
 
-# 토핑 배치(배치 확정·위치/크기/각도 수정·테두리 수정·삭제) API 계약
+# 토핑 배치(배치 확정·위치/크기/각도 수정·일괄 수정·테두리 수정·삭제) API 계약
 
 > 정본은 서버 코드(`mash-up-kr/TEAMYG-SERVER` `main`). 이 문서는 미러다 — 어긋나면 서버가 옳다.
 > 전역 계약(envelope·에러 체계·인증)은 [conventions.md](conventions.md).
 
 `feat: 토핑 배치 확정 API 구현`(PR #75)과 `feat: 토핑 위치/크기/각도 수정 API 구현`(PR #81)으로 신설됐고,
-`feat: 토핑 테두리 두께/색깔 수정 API 구현`(PR #83)·`feat: 토핑 삭제 API 구현`(PR #88)으로 **2 → 4**가 됐다.
+`feat: 토핑 테두리 두께/색깔 수정 API 구현`(PR #83)·`feat: 토핑 삭제 API 구현`(PR #88)으로 **2 → 4**가 됐으며,
+`feat: 토핑 여러 개를 한 번에 수정하는 배치 API 추가`(PR #119)가 **4 → 5**로 올렸다.
 [image.md](image.md)로 올린 이미지를 **캔버스(파르페) 위 좌표에 놓는** 단계다 — 업로드와 배치가 서로 다른
 도메인으로 갈려 있다.
 
@@ -38,15 +39,20 @@ tags: [api, parfait, server-contract, parfait-image]
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
 | POST | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images` | 필요 | `PlaceParfaitImageRequest` | `PlaceParfaitImageResponse` | 구현됨 |
-| PATCH | `.../images/{parfaitImageId}` | 필요 | `UpdateParfaitImageRequest` | `UpdateParfaitImageResponse` | 구현됨 |
+| PATCH | `.../images/{parfaitImageId}` | 필요 | `UpdateParfaitImageRequest` | `UpdateParfaitImageResponse` | **표면 없음**(2026-08-31 걷어냄) |
+| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images` | 필요 | `UpdateParfaitImagesRequest` | `UpdateParfaitImagesResponse` | 구현됨(2026-08-31 신설) |
 | PATCH | `.../images/{parfaitImageId}/border` | 필요 | `UpdateParfaitImageBorderRequest` | `UpdateParfaitImageBorderResponse` | 구현됨 |
 | DELETE | `.../images/{parfaitImageId}` | 필요 | 없음 | `null`(data 없음) | 구현됨 |
 
-넷 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. `groupId`·`parfaitId`는
+다섯 다 `SecurityConfig.WHITELIST_PATHS`에 없어 **access token이 필요하다**. `groupId`·`parfaitId`는
 경로 변수이고 memberId는 토큰에서 나온다. 클래스 레벨 매핑
-(`/api/v1/groups/{groupId}/parfaits/{parfaitId}/images`)이 **컨트롤러 4개에 각각 반복**돼 있다 —
-`PlaceParfaitImageController`·`UpdateParfaitImageController`·`UpdateParfaitImageBorderController`·
-`DeleteParfaitImageController`가 한 경로를 나눠 갖는다.
+(`/api/v1/groups/{groupId}/parfaits/{parfaitId}/images`)이 **컨트롤러 5개에 각각 반복**돼 있다 —
+`PlaceParfaitImageController`·`UpdateParfaitImageController`·`UpdateParfaitImagesController`·
+`UpdateParfaitImageBorderController`·`DeleteParfaitImageController`가 한 경로를 나눠 갖는다.
+
+⚠️ **컬렉션 경로 하나에 POST와 PATCH가 서로 다른 컨트롤러로 걸려 있다** — `PlaceParfaitImageController`가
+`@PostMapping`, `UpdateParfaitImagesController`가 **경로 인자 없는 `@PatchMapping`**을 갖는다. 즉 같은
+URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 
 ⚠️ **`images`라는 세그먼트가 두 도메인에 있다.** 최상위 `/api/v1/images`는 업로드([image.md](image.md)),
 그룹 하위 `.../parfaits/{parfaitId}/images`는 배치다. 두 경로의 `imageId`와 `parfaitImageId`는
@@ -223,6 +229,87 @@ tags: [api, parfait, server-contract, parfait-image]
   **POST와 PATCH의 권한 모델이 비대칭이다** — PATCH는 배치자 본인만, POST는 그룹 멤버 누구나
   남의 배치를 덮어쓸 수 있다(위 upsert 참고).
 
+### PATCH /api/v1/groups/{groupId}/parfaits/{parfaitId}/images (일괄 수정)
+
+`feat: 토핑 여러 개를 한 번에 수정하는 배치 API 추가`(PR #119)로 신설됐다. 단건 위치 PATCH를
+개수만큼 반복 호출하던 것을 **요청 하나로 접는다** — 커밋 본문이 밝힌 동기가 그것이고, 앱이 실제로
+`async` + `awaitAll`로 단건을 병렬 호출하고 있다([Android 매핑](#android-매핑)).
+
+- **인증**: 필요.
+- **성공**: HTTP 200 · envelope `code` = `"OK"`(`ApiResponse.ok`, `@ResponseStatus` 없음)
+- **요청 필드**
+
+| 필드 | 타입 | 필수 | 비고 |
+|---|---|---|---|
+| `items` | List<객체> | 필수(non-null 타입) | 수정할 배치 목록 |
+
+  항목(`UpdateParfaitImageItemRequest`) 필드는 **`parfaitImageId`(Long, 비널) + 단건 PATCH의 다섯 필드**다.
+
+| 필드 | 타입 | 필수 | 비고 |
+|---|---|---|---|
+| `parfaitImageId` | Long | 필수(non-null 타입) | 수정 대상 배치 행 |
+| `positionX` | Double? | 선택 | `null`이면 기존 값 유지 |
+| `positionY` | Double? | 선택 | |
+| `positionZ` | Int? | 선택 | |
+| `scale` | Double? | 선택 | |
+| `rotation` | Double? | 선택 | |
+
+  **병합 규칙이 단건 PATCH와 같다** — 항목마다 `ParfaitImage.update`를 그대로 태우므로 `null` 필드는
+  기존 값을 유지한다. 테두리는 여기서도 다루지 않는다.
+
+  ⚠️ **`items`가 빈 배열이면 검증을 하나도 돌지 않고 200 + `images: []`다.** `UpdateParfaitImagesService`가
+  `items.isEmpty()`면 즉시 `emptyList()`를 반환해 **그룹 소속·파르페 존재·마감 검사보다 앞에서 끊는다** —
+  그룹 밖 사람이 빈 요청을 보내도 403이 아니라 200이다.
+  근거: `UpdateParfaitImagesServiceTest` "항목이 비어있으면 조회·저장 없이 빈 목록을 반환한다".
+
+  ⚠️ **검증 애노테이션도 `@Valid`도 없고 `items` 개수 상한도 없다.** 이 도메인의 다른 요청 DTO와 같은
+  상태이고(OpenAPI `required` 공백), 여기서는 **한 요청이 수정하는 행 수에 서버 상한이 없다**는 뜻이 더해진다
+  → [미결](#미결).
+
+- **응답 필드**
+
+| JSON 키 | 타입 | 널 허용 | 비고 |
+|---|---|---|---|
+| `images` | List<객체> | 아니오 | 갱신된 배치 목록. 0건이면 **빈 배열** |
+
+  원소는 **단건 PATCH 응답 DTO를 그대로 재사용한다**(`UpdateParfaitImageResponse`) —
+  `parfaitImageId` · `positionX`/`positionY`(Double) · `positionZ`(Int) · `scale`/`rotation`(Double).
+  단건과 마찬가지로 `imageId`·`imageUrl`·`placedBy`·테두리 3필드가 없다.
+  **순서는 `saveAll` 반환 순서**이고 요청 항목 순서와 같다고 계약이 보장하지 않는다 — 소비 측은
+  `parfaitImageId`로 맞춰야 한다.
+
+- **에러 코드**
+
+| HTTP | code | 의미 |
+|---|---|---|
+| 400 | `INVALID_REQUEST` | 바디 형식 오류 · `items` 누락 · 항목의 `parfaitImageId` 누락(`CommonErrorCode`) |
+| 403 | `PARFAIT_IMAGE_NOT_OWNED` | **그룹 미참여** · 항목 중 하나라도 본인이 배치한 토핑이 아님(`ParfaitImageErrorCode`) |
+| 404 | `PARFAIT_NOT_FOUND` | `parfaitId`가 그 그룹의 파르페가 아님(`ParfaitImageErrorCode`) |
+| 409 | `PARFAIT_ALREADY_CLOSED` | 파르페 `status`가 `ACTIVE`가 아님(**`ParfaitErrorCode`**) |
+| 404 | `PARFAIT_IMAGE_NOT_FOUND` | 항목 중 하나라도 부재이거나 그 배치의 `parfaitId`가 경로와 다름(`ParfaitImageErrorCode`) |
+| 401 | `UNAUTHORIZED` 외 | 전역 인증(`AuthErrorCode`) |
+
+  **검사 순서**: 빈 항목 → **그룹 소속 → 파르페 존재 → 파르페 상태** → (항목마다) 배치 존재 → 소유권.
+
+  ⚠️ **단건 PATCH와 검사 순서가 뒤집혀 있다.** 단건은 배치 존재 → 소유권 → 파르페 존재 → 파르페 상태라
+  소유권이 마감보다 **앞**이고, 일괄은 마감이 소유권보다 **앞**이다. 결과가 갈린다 — **마감된 캔버스에서
+  남의 토핑을 고치려 하면 단건은 403 `PARFAIT_IMAGE_NOT_OWNED`, 일괄은 409 `PARFAIT_ALREADY_CLOSED`다.**
+  같은 일을 하는 두 엔드포인트가 같은 상황에 다른 코드를 낸다.
+
+  ⚠️ **그룹 미참여도 `PARFAIT_IMAGE_NOT_OWNED`(403)다** — 단건·테두리·삭제와 같은 처리이고 POST만
+  `GROUP_NOT_JOINED`로 구분한다.
+
+  ⚠️ **부분 성공이 없다.** `@Transactional` 하나로 묶여 있어 항목 하나가 404·403을 내면 앞서 병합된
+  항목들도 **전부 롤백**된다. 어느 항목이 걸렸는지는 응답에 없다 — 코드만 오고 `parfaitImageId`는 안 온다
+  → [미결](#미결).
+
+  ⚠️ **같은 `parfaitImageId`를 중복해 보내도 막지 않는다.** `findAllByIds` 결과를 id로 색인해 항목마다
+  꺼내 쓰므로 중복 항목은 같은 행을 두 번 병합하고 `saveAll`에도 두 번 실려, 응답 `images`에 같은
+  `parfaitImageId`가 두 번 나온다.
+  근거: `UpdateParfaitImagesControllerTest`가 성공 200(2건) · 404 · 403 세 케이스를,
+  `UpdateParfaitImagesServiceTest`가 빈 항목·그룹 미참여·파르페 부재·마감·항목별 부재·항목별 소유권·
+  경로 `parfaitId` 불일치까지 여덟 케이스를 잠근다.
+
 ### PATCH /api/v1/groups/{groupId}/parfaits/{parfaitId}/images/{parfaitImageId}/border
 
 `feat: 토핑 테두리 두께/색깔 수정 API 구현`(PR #83)으로 신설됐다. 위치 PATCH와 **다른 경로·다른 컨트롤러**다
@@ -326,19 +413,24 @@ tags: [api, parfait, server-contract, parfait-image]
 | HTTP | code | message | 귀속 |
 |---|---|---|---|
 | 400 | `INVALID_BORDER` | SOLID 테두리는 색상과 두께가 필요합니다 | POST · 테두리 PATCH |
-| 404 | `PARFAIT_NOT_FOUND` | 존재하지 않는 파르페입니다 | **네 엔드포인트 전부**(2026-08-20에 POST 단독에서 넓어졌다) |
-| 404 | `PARFAIT_IMAGE_NOT_FOUND` | 존재하지 않는 배치입니다 | 위치 PATCH · 테두리 PATCH · DELETE |
-| 403 | `PARFAIT_IMAGE_NOT_OWNED` | 본인이 배치한 토핑이 아닙니다 | 위치 PATCH · 테두리 PATCH · DELETE |
+| 404 | `PARFAIT_NOT_FOUND` | 존재하지 않는 파르페입니다 | **다섯 엔드포인트 전부**(2026-08-20에 POST 단독에서 넓어졌고, 2026-08-31 신설된 일괄 PATCH도 같다) |
+| 404 | `PARFAIT_IMAGE_NOT_FOUND` | 존재하지 않는 배치입니다 | 위치 PATCH · **일괄 PATCH** · 테두리 PATCH · DELETE |
+| 403 | `PARFAIT_IMAGE_NOT_OWNED` | 본인이 배치한 토핑이 아닙니다 | 위치 PATCH · **일괄 PATCH** · 테두리 PATCH · DELETE |
 | 409 | `IMAGE_NOT_CONFIRMED` | 업로드가 확인되지 않은 이미지입니다 | POST |
 
 이 도메인은 자기 enum 밖의 코드도 던진다 — `ImageErrorCode.IMAGE_NOT_FOUND`(404),
 `ParfaitGroupApiErrorCode.GROUP_NOT_JOINED`(403), 그리고 **2026-08-20부터
-`ParfaitErrorCode.PARFAIT_ALREADY_CLOSED`(409)가 네 엔드포인트 전부에서** 나간다
+`ParfaitErrorCode.PARFAIT_ALREADY_CLOSED`(409)가 다섯 엔드포인트 전부에서** 나간다
 ([parfait.md](parfait.md) "도메인 에러 코드 전수"). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
+`GROUP_NOT_JOINED`를 내는 것은 **POST 하나뿐**이다 — 나머지 넷은 그룹 미참여도
+`PARFAIT_IMAGE_NOT_OWNED`로 접는다.
 
-⚠️ **마감 거부는 권한 검사 뒤에 온다** — 네 엔드포인트 전부 그렇다. 마감된 캔버스라도 남의 토핑이면
-(수정·테두리·삭제) `PARFAIT_IMAGE_NOT_OWNED`, 그룹 멤버가 아니면(배치) `GROUP_NOT_JOINED`가 **먼저**다.
-"마감된 캔버스면 409"로 읽고 분기하면 그 경우가 빠진다 — 각 엔드포인트 절의 검사 순서를 볼 것.
+⚠️ **마감 거부의 자리가 엔드포인트마다 다르다.** 넷(POST · 위치 PATCH · 테두리 PATCH · DELETE)은
+마감 검사가 권한 검사 **뒤**라, 마감된 캔버스라도 남의 토핑이면 `PARFAIT_IMAGE_NOT_OWNED`, 그룹 멤버가
+아니면(배치) `GROUP_NOT_JOINED`가 **먼저** 온다. **2026-08-31 신설된 일괄 PATCH만 반대다** — 그룹 소속과
+마감을 요청당 한 번씩 앞에서 보고 항목별 소유권을 뒤에 보므로 **같은 상황에 409가 먼저** 온다.
+"마감된 캔버스면 409"로 읽고 분기하면 앞의 넷에서 빠지고, "남의 토핑이면 403"으로 읽으면 일괄에서
+빠진다 — 각 엔드포인트 절의 검사 순서를 볼 것.
 
 ⚠️ **같은 문자열 `PARFAIT_NOT_FOUND`를 두 enum이 갖는다** — 이 도메인 것과
 `ParfaitErrorCode` 것이고, HTTP status(404)와 message가 같아 **와이어에서는 구분되지 않는다.**
@@ -348,9 +440,10 @@ tags: [api, parfait, server-contract, parfait-image]
 
 ## Android 매핑
 
-**네 엔드포인트 전부 표면 있고, 소비처도 넷이 됐다**(2026-08-27 PR #369 develop 머지) — 배치(POST,
+**계약이 다섯이 되면서 표면이 다시 갈렸다** — 넷은 표면·소비처를 갖췄고(2026-08-27 PR #369 develop
+머지) 2026-08-31 신설된 **일괄 PATCH는 표면이 0건**이다. 갖춘 넷은 배치(POST,
 2026-08-21 PR5) · 삭제(DELETE, 2026-08-23 PR #335) · **위치 PATCH**(2026-08-23 PR #336) ·
-**테두리 PATCH**(2026-08-27 PR #369). 마지막 하나는 `ToppingRepository.updateBorder` →
+**테두리 PATCH**(2026-08-27 PR #369)다. 마지막 하나는 `ToppingRepository.updateBorder` →
 `UpdateToppingBorderUseCase`를 거쳐 C-301 편집 탭의 확인 버튼에 걸렸다(표면은 2026-08-12 PR #230 두 건
 + **2026-08-15 PR #250 두 건**).
 
@@ -368,7 +461,8 @@ tags: [api, parfait, server-contract, parfait-image]
 | 계약 | Android 심볼 |
 |---|---|
 | `POST .../parfaits/{parfaitId}/images` | `ParfaitImageService.postGroupsByGroupIdParfaitsByParfaitIdImages` → `ParfaitImageRemoteDataSource.placeTopping(groupId, parfaitId, imageId, transform, border)` |
-| `PATCH .../images/{parfaitImageId}` | `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId` → `ParfaitImageRemoteDataSource.updateTopping(groupId, parfaitId, parfaitImageId, positionX, positionY, positionZ, scale, rotation)` |
+| `PATCH .../images/{parfaitImageId}` | **없음**(2026-08-31 걷어냄 — 소비처가 없어졌다) |
+| `PATCH .../parfaits/{parfaitId}/images`(일괄) | `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImages` → `ParfaitImageRemoteDataSource.updateToppings(groupId, parfaitId, updates)` |
 | `PATCH .../images/{parfaitImageId}/border` | `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageIdBorder` → `ParfaitImageRemoteDataSource.updateToppingBorder(groupId, parfaitId, parfaitImageId, border)` |
 | `DELETE .../images/{parfaitImageId}` | `ParfaitImageService.deleteGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId` → `ParfaitImageRemoteDataSource.deleteTopping(groupId, parfaitId, parfaitImageId)` |
 
@@ -467,39 +561,51 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 `DeleteToppingUseCase`가 신설되고 C-301 편집 탭의 삭제 확인 모달이 그것을 부른다. **앱이 서버의
 데이터를 지우는 첫 경로**이고, `safeApiCallWithoutData`(200 + `data: null`)가 이 라운드에 화면 쪽
 소비자까지 갖게 됐다. 성공해야 화면 목록에서 뺀다.
-⚠️ **그런데 실패가 화면에 닿지 않는다** — ViewModel이 로그 한 줄만 남겨 이 도메인의 실패 코드가
-전부 무반응으로 접힌다: 403 `PARFAIT_IMAGE_NOT_OWNED`(남의 배치 / 그룹 미참여) · 409
-`PARFAIT_ALREADY_CLOSED`(마감된 캔버스) · 404 `PARFAIT_IMAGE_NOT_FOUND`(두 번째 삭제). 같은 화면의
-배경 저장은 같은 실패를 토스트로 보여 준다 — **한 화면 안에서 처분이 갈렸다.** 409는 그 김에
-[c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md)이 남긴 "같은
-서버 코드에 처분이 둘"에 **세 번째 처분**을 더했다(되감기 → 알리고 남기 → 아무것도 안 함)
-→ [open-questions](../synthesis/open-questions.md) OQ-P-270 · OQ-P-261.
+✅ **정정 — 실패는 토스트로 닿는다.** `failToDeleteTopping`이 `CanvasBGEditError.TOPPING_DELETE_UNKNOWN`
+토스트를 내고 로딩만 내린다 — 이 절 초판이 "실패가 화면에 닿지 않는다"고 적은 것은 틀렸다.
+**dirty 집합과는 무관하다** — 삭제는 dirty 축을 안 쓴다(그 축이 붙잡는 것은 이동·크기·각도·테두리뿐이다),
+그래서 위치 PATCH가 실패 id를 `dirtyToppingIds`에 남겨 재시도하는 것과는 처분이 다르다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-270.
 `android_status`는 여전히 `partial`이다 — 위치·테두리 PATCH의 소비 화면이 없다.
 
 ✅ **위치 PATCH도 화면까지 이어졌다**(2026-08-23 develop 머지, PR #336) — `ToppingRepository.update` ·
 `UpdateToppingUseCase`가 신설되고 C-301 편집 탭의 **확인 버튼**이 그것을 부른다. 소비되지 않은
 엔드포인트는 이제 **테두리 PATCH 하나**다. 설계에서 계약과 맞물리는 자리는 셋이다.
 
-- **바뀐 토핑만 보낸다.** ViewModel이 조회 응답 스냅샷(`confirmedToppings`)을 따로 들고 확인 시점에
+- **바뀐 토핑만 보낸다.** ViewModel이 조회 응답 스냅샷(`serverToppings`)을 따로 들고 확인 시점에
   대조해, 위치·배율·각도 중 하나라도 달라진 토핑만 요청한다. 안 건드린 토핑은 요청이 0건이다.
 - **`positionZ`를 안 보낸다.** 이 PATCH가 부분 병합(`null`이면 유지)이라 겹침 순서는 서버 값이
   그대로 남는다. 앱에는 z 조작 경로 자체가 없다.
 - **토핑들끼리는 병렬, 배경보다는 앞.** `async` + `awaitAll`로 동시에 나가고 전부 끝난 뒤에야 배경
   변경([parfait.md](parfait.md))이 이어진다. 둘을 얽으면 한쪽만 실패한 경우를 갈라 다뤄야 해서다.
 
-⚠️ **그런데 실패가 화면에 닿지 않고, 확인은 그대로 성공한다** — 실패 갈래가 `viewModelLogger.e`
-한 줄이고 그 뒤 배경 저장이 이어져, 배경이 성공하면 화면이 넘어간다. 이 도메인의 실패 코드
-(403 `PARFAIT_IMAGE_NOT_OWNED` · 409 `PARFAIT_ALREADY_CLOSED` · 404 `PARFAIT_IMAGE_NOT_FOUND`)가
-삭제와 **같은 방식으로** 접히는데, 삭제와 달리 **사용자가 성공했다고 믿을 여지까지 생긴다**
-(캔버스 메인은 재조회로 옛 좌표를 그린다) → [open-questions](../synthesis/open-questions.md)
-OQ-P-275 · OQ-P-270.
-⚠️ **한 번의 확인이 같은 409를 두 처분으로 낸다** — 마감된 캔버스에서는 토핑 PATCH도 배경 PATCH도
-409인데, 토핑 쪽은 무반응이고 배경 쪽은 토스트다(OQ-P-261).
+✅ **정정 — 실패는 화면에 닿는다.** `CanvasBGEditViewModel.handleOnClickConfirm`이 실패한 토핑
+id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `CanvasBGEditError.TOPPING_SAVE_UNKNOWN`
+토스트를 내며 화면을 닫지 않는다 — 이 절 초판이 "실패가 화면에 닿지 않고 확인은 그대로 성공한다"고
+적은 것은 틀렸다 → [open-questions](../synthesis/open-questions.md) OQ-P-275.
+✅ **정정 — 둘 다 토스트를 낸다, 다만 완전히 같지는 않다.** 배경 실패는 `failToSave`가
+`toCanvasBGEditError`로 원인별 코드(`NETWORK`·`UNSUPPORTED_IMAGE`·`BACKGROUND_SAVE_UNKNOWN`)를
+가른다. 토핑 변형 실패는 원인을 안 가리고 항상 `TOPPING_SAVE_UNKNOWN` 하나로 접힌다. **같은
+확인에서 배경과 토핑이 함께 실패하면 배경 쪽 토스트만 뜬다** — `handleOnClickConfirm`의 `when`이
+`savedBackground == null`을 토핑 실패 분기(`failedToppingIds.isNotEmpty()`)보다 먼저 매칭해서다.
+다만 `dirtyToppingIds`는 그 분기 이전에 이미 갱신돼 있어, 토스트만 안 뜰 뿐 다음 확인의 재시도
+대상에서는 안 빠진다 → [open-questions](../synthesis/open-questions.md) OQ-P-261.
 ⚠️ **범위 검증 없는 두 축이 그대로 요청 값이 된다** — 아래 [미결](#미결)의 `scale`·`rotation`
 서버 검증 부재가 이 라운드부터 실제로 닿는다. 앱 쪽 상한도 없다(OQ-P-271).
 `android_status`는 여전히 `partial`이다 — 테두리 PATCH의 소비 화면이 없다.
 
-`http/parfait-image.http`가 **네 요청을 전부** 덮는다(2026-08-15). **선행이 넷**이 됐다 —
+✅ **일괄로 옮겨 탔다**(2026-08-31, 브랜치 `feature/#427-sync-backend-api-260831` — develop 머지
+여부 미확인) — 확인 버튼이 변형(위치·배율·각도)을 일괄 PATCH 한 번으로 접는다. 위 PR #336 항목이
+적은 `async` + `awaitAll` 단건 병렬 호출은 사라졌고, `ToppingRepository.update`·`UpdateToppingUseCase`도
+함께 걷혔다(각각 `updateAll`·`UpdateToppingsUseCase`로 교체). **부분 성공이 사라진 대가는 그대로
+받았다** — 서버가 항목 하나만 걸려도 전부 롤백하고 응답이 어느 항목인지 안 알려주므로, 실패하면
+**변형을 보낸 토핑 전부**가 `dirtyToppingIds`에 남아 다음 확인에서 다시 나간다(재시도 입도가 토핑
+단위에서 요청 단위로 거칠어졌다). **테두리는 이 일괄 계약에 필드가 없어 여전히 토핑마다 나간다** —
+확인 한 번이 변형 일괄 1회 + 테두리 병렬 N회로 갈린다. `positionZ`는 여전히 안 보낸다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-334.
+
+`http/parfait-image.http`가 **다섯 중 넷**을 덮는다(2026-08-15 시점 전량, 2026-08-31 delta로 다시 벌어졌다) —
+일괄 PATCH 요청이 없다. **선행이 넷**이 됐다 —
 `auth.http` → `parfait-group.http` → `images.http`(발급·PUT·confirm) → `parfait.http`(오늘의 캔버스
 조회가 `parfait_id`를 채운다). `parfaitId` 리터럴을 손으로 바꾸던 단계는 사라졌다.
 
@@ -517,6 +623,10 @@ OQ-P-275 · OQ-P-270.
   이미지가 걸린다 → [open-questions](../synthesis/open-questions.md)
 - 삭제의 S3 호출이 트랜잭션 안에 있어 커밋 실패 시 DB와 S3가 갈린다
   → [open-questions](../synthesis/open-questions.md)
+- 일괄 PATCH에 `items` 개수 상한이 없고, 실패해도 **어느 항목이 걸렸는지 응답에 없다**(코드만 오고
+  `parfaitImageId`는 안 온다) → [open-questions](../synthesis/open-questions.md) OQ-P-334
+- 같은 수정을 단건과 일괄이 **다른 검사 순서**로 처리해 마감된 캔버스의 남의 토핑에 서로 다른 코드를
+  낸다(403 vs 409) → [open-questions](../synthesis/open-questions.md) OQ-P-334
 
 ✅ **2026-08-15 해소** — ① 배치 **삭제** 엔드포인트 신설, ② 배치 후 **테두리 변경 경로** 신설,
 ③ 배치 **목록 조회** 부재는 [parfait.md](parfait.md) `GET .../parfaits/today`가 대신 닫았다.

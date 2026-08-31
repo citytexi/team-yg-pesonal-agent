@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: e7092a3
-verified: 2026-08-26
+server_commit: de3a99a
+verified: 2026-08-31
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -412,5 +412,22 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 PR #250이 닫았다. **벌어졌다 닫히는 왕복이 다섯 번째**이고, 이번에는 `:data` 표면만 닫히고 `http/` 요청
 모음은 25/27로 남아 **두 표면이 처음으로 갈렸다**. 소비처는 두 도메인 전부 0건이다
 → [open-questions](../synthesis/open-questions.md).
+
+📌 **2026-08-31 delta로 공백이 다시 하나 벌어졌다 — 29 + 테스트 전용 1이 됐고 표면 셈은 27/28이다.**
+신설된 **토핑 일괄 수정 PATCH**([parfait-image.md](parfait-image.md))에 `:data` 표면이 없고 `http/`
+요청 모음도 25/28로 함께 벌어졌다 — 두 표면이 갈리지 않고 같이 뒤처진 것은 2026-08-16 이후 처음이다.
+같은 delta가 과거 캔버스 목록 응답에 붙인 `status`는 앱 DTO가 받지 않으나 **`⚠️불일치`가 아니다**
+(`ignoreUnknownKeys = true`, 읽는 화면 0건) → [parfait.md](parfait.md) ·
+[open-questions](../synthesis/open-questions.md) OQ-P-333 · OQ-P-334.
+
+✅ **2026-08-31 두 번째 라운드 — 두 공백 다 앱이 메웠다**(브랜치 `feature/#427-sync-backend-api-260831`).
+일괄 PATCH가 `:data` 표면(Service·DataSource)과 소비처(Repository·UseCase·확인 버튼)까지 얻고,
+대신 **위치/크기/각도 단건 수정 PATCH**가 표면을 잃었다(소비처가 그 화면 하나뿐이었는데 일괄로
+옮겨 탔다) — **표면 셈은 27/28로 그대로**이고 공백의 정체만 일괄에서 단건으로 옮겨 앉았다. `http/`
+요청 모음은 여전히 **25/28**이다(`parfait-image.http`에 일괄 요청을 안 넣기로 한 이 라운드의
+결정 — 실서버 요청 계획이 없다). 과거 캔버스 목록의 `status`도 앱 DTO·`PastCanvasVO`까지 올라왔다
+(OQ-P-333 부분 해소 — 달력 점 기준은 개수 그대로 두기로 했다, [parfait.md](parfait.md)). 남는
+것은 OQ-P-334의 잔존 항목(실패 항목 미식별·검사 순서 차이·`items` 상한 없음)과 단건 PATCH 표면
+소멸을 다루는 신규 미결이다 → [open-questions](../synthesis/open-questions.md).
 
 새 간극이 발견되면 이 절에 표를 다시 세운다.
