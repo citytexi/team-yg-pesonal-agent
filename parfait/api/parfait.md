@@ -734,16 +734,20 @@ DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조
 따로 규율을 지킬 필요가 없다. 다만 **경계 티커가 발화하면 그 그룹을 보고 있는 클라이언트가 각자 한 번씩
 `today`를 태우므로** 서버 쪽 중복 생성 방지 여부는 여전히 확인되지 않았다(OQ-P-323).
 
-⚠️ **2026-08-31 서버 delta가 과거 목록에 공백 하나를 냈다** — 원소에 붙은 `status`를 앱 DTO
-`PastParfaitResponse`가 받지 않는다(`ignoreUnknownKeys = true`라 파싱은 안 깨진다). 읽는 화면이
-아직 없어 `⚠️불일치`는 아니지만, **`PastCanvasVO.isEmpty`가 `toppingCount == 0`으로 "빈 날"을
-추론하는 자리**가 이 필드와 겹친다 — 서버 `EMPTY`는 **토핑 0건으로 마감된 날**이고 앱의 판정에는
-진행 중인 오늘 캔버스도 걸린다. C-201 캘린더가 점을 찍는 기준이 그 값이다
+✅ **2026-08-31 서버 delta가 낸 공백을 같은 날 닫았다** — 과거 목록 원소의 `status`를 앱 DTO
+`PastParfaitResponse`와 `PastCanvasVO`가 받는다. 매핑은 `today`·상세가 이미 쓰던
+`toCanvasStatus()` 재사용이라 미지 값 폴백(`CanvasStatus.UNKNOWN`)도 그대로다.
+
+⚠️ **달력 점 기준은 옮기지 않았다.** `CanvasMainViewModel.uploadedDates`는 계속
+`PastCanvasVO.isEmpty`(토핑 개수)를 쓴다 — 위키 [[C-201-캘린더-정책-v0.1]]이 인디케이터를
+"토핑 1개 이상 = True, 0개 = False"로 규정하고 그 판정이 정본과 일치한다. 서버 `EMPTY`는
+"0건으로 마감된 날"이라 뜻이 좁아, 옮기면 진행 중인 오늘의 빈 캔버스에 점이 찍힌다. 두 값이
+같지 않다는 것을 `PastCanvasVO.isEmpty` KDoc이 담는다. **읽는 화면은 아직 0건이다**
 → [open-questions](../synthesis/open-questions.md) OQ-P-333.
 
 ## 미결
 
-- 과거 목록 원소의 `status`를 앱이 받지 않고, `isEmpty`를 `toppingCount == 0`으로 따로 추론한다
+- 과거 목록 원소의 `status`를 VO까지 받았으나 읽는 화면이 0건이다(달력 점은 개수 축을 그대로 쓴다)
   → [open-questions](../synthesis/open-questions.md) OQ-P-333
 - **경로 세그먼트 `year`(단수) vs 응답 필드 `years`(복수) 불일치.** 서버 코드로는 의도된 설계인지 실수인지
   확인할 수 없다 — 근거 자료(PR 설명·이슈) 조사는 이번 범위 밖. → [open-questions](../synthesis/open-questions.md)

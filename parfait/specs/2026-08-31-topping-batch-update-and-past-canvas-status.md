@@ -1,7 +1,7 @@
 ---
 id: topping-batch-update-and-past-canvas-status
 title: 토핑 일괄 수정 전환 및 과거 캔버스 status 수용 (Topping Batch Update)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-08-31

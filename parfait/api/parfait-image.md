@@ -39,8 +39,8 @@ tags: [api, parfait, server-contract, parfait-image]
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
 | POST | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images` | 필요 | `PlaceParfaitImageRequest` | `PlaceParfaitImageResponse` | 구현됨 |
-| PATCH | `.../images/{parfaitImageId}` | 필요 | `UpdateParfaitImageRequest` | `UpdateParfaitImageResponse` | 구현됨 |
-| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images` | 필요 | `UpdateParfaitImagesRequest` | `UpdateParfaitImagesResponse` | **표면 없음**(2026-08-31 신설) |
+| PATCH | `.../images/{parfaitImageId}` | 필요 | `UpdateParfaitImageRequest` | `UpdateParfaitImageResponse` | **표면 없음**(2026-08-31 걷어냄) |
+| PATCH | `/api/v1/groups/{groupId}/parfaits/{parfaitId}/images` | 필요 | `UpdateParfaitImagesRequest` | `UpdateParfaitImagesResponse` | 구현됨(2026-08-31 신설) |
 | PATCH | `.../images/{parfaitImageId}/border` | 필요 | `UpdateParfaitImageBorderRequest` | `UpdateParfaitImageBorderResponse` | 구현됨 |
 | DELETE | `.../images/{parfaitImageId}` | 필요 | 없음 | `null`(data 없음) | 구현됨 |
 
@@ -461,8 +461,8 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 | 계약 | Android 심볼 |
 |---|---|
 | `POST .../parfaits/{parfaitId}/images` | `ParfaitImageService.postGroupsByGroupIdParfaitsByParfaitIdImages` → `ParfaitImageRemoteDataSource.placeTopping(groupId, parfaitId, imageId, transform, border)` |
-| `PATCH .../images/{parfaitImageId}` | `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId` → `ParfaitImageRemoteDataSource.updateTopping(groupId, parfaitId, parfaitImageId, positionX, positionY, positionZ, scale, rotation)` |
-| `PATCH .../parfaits/{parfaitId}/images`(일괄) | **없음**(2026-08-31 신설) |
+| `PATCH .../images/{parfaitImageId}` | **없음**(2026-08-31 걷어냄 — 소비처가 없어졌다) |
+| `PATCH .../parfaits/{parfaitId}/images`(일괄) | `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImages` → `ParfaitImageRemoteDataSource.updateToppings(groupId, parfaitId, updates)` |
 | `PATCH .../images/{parfaitImageId}/border` | `ParfaitImageService.patchGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageIdBorder` → `ParfaitImageRemoteDataSource.updateToppingBorder(groupId, parfaitId, parfaitImageId, border)` |
 | `DELETE .../images/{parfaitImageId}` | `ParfaitImageService.deleteGroupsByGroupIdParfaitsByParfaitIdImagesByParfaitImageId` → `ParfaitImageRemoteDataSource.deleteTopping(groupId, parfaitId, parfaitImageId)` |
 
@@ -561,43 +561,43 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 `DeleteToppingUseCase`가 신설되고 C-301 편집 탭의 삭제 확인 모달이 그것을 부른다. **앱이 서버의
 데이터를 지우는 첫 경로**이고, `safeApiCallWithoutData`(200 + `data: null`)가 이 라운드에 화면 쪽
 소비자까지 갖게 됐다. 성공해야 화면 목록에서 뺀다.
-⚠️ **그런데 실패가 화면에 닿지 않는다** — ViewModel이 로그 한 줄만 남겨 이 도메인의 실패 코드가
-전부 무반응으로 접힌다: 403 `PARFAIT_IMAGE_NOT_OWNED`(남의 배치 / 그룹 미참여) · 409
-`PARFAIT_ALREADY_CLOSED`(마감된 캔버스) · 404 `PARFAIT_IMAGE_NOT_FOUND`(두 번째 삭제). 같은 화면의
-배경 저장은 같은 실패를 토스트로 보여 준다 — **한 화면 안에서 처분이 갈렸다.** 409는 그 김에
-[c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md)이 남긴 "같은
-서버 코드에 처분이 둘"에 **세 번째 처분**을 더했다(되감기 → 알리고 남기 → 아무것도 안 함)
-→ [open-questions](../synthesis/open-questions.md) OQ-P-270 · OQ-P-261.
+✅ **정정 — 실패는 토스트로 닿는다.** `failToDeleteTopping`이 `CanvasBGEditError.TOPPING_DELETE_UNKNOWN`
+토스트를 내고 로딩만 내린다 — 이 절 초판이 "실패가 화면에 닿지 않는다"고 적은 것은 틀렸다.
+**dirty 집합과는 무관하다** — 삭제는 dirty 축을 안 쓴다(그 축이 붙잡는 것은 이동·크기·각도·테두리뿐이다),
+그래서 위치 PATCH가 실패 id를 `dirtyToppingIds`에 남겨 재시도하는 것과는 처분이 다르다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-270.
 `android_status`는 여전히 `partial`이다 — 위치·테두리 PATCH의 소비 화면이 없다.
 
 ✅ **위치 PATCH도 화면까지 이어졌다**(2026-08-23 develop 머지, PR #336) — `ToppingRepository.update` ·
 `UpdateToppingUseCase`가 신설되고 C-301 편집 탭의 **확인 버튼**이 그것을 부른다. 소비되지 않은
 엔드포인트는 이제 **테두리 PATCH 하나**다. 설계에서 계약과 맞물리는 자리는 셋이다.
 
-- **바뀐 토핑만 보낸다.** ViewModel이 조회 응답 스냅샷(`confirmedToppings`)을 따로 들고 확인 시점에
+- **바뀐 토핑만 보낸다.** ViewModel이 조회 응답 스냅샷(`serverToppings`)을 따로 들고 확인 시점에
   대조해, 위치·배율·각도 중 하나라도 달라진 토핑만 요청한다. 안 건드린 토핑은 요청이 0건이다.
 - **`positionZ`를 안 보낸다.** 이 PATCH가 부분 병합(`null`이면 유지)이라 겹침 순서는 서버 값이
   그대로 남는다. 앱에는 z 조작 경로 자체가 없다.
 - **토핑들끼리는 병렬, 배경보다는 앞.** `async` + `awaitAll`로 동시에 나가고 전부 끝난 뒤에야 배경
   변경([parfait.md](parfait.md))이 이어진다. 둘을 얽으면 한쪽만 실패한 경우를 갈라 다뤄야 해서다.
 
-⚠️ **그런데 실패가 화면에 닿지 않고, 확인은 그대로 성공한다** — 실패 갈래가 `viewModelLogger.e`
-한 줄이고 그 뒤 배경 저장이 이어져, 배경이 성공하면 화면이 넘어간다. 이 도메인의 실패 코드
-(403 `PARFAIT_IMAGE_NOT_OWNED` · 409 `PARFAIT_ALREADY_CLOSED` · 404 `PARFAIT_IMAGE_NOT_FOUND`)가
-삭제와 **같은 방식으로** 접히는데, 삭제와 달리 **사용자가 성공했다고 믿을 여지까지 생긴다**
-(캔버스 메인은 재조회로 옛 좌표를 그린다) → [open-questions](../synthesis/open-questions.md)
-OQ-P-275 · OQ-P-270.
+✅ **정정 — 실패는 화면에 닿는다.** `CanvasBGEditViewModel.handleOnClickConfirm`이 실패한 토핑
+id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `CanvasBGEditError.TOPPING_SAVE_UNKNOWN`
+토스트를 내며 화면을 닫지 않는다 — 이 절 초판이 "실패가 화면에 닿지 않고 확인은 그대로 성공한다"고
+적은 것은 틀렸다 → [open-questions](../synthesis/open-questions.md) OQ-P-275.
 ⚠️ **한 번의 확인이 같은 409를 두 처분으로 낸다** — 마감된 캔버스에서는 토핑 PATCH도 배경 PATCH도
 409인데, 토핑 쪽은 무반응이고 배경 쪽은 토스트다(OQ-P-261).
 ⚠️ **범위 검증 없는 두 축이 그대로 요청 값이 된다** — 아래 [미결](#미결)의 `scale`·`rotation`
 서버 검증 부재가 이 라운드부터 실제로 닿는다. 앱 쪽 상한도 없다(OQ-P-271).
 `android_status`는 여전히 `partial`이다 — 테두리 PATCH의 소비 화면이 없다.
 
-⚠️ **2026-08-31 서버 delta가 앱의 병렬 호출 자리를 정확히 겨냥했다.** 위 PR #336 항목이 적은
-`async` + `awaitAll` 단건 병렬 호출이 바로 일괄 PATCH가 접으려는 모양이다 — 앱은 바뀐 토핑 수만큼
-요청을 내고, 실패도 그 수만큼 따로 난다. 계약이 접어 주는 대신 **부분 성공이 사라지므로**(한 항목이
-걸리면 전부 롤백) 옮겨 타면 실패 처분을 다시 정해야 한다. 지금 그 실패는 로그 한 줄로 접히고 있다
-→ [open-questions](../synthesis/open-questions.md) OQ-P-334 · OQ-P-275.
+✅ **일괄로 옮겨 탔다**(2026-08-31, 브랜치 `feature/#427-sync-backend-api-260831` — develop 머지
+여부 미확인) — 확인 버튼이 변형(위치·배율·각도)을 일괄 PATCH 한 번으로 접는다. 위 PR #336 항목이
+적은 `async` + `awaitAll` 단건 병렬 호출은 사라졌고, `ToppingRepository.update`·`UpdateToppingUseCase`도
+함께 걷혔다(각각 `updateAll`·`UpdateToppingsUseCase`로 교체). **부분 성공이 사라진 대가는 그대로
+받았다** — 서버가 항목 하나만 걸려도 전부 롤백하고 응답이 어느 항목인지 안 알려주므로, 실패하면
+**변형을 보낸 토핑 전부**가 `dirtyToppingIds`에 남아 다음 확인에서 다시 나간다(재시도 입도가 토핑
+단위에서 요청 단위로 거칠어졌다). **테두리는 이 일괄 계약에 필드가 없어 여전히 토핑마다 나간다** —
+확인 한 번이 변형 일괄 1회 + 테두리 병렬 N회로 갈린다. `positionZ`는 여전히 안 보낸다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-334.
 
 `http/parfait-image.http`가 **다섯 중 넷**을 덮는다(2026-08-15 시점 전량, 2026-08-31 delta로 다시 벌어졌다) —
 일괄 PATCH 요청이 없다. **선행이 넷**이 됐다 —

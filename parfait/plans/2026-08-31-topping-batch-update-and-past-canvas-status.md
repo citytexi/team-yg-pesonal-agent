@@ -854,7 +854,7 @@ git rm domain/src/main/java/com/teamyg/parfait/domain/usecase/topping/UpdateTopp
 
 여기가 **Task 2와 Task 3을 함께 검증하는 첫 게이트**다. Task 2에서 미뤄 둔 것이 여기서 초록이 된다.
 
-Run: `./gradlew :domain:compileDebugKotlin :data:testDebugUnitTest`
+Run: `./gradlew :domain:compileKotlin :data:testDebugUnitTest`
 Expected: PASS (`:feature:groups:canvas:impl`은 아직 깨져 있다 — Task 4가 닫는다)
 
 - [ ] **Step 6: 커밋한다**
