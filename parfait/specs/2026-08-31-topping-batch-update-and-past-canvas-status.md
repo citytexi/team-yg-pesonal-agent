@@ -1,7 +1,7 @@
 ---
 id: topping-batch-update-and-past-canvas-status
 title: 토핑 일괄 수정 전환 및 과거 캔버스 status 수용 (Topping Batch Update)
-status: implemented
+status: draft
 category: behavior-spec
 platforms: android
 verified: 2026-08-31
@@ -31,6 +31,10 @@ tags: [spec, parfait, topping, canvas, server-contract]
 # Spec: 토핑 일괄 수정 전환 및 과거 캔버스 status 수용
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+
+> 📌 **구현이 로컬 브랜치에만 있다(2026-08-31 확인)** — TJYG-Android `feature/#427-sync-backend-api-260831`에
+> 커밋 5개(`4d03cdd6`·`32ccca76`·`afa98099`·`0605b4ee`·`1b795131`)가 올라갔지만 **푸시도 develop 머지도
+> 안 됐다**. 아래 설계와 실제 코드의 대조는 그 브랜치가 `develop`에 들어오는 회차로 미룬다.
 
 ## 목표
 

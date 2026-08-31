@@ -583,8 +583,13 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `CanvasBGEditError.TOPPING_SAVE_UNKNOWN`
 토스트를 내며 화면을 닫지 않는다 — 이 절 초판이 "실패가 화면에 닿지 않고 확인은 그대로 성공한다"고
 적은 것은 틀렸다 → [open-questions](../synthesis/open-questions.md) OQ-P-275.
-⚠️ **한 번의 확인이 같은 409를 두 처분으로 낸다** — 마감된 캔버스에서는 토핑 PATCH도 배경 PATCH도
-409인데, 토핑 쪽은 무반응이고 배경 쪽은 토스트다(OQ-P-261).
+✅ **정정 — 둘 다 토스트를 낸다, 다만 완전히 같지는 않다.** 배경 실패는 `failToSave`가
+`toCanvasBGEditError`로 원인별 코드(`NETWORK`·`UNSUPPORTED_IMAGE`·`BACKGROUND_SAVE_UNKNOWN`)를
+가른다. 토핑 변형 실패는 원인을 안 가리고 항상 `TOPPING_SAVE_UNKNOWN` 하나로 접힌다. **같은
+확인에서 배경과 토핑이 함께 실패하면 배경 쪽 토스트만 뜬다** — `handleOnClickConfirm`의 `when`이
+`savedBackground == null`을 토핑 실패 분기(`failedToppingIds.isNotEmpty()`)보다 먼저 매칭해서다.
+다만 `dirtyToppingIds`는 그 분기 이전에 이미 갱신돼 있어, 토스트만 안 뜰 뿐 다음 확인의 재시도
+대상에서는 안 빠진다 → [open-questions](../synthesis/open-questions.md) OQ-P-261.
 ⚠️ **범위 검증 없는 두 축이 그대로 요청 값이 된다** — 아래 [미결](#미결)의 `scale`·`rotation`
 서버 검증 부재가 이 라운드부터 실제로 닿는다. 앱 쪽 상한도 없다(OQ-P-271).
 `android_status`는 여전히 `partial`이다 — 테두리 PATCH의 소비 화면이 없다.

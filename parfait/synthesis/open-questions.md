@@ -4369,6 +4369,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 최종) · 일반 오류 토스트(배경 저장·토핑 저장·토핑 삭제)다. **①(409를 "마감된 캔버스"로 갈라
   > 말할지)은 그대로 열려 있다** — 이번 라운드는 셋을 한 문구로 접는 쪽을 택했고, 그 선택이
   > 409를 다른 서버 코드와 같은 자리에 두었다.
+  > ✅ **셋으로 줄어든 처분이 실제로 코드에 있다(2026-08-31 확인, 브랜치
+  > `feature/#427-sync-backend-api-260831`)** — `CanvasBGEditViewModel.handleOnClickConfirm`·
+  > `failToDeleteTopping`·`failToSave`를 직접 읽어 셋 다 토스트 + 화면 잔류인 것을 확인했다.
+  > **다만 "완전히 같다"는 아니다** — ⓐ 배경 실패는 `toCanvasBGEditError`로 원인별 코드
+  > (`NETWORK`·`UNSUPPORTED_IMAGE`·`BACKGROUND_SAVE_UNKNOWN`)를 가르는데 토핑 저장 실패는 원인을
+  > 안 가리고 늘 `TOPPING_SAVE_UNKNOWN`이다. ⓑ **같은 확인에서 배경과 토핑이 함께 실패하면 배경
+  > 쪽 토스트만 뜬다** — `handleOnClickConfirm`의 `when`이 `savedBackground == null`을 토핑 실패
+  > 분기보다 먼저 매칭해서다(토핑 실패는 `dirtyToppingIds`에는 남아 재시도되지만 그 사실을 이
+  > 확인에서는 안 알린다). ①은 여전히 열려 있다 → [api/parfait-image.md](../api/parfait-image.md)
+  > Android 매핑.
 - **해소 메모**: ①을 정하면 [c301 배경 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md)의
   as-built 절 "실패 표현"과 [api/parfait.md](../api/parfait.md) Android 매핑을 함께 고친다. ③은 OQ-P-167이
   쥔 "안내를 캔버스 쪽 토스트 호스트로 보내기"와 같은 자리다.
