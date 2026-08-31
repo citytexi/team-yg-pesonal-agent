@@ -2,8 +2,8 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: de3a99a
-verified: 2026-08-31
+server_commit: 02e11be
+verified: 2026-09-01
 android_status: done
 related_spec: s101-group-setting-api
 related_adr: ADR-0017
@@ -22,7 +22,7 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | 구현됨·결선됨[^uploadedat] |
+| GET | `/api/parfait-groups` | 필요 | 없음 | `List<MyParfaitGroupResponse>` | ⚠️불일치[^uploadedat][^todayurl] |
 | GET | `/api/parfait-groups/{groupId}` | 필요 | path `groupId` Long | `MyParfaitGroupDetailResponse` | 구현됨·결선됨 |
 | GET | `/api/parfait-groups/join-preview` | 필요 | query `inviteCode` String | `PreviewParfaitGroupJoinResponse` | 구현됨·결선됨 |
 | POST | `/api/parfait-groups/join` | 필요 | `JoinParfaitGroupRequest` | `JoinParfaitGroupResponse` | 구현됨·결선됨 |
@@ -41,6 +41,15 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
     `serverTimezone=Asia/Seoul`이라는 계약 사실이다. 앱 DTO는 여전히 널 허용이라 서버가 비널로 좁힌 것에
     앱이 물려 있지 않다 → [conventions.md](conventions.md) "Android 불일치"(이제 0건) ·
     [open-questions](../synthesis/open-questions.md) [2026-08-15].
+
+[^todayurl]: ⚠️ **2026-08-31 서버 delta로 새로 벌어졌다.** `recentImageUrl`이 **오늘 캔버스의 토핑**으로
+    좁혀졌는데, 앱은 그 필드가 `null`인 것을 여전히 "토핑이 하나도 없는 그룹"으로 읽는다
+    (`MyParfaitGroupVO.recentImageUploadedAt` KDoc · `feature/groups/list/impl/util/ToppingImage.kt`의
+    `toToppingImage`). 그래서 **어제까지 토핑이 있었고 오늘 캔버스만 빈 그룹**이 G-001에서 템플릿
+    그래픽으로 그려지는데, 같은 줄의 경과 시간은 어제 토핑 시각을 가리킨다 — 두 표시가 서로를 반박한다.
+    앱 쪽 타입도 JSON 키도 안 바뀌었고 서버가 같은 필드에 담는 **뜻**만 바뀐 부류라 역직렬화·매퍼는
+    초록으로 지나간다 → [conventions.md](conventions.md) "Android 불일치" ·
+    [open-questions](../synthesis/open-questions.md) OQ-P-336.
 
 요청 DTO(`ParfaitGroupRequest.kt`)에는 Bean Validation 애노테이션이 없다 — auth 도메인과 달리 `@NotBlank`/`@Valid`가
 없다. 필드는 Kotlin non-null 타입이라 요청 바디에 없거나 `null`이면 Jackson이 파싱 단계에서 거부한다(결과적으로
@@ -61,8 +70,8 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 |---|---|---|---|
 | `groupId` | Long | 아니오 | |
 | `groupName` | String | 아니오 | |
-| `recentImageUrl` | String? | 예 | 최근 업로드 이미지 없으면 `null` |
-| `recentImageUploadedAt` | LocalDateTime | **아니오**(2026-08-19 변경) | 아래 직렬화 포맷 참고. 토핑이 없으면 **그룹 생성 시각**으로 대체된다 |
+| `recentImageUrl` | String? | 예 | **오늘 캔버스**(`ParfaitDay.current()` — 03시 경계)에 토핑이 없으면 `null`. 어제 이전 토핑은 이 필드에 안 잡힌다(2026-08-31 변경) |
+| `recentImageUploadedAt` | LocalDateTime | **아니오**(2026-08-19 변경) | 아래 직렬화 포맷 참고. **날짜와 무관하게 마지막 토핑 시각**이고, 토핑이 한 건도 없을 때만 **그룹 생성 시각**으로 대체된다(2026-08-31 변경) |
 | `lastPlacedByNameTagChip` | String(enum) | **아니오**(2026-08-19 변경) | 마지막 토핑을 올린 사람의 Nametag-Chip 타입. 토핑이 없으면 **그룹 생성자의 칩** → 아래 [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙) |
 
   🔁 **2026-08-19 — 뒤의 두 필드가 널을 버렸다**(`[Fix] 그룹 Nametag-Chip 정합성 및 재가입·알림 버그 수정`).
@@ -71,8 +80,26 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   멤버(=생성자)의 칩**으로 대체된다. Kotlin 타입(`MyParfaitGroupSummary`·`MyParfaitGroupResult`·
   `MyParfaitGroupResponse`)과 프로젝션이 전부 비널로 좁혀졌다.
   ⚠️ **그래서 `recentImageUploadedAt`이 두 가지를 뜻한다** — "마지막 토핑 시각"이거나 "그룹 생성 시각"이고,
-  소비 측이 둘을 가르는 수단은 `recentImageUrl`이 `null`인지뿐이다(그 필드만 널을 유지했다)
-  → [미결](#미결).
+  ~~소비 측이 둘을 가르는 수단은 `recentImageUrl`이 `null`인지뿐이다~~(그 수단은 2026-08-31에 깨졌다 —
+  바로 아래) → [미결](#미결).
+
+  🔁 **2026-08-31 — 네 서브쿼리의 조인과 정렬이 바뀌었다**(`[Fix/#117] 오늘 토핑 없는 그룹의 "N시간 전"이
+  그룹 생성 시각 기준으로 표시됨`). `findMyGroupSummaries`의 네 서브쿼리가 `parfait_image`를 **INNER
+  JOIN**으로 바꿔 토핑이 없는 캔버스를 아예 제외하고, `ORDER BY`에서 `parfait_date`를 빼 `created_at`
+  기준으로만 마지막 토핑을 고른다. 겸해서 `recentImageUrl` 서브쿼리에만 `parfait_date = :today` 조건이
+  붙었고, 어댑터(`ParfaitGroupAdapter.findAllByMemberId`)가 `ParfaitDay.current()`를 넘긴다. 바뀐 계약
+  사실은 셋이다.
+
+  - `recentImageUrl`은 이제 **오늘 캔버스의 토핑**만 가리킨다. 어제 토핑이 있어도 오늘 캔버스가 비면 `null`이다.
+  - `recentImageUploadedAt`은 **정말 마지막 토핑 시각**이 됐다. 그전에는 새벽 3시 회전 배치가 만든 빈 오늘
+    캔버스가 `LEFT JOIN`으로 NULL 행을 만들고 그 행이 `parfait_date` 내림차순으로 맨 앞에 와, `COALESCE`가
+    **그룹 생성 시각**까지 새어 나왔다 — 오늘 토핑이 아직 없는 그룹은 매일 아침 그룹 생성순으로 재정렬됐다.
+  - 그래서 **`recentImageUrl`이 `null`인 것은 더 이상 "토핑 0건"을 뜻하지 않는다.** 응답에서 그 둘을 가르는
+    수단이 사라졌다 → [미결](#미결).
+
+  **목록 정렬(계약)**: 마지막 토핑 `created_at`(없으면 `parfait_group.created_at`)의 내림차순이고, 동률이면
+  `parfait_group.id` 내림차순이다. 즉 마지막 토핑이 최근인 그룹이 위로 오고, 토핑이 한 건도 없는 그룹은 그룹
+  생성 시각으로 줄을 선다. 앱은 응답 순서를 그대로 그린다.
 
   🔁 **2026-08-19 — JSON 키가 `lastPlacedByNametagChip` → `lastPlacedByNameTagChip`으로 바뀌었다**
   (`fix: placedBy 스키마 이름 충돌 해소 및 nameTagChip 필드명을 스펙에 맞게 통일`). 서버 코어·도메인·영속성
@@ -80,10 +107,12 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   보는 것은 후자다.
 
   **`lastPlacedByNameTagChip`의 출처와 함정**: `recentImageUrl`·`recentImageUploadedAt`과 같은 네이티브
-  쿼리의 **별개 상관 서브쿼리**이고, 정렬 기준(`parfait_date` → `created_at` → `id`
-  내림차순)이 같아 같은 토핑을 가리킨다. 조인 대상은 **배치 당시가 아니라 지금의 `parfait_group_member`
-  행**이라, 그 사람이 이미 탈퇴했으면 `DEFAULT`가 내려온다(서버 쿼리 주석이 `left_at IS NULL` 필터를
-  붙이지 말라고 명시한다).
+  쿼리의 **별개 상관 서브쿼리**다. 정렬 기준(`created_at` → `id` 내림차순)이 `recentImageUploadedAt`과
+  같아 그 시각과는 같은 토핑을 가리킨다. 🔁 **2026-08-31부터 `recentImageUrl`과는 갈린다** — 그쪽에만
+  `parfait_date = :today`가 붙어, 오늘 캔버스가 빈 그룹은 **이미지가 `null`인데 칩은 어제 토퍼의 것**이다.
+  조인 대상은 **배치 당시가 아니라 지금의 `parfait_group_member` 행**이라, 그 사람이 이미 탈퇴했으면
+  `DEFAULT`가 내려온다 — 근거는 `placer` 조인만 `LEFT JOIN`으로 남고 `left_at` 필터가 없다는 쿼리 구조다
+  (그 이유를 적어 두었던 쿼리 주석은 2026-08-31 커밋이 지웠다).
   근거: `ParfaitGroupControllerTest`가 토핑 있는 케이스(`"TYPE7"`)와 토핑 0건 케이스(`recentImageUrl`은
   `null`인데 시각·칩은 값이 있음, `"TYPE3"`)를 각각 `jsonPath`로 단언한다.
 
@@ -93,7 +122,8 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
   **`recentImageUploadedAt`의 출처**: 애플리케이션 코드가 만든 값이 아니라, `persistence`
   모듈의 `ParfaitGroupMemberRepository.findMyGroupSummaries`(네이티브 쿼리, `MyParfaitGroupSummaryProjection`)가
-  `parfait_image.created_at`을, 그것이 없으면 `parfait_group.created_at`을 프로젝션한 값이다.
+  `parfait_image.created_at`을, 그것이 없으면 `parfait_group.created_at`을 프로젝션한 값이다. 여기서
+  `parfait_image.created_at`은 **날짜 제한 없이** 그 그룹의 마지막 토핑이다(2026-08-31 변경).
 
   **직렬화 포맷(확인됨, 단 아래 한계 참고)**: `ParfaitGroupControllerTest`가
   `LocalDateTime.of(2026, 8, 1, 12, 0)` → 응답 문자열 `"2026-08-01T12:00:00"`을 `jsonPath`로 직접 검증한다.
@@ -545,8 +575,12 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   앱이 서버 포맷 변경을 기다리지 않고 읽는 쪽을 고쳤고, 근거는 서버 DB 커넥션 세 환경이
   `serverTimezone=Asia/Seoul`이라는 계약 사실이다 → [open-questions](../synthesis/open-questions.md) OQ-P-165.
 - ⚠️ **`recentImageUploadedAt`이 이제 "그룹 생성 시각"일 수도 있다** — `GroupListScreen`이 이 값으로
-  경과 시간을 그리므로, 토핑이 0건인 그룹도 **활동이 있었던 것처럼 보인다.** 앱이 "토핑 없음"을 가르려면
-  `recentImageUrl`이 `null`인지를 함께 봐야 한다 → [open-questions](../synthesis/open-questions.md) [2026-08-19].
+  경과 시간을 그리므로, 토핑이 0건인 그룹도 **활동이 있었던 것처럼 보인다.**
+  🔁 **2026-08-31 — 앱이 쓰던 판별법이 무효가 됐다.** 그전에는 `recentImageUrl`이 `null`인지를 함께 보면
+  됐지만, 그 필드는 이제 **오늘 캔버스에 토핑이 있는지**를 뜻한다. `MyParfaitGroupVO.recentImageUploadedAt`
+  KDoc과 `ToppingImage.kt`의 `toToppingImage`가 아직 옛 뜻으로 읽는다. 사정거리는 좁아졌다 — 시각이
+  그룹 생성 시각으로 새는 그룹은 이제 **토핑이 한 건도 없는 그룹뿐**이다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-235 · OQ-P-336.
 - ✅ **상세 조회 한 화면에 요청이 둘이던 이유가 서버에서 사라졌다**(2026-08-18 서버 delta) — 상세 응답에
   **그룹명이 없어** `GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 읽어 붙이던 자리다(그룹 SSoT
   라운드에서 HTTP 호출이 먼저 사라져 인메모리 캐시 `combine`이 됐다). **앱 쪽도 닫혔다(2026-08-20,
@@ -673,3 +707,10 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   표시가 활동 없는 그룹에도 나온다 → [open-questions](../synthesis/open-questions.md)
 - **같은 필드가 목록과 생성에서 다른 컬럼에서 나온다**(`parfait_group.created_at` vs `updatedAt`)
   → [open-questions](../synthesis/open-questions.md)
+
+2026-08-31 서버 delta로 새로 열린 것:
+
+- **`recentImageUrl`이 오늘 캔버스로 좁혀지면서 "토핑 0건" 판별 수단이 사라졌다** — 앱 두 곳
+  (`MyParfaitGroupVO` KDoc · `toToppingImage`)이 아직 옛 뜻으로 읽어, 어제까지 활동한 그룹이 G-001에서
+  템플릿 그래픽으로 그려진다. 위키 [[토핑]]의 대체 그래픽 정책은 템플릿을 "첫 토핑 등록 전까지"로 적어
+  **정책과도 갈린다** → [open-questions](../synthesis/open-questions.md) OQ-P-336

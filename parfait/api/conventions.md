@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: de3a99a
-verified: 2026-08-31
+server_commit: 02e11be
+verified: 2026-09-01
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -339,6 +339,20 @@ Flyway 마이그레이션이 운영 히스토리에는 V4까지만 기록돼 있
 ## Android 불일치
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
+
+⚠️ **2026-09-01 기준 1건.** 2026-08-31 서버 delta(`02e11be`)가 그룹 목록 `recentImageUrl`의 뜻을 좁히면서
+새로 벌어졌다.
+
+| 항목 | 계약 | 앱 | 결과 |
+|---|---|---|---|
+| `MyParfaitGroupResponse.recentImageUrl`의 뜻 | **오늘 캔버스**(`ParfaitDay.current()` — 03시 경계)에 토핑이 있으면 그 이미지, 없으면 `null`. 어제 이전 토핑은 안 잡힌다 | `MyParfaitGroupVO.recentImageUploadedAt` KDoc과 `feature/groups/list/impl/util/ToppingImage.kt`의 `toToppingImage`가 `null`을 **"토핑이 하나도 없는 그룹"**으로 읽는다 | 어제까지 토핑이 있었고 오늘 캔버스만 빈 그룹이 G-001에서 **템플릿 그래픽**으로 그려지는데, 같은 줄의 경과 시간은 **어제 토핑 시각**을 가리킨다 — 두 표시가 서로를 반박한다 → [parfait-group.md](parfait-group.md) · OQ-P-336 |
+
+⚠️ **이번 것도 계약 문서 감사가 잡았다.** 앱 쪽 타입도 `@SerialName` 키도 하나 안 바뀌었고 서버가 같은
+필드에 담는 **뜻**만 바뀐 부류라, 역직렬화도 매퍼도 초록으로 지나간다. OQ-P-234 ③이 붙이려는 와이어
+계약 테스트로도 이 부류는 못 잡는다 — 문자열은 그대로이기 때문이다. **뜻의 변화를 잡는 수단은 지금
+계약 문서 대조뿐이다.**
+
+**아래는 그 앞 회차의 기록이다.**
 
 ✅ **2026-08-20 기준 0건.** 오래 걸려 있던 두 건이 PR #308·#310 머지로 같은 날 닫혔다.
 

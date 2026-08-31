@@ -3699,6 +3699,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   것은 아니다. **오히려 develop이 그 값을 실제로 그리기 시작해 사정거리가 넓어졌다**(2026-08-20,
   PR #308·#310) — G-001이 이제 서버 시각과 서버 칩을 함께 쓰므로, 토핑 0건 그룹은 **생성 시각을 활동
   시각처럼**, **생성자 칩을 마지막 토퍼 칩처럼** 보여 준다. 코드 변경 없이 화면 값이 바뀐 자리다.
+  🔁 **2026-08-31 서버 delta(`02e11be`)가 ①의 선택지를 없앴다** — `recentImageUrl`이 **오늘 캔버스**의
+  토핑으로 좁혀지면서, 그 필드가 `null`인 것은 "토핑 0건"이 아니라 "오늘 토핑 없음"을 뜻하게 됐다.
+  **응답에서 두 뜻을 가르는 수단이 사라졌다.** 같은 delta가 시각 쪽은 고쳤다 — 빈 오늘 캔버스가
+  `COALESCE`로 그룹 생성 시각을 새게 하던 자리가 막혀, 토핑이 한 건이라도 있는 그룹은 이제 **정말
+  마지막 토핑 시각**을 받는다. 그래서 이 항목의 사정거리는 **토핑이 한 건도 없는 그룹**으로 좁아졌고,
+  대신 앱이 옛 판별법을 그대로 쓰는 새 자리가 생겼다 → OQ-P-336.
 
 ### [2026-08-19] 서버가 `PlacedByResponse`를 개명해 앱 DTO 이름의 근거가 사라졌다
 
@@ -5902,4 +5908,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   엔드포인트 표의 Android 열을 되돌리고 `:data`(Service·DataSource·wire DTO)부터 다시 만든다.
   검사 순서 차이는 OQ-P-334 ③과 같은 자리다.
 
-<!-- oq-next: 336 -->
+### [2026-09-01] `recentImageUrl`이 "오늘 캔버스"로 좁혀졌는데 앱은 "토핑 0건"으로 읽는다
+
+- **ID**: OQ-P-336
+- **출처**: 서버 `ParfaitGroupMemberRepository.findMyGroupSummaries`(2026-08-31, `02e11be` —
+  `recentImageUrl` 서브쿼리에만 `parfait_date = :today`가 붙었고 `ParfaitGroupAdapter.findAllByMemberId`가
+  `ParfaitDay.current()`를 넘긴다) × 앱 `domain/model/group/MyParfaitGroupVO`(KDoc) ·
+  `feature/groups/list/impl/util/ToppingImage.kt#toToppingImage` ×
+  [api/parfait-group.md](../api/parfait-group.md) — 앱은 `recentImageUrl == null`을 "아직 토핑이 없는
+  그룹"으로 읽어 템플릿 그래픽을 띄운다. 계약의 뜻은 이제 **"오늘 캔버스에 토핑이 없다"**라, 어제까지
+  활동한 그룹도 오늘 캔버스가 비면 같은 그림을 받는다. 같은 줄의 경과 시간은 어제 토핑 시각이라
+  **한 카드 안에서 두 표시가 서로를 반박한다.**
+- **항목**: ① G-001이 "오늘 토핑 없음"을 템플릿으로 그리는 것이 의도인지 — 위키 [[토핑]]의 대체 그래픽
+  정책은 템플릿을 **"첫 토핑 등록 전까지"**로 적는다(그 뜻이면 어제 활동한 그룹은 템플릿이 아니어야
+  한다). ② 의도가 아니라면 날짜 제한 없는 최근 이미지를 서버에 되물을지, 앱이 다른 신호로 가를지.
+  ③ 어느 쪽으로 정하든 앱 KDoc 두 곳이 옛 뜻을 가르치는 것은 고쳐야 한다.
+- **상태**: 미해결 (**화면에 이미 보인다** — 앱 코드는 한 줄도 안 바뀌었고 서버 delta만으로 값이 바뀌었다)
+- **해소 메모**: 정하면 [api/parfait-group.md](../api/parfait-group.md) 목록 응답 절과
+  [api/conventions.md](../api/conventions.md) "Android 불일치" 행에 반영한다. ①은 정책 소관이라 위키
+  [[open-questions]]와 갈리는 자리다 — 여기는 앱이 무엇을 그리는지만 추적한다.
+
+<!-- oq-next: 337 -->
