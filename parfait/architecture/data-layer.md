@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-28
+verified: 2026-08-31
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
-related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023
+related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -39,6 +39,14 @@ tags: [architecture, parfait]
   [ADR-0023](../adr/0023-group-in-memory-ssot.md)). 디스크를 쓰지 않아 **모든 함수가 non-suspend**이고
   실패 채널이 없다 — 계정 정보 SSoT와 형태는 같되 영속·암호화만 뺀 갈래다. 목록은
   `StateFlow<List<MyParfaitGroupVO>?>`이고 **`null`이 "아직 못 받음"**, `emptyList()`가 "그룹 0건"이다.
+- **인메모리 (2)** — **`CanvasLocalDataSource`**(오늘 캔버스 SSoT, `@Singleton` +
+  `MutableStateFlow<Map<GroupId, CanvasVO>>`, [ADR-0029](../adr/0029-canvas-today-ssot-polling.md),
+  PR #404로 develop 머지). 그룹 저장소와 같은 형태이되 **키가 그룹별로 나뉜 지도**이고, 지난 날
+  캔버스는 담지 않는다(마감돼 바뀌지 않으므로 공유해 얻을 것이 없다). `null`이 "아직 못 받음"인 것도
+  같다. 값을 얻는 길은 `todayCanvas(groupId)` 하나이고 **서버 재조회는 이 저장소가 아니라
+  `CanvasPoller`가 소유한다** — 그룹 저장소에는 없던 갈래다. 폴러는 그룹별 참조 계수로 주기 루프를
+  켜고 끄며, 계수는 `ParfaitRepositoryImpl`이 구독의 `onStart`/`onCompletion`에 걸어 올리고 내린다.
+  **캐시에 쓰는 곳은 폴러 하나뿐이라** 갱신 함수는 `Result<Unit>`만 돌려준다.
 - **암호화 DataStore 프록시** — `EncryptedPreferences`(`data/datastore/`, PR #263). 저장 형태가 값이 아니라 **암호문**인 저장소들이 공유한다(`EncryptedTokenStore`·`UserInfoLocalDataSourceImpl`) — 아래 "토큰·계정 정보 저장 경로" 참고.
 - **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근). **읽기 전용이 아니게 됐다**(#324) —
   `insertPendingImage`·`openOutputStream`·`finalizePendingImage`·`deleteImage`로 `MediaStore`에
@@ -80,17 +88,25 @@ tags: [architecture, parfait]
 | 모듈 | 제공/바인딩 |
 |------|-------------|
 | `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)·**imageFile**(#329)) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
-| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)·`ImageFileLocalDataSource` ↔ `ImageFileLocalDataSourceImpl`(#329)) |
+| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)·`ImageFileLocalDataSource` ↔ `ImageFileLocalDataSourceImpl`(#329)·**`CanvasLocalDataSource` ↔ `CanvasLocalDataSourceImpl`**(#404)) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
 | `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) + **`@UploadClient` `OkHttpClient`**(#322 — S3 presigned PUT 전용. Retrofit이 없는 유일한 표면이고 인터셉터를 하나도 안 단다) + **`@DownloadClient` `OkHttpClient`**(#369 — 서버 공개 이미지 GET 전용. 로깅만 달고 타임아웃은 메인과 같으며, `newBuilder()` 파생이 아니라 새 `Builder`여야 `Dispatcher` 격리가 산다) |
 | `SessionModule` | `SessionEventBus` → `SessionEventSource` 바인딩(#260 신설) |
 | `DataStoreModule` | `DataStore<Preferences>` 싱글톤 |
 | `JsonModule` | `@LocalJson`·`@RemoteJson` `Json` 2종(현재 설정 동일: `ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`) |
+| **`ApplicationScopeModule`**(#404) | `@ApplicationScope CoroutineScope` — 프로세스 수명 스코프. `CanvasPoller`의 주기 루프가 화면 수명(`viewModelScope`)에 걸리면 안 되고, 되감기 직전의 강제 갱신도 호출자 취소에 끊기면 안 된다 |
+| **`ClockModule`**(#404) | `kotlin.time.Clock` — 폴러가 캐시의 날짜를 오늘과 견주는 데 쓴다. 주입하지 않으면 하루 경계 전환을 테스트로 고정할 수 없다 |
 | `SingletonInjectModule` | 기타 앱 전역 싱글톤 |
 
 ## 예: 최근 이미지
 `RecentImageRepositoryImpl`이 `RecentImageLocalDataSource`(DataStore, URI 메타)와 `FileRecentImageLocalDataSource`(파일 저장)를 조합. 파일 last-modified로 캐시 축출, `DayWindow`로 날짜 윈도잉.
+
+> 📌 **정원이 종류별로 갈렸다(2026-08-31, PR #408)** — `MAX_SIZE`가
+> `MAX_SIZE_PER_KIND`가 되어 원본(`SOURCE`)과 알맹이(`CUTOUT`)가 각자 상한을 든다. 한 목록으로
+> 자르면 토핑 흐름 한 번이 두 칸을 먹어 원본이 알맹이를 밀어냈다(OQ-P-258). **저장 목록 자체는
+> 여전히 하나**이고 자르는 판정만 종류별이다 — 잘린 결과가 아니라 덧붙인 목록을 다시 걸러
+> 시간순을 지킨다(종류로 묶으면 뭉쳐서 순서가 깨진다).
 
 ## 예: 이미지 세그멘테이션(누끼)
 `ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]] — **API 28 미만 갈래는 EXIF 회전을 적용해 세워서 준다**, #349. 색공간·`Bitmap.Config`·해상도 하한은 여전히 손대지 않는다), subject 이미지는 `cacheDir`의 **세그멘테이션 전용 하위 디렉토리**에 PNG로 저장해 경로를 반환. 실패는 `Result<…>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`PersistSubjectUseCase`·`SaveEditedImageUseCase`·`ClearSegmentationCacheUseCase`.
@@ -245,10 +261,12 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `PolicyRepository` | `getPolicies()` | `GetPoliciesUseCase` → 온보딩 약관 |
 | `ParfaitGroupRepository`(#285, #287, 그룹 SSoT 라운드) | **읽기** `myGroups: Flow<List<MyParfaitGroupVO>?>` · `groupDetail(groupId): Flow<ParfaitGroupDetailVO?>` / **갱신** `refreshMyGroups` · `refreshGroupDetail`(둘 다 `Result<Unit>`) / **정리** `clearGroups`(non-suspend) / **명령** `previewJoin` · `joinGroup` · `createGroup` · `changeMyNickname` · `leaveGroup`(#287) · `reportGroup`(#287) | `GetMyGroupsFlowUseCase`·`RefreshMyGroupsUseCase`(G-001·C-001) · `GetGroupDetailUseCase`·`RefreshGroupDetailUseCase`(S-101) · `GetGroupJoinPreviewUseCase`(A-004) · `JoinGroupUseCase`(S-102, #261에 A-004에서 이관) · `CreateGroupUseCase`(A-005) · `ChangeGroupNicknameUseCase`(S-102·S-101) · `LeaveGroupUseCase`·`ReportGroupUseCase`(S-101 Danger Zone) · `LogoutUseCase`(`clearGroups`) |
 | `MemberRepository`(#263, #306) | `myAccount: Flow<MyAccountVO?>` · `refreshMyAccount` · `changeGlobalNickname` · `clearMyAccount` · **`withdraw`**(#306) | `GetMyAccountFlowUseCase`(S-001·S-002 구독) · `RefreshMyAccountUseCase`(로그인·가입 직후, 부트스트랩) · `ChangeGlobalNicknameUseCase`(S-002) · `LogoutUseCase` · `WithdrawUseCase`(S-001 Danger Zone) |
-| `ParfaitRepository`(#268, #279, #329) | `getYears`(#279) · `getTodayCanvas` · `getPastCanvases` · `getCanvasDetail` · **`changeCanvasBackground`**(#329) | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitUseCase`(C-001 진입, C-301 편집 진입) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) · `ChangeCanvasBackgroundUseCase`(C-301 확인) |
+| `ParfaitRepository`(#268, #279, #329, **#404**) | `getYears`(#279) · **읽기** `todayCanvas(groupId): Flow<CanvasVO?>` · `todayCanvasRefreshFailures(groupId): Flow<Unit>` / **갱신** `refreshTodayCanvasDetail`(suspend) · `requestTodayCanvasRefresh`(즉시 반환) / **정리** `clearTodayCanvas`(non-suspend) · `getPastCanvases` · `getCanvasDetail` · **`changeCanvasBackground`**(#329) | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitFlowUseCase`(C-001·C-301·C-106 구독) · `RefreshTodayParfaitDetailUseCase`·`RequestTodayParfaitRefreshUseCase`(쓰기 직후 강제 갱신) · `ObserveTodayParfaitRefreshFailureUseCase`(첫 조회 덮개 해제) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) · `ChangeCanvasBackgroundUseCase`(C-301 확인) · `LogoutUseCase`(`clearTodayCanvas`) |
 | `ImageUploadRepository`(#322) | `upload(filePath, imageType): Result<ImageId>` — 발급·S3 PUT·확인 3단계를 하나로 닫고 **이미 `COMPLETED`인 `imageId`**를 준다 | `AddToppingUseCase`(C-106 배치) · `UploadImageUseCase`(#329, C-301 배경) |
 | **`ImageFileRepository`**(#329) | `copyToCache(uri): Result<String>` — `content://`를 캐시 파일로 떨구고 **절대경로**를 준다 | `UploadImageUseCase` |
 | `ToppingRepository`(#322, #335, #336, #369) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` · **`delete(groupId, parfaitId, parfaitImageId): Result<Unit>`**(#335) · **`update(groupId, parfaitId, parfaitImageId, positionX?, positionY?, positionZ?, scale?, rotation?): Result<UpdatedToppingVO>`**(#336) · **`updateBorder(groupId, parfaitId, parfaitImageId, border): Result<UpdatedToppingBorderVO>`**(#369) | `AddToppingUseCase`(C-106 배치) · `DeleteToppingUseCase`(C-301 편집 탭 삭제) · `UpdateToppingUseCase`·`UpdateToppingBorderUseCase`(C-301 편집 탭 확인) |
+
+> ✅ **오늘 캔버스가 그룹 SSoT와 같은 형태로 갈렸다(2026-08-31, PR #404)** — `getTodayCanvas` 하나가 구독·갱신 둘·정리·실패 축 다섯으로 나뉘고 `GetTodayParfaitUseCase`가 사라졌다. 갱신이 `Result<Unit>`만 주는 것도 ADR-0023과 같은 이유다.
 
 > 📌 **위 표는 develop 기준이다.** 마지막 두 행은 2026-08-20 PR #322로 들어왔고 **소비자가 0이라
 > 아직 아무 화면도 부르지 않는다** — 결선은

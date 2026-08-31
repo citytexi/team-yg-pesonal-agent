@@ -1,7 +1,7 @@
 ---
 id: ADR-0029
 title: 오늘 캔버스 인메모리 SSoT — 구독 수에 매단 주기 폴링
-status: proposed
+status: accepted
 date: 2026-08-27
 deciders: Parfait 팀
 supersedes:
@@ -18,6 +18,12 @@ tags: [adr, parfait, canvas, state, cache, polling]
 > 상태·날짜·결정자·대체 관계는 위 frontmatter가 단일 출처. 본문은 결정 내용에 집중.
 
 ## 맥락
+
+> ✅ **develop 에 머지됐다(2026-08-31, PR #404)** — 이 결정을 세운 스택 3단(PR1 배경 탭 토핑 ·
+> PR2 인메모리 SSoT · PR3 폴링)이 한 머지로 들어왔고, 머지 커밋의 트리가 브랜치 팁과 같아
+> 충돌 해소 편집은 없다. 그래서 `status` 를 `accepted` 로 올린다. 결정문은 그대로이고,
+> 값이 아닌 실패 축(`refreshFailures`)까지 코드와 일치한다.
+
 
 오늘 캔버스를 쓰는 화면이 셋이다(C-001 캔버스 메인·C-301 배경 편집·C-106 토핑 배치). 셋 다
 `GetTodayParfaitUseCase(groupId)`를 각자 부르고, 받은 `CanvasVO`를 각자의 `UiState` 모양으로

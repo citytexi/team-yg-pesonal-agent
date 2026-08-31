@@ -1,11 +1,11 @@
 ---
 id: canvas-today-ssot-polling
 title: 오늘 캔버스 인메모리 SSoT · 배경 탭 토핑 렌더링 · 주기 폴링 (Canvas Today SSoT & Polling)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-30
-related_code: CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditIntent, CanvasBGEditEffect, CanvasBGEditError, CanvasBGEditRoute, YGScaffoldV2, CanvasToppingItem, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainScreen, CanvasToppingLayer, CanvasToppingPlaceViewModel, CanvasToppingPlaceUiState, BaseViewModel, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, GetTodayParfaitUseCase, GetTodayParfaitFlowUseCase, RefreshTodayParfaitUseCase, ObserveTodayParfaitRefreshFailureUseCase, GetParfaitDetailUseCase, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingDraft, ToppingDraftRepository, AddToppingUseCase, UpdateToppingUseCase, DeleteToppingUseCase, ChangeCanvasBackgroundUseCase, LogoutUseCase, TokenAuthenticator, ParfaitDay, parfaitToday
+verified: 2026-08-31
+related_code: CanvasBGEditScreen, CanvasBGEditViewModel, CanvasBGEditUiState, CanvasBGEditIntent, CanvasBGEditEffect, CanvasBGEditError, CanvasBGEditRoute, YGScaffoldV2, CanvasToppingItem, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainScreen, CanvasToppingLayer, CanvasToppingPlaceViewModel, CanvasToppingPlaceUiState, BaseViewModel, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, CanvasPoller, GetParfaitDetailUseCase, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingDraft, ToppingDraftRepository, AddToppingUseCase, UpdateToppingUseCase, DeleteToppingUseCase, ChangeCanvasBackgroundUseCase, LogoutUseCase, TokenAuthenticator, ParfaitDay, parfaitToday
 related_adr: ADR-0029, ADR-0023, ADR-0026, ADR-0025, ADR-0020, ADR-0009
 related_spec: group-ssot, c001-canvas-today-detail, c001-canvas-main, c106-topping-place, c201-canvas-calendar-server, c202-canvas-spotlight, c301-canvas-background-edit, c301-topping-edit-tab, screen-resume-refetch, server-delta-nametag-chip-day-boundary
 related_architecture: data-layer, state-management
@@ -15,6 +15,11 @@ tags: [spec, parfait, canvas, state, cache, polling]
 ---
 
 # Spec: 오늘 캔버스 인메모리 SSoT · 배경 탭 토핑 렌더링 · 주기 폴링
+
+> ✅ **develop 에 머지됐다(2026-08-31, PR #404 `2c7bb31b`)** — 스택 3단(PR1·PR2·PR3)이 한 머지로
+> 들어왔고 머지 커밋의 트리가 브랜치 팁(`6bd21fb7`)과 같아 **충돌 해소 편집이 0건**이다. 아래
+> as-built 서술은 그대로 develop 의 코드다. [ADR-0029](../../adr/0029-canvas-today-ssot-polling.md) 도
+> 같은 날 `accepted` 가 됐다.
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처. 본문은 설계 내용에 집중.
 
@@ -32,7 +37,7 @@ tags: [spec, parfait, canvas, state, cache, polling]
 > (`CanvasMainUiState.isInitialLoading`)와 부딪혔고, 리베이스 충돌을 푸는 자리에서 닫혔다.
 > 덮개는 구독 안에서 파생하되(`try`/`finally` 가 아니다), 그것만으로는 부족해
 > **폴러가 갱신 실패를 내보내는 표면을 새로 만들었다** — 아래 「실패 표현」 참고.
-> → [open-questions](../synthesis/open-questions.md) OQ-P-326 ⑥.
+> → [open-questions](../../synthesis/open-questions.md) OQ-P-326 ⑥.
 
 ## 목표
 
@@ -53,8 +58,8 @@ tags: [spec, parfait, canvas, state, cache, polling]
 - **남이 올린 토핑이 늦게 온다.** 갱신 시점이 화면 재진입(`Enter`)뿐이라, 캔버스를 열어 둔 채로는
   다른 멤버의 토핑이 영영 나타나지 않는다.
 
-그룹 정보는 이미 같은 문제를 인메모리 SSoT로 풀었다([ADR-0023](../adr/0023-group-in-memory-ssot.md),
-[group-ssot](archive/2026-08-17-group-ssot.md)). 그 ADR은 "폴링을 붙일 자리가 저장소 한 곳으로
+그룹 정보는 이미 같은 문제를 인메모리 SSoT로 풀었다([ADR-0023](../../adr/0023-group-in-memory-ssot.md),
+[group-ssot](2026-08-17-group-ssot.md)). 그 ADR은 "폴링을 붙일 자리가 저장소 한 곳으로
 정해진다"고 적어 두었고, 이 스펙이 그 자리를 캔버스에서 실제로 채운다.
 
 ## 범위
@@ -567,7 +572,7 @@ PATCH 대상」이 스냅샷 대조를 집합으로 바꿀 때 **테두리 갈�
 사라진 토핑 둘**이다. 승계하려던 OQ-P-275·OQ-P-270의 공백도 이 브랜치에서 함께 닫혔다
 (OQ-P-276 ②는 그대로다).
 
-> 이 병합 규칙은 [OQ-P-219](../synthesis/open-questions.md)의 **항목 ②(통째 대입을 병합으로 바꿀지)**
+> 이 병합 규칙은 [OQ-P-219](../../synthesis/open-questions.md)의 **항목 ②(통째 대입을 병합으로 바꿀지)**
 > 를 캔버스 화면 상태 층에서 답한 것이다. **미결 자체는 닫히지 않는다** — 항목 ①·③(낡은 응답
 > 순서, 조작 직후 진행 중인 조회 취소)은 저장소 캐시 층의 문제이고 아래 「주의」에 남긴다.
 
@@ -710,7 +715,7 @@ z로 쓰게 된다.** ADR-0026이 "초안 없이 배치 시점에 재조회"를 
 > 신호가 생기면서 트리거가 돌아왔다. 셋 다 복원돼 있다 — 조건만 "보여 줄 캔버스가 없을 때"에서
 > "첫 조회를 기다리는 동안"으로 좁혀졌다(위 「실패 표현」 as-built).
 
-문서 산출물은 이 스펙과 [ADR-0029](../adr/0029-canvas-today-ssot-polling.md), 그리고 두
+문서 산출물은 이 스펙과 [ADR-0029](../../adr/0029-canvas-today-ssot-polling.md), 그리고 두
 `README.md` 인덱스 행이다(각각 같은 커밋에 등록).
 
 ## 검증 못 한 것
@@ -726,19 +731,19 @@ z로 쓰게 된다.** ADR-0026이 "초안 없이 배치 시점에 재조회"를 
 
 - **폴링 주기 5초는 실측 전 값이다.** 한 그룹에 몰리는 요청은 그 그룹에서 동시에 캔버스를 보는
   사람 수에 비례하고 주기에 반비례한다(정원 상한은 12명이다). 상수 하나로 두므로 서버 부하를
-  보고 조정한다. 조정 트리거와 실측 주체는 정하지 않았다([OQ-P-320](../synthesis/open-questions.md)).
+  보고 조정한다. 조정 트리거와 실측 주체는 정하지 않았다([OQ-P-320](../../synthesis/open-questions.md)).
 - **낡은 응답 순서가 완전히 닫히지는 않는다.** 폴러 자신의 중첩은 "진행 중인 갱신이 있으면 이번
   주기를 건너뛴다"로 막지만, 다른 경로에서 나간 갱신과 겹치는 창은 남는다. 이것이
-  [OQ-P-219](../synthesis/open-questions.md)의 항목 ①·③이 캔버스에서 나타난 형태다
-  ([OQ-P-321](../synthesis/open-questions.md)로 따로 등록하고 OQ-P-219에 상호 참조를 남겼다).
+  [OQ-P-219](../../synthesis/open-questions.md)의 항목 ①·③이 캔버스에서 나타난 형태다
+  ([OQ-P-321](../../synthesis/open-questions.md)로 따로 등록하고 OQ-P-219에 상호 참조를 남겼다).
 - **`positionZ` 겹침은 완화만 된다.** 폴링 주기 안에 두 사람이 확인을 누르면 같은 `max(z)`를 읽는다.
-  근본 해결은 서버가 z를 배정하는 것이라 앱만으로 닫히지 않는다([OQ-P-322](../synthesis/open-questions.md)).
+  근본 해결은 서버가 z를 배정하는 것이라 앱만으로 닫히지 않는다([OQ-P-322](../../synthesis/open-questions.md)).
 - **경계 직후 오늘 조회가 한 그룹에서 동시에 나갈 수 있다.** 캔버스를 열어 둔 클라이언트가 여럿이면
   경계 전환에서 각자 한 번씩 생성을 태운다. 폴링이 백그라운드에서 멎으므로 그 수가 "그 순간 실제로
   캔버스를 보고 있는 사람"으로 줄지만 0은 아니다. 서버가 유니크 제약으로 막는지 확인하지 못했다
-  ([OQ-P-323](../synthesis/open-questions.md)).
+  ([OQ-P-323](../../synthesis/open-questions.md)).
 - **테두리 편집 결과는 여전히 저장되지 않는다**(OQ-P-276). 이 스펙은 그 토핑을 갱신에서 지키는
   것까지만 하고 저장 경로는 열지 않는다.
 - **`CanvasEditRoute`·`CanvasImageSelectRoute`·`CanvasMoveRoute`가 유휴 상태로 남는다.** 이미
-  [OQ-P-239](../synthesis/open-questions.md)에 등록돼 있다. 배경 편집과 이름이 비슷해 다음 사람이
+  [OQ-P-239](../../synthesis/open-questions.md)에 등록돼 있다. 배경 편집과 이름이 비슷해 다음 사람이
   헷갈릴 자리라는 점만 덧붙인다.

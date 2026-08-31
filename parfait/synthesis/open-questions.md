@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-08-30
+verified: 2026-08-31
 related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -3273,7 +3273,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 폴링 설계에서 정하고 [ADR-0023](../adr/0023-group-in-memory-ssot.md) "갱신 시점"과
   스펙의 갱신 규칙 표에 함께 반영한다. 같은 라운드에서 생성·참여 직후 목록 조회가 두 번 나가는 것
   (저장소 재조회 + G-001 `Enter` 재조회)도 그때 같이 볼 자리다.
-  **2026-08-27 — 캔버스 형태가 열렸다.** [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+  **2026-08-27 — 캔버스 형태가 열렸다.** [캔버스 오늘 SSoT·폴링 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md)
   이 항목 ②(통째 대입을 병합으로)를 캔버스 **화면 상태 층**에서 답했다(dirty 집합 + 삭제 툼스톤).
   항목 ①·③은 저장소 캐시 층의 문제라 그대로 열려 있고, 캔버스에서 나타난 형태를 OQ-P-321로
   따로 등록했다. 두 항목은 같은 결정으로 함께 닫는 것이 맞다.
@@ -4289,9 +4289,21 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 상한을 올릴지(내부 저장소 사용량이 함께 는다) ② 종류별로 상한을 나눌지(목록이 둘로
   갈려 시간순 정렬과 데이 윈도우 정리가 이중이 된다 — PR6가 그 이유로 단일 목록을 골랐다)
   ③ 지금대로 감수할지.
-- **상태**: 미해결 (**PR6는 ③으로 감수했다** — 실사용에서 밀림이 실제로 거슬리는지 본 뒤 정한다)
+- **상태**: 해소됨 (**②로 닫혔다** — 2026-08-31, PR #408 develop 머지)
 - **해소 메모**: 데이 윈도우 정리(03:00 밖이면 삭제)가 이미 목록을 매일 비우므로 누적되지는
   않는다. 문제가 되는 것은 같은 날 토핑을 여러 개 만들 때다.
+
+  > ✅ **②를 골랐고, PR6가 그것을 기각한 근거는 실제로 발생하지 않았다(2026-08-31, PR #408)** —
+  > `MAX_SIZE` 가 `MAX_SIZE_PER_KIND` 가 되어 원본과 알맹이가 각자 정원을 든다. PR6는 ②를
+  > "목록이 둘로 갈려 시간순 정렬과 데이 윈도우 정리가 이중이 된다"는 이유로 물렀는데,
+  > **저장 목록을 가르지 않고 자르는 판정만 종류별로 두면** 둘 다 이중이 되지 않는다 —
+  > 자른 결과가 아니라 덧붙인 목록을 살아남은 URI 집합으로 다시 걸러 시간순을 지킨다.
+  > 데이 윈도우 정리는 목록 하나를 그대로 보므로 손대지 않았다.
+  > 겸해 **최근 줄에 무엇을 싣는지가 `returnResultOnly` 에서 신설 `RecentImagePick` 으로 갈렸다** —
+  > 두 플래그가 우연히 같은 방향을 가리키던 것을 부르는 쪽이 직접 고르게 바꾼 것이다
+  > ([navigation-flow](../architecture/navigation-flow.md) 「인자 있는 목적지」).
+  > ⚠️ **①이 걱정한 저장소 사용량은 그대로 남는다** — 총 상한이 두 배가 됐고 잰 사람이 없다 →
+  > OQ-P-332.
 
 ### [2026-08-22] 앱 전역 화면 전환이 루트 두 곳에 복제됐다
 
@@ -4551,7 +4563,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 409 처분 갈래는 OQ-P-261이 계속 쥔다(무반응 하나가 일반 오류 토스트로 옮겨 갔다).
 - **해소 메모**: ②는 [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md)
   as-built 절의 비대칭 서술과 함께 정리한다. ①③의 as-built는 develop 머지 시점에 그 스펙과
-  specs README로 옮긴다 — 지금은 [폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+  specs README로 옮긴다 — 지금은 [폴링 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md)
   「배경 편집 화면의 진행·실패 표현」에 있다.
 
 ### [2026-08-23] 토핑 크기 상한이 근거 없이 사라졌다 — 이제 막는 자리가 앱에도 서버에도 없다
@@ -4666,7 +4678,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: as-built는 develop 머지 시점에
   [c301-topping-edit-tab 스펙](../specs/archive/2026-08-16-c301-topping-edit-tab.md) as-built 절의
   비대칭 서술과 [c301 배경 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md)
-  「실패 표현」으로 옮긴다 — 지금은 [폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+  「실패 표현」으로 옮긴다 — 지금은 [폴링 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md)
   「배경 편집 화면의 진행·실패 표현」에 있다. ③이 맞물린 OQ-P-261 ②(마감 409 판정 공용화)는
   그대로 열려 있다.
 
@@ -5338,11 +5350,25 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > `feature/canvas-today-ssot` 를 품은 스택).
   > **그래서 ③이 같은 형태로 되살아난다** — 선작성 문서 넷이 지금 `draft` 인데 구현은 release 에만
   > 있다: [로그인 디버그 모드 스펙](../specs/2026-08-28-login-debug-mode.md) ·
-  > [그 계획](../plans/2026-08-28-login-debug-mode.md) · [PR2 계획](../plans/2026-08-27-canvas-today-ssot.md) ·
-  > [PR3 계획](../plans/2026-08-27-canvas-polling.md). 아카이브 판정을 `develop` 머지로 두는 한
+  > [그 계획](../plans/2026-08-28-login-debug-mode.md) · [PR2 계획](../plans/archive/2026-08-27-canvas-today-ssot.md) ·
+  > [PR3 계획](../plans/archive/2026-08-27-canvas-polling.md). 아카이브 판정을 `develop` 머지로 두는 한
   > **구현이 끝난 문서가 계속 `draft` 로 남는다.**
   > 태그도 둘 늘어(`0.1.0`·`0.1.1`) 셋이 됐고 **여전히 전부 경량**이며 셋 다 release 쪽 커밋을
   > 가리킨다(OQ-P-310).
+
+  > 📌 **③이 다시 좁아졌다 — 넷 중 셋이 develop 으로 들어왔다(2026-08-31, PR #404·#408)**
+  > `feature/canvas-polling` 스택(PR2 를 품는다)과 `feature/cache-image` 가 develop 에 머지돼
+  > 선작성 문서 셋([스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md) · [PR2 계획](../plans/archive/2026-08-27-canvas-today-ssot.md) ·
+  > [PR3 계획](../plans/archive/2026-08-27-canvas-polling.md), PR1 계획까지 넷)이 `develop` 머지라는
+  > **기존 판정 기준 그대로** 아카이브로 갔다. 세그멘테이션 넷 때(2026-08-27)와 같은 결말이다.
+  > **남은 것은 `feature/debug-mode` 하나** — `develop` 에 `DebugMode*` 심볼이 0건이라
+  > [로그인 디버그 모드 스펙](../specs/2026-08-28-login-debug-mode.md)과 [그 계획](../plans/2026-08-28-login-debug-mode.md)은
+  > 구현이 끝난 채 `draft` 로 남는다.
+  > ⚠️ **①②는 이번에도 안 바뀌었고 갈림은 오히려 커졌다.** 최신 release(`0.1.1-5`) 기준으로
+  > **release 만 50커밋 · develop 만 43커밋**이다 — release-only 가 50 에서 줄지 않았다는 것은
+  > develop 이 받은 것이 release 가 받은 그 커밋이 아니라 **리베이스된 다른 커밋**이라는 뜻이다
+  > (세그멘테이션 넷 때와 같은 형태). 직전 회차의 "develop 만 8"이 43 으로 벌어진 것은 이번
+  > delta 그 자체다.
 
 ### [2026-08-26] 토스트가 어느 프레임 위에 뜨는지를 정하는 규칙이 없다
 
@@ -5484,49 +5510,62 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-27] 캔버스 폴링 주기 5초가 실측 전 값이고, 조정 트리거·실측 주체가 없다
 
 - **ID**: OQ-P-320
-- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md) 「폴링을
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md) 「폴링을
   어디에 두는가」·「주의」 × [ADR-0029](../adr/0029-canvas-today-ssot-polling.md) — 주기를 상수 하나로
   두기로 했을 뿐, 어떤 지표를 보고 언제 바꿀지는 정하지 않았다.
 - **항목**: ① 한 그룹에 몰리는 요청은 그때 캔버스를 보는 사람 수에 비례하고 주기에 반비례하는데
   (정원 상한 12명), 실사용에서 그 수가 얼마나 되는지 모른다. ② 조정 근거가 될 지표(서버 응답 시간·
   에러율·모바일 데이터 사용량)를 누가 어디서 보는지 정해지지 않았다. ③ 화면별로 주기를 달리할지
   (배경 편집은 편집 중이라 더 길어도 되는지)도 열려 있다.
-- **상태**: 미해결 (구현 전 — 주기 값 자체는 스펙이 5초로 정했다)
+- **항목 추가**: ④ **같은 부류의 실측 전 상수가 하나 더 있다** — `BaseViewModel` 의 구독 정지
+  유예도 5초이고 폴링 주기와 같은 값이다. 유예를 *두는* 이유는 문서에 있지만(화면 전환의 짧은
+  공백) 그 *값*의 근거는 없다.
+- **상태**: 미해결 (**구현됨** — 2026-08-31 PR #404 develop 머지, `CanvasPoller` 의
+  `CANVAS_POLL_INTERVAL` 이 5초. 값을 정할 지표와 주체는 여전히 없다)
 - **해소 메모**: 실서버 부하를 보고 정한다. 바꾸면 스펙의 「폴링을 어디에 두는가」 서술과 ADR-0029
-  트레이드오프를 함께 고친다.
+  트레이드오프를 함께 고친다. 코드 쪽 상수는 `CanvasPoller` 와 `BaseViewModel` 두 곳이다.
 
 ### [2026-08-27] 캔버스 캐시에서도 낡은 응답이 뒤늦게 도착해 과거로 되돌릴 수 있다
 
 - **ID**: OQ-P-321
-- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md)
   「폴링을 어디에 두는가」·「주의」 — 폴러는 진행 중인 갱신이 있으면 그 주기를 건너뛰지만, 그 가드는
   **폴러를 통과하는 요청끼리만** 막는다. OQ-P-219가 그룹 목록에서 지적한 것과 같은 기전이 캔버스
   캐시에서 나타난 형태다.
 - **항목**: ① 폴러 밖에서 나가는 경로와 겹치는 창을 어떻게 닫을지. ② 세대 카운터로 낡은 응답의
   쓰기를 버릴지. ③ 배경 편집의 dirty 집합·툼스톤은 **화면 상태 층**의 방어라 저장소 캐시가 과거로
   돌아가는 것 자체는 못 막는다 — 캐시 층 방어를 따로 둘지.
-- **상태**: 미해결 (구현 전)
+- **상태**: 부분 해소 (**①②는 구현이 답했다**, ③ 잔존 — 2026-08-31 PR #404 develop 머지)
 - **해소 메모**: OQ-P-219와 같은 결정으로 함께 닫는 것이 맞다. 정하면 ADR-0023·ADR-0029의 "갱신
   시점"과 두 스펙의 갱신 규칙 표에 함께 반영한다.
+
+  > ✅ **①②가 닫혔다(2026-08-31, PR #404)** — ①이 걱정한 "폴러 밖에서 나가는 경로"가 아예 없다.
+  > 캐시에 쓰는 곳은 `CanvasPoller.refresh` 하나뿐이고 `ParfaitRepositoryImpl` 의 갱신 두 표면도
+  > 폴러를 지난다. ②는 세대 카운터로 들어왔다 — `stopAll()` 이 세대를 올려 **그 전에 출발한 응답은
+  > 캐시에 싣지 않는다.** 겸해 그룹별 "진행 중" 표를 두어 갱신이 겹쳐 나가지 않으므로, 한 그룹
+  > 안에서 응답이 뒤엉킬 창 자체가 생기지 않는다.
+  > ⚠️ **③은 그대로다** — 세대 카운터가 막는 것은 **세션 종료를 걸친 응답**뿐이라, 세션 안에서
+  > 캐시가 과거로 돌아가는 일반적인 경우를 위한 캐시 층 방어는 여전히 없다.
 
 ### [2026-08-27] positionZ 를 앱이 정하는 한 동시 배치의 깊이 겹침은 닫히지 않는다
 
 - **ID**: OQ-P-322
-- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md)
   「토핑 배치 화면의 positionZ」 × [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md) —
   확정 시점 재계산은 **완화이지 해결이 아니다**. 재계산이 읽는 값은 최대 폴링 주기만큼 낡아, 두
   사람이 그 안에 확인을 누르면 같은 최대 깊이를 읽는다.
 - **항목**: ① 서버가 `positionZ` 를 배정하게 할지(서버 계약 변경). ② 겹쳤을 때의 정렬 동률
   타이브레이크를 앱이 정할지(생성 시각? 이미지 id?). ③ 하루 경계에서 구독 캔버스와 초안
   `parfaitId` 가 갈리면 초안 값으로 물러서는데, 그때 실리는 z 가 그 캔버스 기준으로 낡았을 수 있다.
-- **상태**: 미해결 (구현 전 — 겹쳐도 거절되지는 않고 그리는 순서만 흔들린다)
+- **상태**: 미해결 (**구현됨** — 2026-08-31 PR #404 develop 머지로 확정 시점 재계산이 들어왔다.
+  겹쳐도 거절되지는 않고 그리는 순서만 흔들리는 것은 그대로다)
 - **해소 메모**: ①은 서버 작업이라 [api/parfait-image.md](../api/parfait-image.md) 계약 변경과 함께
   간다. 그 전까지는 완화 상태로 두고 스펙의 서술을 그대로 유지한다.
 
 ### [2026-08-27] 하루 경계 직후 오늘 조회가 한 그룹에서 동시에 나가 캔버스를 중복 생성할 수 있다
 
 - **ID**: OQ-P-323
-- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md)
   「폴링을 어디에 두는가」·「하루 경계」 × [api/parfait.md](../api/parfait.md) — 오늘 조회는 해당
   날짜 파르페가 없으면 만들어 저장한다. 경계 티커가 발화하면 그 그룹에서 캔버스를 보고 있는
   클라이언트가 각자 한 번씩 오늘 조회를 태운다.
@@ -5534,9 +5573,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   막지 않으면 중복 행이고, 막으면 일부 클라이언트가 오류를 받는다. ② 앱 쪽에서 경계 전환 조회에
   무작위 지연을 줄지. ③ 폴링이 백그라운드에서 멎으므로 동시 클라이언트 수는 "그 순간 실제로
   보고 있는 사람"으로 줄지만 0은 아니다.
-- **상태**: 미해결 (구현 전 — 서버 확인이 선행돼야 한다)
+- **상태**: 미해결 (**구현됨** — 2026-08-31 PR #404 develop 머지로 경계 티커
+  (`ObserveParfaitDayBoundaryUseCase`)가 들어왔다. 서버 확인은 여전히 선행 과제다)
 - **해소 메모**: 서버 구현을 확인해 ①을 먼저 닫는다. 막고 있으면 앱은 그 오류를 조용히 넘기고
-  다음 주기 상세 조회로 회복하면 된다.
+  다음 주기 상세 조회로 회복하면 된다. 앱 쪽 방어는 `CanvasPoller` 가 캐시의 날짜를 보고
+  **오늘 조회와 상세 조회를 가르는 것** 하나뿐이라, 경계 직후 첫 요청이 오늘 조회인 것은 그대로다.
 
 ### [2026-08-28] 토핑 테두리를 그리는 겹과 서버로 보내는 겹이 서로 다르다
 
@@ -5586,8 +5627,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-08-28] 선작성 문서 셋이 이번 델타를 모른다
 
 - **ID**: OQ-P-326
-- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md)·
-  [PR3 계획](../plans/2026-08-27-canvas-polling.md)·
+- **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md)·
+  [PR3 계획](../plans/archive/2026-08-27-canvas-polling.md)·
   [세그멘테이션 입력 전처리 스펙](../specs/2026-08-23-segmentation-preprocessing.md)은 develop 머지
   **전에** 쓰였고, 하루 뒤 PR #369·#400이 그 문서들이 전제한 코드를 바꿨다. 앞 둘은 아직
   `status: draft`, 셋째는 `in-progress`다.
@@ -5609,8 +5650,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `OnToppingRotate(deltaDegrees)`가 됐다. 픽셀 환산이 화면으로 올라간 결과이고, 스펙이
   `dirtyToppingIds`에 id를 넣는 자리로 세어 둔 그 인텐트들이다. **스펙 본문은 이번 회차에
   현행 이름으로 정정했다**(2026-08-28). 계획 쪽은 `OnToppingMoveDrag`만 쓰므로 영향이 없다.
-- **상태**: 부분 해소 (**①②⑤는 2026-08-28, ⑥은 2026-08-30 스택 리베이스에서 닫혔다** — 코드가
-  문서를 앞질러 풀었다 / ③④ 잔존)
+- **상태**: 부분 해소 (**①②⑤는 2026-08-28, ⑥은 2026-08-30 스택 리베이스에서 닫혔고 넷 다
+  2026-08-31 PR #404 로 develop 에 들어왔다** — 코드가 문서를 앞질러 풀었다 / ③④ 잔존)
 - **해소 메모**: ①②는 계획을 고치는 일이라 다음 캔버스 폴링 라운드의 첫 작업이고, ④는 전처리
   라운드의 첫 작업이다. ③은 위키
   정책과의 대조라 [[화면-ID-체계]] 쪽 판단이 선행한다 — 구현이 옳으면 정책 문서가 따라오고,
@@ -5635,9 +5676,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ⚠️ **세 브랜치는 아직 develop 에 머지되지 않았다** — 리베이스로 갱신된 것은 로컬 브랜치이고,
   > 원격에는 올라가 있지 않다.
   > ⚠️ **⑥ 첫 조회 덮개가 계획의 코드블록에서 사라진다(2026-08-30, PR #407 develop 머지)** —
-  > [PR2 계획](../plans/2026-08-27-canvas-today-ssot.md)이 `loadTodayCanvas()` 를 **통째로 갈아 끼우는**
+  > [PR2 계획](../plans/archive/2026-08-27-canvas-today-ssot.md)이 `loadTodayCanvas()` 를 **통째로 갈아 끼우는**
   > 코드블록을 싣는데, 그 블록에는 이번에 붙은 `isInitialLoading` 이 없다. 적힌 그대로 구현하면
-  > **오늘 캔버스 첫 조회의 화면 덮개가 조용히 사라진다.** [PR3 계획](../plans/2026-08-27-canvas-polling.md)은
+  > **오늘 캔버스 첫 조회의 화면 덮개가 조용히 사라진다.** [PR3 계획](../plans/archive/2026-08-27-canvas-polling.md)은
   > 한 걸음 더 가서 그 함수를 지우자고 적는다(구독이 대신한다). release 계보는 이 충돌을 이미
   > 한 번 풀었고 **답이 계획과 다르다** — 폴링을 받은 뒤의 release 쪽 `CanvasMainViewModel` 은
   > 덮개를 `try`/`finally` 가 아니라 **구독 안에서 파생**시킨다. 계획을 고칠 때 베낄 자리가 이미
@@ -5663,11 +5704,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 있을 때"로 좁혔다. 폴링이 5초마다 도는 자리라 가드가 없으면 실패가 이어지는 동안 토스트가
   > 쌓인다.
   > **검증** — 세 브랜치 각각에서 clean 뒤 `./gradlew test ktlintCheck` 가 통과한다.
-  > 반영처는 [이 라운드의 스펙](../specs/2026-08-27-canvas-today-ssot-polling.md) 머리말·「Repository」
+  > 반영처는 [이 라운드의 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md) 머리말·「Repository」
   > as-built·「실패 표현」 as-built·「삭제」 as-built · [ADR-0029](../adr/0029-canvas-today-ssot-polling.md)
-  > 「결정」·「영향」 · [PR2 계획](../plans/2026-08-27-canvas-today-ssot.md) ·
-  > [PR3 계획](../plans/2026-08-27-canvas-polling.md) 머리말이다.
-  > ⚠️ **이번 리베이스분도 원격에 올라가 있지 않다** — 로컬 브랜치만 갱신됐다.
+  > 「결정」·「영향」 · [PR2 계획](../plans/archive/2026-08-27-canvas-today-ssot.md) ·
+  > [PR3 계획](../plans/archive/2026-08-27-canvas-polling.md) 머리말이다.
+
+  > ✅ **①②⑤⑥이 develop 에서 사실이 됐다(2026-08-31, PR #404 `2c7bb31b`)** — 리베이스분이 원격에
+  > 올라가지 않았다던 상태가 끝났다. 스택 3단이 한 머지로 들어왔고 **머지 커밋의 트리가 브랜치 팁
+  > `6bd21fb7` 과 같아** 위 리베이스 서술을 재측정 없이 develop 사실로 읽어도 된다. 스펙은
+  > `implemented`, 계획 셋은 `done` 으로 아카이브됐고 ADR-0029 는 `accepted` 가 됐다.
+  > **③④는 그대로다** — ③은 위키 판단이 선행이고, ④는 전처리 스펙이 아직 `in-progress` 다.
 
 ### [2026-08-28] 원격 이미지 다운로드가 응답 본문을 통째로 힙에 올린다
 
@@ -5758,4 +5804,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 정해지면 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 상단바
   개정 블록의 표에 근거를 적고, 문구가 정책이 되면 위키 수집 대상으로 올린다.
 
-<!-- oq-next: 332 -->
+### [2026-08-31] 최근 목록 정원을 종류별로 가르며 총 상한이 두 배가 됐는데 잰 사람이 없다
+
+- **ID**: OQ-P-332
+- **출처**: `RecentImageRepositoryImpl`(PR #408 develop 머지) — `MAX_SIZE` 가
+  `MAX_SIZE_PER_KIND` 가 됐다. 값은 그대로지만 **적용 단위가 목록 전체에서 종류별로 바뀌어**
+  원본과 알맹이가 각자 그만큼을 든다. OQ-P-258 ①이 "상한을 올리면 내부 저장소 사용량이 함께
+  는다"며 물렀던 그 비용이, ②를 고르면서 같은 크기로 따라왔다.
+- **항목**: ① 같은 날 토핑을 여러 개 만드는 실사용에서 내부 저장소가 실제로 얼마나 차는지
+  재지 않았다 — 알맹이는 PNG 이고(OQ-P-003 ③) 원본은 카메라 캡처 원본이라 한 장의 무게가 다르다.
+  ② 축출은 여전히 개수 기준이라 **용량 기준 상한이 없다.** ③ 데이 윈도우 정리(03:00 밖이면 삭제)가
+  매일 비우므로 누적은 안 되지만, 하루 안 최대치는 두 배가 된 채다.
+- **상태**: 미해결 (**동작은 의도대로** — 재지 않은 비용의 문제다)
+- **해소 메모**: ①을 재고 나서야 정원 값을 다시 정할 수 있다. 바꾸면
+  [data-layer](../architecture/data-layer.md) 「예: 최근 이미지」와 OQ-P-258 해소 메모를 함께 고친다.
+
+<!-- oq-next: 333 -->

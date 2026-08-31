@@ -5,8 +5,39 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
-- **커밋**: `27e85d0d` (`Merge pull request #409 from mash-up-kr/build/bump-version-0.1.0-4`)
-- **요약**: **배포 계보가 develop 을 앞질렀다** (delta 4건, 14파일 **삽입 383줄·삭제 59줄**).
+- **커밋**: `afde8c4c` (`Merge pull request #408 from mash-up-kr/feature/cache-image`)
+- **요약**: **release 에만 있던 스택 둘이 develop 으로 건너왔다** (delta 2건, 51파일
+  **삽입 3045줄·삭제 871줄**). 두 머지 다 트리가 브랜치 팁과 같아 **충돌 해소 편집이 0건**이고,
+  유닛은 949 → **996건**(+47, 파일 100 → 101), 계측은 **17건** 불변이다. **이 회차의 일은 대부분
+  "이미 풀린 것을 문서에 앉히는 일"이었다** — 선작성 스펙 1·계획 3이 한꺼번에 아카이브로 갔고
+  (직전 회차까지 0건이던 자리다), ADR-0029 가 `proposed` → `accepted` 가 됐다.
+  **① 캔버스 폴링 스택 3단이 한 머지로 들어왔다**(#404) — PR1 배경 탭 토핑 렌더링 · PR2 오늘 캔버스
+  인메모리 SSoT · PR3 주기 폴링이다. 오늘 캔버스가 그룹 SSoT(ADR-0023)와 같은 형태로 갈려
+  `ParfaitRepository.getTodayCanvas` 하나가 **구독·갱신 둘·정리·실패 축** 다섯이 되고
+  `GetTodayParfaitUseCase` 가 사라졌다. 새것은 `:data` 의 `CanvasLocalDataSource`(인메모리 두 번째)와
+  `CanvasPoller`(그룹별 참조 계수 + 5초 루프), `:core:ui` 의 `launchWhileSubscribed`(구독 수 기반
+  수명), DI 모듈 둘(`ApplicationScopeModule`·`ClockModule`)이다. **부르는 주체가 화면에서 저장소
+  층으로 내려간 것이 이 라운드의 실질**이다 — 계약은 한 줄도 안 바뀌었고 `today` 를 억제하던
+  `launch(key)` 하나가 폴러의 그룹별 가드로 모였다. **문서가 두 회차째 "계획이 델타를 모른다"고
+  세던 것(OQ-P-326 ①②⑤⑥)이 develop 사실이 됐다.**
+  **② 최근 목록 정원이 종류별로 갈렸다**(#408) — `MAX_SIZE` → `MAX_SIZE_PER_KIND` 로
+  원본(`SOURCE`)과 알맹이(`CUTOUT`)가 각자 상한을 든다. **OQ-P-258 이 ②로 닫혔고, PR6 가 ②를
+  기각한 근거는 실제로 발생하지 않았다** — 저장 목록을 가르지 않고 자르는 판정만 종류별로 두면
+  시간순 정렬도 데이 윈도우 정리도 이중이 되지 않는다. 겸해 최근 줄에 무엇을 싣는지가
+  `returnResultOnly` 에서 신설 `RecentImagePick` 으로 갈렸고, 그것이 `NavKeyCustomGalleryPicker` 의
+  **기본값 없는 첫 동작 인자**다. ⚠️ 총 상한이 두 배가 됐는데 저장소 사용량을 잰 사람이 없다 →
+  **OQ-P-332 신설**.
+
+  **이번 회차가 확인한 것** — **기준선을 develop 에 두는 규율이 이번에도 스스로 회복했다.**
+  직전 회차가 "선작성 문서 넷이 구현이 끝난 채 `draft` 에 남는다"며 아카이브 판정 기준을 다시
+  물었는데(OQ-P-311 ③), 넷 중 셋이 나흘 만에 develop 으로 들어와 **기준을 바꿀 필요 없이** 닫혔다.
+  세그멘테이션 넷 때(2026-08-27)와 같은 결말이고, 이로써 같은 형태가 두 번 반복됐다 — release 가
+  먼저 받고 develop 이 뒤따르되 **뒤따르는 것은 같은 커밋이 아니라 리베이스된 다른 커밋**이다
+  (release 만 50커밋은 이번에도 줄지 않았다). 남은 것은 `feature/debug-mode` 하나다.
+  다만 이 회복이 규율의 정당성을 증명하지는 않는다 — **셋이 들어온 것은 판정 기준 덕이 아니라
+  누군가 머지했기 때문**이고, 다음에 안 들어오면 문서는 다시 어긋난 채로 기다린다.
+
+  직전 회차 요약: **배포 계보가 develop 을 앞질렀다** (delta 4건, 14파일 **삽입 383줄·삭제 59줄**).
   네 머지 모두 트리가 브랜치 팁과 같아 **충돌 해소 편집이 0건**이고, 유닛은 942 → **949건**
   (+7, 파일 100 그대로), 계측은 14 → **17건**(+3, 파일 5 → 6 — `YGToastHostTest` 신설)이다.
   **선작성 스펙·계획이 없어 아카이브 이동은 0건**이다.
@@ -120,8 +151,8 @@
   KDoc 이 "배율 하한 수정"이라고만 적어 **무엇이 문제였는지가 남아 있지 않고**, 같은 저장소의 배치
   화면이 짧은 변 48dp 에서 하한을 역산하는 것과 갈렸다. 줄인 값은 그대로 PATCH 로 나가므로 **다시
   잡을 수 없는 토핑이 서버에 남을 수 있다** → **OQ-P-325 신설**.
-  **⑤ 선작성 문서 셋이 하루 만에 낡았다** — [캔버스 오늘 SSoT·폴링 스펙](specs/2026-08-27-canvas-today-ssot-polling.md)
-  과 [PR3 계획](plans/2026-08-27-canvas-polling.md)이 전제한 코드를 이번 delta 가 바꿨다. 계획의
+  **⑤ 선작성 문서 셋이 하루 만에 낡았다** — [캔버스 오늘 SSoT·폴링 스펙](specs/archive/2026-08-27-canvas-today-ssot-polling.md)
+  과 [PR3 계획](plans/archive/2026-08-27-canvas-polling.md)이 전제한 코드를 이번 delta 가 바꿨다. 계획의
   `updateDirtyToppings` 는 위치 PATCH 하나만 부르므로 **적힌 그대로 구현하면 방금 붙은 테두리
   저장이 되돌아간다**. 시딩 목록에도 `selectedTab`·`selectedToppingId` 가 빠져 있다.
   [세그멘테이션 입력 전처리 스펙](specs/2026-08-23-segmentation-preprocessing.md)도 같은 부류다 —
@@ -1348,3 +1379,4 @@
 | 2026-08-28 | `84a89728` | Merge #369(토핑 편집 재구현) · #400(본인 토핑 탭) · #398(배율 하한) | delta 3건, 18파일 441/31, **세 머지 전부 트리 = 브랜치 팁**(충돌 해소 편집 0건). 선작성 스펙·계획 없어 **아카이브 이동 0건**, 유닛 926 → **931건**(+5)·계측 **14건** 유지. **미뤄 두었던 `TODO` 셋이 하루에 함께 닫혔다.** **#400**: 본인 토핑 탭이 `NavKeyCanvasBGEdit(initialToppingId)`로 이어져 **C-301 편집 화면의 토핑 탭**이 그 토핑을 선택한 채 열린다 → OQ-P-250 ③ 해소(셋 다 닫힘). ⚠️ **예고했던 "C-305 화면 라운드"가 아니다** — 새 화면 없이 기존 화면이 역할을 받았고, `isViewingToday` 가드 때문에 **지난 캔버스에서는 여전히 무반응**이다(정책에 없는 조건) → **OQ-P-326 신설 ③**. **#369**: 확인 버튼이 테두리 PATCH까지 부르며 `updateToppingIfChanged`의 판정이 위치·테두리 **둘로 갈렸다**(서버 API가 두 엔드포인트라서다) → `parfait-image.md` `android_status` **`done`**(4/4 소비), 소비처 27건, OQ-P-276 ①③ 해소·② 잔존. 같은 PR이 `TODO(#274)`도 닫았다 — `decodeImage`가 스킴을 갈라 `https://`면 신설 `RemoteImageDownloadDataSource`(전용 `@DownloadClient`, Retrofit 밖 raw OkHttp **둘째 자리**)로 받아 디코드한다. ⚠️ **테두리를 접는 규칙이 그리는 규칙과 어긋난다**(저장 `lastOrNull()` vs 렌더 `firstOrNull()`, 겹은 `UndoRedoStack`이라 둘 이상 쌓인다) → **OQ-P-324 신설**. ⚠️ 다운로드가 본문을 `bytes()`로 통째 힙에 올리고 상한이 없다(업로드 스트리밍과 대칭 깨짐) → **OQ-P-327 신설**. **#398**: `TOPPING_MIN_SCALE` 0.5 → **0.05**인데 근거가 커밋 메시지에도 KDoc에도 없고, 짧은 변 48dp에서 역산하는 배치 화면과 갈렸다 → **OQ-P-325 신설**. ⚠️ **선작성 문서 셋이 하루 만에 낡았다** — 폴링 스펙·PR3 계획의 `updateDirtyToppings`가 위치 PATCH 하나만 불러 **그대로 구현하면 테두리 저장이 회귀**하고, 시딩 목록에 `selectedTab`·`selectedToppingId`가 빠졌다. 전처리 스펙은 정규화를 `decodeUriToBitmap` 안에 두라고 적는데 원격 갈래가 그 함수를 안 탄다(세 문서에 ⚠️ 삽입) → **OQ-P-326 신설 ①②④**. 신규 미결 4건(OQ-P-324~327) |
 | 2026-08-28 | `627e1867` | Merge #393·#394(그룹 생성·참여 수정) · #396(목록 토핑 Fit) · #395(시스템바) · #397(토핑 회전·크기조절) | delta 5건, 28파일 706/418, **다섯 머지 전부 트리 = 브랜치 팁**(충돌 해소 편집 0건). 선작성 스펙·계획 없어 **아카이브 이동 0건**, 유닛 931 → **942건**(+11, 파일 98 유지)·계측 **14건** 유지. **버그를 고치는 김에 미결이 닫힌 회차다.** **#393·#394**: A-005·S-102 가 요청 직전에 확인 팝업을 닫고 로딩 오버레이 + 토스트로 옮겨 `isEnabledButton` 호출자 **0곳**(OQ-P-137 ④ 해소), Route 가 `YGScaffoldV2` 를 쥐며 V1 잔여 **1파일 1호출**(OQ-P-204), A-005 가 `GroupCreateError` 2종을 얻어 OQ-P-167 ④ 가 그룹 진입에서 비었다. A-005 닉네임 필드가 열려 NavKey 인자가 표시값 → **초기값**이 됐고 OQ-P-253 의 근거가 흔들렸다. S-102 의 `TODO(닉네임 적용 실패 안내)`는 `NICKNAME_NOT_APPLIED` 로 닫혔으나 안내가 **이동을 지연**시키고 대기 상수가 `YGToastPolicy` 와 갈려 **OQ-P-328 신설**. **#396**: `YGToppingGroup.Remote` 가 `Crop` → `Fit`, `clip` 은 방어선으로 남는다 — OQ-P-316 ②가 선행이라던 ① 없이 먼저 일어났다. **#395**: [ADR-0028](adr/0028-system-bar-light-fixed.md) 대로 두 `MainActivity` 가 `SystemBarStyle.light` 를 명시 — 문서가 먼저 있고 코드가 따라온 유일한 사례. **#397**: 회전이 접선 투영, 크기조절이 핸들 거리 비율로 바뀌며 감도 상수 둘 소멸 · 환산이 화면으로 이동(`OnToppingResize`·`OnToppingRotate`) → OQ-P-241 부분 해소(넷 → 둘), 스펙 셋의 인텐트 이름·`resizeOutwardDirection` 정정 |
 | 2026-08-30 | `27e85d0d` | Merge #405(스포트라이트 토스트 교체) · #406(갤러리 상단바 Title) · #407(첫 조회 로딩) · #409(앱 버전 0.1.1) | delta 4건, 14파일 383/59, **네 머지 전부 트리 = 브랜치 팁**(충돌 해소 편집 0건). 선작성 스펙·계획 없어 **아카이브 이동 0건**, 유닛 942 → **949건**(+7, 파일 100 유지)·계측 14 → **17건**(+3, `YGToastHostTest` 신설). **배포 계보가 develop 을 앞지른 회차다.** **#405**: `YGToastPolicy.show(type, replaceTag)` + `YGToastItem.tag` — 같은 태그면 걷어내고 새것만 남긴다(태그 없으면 종전대로 스택). Spotlight 작성자 토스트가 Dim 을 거쳐 다시 탭할 때 포개지던 것을 고쳤고, 태그 문자열이 화면 소유라 서로 지울 수 있다 → **OQ-P-329 신설**. **#406**: `YGFloatingBarTitle` 신설로 변형 **5종**, C-102 갤러리 두 화면이 수제 `Row` + `YGCircleButton` 을 버려 닫기 버튼에 접근성 레이블이 따라왔다. 문서가 두 회차째 "develop 미머지"로 세던 항목이 닫혔다. 빈 상태에만 제목이 없는 근거가 작업자 지시뿐 → **OQ-P-331 신설**. **#407**: G-001·C-001 의 **첫 조회**에 `YGScaffoldV2(isLoading)` — 오버레이 기준이 "누른 작업"에서 "기다리는 작업"으로 넓어졌고, 조건은 "조회 중"이 아니라 **"아직 한 번도 못 받은 조회"**다(재진입마다 조회가 나가 덮개가 번쩍이므로). 켜고 내리기를 둘 다 `launch` 블록 안에서 한다(키 가드에 막히면 `finally` 가 안 돈다). 판정이 두 ViewModel 에 복제 → **OQ-P-330 신설**(OQ-P-205 ②). **#409**: 한 PR 이 `3 → 4 → 5`(`0.0.3 → 0.1.0 → 0.1.1`)를 연달아 올려 develop 이 처음으로 배포본과 같은 값을 든다(OQ-P-310). ⚠️ **OQ-P-311 의 갈림이 뒤집혔다** — release 계보가 둘 늘어(`0.1.0-4`·`0.1.1-5`) 최신 기준 **release 만 50커밋 · develop 만 8커밋**이고, release 는 develop 에 없는 `debug-mode`·`cache-image`·`canvas-polling`(PR2 스택 포함)을 더 받았다. 그래서 **선작성 문서 넷이 구현이 끝난 채 `draft` 로 남는다**(OQ-P-311 ③ 재개). PR2 계획의 `loadTodayCanvas()` 교체 블록이 첫 조회 덮개를 모르는 것도 함께 등록 → **OQ-P-326 ⑥** |
+| 2026-08-31 | `afde8c4c` | Merge #404(캔버스 폴링 스택 3단) · #408(최근 목록 종류별 정원) | delta 2건, 51파일 3045/871, **두 머지 다 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 949 → **996건**(+47, 파일 100 → 101)·계측 **17건** 유지. **아카이브 이동이 넉 달 만에 다시 생긴 회차** — 선작성 스펙 1·계획 3이 한꺼번에 갔다(spec `implemented`·plan `done`, 링크 `../`→`../../` 보정, 두 README 표 이동, Task 체크박스 완료 표시. 「수동 확인」 절은 실기기 기록이 없어 미체크 유지). **#404**: PR1 배경 탭 토핑 렌더링 · PR2 오늘 캔버스 인메모리 SSoT · PR3 주기 폴링이 한 머지로. `ParfaitRepository.getTodayCanvas` 하나가 **구독·갱신 둘·정리·실패 축** 다섯이 되고 `GetTodayParfaitUseCase` 소멸. 신설 `CanvasLocalDataSource`(인메모리 두 번째)·`CanvasPoller`(참조 계수 + 5초 루프)·`BaseViewModel.launchWhileSubscribed`·DI 모듈 둘(`ApplicationScopeModule`·`ClockModule`). 서버 계약은 불변이고 **부르는 주체가 화면에서 저장소 층으로 내려간 것**이 실질 — `today` 억제가 화면 `launch(key)` 하나에서 폴러 가드로 모였다. ADR-0029 `proposed` → **`accepted`**. **#408**: `MAX_SIZE` → `MAX_SIZE_PER_KIND`(원본·알맹이 각자 정원) + 신설 `RecentImagePick` 이 `NavKeyCustomGalleryPicker` 의 **기본값 없는 첫 동작 인자**. 문서 조치: data-layer(인메모리 (2) 절 신설·DI 모듈 둘·`ParfaitRepository` 행 재작성·최근 이미지 절)·state-management(`launchWhileSubscribed` 머지 확정·`viewedCanvas`→`pastCanvas` 정정)·navigation-flow(최근 줄 가르는 축 변경·다이어그램 인자·기본값 없는 동작 인자 사례)·api/parfait.md Android 매핑(호출 주체 이동, `verified` 불변 — 서버 대조일이라 이 스킬이 안 건드린다). open-questions: **OQ-P-258 해소됨**(②로), OQ-P-321 부분 해소(①② 닫힘·③ 잔존), OQ-P-320·322·323 "구현 전" → "구현됨"(값·서버 확인은 잔존), OQ-P-326 ①②⑤⑥ develop 확정, **OQ-P-311 ③ 넷 중 셋 닫힘**(`debug-mode` 만 잔존, release 만 50 · develop 만 43), **OQ-P-332 신설**(정원 두 배의 저장소 사용량 미측정). 미머지 추적 항목: **`feature/debug-mode` 1건** |

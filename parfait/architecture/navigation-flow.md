@@ -4,7 +4,7 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-28
+verified: 2026-08-31
 related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
@@ -272,6 +272,12 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 > 노출은 `returnResultOnly = false`인 토핑 만들기 진입에서만이라 배경 선택(C-301)에는 안 섞인다 →
 > [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) 「누끼 알맹이 재사용 (PR6)」.
 >
+> 📌 **가르는 축이 바뀌었다(2026-08-31, PR #408)** — 최근 줄에 무엇을 싣는지가 더는
+> `returnResultOnly`에서 나오지 않는다. 신설 `RecentImagePick`(`SOURCE`·`CUTOUT`)을
+> `NavKeyCustomGalleryPicker`가 받아 화면이 그대로 쓴다. 두 플래그가 우연히 같은 방향을 가리키던
+> 것을 부르는 쪽이 직접 고르게 갈랐고, **배경 편집은 `SOURCE`·토핑 만들기는 `CUTOUT`**이다.
+> 겸해 최근 목록의 정원도 종류별로 갈렸다([data-layer](data-layer.md) 「예: 최근 이미지」, OQ-P-258).
+>
 > ⚠️ **`NavKeyCanvasMove`·`CanvasMoveRoute`·`CanvasMoveScreen`은 호출자를 잃은 채 남았다** — 엔트리도
 > 등록돼 있어 컴파일은 되지만 도달할 수 없다 → OQ-P-239.
 
@@ -283,7 +289,7 @@ C-001 캔버스 메인의 편집 버튼이 C-301 배경 편집(`NavKeyCanvasBGEd
 
 ```
 NavKeyCanvasMain ─▶ NavKeyCanvasBGEdit(groupId, parfaitId) ─┬─▶ NavKeyCameraCustom(showGuideToast=false, returnResultOnly=true) ─┐
-                                            └─▶ NavKeyCustomGalleryPicker(동일 인자) ───────────────────────────┤
+                                            └─▶ NavKeyCustomGalleryPicker(recentImagePick=SOURCE, 나머지 동일) ──┤
                                                                                                                  ▼
                                                         NavKeyPictureConfirm(uri, source, returnResultOnly=true)
                                                              │ sendResult(PictureConfirmResult) + popUpTo<NavKeyCanvasBGEdit>()
@@ -487,6 +493,11 @@ API가 없다) → [s004-terms-privacy-webview 스펙](../specs/archive/2026-07-
 `returnResultOnly`는 화면이 그릴 데이터가 아니라 호출자가 고르는 분기이고, 기본값이 있어 기존
 호출부는 `NavKeyCameraCustom()`처럼 생성자 호출만 바꾸면 됐다. 재사용 화면의 동작 차이를 NavKey에
 싣는 방식이 관용구인지는 미결이다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+**기본값 없는 동작 인자가 처음 나왔다**(2026-08-31, PR #408) — `NavKeyCustomGalleryPicker`의
+`recentImagePick: RecentImagePick`은 앞의 둘과 달리 기본값이 없어 **호출부 둘이 값을 반드시
+고른다.** 앞선 둘이 "안 주면 종전대로"였다면 이쪽은 잊고 안 주면 컴파일이 깨지는 쪽이고, 그것이
+빠뜨림을 막으려는 의도다(둘 중 무엇이 기본인지 정할 근거가 없다). 불린 두 개가 우연히 만들던
+분기를 열거 하나로 옮긴 형태이기도 하다.
 **서버 응답 값이 다음 화면의 인자가 되는 형태가 develop에 자리 잡았다**(2026-08-15) — 로그인 응답의
 가입 토큰이 `NavKeyTermAgree(registrationToken)`으로, 참여 응답의 그룹 ID가 `NavKeyGroupNickName(groupId)`로
 간다. 두 값 다 원시 타입으로 넘기고 **받는 쪽에서 value class로 감싼다**(`RegistrationToken`·`GroupId`) —
