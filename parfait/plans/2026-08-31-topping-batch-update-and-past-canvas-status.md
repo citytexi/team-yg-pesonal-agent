@@ -23,7 +23,7 @@
 - **매퍼 단독 테스트를 만들지 않는다.** 판단이 든 변환은 DataSource 테스트의 케이스로 잠근다.
 - **라인번호·색 hex·변동 수치를 문서에 적지 않는다.** 근거는 파일명 + 심볼명으로 적는다.
 - 서버 계약의 정본은 [`parfait/api/parfait-image.md`](../api/parfait-image.md)와 [`parfait/api/parfait.md`](../api/parfait.md)다.
-- 검증 명령: `./gradlew :data:testDebugUnitTest :domain:testDebugUnitTest :feature:groups:canvas:impl:testDebugUnitTest` 및 `./gradlew ktlintCheck`.
+- 검증 명령: `./gradlew :data:testDebugUnitTest :domain:test :feature:groups:canvas:impl:testDebugUnitTest` 및 `./gradlew ktlintCheck`.
 
 ---
 
@@ -209,7 +209,7 @@ internal fun PastParfaitsResponse.toPastCanvasVOList(): List<PastCanvasVO> = par
 
 - [ ] **Step 7: 테스트를 돌려 통과를 확인한다**
 
-Run: `./gradlew :data:testDebugUnitTest :domain:testDebugUnitTest :feature:groups:canvas:impl:testDebugUnitTest`
+Run: `./gradlew :data:testDebugUnitTest :domain:test :feature:groups:canvas:impl:testDebugUnitTest`
 Expected: PASS
 
 - [ ] **Step 8: ktlint를 돌린다**
@@ -1197,7 +1197,7 @@ Expected: PASS
 
 - [ ] **Step 6: 전체 유닛 테스트와 ktlint를 돌린다**
 
-Run: `./gradlew :data:testDebugUnitTest :domain:testDebugUnitTest :feature:groups:canvas:impl:testDebugUnitTest`
+Run: `./gradlew :data:testDebugUnitTest :domain:test :feature:groups:canvas:impl:testDebugUnitTest`
 Expected: PASS
 
 Run: `./gradlew ktlintCheck`
@@ -1315,7 +1315,7 @@ git commit -m "docs: 토핑 일괄 수정 전환을 계약 문서와 미결에 �
 | 항목 | 명령 |
 |---|---|
 | `:data` 유닛 테스트 | `./gradlew :data:testDebugUnitTest` |
-| `:domain` 유닛 테스트 | `./gradlew :domain:testDebugUnitTest` |
+| `:domain` 유닛 테스트 | `./gradlew :domain:test` |
 | 캔버스 feature 유닛 테스트 | `./gradlew :feature:groups:canvas:impl:testDebugUnitTest` |
 | 정적 검사 | `./gradlew ktlintCheck` |
 
