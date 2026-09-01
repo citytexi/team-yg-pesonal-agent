@@ -4,7 +4,7 @@ title: A-005 그룹 생성 화면 (GroupCreate)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-15
+verified: 2026-09-01
 related_code:
   - NavKeyGroupCreate
   - GroupCreateRoute.kt#GroupCreateRoute
@@ -147,8 +147,12 @@ class GroupCreateViewModel @AssistedInject constructor(
   **`groupNickname`은 NavKey로 받은 값 그대로** 나간다 — 그 출처가 G-001 `GroupListUiState`의 mock 닉네임이다
   (아래 "주의").
 - **모달 취소·dismiss**(`DismissConfirmPopup`, #224): `isCreating` 중이면 무시(생성 중 닫기 차단), 아니면 모달만 닫는다.
-- **다음 화면**(`NavigateToNext`, #224): `navigator.goToSingleClearTop(NavKeyGroupList)` — 백스택에 이미 있는
-  그룹 목록을 재사용하고 그 위 화면(닉네임·생성 등)을 한 번에 걷어낸다 → [navigation-flow](../../architecture/navigation-flow.md).
+- **다음 화면**(`NavigateToNext`, #224): ~~`navigator.goToSingleClearTop(NavKeyGroupList)`~~
+  → **as-built(#411 develop 머지, 2026-09-01)**: `replaceAll(NavKeyGroupList)` 뒤에 곧바로
+  `goTo(NavKeyCanvasMain(groupId, welcomeGroupName, welcomeInviteCode))`다 — 만든 그룹의 캔버스로 바로
+  들어가고 목록은 백스택 아래에 깔린다(캔버스만 남기면 뒤로가기가 앱 종료가 된다).
+  이펙트도 `data object`에서 **`data class NavigateToNext(groupId, groupName, inviteCode)`**가 되어
+  생성 응답(`CreatedGroupVO`)의 세 값을 실어 나른다 → [navigation-flow](../../architecture/navigation-flow.md).
 - **뒤로가기**(`ClickBackButton`) → `NavigateToBack` → `navigator.onBack()`.
 - **확인 버튼 활성**: `isValid` — 그룹명·닉네임 비어있지 않고 인원이 선택됨. 상세 규칙은 클릭 시 UseCase가 검사.
 
@@ -232,16 +236,20 @@ class GroupCreateViewModel @AssistedInject constructor(
 
 - ~~**진입 경로 없음**~~ — #222(G-001 그룹 추가 오버레이)로 뚫렸다. 넘어오는 `nickName`이 mock인 것은 잔존 → [open-questions](../../synthesis/open-questions.md) [2026-07-29]·[2026-08-07].
 - ~~**그룹 생성이 mock**~~ — ✅ **해소(#243)**. 실서버를 타고, G-001도 같은 라운드(#248)에서 조회가 붙어
-  **복귀한 목록에 새 그룹이 뜰 자리는 생겼다**. 다만 복귀가 `goToSingleClearTop`이라 목록 엔트리·ViewModel이
-  살아나 **재조회가 돌지 않는다** → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
+  **복귀한 목록에 새 그룹이 뜰 자리는 생겼다**. ~~다만 복귀가 `goToSingleClearTop`이라 재조회가 돌지 않는다~~
+  → #297의 `Enter` 인텐트로 닫혔고(OQ-P-169), #411부터는 목록 엔트리 자체가 새것이다.
 - ⚠️ **서버로 나가는 닉네임이 mock이다** — `groupNickname`은 NavKey 인자를 그대로 쓰고, 그 값은 G-001
   `GroupListUiState.nickName` 기본값 리터럴이다. 즉 **실제로 만들어지는 그룹의 내 닉네임이 실사용자 값이 아니다**
   → [open-questions](../../synthesis/open-questions.md) [2026-07-29]·[2026-08-15].
 - **실패가 로그뿐이다** — 갈래는 전부 열거됐지만 화면 표현이 없어 모달이 열린 채 멈춘다. 실패 토스트가
   같은 PR에서 들어왔다 걷힌 이유는 "문구 정책이 없다"이다 → [open-questions](../../synthesis/open-questions.md) [2026-08-15].
 - **생성 중 표시가 없다** — `isCreating`은 모달 버튼 비활성에만 쓰이고 진행 표시(스피너 등)는 없다. 요청이 도는 동안 화면이 멈춘 것처럼 보인다.
-- **복귀 목적지가 위키 정본과 다름** — [[기능정의서-v6]]은 A-005 다음 단계를 **C-001(메인 캔버스)**로 적는데
-  코드는 G-001 그룹 목록으로 돌아간다 → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
+- ~~**복귀 목적지가 위키 정본과 다름**~~ — ✅ **해소(#411, 2026-09-01)**. [[기능정의서-v6]]이 적어 둔
+  **C-001(메인 캔버스) 직접 진입**으로 옮겨 갔다(OQ-P-135). 목록을 백스택 아래에 남기는 것만 정본에 없는
+  구현 사정이다.
+- ⚠️ **환영 배너의 문구·초대코드 복사 동작에 정책 소스가 없다** — 생성 직후 캔버스가 띄우는
+  "%s 그룹을 만들었어요 / 초대코드는 %s이에요" 배너와 복사 버튼은 위키에 대응 문서가 없고 코드가 확정했다
+  → [open-questions](../../synthesis/open-questions.md) [2026-09-01].
 - **`GroupCreateConfig`가 표시 관심사를 포함** — `GROUP_COLUMN_COUNT`(그리드 열 수)는 UI 레이아웃 값인데 `domain`에 있다. → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
 - **`VerticalGridLayout` 프리뷰가 규약 이탈** — `@Preview` + public 프리뷰 함수 + 랜덤 색. `core:ui`는 디자인시스템 프리뷰 규약(`@YGPreview`+`PreviewBox`) 적용 대상이 아니었으나, 공용 UI 컴포넌트가 늘면 규약 범위를 정해야 한다. → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
 - **읽기 전용 필드 관용구** — 닉네임 표시에 `YGTextFormField(enabled = false)` + no-op `onValueChange`를 쓴다. 표시 전용 컴포넌트가 없어 입력 컴포넌트를 비활성으로 전용한 형태.

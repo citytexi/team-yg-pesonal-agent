@@ -4,7 +4,7 @@ title: 디자인시스템 캔버스 영역 컴포넌트 신설 (Design System Ca
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-12
+verified: 2026-09-01
 related_code:
   - YGCanvas.kt#YGCanvas
   - YGCanvas.kt#calculateCanvasLayoutMetrics
@@ -184,12 +184,17 @@ fun YGMenuItem(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    @DrawableRes iconResource: Int? = null,   // as-built(#414)
+    isEnabled: Boolean = true,                // as-built(#414)
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 )
 ```
 
 `YGStrokeButton`과 색 방향이 반대다(기본이 반투명, 눌리면 불투명) — 별도 컴포넌트로 둔다.
-아이콘·비활성 상태가 없다(Figma에 변형 없음).
+~~아이콘·비활성 상태가 없다(Figma에 변형 없음).~~ → **as-built(#414 develop 머지, 2026-09-01)**:
+둘 다 생겼다. 컨테이너가 `Box` + 중앙 텍스트에서 `Row`(가운데 정렬 `gap1`)가 되어 텍스트 **뒤**에
+아이콘이 붙고(`YGStrokeButton`과 같은 배치, `Size20`), `isEnabled = false`면 테두리 `Gray200`·내용
+`Gray300`으로 내려가며 눌림 배경과 클릭이 함께 잠긴다.
 
 ### `YGCanvasMenu`
 
@@ -209,7 +214,7 @@ data class YGCanvasMenuItem(
 
 @Composable
 fun YGCanvasMenu(
-    addAction: YGCanvasMenuAction,
+    addAction: YGCanvasMenuAction?,   // as-built(#414): null이면 editAction 하나가 전폭
     editAction: YGCanvasMenuAction,
     modifier: Modifier = Modifier,
     isExpanded: Boolean = false,
@@ -217,8 +222,11 @@ fun YGCanvasMenu(
 )
 ```
 
-- 구조는 Figma대로 고정하고 **문구만 주입**한다. 하단 행은 항상 `YGStrokeButton` 2개(각 `weight(1f)`),
+- 구조는 Figma대로 고정하고 **문구만 주입**한다. ~~하단 행은 항상 `YGStrokeButton` 2개(각 `weight(1f)`)~~,
   확장부는 그 위로 쌓이는 `YGMenuItem` 스택이다.
+  → **as-built(#414, 2026-09-01)**: `addAction`이 `null`이면 두 칸 행 자체를 만들지 않고 `editAction`
+  하나가 `fillMaxWidth`로 선다(지난 캔버스에서 저장이 날짜바로 옮겨 가 왼쪽 칸에 넣을 것이 없어졌다).
+  겹쳐 그리는 `spacedBy(-1.dp)`는 두 칸일 때만 성립한다.
 - **펼침 여부는 `isExpanded`가 결정한다**(`false` = Figma `Status=Default`, `true` = `Status=Expanded`).
   `expandedItems`는 목록을 들고만 있고 접힌 상태에서도 유지되므로, 호출자가 리스트를 비웠다 되채울
   필요가 없다. 상태 enum은 두지 않는다.
@@ -312,11 +320,14 @@ pressed와 selected가 겹치면 같은 색이라 분기 순서가 결과를 바
 |---|---|---|---|
 | default | `Transparency.White75` | `Gray.Gray500` | `Gray.Gray700` |
 | pressed | `Gray.White` | `Gray.Gray500` | `Gray.Gray700` |
+| disabled(**as-built #414**) | `Transparency.White75` | `Gray.Gray200` | `Gray.Gray300`(아이콘도 같은 색으로 tint) |
 
 ### `YGCanvasDateSelectButton`
 
 배경 `Transparency.White75` + 테두리 `Gray.Gray500` 1dp, 둘 다 컷 도형을 따른다.
 날짜 텍스트 `Gray.Gray800`, 요일 텍스트 `Gray.Gray300`.
+**as-built(#413)**: 캘린더 그림은 눌림 여부로 `Gray300`↔`Gray400`을 오간다 — 누름 상태를 스스로 갖지
+않고 날짜 텍스트와 공유하는 `interactionSource`에서 받는다(클릭 영역이 부모에 있다).
 
 ### `YGCanvas` 배경·안내문
 
@@ -335,9 +346,9 @@ pressed와 selected가 겹치면 같은 색이라 분기 순서가 결과를 바
 | 대상 | 규격 |
 |---|---|
 | `YGStrokeButton` | 높이 `SizeTokens.Size44` 고정, 폭은 호출자, 아이콘 `Size20`, 텍스트↔아이콘 `layout.gap.gap1` |
-| `YGMenuItem` | 높이 `Size44` 고정, `fillMaxWidth`, 텍스트 중앙 |
-| `YGCanvasDateSelectButton` | 높이 `Size44` 고정, 폭 `fillMaxWidth`, 좌측 `layout.padding.padding6`, 날짜↔요일 `gap1`, 우측 `YGIconButton`(`SIZE_44`) + `ic_calender` |
-| `YGCanvasMenu` | `fillMaxWidth`. 하단 행 = `YGStrokeButton` 2개 `weight(1f)`. 확장 항목은 위로 스택, 행간 간격 없음 |
+| `YGMenuItem` | 높이 `Size44` 고정, `fillMaxWidth`, 텍스트 중앙(**as-built #414**: 아이콘이 붙으면 텍스트+아이콘을 `gap1`로 묶어 가운데 정렬, 아이콘 `Size20`) |
+| `YGCanvasDateSelectButton` | 높이 `Size44` 고정, 폭 `fillMaxWidth`. ~~좌측 `padding6` + 날짜↔요일 `gap1` + 우측 `YGIconButton`(`SIZE_44`)·`ic_calender`~~ → **as-built(#413)**: 좌측 `padding6` 안에 캘린더 `Image`(전용 상수 크기, 공용 `YGIconButtonSize` 밖) + `padding2` + 날짜↔요일 `gap1`이 **한 클릭 영역**이고, 우측은 `isSaveVisible`일 때만 `YGIconButton`(`SIZE_44`)·`ic_save`. 저장이 없으면 끝 `padding6`으로 자리를 메운다 |
+| `YGCanvasMenu` | `fillMaxWidth`. 하단 행 = `YGStrokeButton` 2개 `weight(1f)`(**as-built #414**: `addAction`이 없으면 `editAction` 하나가 `fillMaxWidth`). 확장 항목은 위로 스택, 행간 간격 없음 |
 | `YGCanvas` | ~~`fillMaxWidth`. 캔버스 영역 `aspectRatio` 9:16, 그 아래 메뉴가 간격 0으로 붙음~~ → **as-built(#199)**: `fillMaxSize` 전제 + 좌우 `padding7`·상하 최소 `padding5`·세로 중앙, 세로 부족 시 축소. Area만 9:16, 메뉴는 `Size44` 가산, 접합은 `-1.dp` 겹침 |
 
 높이 44는 패딩에서 도출하지 않고 토큰으로 못박는다 — Figma가 높이를 명시(`h-44` + `overflow-clip`)하고,

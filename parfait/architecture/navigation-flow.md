@@ -4,7 +4,7 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-31
+verified: 2026-09-01
 related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
 related_architecture:
@@ -163,7 +163,7 @@ TokenAuthenticator(재발급 거절) → SessionEventBus.postForcedLogout()
 ```
 NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확인 모달 = POST 생성)──┐
                  └─ 참여 ─▶ NavKeyGroupInviteCode ─(GET 미리보기)─▶ NavKeyGroupNickName(inviteCode, groupName) ─(확인 모달 = POST 참여 + PATCH 닉네임)─┤
-                                                                                                                                                        └─▶ NavKeyGroupList
+                                                                                                                                                        └─▶ replaceAll(NavKeyGroupList) → goTo(NavKeyCanvasMain(groupId, welcome*))
 ```
 
 > 📌 **실서버 결선(2026-08-15, PR #243·#244)** — 두 갈래의 mock UseCase가 전부 걷혔다. 그때는 **합류 시점이
@@ -173,13 +173,19 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
 > 닉네임 화면에서 이탈하면 참여 자체가 없다(OQ-P-166 해소). 참여 성공 뒤 닉네임 PATCH가 실패해도 흐름은
 > 멈추지 않는다 — 전역 닉네임을 쓴 채 목록으로 간다.
 
-- 복귀는 `clearBackStack()` + `goTo`가 아니라 **`goToSingleClearTop(NavKeyGroupList)`**다 —
-  목록 엔트리가 백스택에 이미 있으므로 그 위만 걷어낸다. 목록에서 뒤로가기는 여전히 no-op이다(백스택 1개).
-  📌 **새 그룹이 바로 보이는 것은 이 관용구가 아니라 목록 화면이 다시 묻기 때문이다**(#297) — 엔트리
-  재사용은 그대로 두고 `GroupListIntent.Enter`가 재조회한다(OQ-P-169 해소).
-  즉 develop에 **백스택 리셋 관용구가 둘**이다: 되돌아갈 화면이 없는 경계는 `replaceAll`
-  (Splash·TermAgree·Login·강제 로그아웃), 이미 스택에 있는 화면으로 복귀는 `goToSingleClearTop`
-  (그룹 생성·참여) → [open-questions](../synthesis/open-questions.md) [2026-08-12].
+- ~~복귀는 `goToSingleClearTop(NavKeyGroupList)`다~~ → 🔁 **종착지가 목록에서 캔버스로 옮겨졌다
+  (2026-09-01, PR #411)**. 두 갈래 다 `replaceAll(NavKeyGroupList)`로 흐름 화면을 통째로 걷어낸 뒤
+  **곧바로 `goTo(NavKeyCanvasMain(groupId, welcomeGroupName, welcomeInviteCode))`**를 쌓는다. 목록을
+  깔아 두는 이유를 두 Route가 같은 주석으로 적는다 — 캔버스만 남기면 뒤로가기가 앱 종료가 된다.
+  그래서 이 경계의 관용구는 이제 `replaceAll` 하나가 아니라 **`replaceAll` + `goTo` 두 줄 조합**이고,
+  `goToSingleClearTop`의 소비처는 그룹 생성·참여에서 사라졌다.
+  📌 **되돌아온 목록이 다시 묻는 경로는 그대로다**(#297) — `GroupListIntent.Enter`가
+  `LifecycleResumeEffect`로 걸려 있어, 새로 만든 엔트리든 뒤로가기로 앞에 선 엔트리든 재조회한다
+  (OQ-P-169 해소 유지). 다만 이번에는 목록 엔트리 자체가 새것이라 `init` 성격의 첫 조회도 함께 돈다.
+  즉 develop에 **백스택 리셋 관용구가 셋**이다: 되돌아갈 화면이 없는 경계는 `replaceAll`
+  (Splash·TermAgree·Login·강제 로그아웃·S-101 나가기/신고), 이미 스택에 있는 화면으로 복귀는
+  `goToSingleClearTop`(#224 이후 남은 소비처는 없다), 흐름을 걷어내고 **다른 화면으로 들어가는**
+  경계는 `replaceAll` + `goTo`(그룹 생성·참여) → [open-questions](../synthesis/open-questions.md) [2026-08-12].
 - **확인 모달이 전이의 게이트**다 — 각 갈래의 **마지막 입력 화면**(생성은 A-005, 참여는 S-102)에서 확인 버튼이
   곧바로 이동하지 않고 `YGModalPopup`을 띄우며, 서버 요청과 이동은 모달의 Primary 버튼에서 일어난다.
   모달 표시 여부는 각 UiState의 `isConfirmPopupVisible`이다
@@ -193,12 +199,15 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
   같은 라운드에서 **A-005의 닉네임 필드가 열렸다** — `NavKeyGroupCreate(nickName)`으로 넘어오는 값이
   읽기 전용 표시값이 아니라 초기값이 됐고, 확인은 그룹명과 닉네임을 함께 검사한다.
 - 의존은 규약대로 `:api`만: `feature/groups/enter/impl` → `feature/groups/list/api`(#224에서 추가).
-- ⚠️ **위키 정본과 목적지가 다르다** — [[기능정의서-v6]]은 A-004(참여)·A-005(생성) 다음 단계를
-  **C-001(메인 캔버스)**로 적는데(중간 화면 G-002 삭제 후 재배선) 코드는 그룹 목록으로 돌아온다
-  → [open-questions](../synthesis/open-questions.md) [2026-08-12].
-- ⚠️ **되돌아온 목록이 갱신되지 않는다** — 엔트리 재사용이라 `GroupListViewModel`이 살아 있고 조회는
-  `init`과 pull-to-refresh에만 걸려 있다. 목록 조회가 붙은 뒤(#248)에도 **생성·참여 직후 새 그룹이 바로
-  보이지 않고 당겨야 나타난다** → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+- ✅ **위키 정본과 목적지가 맞았다(2026-09-01, PR #411)** — [[기능정의서-v6]]이 중간 화면 G-002를
+  삭제하며 A-004(참여)·A-005(생성)의 다음 단계로 적어 둔 **C-001(메인 캔버스) 직접 진입**이 코드에
+  들어왔다(OQ-P-135 해소). 정본과 다른 점은 목록을 백스택 **아래에 깔아 둔다**는 것뿐이고, 그것은
+  뒤로가기가 앱을 끄지 않게 하려는 구현 사정이다.
+- 📌 **캔버스가 진입 사유를 인자로 받는다** — `NavKeyCanvasMain`에 `welcomeGroupName`·
+  `welcomeInviteCode`가 붙어, 생성 직후면 초대코드까지 실린 배너를, 참여 직후면 그룹명만 실린 배너를
+  캔버스가 1회 띄운다(평범한 진입은 둘 다 `null`). **목적지 키가 "어디로"만이 아니라 "왜 왔는가"를
+  나르기 시작한 첫 자리**이고, 1회성은 화면 상태가 아니라 **ViewModel 생성 시점**에 기댄다 —
+  백스택 재진입에서는 ViewModel이 새로 만들어지지 않아 배너가 다시 뜨지 않는다(OQ-P-339).
 
 ## 토핑 생성 플로우 (2026-08-14, PR #221)
 
@@ -490,7 +499,7 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 (`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupCreate`·
 `NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
-`NavKeyCanvasMain`(#268 승격 — `groupId`)·`NavKeyGroupSetting`(#285 승격 — `groupId`)·
+`NavKeyCanvasMain`(#268 승격 — `groupId`, **#411에서 `welcomeGroupName`·`welcomeInviteCode` 추가**)·`NavKeyGroupSetting`(#285 승격 — `groupId`)·
 `NavKeyWebView`(#296 신설 — `title`·`url`)·`NavKeyCanvasToppingPlace`(#290 신설 — `imageUri`, **#334에서 인자를 잃고 `data object`로 되돌아갔다**)·
 `NavKeyCanvasBGEdit`(#329 승격 — `groupId`·`parfaitId`, **#400에서 `initialToppingId` 추가**)).
 **목적지 둘이 인자 하나로 합쳐진 첫 사례가 #296이다** — `NavKeyServiceTerms`·`NavKeyPrivacyPolicy`
@@ -504,6 +513,12 @@ API가 없다) → [s004-terms-privacy-webview 스펙](../specs/archive/2026-07-
 `returnResultOnly`는 화면이 그릴 데이터가 아니라 호출자가 고르는 분기이고, 기본값이 있어 기존
 호출부는 `NavKeyCameraCustom()`처럼 생성자 호출만 바꾸면 됐다. 재사용 화면의 동작 차이를 NavKey에
 싣는 방식이 관용구인지는 미결이다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+**인자가 데이터도 동작 플래그도 아니라 "진입 사유"인 형태가 나왔다**(2026-09-01, PR #411) —
+`NavKeyCanvasMain`의 `welcomeGroupName`·`welcomeInviteCode`는 캔버스가 그릴 데이터가 아니고
+(그룹명은 화면이 어차피 조회한다) 동작을 가르는 플래그도 아니다. **직전 화면에서 무슨 일이
+있었는지**를 나르며, 값이 있으면 배너 1회, 없으면 아무 일도 없다. 둘의 조합이 배너 갈래까지 정한다
+— 그룹명만 있으면 참여, 초대코드까지 있으면 생성이다. 그래서 이 인자는 **소비되고 나면 뜻이
+없어지는데** 키에는 그대로 남는다(직렬화·복원되면 다시 실려 온다) → OQ-P-339.
 **기본값 없는 동작 인자가 처음 나왔다**(2026-08-31, PR #408) — `NavKeyCustomGalleryPicker`의
 `recentImagePick: RecentImagePick`은 앞의 둘과 달리 기본값이 없어 **호출부 둘이 값을 반드시
 고른다.** 앞선 둘이 "안 주면 종전대로"였다면 이쪽은 잊고 안 주면 컴파일이 깨지는 쪽이고, 그것이
@@ -530,6 +545,10 @@ A-005를 연다(#222). 현재 그 `nickName`은 `GroupListUiState` 기본값 moc
 `@Assisted` 파라미터, 엔트리 빌더에서 `hiltViewModel<VM, VM.Factory>(creationCallback = { it.create(navKey.…) })`로 생성해 Route에 넘긴다
 (`GroupCreateViewModel`·`SegmentationViewModel`·`GroupNickNameViewModel`(#244)·`TermAgreeViewModel`(#242)·
 `CanvasMainViewModel`(#268)·`GroupSettingViewModel`(#285)·`CanvasBGEditViewModel`(#329)).
+**Assisted 파라미터가 여럿이면 이름표를 붙인다**(#411) — `CanvasMainViewModel`이 `welcomeGroupName`·
+`welcomeInviteCode` 둘을 함께 받으면서 `@Assisted(ASSISTED_WELCOME_GROUP_NAME)`처럼 **문자열 키로
+구분**한다(둘 다 `String?`이라 타입만으로는 못 가른다). 팩토리 인터페이스와 생성자 양쪽에 같은 키를
+적어야 하고, 어긋나면 컴파일이 아니라 Hilt 생성 코드에서 깨진다.
 **생성 위치는 두 형태가 공존한다** — 엔트리 빌더에서 만들어 Route 파라미터로 넘기거나(`GroupNickName`),
 Route의 기본 인자에서 만들거나(`TermAgree`·`CanvasMain`). 후자는 Route가 인자 값을 받아 팩토리에 넘긴다.
 **인자 출처가 "목록에서 누른 항목"인 첫 사례가 #268이다** — G-001이 `ClickTopping(groupId)`으로 누른

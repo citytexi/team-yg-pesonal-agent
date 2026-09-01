@@ -4,7 +4,7 @@ title: C-001 지난 캔버스 갤러리 저장 — 캔버스 캡처·MediaStore 
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-23
+verified: 2026-09-01
 related_code:
   - YGCanvas.kt#YGCanvas
   - YGCanvas.kt#CanvasArea
@@ -44,6 +44,13 @@ tags: [spec, parfait, canvas, gallery, c-001, ui]
 ## 목표
 
 지난 캔버스를 보고 있을 때 메뉴의 "갤러리에 저장"이 실제로 기기 갤러리에 이미지를 남긴다.
+
+> 🔁 **진입점이 메뉴에서 날짜바로 옮겨 갔다(2026-09-01, PR #413·#414)** — 저장은 이제 하단 메뉴
+> 액션이 아니라 **날짜 버튼 오른쪽의 아이콘**(`ic_save`)이고, 그래서 **오늘 캔버스에서도 저장할 수
+> 있다**(아래 「지난 캔버스에서만」 서술은 그 시점의 기록이다). 노출 조건은 날짜가 아니라 내용이다 —
+> `CanvasMainUiState.isCanvasSaveVisible`이 빈 캔버스 안내판의 정확한 반대(`(토핑 0 && 배경 없음)`의
+> 부정)라, 저장할 것이 아무것도 없으면 아이콘 자체가 없다. 저장 흐름(캡처 요청 왕복·권한·`MediaStore`
+> 쓰기·토스트)은 **아래 설계 그대로**이고 바뀐 것은 누르는 자리와 보이는 조건뿐이다.
 [c201-canvas-calendar-server 스펙](2026-08-17-c201-canvas-calendar-server.md)이 드리프트 1로 적어 둔
 **"버튼과 인텐트만 있고 핸들러는 로그 한 줄"**을 닫는 라운드다(OQ-P-211).
 
@@ -125,11 +132,14 @@ ViewModel은 비트맵을 만들 수 없다(Compose `GraphicsLayer`는 컴포지
 
 토스트 호스트는 [c202-canvas-spotlight 스펙](2026-08-20-c202-canvas-spotlight.md)이 만든
 `YGCanvas.overlayContent` 슬롯에 그대로 있고, 이번에 **`YGAlertHost`가 그 아래 세로로 병치**됐다.
-얼럿을 띄우는 코드는 아직 없다(프리뷰만 정책 객체를 직접 만들어 보여 준다) — 겹침 처리도 코드
-주석의 TODO로 남았다 → [open-questions](../../synthesis/open-questions.md) OQ-P-273.
+~~얼럿을 띄우는 코드는 아직 없다~~ → **as-built(#411, 2026-09-01)**: 그룹 생성·참여 직후 진입의
+환영 배너가 첫 소비처다. 다만 이 호스트를 세운 사유였던 **전일 캔버스 마감 알림은 그대로 미구현**이고
+문자열 셋과 겹침 처리 TODO도 남아 있다 → [open-questions](../../synthesis/open-questions.md) OQ-P-273.
 
 같은 라운드에서 "갤러리에 저장" 메뉴 액션의 아이콘이 빠졌다(`iconResource = null`). `ic_gallery`는
 C-301 배경 편집이 계속 쓴다.
+→ **as-built(#414, 2026-09-01)**: 그 메뉴 액션 자체가 사라졌다. 지난 캔버스에서 `addAction`은 `null`이고
+`YGCanvasMenu`가 "오늘로 돌아가기" 하나를 전폭으로 그린다.
 
 ## 계층 배치
 
