@@ -4,7 +4,7 @@ title: C-106 토핑 배치 화면 — 정중앙·40%·48dp 초기 배치 + 드�
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-26
+verified: 2026-09-01
 related_code:
   - NavKeyCanvasToppingPlace.kt#NavKeyCanvasToppingPlace
   - CanvasToppingPlaceRoute.kt#CanvasToppingPlaceRoute
@@ -63,7 +63,10 @@ tags: [spec, parfait, canvas, topping, c-106, ui]
 
 `CanvasBGEditScreen`의 토핑 탭과 UI가 닮았지만 더 단순하다 — 다룰 대상이 **하나뿐**이라 탭해서
 고를 필요가 없고 처음부터 드래그가 붙으며, 하단 바 가운데는 탭 전환이 아니라 고정 문구
-(`YGFloatingBarEdit`)다. 모서리 버튼도 넷이 아니라 **둘**(우측 상단 크기조절 · 우측 하단 회전)이다.
+(`YGFloatingBarEdit`)다. 모서리 버튼도 넷이 아니라 **둘**이다 — ~~우측 상단 크기조절 · 우측 하단 회전~~
+→ **as-built(#412 develop 머지, 2026-09-01)**: 둘이 자리를 맞바꿔 **우측 상단 회전 · 우측 하단
+크기조절**이다. C-301 편집 탭도 같은 라운드에 같은 방향으로 바뀌어 두 화면의 핸들 배치는 여전히
+같다. 환산은 핸들 좌표와 중심만 쓰므로(`ToppingGeometry`) 계산식은 그대로다.
 
 ## 초기 배치 (C-106 정책 대조)
 
@@ -87,7 +90,8 @@ tags: [spec, parfait, canvas, topping, c-106, ui]
 ## 조작
 
 - **이동**: 토핑 자신에 `Modifier.dragBy`. 드래그한 만큼 그대로 옮긴다(경계 clamp 없음).
-- **리사이즈**: 핸들이 **우측 상단 모서리**에 있으므로, 그 모서리의 바깥 방향으로 끌면 커지고
+- **리사이즈**: 핸들이 **우측 상단 모서리**에 있으므로(#412로 우측 하단으로 옮겨 갔다),
+  그 모서리의 바깥 방향으로 끌면 커지고
   안쪽이면 작아진다. `resizeOutwardDirection(rotation)`이 회전을 반영한 단위 벡터를 주고 드래그
   변위를 거기에 투영해 증감을 낸다 — 거꾸로 선 토핑도 "바깥으로 끌면 커진다"가 성립한다.
 - **회전**: 가로 드래그 거리에 비례해 각도를 누적한다. 상·하한 없음.

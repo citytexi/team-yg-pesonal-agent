@@ -4,7 +4,7 @@ title: C-201 캘린더 서버 결선 (mock 제거 + 연도별 캐시 + 지난 �
 status: implemented
 category: feature-spec
 platforms: android
-verified: 2026-08-23
+verified: 2026-09-01
 related_code: GetParfaitHistoriesUseCase, GetParfaitYearsUseCase, GetParfaitDetailUseCase, ParfaitRepository, ParfaitRepositoryImpl, PastCanvasVO, CanvasMainViewModel, CanvasMainUiState, CanvasMainIntent, CanvasMainRoute, CanvasMainScreen, CustomCalendar, YGCanvasMenuAction, parfaitToday
 related_adr: ADR-0009, ADR-0017, ADR-0020
 related_spec: c201-canvas-calendar, c001-canvas-today-detail, c001-canvas-main, parfait-canvas-topping-member-api-service-layer, screen-resume-refetch, c001-canvas-gallery-save
@@ -103,7 +103,13 @@ tags: [spec, parfait, canvas, calendar, c201, api-consumer]
 | 보고 있는 날 | 위 액션 | 아래 액션 |
 |---|---|---|
 | 오늘 | 토핑 추가(`ic_plus`) | 캔버스 편집(`ic_caret_right`) |
-| 지난 날 | 갤러리에 저장(`ic_gallery`) | 오늘의 파르페 가기(`ic_caret_right`) |
+| 지난 날 | ~~갤러리에 저장(`ic_gallery`)~~ → **없음(`null`)** | 오늘의 파르페 가기(`ic_caret_right`) |
+
+> 🔁 **지난 날의 위 액션이 비었다(2026-09-01, PR #413·#414)** — 갤러리 저장이 하단 메뉴에서
+> **날짜바 오른쪽 아이콘**(`ic_save`)으로 옮겨 가면서 이 자리에 넣을 것이 없어졌다. `addAction`이
+> `null`이면 `YGCanvasMenu`가 "오늘의 파르페 가기" 하나를 전폭으로 그린다. 저장은 이제 날짜로 갈리지
+> 않고 **캔버스에 저장할 내용이 있는지**로 갈린다(`isCanvasSaveVisible`) → [c001-canvas-gallery-save
+> 스펙](2026-08-23-c001-canvas-gallery-save.md).
 
 **지난 캔버스를 고치지 못하게 하는 방법이 "길을 치우는 것"**이다 — 서버가 마감 캔버스의 편집을 막지
 않으므로 화면이 진입점을 없앤다. OQ-P-189 ②("서버가 막을지 앱이 막을지")에 앱 쪽 첫 답이 나왔다.

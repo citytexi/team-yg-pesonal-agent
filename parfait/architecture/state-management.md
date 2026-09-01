@@ -4,7 +4,7 @@ title: 상태 관리 (MVI) · 데이터 흐름
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-31
+verified: 2026-09-01
 related_spec: c103-multi-subject-selection, c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, group-ssot, intro-term-agree
 related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: data-layer, navigation-flow
@@ -172,6 +172,12 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
     C-001은 `syncToday()`가 보던 캔버스까지 정리). 기준은 KST 자정이라 03:00 경계는 여전히 미적용이다.
   - ⚠️ 관용구일 뿐 규약이 아니다 — 새 화면이 이것을 따르는지 확인할 수단이 없다 → OQ-P-221 ·
     [screen-resume-refetch 스펙](../specs/archive/2026-08-17-screen-resume-refetch.md).
+  - 📌 **같은 수명을 반대로 쓰는 자리가 생겼다**(2026-09-01, PR #411). C-001 환영 배너는 재진입마다
+    다시 뜨면 안 되므로, `init`이 **ViewModel 수명에 걸린다는 성질 자체를 1회 보장으로** 쓴다 —
+    `welcomeGroupName`이 `null`이 아니면 `init`에서 `ShowWelcome` 이펙트를 한 번 쏘고 그만이다.
+    재조회 관용구가 이 수명을 **결함으로 보고 `Enter`로 우회한 것과 정반대 방향**이고, 그래서 같은
+    성질이 화면 안에서 두 뜻으로 쓰인다. 다만 이 보장은 상태가 아니라 수명에 기대므로 키가 다시
+    살아나는 경로에서는 성립하지 않는다 → OQ-P-339.
   - **같은 화면에 두 번째 수명 이펙트가 붙었다**(2026-08-20, PR #298). C-001은 `LifecycleResumeEffect`로
     재조회를 보내고 `LifecycleStartEffect`로 **Spotlight를 해제**한다 — 되묻는 것과 화면 상태를 되돌리는
     것이 서로 다른 시점에 걸린다(C-202 정책이 "백그라운드 복귀 시 Default"를 규정한다)

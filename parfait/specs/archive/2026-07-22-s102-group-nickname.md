@@ -4,7 +4,7 @@ title: S-102 그룹 내 닉네임 입력 화면 (GroupNickName)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-16
+verified: 2026-09-01
 related_code:
   - NavKeyGroupNickName
   - GroupNickNameRoute.kt#GroupNickNameRoute
@@ -203,9 +203,13 @@ class GroupNickNameViewModel @AssistedInject constructor(
   `ServerErrorCode.INVALID_GROUP_NICKNAME`을 보는 분기가 이 화면에서 없어졌다(상수는 A-005가 계속 쓴다).
 - **모달 취소·바깥 탭**(`DismissConfirmPopup`, #261): 진행 중(`isEntering`)이면 무시, 아니면 모달만 닫는다
   (A-005 `isCreating`·구 A-004 `isSubmitting` 가드와 같은 형태).
-- **다음 화면**(`NavigateToNext`, #224): `navigator.goToSingleClearTop(NavKeyGroupList)` — 참여 플로우
-  (초대코드 → 닉네임)를 한 번에 걷어내고 백스택의 그룹 목록을 재사용한다 → [navigation-flow](../../architecture/navigation-flow.md).
-  의존은 규약대로 `:api`만(`feature/groups/enter/impl` → `feature/groups/list/api`, #224에서 추가).
+- **다음 화면**(`NavigateToNext`, #224): ~~`navigator.goToSingleClearTop(NavKeyGroupList)`~~
+  → **as-built(#411 develop 머지, 2026-09-01)**: `replaceAll(NavKeyGroupList)` 뒤에
+  `goTo(NavKeyCanvasMain(groupId, welcomeGroupName))`다(참여는 초대코드를 싣지 않아 배너 갈래가 갈린다).
+  이펙트도 **`data class NavigateToNext(groupId, groupName)`**가 되어 참여 응답의 두 값을 나른다
+  → [navigation-flow](../../architecture/navigation-flow.md).
+  의존은 규약대로 `:api`만(`feature/groups/enter/impl` → `feature/groups/list/api`, #224에서 추가.
+  **#411에서 `feature/groups/canvas/api`가 하나 더 붙었다**).
 - **뒤로가기**(`ClickBackButton`) → `NavigateToBack` → `navigator.onBack()`.
 - **자동 포커스**: 화면 진입 시 `FocusRequester.requestFocus()`(`LaunchedEffect(Unit)`).
 - **확인 버튼 활성**: `nickName.isNotEmpty() && isEntering.not()`(🔁 #244 — 진행 중 비활성이 붙었다).
@@ -272,7 +276,8 @@ class GroupNickNameViewModel @AssistedInject constructor(
 
 ## 주의 / 열린 질문
 
-- ~~**다음 화면 네비게이션 미구현**~~ — #224에서 결선됐고, 목적지는 A-005가 **아니라** G-001 그룹 목록이다.
+- ~~**다음 화면 네비게이션 미구현**~~ — #224에서 결선됐고, 목적지는 A-005가 **아니라** G-001 그룹 목록이었다
+  (#411부터는 참여한 그룹의 C-001 캔버스다).
   즉 "참여 다음이 생성"이라는 당시 후보 흐름은 성립하지 않고, A-005 진입은 목록 오버레이 하나뿐이다
   → [open-questions](../../synthesis/open-questions.md) [2026-07-29].
 - ~~**참여가 mock**~~ — ✅ **해소(#244·#261)**. #261부터 이 화면이 `POST join`을 직접 부른다.
@@ -284,6 +289,7 @@ class GroupNickNameViewModel @AssistedInject constructor(
   잠긴다. 진행 표시(스피너 등)는 여전히 없다 — 참여+닉네임 두 왕복이라 대기 구간이 더 길어졌다.
 - **참여 실패 문구가 닉네임 입력 자리에 붙는다**(#261) — "이미 참여하고 있는 그룹이에요" 같은 초대코드 사유가
   닉네임 필드 아래에 뜨고 필드도 에러 상태가 된다. 사유의 원인(초대코드)과 표시 위치(닉네임)가 어긋난다.
-- **복귀 목적지가 위키 정본과 다름** — [[기능정의서-v6]]은 A-004(참여) 다음 단계를 **C-001(메인 캔버스)**로
-  적는다 → [open-questions](../../synthesis/open-questions.md) [2026-08-12].
+- ~~**복귀 목적지가 위키 정본과 다름**~~ — ✅ **해소(#411, 2026-09-01)**. [[기능정의서-v6]]이 적어 둔
+  **C-001(메인 캔버스) 직접 진입**으로 옮겨 갔다(OQ-P-135). 참여 직후 배너는 그룹명만 실린 갈래다.
+  문구에 정책 소스가 없다는 점은 [open-questions](../../synthesis/open-questions.md) [2026-09-01]가 쥔다.
 - 유효성 규칙(공백·문자 종류)은 UseCase, 길이(15)는 `GroupCreateConfig` 상수로 **검사 위치 이원화** — 정책 [[이름-입력-규칙]] 상한과 정합하고 #179로 상수 소유처는 domain 단일화됐으나 검사 자체는 여전히 입력 컴포넌트 소관.
