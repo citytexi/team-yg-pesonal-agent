@@ -4,8 +4,8 @@ title: 토큰 재발급
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#45"
-server_commit: 02e11be
-verified: 2026-09-01
+server_commit: 0c59af9
+verified: 2026-09-02
 related_api: auth.md
 tags: [api, parfait, spec, auth]
 ---
@@ -81,7 +81,9 @@ Access Token이 만료되면 Refresh Token으로 새 토큰을 받는다. **재�
 - **401 `MEMBER_NOT_FOUND`** — 토큰의 `memberId`에 해당하는 회원이 없을 때. 명세의 403 "정지·탈퇴 회원"이
   의도한 상황과 겹칠 수 있으나 **HTTP 코드와 code 문자열이 모두 다르다.**
 - 회전 시 **`sessionId`는 유지된다**(`claims.sessionId` 재사용). 세션 단위 로그아웃과 맞물리는 동작인데
-  명세에 서술이 없다.
+  명세에 서술이 없다. **2026-09-02부터 그 세션이 새 access token의 클레임으로도 실린다**
+  (`createAccessToken(memberId, sessionId)`) — 응답 3필드는 그대로이고 토큰 문자열 안의 내용만
+  늘었다([../auth.md](../auth.md) "access token이 세션을 싣는다").
 - envelope 5필드 → [conventions.md](../conventions.md)
 
 ### 표기 차이 (실질 불일치 아님)

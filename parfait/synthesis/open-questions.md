@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-01
+verified: 2026-09-02
 related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -6043,4 +6043,58 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   목표·범위 절과 [designsystem-canvas-components 스펙](../specs/archive/2026-07-31-designsystem-canvas-components.md)
   `YGCanvasDateSelectButton` 치수표에 적고, ②는 OQ-P-304와 함께 닫는다.
 
-<!-- oq-next: 341 -->
+### [2026-09-02] FCM을 걷어낸 근거가 서버 delta로 사라졌다 — 되살릴지 정해야 한다
+
+- **ID**: OQ-P-341
+- **출처**: 서버 `DeviceTokenController`(`POST /api/v1/notifications/devices`, `0c59af9`) ×
+  [api/notification.md](../api/notification.md) ×
+  [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 철회 정정(2026-08-22 PR #325) — 앱은 FCM 수신
+  서비스·토큰 조회·알림 채널·`POST_NOTIFICATIONS` 권한 요청과 `firebase-messaging` 의존까지
+  **갖고 있다가 걷어냈다.** **철회 근거는 "쓰이지 않았다" 하나**였고, 쓰이지 않은 이유가
+  `onNewToken`이 `TODO("서버에 FCM 토큰 전송")`인 채였다는 것 — **보낼 서버가 없었다.**
+  이번 delta가 정확히 그 자리를 열었으므로 **철회를 떠받치던 전제가 없어졌다.** develop
+  `0173e454`에는 여전히 관련 심볼이 0건이다.
+- **항목**: ① 되살릴지, 알림 기획(OQ-P-343)이 확정된 뒤로 미룰지 — ADR-0013은 "결선 없는 껍데기를
+  출시 경로에서 뺀 것"이라 명시했으므로 **결선이 가능해진 지금은 판단 근거가 다르다.**
+  ② 되살린다면 등록 호출 시점 — 서버는 **앱 시작·`onNewToken`·권한 허용마다 재호출**을 전제로 upsert를
+  설계했다(반복 호출이 정상이라는 뜻이다). ③ 알림 권한을 언제 묻는지 — ADR-0013이 "되살릴 때 다시
+  정하라"고 남긴 물음이고, 걷어낸 형태(`MainActivity.onCreate`에서 무조건)가 문제였다.
+  ④ 권한 거부 상태에서도 토큰을 등록할지.
+- **상태**: 미해결 (**동작 영향 0** — 앱이 부르지 않으므로 지금은 도달하지 않는다)
+- **해소 메모**: 정하면 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)에 **되살림 정정**을 더하고
+  (철회 정정을 지우지 않는다 — 두 결정이 다 이력이다), [api/notification.md](../api/notification.md)
+  Android 매핑 절과 [data-layer](../architecture/data-layer.md)에 적는다. ①이 "미룬다"로 정해져도
+  **미룬다는 결정 자체를 적어야** 다음 라운드가 같은 물음을 다시 연다.
+
+### [2026-09-02] 세션 없이 등록된 기기 토큰은 로그아웃이 지우지 못한다
+
+- **ID**: OQ-P-342
+- **출처**: 서버 `LogoutService`(`DeviceTokenDeletePort.delete(memberId, sessionId)`) ·
+  `DeviceTokenAdapter.delete`(`deleteByMemberIdAndSessionId`) · `V17__create_device_token.sql`
+  (`session_id` 널 허용) × [api/notification.md](../api/notification.md) — `sessionId`는
+  access token 클레임에서 오는데 **이 변경 전에 발급된 토큰에는 그 클레임이 없어 널로 등록된다.**
+  삭제 조건이 `memberId`와 `sessionId`를 함께 보므로 **널인 행은 로그아웃으로 지워지지 않는다.**
+  걷어 내는 것은 탈퇴(회원 단위 전량)와 같은 토큰의 재등록(upsert)뿐이다.
+- **항목**: ① 과도기 창이 닫힌 뒤(구 access token이 전부 만료된 뒤) 서버가 널 행을 정리할지.
+  ② 앱이 붙을 때 로그인 직후 재등록으로 널 행을 덮게 할지 — 재등록은 같은 `token`이면 upsert라
+  세션이 채워진다. ③ 로그아웃한 기기로 알림이 계속 갈 수 있다는 뜻인데, 그 위험을 누가 막을지.
+- **상태**: 미해결 (**앱 동작 영향 0** — 앱이 아직 등록하지 않아 널 행이 생길 경로가 없다)
+- **해소 메모**: 서버가 닫으면 [api/notification.md](../api/notification.md)
+  "기기 토큰이 지워지는 두 경로"의 경고를 지운다. 앱이 ②로 닫으면 등록 호출 시점(OQ-P-341 ②)과
+  같은 자리에서 정해진다.
+
+### [2026-09-02] 알림을 무엇을 언제 보내는지가 서버 계약에도 정책에도 없다
+
+- **ID**: OQ-P-343
+- **출처**: 서버 커밋 `[Feat/#125]` 메시지가 **"발송 인프라와 알림 트리거는 이 변경 범위 밖"**이라고
+  명시 × [api/notification.md](../api/notification.md) — 저장소(`device_token`)와 등록 표면만 열렸고
+  발송 조건·문구·딥링크 목적지·수신 설정이 전부 비어 있다. 위키 정책 소스에도 알림 항목이 없다.
+- **항목**: ① 알림 종류(토핑 등록·캔버스 마감·그룹 초대 등)와 트리거 조건. ② 문구·딥링크가 화면
+  어디로 떨어지는지. ③ 사용자 수신 설정(전역·그룹별)을 둘지 — 두면 S-001 앱 설정에 자리가 필요하다.
+  ④ 권한 요청을 언제 띄울지(Android 13+ `POST_NOTIFICATIONS`).
+- **상태**: 미해결 (**설계 선행 필요** — 앱 구현보다 정책이 먼저다)
+- **해소 메모**: ①②③은 **정책 소관이라 위키 [[open-questions]]와 갈리는 자리**다 — 여기는 앱이
+  무엇을 구현해야 하는지만 추적한다. 정해지면 스펙을 `specs/`에 세우고
+  [api/notification.md](../api/notification.md) 미결 절을 지운다.
+
+<!-- oq-next: 344 -->

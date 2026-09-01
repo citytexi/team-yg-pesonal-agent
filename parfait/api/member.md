@@ -2,8 +2,8 @@
 id: member
 title: 회원(내 계정 조회·전역 닉네임 변경·탈퇴)
 server_module: http/member
-server_commit: 02e11be
-verified: 2026-09-01
+server_commit: 0c59af9
+verified: 2026-09-02
 android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-15-user-info-ssot
 related_adr: ADR-0017, ADR-0022
@@ -128,10 +128,13 @@ tags: [api, parfait, server-contract, member]
 - **인증**: 필요.
 - **성공**: HTTP **204 No Content** · **본문 없음**(`@ResponseStatus(HttpStatus.NO_CONTENT)`, 반환 타입 `Unit`).
 
-  ⚠️ **서버 전체에서 envelope를 쓰지 않는 유일한 성공 응답이다.** 다른 모든 엔드포인트는
-  `ApiResponse<T>`를 감싸 `success`·`code`·`message`·`data`를 준다([conventions.md](conventions.md)).
+  ⚠️ **envelope를 쓰지 않는 성공 응답 셋 중 하나다** — 로그아웃([auth.md](auth.md))과 기기 토큰
+  등록([notification.md](notification.md), 2026-09-02 신설)이 나머지 둘이다.
+  🔁 **신설 당시에는 이 응답이 유일한 예외였다** — 그 뒤 같은 모양이 하나 늘어 "유일하다"는 서술은
+  더 이상 맞지 않는다. 나머지 전 엔드포인트는 `ApiResponse<T>`를 감싸
+  `success`·`code`·`message`·`data`를 준다([conventions.md](conventions.md)).
   같은 delta의 토핑 삭제(`DELETE .../images/{parfaitImageId}`)조차 200 + `data: null`인데
-  ([parfait-image.md](parfait-image.md)) 이쪽만 본문이 통째로 없다. **envelope를 무조건 파싱하는 클라이언트는
+  ([parfait-image.md](parfait-image.md)) 이쪽은 본문이 통째로 없다. **envelope를 무조건 파싱하는 클라이언트는
   이 응답에서 깨진다** → [미결](#미결).
 
 - **요청 필드**: 없음(경로 변수·쿼리·바디 전부 없음)
@@ -142,6 +145,11 @@ tags: [api, parfait, server-contract, member]
   즉 **멱등이고 404를 내지 않는다**. ② 회원 행 삭제. ③ 참여 중인 그룹 멤버십 전부를 `leave()` 처리.
   ④ **커밋 이후**(`TransactionSynchronization.afterCommit`) refresh token 전량 삭제
   (`TokenDeletePort.deleteAllByMemberId` — Redis). ④가 실패하면 로그 경고만 남기고 탈퇴는 유지된다.
+  ⑤ **같은 `afterCommit` 블록에서 기기(FCM) 토큰 전량 삭제**(`DeviceTokenDeletePort.deleteAllByMemberId`
+  — DB, 2026-09-02 신설). **④와 별개의 `runCatching`으로 감싸므로 한쪽이 실패해도 나머지 정리와 탈퇴
+  자체는 진행된다.** 로그아웃이 **세션 단위**로만 지우는 것과 달리 탈퇴는 **회원 단위**로 전부 지운다
+  — 탈퇴는 그 회원의 모든 세션을 정리하기 때문이다([notification.md](notification.md)).
+  요청·응답·상태 코드는 이 delta에서 바뀌지 않았다.
 
   **④를 `afterCommit`에 둔 이유가 코드 주석에 있다** — 메서드 본문에서 지우면 이후 커밋이 실패했을 때
   DB는 롤백됐는데 Redis만 비는 상태가 되기 때문이다. 같은 delta의 토핑 삭제는 이 방어 없이 트랜잭션

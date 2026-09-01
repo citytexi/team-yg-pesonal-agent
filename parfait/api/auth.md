@@ -2,8 +2,8 @@
 id: auth
 title: 인증(카카오·애플 로그인·회원가입·토큰 재발급·로그아웃)
 server_module: http/auth
-server_commit: 02e11be
-verified: 2026-09-01
+server_commit: 0c59af9
+verified: 2026-09-02
 android_status: done
 related_spec: a002-kakao-login-api, session-token-refresh-infra
 related_adr: ADR-0017
@@ -78,6 +78,21 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
 이 결함은 컴파일·ktlint·Hilt 그래프 어디에도 걸리지 않는 종류였고, **DataSource 테스트로도 못
 잡는다** — 서비스를 MockK로 대체해 JSON을 지나지 않기 때문이다. 실제 본문을 디코딩하는
 `KakaoLoginResponseSerializationTest`가 유일한 그물이라 그 형태로 붙였다.
+
+## access token이 세션을 싣는다(2026-09-02)
+
+`JwtTokenAdapter.createAccessToken`이 **refresh token과 같은 `sessionId`를 클레임으로 담기 시작했고**,
+`TokenValidatePort.validateAccessToken`의 반환이 `Long`에서 `AccessTokenClaims(memberId, sessionId?)`로
+바뀌었다. 발급 지점 넷(카카오·애플 로그인, 회원가입 완료, 토큰 재발급)이 전부 세션을 넘겨 준다.
+
+**와이어 계약은 안 바뀐다.** 네 엔드포인트의 요청·응답 필드도, `Authorization: Bearer` 형식도,
+토큰 수명도 그대로다 — 앱이 읽는 자리에서 보이는 변화가 **없다**. 토큰 문자열 안에 클레임이 하나
+늘었을 뿐이고, 이 클레임을 쓰는 주체는 서버다(`JwtAuthFilter`가 인증 객체의 credentials 슬롯에 실어
+컨트롤러에 넘긴다 — [conventions.md](conventions.md) "인증").
+
+⚠️ **이 변경 전에 발급된 access token에는 클레임이 없다.** 그때는 `sessionId`가 널로 채워지고
+**인증은 그대로 통과한다**(과도기 설계). 널이어서 갈리는 것은 인증이 아니라 **기기 토큰 정리 범위**다
+→ [notification.md](notification.md).
 
 ## 엔드포인트 상세
 
@@ -307,6 +322,15 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
   흐름 메모: 인증된 회원(access token에서 뽑은 `memberId`)과 요청 바디 `refreshToken`이 가리키는
   회원(`claims.memberId`)이 같은지 검증한 뒤 세션(Redis)을 삭제한다(`LogoutService`). 불일치 시 다른
   회원의 토큰을 지우지 못하도록 403으로 거부한다.
+
+  🔁 **2026-09-02 — 로그아웃이 지우는 것이 하나 늘었다.** `LogoutService`가 refresh token 삭제 바로 뒤에
+  `DeviceTokenDeletePort.delete(claims.memberId, claims.sessionId)`를 불러 **그 로그인 세션이 등록한 기기
+  (FCM) 토큰 행도 함께 지운다**([notification.md](notification.md)). 요청·응답·상태 코드·에러 코드는
+  **하나도 바뀌지 않았다** — 바뀐 것은 이 호출이 서버에 남기는 흔적의 범위다.
+  **삭제 범위를 세션 단위로 좁힌 것이 이 delta가 access token에 `sessionId` 클레임을 더한 이유**다
+  (같은 회원의 다른 기기 토큰까지 지우지 않으려면 어느 세션이 등록했는지를 알아야 한다).
+  ⚠️ 이 정리는 refresh token 정리와 **같은 호출 안에서 예외 방어 없이** 이어진다 — 탈퇴 쪽이 두 정리를
+  각각 `runCatching`으로 감싼 것과 다르다([member.md](member.md)).
 
 - **에러 코드**
 
