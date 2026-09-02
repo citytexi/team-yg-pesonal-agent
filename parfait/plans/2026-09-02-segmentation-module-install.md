@@ -375,7 +375,7 @@ GMS 타입은 ModuleInstallGateway 뒤로 숨겨 JVM 테스트가 닿게 한다.
 
 **Interfaces:**
 - Consumes: Task 1의 `ModuleInstallGateway`·`ModuleInstallSignal`.
-- Produces: `internal class PlayServicesModuleInstallGateway @Inject constructor(context: Context) : ModuleInstallGateway` — Hilt가 `@Binds`로 인터페이스에 묶는다.
+- Produces: `class PlayServicesModuleInstallGateway @Inject constructor(context: Context) : ModuleInstallGateway` — Hilt가 `@Binds`로 인터페이스에 묶는다.
 
 ⚠️ **이 태스크에는 단위 테스트가 없다.** GMS 설치는 JVM에서 재현할 수 없다. 검증은 컴파일과
 Task 7 이후의 실기기 확인이다. 이 사실을 커밋 메시지에 적는다.
