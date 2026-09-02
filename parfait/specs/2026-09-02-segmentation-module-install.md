@@ -70,9 +70,18 @@ I/Finsky  Module info request for [{MlkitSubjectSegmentation.optional:...}] ... 
 D/Volley  https://play-fe.googleapis.com/fdfe/moduleDelivery [rc=200], [size=1202]
 ```
 
-재부팅해도, 30초를 더 기다려도 결과가 같다. GMS 패키지의 splits 목록에도 모듈이 없다. 앱이
-고칠 수 있는 범위 밖이라 이 스펙은 원인 ②를 고치지 않는다. **정확히 알아채고 정직하게 알리는
-데까지가 범위다.**
+재부팅해도, 30초를 더 기다려도 결과가 같다. 앱이 고칠 수 있는 범위 밖이라 이 스펙은 원인 ②를
+고치지 않는다. **정확히 알아채고 정직하게 알리는 데까지가 범위다.**
+
+📌 **후속 관측(같은 날 14시)** — 그 기기에 **모듈이 결국 도착했다.** 오전 내내 `INTERNAL_ERROR`로
+실패하던 설치가 몇 시간 뒤 성공했고, `DynamiteModule`이 원격 버전 `263234001`을 잡아 세그멘테이션이
+정상 동작했다. 원인 ②는 **영구 실패가 아니라 아주 늦은 배달**일 수 있다. 이 스펙의 설계는 그대로
+유효하다 — 어느 쪽이든 앱은 기다리고 알려야 한다. 열린 질문은
+[open-questions](../synthesis/open-questions.md) OQ-P-344가 잇는다.
+
+⚠️ **`splits` 목록으로 모듈 유무를 판정하지 말 것.** optional module은 APK split이 아니라 Chimera
+dynamite 모듈로 배달된다 — 모듈이 도착해 실제로 동작하는 시점에도 GMS 패키지의 `splits` 목록에는
+그 이름이 없었고, `DynamiteModule` 로그와 `areModulesAvailable`만이 사실을 말했다.
 
 ## 범위
 
@@ -128,13 +137,30 @@ internal sealed interface ModuleInstallSignal {
 ```
 
 **두 함수에 인자가 없는 이유**는 게이트웨이가 `OptionalModuleApi`를 스스로 만들기 때문이다. GMS의
-`areModulesAvailable`·`ModuleInstallRequest.Builder.addApi`가 그 타입을 요구하는데, `SubjectSegmenter`
-구현의 `getOptionalFeatures()`는 **옵션과 무관하게 `FEATURE_SUBJECT_SEGMENTATION` 하나만** 돌려준다.
-그래서 게이트웨이가 기본 옵션으로 만든 세그멘터를 써도 모듈 판정이 같다. 지금 코드가 `process`에
-쓸 세그멘터를 그대로 넘겨쓰느라 생긴 결합을 여기서 끊는다.
+`areModulesAvailable`·`ModuleInstallRequest.Builder.addApi`가 그 타입을 요구한다.
 
-⚠️ **그 세그멘터는 `Closeable`이다.** 게이트웨이가 만든 것은 게이트웨이가 닫는다 — 모듈 판정에만
-쓰고 `process`에 넘기지 않으므로 요청 직후 닫아도 된다.
+⚠️ **그 `OptionalModuleApi`로 `SubjectSegmenter`를 쓰면 안 된다.** `SubjectSegmentation.getClient()`는
+그 자체로 ML Kit의 **네이티브 그래프와 EGL 컨텍스트를 띄운다.** 판정용으로 하나 더 열면 실제
+세그멘테이션용 클라이언트와 겹쳐 죽는다 — 2026-09-02 Galaxy Z Flip 3에서 확인했다.
+
+```
+graph.cc:502 Start running the graph, waiting for inputs.   (스레드 A)
+graph.cc:502 Start running the graph, waiting for inputs.   (스레드 B, 43ms 뒤)
+libc: Fatal signal 7 (SIGBUS), code 2 (BUS_ADRERR) in tid ... (drishti/...)
+```
+
+`OptionalModuleApi`는 `Feature` 배열만 돌려주면 되는 인터페이스다. 게이트웨이는 세그멘터 없이
+feature 하나만 든 구현을 만든다.
+
+```kotlin
+private val segmentationModule = OptionalModuleApi {
+    arrayOf(Feature("mlkit.segmentation.subject", 1L))
+}
+```
+
+feature 이름과 버전의 근거는 같은 기기의 실측 로그다 — `ChimeraConfigurator: Starting update,
+reason: 4 urgentFeatures: mlkit.segmentation.subject:1`. ⚠️ **ML Kit 내부 값이라 바뀔 수 있다.**
+바뀌면 가용 판정이 조용히 false로 굳고 설치 요청만 반복된다(크래시는 아니다).
 
 `onSignal` 콜백은 **정지 함수가 아니다.** GMS 리스너가 자기 Executor 스레드에서 부른다. 게이트웨이는
 종료 신호를 흘린 직후 `unregisterListener`로 리스너를 걷는다. 상한 초과로 호출자가 떠나도 리스너는

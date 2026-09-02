@@ -173,3 +173,24 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 `INSUFFICIENT_STORAGE`도 아니고 Play 응답은 정상이라 앱이 고칠 수 있는 범위 밖이다. "온디바이스
 모델을 Play 서비스가 내려준다"는 이 결정의 전제에 **배달 실패라는 잔여 위험**이 있다는 뜻이고,
 그런 기기의 대체 경로는 열려 있다([open-questions](../synthesis/open-questions.md)).
+
+### 후속 정정 (2026-09-02 오후, 같은 기기)
+
+위 절의 두 서술을 실측이 뒤집었다.
+
+⚠️ **"끝내 못 받는다"는 확정이 아니다.** 같은 기기에 **모듈이 몇 시간 뒤 도착했다**(`DynamiteModule`
+원격 버전 `263234001`). 오전의 `INTERNAL_ERROR` 반복은 영구 실패가 아니라 아주 늦은 배달이었을 수
+있다. 배달 실패라는 잔여 위험은 남지만 그 성격이 "불가"에서 "지연"으로 약해진다
+([open-questions](../synthesis/open-questions.md) OQ-P-344).
+
+⚠️ **`splits` 목록으로 모듈 유무를 판정하지 말 것.** optional module은 APK split이 아니라 Chimera
+dynamite 모듈로 배달된다. 모듈이 도착해 실제로 동작하는 시점에도 GMS 패키지의 `splits` 목록에는
+그 이름이 없었다.
+
+그리고 이 결정이 지금까지 적지 않았던 제약 하나가 드러났다. **`SubjectSegmentation.getClient()`는
+그 자체로 네이티브 그래프와 EGL 컨텍스트를 띄운다.** 그래서 세그멘터를 "모듈이 있는지 묻는
+용도"로 하나 더 여는 것이 안전하지 않다 — 판정용 그래프와 실제 세그멘테이션용 그래프가 겹쳐
+`SIGBUS`(`drishti` 스레드)로 죽는 것을 실기기에서 확인했다. 이 ADR이 이미 적어 둔 "옵션 조합으로
+`SIGSEGV`" 기록과 같은 계열이고, **세그멘터 인스턴스의 동시 존재가 위험하다**는 것이 그 둘을
+관통하는 사실이다. 모듈 판정은 `Feature`만 든 `OptionalModuleApi`로 한다
+→ [segmentation-module-install 스펙](../specs/2026-09-02-segmentation-module-install.md).
