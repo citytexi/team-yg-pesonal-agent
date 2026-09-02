@@ -60,10 +60,14 @@
 **Interfaces:**
 - Consumes: 없음(첫 태스크).
 - Produces:
-  - `internal interface ModuleInstallGateway { suspend fun isAvailable(): Boolean; fun install(onSignal: (ModuleInstallSignal) -> Unit) }`
-  - `internal sealed interface ModuleInstallSignal` — `AlreadyInstalled`, `Completed`, `Failed(installState: Int, errorCode: Int)`
-  - `internal sealed interface ModuleInstallOutcome` — `Ready`, `Failed(installState: Int, errorCode: Int)`, `TimedOut`
-  - `internal class SegmentationModuleInstaller @Inject constructor(gateway: ModuleInstallGateway)` — `suspend fun ensureInstalled(): ModuleInstallOutcome`
+  - `interface ModuleInstallGateway { suspend fun isAvailable(): Boolean; fun install(onSignal: (ModuleInstallSignal) -> Unit) }`
+  - `sealed interface ModuleInstallSignal` — `AlreadyInstalled`, `Completed`, `Failed(installState: Int, errorCode: Int)`
+  - `sealed interface ModuleInstallOutcome` — `Ready`, `Failed(installState: Int, errorCode: Int)`, `TimedOut`
+  - `class SegmentationModuleInstaller @Inject constructor(gateway: ModuleInstallGateway)` — `suspend fun ensureInstalled(): ModuleInstallOutcome`
+
+⚠️ **가시성은 public 이다.** `:data` 에는 `internal` Hilt 모듈도 `internal` Impl 클래스도 없다 —
+public `RepositoryModule` 이 `internal` 타입을 `@Binds` 파라미터로 받으면 `EXPOSED_PARAMETER_TYPE`
+으로 컴파일이 깨진다. 기존 관례를 따른다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -225,7 +229,7 @@ package com.teamyg.parfait.data.repository.image
 /**
  * 모듈 설치의 GMS 쪽 표면. 이 뒤로 Play 서비스 타입이 하나도 새지 않아야 JVM 테스트가 닿는다.
  */
-internal interface ModuleInstallGateway {
+interface ModuleInstallGateway {
     suspend fun isAvailable(): Boolean
 
     /**
@@ -235,7 +239,7 @@ internal interface ModuleInstallGateway {
     fun install(onSignal: (ModuleInstallSignal) -> Unit)
 }
 
-internal sealed interface ModuleInstallSignal {
+sealed interface ModuleInstallSignal {
     data object AlreadyInstalled : ModuleInstallSignal
 
     data object Completed : ModuleInstallSignal
@@ -244,7 +248,7 @@ internal sealed interface ModuleInstallSignal {
     data class Failed(val installState: Int, val errorCode: Int) : ModuleInstallSignal
 }
 
-internal sealed interface ModuleInstallOutcome {
+sealed interface ModuleInstallOutcome {
     data object Ready : ModuleInstallOutcome
 
     data class Failed(val installState: Int, val errorCode: Int) : ModuleInstallOutcome
@@ -268,10 +272,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
-internal const val INSTALL_TIMEOUT_MS = 20_000L
+const val INSTALL_TIMEOUT_MS = 20_000L
 
 /** `ModuleInstallStatusUpdate.InstallState.STATE_COMPLETED` 와 같은 값 */
-internal const val STATE_COMPLETED = 4
+const val STATE_COMPLETED = 4
 
 private const val LOG_PREFIX = "[MLKIT-MODULE]"
 
@@ -282,7 +286,7 @@ private const val LOG_PREFIX = "[MLKIT-MODULE]"
  * 하는데 그럴 수 없다. 대기는 호출자의 스코프에서 일어나고, 진행 중인 설치만 여기서 공유한다.
  */
 @Singleton
-internal class SegmentationModuleInstaller
+class SegmentationModuleInstaller
 @Inject
 constructor(
     private val gateway: ModuleInstallGateway,
@@ -400,7 +404,7 @@ import javax.inject.Inject
  * 모듈 식별자는 세그멘터 옵션과 무관하다 — `SubjectSegmenter` 구현이 옵션이 뭐든 세그멘테이션
  * feature 하나만 내놓는다. 그래서 판정용 세그멘터를 기본 옵션으로 따로 열어도 결과가 같다.
  */
-internal class PlayServicesModuleInstallGateway
+class PlayServicesModuleInstallGateway
 @Inject
 constructor(
     @ApplicationContext private val context: Context,
@@ -538,15 +542,13 @@ installModules 의 Task 성공은 요청 접수일 뿐이라 종료는 InstallSt
 - 파일 상단 상수 `MODULE_DIAGNOSTIC_PREFIX`·`MODULE_AVAILABILITY_POLL_COUNT`·`MODULE_AVAILABILITY_POLL_INTERVAL_MS`
 - import: `InstallStatusListener`, `ModuleInstall`, `ModuleInstallClient`, `ModuleInstallRequest`, `kotlinx.coroutines.delay`
 
-- [ ] **Step 3: 설치기를 주입하고 가시성을 내린다**
+- [ ] **Step 3: 설치기를 주입한다**
 
-클래스 선언을 바꾼다. `internal`로 내리는 이유는 `internal` 타입인 설치기를 public 생성자가 받으면
-`EXPOSED_PARAMETER_TYPE`으로 컴파일이 깨지기 때문이다. `RepositoryModule`이 같은 모듈이라 결선은
-그대로 산다.
+생성자에 설치기를 더한다. **가시성은 그대로 public 이다** — `:data` 의 다른 클래스와 같다.
 
 ```kotlin
 @Singleton
-internal class ImageSegmentationRepositoryImpl
+class ImageSegmentationRepositoryImpl
 @Inject
 constructor(
     @ApplicationContext private val context: Context,
