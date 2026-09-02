@@ -8,7 +8,8 @@
 ## 프로젝트 컨텍스트 (필수)
 
 이 repo는 **AI 스킬·위키 repo**이고, 실제 **코드 작업 대상은 별도 repo `TJYG-Android`**
-(remote `mash-up-kr/TJYG-Android`)다. 여기서 지시를 받아 그 프로젝트를 작업한다.
+(remote `mash-up-kr/TEAMYG-Android` — 저장소 이름이 `TJYG-Android`에서 바뀌었고,
+로컬 디렉토리명과 문서상 통칭은 `TJYG-Android`를 그대로 쓴다)다. 여기서 지시를 받아 그 프로젝트를 작업한다.
 로컬 절대경로는 개인정보라 private submodule의 `wiki/personal-private/project-paths.md`에 있다.
 자세한 내용은 [docs/project-context.md](docs/project-context.md).
 

@@ -31,7 +31,7 @@ tags: [plan, parfait, login, debug]
 
 **Spec:** [`parfait/specs/2026-08-28-login-debug-mode.md`](../specs/2026-08-28-login-debug-mode.md)
 
-**작업 저장소:** `TJYG-Android` (remote `mash-up-kr/TJYG-Android`). 로컬 절대경로는 `wiki/personal-private/project-paths.md`에 있다. 브랜치 `feature/debug-mode` 위에서 작업한다 — 그 브랜치는 지금 `develop`과 같고 작업 트리는 깨끗하다.
+**작업 저장소:** `TJYG-Android` (remote `mash-up-kr/TEAMYG-Android`). 로컬 절대경로는 `wiki/personal-private/project-paths.md`에 있다. 브랜치 `feature/debug-mode` 위에서 작업한다 — 그 브랜치는 지금 `develop`과 같고 작업 트리는 깨끗하다.
 
 ## Global Constraints
 

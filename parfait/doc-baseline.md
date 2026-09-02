@@ -4,7 +4,7 @@
 > 사용자가 "develop 기준 문서 점검"을 요청하면, 아래 기준선부터 현재 `origin/develop`까지의 **delta(신규 머지)만** 감사하고, 끝나면 기준선을 갱신한다.
 
 ## 현재 기준선
-- **repo**: `TJYG-Android` (`mash-up-kr/TJYG-Android`) `develop`
+- **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
 - **커밋**: `0173e454` (`Merge pull request #434 from mash-up-kr/chore/version-1.0.0-6`)
 - **요약**: **위키가 1년 가까이 적어 둔 목적지로 코드가 옮겨 왔고, 앱 버전이 1.0.0 이 됐다**
   (delta 5건, 25파일 **삽입 449줄·삭제 85줄**). 유닛은 1012 → **1015건**(+3), 계측은 **17건**
