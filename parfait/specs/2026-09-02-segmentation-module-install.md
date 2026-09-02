@@ -174,7 +174,7 @@ public으로 두거나 리포지토리 impl을 `internal`로 내린다. 후자�
 
 ```kotlin
 private val mutex = Mutex()
-private var inFlight: CompletableDeferred<ModuleInstallOutcome>? = null
+private var inFlight: CompletableDeferred<ModuleInstallSignal>? = null
 
 suspend fun ensureInstalled(): ModuleInstallOutcome {
     if (gateway.isAvailable()) return ModuleInstallOutcome.Ready
@@ -184,11 +184,13 @@ suspend fun ensureInstalled(): ModuleInstallOutcome {
         inFlight?.takeIf { !it.isCompleted } ?: startInstall().also { inFlight = it }
     }
 
-    return withTimeoutOrNull(INSTALL_TIMEOUT) { pending.await() }
-        ?: ModuleInstallOutcome.TimedOut.also { forget(pending) }
+    val signal = withTimeoutOrNull(INSTALL_TIMEOUT) { pending.await() }
+        ?: return ModuleInstallOutcome.TimedOut.also { forget(pending) }
+
+    return signal.toOutcome()
 }
 
-private suspend fun forget(pending: CompletableDeferred<ModuleInstallOutcome>) {
+private suspend fun forget(pending: CompletableDeferred<ModuleInstallSignal>) {
     mutex.withLock { if (inFlight === pending) inFlight = null }
 }
 ```
@@ -196,7 +198,11 @@ private suspend fun forget(pending: CompletableDeferred<ModuleInstallOutcome>) {
 `startInstall`은 정지 함수가 아니다. 리스너를 등록하고 설치를 요청하고 `Deferred`를 돌려주기만
 한다. 완료는 리스너 콜백이 `complete`로 채운다. 그래서 이 클래스에 스코프가 필요 없다.
 
-⚠️ **끝난 대기를 걷는 일은 콜백이 아니라 `ensureInstalled`가 한다.** 콜백은 정지 함수가 아니라
+⚠️ **`Deferred`가 나르는 것은 최종 결과가 아니라 게이트웨이의 신호다.** 완료 신호를 받은 뒤
+가용 여부를 다시 확인하는 일이 정지 함수라 콜백 안에서 못 하기 때문이다. 판정은 신호를 받아 든
+`ensureInstalled`가 한다.
+
+⚠️ **끝난 대기를 걷는 일도 콜백이 아니라 `ensureInstalled`가 한다.** 콜백은 정지 함수가 아니라
 `Mutex`를 잡을 수 없고, 이 클래스는 스코프를 안 들기로 했으니 콜백에서 코루틴을 띄울 수도 없다.
 그래서 다음 호출자가 락 안에서 `isCompleted`를 보고 걷는다. 콜백이 하는 일은 `complete` 하나다.
 같은 신호가 두 번 와도 두 번째 `complete`는 `false`를 돌려줄 뿐 던지지 않는다.
@@ -220,13 +226,16 @@ private suspend fun forget(pending: CompletableDeferred<ModuleInstallOutcome>) {
 |---|---|
 | `isAvailable()` 이 true | `Ready` — 설치를 요청하지 않는다 |
 | 설치 응답의 `areModulesAlreadyInstalled` 가 true | `Ready` |
-| `STATE_COMPLETED` | 가용 여부를 한 번 더 확인한 뒤 `Ready` |
+| `STATE_COMPLETED` | 가용 여부를 다시 확인해 true 면 `Ready` |
+| `STATE_COMPLETED` 인데 재확인이 false | `Failed(STATE_COMPLETED, 0)` — 아래 방어 참고 |
 | `STATE_FAILED` · `STATE_CANCELED` | `Failed(installState, errorCode)` |
 | 설치 요청 Task 자체가 실패 | `Failed(statusCode)` |
 | 상한 초과 | `TimedOut` |
 
 `STATE_COMPLETED`에서 가용 여부를 다시 확인하는 것은 방어다. ML Kit 이슈 829가 "모듈은 있는데
-ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적이 없으므로 단정하지 않는다.
+ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적이 없으므로 단정하지 않는다. 그 상태를
+만나면 성공으로 접지 않고 `Failed`로 떨어뜨린다 — **성공으로 접으면 곧바로 `process`가 "다운로드를
+기다리는 중" 예외로 죽고, 로그에는 설치가 성공했다고 남아 원인이 가려진다.**
 
 `STATE_UNKNOWN`(0)·`STATE_DOWNLOAD_PAUSED`(7)는 종료가 아니면서 오래 머무를 수 있다. 그 둘을
 흡수하는 장치가 상한뿐이다.
