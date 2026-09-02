@@ -6097,4 +6097,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   무엇을 구현해야 하는지만 추적한다. 정해지면 스펙을 `specs/`에 세우고
   [api/notification.md](../api/notification.md) 미결 절을 지운다.
 
-<!-- oq-next: 344 -->
+### [2026-09-02] 세그멘테이션 모듈을 끝내 못 받는 기기에서 사진 편집을 어떻게 할지 없다
+
+- **ID**: OQ-P-344
+- **출처**: [segmentation-module-install.md](../specs/2026-09-02-segmentation-module-install.md)
+  「왜 지금인가 — 원인 ②」 × [ADR-0012 실측 정정](../adr/0012-mlkit-subject-segmentation.md) —
+  실기기(Galaxy Z Flip 3, SM-F711N)에서 GMS가 `STATE_FAILED` / `CommonStatusCodes.INTERNAL_ERROR`로
+  optional module 설치를 못 잇는다. 재부팅해도 같고, `MODULE_NOT_FOUND`도 `INSUFFICIENT_STORAGE`도
+  아니며 Play 응답은 정상(`moduleDelivery` rc=200)이다.
+- **항목**: ① 모듈을 못 받는 기기에서 토핑 만들기를 아예 막을지, 누끼 없이 원본으로 진행하게 할지,
+  수동 편집(C-104)으로 우회하게 할지 — **정책 결정이 필요하다.** ② 실패가 얼마나 흔한지 모른다.
+  실기기 한 대의 관찰이고 모수가 없다. ③ 프로덕션에서 이 실패를 셀 수단이 없다.
+- **상태**: 미해결 (**앱이 못 고치는 원인** — 스펙은 정확한 인지·안내까지만 다룬다)
+- **해소 메모**: ②가 먼저다. 실패 코드가 로그에만 남으면 빈도를 못 세므로, 원격 로깅에 실을지를
+  정하는 것이 ①의 전제다. ①은 위키 정책 소관과 갈리는 자리다 —
+  기능정의서에 "누끼 실패 시 무엇을 보여주는가"가 없다.
+
+<!-- oq-next: 345 -->
