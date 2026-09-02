@@ -7,7 +7,7 @@
 | 구분 | repo | 용도 |
 |------|------|------|
 | AI 스킬·위키 (여기) | `citytexi/team-yg-pesonal-agent` (public) | 위키(`wiki/`)·원본(`raw/`)·AI 스킬·작업 지시 문서 |
-| 코드 프로젝트 | `mash-up-kr/TJYG-Android` | 실제 Android 앱 코드 (Kotlin 멀티모듈) |
+| 코드 프로젝트 | `mash-up-kr/TEAMYG-Android` | 실제 Android 앱 코드 (Kotlin 멀티모듈). 저장소 이름이 `TJYG-Android`에서 바뀌었고, 로컬 디렉토리명과 문서상 통칭은 `TJYG-Android`를 유지한다 |
 
 로컬 **절대경로는 개인정보(username 포함)라 public에 두지 않는다.**
 실제 경로는 private submodule의 `wiki/personal-private/project-paths.md` 참고.
@@ -18,7 +18,7 @@
 
 - **코드 작업 대상은 항상 `TJYG-Android`** (로컬 절대경로는 위 private 파일 참고).
   여기(AI repo)에서 지시를 받아 그 프로젝트를 작업한다.
-- `TJYG-Android`는 자체 `CLAUDE.md`를 가진 별도 git repo(remote: `git@github.com:mash-up-kr/TJYG-Android.git`)다.
+- `TJYG-Android`는 자체 `CLAUDE.md`를 가진 별도 git repo(remote: `git@github.com:mash-up-kr/TEAMYG-Android.git`)다.
   그 repo 규칙은 해당 디렉토리에서 파일을 열면 자동 로드된다.
 - 이 AI repo의 git 워크플로(브랜치→PR→머지, `main` 직접 커밋 금지)는
   [../CLAUDE.md](../CLAUDE.md) 참고. 코드 repo에는 코드 repo 자체 규칙을 따른다.
