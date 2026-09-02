@@ -6,7 +6,12 @@ category: behavior-spec
 platforms: android
 verified: 2026-09-02
 related_code:
-  - ImageSegmentationRepositoryImpl.kt#ensureModuleInstalled
+  - SegmentationModuleInstaller.kt#ensureInstalled
+  - ModuleInstallGateway.kt
+  - PlayServicesModuleInstallGateway.kt
+  - ModuleInstallModule.kt
+  - PrepareSegmentationModuleUseCase.kt
+  - PictureConfirmViewModel.kt
   - ImageSegmentationRepositoryImpl.kt#runSegmenter
   - ImageSegmentationRepositoryImpl.kt#toSegmentationException
   - SegmentationException.kt#ModuleNotReady
@@ -337,11 +342,20 @@ ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적
 
 ## 파일 구성
 
+> 📌 **as-built(2026-09-02)** — 구현 뒤 패키지를 정리해 아래 경로가 초안과 다르다. 모듈 설치 3종은
+> `data/installer/image/`에, 세그멘테이션 순수 커널은 `data/util/image/`에 있다. 둘 다
+> `data/repository/image/`에 있었는데 **아무 리포지토리도 구현하지 않아** 옮겼다. 커널은 플랫폼
+> import가 0개인 배열 연산이고(ADR-0012가 "모델을 갈아도 남는 순수 커널"이라 부른다), 설치 3종은
+> 상태와 수명을 가진 협력자와 GMS 경계다. `source/`에 넣지 않은 이유는 이 저장소에서 `source`가
+> 로컬·원격 데이터 접근과 매퍼 쌍을 뜻하기 때문이다.
+
 | 파일 | 변경 |
 |---|---|
-| `SegmentationModuleInstaller.kt` | 신설 — 공유 대기·종료 판정 |
-| `ModuleInstallGateway.kt` | 신설 — GMS 이음매와 그 구현 |
-| `RepositoryModule.kt` 또는 신설 모듈 | 게이트웨이 구현 Hilt 결선 |
+| `installer/image/SegmentationModuleInstaller.kt` | 신설 — 공유 대기·종료 판정 |
+| `installer/image/ModuleInstallGateway.kt` | 신설 — GMS 이음매 |
+| `installer/image/ModuleInstallSignal.kt` · `ModuleInstallOutcome.kt` | 신설 — 게이트웨이가 흘리는 신호와 설치기가 돌려주는 결과. 둘은 `Failed` 모양이 같아 파일을 갈랐다 |
+| `installer/image/PlayServicesModuleInstallGateway.kt` | 신설 — GMS 구현 |
+| `di/ModuleInstallModule.kt` | 신설 — 게이트웨이 결선. `RepositoryModule`에 두지 않는다(리포지토리 결선이 아니다) |
 | `SegmentationViewModelTest.kt` | `isError` 단언 3건이 `errorKind`로 바뀐다 |
 | `SegmentationModuleInstallerTest.kt` | 신설 |
 | `ImageSegmentationRepositoryImpl.kt` | `ensureModuleInstalled` 제거, 설치기 주입, 준비 함수 추가 |
@@ -363,6 +377,9 @@ JVM 단위 테스트를 `runTest` 가상 시간으로 돌린다. 가짜 `ModuleI
 5. 상한을 넘기면 `TimedOut`이고 `inFlight`가 걷혀, 그 뒤 호출자는 **새 설치를 시작한다**.
 6. 종료 상태로 끝난 대기를 재사용하지 않는다 — `Failed` 뒤의 호출이 새 요청을 낸다. 재시도가
    실제로 뜻을 가지는지가 여기 걸려 있다.
+
+📌 **as-built** — 설치기 테스트는 7건이다. 스펙의 6건에 "완료 신호를 받았는데 재확인이 실패한다"가
+더해졌다. 그 분기를 실기기에서 재현할 수단이 없어 가짜 게이트웨이로만 잠근다.
 
 ViewModel은 둘을 본다. ① `errorKind` 매핑 — 모듈 실패가 `ModuleNotReady`로, 후보 0건이
 `SubjectNotFound`로 들어간다. ② `Retry` 인텐트가 진입과 같은 흐름을 다시 태우고, 연달아 눌러도
