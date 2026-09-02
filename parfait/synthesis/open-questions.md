@@ -1212,6 +1212,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **조회가 붙어도 ①은 그대로다(2026-08-15, PR #248)** — 진입 시 실제 조회가 도는데 **초기 로딩 상태
   > 필드가 없다**(`isRefreshing`은 당김 전용). 첫 조회 동안 화면은 빈 파르페를 그리다 목록으로 바뀐다.
   > 즉 "자체 로딩 그래픽"을 붙일 자리조차 아직 없다.
+  > 📌 **①의 전제가 미머지 브랜치에서 깨졌다(2026-09-02)** — `feature/image-loading-placeholder`가
+  > 초기 로딩과 이미지 로딩을 `YGScaffoldV2`의 덮개 하나로 잇는다. 붙일 자리가 생겼다는 뜻이지
+  > 위키가 말한 "자체 로딩 그래픽"이 붙었다는 뜻은 아니다 — 붙은 것은 공통 로딩 로띠다.
+  > 머지 시 OQ-P-346과 함께 본다.
 - **해소 메모**: 확정 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) 정책 대조 표의 로딩 행을 갱신하고, 문구 정책이 수집되면 위키 쪽 미결과 함께 닫는다.
 
 ### [2026-08-11] CI 빌드 성능 후속 2축 — `org.gradle.parallel` 재도입과 configuration cache
@@ -6136,4 +6140,27 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   실기기 로그로 확인하는 절차를 회귀 점검에 넣는 것이 최소한이다. ML Kit 버전을 올릴 때 이 값을
   같이 확인한다.
 
-<!-- oq-next: 346 -->
+### [2026-09-02] 원격 이미지 묶음 노출 — 미머지 브랜치가 로딩 표현을 바꾼다
+
+- **ID**: OQ-P-346
+- **출처**: TJYG-Android 미머지 브랜치 `feature/image-loading-placeholder`(develop 기준선 위) —
+  원격 이미지가 로딩 중 아무것도 그리지 않다가 성공하는 순간 불투명으로 튀던 것을 고치면서,
+  캔버스 토핑과 G-001 그룹 목록을 각각 **한 묶음으로 모아 한 번에 드러내는** 규칙이 생겼다.
+  `core:ui`에 `reveal/` 패키지(`rememberBatchReveal`·`rememberStaggeredReveal`과 그 순수 함수)가
+  신설되고 두 화면이 그것을 공유한다. `core:designsystem`에는 `YGSkeleton`이 신설되고,
+  `YGToppingGroup`이 `onImageSettled`를, `CanvasToppingLayer`가 `revealTogether`·`revealResetKey`를
+  받는다. 전역 `ImageLoader`(`newParfaitImageLoader`)를 두 `Application`이 `SingletonImageLoader.Factory`로
+  물어 주고 크로스페이드를 켠다.
+- **항목**: 머지되면 delta 감사에서 갱신할 것 — ① [design-system](../architecture/design-system.md)
+  컴포넌트 인벤토리에 `YGSkeleton` 등록, `YGCanvas` 배경이 로딩 상태를 밖으로 들어 올려
+  스켈레톤을 캡처 대상 밖에 그리는 것과 `YGToppingGroup`의 결말 콜백 반영.
+  ② [module-structure](../architecture/module-structure.md)에 `core:ui` `reveal/` 추가.
+  ③ ADR을 쓰지 않기로 했으므로 이 결정의 근거는 커밋 메시지와 `reveal/`의 순수 함수 KDoc에만
+  있다 — 인벤토리에서 그 자리를 가리킬지 정한다.
+- **상태**: 미해결 (**브랜치 머지 대기** — 머지 전에는 문서를 고치지 않는다,
+  [2026-07-13] 항목이 정한 규율)
+- **해소 메모**: 이 브랜치는 아래 두 미결의 전제를 건드린다 — OQ-P-113(초기 로딩 상태가 코드에
+  없다)과 위키 [[open-questions]]의 "G-001 초기 로딩이 어느 에셋을 쓰는지". 머지 시 그 둘을
+  함께 본다.
+
+<!-- oq-next: 347 -->
