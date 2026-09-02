@@ -150,3 +150,47 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 질문의 답이 '아니다'로 확정**됐다는 사실은 기록해 둔다. 후처리의 임계·반경·정칙화 값은 아직
 실기기 사진 세트가 판정하지 않았다([open-questions](../synthesis/open-questions.md) OQ-P-287~300)
 → [data-layer](../architecture/data-layer.md).
+
+## 실측 정정 (2026-09-02, Galaxy Z Flip 3)
+
+위 「As-built 갱신 (2026-08-14)」 표의 **"사용 직전에 `areModulesAvailable` → 없으면 `installModules`
+→ 재확인한다"가 성립하지 않는다.** 그 재확인은 설치 완료를 못 본다.
+
+`installModules`가 돌려주는 Task는 **요청 접수**에서 완료된다. Play 서비스 모듈 설치 가이드가
+"The install request has been sent successfully. This does not mean the installation is completed."
+라고 명시하고, 설치의 진행과 종료는 `InstallStatusListener`로만 통지된다. 실기기에서 Task가
+37ms 만에 성공으로 반환되고 25ms 뒤 리스너가 `STATE_FAILED`를 알리는 것을 확인했다.
+
+따라서 **모듈이 없는 기기의 첫 사용자는 예외 없이 실패한다.** A35에서 안 드러난 것은 그 기기에
+모듈이 이미 있어 첫 확인에서 통과했기 때문이다.
+
+이 결정 자체는 유지된다 — 온디바이스 ML Kit Subject Segmentation은 그대로다. 바뀌는 것은 **모듈
+준비를 누가 어떻게 기다리는가**이고, 대기·실패 판정·사전 설치 설계는
+[segmentation-module-install 스펙](../specs/2026-09-02-segmentation-module-install.md)이 정본이다.
+
+⚠️ **기기에 따라 이 모듈을 끝내 못 받는다.** 같은 기기에서 GMS가 `STATE_FAILED` /
+`CommonStatusCodes.INTERNAL_ERROR`로 설치를 못 잇고, 재부팅해도 같다. `MODULE_NOT_FOUND`도
+`INSUFFICIENT_STORAGE`도 아니고 Play 응답은 정상이라 앱이 고칠 수 있는 범위 밖이다. "온디바이스
+모델을 Play 서비스가 내려준다"는 이 결정의 전제에 **배달 실패라는 잔여 위험**이 있다는 뜻이고,
+그런 기기의 대체 경로는 열려 있다([open-questions](../synthesis/open-questions.md)).
+
+### 후속 정정 (2026-09-02 오후, 같은 기기)
+
+위 절의 두 서술을 실측이 뒤집었다.
+
+⚠️ **"끝내 못 받는다"는 확정이 아니다.** 같은 기기에 **모듈이 몇 시간 뒤 도착했다**(`DynamiteModule`
+원격 버전 `263234001`). 오전의 `INTERNAL_ERROR` 반복은 영구 실패가 아니라 아주 늦은 배달이었을 수
+있다. 배달 실패라는 잔여 위험은 남지만 그 성격이 "불가"에서 "지연"으로 약해진다
+([open-questions](../synthesis/open-questions.md) OQ-P-344).
+
+⚠️ **`splits` 목록으로 모듈 유무를 판정하지 말 것.** optional module은 APK split이 아니라 Chimera
+dynamite 모듈로 배달된다. 모듈이 도착해 실제로 동작하는 시점에도 GMS 패키지의 `splits` 목록에는
+그 이름이 없었다.
+
+그리고 이 결정이 지금까지 적지 않았던 제약 하나가 드러났다. **`SubjectSegmentation.getClient()`는
+그 자체로 네이티브 그래프와 EGL 컨텍스트를 띄운다.** 그래서 세그멘터를 "모듈이 있는지 묻는
+용도"로 하나 더 여는 것이 안전하지 않다 — 판정용 그래프와 실제 세그멘테이션용 그래프가 겹쳐
+`SIGBUS`(`drishti` 스레드)로 죽는 것을 실기기에서 확인했다. 이 ADR이 이미 적어 둔 "옵션 조합으로
+`SIGSEGV`" 기록과 같은 계열이고, **세그멘터 인스턴스의 동시 존재가 위험하다**는 것이 그 둘을
+관통하는 사실이다. 모듈 판정은 `Feature`만 든 `OptionalModuleApi`로 한다
+→ [segmentation-module-install 스펙](../specs/2026-09-02-segmentation-module-install.md).

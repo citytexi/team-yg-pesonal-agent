@@ -88,6 +88,7 @@ tags: [architecture, parfait]
 | 모듈 | 제공/바인딩 |
 |------|-------------|
 | `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)·**imageFile**(#329)) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
+| `ModuleInstallModule` | `ModuleInstallGateway` ↔ `PlayServicesModuleInstallGateway` `@Binds @Singleton`(2026-09-02). 리포지토리 결선이 아니라 `RepositoryModule`에 두지 않았다 — `di/`의 역할당 파일 1개 규약을 따른 것이다 |
 | `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)·`ImageFileLocalDataSource` ↔ `ImageFileLocalDataSourceImpl`(#329)·**`CanvasLocalDataSource` ↔ `CanvasLocalDataSourceImpl`**(#404)) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
@@ -629,6 +630,15 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   `:data` 안에서 닫히는 변환이라 feature 쪽 복제를 묶어 두는 모듈 가시성 문제가 여기엔 없다
   ([module-structure](module-structure.md)). 도메인 하나만 쓰는 변환은 그대로 `source.<도메인>.mapper`에
   둔다. 플랫폼 헬퍼(`FileProvider`·로거 따위)는 `data/utils` 소관이라 여기 오지 않는다.
+
+  ⚠️ **`repository/`에는 리포지토리 구현만 둔다**(2026-09-02). 그 전까지 `repository/image/`에
+  리포지토리가 아닌 것 열이 섞여 있었고 둘로 갈라 내보냈다 — 플랫폼 import가 0개인 순수 커널
+  일곱은 `util/image/`로(ADR-0012가 "모델을 갈아도 남는 순수 커널"이라 부르는 것들), 상태와
+  수명을 가진 협력자와 GMS 경계 셋은 `installer/image/`로 갔다. 후자를 `source/`에 넣지 않은
+  것은 이 문서가 정의하는 `source`가 로컬·원격 데이터 접근과 매퍼 쌍이기 때문이다
+  → [segmentation-module-install 스펙](../specs/2026-09-02-segmentation-module-install.md).
+  ⚠️ **`data/util`과 `data/utils`가 둘 다 있다** — 이 라운드가 전자에 파일 일곱을 더해 무게가
+  기울었지만 합치지는 않았다.
 
   **매퍼는 단독 테스트하지 않는다(2026-08-11 규약).** 매퍼의 유일한 호출자가 DataSource라
   `XxxRemoteDataSourceImplTest`가 이미 매퍼를 통과시킨다 — 별도 `XxxVOMapperTest`는 같은 것을 두 번

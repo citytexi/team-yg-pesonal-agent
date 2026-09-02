@@ -6097,4 +6097,43 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   무엇을 구현해야 하는지만 추적한다. 정해지면 스펙을 `specs/`에 세우고
   [api/notification.md](../api/notification.md) 미결 절을 지운다.
 
-<!-- oq-next: 344 -->
+### [2026-09-02] 세그멘테이션 모듈을 끝내 못 받는 기기에서 사진 편집을 어떻게 할지 없다
+
+- **ID**: OQ-P-344
+- **출처**: [segmentation-module-install.md](../specs/2026-09-02-segmentation-module-install.md)
+  「왜 지금인가 — 원인 ②」 × [ADR-0012 실측 정정](../adr/0012-mlkit-subject-segmentation.md) —
+  실기기(Galaxy Z Flip 3, SM-F711N)에서 GMS가 `STATE_FAILED` / `CommonStatusCodes.INTERNAL_ERROR`로
+  optional module 설치를 못 잇는다. 재부팅해도 같고, `MODULE_NOT_FOUND`도 `INSUFFICIENT_STORAGE`도
+  아니며 Play 응답은 정상(`moduleDelivery` rc=200)이다.
+- **항목**: ① 모듈을 못 받는 기기에서 토핑 만들기를 아예 막을지, 누끼 없이 원본으로 진행하게 할지,
+  수동 편집(C-104)으로 우회하게 할지 — **정책 결정이 필요하다.** ② 실패가 얼마나 흔한지 모른다.
+  실기기 한 대의 관찰이고 모수가 없다. ③ 프로덕션에서 이 실패를 셀 수단이 없다.
+- **상태**: 미해결, **전제 축소**(같은 날 후속 관측) — 그 기기에 **모듈이 결국 도착했다.**
+  오전 내내 `INTERNAL_ERROR`로 실패하던 설치가 몇 시간 뒤 성공했고 세그멘테이션이 정상 동작했다.
+  "끝내 못 받는 기기"가 아니라 **아주 늦게 받는 기기**였을 수 있다. ①의 무게는 그만큼 줄었고,
+  ②(빈도를 셀 수단이 없다)가 남는 본체다.
+- **해소 메모**: ②가 먼저다. 실패 코드가 로그에만 남으면 빈도를 못 세므로, 원격 로깅에 실을지를
+  정하는 것이 ①의 전제다. ①은 위키 정책 소관과 갈리는 자리다 —
+  기능정의서에 "누끼 실패 시 무엇을 보여주는가"가 없다.
+  ⚠️ **판정 수단 주의**: optional module은 APK split이 아니라 Chimera dynamite 모듈로 배달된다.
+  GMS 패키지의 `splits` 목록에 없어도 깔려 있을 수 있다 — `DynamiteModule` 로그와
+  `areModulesAvailable`만 믿는다.
+
+### [2026-09-02] 모듈 판정용 feature 이름이 ML Kit 내부 값이라 바뀌면 조용히 깨진다
+
+- **ID**: OQ-P-345
+- **출처**: [segmentation-module-install.md](../specs/2026-09-02-segmentation-module-install.md)
+  「API / 인터페이스」 — 판정에 `SubjectSegmenter`를 쓰면 네이티브 그래프가 하나 더 떠서 실제
+  세그멘테이션과 겹쳐 SIGBUS로 죽는 것을 실기기(Galaxy Z Flip 3)에서 확인했다. 그래서 `Feature`
+  하나만 든 `OptionalModuleApi`로 바꿨고, 이름 `mlkit.segmentation.subject`와 버전 `1`은 같은
+  기기의 `ChimeraConfigurator` 로그에서 읽은 값이다.
+- **항목**: ① ML Kit이 그 이름·버전을 바꾸면 `areModulesAvailable`이 늘 false를 돌려주고, 앱은
+  설치 요청만 반복하다 실패 화면을 띄운다 — **크래시가 아니라 조용한 기능 정지**라 알아채기 어렵다.
+  ② 회귀를 잡을 수단이 없다. JVM 테스트는 가짜 게이트웨이를 쓰므로 이 값이 틀려도 통과한다.
+  ③ ML Kit이 공개 상수를 제공하는지 확인하지 못했다(`OptionalModuleUtils`는 내부 SDK 클래스다).
+- **상태**: 미해결 (**동작 중** — 현재 값으로 실기기에서 정상 동작 확인)
+- **해소 메모**: ②를 먼저 좁히는 편이 싸다. 모듈이 없는 기기에서 설치 요청이 실제로 나가는지를
+  실기기 로그로 확인하는 절차를 회귀 점검에 넣는 것이 최소한이다. ML Kit 버전을 올릴 때 이 값을
+  같이 확인한다.
+
+<!-- oq-next: 346 -->
