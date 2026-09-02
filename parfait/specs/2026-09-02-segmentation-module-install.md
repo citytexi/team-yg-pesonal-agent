@@ -81,10 +81,9 @@ D/Volley  https://play-fe.googleapis.com/fdfe/moduleDelivery [rc=200], [size=120
   - 모듈 준비를 카메라 화면 진입 시점에 **미리** 건다.
   - 진행 중인 설치를 여러 호출자가 공유한다(요청 중복 제거).
   - 실패 원인을 화면 문구로 가른다 — 대상 못 찾음과 모듈 준비 실패는 다른 문구를 쓴다.
+  - **실패 화면에 재시도 버튼을 임시로 둔다**(아래 「재시도」). ⚠️ 디자인 검토 대기 시안이다.
   - 설치 상태·실패 코드 로그를 최종 코드에 남긴다.
 - **제외**
-  - **실패 화면의 재시도 버튼** — 디자인에 없다. 기존 미결 OQ-P-153 ④를 그대로 둔다.
-    재촬영 동선이 재시도를 대신한다(아래 「재시도 동선」).
   - **다운로드 진행률 표시** — 기존 로딩 오버레이를 그대로 쓴다.
   - **실패 코드별 문구 분기** — 문구는 모듈 실패 한 벌이다.
   - **앱 시작 시 `deferredInstall`** — 설치 경로를 둘로 늘리지 않는다.
@@ -218,18 +217,36 @@ ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적
 <!-- 신설: ModuleNotReady -->
 <string name="segmentation_module_error_title">사진 편집 기능을 준비하지 못했어요</string>
 <string name="segmentation_module_error_description">네트워크 상태를 확인하고 잠시 후 다시 시도해 주세요</string>
+
+<!-- 신설: 두 실패가 함께 쓰는 버튼 -->
+<string name="segmentation_error_retry">다시 시도</string>
 ```
 
 `SegmentationViewModel`이 실패 원인을 로그 없이 삼키던 것도 함께 고친다.
 
-### 재시도 동선
+### 재시도
 
-버튼을 만들지 않는다. 닫기로 캔버스에 돌아가 카메라로 다시 들어가면 **카메라 진입에서 설치를
-다시 건다.** 사전 설치를 카메라 진입에 걸었기 때문에 재촬영 동선이 그대로 재시도 경로가 된다.
+⚠️ **이 버튼은 디자인 검토를 받으려고 먼저 놓는 시안이다.**
+[c103-multi-subject-selection](archive/2026-08-23-c103-multi-subject-selection.md)이 실패 화면의
+재시도 버튼을 "디자인에 없다"는 이유로 제외했고 OQ-P-153 ④가 그것을 추적 중이다. 검토 결과에
+따라 모양도 자리도 바뀔 수 있다. **새 컴포넌트를 만들지 않고 디자인 시스템의 `YGButton`을 그대로
+놓는 것**이 그래서다 — 버릴 때 버리기 쉽고, 검토가 볼 것은 컴포넌트가 아니라 배치다.
 
-이건 정공법이 아니라 디자인이 없는 동안의 차선이다. 실패 화면의 재시도 버튼은
-[c103-multi-subject-selection](archive/2026-08-23-c103-multi-subject-selection.md)이 "디자인에
-없다"는 이유로 제외했고 OQ-P-153 ④가 추적 중이다.
+버튼은 **두 실패 모두에** 둔다. 문구는 실패마다 다르지만 버튼은 하나다.
+
+누르면 `SegmentationIntent.Retry`가 **화면 진입과 같은 절차를 처음부터 다시 태운다.** 지금
+`SegmentationViewModel`의 `init` 블록에 있는 흐름을 이름 있는 함수로 빼고 진입과 재시도가 함께
+쓴다. 디코드를 다시 하는 비용이 들지만, 중간 상태를 따로 들고 있다가 재사용하는 것보다 경로가
+하나로 유지된다.
+
+중복 실행은 `BaseViewModel`의 키 기반 `launch`로 막는다 — 후보 선택이 `SELECT_CANDIDATE_KEY`로
+이미 쓰는 방식이다.
+
+모듈 실패에서 이 버튼이 실제로 뜻을 가지는 이유는 「공유 대기」 절에 있다. 종료 상태에 도달한
+설치는 `inFlight`를 비우므로 재시도가 **새 설치 요청을 낸다.**
+
+닫기로 캔버스에 돌아가 카메라로 다시 들어가는 기존 동선도 재시도로 작동한다. 사전 설치를 카메라
+진입에 걸었기 때문이다. 버튼이 걷히더라도 이 경로는 남는다.
 
 ## 파일 구성
 
@@ -241,9 +258,9 @@ ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적
 | `ImageSegmentationRepository.kt` | 준비 함수 선언 추가 |
 | `PrepareSegmentationModuleUseCase.kt` | 신설 |
 | 카메라 ViewModel | 진입 시 준비 호출 |
-| `SegmentationViewModel.kt` | `isError` → `errorKind`, 실패 원인 로깅 |
-| `SegmentationRoute.kt` · `SegmentationErrorScreen.kt` | 문구를 파라미터로 받는다 |
-| `strings.xml` | 모듈 실패 문구 2개 추가 |
+| `SegmentationViewModel.kt` | `isError` → `errorKind`, 실패 원인 로깅, 진입 흐름 함수 추출 + `Retry` 인텐트 |
+| `SegmentationRoute.kt` · `SegmentationErrorScreen.kt` | 문구·재시도 콜백을 파라미터로 받고 `YGButton`을 놓는다 |
+| `strings.xml` | 모듈 실패 문구 2개 + 재시도 버튼 라벨 추가 |
 
 ## 테스트
 
@@ -255,7 +272,9 @@ JVM 단위 테스트를 `runTest` 가상 시간으로 돌린다. 가짜 `ModuleI
 4. `STATE_FAILED`가 실패 코드를 실어 나온다.
 5. 상한을 넘기면 `TimedOut`이고, 그 뒤 호출자는 여전히 같은 대기에 붙는다.
 
-ViewModel은 `errorKind` 매핑만 본다.
+ViewModel은 둘을 본다. ① `errorKind` 매핑 — 모듈 실패가 `ModuleNotReady`로, 후보 0건이
+`SubjectNotFound`로 들어간다. ② `Retry` 인텐트가 진입과 같은 흐름을 다시 태우고, 연달아 눌러도
+한 번만 돈다.
 
 **테스트하지 않는 것**: 실제 GMS 설치는 단위 테스트로 재현할 수 없다. 실기기와 logcat이
 유일한 확인 수단이라, **진단 로그를 최종 코드에 남긴다**(진단용 30초 폴링만 걷어낸다).
