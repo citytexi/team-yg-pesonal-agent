@@ -122,22 +122,51 @@ internal interface ModuleInstallGateway {
 internal sealed interface ModuleInstallSignal {
     data object AlreadyInstalled : ModuleInstallSignal
     data object Completed : ModuleInstallSignal
-    data class Failed(val errorCode: Int) : ModuleInstallSignal
+    /** [installState] 를 함께 싣는다 — 취소는 `errorCode` 가 0 이라 코드만으로는 실패와 안 갈린다 */
+    data class Failed(val installState: Int, val errorCode: Int) : ModuleInstallSignal
 }
 ```
 
+**두 함수에 인자가 없는 이유**는 게이트웨이가 `OptionalModuleApi`를 스스로 만들기 때문이다. GMS의
+`areModulesAvailable`·`ModuleInstallRequest.Builder.addApi`가 그 타입을 요구하는데, `SubjectSegmenter`
+구현의 `getOptionalFeatures()`는 **옵션과 무관하게 `FEATURE_SUBJECT_SEGMENTATION` 하나만** 돌려준다.
+그래서 게이트웨이가 기본 옵션으로 만든 세그멘터를 써도 모듈 판정이 같다. 지금 코드가 `process`에
+쓸 세그멘터를 그대로 넘겨쓰느라 생긴 결합을 여기서 끊는다.
+
+⚠️ **그 세그멘터는 `Closeable`이다.** 게이트웨이가 만든 것은 게이트웨이가 닫는다 — 모듈 판정에만
+쓰고 `process`에 넘기지 않으므로 요청 직후 닫아도 된다.
+
+`onSignal` 콜백은 **정지 함수가 아니다.** GMS 리스너가 자기 Executor 스레드에서 부른다. 게이트웨이는
+종료 신호를 흘린 직후 `unregisterListener`로 리스너를 걷는다. 상한 초과로 호출자가 떠나도 리스너는
+남아 있다가 종료 신호에서 스스로 걷힌다.
+
 GMS 구현이 `ModuleInstall.getClient`·`areModulesAvailable`·`installModules`·
 `InstallStatusListener`·`unregisterListener`를 전부 감춘다.
+
+⚠️ **가시성**: `ImageSegmentationRepositoryImpl`은 public 클래스이고 생성자도 public이라, `internal`
+타입을 주입 파라미터로 받으면 `EXPOSED_PARAMETER_TYPE`으로 컴파일이 깨진다. 설치기와 게이트웨이를
+public으로 두거나 리포지토리 impl을 `internal`로 내린다. 후자가 낫다 — `RepositoryModule`이 같은
+모듈이라 결선이 안 깨지고, `:data` 밖에서 impl 타입을 부르는 곳이 없다.
 
 ### domain — `PrepareSegmentationModuleUseCase`
 
 카메라 화면이 데이터 계층을 직접 부르지 않게 하는 통로다. 결과를 쓰지 않고 준비만 시킨다.
 `ImageSegmentationRepository`에 대응 함수를 하나 추가한다.
 
-### feature/camera
+### feature/camera — 사진 확인 화면
 
-카메라 ViewModel이 `viewModelScope.launch { prepareSegmentationModule() }`로 건다.
-UI 이벤트를 정지 함수로 옮기는 상태 보유자 경계라 허용되는 모양이다.
+`PictureConfirmRoute`가 `viewModelScope.launch { prepareSegmentationModule() }`로 건다. UI 진입을
+정지 함수로 옮기는 상태 보유자 경계라 허용되는 모양이다.
+
+⚠️ **카메라 화면이 아니라 사진 확인 화면인 이유**는 진입 경로가 둘이기 때문이다. 세그멘테이션으로
+가는 길은 `PictureConfirmRoute` 하나인데, 거기 도달하는 길은 `CustomCameraRoute`와
+`CustomGalleryPickerRoute` 둘이다. 카메라에만 걸면 **갤러리로 사진을 고른 사용자는 사전 설치를 한
+번도 안 탄다.** 확인 화면은 두 경로의 유일한 합류점이고 사용자가 사진을 확인하는 체류 시간도 있다.
+
+`returnResultOnly = true`(배경 편집에서 온 경로)는 세그멘테이션으로 가지 않으므로 걸지 않는다.
+
+⚠️ `PictureConfirmRoute`는 지금 ViewModel이 없는 스테이트리스 컴포저블이다. 이 훅을 위해 상태
+보유자를 하나 만든다 — 상태는 없고 진입 시 준비만 거는 최소 형태다.
 
 ## 동작 / 상태
 
@@ -150,21 +179,33 @@ private var inFlight: CompletableDeferred<ModuleInstallOutcome>? = null
 suspend fun ensureInstalled(): ModuleInstallOutcome {
     if (gateway.isAvailable()) return ModuleInstallOutcome.Ready
 
-    val pending = mutex.withLock { inFlight ?: startInstall().also { inFlight = it } }
+    val pending = mutex.withLock {
+        // 끝난 대기는 재사용하지 않는다 — 이 자리가 없으면 한 번 실패한 뒤 영영 그 실패만 돌려준다
+        inFlight?.takeIf { !it.isCompleted } ?: startInstall().also { inFlight = it }
+    }
 
     return withTimeoutOrNull(INSTALL_TIMEOUT) { pending.await() }
         ?: ModuleInstallOutcome.TimedOut.also { forget(pending) }
 }
+
+private suspend fun forget(pending: CompletableDeferred<ModuleInstallOutcome>) {
+    mutex.withLock { if (inFlight === pending) inFlight = null }
+}
 ```
 
 `startInstall`은 정지 함수가 아니다. 리스너를 등록하고 설치를 요청하고 `Deferred`를 돌려주기만
-한다. 완료는 리스너 콜백이 채운다. 그래서 이 클래스에 스코프가 필요 없다.
+한다. 완료는 리스너 콜백이 `complete`로 채운다. 그래서 이 클래스에 스코프가 필요 없다.
+
+⚠️ **끝난 대기를 걷는 일은 콜백이 아니라 `ensureInstalled`가 한다.** 콜백은 정지 함수가 아니라
+`Mutex`를 잡을 수 없고, 이 클래스는 스코프를 안 들기로 했으니 콜백에서 코루틴을 띄울 수도 없다.
+그래서 다음 호출자가 락 안에서 `isCompleted`를 보고 걷는다. 콜백이 하는 일은 `complete` 하나다.
+같은 신호가 두 번 와도 두 번째 `complete`는 `false`를 돌려줄 뿐 던지지 않는다.
 
 ⚠️ **`CompletableDeferred`가 호출자 코루틴에 매달리지 않는 것이 이 구조의 핵심이다.** 카메라
 화면을 벗어나 `viewModelScope`가 취소되면 카메라의 `await`만 끊기고 설치는 계속 간다. 이어서
 편집 화면이 `ensureInstalled()`를 부르면 같은 `Deferred`에 붙는다. 요청이 두 번 나가지 않는다.
 
-`inFlight`는 종료 상태에 도달했을 때 비우고, **상한 초과에서도 비운다**(`forget`). 후자는 방어다 —
+`inFlight`는 다음 호출자가 `isCompleted`로 걷고, **상한 초과에서도 비운다**(`forget`). 후자는 방어다 —
 리스너가 종료 신호를 끝내 주지 않으면 그 `Deferred`가 영영 안 채워지고, 이후 모든 호출자가 죽은
 대기에 붙어 프로세스가 사는 동안 재시도가 불가능해진다. 재촬영 동선이 재시도를 대신한다는 아래
 설계가 그 자리에서 무너진다. **중복 요청 한 번이 영구 정지보다 싸다** — 오늘 실측에서 같은 요청을
@@ -180,12 +221,15 @@ suspend fun ensureInstalled(): ModuleInstallOutcome {
 | `isAvailable()` 이 true | `Ready` — 설치를 요청하지 않는다 |
 | 설치 응답의 `areModulesAlreadyInstalled` 가 true | `Ready` |
 | `STATE_COMPLETED` | 가용 여부를 한 번 더 확인한 뒤 `Ready` |
-| `STATE_FAILED` · `STATE_CANCELED` | `Failed(errorCode)` |
+| `STATE_FAILED` · `STATE_CANCELED` | `Failed(installState, errorCode)` |
 | 설치 요청 Task 자체가 실패 | `Failed(statusCode)` |
 | 상한 초과 | `TimedOut` |
 
 `STATE_COMPLETED`에서 가용 여부를 다시 확인하는 것은 방어다. ML Kit 이슈 829가 "모듈은 있는데
 ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적이 없으므로 단정하지 않는다.
+
+`STATE_UNKNOWN`(0)·`STATE_DOWNLOAD_PAUSED`(7)는 종료가 아니면서 오래 머무를 수 있다. 그 둘을
+흡수하는 장치가 상한뿐이다.
 
 `INSTALL_TIMEOUT`은 **20초**다. 재부팅 뒤 실측에서 Play 왕복만 5.4초 걸렸고 여기에 실제 다운로드가
 얹힌다. 로딩 오버레이를 보는 사용자가 견딜 만하면서 정상 회선의 다운로드를 자르지 않는 값으로
@@ -233,14 +277,22 @@ ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적
 놓는 것**이 그래서다 — 버릴 때 버리기 쉽고, 검토가 볼 것은 컴포넌트가 아니라 배치다.
 
 버튼은 **두 실패 모두에** 둔다. 문구는 실패마다 다르지만 버튼은 하나다.
+`YGButton(text, buttonType = YGButtonType.Medium.Primary, isEnabled = true, onClick)`으로 놓는다.
+타입 선택에 근거가 있는 것은 아니다 — 검토가 판정할 대상이라 하나를 골라 둔 것이다.
 
 누르면 `SegmentationIntent.Retry`가 **화면 진입과 같은 절차를 처음부터 다시 태운다.** 지금
 `SegmentationViewModel`의 `init` 블록에 있는 흐름을 이름 있는 함수로 빼고 진입과 재시도가 함께
 쓴다. 디코드를 다시 하는 비용이 들지만, 중간 상태를 따로 들고 있다가 재사용하는 것보다 경로가
 하나로 유지된다.
 
+⚠️ **추출한 함수는 진입부에서 상태를 되돌려야 한다** — `isLoading = true`, `errorKind = null`,
+`candidates = emptyList()`. 지금 코드는 실패 플래그를 **켜기만 하고 끄는 곳이 한 군데도 없다**.
+그대로 추출하면 재시도가 성공해도 `errorKind`가 남아 Route의 분기가 계속 에러 화면을 고른다.
+
 중복 실행은 `BaseViewModel`의 키 기반 `launch`로 막는다 — 후보 선택이 `SELECT_CANDIDATE_KEY`로
-이미 쓰는 방식이다.
+이미 쓰는 방식이고, 진행 중이면 새 요청을 **버린다**(취소 후 재시작이 아니다). ⚠️ **진입도 같은
+키를 써야 한다.** 진입만 `viewModelScope.launch`로 두면 진입 흐름이 도는 중에 누른 재시도를
+막지 못한다.
 
 모듈 실패에서 이 버튼이 실제로 뜻을 가지는 이유는 「공유 대기」 절에 있다. 종료 상태에 도달한
 설치는 `inFlight`를 비우므로 재시도가 **새 설치 요청을 낸다.**
@@ -254,10 +306,13 @@ ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적
 |---|---|
 | `SegmentationModuleInstaller.kt` | 신설 — 공유 대기·종료 판정 |
 | `ModuleInstallGateway.kt` | 신설 — GMS 이음매와 그 구현 |
+| `RepositoryModule.kt` 또는 신설 모듈 | 게이트웨이 구현 Hilt 결선 |
+| `SegmentationViewModelTest.kt` | `isError` 단언 3건이 `errorKind`로 바뀐다 |
+| `SegmentationModuleInstallerTest.kt` | 신설 |
 | `ImageSegmentationRepositoryImpl.kt` | `ensureModuleInstalled` 제거, 설치기 주입, 준비 함수 추가 |
 | `ImageSegmentationRepository.kt` | 준비 함수 선언 추가 |
 | `PrepareSegmentationModuleUseCase.kt` | 신설 |
-| 카메라 ViewModel | 진입 시 준비 호출 |
+| `PictureConfirmRoute.kt` + 신설 ViewModel | 진입 시 준비 호출(`returnResultOnly`면 안 건다) |
 | `SegmentationViewModel.kt` | `isError` → `errorKind`, 실패 원인 로깅, 진입 흐름 함수 추출 + `Retry` 인텐트 |
 | `SegmentationRoute.kt` · `SegmentationErrorScreen.kt` | 문구·재시도 콜백을 파라미터로 받고 `YGButton`을 놓는다 |
 | `strings.xml` | 모듈 실패 문구 2개 + 재시도 버튼 라벨 추가 |
@@ -270,7 +325,9 @@ JVM 단위 테스트를 `runTest` 가상 시간으로 돌린다. 가짜 `ModuleI
 2. 동시 호출 둘이 요청을 한 번만 낸다. 사전 설치를 카메라에 건 대가로 생긴 위험이라 가장 중요하다.
 3. 먼저 들어온 호출자를 취소해도 설치가 살아 있고, 두 번째 호출자가 같은 대기에 붙어 `Ready`를 받는다.
 4. `STATE_FAILED`가 실패 코드를 실어 나온다.
-5. 상한을 넘기면 `TimedOut`이고, 그 뒤 호출자는 여전히 같은 대기에 붙는다.
+5. 상한을 넘기면 `TimedOut`이고 `inFlight`가 걷혀, 그 뒤 호출자는 **새 설치를 시작한다**.
+6. 종료 상태로 끝난 대기를 재사용하지 않는다 — `Failed` 뒤의 호출이 새 요청을 낸다. 재시도가
+   실제로 뜻을 가지는지가 여기 걸려 있다.
 
 ViewModel은 둘을 본다. ① `errorKind` 매핑 — 모듈 실패가 `ModuleNotReady`로, 후보 0건이
 `SubjectNotFound`로 들어간다. ② `Retry` 인텐트가 진입과 같은 흐름을 다시 태우고, 연달아 눌러도
