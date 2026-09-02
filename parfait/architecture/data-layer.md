@@ -637,8 +637,8 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   수명을 가진 협력자와 GMS 경계 셋은 `installer/image/`로 갔다. 후자를 `source/`에 넣지 않은
   것은 이 문서가 정의하는 `source`가 로컬·원격 데이터 접근과 매퍼 쌍이기 때문이다
   → [segmentation-module-install 스펙](../specs/2026-09-02-segmentation-module-install.md).
-  ⚠️ **`data/util`과 `data/utils`가 둘 다 있다** — 이 라운드가 전자에 파일 일곱을 더해 무게가
-  기울었지만 합치지는 않았다.
+  같은 라운드가 **`data/util`을 `data/utils`로 합쳤다** — 같은 뜻의 패키지가 둘이었고 파일이
+  더 많은 쪽으로 모았다. 이제 `data/` 아래 헬퍼는 `utils/` 하나다.
 
   **매퍼는 단독 테스트하지 않는다(2026-08-11 규약).** 매퍼의 유일한 호출자가 DataSource라
   `XxxRemoteDataSourceImplTest`가 이미 매퍼를 통과시킨다 — 별도 `XxxVOMapperTest`는 같은 것을 두 번
