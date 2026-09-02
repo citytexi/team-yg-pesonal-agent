@@ -4,8 +4,8 @@ title: 로그아웃
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#45"
-server_commit: 02e11be
-verified: 2026-09-01
+server_commit: 0c59af9
+verified: 2026-09-02
 related_api: auth.md
 tags: [api, parfait, spec, auth]
 ---
@@ -70,6 +70,11 @@ tags: [api, parfait, spec, auth]
 
 ### 코드에만 있음
 
+- **로그아웃이 refresh token만 지우지 않는다**(2026-09-02). `LogoutService`가 세션 삭제 직후
+  `DeviceTokenDeletePort.delete(memberId, sessionId)`로 **그 로그인 세션이 등록한 기기(FCM) 토큰 행도
+  지운다** — 명세는 "서버에 저장된 Refresh Token 삭제"만 적는다.
+  요청·응답·상태 코드는 그대로여서 **명세와 어긋나지는 않고, 명세가 덜 적은 것**이다
+  → [../notification.md](../notification.md).
 - **401은 한 코드가 아니다.** `Authorization` 헤더가 아예 없으면 `JwtAuthFilter`가 그냥 통과시키고
   `SecurityConfig.authenticationEntryPoint`가 **`UNAUTHORIZED`**를 던진다. 헤더가 있고 토큰이 무효면
   `validateAccessToken`이 **`INVALID_TOKEN`**·**`EXPIRED_TOKEN`**을, 토큰은 유효하나 회원이 없으면
@@ -92,3 +97,5 @@ tags: [api, parfait, spec, auth]
 ## 미결
 
 - 로컬 토큰 정리와 서버 로그아웃 호출의 순서·실패 시 정책은 앱 결정 사항이다(서버 계약 밖).
+- 기기 토큰 정리가 **세션 단위**라, 세션 없이 등록된 행(구 access token 사용분)은 로그아웃으로 지워지지
+  않는다. 명세에 이 갈래가 없다 → [open-questions](../../synthesis/open-questions.md).

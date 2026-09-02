@@ -2,8 +2,8 @@
 id: conventions
 title: 서버 API 전역 계약
 server_module: common/response, common/error, http/global
-server_commit: 02e11be
-verified: 2026-09-01
+server_commit: 0c59af9
+verified: 2026-09-02
 tags: [api, parfait, server-contract, conventions]
 ---
 
@@ -30,12 +30,17 @@ tags: [api, parfait, server-contract, conventions]
 **성공 코드가 2종**이라는 점이 중요하다. 클라이언트가 성공을 단일 상수 비교로 판정하면 `CREATED` 응답을
 실패로 분류한다.
 
-### envelope를 쓰지 않는 응답이 둘 있다
+### envelope를 쓰지 않는 응답이 셋 있다
 
-`POST /api/v1/auth/logout`과 `DELETE /api/v1/users/me`(2026-08-15 신설)는 **204 No Content에 본문이 없다**
+`POST /api/v1/auth/logout` · `DELETE /api/v1/users/me`(2026-08-15 신설) ·
+`POST /api/v1/notifications/devices`(2026-09-02 신설)는 **204 No Content에 본문이 없다**
 (`@ResponseStatus(HttpStatus.NO_CONTENT)` + 반환 타입 `Unit`). 나머지 전 엔드포인트는 성공이든 실패든
-`ApiResponse`를 준다. **envelope를 무조건 파싱하는 클라이언트는 이 둘에서 깨진다**
-([auth.md](auth.md)·[member.md](member.md)).
+`ApiResponse`를 준다. **envelope를 무조건 파싱하는 클라이언트는 이 셋에서 깨진다**
+([auth.md](auth.md)·[member.md](member.md)·[notification.md](notification.md)).
+
+**셋 다 쓰기이고 돌려줄 것이 없는 요청이라는 공통점이 있다** — 예외가 임의로 늘어난 것이 아니라
+서버가 "본문 없는 성공"을 쓰는 자리가 하나 더 생긴 것이다. 다만 **같은 성질의 삭제가 반대로 가는
+사례가 그대로 남아 있다**(아래).
 
 같은 delta의 토핑 삭제(`DELETE .../images/{parfaitImageId}`)는 반대로 **200 + `data: null`**이다
 ([parfait-image.md](parfait-image.md)) — **두 DELETE가 성공 표현을 달리한다.**
@@ -102,6 +107,16 @@ tags: [api, parfait, server-contract, conventions]
 JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authentication.name`)이 **memberId(Long 문자열)**다.
 컨트롤러는 `Authentication.memberId(): Long = name.toLong()` 확장으로 꺼낸다.
 
+**2026-09-02 — access token이 `sessionId` 클레임을 싣는다.** `JwtTokenAdapter.createAccessToken`이
+refresh token과 **같은 세션 식별자**를 담고, `validateAccessToken`의 반환이 `Long`에서
+`AccessTokenClaims(memberId, sessionId?)`로 바뀌었다. `JwtAuthFilter`는 그 세션을 인증 객체의
+**credentials 슬롯**에 실어 컨트롤러가 꺼내 쓰게 한다(`principal`은 memberId 문자열 그대로).
+와이어 계약(요청 헤더 형식·응답 토큰 필드)은 **한 글자도 바뀌지 않았다** — 토큰 문자열 안에 클레임이
+하나 는 것이라 앱이 고칠 것은 없다.
+⚠️ **`sessionId`는 널을 허용한다.** 이 변경 전에 발급된 access token에는 클레임이 없어 널로 채워지고
+**인증은 정상으로 통과한다.** 그 세션 값을 쓰는 첫 소비처가 기기 토큰 등록이며, 널이면 로그아웃이
+그 행을 못 지우는 구간이 생긴다([notification.md](notification.md)).
+
 `SecurityConfig`는 세션을 쓰지 않고(STATELESS), 아래 화이트리스트 외 **전 요청 인증 필수**다.
 
 - `/actuator/health`
@@ -137,6 +152,10 @@ JWT Bearer. `JwtAuthFilter`가 검증하고 인증 주체의 이름(`Authenticat
 
 **2026-08-16 delta의 신규 2건**(파르페 상세 조회 · 배경 변경)**도 화이트리스트 밖이라 인증 대상**이다
 ([parfait.md](parfait.md)). 화이트리스트 자체는 이 delta에서 바뀌지 않았다.
+
+**2026-09-02 delta의 신규 1건**(기기 FCM 토큰 등록)**도 화이트리스트 밖이라 인증 대상**이다
+([notification.md](notification.md)). 화이트리스트는 이번에도 바뀌지 않았고, 그 엔드포인트는 회원과
+세션을 **요청이 아니라 토큰에서** 정한다 — 남의 기기를 지목할 경로가 없다.
 
 **2026-08-11 member 2건·parfait-image 2건도 화이트리스트 밖이라 전부 인증 대상**이다
 ([member.md](member.md)·[parfait-image.md](parfait-image.md)). 네 엔드포인트 모두 대상 회원을 요청이 아니라
