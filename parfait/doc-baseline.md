@@ -5,8 +5,39 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `40e1fca6` (`Merge pull request #442 from mash-up-kr/feature/#441-segmentation-color`)
-- **요약**: **서버가 먼저 연 표면에 앱이 하루 만에 붙었고, 조용히 실패하던 모듈 설치가 기다릴 줄
+- **커밋**: `c74f40eb` (`Merge pull request #444 from mash-up-kr/feature/#443-replace-splash-lottie`)
+- **요약**: **앱을 여는 첫 그림이 갈렸는데 코드는 한 줄도 안 움직였다** (delta 1건, **1파일 · 삽입
+  0줄 · 삭제 0줄** — 바이너리 교체라 diff 가 세어 줄 것이 없다). 유닛 **1029건**·계측 **17건** 유지
+  (테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**, 미결은 **하나가 생기고 둘이
+  갱신됐다**(OQ-P-350 신설 / 229·341 갱신, `oq-next` 350 → 351).
+  **스플래시 로띠가 새 로고 애니메이션으로 통째로 교체됐다**(#444) — `feature/intro/impl` `res/raw/`
+  의 애셋 하나가 전부다. 커밋 메시지가 "구조는 그대로이고 애니메이션 JSON 만 바뀌었다"고 주장하는데
+  **그 주장을 열어서 확인했다**: dotLottie 를 풀면 manifest 판본·애니메이션 id(`Lottie-Logo`)·
+  프레임률·재생 길이·화면 크기·레이어 여덟(`Parfait` 일곱 글자 + `Stroke`)이 교체 전과 같고, 다른 것은
+  각 레이어의 패스와 키프레임 값뿐이다. 그래서 `R.raw.splash`·`SplashScreen` 은 손댈 자리가 없고,
+  **60fps·3.5초**라는 위키 [[스플래시-애니메이션]] A-001 정본의 타임라인도 그대로다 — 진입이 재생
+  종료를 기다리는 구조(OQ-P-229)의 대기 길이가 **한 프레임도 안 움직였다**는 뜻이다. 그러므로
+  spec·plan·architecture·ADR·api 어디에도 고칠 문장이 없었다(**드리프트 0건**). ⚠️ 대신 남는 것이
+  그림이다 — 바뀐 결과를 실기기로도 프리뷰로도 **본 기록이 0건**이고, 파일명도 구조값도 그대로라
+  옛 판을 도로 넣어도 아무것도 빨갛게 되지 않는다 → **OQ-P-350 신설**.
+
+  **미머지 브랜치가 둘에서 다섯이 됐다** — `feature/#423-canvas-save-preview`(캔버스 저장 미리보기
+  화면) · `feature/push-fcm-service`(FCM 수신부) · `feature/push-notification-deeplink`(푸시 딥링크)
+  셋이 같은 날 새로 올라왔다. 그중 푸시 브랜치가 OQ-P-341 을 정면으로 건드린다 — `firebase-messaging`
+  의존과 `onNewToken` 이 되살아나 있는데 **그 자리가 아직 등록을 부르지 않고**, 안 부르는 근거로 단
+  주석("등록 API 스펙이 아직 배포되지 않았다")은 **직전 회차의 #437 이 이미 무너뜨린 전제**다. 머지
+  전에는 스펙을 고치지 않는 규율([2026-07-13])대로 미결에 메모만 달았다.
+
+  **이번 회차가 확인한 것** — **바이너리 교체라고 다 같은 것이 아니다.** 이 문서는 폰트 회차에서
+  "바이너리만 바뀐 라운드는 이 감사 체계가 가장 약한 자리"라고 적었고 그때 문서가 붙잡을 수 있는
+  근거는 함께 들어온 텍스트 파일뿐이었다. 로띠는 다르다 — **컨테이너가 zip 이고 안이 JSON 이라
+  열어서 구조를 대조할 수 있다.** 이번 회차가 "드리프트 0건"이라고 말할 수 있는 근거는 커밋 메시지의
+  주장이 아니라 그 대조다. 그러므로 delta 에 바이너리가 있으면 먼저 물을 것은 "diff 가 안 보인다"가
+  아니라 **"이 형식은 열리는가"**이고, 열리면 구조값을 정본과 맞춰 본다. 열어도 남는 것(그림·글자체
+  같은 렌더 결과)이 미결이 될 자리이며, 열 수 있는 형식은 **회귀 검사를 붙일 수 있는 형식**이기도
+  하다(OQ-P-350 ②가 폰트 쪽 OQ-P-307 보다 먼저인 이유다).
+
+  직전 회차 요약: **서버가 먼저 연 표면에 앱이 하루 만에 붙었고, 조용히 실패하던 모듈 설치가 기다릴 줄
   알게 됐다** (delta 4건, 52파일 **삽입 940줄·삭제 101줄**). 유닛은 1015 → **1029건**(+14, 설치기 7 ·
   세그멘테이션 ViewModel 3 · 알림 DataSource 4), 계측은 **17건** 그대로다. **선작성 스펙 1·계획 1이
   아카이브로 갔고**, 미결은 **하나가 생기고 셋이 갱신됐다**(OQ-P-347 신설 / 341·342·153 갱신,
@@ -1284,7 +1315,13 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-08-28 (57회차)
+- **검증일**: 2026-09-03 (64회차)
+
+  📌 **이 줄이 여섯 회차 동안 낡아 있었다** — 58~63회차(`27e85d0d`·`afde8c4c`·`6a1da1b0`·`fa46e5cf`·
+  `0173e454`·`40e1fca6`)가 기준선 해시와 이력 표는 갱신하면서 이 줄만 건너뛰어 `2026-08-28 (57회차)`
+  에 멈춰 있었다. **같은 종류의 누락이 세 번째**다. 직전 회차의 이 줄이 낡았을 때 번호를 되찾는
+  수단은 이력 표를 세는 것뿐인데, 표는 한 회차에 여러 행이 붙은 적이 있어 **정확한 복구를 보장하지
+  않는다** — 그러니 이 줄은 4번 단계에서 함께 고친다.
 
   📌 **하루에 두 회차가 돌았다** — 56회차도 2026-08-28 이다. 회차 번호의 근거는 여전히
   **직전 회차의 이 줄 + 1**이다.
@@ -1308,6 +1345,12 @@
   멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
   적이 있다) **직전 회차의 이 줄 + 1**이다.
 - **미머지 추적 항목**: **0.**
+  📌 **64회차에 다섯으로 늘었다(2026-09-03)** — `feature/debug-mode`(OQ-P-311 계보) ·
+  `feature/image-loading-placeholder`(OQ-P-346·348) 에 더해 `feature/#423-canvas-save-preview`
+  (캔버스 저장을 미리보기 화면으로 돌리고 스토리 비율로 잡는다) · `feature/push-fcm-service`
+  (FCM 수신 서비스·알림 채널·`onNewToken` 복귀) · `feature/push-notification-deeplink`
+  (푸시 딥링크 버스, 앞 브랜치와 커밋 둘을 공유한다) 셋이 같은 날 올라왔다. 푸시 둘은 OQ-P-341 에,
+  저장 미리보기는 OQ-P-330 계열(캔버스 저장)에 닿는다 — 머지 회차에 그 미결부터 본다.
   📌 **57회차 재확인(2026-08-28)** — 이번 delta 다섯(#393·#394·#395·#396·#397)은 전부
   `origin/develop` 안이라 이 줄에 더할 것이 없다.
   📌 **56회차 재확인(2026-08-28)** — 이번 delta 셋(#369·#398·#400)은 전부 `origin/develop` 안이라
@@ -1420,6 +1463,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-03 | `c74f40eb` | Merge #444(스플래시 로띠 교체) | delta 1건, **1파일 0/0**(바이너리 교체). 유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#444**: `feature/intro/impl` `res/raw/splash.lottie` 가 새 로고 애니메이션으로 교체됐다. dotLottie 를 풀어 대조하니 manifest 판본·애니메이션 id(`Lottie-Logo`)·프레임률·재생 길이·화면 크기·레이어 여덟(`Parfait` 일곱 글자 + `Stroke`)이 교체 전과 동일하고 각 레이어의 패스·키프레임만 다르다 → `R.raw.splash`·`SplashScreen` 무변경, 위키 [[스플래시-애니메이션]] A-001 정본의 **60fps·3.5초** 타임라인 유지, 진입 대기 길이(OQ-P-229) 불변. **드리프트 0건**. 조치: open-questions 3항목(OQ-P-350 신설 — 바뀐 그림을 본 사람 0건·회귀 감지 수단 없음 / OQ-P-229·341 갱신), doc-baseline·index 기준선 갱신. ⚠️ 실기기 확인 0회. 미머지 **둘 → 다섯**: `feature/debug-mode` · `feature/image-loading-placeholder` · `feature/#423-canvas-save-preview` · `feature/push-fcm-service` · `feature/push-notification-deeplink` |
 | 2026-09-03 | `40e1fca6` | Merge #439(README 소개·스크린샷) · #437(기기 FCM 토큰 등록 data 표면) · #438(ML Kit 모듈 설치 대기·실패 처리) · #442(누끼 영역 빨간 틴트) | delta 4건, 52파일 940/101. 유닛 1015 → **1029건**(+14: 설치기 7 · 세그멘테이션 ViewModel 3 · 알림 DataSource 4), 계측 **17건** 유지. **선작성 스펙 1·계획 1 아카이브 이동**(segmentation-module-install), 미결 1건 신설·3건 갱신(`oq-next` 347 → 348). **#438**: `installModules` 의 Task 반환을 설치 완료로 읽던 것을 고쳐 `InstallStatusListener` 의 종료 신호까지 기다린다 — `SegmentationModuleInstaller`(`Mutex` + `CompletableDeferred` 로 진행 중 설치 공유) · `ModuleInstallGateway`(GMS 이음매) · `PlayServicesModuleInstallGateway` · `ModuleInstallModule` · `PrepareSegmentationModuleUseCase` 신설, `ImageSegmentationRepository` 메서드 5 → **6**. 사전 설치는 **사진 확인 화면 진입**(촬영·갤러리 합류점). `isError` → `SegmentationErrorKind`(`SubjectNotFound`/`ModuleNotReady`) + `Retry` 인텐트 + `YGButton` 재시도(**디자인 검토 대기 시안**) → **OQ-P-153 ③ 해소, ④ 잔존**. 패키지 재배치: `repository/image` → `installer/image`(설치 3종)·`utils/image`(순수 커널 7), `data/util` → `data/utils` 통합. ⚠️ 모듈 없는 상태의 화면 경로는 재현 수단이 사라져 **미확인**. **#437**: `NotificationService`(`POST /api/v1/notifications/devices`, 204 본문 없음 → `safeApiCallNoContent`) · `NotificationRemoteDataSource`(+`Impl`, `platform` 을 `"ANDROID"` 상수로 고정) · `domain.model.notification.DeviceToken`. **표면만이고 호출부 0건**, FCM 토큰 취득 심볼도 여전히 0건 → **OQ-P-341·342 는 열린 채 갱신**. api 표면 27/29 → **28/29, 공백 1**. **#442**: `ToppingEditScreen` 이 남는 영역에 `Cherry500` 틴트 한 겹(`MASK_TINT_ALPHA`, `SrcAtop`), 영역 탭 전용. 위키 [[누끼-편집]]에 대응 조항 없음 → **OQ-P-347 신설**. **#439**: README 소개·스크린샷(코드·계약 무변경). 조치: 스펙 1·계획 1 아카이브 + README 2행, api 3문서(notification.md `android_status` `none` → `partial`·엔드포인트 표·Android 매핑 절, README 도메인 표·총계), architecture 1건(data-layer — 메서드 6·모듈 설치 절 재작성·`util/image` → `utils/image` 정정·여덟 번째 Service), ADR-0012 머지 표기, 아카이브 스펙 c103 정책 대조 표 1행, open-questions 4항목. ⚠️ 실기기 확인 0회. 미머지: `feature/debug-mode` · `feature/image-loading-placeholder`(OQ-P-346) |
 | 2026-09-01 | `0173e454` | Merge #412(핸들 모서리) · #413(캔버스 상단바) · #414(지난 캔버스 메뉴) · #411(환영 배너) · #434(버전 1.0.0) | delta 5건, 25파일 449/85. 유닛 1012 → **1015건**(+3), 계측 **17건** 유지. **선작성 스펙·계획 없음 → 아카이브 이동 0건**, 미결 1건 해소·2건 신설(`oq-next` 339 → 341). **#411**: 그룹 생성·참여의 종착지가 G-001 목록 → **C-001 캔버스**로 옮겨 위키 [[기능정의서-v6]] 배선과 맞았다(OQ-P-135 해소). 복귀 관용구가 `goToSingleClearTop` → **`replaceAll(목록)` + `goTo(캔버스)`** 두 줄이 되고 `goToSingleClearTop` 소비처 0건. `NavKeyCanvasMain` 에 `welcomeGroupName`·`welcomeInviteCode` 추가(진입 사유를 나르는 첫 인자), `YGAlert` 첫 프로덕션 소비처 + `buttonIconResource` 신설, `GroupCreate`·`GroupNickName` 의 `NavigateToNext` 가 `data class` 로 승격. ⚠️ 배너 문구·복사 흐름·1회 보장에 근거 부재 → **OQ-P-339 신설**. **#413·#414**: 갤러리 저장이 하단 메뉴 액션 → **날짜바 `ic_save` 아이콘**(오늘 캔버스에서도 저장 가능, 노출은 `isCanvasSaveVisible` = 빈 안내판 조건의 부정 → **OQ-P-340 신설**), `YGCanvasMenu.addAction` nullable·`YGMenuItem` 아이콘/비활성 신설, 캘린더 그림이 날짜 텍스트와 한 클릭 영역. **#412**: 토핑 편집 핸들 우상단↔우하단 교환(회전/크기조절), 계산식 불변. **#434**: `5/0.1.1 → 6/1.0.0`, 정식 판 근거 미기재(OQ-P-310 갱신). 조치: architecture 3건(navigation-flow·design-system·state-management), 아카이브 스펙 as-built 8건(designsystem-canvas-components·ygalert·c001-canvas-gallery-save·c201-canvas-calendar-server·c106-topping-place·c301-topping-edit-tab·a005·s102), specs/README 8행, open-questions 6항목(135·136·273·310 갱신 + 339·340 신설). ⚠️ 실기기 확인 0회. 미머지: `feature/debug-mode` |
 | 2026-09-01 | `fa46e5cf` | Merge #430(그룹 추가 팝업 배경색) | delta 1건, **1파일 1/1** — 세어 온 회차 중 가장 작다. 트리 = 브랜치 팁(충돌 해소 편집 0건), 유닛 **1012건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건, 신규 미결 0건**. **#430**: G-001 그룹 추가 오버레이의 메뉴 판 배경이 `Cherry50` → `Gray.White`(근거는 커밋 서술 — 항목을 얹는 바탕은 중립색). 항목·구분선·모서리·화면 구조·계약 무변경. 조치: 아카이브 스펙 g001-group-list as-built 한 줄 정정(+ `verified`), doc-baseline·index 기준선 갱신. 색이 위키 정책에 없다는 점은 기존 오버레이 구조 미결이 덮고 있어 항목을 늘리지 않았다. ⚠️ 실기기 확인 0회. 미머지: `feature/debug-mode` |
