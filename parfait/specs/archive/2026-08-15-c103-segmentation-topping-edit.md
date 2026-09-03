@@ -307,6 +307,7 @@ const val TOPPING_EDIT_RESULT_KEY = "topping_edit_result"
 | [[누끼-편집]] 2핑거 확대 허용 / **Scale 1.0 미만 축소 차단** | `MIN_ZOOM = 1f`, `MAX_ZOOM = 3f` | 일치(상한은 코드가 먼저 확정) |
 | [[누끼-편집]] 확대 후 Pan **Clamping** | `clampPan` — 뷰포트보다 작은 축은 중앙 고정 | 일치 |
 | [[누끼-편집]] 지워진 배경을 **불투명도 50%**로 노출 | `ERASED_AREA_ALPHA = 0.5f` | 일치 |
+| (대응 조항 없음) | 🔁 **남는 영역에 `Cherry500` 틴트 한 겹**(`MASK_TINT_ALPHA`, `BlendMode.SrcAtop`)이 얹혔다(2026-09-03, PR #442). 영역 탭에서만 그린다 | **정책 문서 없음** → [open-questions](../../synthesis/open-questions.md) OQ-P-347 |
 | [[누끼-편집]] 영역 채우기가 지난 자리만 **100% 복구** | `SRC_IN`으로 원본 픽셀 복원 | 일치 |
 | [[누끼-편집]] 브러시 2~50 / 테두리 2~50 | 값은 같으나 단위가 **dp**(정책은 px) | 값 일치·단위 갈림 |
 | [[누끼-편집]] 상/하단 UI ↔ 이미지 최소 여백 10px | 편집 영역 좌우 `padding7` + 위아래 리터럴 간격 | 대응 조항 없음 |

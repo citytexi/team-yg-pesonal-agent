@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-31
+verified: 2026-09-03
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient, SegmentationModuleInstaller, ModuleInstallGateway, PlayServicesModuleInstallGateway, ModuleInstallModule, PrepareSegmentationModuleUseCase, NotificationService, NotificationRemoteDataSource, NotificationRemoteDataSourceImpl, DeviceToken
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -173,7 +173,8 @@ tags: [architecture, parfait]
 > [커널 취소 확인 전환](../specs/archive/2026-08-27-alpha-kernel-suspend-cancellation.md) 스펙에 있고,
 > **임계·반경·정칙화의 값은 아직 실기기 사진 세트가 판정하지 않았다**(OQ-P-287~300).
 
-**메서드 5개**다 — `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
+**메서드 6개**다 — `prepareSegmentationModule()`(2026-09-03 PR #438 신설, 아래 모듈 설치 절.
+결과를 돌려주지 않는 유일한 계약이다 — 부르는 쪽이 그것으로 할 일이 없다) · `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
 `persistSubject(candidate)`(고른 후보를 캐시에 PNG 두 장으로 떨군다) ·
 `saveEditedImage(bitmapWrapper)`(손편집 결과를 캐시에 PNG로 떨구고 절대 경로 반환) ·
 `clearSegmentationCache()`(PR #309 신설, 아래 캐시 정리 절).
@@ -185,11 +186,22 @@ tags: [architecture, parfait]
 `runCatching`이 `CancellationException`까지 삼켜** 이미 떠난 화면이 자기를 "디코드 실패"로 보고했기
 때문이다 — 취소를 실패로 접는 실수가 호출부 수만큼 반복될 자리를 없앴다.
 
-**ML Kit optional module을 사용 직전에 확인한다** — 매니페스트의 `com.google.mlkit.vision.DEPENDENCIES`는
-설치 시점 다운로드 힌트일 뿐 보장이 없어서, `ModuleInstall.areModulesAvailable`로 확인하고 없으면
-`installModules` 후 재확인한다. 실패는 `SegmentationException.ModuleNotReady`(일시적, 재시도 가능) /
-`Process`(그 외)로 가른다 — `Tasks.await`가 원인을 `ExecutionException`으로 감싸므로 한 겹 벗겨
-`MlKitException.UNAVAILABLE`을 판정한다.
+**ML Kit optional module은 설치가 끝날 때까지 기다린다**(2026-09-03, PR #438) — 매니페스트의
+`com.google.mlkit.vision.DEPENDENCIES`는 설치 시점 다운로드 힌트일 뿐 보장이 없다. 그전에는
+`installModules`가 돌아온 직후 `areModulesAvailable`을 다시 물어 그 답을 결과로 삼았는데, **Play 서비스
+계약에서 그 반환은 "요청 접수"일 뿐이라** 모듈이 없는 기기의 첫 사용자가 예외 없이 실패했다. 지금은
+`SegmentationModuleInstaller`가 `InstallStatusListener`의 종료 신호까지 기다리고, `Mutex` +
+`CompletableDeferred`로 진행 중인 설치를 여러 호출자가 나눠 쓴다(요청은 한 번만 나간다). GMS 타입은
+`ModuleInstallGateway` 뒤로 좁혀 JVM 테스트가 신호 순서를 정할 수 있다. **준비는 사용 직전이 아니라
+사진 확인 화면 진입에 미리 건다** — 촬영·갤러리 두 경로의 유일한 합류점이라 카메라에만 걸면 갤러리로
+고른 사용자가 사전 설치를 안 탄다. 실패는 여전히 `SegmentationException.ModuleNotReady`(일시적,
+재시도 가능) / `Process`(그 외)로 가르고, `Tasks.await`가 원인을 `ExecutionException`으로 감싸므로 한 겹
+벗겨 `MlKitException.UNAVAILABLE`을 판정하는 것도 그대로다. 화면은 그 둘을 `SegmentationErrorKind`로
+받아 문구를 가르고 재시도 버튼을 준다
+→ [segmentation-module-install 스펙](../specs/archive/2026-09-02-segmentation-module-install.md).
+⚠️ 모듈 판정에 `SubjectSegmenter`를 따로 열면 네이티브 그래프가 둘 떠서 죽는다 — `Feature` 하나만 든
+`OptionalModuleApi`를 쓰고, 그 feature 이름이 ML Kit 내부 값이라는 대가가 남는다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-345.
 
 > ✅ **캐시 파일에 정리 경로가 생겼다(2026-08-20, PR #309)** — 저장 위치가 `cacheDir` 바로 밑에서
 > **전용 하위 디렉토리**(`SegmentationCacheDir.kt`)로 내려갔고, 세그멘테이션 진입 시 디코드보다 먼저
@@ -416,6 +428,11 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 > 아래 서술은 전부 develop 코드 기준이다 — `ApiCaller` 진입점 넷, **Service 7개**
 > (`AuthService`·`PolicyService`·`ParfaitGroupService`·`ParfaitService`·`ImageService`·`MemberService`·
 > `ParfaitImageService`), **remote DataSource 7쌍**, `Temp*` 예시 세트 삭제.
+> ✅ **여덟 번째 Service가 붙었다(2026-09-03, PR #437)** — `NotificationService`(기기 FCM 토큰 등록
+> `POST`) + `NotificationRemoteDataSource`(+`Impl`) + `domain.model.notification.DeviceToken`.
+> ⚠️ **표면만이다** — 리포지토리도 UseCase도 호출부도 0건이고, 앱에는 토큰을 얻을 FCM 의존조차 없다
+> (2026-08-22 PR #325가 걷어냈다). 성공이 204 본문 없음이라 `safeApiCallNoContent`를 타고 envelope를
+> 두지 않는다 → [api/notification.md](../api/notification.md) · [open-questions](../synthesis/open-questions.md) OQ-P-341.
 > **2026-08-15 PR #250으로 표면이 25 엔드포인트가 됐다** — 서버 delta가 벌린 5건(파르페 오늘·과거 조회,
 > 토핑 테두리 수정·삭제, 회원 탈퇴)이 들어오며 **Android가 쓰기로 한 서버 엔드포인트 전량을 다시 덮는다**
 > (서버 26 − 애플 로그인 1 − 테스트 전용 회전 1) → [api/README.md](../api/README.md).
@@ -633,10 +650,10 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 
   ⚠️ **`repository/`에는 리포지토리 구현만 둔다**(2026-09-02). 그 전까지 `repository/image/`에
   리포지토리가 아닌 것 열이 섞여 있었고 둘로 갈라 내보냈다 — 플랫폼 import가 0개인 순수 커널
-  일곱은 `util/image/`로(ADR-0012가 "모델을 갈아도 남는 순수 커널"이라 부르는 것들), 상태와
+  일곱은 `utils/image/`로(ADR-0012가 "모델을 갈아도 남는 순수 커널"이라 부르는 것들), 상태와
   수명을 가진 협력자와 GMS 경계 셋은 `installer/image/`로 갔다. 후자를 `source/`에 넣지 않은
   것은 이 문서가 정의하는 `source`가 로컬·원격 데이터 접근과 매퍼 쌍이기 때문이다
-  → [segmentation-module-install 스펙](../specs/2026-09-02-segmentation-module-install.md).
+  → [segmentation-module-install 스펙](../specs/archive/2026-09-02-segmentation-module-install.md).
   같은 라운드가 **`data/util`을 `data/utils`로 합쳤다** — 같은 뜻의 패키지가 둘이었고 파일이
   더 많은 쪽으로 모았다. 이제 `data/` 아래 헬퍼는 `utils/` 하나다.
 

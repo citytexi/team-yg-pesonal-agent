@@ -166,7 +166,9 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 
 이 결정 자체는 유지된다 — 온디바이스 ML Kit Subject Segmentation은 그대로다. 바뀌는 것은 **모듈
 준비를 누가 어떻게 기다리는가**이고, 대기·실패 판정·사전 설치 설계는
-[segmentation-module-install 스펙](../specs/2026-09-02-segmentation-module-install.md)이 정본이다.
+[segmentation-module-install 스펙](../specs/archive/2026-09-02-segmentation-module-install.md)이 정본이다.
+✅ **그 설계가 develop에 들어갔다**(2026-09-03, PR #438 `24679f8c`) — `SegmentationModuleInstaller`가
+종료 신호까지 기다리고, 준비는 사진 확인 화면 진입에 미리 건다.
 
 ⚠️ **기기에 따라 이 모듈을 끝내 못 받는다.** 같은 기기에서 GMS가 `STATE_FAILED` /
 `CommonStatusCodes.INTERNAL_ERROR`로 설치를 못 잇고, 재부팅해도 같다. `MODULE_NOT_FOUND`도
@@ -193,4 +195,4 @@ dynamite 모듈로 배달된다. 모듈이 도착해 실제로 동작하는 시�
 `SIGBUS`(`drishti` 스레드)로 죽는 것을 실기기에서 확인했다. 이 ADR이 이미 적어 둔 "옵션 조합으로
 `SIGSEGV`" 기록과 같은 계열이고, **세그멘터 인스턴스의 동시 존재가 위험하다**는 것이 그 둘을
 관통하는 사실이다. 모듈 판정은 `Feature`만 든 `OptionalModuleApi`로 한다
-→ [segmentation-module-install 스펙](../specs/2026-09-02-segmentation-module-install.md).
+→ [segmentation-module-install 스펙](../specs/archive/2026-09-02-segmentation-module-install.md).
