@@ -4,8 +4,8 @@ title: 회원가입 완료 (약관동의)
 spec_source: 팀 노션 API 명세
 spec_status: 완료
 spec_issue: "#49"
-server_commit: 0c59af9
-verified: 2026-09-02
+server_commit: aa9cc9b
+verified: 2026-09-04
 related_api: auth.md
 tags: [api, parfait, spec, auth]
 ---

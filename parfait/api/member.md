@@ -2,8 +2,8 @@
 id: member
 title: 회원(내 계정 조회·전역 닉네임 변경·탈퇴)
 server_module: http/member
-server_commit: 0c59af9
-verified: 2026-09-02
+server_commit: aa9cc9b
+verified: 2026-09-04
 android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-15-user-info-ssot
 related_adr: ADR-0017, ADR-0022

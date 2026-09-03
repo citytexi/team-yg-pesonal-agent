@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-03
+verified: 2026-09-04
 related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -6112,6 +6112,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > **그 전제는 #437이 이미 무너뜨렸다**(develop 에 `NotificationRemoteDataSource` 가 있다).
   > 즉 이 미결의 ①은 브랜치에서 사실상 "되살린다"로 답해졌고, 남은 것은 ②(등록 호출 시점)다.
   > 머지 전에는 문서를 고치지 않는다([2026-07-13] 규율) — 머지 회차에 이 줄부터 본다.
+  > ⚠️ **미룰 때의 대가가 2026-09-04 서버 delta(`aa9cc9b`)로 달라졌다** — 서버가 **실제로 푸시를 보내기
+  > 시작했다**(신규 토핑 배치 시 그룹의 나머지 구성원에게). 지금까지 이 미결은 "앱이 안 보내면 아무 일도
+  > 안 일어난다"였는데, 이제는 **보내는 쪽이 돌고 있고 받을 앱이 없다.** 등록된 토큰이 0건이라 발송이
+  > 전부 `NO_DEVICE_TOKEN`으로 취소되므로 **동작 영향은 여전히 0**이지만, ①을 "되살린다"로 답하는
+  > 순간 채널 id·`data` 스키마·중복 수신 내성이 곧바로 구속력을 갖는다(OQ-P-351·352)
+  > → [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것".
 - **해소 메모**: 정하면 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)에 **되살림 정정**을 더하고
   (철회 정정을 지우지 않는다 — 두 결정이 다 이력이다), [api/notification.md](../api/notification.md)
   Android 매핑 절과 [data-layer](../architecture/data-layer.md)에 적는다. ①이 "미룬다"로 정해져도
@@ -6129,10 +6135,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 과도기 창이 닫힌 뒤(구 access token이 전부 만료된 뒤) 서버가 널 행을 정리할지.
   ② 앱이 붙을 때 로그인 직후 재등록으로 널 행을 덮게 할지 — 재등록은 같은 `token`이면 upsert라
   세션이 채워진다. ③ 로그아웃한 기기로 알림이 계속 갈 수 있다는 뜻인데, 그 위험을 누가 막을지.
-- **상태**: 미해결 (**앱 동작 영향 0** — 앱이 아직 등록하지 않아 널 행이 생길 경로가 없다.
-  2026-09-03 PR #437로 `:data` 표면은 생겼으나 호출부가 0건이라 이 전제는 그대로다)
+- **상태**: 미해결, **사각이 좁아졌다** (앱 동작 영향은 여전히 0 — 앱이 아직 등록하지 않아 널 행이
+  생길 경로가 없다. 2026-09-03 PR #437로 `:data` 표면은 생겼으나 호출부가 0건이라 이 전제는 그대로다)
+  > 📌 **2026-09-04 서버 delta(`aa9cc9b`)로 걷어 가는 경로가 하나 늘었다** — 발송이 죽은 토큰
+  > (`UNREGISTERED`·`INVALID_ARGUMENT`·`SENDER_ID_MISMATCH`)을 만나면 `deleteByToken`으로 그 행을
+  > 회수한다. **세션을 안 보고 토큰만으로 지우므로 널 세션 행도 걷힌다.** 다만 그것은 **그 기기가
+  > 실제로 무효가 된 뒤**의 정리라, ③(로그아웃한 기기로 알림이 계속 가는 위험)은 그대로 남는다 —
+  > 로그아웃해도 토큰 자체는 유효하기 때문이다.
 - **해소 메모**: 서버가 닫으면 [api/notification.md](../api/notification.md)
-  "기기 토큰이 지워지는 두 경로"의 경고를 지운다. 앱이 ②로 닫으면 등록 호출 시점(OQ-P-341 ②)과
+  "기기 토큰이 지워지는 세 경로"의 경고를 지운다. 앱이 ②로 닫으면 등록 호출 시점(OQ-P-341 ②)과
   같은 자리에서 정해진다.
 
 ### [2026-09-02] 알림을 무엇을 언제 보내는지가 서버 계약에도 정책에도 없다
@@ -6144,7 +6155,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 알림 종류(토핑 등록·캔버스 마감·그룹 초대 등)와 트리거 조건. ② 문구·딥링크가 화면
   어디로 떨어지는지. ③ 사용자 수신 설정(전역·그룹별)을 둘지 — 두면 S-001 앱 설정에 자리가 필요하다.
   ④ 권한 요청을 언제 띄울지(Android 13+ `POST_NOTIFICATIONS`).
-- **상태**: 미해결 (**설계 선행 필요** — 앱 구현보다 정책이 먼저다)
+- **상태**: **부분 해소** (①의 일부와 ②가 서버 코드로 답해졌고, ③④는 그대로 미해결)
+  > 📌 **2026-09-04 서버 delta(`aa9cc9b`)가 보내는 쪽을 붙였다** — `[Feat/#127]`이 FCM 발송 인프라와
+  > **토핑 등록 알림**을 연결했다. ①의 답은 **1종뿐**이다: 신규 토핑 배치(재배치 제외)에 대해
+  > 그룹 구성원 중 나간 사람과 작성자 본인을 뺀 나머지에게 나간다. ②도 서버가 정했다 —
+  > 문구와 `data` 키(`type`·`route=canvas`·`groupId`·`date`)가 `NotificationMessageFactory` 한 곳에
+  > 있다. **다만 그것을 승인한 정책 문서는 여전히 없고**, 딥링크가 앱의 어느 목적지로 떨어지는지도
+  > 안 정해졌다 → OQ-P-351로 분리했다.
+  > ⚠️ **커밋 제목은 "3종 알림 트리거 연결"이라고 적지만 코드에 연결된 트리거는 1종이다** —
+  > `NotificationMessageFactory`에 문구 조립 함수가 하나뿐이고 `ToppingPlacedNotifier` 호출부도
+  > 한 곳이다. **나머지 둘이 무엇이었는지 서버 코드에서 읽을 수 없다** — 캔버스 마감·그룹 초대 같은
+  > 후보의 발송 코드가 없다. 이것이 ①에 남은 물음이다.
+  > ③④는 서버가 손대지 않았다. 수신 설정 축이 없어 **끄는 방법이 OS 설정뿐**이고, 권한 요청 시점은
+  > 여전히 앱 몫이다(OQ-P-341 ③과 같은 자리).
 - **해소 메모**: ①②③은 **정책 소관이라 위키 [[open-questions]]와 갈리는 자리**다 — 여기는 앱이
   무엇을 구현해야 하는지만 추적한다. 정해지면 스펙을 `specs/`에 세우고
   [api/notification.md](../api/notification.md) 미결 절을 지운다.
@@ -6296,4 +6319,56 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   **로띠는 열어서 읽을 수 있다**는 점이 다르다 — 폰트가 못 하는 구조 대조를 로띠는 할 수 있으므로,
   검사를 붙인다면 이쪽이 먼저다. 대기 길이 쪽은 OQ-P-229가 따로 본다.
 
-<!-- oq-next: 351 -->
+### [2026-09-04] 푸시 문구·data 스키마·채널 id·딥링크가 서버 코드에만 있고 정책 근거가 없다
+
+- **ID**: OQ-P-351
+- **출처**: 서버 `NotificationMessageFactory.toppingPlaced` · `FcmNotificationSender`(`aa9cc9b`) ×
+  [api/notification.md](../api/notification.md) "서버가 보내는 푸시" — 제목(`{그룹명} 파르페에 체리 얹을
+  타이밍!`)·본문(`{닉네임}님이 새 토핑을 쌓았어요` / 작성자 탈퇴 시 `누군가 새 토핑을 쌓았어요`)과
+  `data` 키 네 개(`type`·`route`·`groupId`·`date`)가 **서버 코드 한 곳에서 정해졌다.** 위키 정책 소스에
+  알림 항목 자체가 없고(OQ-P-343), parfait 쪽에도 이 문구를 승인한 문서가 없다.
+- **항목**: ① 문구가 기획 승인을 받은 것인지, 서버 구현이 임시로 정한 것인지 — 승인본이면 위키에
+  정책 페이지가 서야 하고, 임시면 앱이 그 문구를 전제로 화면을 만들면 안 된다.
+  ② `route=canvas` + `groupId` + `date` 조합이 앱 내비게이션의 **어느 목적지**로 떨어지는지 —
+  `date`가 오늘이 아닐 수 있으므로 오늘 캔버스와 지난 캔버스 중 어디로 가는지가 갈린다.
+  ③ `data` 키 이름·값(특히 `type`의 `TOPPING`)을 앞으로 늘릴 때 누가 관리하는지 — 지금은 서버 코드가
+  유일한 정본이라 앱이 오타를 내도 아무 데서도 안 걸린다.
+- **상태**: 미해결 (**동작 영향 0** — 앱에 수신부가 없어 아직 아무도 이 문구를 못 본다)
+- **해소 메모**: ①은 정책 소관이라 위키 [[open-questions]]와 갈리는 자리다. ②③이 정해지면
+  [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것" 표와
+  [navigation-flow](../architecture/navigation-flow.md)에 적는다.
+
+### [2026-09-04] 서버가 지정한 알림 채널 id를 앱이 만들지 않으면 조용히 안 보인다
+
+- **ID**: OQ-P-352
+- **출처**: 서버 `FcmNotificationSender`의 `ANDROID_CHANNEL_ID`(`parfait_default`, `aa9cc9b`) ×
+  [api/notification.md](../api/notification.md) — 서버가 `AndroidNotification.channelId`를 못 박아
+  보내므로, Android 8 이상에서 **같은 id의 채널이 앱에 없으면 알림이 표시되지 않는다.** 그런데
+  발송 쪽에서는 그것이 성공(`SENT`)으로 찍힌다. develop 에는 채널 생성 심볼이 0건이다
+  (2026-08-22 PR #325가 FCM 축을 걷어냈다, OQ-P-341).
+- **항목**: ① 앱이 이 id로 채널을 만들지, 서버가 앱이 정한 id로 바꿀지 — **한쪽이 상수를 고치면
+  다른 쪽이 조용히 깨지는 자리**라 어느 쪽이 정본인지 정해야 한다. ② 채널의 사용자 표시 이름·중요도를
+  누가 정하는지(서버는 id만 보내고 나머지는 앱 몫이다). ③ **이 어긋남을 무엇이 잡는지** — 서버 테스트도
+  앱 테스트도 상대편 상수를 모르므로 실기기로 받아 보기 전에는 드러나지 않는다.
+- **상태**: 미해결 (**지금은 도달 불가** — 등록된 토큰이 0건이라 발송이 전부 취소된다.
+  앱이 토큰을 등록하는 순간 활성화된다)
+- **해소 메모**: 정해지면 [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것"에
+  정본 표기를 남기고, 앱이 채널을 만들 때 그 상수 옆에 이 문서 포인터를 둔다. ①은 OQ-P-341(FCM 축을
+  되살릴지)이 먼저 답해져야 실행에 옮길 수 있다.
+
+### [2026-09-04] 푸시 TTL 6시간이 재시도 백오프 일정과 겹친다
+
+- **ID**: OQ-P-353
+- **출처**: 서버 `NotificationMessageFactory`(TTL 6시간) × `OutboxBackoff`(1분 → 5분 → 15분 → 1시간 →
+  6시간, 최대 5회, `aa9cc9b`) — 발송이 뒤쪽 단계까지 밀리면 재시도 간격 자체가 TTL과 같은 크기가 된다.
+  FCM 은 TTL 이 지난 메시지를 버리므로 **재시도가 성공해도 사용자에게 도달하지 않는 구간**이 생긴다.
+  서버 코드는 두 값을 서로 참조하지 않는다.
+- **항목**: ① 늦게 도착하는 토핑 알림에 값이 있는지 — 없다면 재시도 상한을 TTL 안으로 줄이는 편이
+  맞다. ② 있다면 TTL 을 늘릴지, 만료된 행을 재시도에서 빼고 취소로 처리할지.
+  ③ 지금은 만료로 버려진 것과 발송 실패가 구분되지 않는다 — `last_error` 만으로 사후 판별이 되는지.
+- **상태**: 미해결 (**관측 수단 없음** — 앱 수신부가 없어 도달·미도달을 확인할 방법이 지금은 없다)
+- **해소 메모**: 서버 쪽 튜닝값 문제라 앱이 고칠 것은 없다. 다만 "보냈는데 안 왔다"의 원인 후보가
+  하나 늘었으므로, 앱에 수신부가 붙은 뒤 재현되면 이 항목부터 본다.
+  [api/notification.md](../api/notification.md) "몇 번, 얼마나 늦게 오는가"에 함께 적혀 있다.
+
+<!-- oq-next: 354 -->
