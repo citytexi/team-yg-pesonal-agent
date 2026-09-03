@@ -1,10 +1,10 @@
 ---
 id: segmentation-module-install
 title: 세그멘테이션 optional module 설치 대기·실패 처리
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-09-02
+verified: 2026-09-03
 related_code:
   - SegmentationModuleInstaller.kt#ensureInstalled
   - ModuleInstallGateway.kt
@@ -22,7 +22,7 @@ related_code:
 related_adr:
   - 0012-mlkit-subject-segmentation.md
 related_spec:
-  - archive/2026-08-23-c103-multi-subject-selection.md
+  - 2026-08-23-c103-multi-subject-selection.md
 related_architecture:
   - data-layer.md
   - state-management.md
@@ -32,6 +32,12 @@ tags: [spec, parfait, segmentation, mlkit, module-install]
 ---
 
 # Spec: 세그멘테이션 optional module 설치 대기·실패 처리
+
+> ✅ **develop 머지(2026-09-03, PR #438 `24679f8c`)** — 설계대로 들어갔다. 설치기 테스트 7건과
+> ViewModel 테스트 3건이 늘었고(유닛 1015 → 1029 중 10건), 계측 테스트는 그대로다. 이 스펙이 「파일
+> 구성」에 미리 적어 둔 as-built 경로(`data/installer/image/`·`data/utils/image/`)가 머지된 코드와
+> 같다. ⚠️ **모듈이 없는 상태의 화면 경로**(모듈 실패 문구·재시도 버튼)는 실기기에 모듈이 도착해
+> 재현 수단이 사라진 채로 머지됐다 — 그 경로를 사람이 눈으로 본 적은 없다.
 
 ## 목표
 
@@ -82,7 +88,7 @@ D/Volley  https://play-fe.googleapis.com/fdfe/moduleDelivery [rc=200], [size=120
 실패하던 설치가 몇 시간 뒤 성공했고, `DynamiteModule`이 원격 버전 `263234001`을 잡아 세그멘테이션이
 정상 동작했다. 원인 ②는 **영구 실패가 아니라 아주 늦은 배달**일 수 있다. 이 스펙의 설계는 그대로
 유효하다 — 어느 쪽이든 앱은 기다리고 알려야 한다. 열린 질문은
-[open-questions](../synthesis/open-questions.md) OQ-P-344가 잇는다.
+[open-questions](../../synthesis/open-questions.md) OQ-P-344가 잇는다.
 
 ⚠️ **`splits` 목록으로 모듈 유무를 판정하지 말 것.** optional module은 APK split이 아니라 Chimera
 dynamite 모듈로 배달된다 — 모듈이 도착해 실제로 동작하는 시점에도 GMS 패키지의 `splits` 목록에는
@@ -311,7 +317,7 @@ ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적
 ### 재시도
 
 ⚠️ **이 버튼은 디자인 검토를 받으려고 먼저 놓는 시안이다.**
-[c103-multi-subject-selection](archive/2026-08-23-c103-multi-subject-selection.md)이 실패 화면의
+[c103-multi-subject-selection](2026-08-23-c103-multi-subject-selection.md)이 실패 화면의
 재시도 버튼을 "디자인에 없다"는 이유로 제외했고 OQ-P-153 ④가 그것을 추적 중이다. 검토 결과에
 따라 모양도 자리도 바뀔 수 있다. **새 컴포넌트를 만들지 않고 디자인 시스템의 `YGButton`을 그대로
 놓는 것**이 그래서다 — 버릴 때 버리기 쉽고, 검토가 볼 것은 컴포넌트가 아니라 배치다.

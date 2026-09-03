@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-02
+verified: 2026-09-03
 related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -1785,6 +1785,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 더 큰 물음이 됐다. 반대로 ④(원본 사용)는 뜻밖에 절반이 채워졌다 — 실패해도 화면이 걷히지 않고
   > **원본 사진이 하이라이트만 빠진 채 남는다**. 다만 그 상태에서 "이 원본을 그대로 토핑으로 쓴다"로
   > 넘어갈 길은 없어 여전히 뒤로 가는 것이 유일한 출구다. ①②(다중 검출)는 이 라운드와 무관하게 그대로다.
+  > 📌 **재시도 버튼이 들어왔다(2026-09-03, PR #438 `24679f8c`)** — `SegmentationErrorScreen`이
+  > `YGButton`(`Medium.Primary`)을 받고, 누르면 진입과 같은 흐름을 처음부터 다시 태운다
+  > (`SegmentationIntent.Retry`). **③의 근거였던 "`ModuleNotReady`인데 재시도할 수단이 없다"가
+  > 닫혔고**, 실패 문구도 원인별로 갈렸다(`SegmentationErrorKind`). ⚠️ **다만 이 버튼은 디자인
+  > 검토를 받으려고 먼저 놓은 시안이라 모양도 자리도 바뀔 수 있다** — 디자인 `C-103-Error`에는
+  > 여전히 버튼이 없다 → [segmentation-module-install 스펙](../specs/archive/2026-09-02-segmentation-module-install.md) 「재시도」.
+  > **④(원본 사용)는 그대로 남는다.**
 - **해소 메모**: ①②는 위키 [[누끼-따기]] "버전별 보강" 절과 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 화면 ID 대응 표를 함께 정리한다. ③④는 [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절의 실패 처리 서술과 정합을 본다.
 
 ### [2026-08-15] C-105 테두리 색 팔레트 9종이 정책 소스 없이 코드로 확정됐다
@@ -6065,6 +6072,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   정하라"고 남긴 물음이고, 걷어낸 형태(`MainActivity.onCreate`에서 무조건)가 문제였다.
   ④ 권한 거부 상태에서도 토큰을 등록할지.
 - **상태**: 미해결 (**동작 영향 0** — 앱이 부르지 않으므로 지금은 도달하지 않는다)
+  > 📌 **`:data` 표면이 생겼다(2026-09-03, PR #437 `7019a550`)** — `NotificationService` ·
+  > `NotificationRemoteDataSource`(+`Impl`) · `DeviceToken`. **미결은 그대로다** — ①이 묻는 것은
+  > 표면의 유무가 아니라 **FCM 축을 되살릴지**이고, 토큰을 얻는 심볼(`FirebaseMessaging`·
+  > `firebase-messaging` 의존)은 develop에 여전히 0건이라 **이 표면을 부를 수단 자체가 없다.**
+  > ②(등록 호출 시점)는 이제 "부를 자리가 없다"가 아니라 "어디서 부를지 안 정했다"가 됐다 —
+  > `registerDeviceToken`의 호출부는 0건이다. `platform`을 `"ANDROID"`로 고정한 것은 앱이 정했다
+  > (호출자가 고르지 않는다) → [api/notification.md](../api/notification.md) Android 매핑.
 - **해소 메모**: 정하면 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)에 **되살림 정정**을 더하고
   (철회 정정을 지우지 않는다 — 두 결정이 다 이력이다), [api/notification.md](../api/notification.md)
   Android 매핑 절과 [data-layer](../architecture/data-layer.md)에 적는다. ①이 "미룬다"로 정해져도
@@ -6082,7 +6096,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 과도기 창이 닫힌 뒤(구 access token이 전부 만료된 뒤) 서버가 널 행을 정리할지.
   ② 앱이 붙을 때 로그인 직후 재등록으로 널 행을 덮게 할지 — 재등록은 같은 `token`이면 upsert라
   세션이 채워진다. ③ 로그아웃한 기기로 알림이 계속 갈 수 있다는 뜻인데, 그 위험을 누가 막을지.
-- **상태**: 미해결 (**앱 동작 영향 0** — 앱이 아직 등록하지 않아 널 행이 생길 경로가 없다)
+- **상태**: 미해결 (**앱 동작 영향 0** — 앱이 아직 등록하지 않아 널 행이 생길 경로가 없다.
+  2026-09-03 PR #437로 `:data` 표면은 생겼으나 호출부가 0건이라 이 전제는 그대로다)
 - **해소 메모**: 서버가 닫으면 [api/notification.md](../api/notification.md)
   "기기 토큰이 지워지는 두 경로"의 경고를 지운다. 앱이 ②로 닫으면 등록 호출 시점(OQ-P-341 ②)과
   같은 자리에서 정해진다.
@@ -6104,7 +6119,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-09-02] 세그멘테이션 모듈을 끝내 못 받는 기기에서 사진 편집을 어떻게 할지 없다
 
 - **ID**: OQ-P-344
-- **출처**: [segmentation-module-install.md](../specs/2026-09-02-segmentation-module-install.md)
+- **출처**: [segmentation-module-install.md](../specs/archive/2026-09-02-segmentation-module-install.md)
   「왜 지금인가 — 원인 ②」 × [ADR-0012 실측 정정](../adr/0012-mlkit-subject-segmentation.md) —
   실기기(Galaxy Z Flip 3, SM-F711N)에서 GMS가 `STATE_FAILED` / `CommonStatusCodes.INTERNAL_ERROR`로
   optional module 설치를 못 잇는다. 재부팅해도 같고, `MODULE_NOT_FOUND`도 `INSUFFICIENT_STORAGE`도
@@ -6126,7 +6141,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-09-02] 모듈 판정용 feature 이름이 ML Kit 내부 값이라 바뀌면 조용히 깨진다
 
 - **ID**: OQ-P-345
-- **출처**: [segmentation-module-install.md](../specs/2026-09-02-segmentation-module-install.md)
+- **출처**: [segmentation-module-install.md](../specs/archive/2026-09-02-segmentation-module-install.md)
   「API / 인터페이스」 — 판정에 `SubjectSegmenter`를 쓰면 네이티브 그래프가 하나 더 떠서 실제
   세그멘테이션과 겹쳐 SIGBUS로 죽는 것을 실기기(Galaxy Z Flip 3)에서 확인했다. 그래서 `Feature`
   하나만 든 `OptionalModuleApi`로 바꿨고, 이름 `mlkit.segmentation.subject`와 버전 `1`은 같은
@@ -6163,4 +6178,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   없다)과 위키 [[open-questions]]의 "G-001 초기 로딩이 어느 에셋을 쓰는지". 머지 시 그 둘을
   함께 본다.
 
-<!-- oq-next: 347 -->
+### [2026-09-03] 누끼 영역 편집의 빨간 틴트가 정책 소스 없이 코드로 확정됐다
+
+- **ID**: OQ-P-347
+- **출처**: `feature/segmentation/impl` `screen/ToppingEditScreen.kt`(`MASK_TINT_ALPHA`, 마스크 합성
+  레이어 안에서 `BlendMode.SrcAtop`으로 `Cherry500` 한 겹)(PR #442 develop 머지) × 위키 [[누끼-편집]] —
+  정책은 **지워진 배경을 불투명도 50%로 노출**하고 **채운 자리를 100%로 복구**하는 것까지만 적는다.
+  **남는 영역을 색으로 물들인다는 조항이 없다.** 머지 커밋 제목이 "누끼 원본 영역 빨간색으로 변경"이라
+  요청이 있었던 것은 분명하나, 근거는 커밋 메시지에만 있다.
+- **항목**: ① 이 틴트가 정책인지 임시 보조선인지 — 정책이면 위키 [[누끼-편집]]에 조항이 필요하고,
+  임시면 걷는 조건이 필요하다. ② 색과 알파의 근거 — `Cherry500` 50%는 같은 화면 붓 미리보기와 같은
+  색·같은 알파다. 편집 대상과 미리보기가 같은 색으로 보이는 것이 의도인지 확인 안 됐다.
+  ③ 테두리 편집 탭·확인 화면·배치 화면은 틴트 없이 그린다 — **같은 알맹이가 화면마다 다른 색으로
+  보인다.** 어디까지가 편집 중 표시인지 규칙이 없다.
+- **상태**: 미해결 (**동작 중** — develop 코드이고 영역 탭에서만 그린다)
+- **해소 메모**: ①이 먼저다. 정책으로 굳으면 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md)
+  「정책 대조」 표에 행을 더하고 위키 쪽에 조항을 요청한다. 임시로 남기면 걷는 조건을 그 스펙에 적는다.
+  ③은 [2026-09-01] "세 화면의 테두리 렌더 규칙이 갈렸다" 항목과 같은 축이다 — 함께 본다.
+
+<!-- oq-next: 348 -->

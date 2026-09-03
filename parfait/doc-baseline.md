@@ -5,8 +5,42 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `0173e454` (`Merge pull request #434 from mash-up-kr/chore/version-1.0.0-6`)
-- **요약**: **위키가 1년 가까이 적어 둔 목적지로 코드가 옮겨 왔고, 앱 버전이 1.0.0 이 됐다**
+- **커밋**: `40e1fca6` (`Merge pull request #442 from mash-up-kr/feature/#441-segmentation-color`)
+- **요약**: **서버가 먼저 연 표면에 앱이 하루 만에 붙었고, 조용히 실패하던 모듈 설치가 기다릴 줄
+  알게 됐다** (delta 4건, 52파일 **삽입 940줄·삭제 101줄**). 유닛은 1015 → **1029건**(+14, 설치기 7 ·
+  세그멘테이션 ViewModel 3 · 알림 DataSource 4), 계측은 **17건** 그대로다. **선작성 스펙 1·계획 1이
+  아카이브로 갔고**, 미결은 **하나가 생기고 셋이 갱신됐다**(OQ-P-347 신설 / 341·342·153 갱신,
+  `oq-next` 347 → 348).
+  **① ML Kit 모듈 설치가 종료까지 기다린다**(#438) — `installModules` 의 Task 반환은 Play 서비스
+  계약상 **요청 접수**일 뿐인데 그것을 설치 완료로 읽고 있었다. 그래서 모듈이 없는 기기의 첫
+  사용자는 예외 없이 실패했다. `SegmentationModuleInstaller` 가 `InstallStatusListener` 의 종료
+  신호까지 기다리고, `Mutex` + `CompletableDeferred` 로 진행 중인 설치를 여러 호출자가 나눠 쓴다.
+  준비는 사용 직전이 아니라 **사진 확인 화면 진입**에 미리 건다(촬영·갤러리 두 경로의 유일한
+  합류점이다). 실패는 `SegmentationErrorKind` 로 갈려 모듈 실패에 전용 문구와 **재시도 버튼**이
+  붙었다 — OQ-P-153 ③ 의 근거였던 "재시도할 수단이 없다"가 그렇게 닫혔다. 같은 라운드가
+  `data/repository/image` 를 셋으로 갈랐다(`installer/image` · `utils/image`, `data/util` 은
+  `data/utils` 로 합쳐졌다).
+  **② 기기 FCM 토큰 등록에 `:data` 표면이 생겼다**(#437) — `NotificationService` ·
+  `NotificationRemoteDataSource`(+`Impl`) · `DeviceToken`. **서버 표면이 먼저 열린 첫 도메인**이었는데
+  결국 여기서도 앱이 하루 만에 따라붙었다. ⚠️ **부를 수단은 없다** — FCM 토큰을 얻는 심볼이 develop
+  에 여전히 0건이고(2026-08-22 #325 가 걷어냈다) 호출부도 0건이라, 되살릴지를 묻는 OQ-P-341 은
+  그대로 열려 있다.
+  **③ 누끼 영역 편집에 빨간 틴트가 들어왔다**(#442) — 남는 영역에 `Cherry500` 을 `SrcAtop` 으로 한 겹
+  얹어 마스크 경계를 눈으로 잡게 한다. 위키 [[누끼-편집]]에 대응 조항이 없고 근거는 커밋 메시지뿐이라
+  **OQ-P-347 을 세웠다**. **④ README 에 소개·스크린샷이 붙었다**(#439) — 코드·계약 무변경이다.
+
+  **이번 회차가 확인한 것** — **"표면이 생겼다"와 "미결이 닫혔다"는 서로 다른 사건이다.** #437 은
+  OQ-P-341 이 지목한 자리를 정확히 채웠는데도 그 미결은 한 줄도 닫히지 않았다. 그 미결이 묻는 것이
+  표면의 유무가 아니라 **축을 되살릴지**였고, 부를 수단(FCM 토큰 취득)은 여전히 0건이기 때문이다.
+  직전 회차가 "미결은 결정이 아니라 코드가 옮겨 와서 닫힌다"를 적었다면, 이번 회차는 그 뒤집힌 면을
+  적는다 — **코드가 와도 그 코드가 미결의 질문에 답하지 않으면 닫히지 않는다.** 그래서 delta 를 볼 때
+  확인할 것은 심볼이 생겼는가가 아니라 **그 심볼로 물음에 답할 수 있게 됐는가**다.
+  반대편에서는 #438 이 OQ-P-153 ③ 을 **부수적으로** 닫았다. 그 미결은 재시도 버튼을 요구했는데,
+  이번 라운드는 버튼을 목적으로 넣은 것이 아니라 모듈 실패를 정직하게 알리다 보니 놓게 된 것이다.
+  ⚠️ 다만 그 버튼은 **디자인 검토 대기 시안**이고, 모듈 없는 상태의 화면 경로는 실기기에 모듈이
+  도착해 **사람이 눈으로 본 적이 없는 채로** 머지됐다.
+
+  직전 회차 요약: **위키가 1년 가까이 적어 둔 목적지로 코드가 옮겨 왔고, 앱 버전이 1.0.0 이 됐다**
   (delta 5건, 25파일 **삽입 449줄·삭제 85줄**). 유닛은 1012 → **1015건**(+3), 계측은 **17건**
   그대로다. 선작성 스펙·계획이 없어 **아카이브 이동은 0건**이고, **미결은 하나가 닫히고 둘이 생겼다**
   (OQ-P-135 해소 / OQ-P-339·340 신설, `oq-next` 339 → 341).
@@ -1386,6 +1420,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-03 | `40e1fca6` | Merge #439(README 소개·스크린샷) · #437(기기 FCM 토큰 등록 data 표면) · #438(ML Kit 모듈 설치 대기·실패 처리) · #442(누끼 영역 빨간 틴트) | delta 4건, 52파일 940/101. 유닛 1015 → **1029건**(+14: 설치기 7 · 세그멘테이션 ViewModel 3 · 알림 DataSource 4), 계측 **17건** 유지. **선작성 스펙 1·계획 1 아카이브 이동**(segmentation-module-install), 미결 1건 신설·3건 갱신(`oq-next` 347 → 348). **#438**: `installModules` 의 Task 반환을 설치 완료로 읽던 것을 고쳐 `InstallStatusListener` 의 종료 신호까지 기다린다 — `SegmentationModuleInstaller`(`Mutex` + `CompletableDeferred` 로 진행 중 설치 공유) · `ModuleInstallGateway`(GMS 이음매) · `PlayServicesModuleInstallGateway` · `ModuleInstallModule` · `PrepareSegmentationModuleUseCase` 신설, `ImageSegmentationRepository` 메서드 5 → **6**. 사전 설치는 **사진 확인 화면 진입**(촬영·갤러리 합류점). `isError` → `SegmentationErrorKind`(`SubjectNotFound`/`ModuleNotReady`) + `Retry` 인텐트 + `YGButton` 재시도(**디자인 검토 대기 시안**) → **OQ-P-153 ③ 해소, ④ 잔존**. 패키지 재배치: `repository/image` → `installer/image`(설치 3종)·`utils/image`(순수 커널 7), `data/util` → `data/utils` 통합. ⚠️ 모듈 없는 상태의 화면 경로는 재현 수단이 사라져 **미확인**. **#437**: `NotificationService`(`POST /api/v1/notifications/devices`, 204 본문 없음 → `safeApiCallNoContent`) · `NotificationRemoteDataSource`(+`Impl`, `platform` 을 `"ANDROID"` 상수로 고정) · `domain.model.notification.DeviceToken`. **표면만이고 호출부 0건**, FCM 토큰 취득 심볼도 여전히 0건 → **OQ-P-341·342 는 열린 채 갱신**. api 표면 27/29 → **28/29, 공백 1**. **#442**: `ToppingEditScreen` 이 남는 영역에 `Cherry500` 틴트 한 겹(`MASK_TINT_ALPHA`, `SrcAtop`), 영역 탭 전용. 위키 [[누끼-편집]]에 대응 조항 없음 → **OQ-P-347 신설**. **#439**: README 소개·스크린샷(코드·계약 무변경). 조치: 스펙 1·계획 1 아카이브 + README 2행, api 3문서(notification.md `android_status` `none` → `partial`·엔드포인트 표·Android 매핑 절, README 도메인 표·총계), architecture 1건(data-layer — 메서드 6·모듈 설치 절 재작성·`util/image` → `utils/image` 정정·여덟 번째 Service), ADR-0012 머지 표기, 아카이브 스펙 c103 정책 대조 표 1행, open-questions 4항목. ⚠️ 실기기 확인 0회. 미머지: `feature/debug-mode` · `feature/image-loading-placeholder`(OQ-P-346) |
 | 2026-09-01 | `0173e454` | Merge #412(핸들 모서리) · #413(캔버스 상단바) · #414(지난 캔버스 메뉴) · #411(환영 배너) · #434(버전 1.0.0) | delta 5건, 25파일 449/85. 유닛 1012 → **1015건**(+3), 계측 **17건** 유지. **선작성 스펙·계획 없음 → 아카이브 이동 0건**, 미결 1건 해소·2건 신설(`oq-next` 339 → 341). **#411**: 그룹 생성·참여의 종착지가 G-001 목록 → **C-001 캔버스**로 옮겨 위키 [[기능정의서-v6]] 배선과 맞았다(OQ-P-135 해소). 복귀 관용구가 `goToSingleClearTop` → **`replaceAll(목록)` + `goTo(캔버스)`** 두 줄이 되고 `goToSingleClearTop` 소비처 0건. `NavKeyCanvasMain` 에 `welcomeGroupName`·`welcomeInviteCode` 추가(진입 사유를 나르는 첫 인자), `YGAlert` 첫 프로덕션 소비처 + `buttonIconResource` 신설, `GroupCreate`·`GroupNickName` 의 `NavigateToNext` 가 `data class` 로 승격. ⚠️ 배너 문구·복사 흐름·1회 보장에 근거 부재 → **OQ-P-339 신설**. **#413·#414**: 갤러리 저장이 하단 메뉴 액션 → **날짜바 `ic_save` 아이콘**(오늘 캔버스에서도 저장 가능, 노출은 `isCanvasSaveVisible` = 빈 안내판 조건의 부정 → **OQ-P-340 신설**), `YGCanvasMenu.addAction` nullable·`YGMenuItem` 아이콘/비활성 신설, 캘린더 그림이 날짜 텍스트와 한 클릭 영역. **#412**: 토핑 편집 핸들 우상단↔우하단 교환(회전/크기조절), 계산식 불변. **#434**: `5/0.1.1 → 6/1.0.0`, 정식 판 근거 미기재(OQ-P-310 갱신). 조치: architecture 3건(navigation-flow·design-system·state-management), 아카이브 스펙 as-built 8건(designsystem-canvas-components·ygalert·c001-canvas-gallery-save·c201-canvas-calendar-server·c106-topping-place·c301-topping-edit-tab·a005·s102), specs/README 8행, open-questions 6항목(135·136·273·310 갱신 + 339·340 신설). ⚠️ 실기기 확인 0회. 미머지: `feature/debug-mode` |
 | 2026-09-01 | `fa46e5cf` | Merge #430(그룹 추가 팝업 배경색) | delta 1건, **1파일 1/1** — 세어 온 회차 중 가장 작다. 트리 = 브랜치 팁(충돌 해소 편집 0건), 유닛 **1012건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건, 신규 미결 0건**. **#430**: G-001 그룹 추가 오버레이의 메뉴 판 배경이 `Cherry50` → `Gray.White`(근거는 커밋 서술 — 항목을 얹는 바탕은 중립색). 항목·구분선·모서리·화면 구조·계약 무변경. 조치: 아카이브 스펙 g001-group-list as-built 한 줄 정정(+ `verified`), doc-baseline·index 기준선 갱신. 색이 위키 정책에 없다는 점은 기존 오버레이 구조 미결이 덮고 있어 항목을 늘리지 않았다. ⚠️ 실기기 확인 0회. 미머지: `feature/debug-mode` |
 | 2026-09-01 | `6a1da1b0` | Merge #428(API 현행화 260831) · #425(최근 알맹이 테두리 편집) | delta 2건, 37파일 997/437, **두 머지 다 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 996 → **1012건**(+16), 계측 **17건** 유지. **선작성 스펙 1·계획 1 아카이브 이동**(두 회차 연속) — 전날 "로컬 브랜치에만 있다"고 적어 둔 것이 그대로 develop 이 됐고 **as-built 이탈 0건**이라 문서 일은 표기 갱신으로 끝났다. **#428**: 확인 버튼의 변형 저장이 단건 PATCH N회에서 **일괄 PATCH 1회**로 접혔다 — `UpdateToppingsUseCase`·`ToppingRepository.updateAll`·`ToppingTransformUpdate` 신설, 단건 경로(Service·DataSource·Repository·UseCase·wire DTO) 통째로 걷힘(서버 엔드포인트는 잔존 → OQ-P-335 가 develop 사실이 됨). 저장을 가르는 축이 **토핑 단위에서 축 단위**로 바뀌어 변형 일괄 1회 + 테두리 병렬 N회다. ⚠️ 부분 성공이 사라져 하나가 걸리면 변형을 보낸 토핑 전부가 dirty 로 남는다(OQ-P-334 ① 해소·②③④⑤ 잔존). 과거 캔버스 목록 `status` 가 `PastCanvasVO` 까지 올라왔고 **달력 점 기준은 토핑 개수 유지**(위키 [[C-201-캘린더-정책-v0.1]] 이 정본 → OQ-P-333 ②③ 해소), 그룹 목록 `recentImageUrl` 의 바뀐 뜻이 KDoc 두 곳에 반영(OQ-P-336 ③ 해소). **#425**: 최근 알맹이 재사용 진입에서 잠겨 있던 "사진 편집"이 `borderOnly` 편집으로 열렸다 — 플래그 뜻이 "캔버스에 놓인 토핑"에서 **"되살릴 원본이 없는 진입"**으로 넓어지고 원본 자리에 알맹이를 같이 넣는다. 초안 재기록 가드가 `SavedStateHandle` 로 옮겨 프로세스 사망 복원이 편집 결과를 덮어쓰지 않고, 테두리 미리보기가 사방 여백을 둔 판에 앉아 굵은 테두리가 안 깎인다. **선작성 문서 없이 들어와 신규 미결 둘이 전부 이쪽에서 나왔다** — OQ-P-337(여백 상수와 굵기 상한이 서로를 모름·테두리 렌더 규칙이 화면마다 둘) · OQ-P-338(원본 자리의 알맹이가 재편집 좌표계 전제를 바꾼다), `oq-next` 337 → 339. 조치: 스펙 1·계획 1 아카이브 + README 2행, api 4문서(`parfait-image.md` Android 매핑·낡은 심볼 정정, `parfait.md`·`conventions.md`·`README.md` 머지 표기), architecture 2건(navigation-flow·data-layer), 스펙 as-built 3건(c106·c301·c103). ⚠️ **실기기·실서버 확인 0회** — 일괄 PATCH 는 `http/parfait-image.http` 에도 여전히 없다. 미머지: `feature/debug-mode` |

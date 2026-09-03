@@ -1,3 +1,28 @@
+---
+id: segmentation-module-install
+title: 세그멘테이션 optional module 설치 대기·실패 처리 구현 계획
+status: done
+type: work-order
+created: 2026-09-02
+updated: 2026-09-03
+archived_reason: 구현 완료·develop 머지(2026-09-03, PR #438 24679f8c). 브랜치 feature/ml-kit-model-load-exception, 7 Task 전량 수행, 신규 테스트 10건.
+platforms: android
+owner: Parfait 팀
+related_adr: ADR-0012
+related_spec: segmentation-module-install, c103-multi-subject-selection
+related_code:
+  - SegmentationModuleInstaller.kt#ensureInstalled
+  - ModuleInstallGateway.kt
+  - PlayServicesModuleInstallGateway.kt
+  - ModuleInstallModule.kt
+  - PrepareSegmentationModuleUseCase.kt
+  - PictureConfirmViewModel.kt
+  - ImageSegmentationRepository.kt#prepareSegmentationModule
+  - SegmentationViewModel.kt#SegmentationErrorKind
+  - SegmentationErrorScreen.kt#SegmentationErrorScreen
+tags: [plan, parfait]
+---
+
 # 세그멘테이션 모듈 설치 대기·실패 처리 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -8,7 +33,7 @@
 
 **Tech Stack:** Kotlin, Coroutines(`kotlinx-coroutines-test`), Hilt, Jetpack Compose, Play services `play-services-base` 18.5.0, ML Kit `play-services-mlkit-subject-segmentation` 16.0.0-beta1, MockK, Turbine, JUnit4.
 
-**Spec:** `parfait/specs/2026-09-02-segmentation-module-install.md` (AI 스킬·위키 repo. 코드 작업 대상은 별도 repo `TJYG-Android`)
+**Spec:** `parfait/specs/archive/2026-09-02-segmentation-module-install.md` (AI 스킬·위키 repo. 코드 작업 대상은 별도 repo `TJYG-Android`)
 
 **작업 대상 저장소:** `TJYG-Android`, 브랜치 `feature/ml-kit-model-load-exception`.
 ⚠️ 이 브랜치 작업 트리에는 **조사용 진단 코드가 미커밋 상태로 남아 있다.** Task 3이 그것을 최종

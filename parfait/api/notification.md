@@ -4,7 +4,7 @@ title: 알림(기기 FCM 토큰 등록)
 server_module: http/notification
 server_commit: 0c59af9
 verified: 2026-09-02
-android_status: none
+android_status: partial
 related_spec:
 related_adr: ADR-0013, ADR-0017
 tags: [api, parfait, server-contract, notification]
@@ -24,7 +24,7 @@ tags: [api, parfait, server-contract, notification]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| POST | `/api/v1/notifications/devices` | **필요**(화이트리스트 밖) | `RegisterDeviceTokenRequest` | 없음(204, envelope 없음) | 미구현 |
+| POST | `/api/v1/notifications/devices` | **필요**(화이트리스트 밖) | `RegisterDeviceTokenRequest` | 없음(204, envelope 없음) | 구현됨(표면만, 호출부 0) |
 
 **삭제 엔드포인트는 없다.** 커밋 제목이 "저장/삭제 API"라고 적지만 HTTP 표면은 등록 하나뿐이고,
 삭제는 다른 도메인의 부수 효과로만 일어난다(아래 [기기 토큰이 지워지는 두 경로](#기기-토큰이-지워지는-두-경로)).
@@ -115,16 +115,32 @@ tags: [api, parfait, server-contract, notification]
 
 ## Android 매핑
 
-**없음.** develop(`0173e454`) 전체에 `FirebaseMessaging`·FCM 토큰 취득·이 경로를 부르는 심볼이 **0건**이다.
+✅ **`:data` 표면이 생겼다(2026-09-03, PR #437 `7019a550`)** — 서버가 표면을 먼저 연 도메인에 앱이
+하루 만에 따라붙었다.
 
-🔁 **다만 이 공백은 "아직 안 만든 것"이 아니라 "만들었다가 걷어낸 것"이다.** 앱은 FCM 수신 서비스와
+| 계약 | Android |
+|---|---|
+| `POST /api/v1/notifications/devices` | `NotificationService.postNotificationsDevices` — `@NoAuth`를 붙이지 않아 access token이 실린다 |
+| 요청 `token`·`platform` | `RegisterDeviceTokenRequest`(`@SerialName` 둘). `platform`은 `NotificationRemoteDataSourceImpl`이 `"ANDROID"` 상수로 채운다 — 호출자가 고를 수 없다 |
+| 성공 204·본문 없음 | `ApiCaller.safeApiCallNoContent` — 반환 타입에 envelope를 두지 않는다. `Result<Unit>`으로 나온다 |
+| 등록 해제 엔드포인트 없음 | 서비스에도 없다. 로그아웃·탈퇴가 서버에서 대신 지운다는 사실을 KDoc이 가리킨다 |
+
+도메인 모델은 `domain.model.notification.DeviceToken`(`@JvmInline value class`) 하나다.
+`upsert`라 반복 호출해도 된다는 계약은 `NotificationRemoteDataSourceImpl`의 KDoc이 받아 적었다.
+
+⚠️ **표면뿐이고 결선은 0이다.** 리포지토리도 UseCase도 화면도 없고, 무엇보다 **넣을 토큰을 얻을 수단이
+없다** — `FirebaseMessaging`·FCM 토큰 취득 심볼이 develop 전체에 여전히 0건이고 `firebase-messaging`
+의존도 없다. 즉 `registerDeviceToken`을 부르는 코드는 하나도 없고, 지금 상태로는 **부를 수도 없다.**
+그래서 아래 철회 경위와 미결은 그대로 살아 있다 → OQ-P-341.
+
+🔁 **이 공백은 "아직 안 만든 것"이 아니라 "만들었다가 걷어낸 것"이다.** 앱은 FCM 수신 서비스와
 토큰 조회·알림 권한 요청을 갖고 있었고, **2026-08-22 PR #325가 그것을 걷어냈다**
 ([ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)의 철회 정정 — `firebase-messaging` 의존까지 빠졌고
 Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포인트의 부재였다** — `onNewToken`이
 `TODO("서버에 FCM 토큰 전송")`인 채여서 토큰이 로그로만 갔고, 결선된 적 없는 기능 때문에 첫 실행마다
 알림 권한을 묻는 상태였다.
 
-**이번 delta가 그 전제를 뒤집는다.** 보낼 자리가 생겼으므로 "쓰이지 않아서 걷었다"는 근거는 더 이상
+**서버 delta가 그 전제를 뒤집었고, 앱은 데이터 표면까지만 따라왔다.** 보낼 자리가 생겼으므로 "쓰이지 않아서 걷었다"는 근거는 더 이상
 성립하지 않는다. ADR-0013이 되살릴 때 다시 정하라고 남긴 두 물음(**토큰 라이프사이클**과 **알림 권한을
 언제 묻는가**) 중 앞의 것은 서버가 절반을 답했다 — 등록은 upsert, 폐기는 로그아웃·탈퇴다
 → [미결](#미결).
