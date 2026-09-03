@@ -2,8 +2,8 @@
 id: parfait-image
 title: 토핑 배치(배치 확정·위치/크기/각도 수정·일괄 수정·테두리 수정·삭제)
 server_module: http/parfaitimage
-server_commit: 0c59af9
-verified: 2026-09-02
+server_commit: aa9cc9b
+verified: 2026-09-04
 android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
@@ -139,6 +139,18 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
   (`PlaceParfaitImageService`가 `existing == null`인 경우에만 `imageMeta.incrementReferenceCount()`를 저장).
   같은 `(parfaitId, imageId)` 재-POST(아래 upsert)는 카운트를 올리지 않는다. 이 값이 0이 되는 순간 S3 객체가
   지워진다(아래 DELETE 절) — [image.md](image.md)에 "증감 경로가 없다"고 적혀 있던 자리가 이 라운드로 채워졌다.
+
+  **부수효과 2(2026-09-04 신설): 그룹의 다른 구성원에게 푸시 알림이 나간다.** 같은
+  `existing == null` 분기가 `ToppingPlacedNotifier.notify`를 부른다 — **새 배치만이고 재-POST(이동)는
+  알림을 만들지 않는다.** 수신자는 그룹 구성원에서 **나간 사람과 배치자 본인을 뺀** 나머지이고, 실제
+  발송은 이 요청이 아니라 커밋 뒤 워커가 한다. **응답이 발송 결과를 담지 않는다** — 알림이 안 가도
+  이 API는 201이다 → [notification.md](notification.md) "서버가 보내는 푸시".
+
+  ⚠️ **알림 큐 적재가 이 트랜잭션 안에서 일어난다.** `NotificationOutboxAdapter.saveAll`이 이미 큐잉된
+  `dedup_key`를 미리 걸러 정상 경로에서는 제약 위반이 나지 않지만, **같은 키로 동시 저장이 겹치는 드문
+  경합에서는 나중 트랜잭션이 롤백된다** — 즉 **알림 적재 실패가 토핑 배치 자체를 실패시킬 수 있다.**
+  서버 커밋 메시지가 이것을 at-least-once의 대가로 명시하고 상위 재시도를 전제한다. 앱이 배치 실패를
+  삼키면 사용자에게는 "토핑이 안 올라갔다"로 보인다.
 
   ⚠️ **같은 `(parfaitId, imageId)`로 다시 POST하면 새 행이 생기지 않고 기존 배치가 이동한다.**
   `PlaceParfaitImageService`가 `findByParfaitIdAndImageMetaId`로 기존 배치를 찾아 있으면
