@@ -5,8 +5,58 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `c74f40eb` (`Merge pull request #444 from mash-up-kr/feature/#443-replace-splash-lottie`)
-- **요약**: **앱을 여는 첫 그림이 갈렸는데 코드는 한 줄도 안 움직였다** (delta 1건, **1파일 · 삽입
+- **커밋**: `2b1dce3a` (`Merge pull request #451 from mash-up-kr/feature/sync-backend-api-260903`)
+- **요약**: **앱 코드는 한 줄도 안 바뀌었는데 서버 계약을 손으로 확인할 자리가 둘 생겼다**
+  (delta 1건, **5파일 · 삽입 550줄 · 삭제 3줄** — 전부 `http/` 아래의 요청 모음과 사용법이다).
+  유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동
+  0건**, 미결은 **하나가 생기고 넷이 갱신됐다**(OQ-P-354 신설 / 092·108·341·352 갱신,
+  `oq-next` 354 → 355).
+
+  **#451이 `notifications.http` 와 `fcm-test.http` 를 들여왔다.** 앞의 것은 우리 서버로 나가고
+  (기기 토큰 등록 — 204·본문 없음, upsert 재호출, 400 네 갈래와 401 대조군), 뒤의 것은 **서버를
+  거치지 않고 FCM v1 API 로 직접** 나간다(서버가 만드는 것과 같은 모양의 푸시를 손으로 쏴서 앱
+  수신을 확인하는 자리다). `http-client.env.json`·`_reset.http`·`http/README.md` 도 같은 PR 이
+  함께 맞췄다 — `fcm_project_id`·`fcm_access_token`·`fcm_device_token` 셋은 응답에서 뽑는 값이
+  아니라 **손으로 채우는 값**이라 `_reset.http` 의 비우기 목록에는 일부러 안 넣었고, 그 사실을
+  두 파일이 각자 적는다.
+
+  **`http/` 요청 모음의 커버가 25/29 → 26/29 가 됐다 — 일곱 번째 왕복이 닫혔다.** 다만 이번
+  왕복은 **방향이 반대다.** 앞선 여섯 번은 서버가 엔드포인트를 늘리면 요청 모음이 뒤처지는
+  모양이었는데, 이번에는 **요청 모음이 앱 코드보다 앞서 나갔다** — 등록 엔드포인트를 부를 수단
+  (FCM 토큰 취득)이 develop 에 여전히 0건이라 앱은 못 부르지만, 이 파일은 토큰을 손으로 넣으므로
+  **앱 없이 지금 돌릴 수 있다.** 일곱 번째도 사람이 손으로 메운 것이라 OQ-P-092 의 "갱신 경로가
+  둘"은 그대로다.
+
+  **코드 드리프트는 0건이다.** `.kt`·gradle·리소스 어느 것도 안 바뀌었으므로 `android_status`·
+  Android 매핑의 판정(등록 표면만 있고 호출부 0, FCM 수신·채널 심볼 0건)은 그대로 옳다 — 실제로
+  `origin/develop` 전체에서 `firebase-messaging`·`FirebaseMessaging`·`onNewToken`·`parfait_default`
+  를 찾으면 **`http/` 아래 세 파일만 걸린다.** 그래서 이 회차가 고친 것은 **코드에 대한 서술이
+  아니라 "무엇으로 확인할 수 있는가"에 대한 서술**이다.
+
+  ⚠️ **대신 복제면이 하나 늘었다 — OQ-P-354 신설.** `fcm-test.http` 는 엔드포인트 미러가 아니라
+  **서버→앱 단방향 푸시의 미러**다. 문구 2종·`data` 키 4종·채널 id `parfait_default`·TTL 6시간·
+  APNs 헤더가 상수로 박혀 있고, 서버가 그 값을 바꿔도 **세는 축이 없다.** 지금까지 `api/` ↔ `http/`
+  갈라짐을 드러내 준 것은 엔드포인트 커버 셈(`N/29`)이었는데 푸시에는 셀 엔드포인트가 없다.
+  ⚠️ **그리고 둘 다 실행 기록이 0건이다** — `fcm_access_token`(1시간 만료)과 Firebase 서비스 계정
+  키가 있어야 돌아가고, 이 회차에 그것을 확보해 쏴 본 적이 없다. `fcm-test.http` 는 받을 쪽이
+  없어 지금은 절반만 돌아간다(발송은 200, 기기에는 아무것도 안 뜬다).
+
+  **미머지 브랜치가 다섯에서 일곱이 됐다** — `feature/push-notification-permission` 과
+  `feature/#420-canvas-tutorial` 이 새로 올라왔다. 앞의 것이 OQ-P-341 을 정면으로 답한다: 커밋
+  제목이 도메인 계약 신설 → `NotificationRepository` 결선 → `onNewToken` 등록 → **권한 허용 직후
+  즉시 등록** → **그룹 생성·참여 직후 권한 안내**로 이어져, 미결의 ②(등록 호출 시점)와 ③(권한을
+  언제 묻는지)이 브랜치에서는 이미 정해져 있다. 직전 회차가 `feature/push-fcm-service` 에서 본
+  "등록을 안 부르는 자리"도 이 브랜치가 잇는다. 머지 전에는 스펙을 고치지 않는 규율([2026-07-13])
+  대로 미결에 메모만 달았다.
+
+  **이번 회차가 확인한 것** — **코드가 안 바뀐 라운드에도 계약 표면은 움직인다.** 이 문서의 감사
+  루틴은 `.kt` 심볼 대조에 무게가 실려 있어서 `http/` 만 바뀐 delta 는 "드리프트 0건"으로 지나가기
+  쉽다. 그런데 `http/` 는 **계약 서술을 복제해 두는 자리**라, 여기가 늘면 `api/` 문서의 커버 셈과
+  "확인하는 법" 절이 곧바로 낡는다. 그러므로 delta 가 `http/` 만 건드렸을 때 물을 것은 "코드가
+  바뀌었나"가 아니라 **① 커버 셈이 움직였나 ② 새로 복제된 계약 값이 무엇인가 ③ 그 복제를 세는
+  축이 있나** 셋이다. 이번엔 ①이 26/29 로 움직였고 ②가 푸시 페이로드였으며 ③이 없어서 미결이 됐다.
+
+  직전 회차 요약(64회차, `c74f40eb`): **앱을 여는 첫 그림이 갈렸는데 코드는 한 줄도 안 움직였다** (delta 1건, **1파일 · 삽입
   0줄 · 삭제 0줄** — 바이너리 교체라 diff 가 세어 줄 것이 없다). 유닛 **1029건**·계측 **17건** 유지
   (테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**, 미결은 **하나가 생기고 둘이
   갱신됐다**(OQ-P-350 신설 / 229·341 갱신, `oq-next` 350 → 351).
@@ -1315,7 +1365,7 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-09-03 (64회차)
+- **검증일**: 2026-09-04 (65회차)
 
   📌 **이 줄이 여섯 회차 동안 낡아 있었다** — 58~63회차(`27e85d0d`·`afde8c4c`·`6a1da1b0`·`fa46e5cf`·
   `0173e454`·`40e1fca6`)가 기준선 해시와 이력 표는 갱신하면서 이 줄만 건너뛰어 `2026-08-28 (57회차)`
@@ -1345,6 +1395,12 @@
   멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
   적이 있다) **직전 회차의 이 줄 + 1**이다.
 - **미머지 추적 항목**: **0.**
+  📌 **65회차에 일곱으로 늘었다(2026-09-04)** — 아래 다섯에 `feature/push-notification-permission`
+  (도메인 계약 → `NotificationRepository` 결선 → `onNewToken` 등록 → 권한 허용 직후 등록 → 그룹
+  생성·참여 직후 권한 안내, OQ-P-341 ②③④) 과 `feature/#420-canvas-tutorial`(C-001 최초 진입
+  튜토리얼 오버레이, 표시 여부를 사용자 설정에 저장) 이 더해졌다. 푸시 계열이 이제 셋이고
+  (`push-fcm-service` · `push-notification-deeplink` · `push-notification-permission`) 셋이 합쳐져야
+  OQ-P-341 이 실제로 닫힌다 — 머지 회차에 **세 브랜치의 머지 순서부터** 확인한다.
   📌 **64회차에 다섯으로 늘었다(2026-09-03)** — `feature/debug-mode`(OQ-P-311 계보) ·
   `feature/image-loading-placeholder`(OQ-P-346·348) 에 더해 `feature/#423-canvas-save-preview`
   (캔버스 저장을 미리보기 화면으로 돌리고 스토리 비율로 잡는다) · `feature/push-fcm-service`
@@ -1463,6 +1519,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-04 | `2b1dce3a` | Merge #451(API 현행화 260903 — `http/` 요청 모음) | delta 1건, **5파일 550/3**(전부 `http/`). 유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#451**: `notifications.http`(기기 토큰 등록 — 204·본문 없음·upsert 재호출·400 4종·401 대조군)와 `fcm-test.http`(**서버를 거치지 않고 FCM v1 API 로 직접** 발송해 앱 수신을 확인)가 신설되고 `http-client.env.json`·`_reset.http`·`http/README.md` 가 함께 맞춰졌다(`fcm_*` 세 변수는 손으로 채우는 값이라 `_reset.http` 비우기 목록에서 제외). `http/` 커버 **25/29 → 26/29, 일곱 번째 왕복**이고 **방향이 반대다** — 요청 모음이 앱 코드보다 앞서 나갔다(등록을 부를 수단이 develop 에 0건). `.kt`·gradle 무변경이라 **코드 드리프트 0건**이고 `android_status`·Android 매핑 판정은 그대로 옳다. 조치: api/README(파일 목록·커버 셈·`fcm-test.http` 성격), api/notification.md(Android 매핑에 확인 수단 표·미결 2항목), open-questions 5항목(OQ-P-354 신설 — 서버 발송 페이로드 복제를 세는 축이 없다 / OQ-P-092·108·341·352 갱신), doc-baseline·index 기준선 갱신. ⚠️ 두 파일 다 **실행 기록 0건**(`fcm_access_token` 1시간 만료·서비스 계정 키 필요, 받을 쪽도 없다). 미머지 **다섯 → 일곱**: `feature/push-notification-permission`(OQ-P-341 ②③④) · `feature/#420-canvas-tutorial` 추가 |
 | 2026-09-03 | `c74f40eb` | Merge #444(스플래시 로띠 교체) | delta 1건, **1파일 0/0**(바이너리 교체). 유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#444**: `feature/intro/impl` `res/raw/splash.lottie` 가 새 로고 애니메이션으로 교체됐다. dotLottie 를 풀어 대조하니 manifest 판본·애니메이션 id(`Lottie-Logo`)·프레임률·재생 길이·화면 크기·레이어 여덟(`Parfait` 일곱 글자 + `Stroke`)이 교체 전과 동일하고 각 레이어의 패스·키프레임만 다르다 → `R.raw.splash`·`SplashScreen` 무변경, 위키 [[스플래시-애니메이션]] A-001 정본의 **60fps·3.5초** 타임라인 유지, 진입 대기 길이(OQ-P-229) 불변. **드리프트 0건**. 조치: open-questions 3항목(OQ-P-350 신설 — 바뀐 그림을 본 사람 0건·회귀 감지 수단 없음 / OQ-P-229·341 갱신), doc-baseline·index 기준선 갱신. ⚠️ 실기기 확인 0회. 미머지 **둘 → 다섯**: `feature/debug-mode` · `feature/image-loading-placeholder` · `feature/#423-canvas-save-preview` · `feature/push-fcm-service` · `feature/push-notification-deeplink` |
 | 2026-09-03 | `40e1fca6` | Merge #439(README 소개·스크린샷) · #437(기기 FCM 토큰 등록 data 표면) · #438(ML Kit 모듈 설치 대기·실패 처리) · #442(누끼 영역 빨간 틴트) | delta 4건, 52파일 940/101. 유닛 1015 → **1029건**(+14: 설치기 7 · 세그멘테이션 ViewModel 3 · 알림 DataSource 4), 계측 **17건** 유지. **선작성 스펙 1·계획 1 아카이브 이동**(segmentation-module-install), 미결 1건 신설·3건 갱신(`oq-next` 347 → 348). **#438**: `installModules` 의 Task 반환을 설치 완료로 읽던 것을 고쳐 `InstallStatusListener` 의 종료 신호까지 기다린다 — `SegmentationModuleInstaller`(`Mutex` + `CompletableDeferred` 로 진행 중 설치 공유) · `ModuleInstallGateway`(GMS 이음매) · `PlayServicesModuleInstallGateway` · `ModuleInstallModule` · `PrepareSegmentationModuleUseCase` 신설, `ImageSegmentationRepository` 메서드 5 → **6**. 사전 설치는 **사진 확인 화면 진입**(촬영·갤러리 합류점). `isError` → `SegmentationErrorKind`(`SubjectNotFound`/`ModuleNotReady`) + `Retry` 인텐트 + `YGButton` 재시도(**디자인 검토 대기 시안**) → **OQ-P-153 ③ 해소, ④ 잔존**. 패키지 재배치: `repository/image` → `installer/image`(설치 3종)·`utils/image`(순수 커널 7), `data/util` → `data/utils` 통합. ⚠️ 모듈 없는 상태의 화면 경로는 재현 수단이 사라져 **미확인**. **#437**: `NotificationService`(`POST /api/v1/notifications/devices`, 204 본문 없음 → `safeApiCallNoContent`) · `NotificationRemoteDataSource`(+`Impl`, `platform` 을 `"ANDROID"` 상수로 고정) · `domain.model.notification.DeviceToken`. **표면만이고 호출부 0건**, FCM 토큰 취득 심볼도 여전히 0건 → **OQ-P-341·342 는 열린 채 갱신**. api 표면 27/29 → **28/29, 공백 1**. **#442**: `ToppingEditScreen` 이 남는 영역에 `Cherry500` 틴트 한 겹(`MASK_TINT_ALPHA`, `SrcAtop`), 영역 탭 전용. 위키 [[누끼-편집]]에 대응 조항 없음 → **OQ-P-347 신설**. **#439**: README 소개·스크린샷(코드·계약 무변경). 조치: 스펙 1·계획 1 아카이브 + README 2행, api 3문서(notification.md `android_status` `none` → `partial`·엔드포인트 표·Android 매핑 절, README 도메인 표·총계), architecture 1건(data-layer — 메서드 6·모듈 설치 절 재작성·`util/image` → `utils/image` 정정·여덟 번째 Service), ADR-0012 머지 표기, 아카이브 스펙 c103 정책 대조 표 1행, open-questions 4항목. ⚠️ 실기기 확인 0회. 미머지: `feature/debug-mode` · `feature/image-loading-placeholder`(OQ-P-346) |
 | 2026-09-01 | `0173e454` | Merge #412(핸들 모서리) · #413(캔버스 상단바) · #414(지난 캔버스 메뉴) · #411(환영 배너) · #434(버전 1.0.0) | delta 5건, 25파일 449/85. 유닛 1012 → **1015건**(+3), 계측 **17건** 유지. **선작성 스펙·계획 없음 → 아카이브 이동 0건**, 미결 1건 해소·2건 신설(`oq-next` 339 → 341). **#411**: 그룹 생성·참여의 종착지가 G-001 목록 → **C-001 캔버스**로 옮겨 위키 [[기능정의서-v6]] 배선과 맞았다(OQ-P-135 해소). 복귀 관용구가 `goToSingleClearTop` → **`replaceAll(목록)` + `goTo(캔버스)`** 두 줄이 되고 `goToSingleClearTop` 소비처 0건. `NavKeyCanvasMain` 에 `welcomeGroupName`·`welcomeInviteCode` 추가(진입 사유를 나르는 첫 인자), `YGAlert` 첫 프로덕션 소비처 + `buttonIconResource` 신설, `GroupCreate`·`GroupNickName` 의 `NavigateToNext` 가 `data class` 로 승격. ⚠️ 배너 문구·복사 흐름·1회 보장에 근거 부재 → **OQ-P-339 신설**. **#413·#414**: 갤러리 저장이 하단 메뉴 액션 → **날짜바 `ic_save` 아이콘**(오늘 캔버스에서도 저장 가능, 노출은 `isCanvasSaveVisible` = 빈 안내판 조건의 부정 → **OQ-P-340 신설**), `YGCanvasMenu.addAction` nullable·`YGMenuItem` 아이콘/비활성 신설, 캘린더 그림이 날짜 텍스트와 한 클릭 영역. **#412**: 토핑 편집 핸들 우상단↔우하단 교환(회전/크기조절), 계산식 불변. **#434**: `5/0.1.1 → 6/1.0.0`, 정식 판 근거 미기재(OQ-P-310 갱신). 조치: architecture 3건(navigation-flow·design-system·state-management), 아카이브 스펙 as-built 8건(designsystem-canvas-components·ygalert·c001-canvas-gallery-save·c201-canvas-calendar-server·c106-topping-place·c301-topping-edit-tab·a005·s102), specs/README 8행, open-questions 6항목(135·136·273·310 갱신 + 339·340 신설). ⚠️ 실기기 확인 0회. 미머지: `feature/debug-mode` |
