@@ -4,7 +4,7 @@ title: 상태 관리 (MVI) · 데이터 흐름
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-01
+verified: 2026-09-04
 related_spec: c103-multi-subject-selection, c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, group-ssot, intro-term-agree
 related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: data-layer, navigation-flow
@@ -165,7 +165,16 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
   토핑·멤버) — 내 앱 안의 변경만 좇는 구독으로는 최신이 되지 않아 SSoT 구독과 **별개 축**이다.
   - **재조회 빈도가 실패 표현을 바꾼다.** 조회가 재진입마다 나가면 실패마다 전면 에러 화면으로 넘기는
     규칙은 "뒤로 온 것만으로 목록이 사라진다"가 된다. G-001은 그래서 **보여 줄 것이 있으면 화면을
-    유지**하고 사용자가 직접 당긴 새로고침 실패만 토스트로 알린다(`ShowRefreshError`).
+    유지**하고 사용자가 직접 당긴 새로고침 실패만 따로 알렸다(`ShowRefreshError` 토스트).
+    - 🔁 **갈림의 기준이 바뀌었다(2026-09-04, PR #440 develop 머지)** — "목록이 남아 있는가"에서
+      **"사용자가 당겼는가"**로 옮겼다. 당긴 새로고침은 화면이 이미 목록을 비운 뒤라 실패를 받아 줄
+      자리가 에러 화면뿐이고, 재진입 조회 실패만 낡은 목록을 남긴다. 그래서 `ShowRefreshError`가
+      도달 불가가 되어 이펙트·문자열과 함께 걷혔고, G-001 Route는 토스트 호스트를 다시 안 갖는다.
+      `isError`에 규칙이 하나 붙었다 — **켜기만 하고, 끄는 것은 성공한 조회뿐**이다(끄면 실패한
+      재진입 조회가 앞선 실패를 덮어 낡은 목록이 표시 없이 돌아온다). 덮개를 내리는 자리도 옮겼다:
+      조회가 반환한 시점이 아니라 **캐시가 목록을 실제로 낸 시점**이다(구독은 시작하자마자 `null`을
+      한 번 내므로 그때는 안 내리고, 조회가 실패하면 캐시가 아무것도 안 내므로 실패 갈래에서 따로
+      내린다) → OQ-P-348.
   - **재진입에 다시 부를 값과 아닐 값을 가른다** — C-001은 오늘 캔버스와 **올해** 달력 기록만 다시 받고,
     연도 목록(해가 바뀔 때만 늘어난다)과 지난 날 캔버스(마감돼 안 바뀐다)는 그대로 둔다.
   - **재진입은 시간이 흐른 지점이기도 하다** — 두 화면 다 이때 오늘을 다시 센다(G-001은 날짜 헤더,

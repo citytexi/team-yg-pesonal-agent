@@ -4,7 +4,7 @@ title: C-001 캔버스 오늘·날짜별 조회 결선 (ParfaitRepository + 토�
 status: implemented
 category: feature-spec
 platforms: android
-verified: 2026-08-26
+verified: 2026-09-04
 related_code: ParfaitRepository, ParfaitRepositoryImpl, GetTodayParfaitUseCase, GetParfaitDetailUseCase, parfaitToday, PARFAIT_TIME_ZONE, CanvasToppingLayer, CanvasMainViewModel, CanvasMainUiState, CanvasMainRoute, CanvasMainScreen, NavKeyCanvasMain, GroupListViewModel, GroupListScreen, GroupListRoute, String.toColorOrNull, CanvasVO, CanvasToppingVO, ToppingTransform, ToppingBorder, YGCanvasBackground
 related_adr: ADR-0009, ADR-0017, ADR-0020
 related_spec: c001-canvas-main, c201-canvas-calendar, c201-canvas-calendar-server, c301-topping-edit-tab, parfait-canvas-topping-member-api-service-layer, canvas-detail-background-api-service-layer, g001-group-list, screen-resume-refetch
@@ -174,6 +174,29 @@ DI는 `RepositoryModule`에 `@Binds` 한 줄.
 > 함께 **`isEmpty`의 효력이 배경에 종속됐다** — 빈 안내판은 `isEmpty && background == null`일 때만
 > 뜬다. 배경을 고른 캔버스는 토핑이 0개여도 안내 없이 그 배경만 보인다. 그 조건은 정책 소스가
 > 없다 → [open-questions](../../synthesis/open-questions.md) OQ-P-304.
+
+> 🔁 **as-built 갱신(2026-09-04, PR #440 develop 머지) — 다 모이기 전에는 아무것도 안 낸다.**
+> 종전에는 토핑이 각자 도착하는 대로 하나씩 떴다. 이제 `CanvasToppingLayer`가 `core:ui`의
+> `rememberBatchRevealState`로 **한 묶음이 전부 결말날 때까지 가렸다가 한 번에 낸다**(성공과 실패를
+> 모두 결말로 센다). 가리는 수단은 `Modifier.revealed`(알파 0 + 시맨틱 제거)라 **측정·배치는 살아
+> 있고**, 그래야 감춘 자리의 이미지 요청이 이어진다. 판정 오버레이는 드러난 뒤에만 단다 —
+> 보이지 않는 토핑이 눌리면 안 된다.
+> - **빈 목록은 완료가 아니다.** 조회가 오기 전에는 기다릴 대상이 없는데 그 순간을 완료로 세면
+>   빗장이 먼저 풀려 뒤늦게 온 것들이 하나씩 뜬다. 한 번 풀린 뒤에는 다시 가리지 않는다(항목 하나가
+>   늘 때마다 화면 전체가 사라졌다 나타나면 더 거슬린다).
+> - **날짜를 바꿔도 이 레이어는 컴포지션에 남으므로** 빗장을 다시 걸 열쇠가 필요하다 —
+>   `revealResetKey`는 **고른 날짜가 아니라 실제로 그리는 캔버스**(`displayedCanvas`)다. 지난 날을
+>   기다리는 동안에는 직전 캔버스가 그대로 걸려 있기 때문이다.
+> - **배치 화면(C-106)은 이 게이트를 끈다**(`revealTogether = false`) — 거기서는 이 레이어가 배경으로만
+>   깔리므로, 켜면 배치 중인 토핑 옆에서 로딩이 돈다.
+> - 화면 전체의 결말은 `CanvasLoadState`(`Loading`/`Loaded`/`Failed`)로 접힌다 — **한 장만 실패해도
+>   전체가 실패**이고 실패가 있으면 나머지를 기다리지 않는다. 빈 목록은 실패가 아니다. 접기는 두 겹이다
+>   (토핑들 → 하나, 그 결과 + 배경 → 하나). ⚠️ 이 규칙의 근거는 코드 주석("기획 판단")과 커밋
+>   메시지뿐이다 → OQ-P-355.
+> - 실패하면 `YGScaffoldV2`의 `loadingOverlay` 슬롯에 **다시 시도 버튼이 있는 덮개**가 들어가고,
+>   버튼은 `retryKey`를 올린다 — `rememberReloadableImageRequest`가 그 값으로 캐시를 건너뛰므로 같은
+>   url이라도 실제로 다시 받아 온다. ⚠️ **알파 마스크는 그 재시도에 딸려 오지 않는다** → OQ-P-356.
+> - 덮개는 화면 전체를 덮는다 — 캔버스 영역만 덮으면 그 밖의 날짜 선택과 메뉴가 그대로 눌린다.
 
 ### 진입
 

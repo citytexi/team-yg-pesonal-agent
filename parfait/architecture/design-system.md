@@ -4,11 +4,11 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-01
+verified: 2026-09-04
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c202-canvas-spotlight, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0007, ADR-0010, ADR-0018, ADR-0025
 related_architecture:
-related_code: core:designsystem, YGTheme
+related_code: core:designsystem, YGTheme, ParfaitImageLoader.kt#newParfaitImageLoader, YGDimOverlay.kt#YGDimOverlay, YGSkeleton.kt#YGSkeleton, YGLoadingLottie.kt#YGLoadingArt
 tags: [architecture, parfait]
 ---
 # Design System — 테마·토큰·컴포넌트 작성 가이드
@@ -37,8 +37,10 @@ component/
   ygbutton/               ← YGButton (첫 컴포넌트, 작성 패턴 레퍼런스)
   ygalert/                ← YGAlert 배너 + YGAlertPolicy/Host (노출 정책 패턴)
   ygtoast/                ← YGToast(+YGToastType) + YGToastPolicy/Host (노출 정책 패턴) + showError 확장 (#267) + 태그 교체 replaceTag (#405)
-  ygloading/              ← YGLoadingOverlay (Dim+인디케이터+터치 삼킴) + YGLoadingLottie(+YGLoadingTone) (#267 · 인디케이터 로띠 교체 #305)
-  ygcanvas/               ← YGCanvas + YGCanvasBackground (C-001 캔버스 합성 컨테이너, 반응형 배치 #199) (#185 develop 머지)
+  ygloading/              ← YGLoadingOverlay (Dim 판 + 인디케이터) + YGLoadingLottie(+YGLoadingArt) (#267 · 인디케이터 로띠 교체 #305 · Dim·터치 삼킴을 ygdimoverlay 로 분리하고 YGLoadingTone → YGLoadingArt 개명 #440)
+  ygdimoverlay/           ← YGDimOverlay (Dim 판 + 터치 삼킴 + 선택적 병합 시맨틱, #440 develop 머지 — YGLoadingOverlay 에서 뽑아낸 공용 판)
+  ygskeleton/             ← YGSkeleton (원격 이미지 대기 자리의 시머 회색면, #440 develop 머지)
+  ygcanvas/               ← YGCanvas + YGCanvasBackground + YGCanvasBackgroundState (C-001 캔버스 합성 컨테이너, 반응형 배치 #199 · 배경 로딩 상태 보고 #440) (#185 develop 머지)
   ygbackgrounddotgrid/    ← ygBackgroundDotGrid() Modifier (C-001 배경 점 격자, drawBehind) (#199 develop 머지)
   yglistdate/             ← YGListDate (C-201 날짜 셀 = YGDateButton + YGChipColorIndicator) (#188 develop 머지)
   ygfloatingbar/          ← YGFloatingBar* 5변형 + private 컨테이너·버튼 2종 (4변형 #188 · Title #406, 둘 다 develop 머지)
@@ -52,11 +54,12 @@ component/etc/
 screen/                   ← 화면 루트 컨테이너 (아래 "화면 컨테이너")
   YGScreen.kt             Surface 래퍼 + YGScreenScope 리시버 (화면 최외곽)
   YGScaffold.kt           Material3 Scaffold 래퍼 (구판, @Deprecated(WARNING) #267)
-  YGScaffoldV2.kt         Scaffold + 로딩 오버레이 + 토스트 호스트 3층 (Route 소유, #267 develop 머지)
+  YGScaffoldV2.kt         Scaffold + 로딩 오버레이 + 토스트 호스트 3층 (Route 소유, #267 develop 머지 · 덮개가 `loadingOverlay` 슬롯이 됨 #440)
+image/                    ← ParfaitImageLoader.kt: newParfaitImageLoader(전역 Coil 로더 팩토리) + rememberReloadableImageRequest (#440 develop 머지)
   YGScreenScope.kt        YGScreenScope + OnBack(@Composable, BackHandler 래핑)
 res/font/                 ← suit_regular/medium/semi_bold/bold.ttf (SUIT **수정본**, #366 — 아래 참고)
 res/values/strings.xml    ← 모듈 최초의 문자열(#267) — 로딩 오버레이 접근성 contentDescription 1건
-res/raw/                  ← 로딩 로띠 2종(밝은 바탕용·어두운 바탕용, #305) — 모듈 최초의 raw 리소스
+res/raw/                  ← 로딩 로띠 3종(밝은 바탕용·어두운 바탕용 #305, 캔버스 토핑용 `loading_topping` #440) — 모듈 최초의 raw 리소스
 res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-002 온보딩 일러스트 `image_onboarding_*` 추가, #264로 `ic_edit`·`ic_scale` 추가)
 (모듈 루트)
   OFL.txt                 ← 번들 폰트의 SIL Open Font License 1.1 사본 + 수정 내역 고지 (#366 신설)
@@ -268,6 +271,17 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > `finally` 를 둘 자리가 없어진다. 그 자리의 규칙은 **구독이 열릴 때 캔버스가 없으면 켜고, 캔버스가
 > 실리거나 갱신 실패 신호가 오면 내린다**로 바뀐다. 그룹 목록은 그대로다
 > → [canvas-today-ssot-polling 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md) 「실패 표현」.
+>
+> 🔁 **덮개가 슬롯이 됐다(2026-09-04, PR #440 develop 머지)** — `loadingOverlay: @Composable () -> Unit`이
+> 세 번째 파라미터로 붙고 기본값이 종전 동작(`YGLoadingOverlay()`)이라 호출부 전부가 그대로다.
+> 첫 소비는 C-001이다 — 같은 `isLoading` 하나로 로딩 덮개와 **실패 덮개**(다시 시도 버튼 포함)를
+> 갈아 끼운다. **터치를 삼키는 것이 슬롯의 몫으로 내려간 것**이 이 변경이 옮긴 책임이다: 스캐폴드는
+> 어디에 겹칠지만 정하므로, 그냥 그리기만 하는 것을 넘기면 아래가 그대로 눌린다(그래서 화면이
+> `YGDimOverlay`를 쓴다). ⚠️ **함께 접근성 차단 수단이 정정됐다** — `isLoading`일 때 content에 걸던
+> `semantics { hideFromAccessibility() }`가 `clearAndSetSemantics { }`로 바뀌었다. 앞의 것은 **그 노드
+> 하나만** 감추고 자식이 붙인 시맨틱은 트리에 남아, 덮개 아래 버튼이 TalkBack에 그대로 노출됐다
+> ([ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md) as-built ①이
+> 세운 규칙의 수단이 틀렸던 것이고, 규칙 자체는 그대로다). 계측 5 → **7건**.
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.
@@ -298,7 +312,9 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 | `YGDate` / `YGLabel` | `component/ygtext/` | [ygtext-date-label](../specs/archive/2026-07-18-ygtext-date-label.md) |
 | `YGAlert`(+`YGAlertPolicy`·`YGAlertHost`·`YGAlertItem`·`rememberYGAlertPolicy`) | `component/ygalert/` | [ygalert](../specs/archive/2026-07-23-ygalert.md) |
 | `YGToast`(+`YGToastType`·`YGToastPolicy`·`YGToastHost`·`YGToastItem`(+`tag` #405)·`rememberYGToastPolicy`·`showError` #267) | `component/ygtoast/` | [ygtoast](../specs/archive/2026-07-23-ygtoast.md) · [ygscaffold-v2](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md)(`showError`) |
-| `YGLoadingOverlay`(+`YG_LOADING_OVERLAY_TEST_TAG`) / `YGLoadingLottie`(+`YGLoadingTone`) — 인디케이터는 디자인 로띠로 확정(#305), Dim 농도·문구 유무는 여전히 미확정 | `component/ygloading/` | [ygscaffold-v2](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md) |
+| `YGLoadingOverlay`(+`YG_LOADING_OVERLAY_TEST_TAG`) / `YGLoadingLottie`(+`YGLoadingArt`·`YG_LOADING_LOTTIE_TEST_TAG`) — 인디케이터는 디자인 로띠로 확정(#305), Dim 농도는 `YGDimOverlay` 소관으로 넘어갔다(#440) | `component/ygloading/` | [ygscaffold-v2](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md) |
+| `YGDimOverlay` — Dim 판 + 터치 삼킴 + 선택적 병합 시맨틱, `ColumnScope` 슬롯(#440 신설) | `component/ygdimoverlay/` | (스펙 없음 — 아래 "로딩·덮개") |
+| `YGSkeleton`(+`YG_SKELETON_TEST_TAG`) — 원격 이미지 대기 자리의 시머 회색면, 크기는 호출자 몫(#440 신설) | `component/ygskeleton/` | (스펙 없음 — 아래 "로딩·덮개") |
 | `YGTopBar`(Back/Detail/Empty/Canvas 변형 + private `YGTopBarContent`·`ygTopBarBackdrop` + `YGTopBarDefaults`) | `component/ygtopbar/` | [ygtopbar](../specs/archive/2026-07-18-ygtopbar.md)(최초 계약) · [designsystem-bar-listdate-components](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md)(Canvas·날짜·블러) |
 | `YGListDate` | `component/yglistdate/` | [designsystem-bar-listdate-components](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) |
 | `YGFloatingBar{BackClose,Close,Edit,EditTab,Title}`(`Title`은 #406 develop 머지) | `component/ygfloatingbar/` | [designsystem-bar-listdate-components](../specs/archive/2026-08-01-designsystem-bar-listdate-components.md) |
@@ -341,6 +357,13 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
       "조작 종류를 표현할 API가 없다"는 문제는 그대로이고, 이제 **두 화면**에 퍼졌다 →
       [open-questions](../synthesis/open-questions.md) OQ-P-202 ③.
 - **캔버스 5종 + 컷 도형**(#185, `ygcanvas`·`ygcanvasmenu`·`ygcanvasdateselect`·`ygstrokebutton`·`ygmenuitem` + `shape/`): `YGCanvas`가 배경(`YGCanvasBackground` sealed — `Solid`/`Image`+Coil)·토핑 `BoxScope` 슬롯·날짜바·메뉴·Dim을 합성한다. Figma 5상태를 단일 enum이 아니라 **직교 불리언 플래그**(`isDimmed`·`isMenuExpanded`·`isEmpty`·`isCalendarVisible`)로 표현하고, 값 파라미터는 내용만 든다(모순 조합 방지는 호출자 책임). Dim은 항상 최상단에서 아래 레이어 터치를 **소비**하고 확장 메뉴·캘린더만 그 위로 승격하며, 승격 시 `Spacer(Size44)`로 총높이를 유지한다. 좌상단 컷 실루엣은 배경·날짜바·Dim이 공유하므로 `shape/canvasCutCornerShape()`로 분리했다(`border/`와 같은 "컴포넌트 아닌 그리기 프리미티브" 층위). 높이 44는 패딩 도출 대신 `SizeTokens.Size44` 고정. **첫 소비 화면(#199 develop 머지, 2026-08-11)** — C-001이 임시 `Button` 2개를 걷어내고 이 5종을 쓰면서 세 가지가 바뀌었다. ① `YGCanvas`가 **반응형 배치를 흡수**했다(`BoxWithConstraints` + private `calculateCanvasLayoutMetrics` — 좌우 패딩·상하 최소 gap·세로 중앙·세로 부족 시 축소가 컴포넌트 안으로 들어와 전제가 `fillMaxWidth`에서 `fillMaxSize`로 바뀌었다. 위키 [[캔버스-반응형-레이아웃]]의 크기·위치 우선순위를 컴포넌트가 구현한다). ② Dim 탭 닫기가 **컴포넌트 API로** 열렸다(`onDimClick`, 구현은 소비 전용 `pointerInput` → `clickable(indication = null)`이라 터치 소비는 유지) → [2026-08-01 항목](../synthesis/open-questions.md) ① 해소. ③ 인접 테두리를 `spacedBy(-1.dp)`로 겹쳐 접합선이 2dp에서 1dp가 됐다(스펙이 "그대로 둔다"고 적었던 것을 뒤집음). 화면 배경 점 격자는 `YGCanvas` 밖 `Modifier.ygBackgroundDotGrid()`로 신설됐다 → [c001-canvas-main 스펙](../specs/archive/2026-08-12-c001-canvas-main.md). **두 번째 캔버스 화면은 컴포넌트를 안 썼다(#231 develop 머지, 2026-08-15)** — C-301 배경 편집의 미리보기는 `YGCanvas`가 아니라 화면 로컬 `Box` + `aspectRatio` + `border`다. 그래서 컷 도형·Dot Grid·메뉴가 빠지고 좌우 여백이 `padding7`(20)이 아닌 21dp 리터럴이며, 캔버스 비율도 컴포넌트 private 상수가 아니라 `domain`에 새로 만든 `CANVAS_ASPECT_RATIO`를 쓴다. 🔁 **비율 상수는 하나로 모였다**(#334 develop 머지, 2026-08-22) — `domain` 쪽을 지우고 `YGCanvas`의 상수를 public으로 올려 이 미리보기도 그것을 참조한다. 미리보기가 `YGCanvas`를 안 쓰는 것 자체는 그대로다(OQ-P-174). `YGCanvasBackground`(`Solid`/`Image`)는 그 화면의 **이펙트 payload로만** 소비되고 실제 `YGCanvas`에는 여전히 안 넘어간다 → [c301 스펙](../specs/archive/2026-08-15-c301-canvas-background-edit.md). **`calendarContent` 슬롯이 처음 채워졌다(#259 develop 머지, 2026-08-16)** — C-001이 `isCalendarVisible`을 켜고 화면 로컬 `CustomCalendar`를 넣는다. 이로써 `YGCanvas`의 직교 플래그 넷이 전부 실사용되고, Dim이 **메뉴와 캘린더 양쪽의 스크림을 겸한다**(`isDimmed = isMenuExpanded || isCalendarVisible`, `onDimClick`이 둘 다 닫는다). `YGCanvasBackground.Image` 렌더만 여전히 미검증이다 → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md). **`background`·토핑 `content` 슬롯이 처음 채워졌다(#268 develop 머지, 2026-08-17)** — C-001이 캔버스 응답의 배경을 `YGCanvasBackground`로 옮겨 넘기고(`Solid`/`Image` 둘 다 실경로가 생겼다), `content`에 화면 로컬 `CanvasToppingLayer`를 넣는다. `isEmpty`도 상수에서 토핑 목록 파생이 됐다. 🔁 **컴포넌트가 배경 폴백을 갖지 않는다는 사실이 여기서 드러났다** — 미설정·미지 type·색 파싱 실패 셋을 화면이 각각 판정해 `Solid(Gray100)`(= 컴포넌트 기본값과 같은 값)으로 떨어뜨리므로 **기본값이 화면 쪽에 복제됐다**(이 복제는 #351이 걷었다, 아래 참고). 토핑 레이어는 자기 상자를 `fillMaxSize`로 정하지 않고 **호출자에게서 받는다**(배치가 받은 상자에 대한 비율이라 상자를 컴포넌트가 정하면 안 된다) — `YGCanvas`가 배치를 흡수한 것과 반대 방향의 선택이다 → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md). **다섯 번째 슬롯 `overlayContent`가 생겼다(#298 develop 머지, 2026-08-20)** — 캔버스 본체 `Box`의 **형제**라 Dim·확장 메뉴·달력보다 위에 그려지고, 상단은 캔버스 위 여백에 맞추되 **폭은 캔버스가 아니라 화면 기준**이다. C-001이 여기에 `YGToastHost`를 꽂아 Spotlight 작성자 토스트를 띄우고, 그 결정이 이 화면의 다른 토스트 자리까지 정했다(스캐폴드가 아니라 이 호스트, OQ-P-167) → [c202-canvas-spotlight 스펙](../specs/archive/2026-08-20-c202-canvas-spotlight.md). **달력 슬롯은 탭을 스스로 삼킨다(#319, 2026-08-20)** — 달력은 Dim 위에 겹쳐 있을 뿐이라 항목 사이 여백을 누르면 뒤의 Dim이 받아 달력이 닫혔다. 막는 자리를 슬롯 주입자가 아니라 **컴포넌트 쪽 `pointerInput`**에 둬서 `calendarContent`에 무엇이 들어와도 같은 규칙이 걸린다. **배경 폴백이 컴포넌트로 내려왔다(#351 develop 머지, 2026-08-25)** — `background`가 **nullable**이 되고 기본값이 `Solid(Gray100)`에서 `null`로 바뀌었다. `null`이면 컴포넌트가 **흰 바탕**을 깔고, 화면 쪽 `DEFAULT_CANVAS_BACKGROUND` 복제는 사라져 C-001은 미설정·미지 type·색 파싱 실패 셋을 전부 `null`로 넘긴다. 함께 **빈 안내판의 조건이 좁아졌다** — `isEmpty`만이 아니라 `isEmpty && background == null`일 때만 뜨고, 그때는 문구만 얹는 대신 `Gray100` **판**이 배경 자리를 통째로 덮는다(배경을 고른 캔버스는 토핑이 0개여도 고른 배경이 그대로 보인다). 직교 플래그 하나가 다른 파라미터와 얽힌 첫 사례라 "값 파라미터는 내용만 든다"는 이 컴포넌트의 원칙에서 한 칸 벗어나 있고, 노출 조건 자체는 정책 근거가 없다 → OQ-P-304. 이 규칙을 잠그는 계측 테스트 2건(`YGCanvasTest`)이 함께 들어왔으나 **CI는 계측을 컴파일만 한다**(OQ-P-102 ②).
+  - 📌 **배경이 자기 로딩 상태를 밖으로 알린다(#440 develop 머지, 2026-09-04)** — `YGCanvas`에
+    `reloadKey`·`onBackgroundStateChange`가 붙고 새 enum `YGCanvasBackgroundState`(`Loading`/`Loaded`/
+    `Failed`)가 그 값이다. **이미지 배경이 아니면 기다릴 것이 없어 곧바로 `Loaded`**이고, 배경이나
+    `reloadKey`가 바뀌면 판정이 다시 선다. 대기 중에는 `YGSkeleton`이 배경 자리를 덮는데 그리는 자리가
+    **캡처 `Box`의 형제**다 — 안에 두면 갤러리에 저장한 이미지에 시머 회색면이 그대로 박힌다(같은
+    컴포넌트가 저장 대상이기도 하다는 것이 이 배치의 근거다, [c001-canvas-gallery-save](../specs/archive/2026-08-23-c001-canvas-gallery-save.md)).
+    이 라운드의 계측 테스트가 2 → **8건**이 됐으나 **CI는 여전히 계측을 컴파일만 한다**(OQ-P-102 ②).
   - 📌 **메뉴 액션이 활성 여부를 싣는다(#334 develop 머지, 2026-08-22)** — `YGCanvasMenuAction`에
     `isEnabled`가 붙어 `YGCanvasMenu`가 비활성 표현과 클릭 차단을 함께 맡는다. 첫 소비는 C-001의
     토핑 추가 버튼 가드다(오늘 캔버스를 아직 못 받았으면 흐름에 못 들어간다) →
@@ -380,7 +403,8 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
     진입에서 토스트가 함께 뜰 경로가 없다) → [open-questions](../synthesis/open-questions.md) OQ-P-273.
 - **`YGGrouptagChip` / `YGToppingGroup`**(#186, G-001 그룹 목록용): 칩은 이름+구분점+상대시간 pill이고 `YGGrouptagChipType`이 **타임스탬프 색만** 결정한다(Nametag용 `YGColorChipType`과 매핑이 별개라 타입도 분리). 🔁 **6종 + `DEFAULT`가 됐다**(#308 develop 머지, 2026-08-20) — Nametag 12종을 둘씩 묶은 6종에 **가리킬 사람이 없는 경우**(마지막 토퍼가 나갔거나 아직 아무도 안 올렸다)를 위한 중립 변형이 붙었다. `YGToppingGroup`은 160dp 프레임에 96dp 토핑을 회전·오프셋으로 얹고 칩을 겹치며 **클리핑·`onClick`이 없다**(오버플로우 허용, 터치 범위는 호출자가 `clickableYG`로 감쌈). 대체 그래픽 정책은 갖지 않고 `YGToppingImage` 3상태(`Remote`/`Template`/`Error`)를 주입받아 렌더만 한다. 고정폭 프레임이 칩에 **측정** 제약을 내리므로 칩에 `wrapContentWidth(unbounded = true)`, 비정사각 원격 이미지 때문에 `rotate` **안쪽**에 `clip(RectangleShape)`가 필요하다(둘 다 실기기 검증에서 드러난 조건). **첫 소비처(#194 develop 머지, 2026-08-07)** — G-001이 `YGToppingGroup`을 그리기 시작했다. 다만 ① 호출부가 `clickableYG`로 감싸지 않아 토핑 클릭 경로가 없고, ② `YGToppingImage`는 `Remote`만 쓰여 템플릿·에러 분기가 화면 선택으로 들어오지 않았으며(에러는 `AsyncImage(error = …)` 폴백으로만 그려짐), ③ `chipType`이 전 항목 동일 값 고정이라 위키 [[S-101-프로필-닉네임-컬러-규칙-v0.3]] 매핑이 미구현이다 → [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) · [open-questions](../synthesis/open-questions.md) [2026-08-07]. ✅ **③이 닫혔다(#308·#310 develop 머지, 2026-08-20)** — 서버가 목록에 `lastPlacedByNameTagChip`을 실어 주고 `list/impl/util/GrouptagChipType.kt`가 그것을 6종으로 접는다. **색이 목록 순서가 아니라 사람에 걸린 것이 이 변경의 뜻이다** — 그룹이 하나 빠져도 남은 카드의 색이 밀리지 않는다. ✅ **①이 닫혔다(#268 develop 머지, 2026-08-17)** — 호출부가 카드 `modifier`에 `clickableYGScaleRipple`을 걸어 **토핑에 첫 클릭 경로**가 생겼고 누른 그룹의 캔버스(C-001)로 간다. 컴포넌트는 그대로다 — `onClick`을 열지 않고 `modifier` 위임으로 해결한 첫 사례다 → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md). 배치(지그재그·인셋·저개수 규칙)는 컴포넌트가 아니라 화면의 `ToppingLayout`이 쥔다. ✅ **원격 이미지가 `ContentScale.Crop`에서 `Fit`으로 바뀌었다**(#396 develop 머지, 2026-08-27) — `Crop`은 짧은 변을 96dp 프레임에 맞추느라 긴 변을 잘라 내서 비정사각 누끼의 피사체가 사라졌다. `clip(RectangleShape)`는 그대로 두되 **역할이 바뀌었다** — 비정사각 이미지를 프레임에 가두는 수단이 아니라, 이미지가 프레임을 넘어 인접 셀을 덮는 것을 막는 방어선이다(`rotate` 안쪽이어야 하는 조건은 그대로다. 바깥이면 회전 오버행까지 잘려 배치 변형이 깨진다). 템플릿·에러 갈래의 스케일은 손대지 않았다. 이 변경은 [open-questions](../synthesis/open-questions.md) OQ-P-316이 ②로 적어 둔 것인데, 선행이라던 ①(서버가 목록 응답에 테두리 필드를 주는 것)보다 **먼저 일어났다**
 - **`YGToppingCutoutImage` = 누끼 + 실루엣을 따르는 테두리**(#334 develop 머지, 2026-08-22): 같은 그림을 테두리 색으로 물들여 **여덟 방향으로 밀어 찍고** 그 위에 원본을 얹는다 — 사각 테두리를 두르면 잘라 낸 배경이 다시 드러나기 때문이다. ⚠️ **바로 위 `YGToppingImage`(G-001 파르페 토핑)와는 이름만 닮은 다른 물건이다** — 그쪽은 목록 카드가 쓰는 3상태(`Remote`/`Template`/`Error`) 렌더러라 테두리 개념이 없다. 한쪽을 고치면서 다른 쪽까지 같은 것으로 보면 안 된다. 이 컴포넌트가 `:core:designsystem`에 있는 이유는 소비 화면 셋(누끼 확인·배치·캔버스)이 **모듈 둘에 걸쳐** 있어서다([module-structure](module-structure.md) 컴포저블 소유 규칙). `borderWidth`는 **화면 dp**라 토핑을 키워도 굵기가 그대로다 — 편집 화면이 원본 픽셀 좌표계로 그리는 것과 어긋나는 자리이고 그 판정은 OQ-P-245다. 그림이 아직 뜨지 않은 painter로 찍으면 플레이스홀더 실루엣이 테두리로 보이므로, 준비되기 전에는 호출부가 `borderColor`에 `null`을 넘기는 것이 계약이다. **방향 수 상수가 공개됐다(2026-08-27, PR #388)** — `private const OUTLINE_STAMP_COUNT`가 `TOPPING_OUTLINE_STAMP_COUNT`로 개명하며 최상위 `const`로 열렸다. 캔버스의 [토핑 알파 판정](../specs/archive/2026-08-26-topping-alpha-hit-test.md)이 **같은 방향으로 되민 점의 알파**를 읽어 판정 모양을 테두리까지 맞추므로, 그리는 쪽과 판정하는 쪽이 같은 값을 봐야 한다. 양쪽이 각자 상수를 들면 언젠가 갈린다 — 그래서 정본은 그리는 쪽이 갖고 판정이 그것을 읽는다. **소비처가 하나 늘었다** — 배경 편집(`CanvasBGEditScreen#CanvasToppingImage`)이 맨 `Image`에서 이 컴포넌트로 갈아탔다(같은 라운드, OQ-P-254 해소).
-- **이미지 로딩**: Coil 3. `coil-compose`에 더해 **`coil-network-okhttp`가 `build-logic` `ComposeConfig`에 추가됨(#186)** — 그전까지 네트워크 페처가 없어 원격 URL이 아예 로드되지 않았다(로컬 MediaStore URI만 쓰던 탓에 드러나지 않았다). `YGToppingGroup.Remote`·`YGCanvasBackground.Image`가 이 의존에 걸린다.
+- **이미지 로딩**: Coil 3. `coil-compose`에 더해 **`coil-network-okhttp`가 `build-logic` `ComposeConfig`에 추가됨(#186)** — 그전까지 네트워크 페처가 없어 원격 URL이 아예 로드되지 않았다(로컬 MediaStore URI만 쓰던 탓에 드러나지 않았다). `YGToppingGroup.Remote`·`YGCanvasBackground.Image`가 이 의존에 걸린다. **로더 설정은 #440부터
+`image/ParfaitImageLoader.kt`가 한 곳에서 쥔다**(아래 "이미지 로더").
 - **`YGModalPopup`**: Compose `Dialog` 위 중앙 팝업. 아이콘+제목+본문 + 2버튼(`YGButton.Medium.Secondary` 좌/`Primary` 우, `weight(1f)` 균등). 버튼 confirm/cancel 의미 미규정(타입만 노출), 단일 `isEnabledButton`. 프리뷰 `@YGPreview`/`PreviewBox`. **첫 실화면 소비처(#224 develop 머지, 2026-08-12)** — 그때까지 `:app-preview` 갤러리에서만 그려지던 컴포넌트를 A-005 그룹 생성·A-004 초대코드 두 화면이 확인 모달로 쓴다(🔁 **#261, 2026-08-16 — A-004의 호출이 S-102 그룹 닉네임으로 옮겨갔다.** 문구·좌우 배치는 그대로라 소비처 수도 좌우 진영도 변함없다). 표시 여부는 규약대로 호출자가 쥔다(각 UiState `isConfirmPopupVisible`). 두 화면이 **취소=좌 Secondary / 실행=우 Primary**로 배치했는데, Danger Zone 팝업 스펙은 피그마 근거로 **파괴적 액션=좌 Secondary / 취소=우 Primary**라 좌우 의미가 갈린다. **두 배치가 develop에 공존 확정(#225 머지, 2026-08-13)** — 확인 팝업 3종(서비스 탈퇴·그룹 나가기·그룹 신고)이 반대 배치로 들어와 호출자가 6곳이 됐고 정확히 반으로 갈렸다. 네 인자가 전부 같은 타입이고 `Dialog`가 프리뷰에 안 떠서 뒤바꿈을 잡는 자동 검증이 0건이다. **7번째 소비처(#231 머지, 2026-08-15)** — C-301 배경 편집의 그만두기 확인이 파괴적 액션=좌 Secondary(`그만두기`) / 취소=우 Primary(`계속 편집하기`) 배치를 골라 그쪽이 하나 앞선다. 또 A-005가 `isEnabledButton = isCreating.not()`을 쓰면서 "요청 중엔 확인만 비활성" 불가라는 단일 플래그 제약을 develop 코드가 처음 만났다 → [open-questions](../synthesis/open-questions.md) [2026-08-12] · [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·[a004 스펙](../specs/archive/2026-08-12-a004-group-invite-code.md). ✅ **그 제약을 만난 유일한 호출자가 사라졌다**(#393·#394 develop 머지, 2026-08-27) — A-005 그룹 생성과 S-102 그룹 참여가 둘 다 **요청 직전에 팝업을 닫는** 쪽으로 옮겼다. 그래서 A-005의 `isEnabledButton` 전달이 없어지고 진행 중 dismiss 가드(`isCreating`·`isEntering` 중 닫기 차단)도 함께 걷혔다 — 팝업이 이미 닫혀 있어 막을 것이 없다. 진행은 `YGScaffoldV2` 로딩 오버레이가, 실패는 토스트가 말한다. **Danger Zone 3종이 PR #287에서 고른 관용구와 같아졌고**(OQ-P-141 ②의 "순서는 뒤집지 않았다"), 이로써 `isEnabledButton`을 명시적으로 주는 호출자는 develop에 **0곳**이다 — [ygmodalpopup 스펙](../specs/archive/2026-07-15-ygmodalpopup.md)의 "개별 비활성 불가" 미결은 소비처가 사라진 채로 남는다.
 - **`YGInviteCard`**(+`YGInviteCardStatus` enum): 그룹 초대 코드 카드. Active/Invalid 상태로 border·subText·코드박스 배경·복사 버튼 활성 분기. 복사 버튼은 `YGButton.SmallSquare` 재사용. **각짐 sync(#159)** — 테두리 `shape`·`.clip`·`InviteCodeBox` clip 모두 `radius.none`. 프리뷰 `@YGPreview`/`PreviewBox`.
 - **`YGTextField` / `YGTextFormField`**(`component/textfield/`): 단일 폼 + errorDescription 확장. **각짐/배경 sync(#159)** — 공통 `commonShape` = `radius.none`(각짐), 배경 = `grayScale.white`(불투명, 구 `transparency.white75`에서 변경). clear 아이콘은 `YGIconButton` 재사용. 🔁 **S-101 라운드 확장 2건(#223 develop 머지, 2026-08-13)** — ① `YGTextFormField`·`YGTextFieldImpl`에 `keyboardOptions`·`keyboardActions`를 기본값(`KeyboardOptions.Default`·`KeyboardActions.Default`)과 함께 노출해 `BasicTextField`로 전달한다(키보드 엔터로 확정을 받으려면 통로가 필요했다. 기존 호출부는 전부 named argument라 무영향). ② `YGTextFieldImpl`에 `defaultMinSize(minHeight = SizeTokens.Size48.getDp())`를 체인 맨 앞에 걸어 **최소 높이 48 고정** — `showClear`일 때 상하 패딩이 `padding5`→`padding1`로 줄고 44dp 아이콘 버튼이 들어오는 구조라 클리어 버튼 등장·소멸마다 행 높이가 재계산돼 필드가 들썩였다.
@@ -416,8 +440,29 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
   `feature/intro/impl`이 스플래시 때문에 같은 줄을 한 번 더 적었다 → [open-questions](../synthesis/open-questions.md).
   디자인시스템 쪽 소비 표면은 `YGLoadingLottie`뿐이다 — `progress`를 넘기지 않으면 스스로 무한 반복하고,
   넘기면(당겨서 새로고침처럼 손가락을 따라가야 할 때) 시계를 하나만 돌린다. 색은 화면 테마가 아니라
-  **애니메이션이 얹히는 바탕**으로 고른다(`YGLoadingTone.Light`/`Dark`) — 그래서 Dim 위의
+  **애니메이션이 얹히는 바탕**으로 고른다(`YGLoadingArt.Light`/`Dark`) — 그래서 Dim 위의
   `YGLoadingOverlay`는 `Light` 고정이고, 흰 바탕인 G-001 당겨서 새로고침은 `Dark`다.
+  - 🔁 **축이 "색"에서 "애셋"으로 넓어졌다(#440 develop 머지, 2026-09-04)** — `YGLoadingTone`이
+    `YGLoadingArt`로 개명되고 **그림 자체가 다른 세 번째 값 `Topping`**이 붙었다(C-001 캔버스 전용
+    로띠 `res/raw/loading_topping`). 색만 가르던 enum에 크기가 다른 애셋이 들어오면서 각 값이
+    `intrinsicSize`를 함께 들고, `YGLoadingLottie`가 그 크기를 **기본 `Modifier.size`로 깔아 준다** —
+    호출부가 크기를 안 정해도 원본 배율로 그려지고, 종전처럼 `modifier`로 덮어쓸 수도 있다.
+    호출부 세 곳(`YGLoadingOverlay`·G-001 새로고침 인디케이터·C-001 로딩 덮개)이 모두 그 규칙을 따른다.
+- **로딩·덮개 (#440 develop 머지, 2026-09-04)**: `YGLoadingOverlay`가 쥐고 있던 **Dim 판·터치 삼킴·
+  선택적 병합 시맨틱**이 `YGDimOverlay`로 빠지고, 오버레이는 그 판에 로띠 하나를 얹는 얇은 조립으로
+  남았다. 뽑아낸 이유는 소비처가 둘이 됐기 때문이다 — C-001이 같은 판 위에 **로띠 + 안내 문구 2줄**
+  (로딩)과 **경고 아이콘 + 문구 + 다시 시도 버튼**(실패)을 그린다. 터치 차단을 `clickable`이 아니라
+  `pointerInput`으로 두는 근거(TalkBack이 버튼으로 읽는다)는 그대로 옮겨 왔고, `contentDescription`은
+  **누를 것이 없을 때만** 넘기는 파라미터로 노출됐다(넘기면 자식을 병합해 버려 버튼이 개별 액션을 잃는다).
+  `YGSkeleton`은 같은 라운드의 다른 축이다 — 덮개가 아니라 **한 이미지의 자리**를 시머 회색면으로
+  채우고, 크기를 스스로 정하지 않으므로 자리를 아는 곳에서만 쓴다(현재 소비처는 `YGCanvas` 배경 하나).
+  흐르는 값은 `drawBehind` 안에서 읽어 프레임마다 재구성이 돌지 않게 한다.
+- **이미지 로더 (#440 develop 머지, 2026-09-04)**: `image/ParfaitImageLoader.kt`가 전역 Coil 로더를
+  만드는 **유일한 자리**다(`newParfaitImageLoader` — 크로스페이드 on). `app`·`app-preview` 두
+  `BaseApplication`이 `SingletonImageLoader.Factory`를 구현해 같은 함수를 물어 주므로, 두 앱의 이미지
+  동작이 갈리지 않는다. 같은 파일의 `rememberReloadableImageRequest(url, reloadKey)`는 **다시 시도의
+  전제**다 — `reloadKey`가 0보다 크면 메모리·디스크 캐시를 끄고 다시 받아 온다(같은 url로 다시 그리기만
+  하면 실패한 요청과 디스크에 앉은 깨진 바이트가 그대로 재사용돼 몇 번을 눌러도 같은 실패다).
 - **배경 블러 의존 `dev.chrisbanes.haze`**(#188): `gradle/libs.versions.toml` + `build-logic` `ComposeConfig`에 배선돼 Compose 모듈 전역에 깔린다(`coil-compose`와 같은 자리). 소스가 `Modifier.hazeSource(state)`, 소비 표면이 `Modifier.hazeEffect(state)`이고 **`HazeState`는 호출 화면이 소유**한다. `RenderEffect` 기반이라 **API 31 미만에서는 블러 없이 틴트만** 남는다(`minSdk` 26). 자체 `GraphicsLayer` 구현이 기각된 경위와 실측은 [ADR-0018](../adr/0018-backdrop-blur-haze.md) — 프로젝트에 블러 관용구가 둘(배경=Haze / 자기 자식=C-101 자체 구현) 존재한다 → [open-questions](../synthesis/open-questions.md).
 - **`YGDangerZone`**: 상/하 2슬롯 + 사이 구분선 컨테이너, `IntrinsicSize.Max`. **점선 재설계(#159 develop 머지)** — 반투명 채움 → `dashedBorder()`(gray-100 점선 테두리) + 세로 패딩, 구분선은 solid `YGHorizontalDivider` → `YGHorizontalDashedDivider`(gray-100 점선). modifier 체이닝 `dashedBorder().padding()` 순서 규칙(테두리 최외곽 → 안쪽 패딩). 슬롯에 대개 `YGActionItem` 주입(로그아웃/탈퇴 묶음). 상세 [ygdangerzone-dashed](../specs/archive/2026-07-19-ygdangerzone-dashed.md).
 - **pressed 상태 관용구**: 상호작용형 컴포넌트(YGButton·YGIconButton·YGActionItem·YGChipButton)는 `MutableInteractionSource` + `collectIsPressedAsState()`로 pressed를 파생해 색/tint를 분기한다. (예외: 선택형(`YGEditButton`·`YGEditTabButton`·`YGStrokeButton`)은 pressed와 함께 `selectable`의 selected를 쓰고, `YGGrouptagChip`·`YGToppingGroup`은 상호작용 자체가 없다. `YGDateButton`은 상태(selected/today/enabled) prop `when` 분기만 하고 pressed를 안 쓴다 — ~~표준 `clickable(indication=null)`을 써 스로틀 규약을 벗어나 있었으나~~ **#284로 `clickableYGNoRipple`로 이관돼 해소됐다**.)
