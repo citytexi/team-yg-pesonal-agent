@@ -4,7 +4,7 @@ title: 토핑 누끼 모양 터치 판정 (Alpha-based topping hit test)
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-08-27
+verified: 2026-09-04
 related_code: ToppingAlphaMask.kt#ToppingAlphaMask, ToppingHitTarget.kt#ToppingHitTarget, ToppingHitTarget.kt#pickToppingHit, ToppingAlphaMaskCache.kt#loadToppingAlphaMask, ToppingClickThrottle.kt#ToppingClickThrottle, ToppingHitTestInput.kt#toppingTapInput, ToppingHitTestInput.kt#toppingDragInput, ToppingCorners.kt#ToppingCorners, ToppingGeometry.kt#toppingImageSize, CanvasToppingLayer.kt#CanvasToppingLayer, CanvasToppingLayer.kt#CanvasTopping, CanvasBGEditScreen.kt#CanvasToppingImage, CanvasBGEditScreen.kt#rememberToppingPainter, CanvasBGEditScreen.kt#rememberToppingSize, CanvasBGEditScreen.kt#ToppingCornerButtons, CanvasBGEditViewModel.kt#CanvasToppingItem, CanvasBGEditViewModel.kt#toBorderLayers, CanvasToppingPlaceScreen.kt, ToppingHandleComponents.kt#ToppingDragHandleButton, ToppingGeometry.kt#toppingCenter, ToppingGeometry.kt#toppingLongSide, YGToppingCutoutImage.kt#YGToppingCutoutImage, YGToppingCutoutImage.kt#ToppingOutline, YGCanvas.kt#YGCanvas, Modifier.kt#dragBy, Modifier.kt#centeredAt, YGClickable.kt#YGClickThrottleGate, ToppingAlphaMaskCache.kt#rememberToppingAlphaMasks, ToppingAlphaMaskCache.kt#clearToppingAlphaMasks, YGToppingCutoutImage.kt#TOPPING_OUTLINE_STAMP_COUNT, CanvasToppingLayer.kt#ToppingHitEntry, CanvasBGEditScreen.kt#BGEditHitEntry, CanvasBGEditScreen.kt#drawnModel
 related_adr: ADR-0025
 related_spec: c001-canvas-main, c202-canvas-spotlight, c301-canvas-background-edit, c106-topping-place
@@ -442,3 +442,10 @@ OQ-P-313~316으로 등록했다. 마스크 캐시의 수명 주체 부재(OQ-P-3
   그림 가장자리에 붙는데, 그대로 둘지 확인하지 않았다.
 - 토핑에 읽어 줄 콘텐츠 설명을 무엇으로 할지 정하지 않았다(OQ-P-314). 스포트라이트 딤을 닫는 액션에 읽어 줄
   문구도 같은 상태라, 둘 다 임시 문자열을 두고 있다.
+
+> 🔁 **다시 시도가 마스크는 안 데려온다(2026-09-04, PR #440 develop 머지)** — 캔버스에 이미지 재시도가
+> 생기면서 `rememberToppingHitEntries`가 `retryKey`를 받는다. 그 값은 표시용 `AsyncImagePainter`의
+> `key`와 요청 캐시 정책에만 걸리고, **알파 마스크는 `rememberToppingAlphaMasks(models)`가 url 목록만
+> 보므로 다시 시도해도 재요청되지 않는다**(KDoc이 그 사실을 적는다). 마스크가 없으면 판정이 사각형으로
+> 떨어지도록 이미 설계돼 있어 눌리지 않는 것은 아니지만, **재시도로 그림이 돌아온 뒤에도 그 화면에서는
+> 투명한 자리가 눌린다** → OQ-P-356.

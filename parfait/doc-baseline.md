@@ -5,8 +5,68 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `2b1dce3a` (`Merge pull request #451 from mash-up-kr/feature/sync-backend-api-260903`)
-- **요약**: **앱 코드는 한 줄도 안 바뀌었는데 서버 계약을 손으로 확인할 자리가 둘 생겼다**
+- **커밋**: `e6ce42b1` (`Merge pull request #440 from mash-up-kr/feature/image-loading-placeholder`)
+- **요약**: **원격 이미지를 기다리는 방식이 두 화면에서 각각 정해졌고, 그 방식이 반대다**
+  (delta 1건, **41파일 · 삽입 1697줄 · 삭제 224줄**). 유닛 1029 → **1047건**(+18: `reveal/` 순수 함수 11 ·
+  `CanvasLoadState` 7), 계측 17 → **35건**(+18, 파일 6 → 11 — `core:ui`가 계측 소스셋을 처음 가졌다).
+  **선작성 스펙·계획 없음 → 아카이브 이동 0건**, 미결은 **셋이 생기고 하나가 해소, 하나가 부분 해소,
+  여섯이 갱신됐다**(OQ-P-355·356·357 신설 / 346 해소 · 348 부분 해소 / 102·112·113·167·330·349 갱신,
+  `oq-next` 355 → 358).
+
+  **#440이 세 라운드째 "미머지"로 세어 온 `feature/image-loading-placeholder`다.** 문서는 그 브랜치를
+  보고 OQ-P-346·348에 미리 적어 두었는데, **머지본이 브랜치와 셋 달랐다** — `YGToppingGroup`은 한 줄도
+  안 바뀌었고(결말 콜백이 안 들어왔다), 두 화면이 공유하는 것은 패키지이되 **구현이 갈리며**,
+  `YGSkeleton`의 소비처는 `YGCanvas` 배경 하나다. 예고에 없던 것도 둘 붙었다(`YGDimOverlay` 분리 ·
+  이미지 **다시 받기**).
+
+  **같은 문제에 반대 답이 둘 나왔다.** C-001 캔버스는 **다 모일 때까지 아무것도 안 낸다**
+  (`rememberBatchRevealState` — 성공·실패를 모두 결말로 세고, **빈 목록은 완료가 아니다**). G-001 목록은
+  **아예 안 기다린다** — 자리가 먼저 열리고 그림이 뒤따르며, 대신 400ms 간격으로 아래에서 위로 쌓인다
+  (`rememberStaggeredRevealState`). 둘을 잇는 것은 `core:ui` `reveal/`의 인터페이스 하나와
+  `Modifier.revealed`(알파 0 + 시맨틱 제거, **측정·배치는 살려 둔다** — 그래야 감춘 자리의 이미지 요청이
+  이어진다)뿐이다. 실패 처리도 반대다 — 캔버스는 **한 장만 실패해도 전체를 막고**, 목록은 실패한 것만
+  폴백으로 남긴다. 위키가 부분 실패를 정한 자리는 G-001뿐이고 캔버스 쪽 조항은 없다 → **OQ-P-355 신설**.
+
+  **`YGScaffoldV2`의 덮개가 슬롯이 됐다.** `loadingOverlay` 기본값이 종전 동작이라 **호출부는 한 곳도
+  안 바뀌었고**, C-001이 같은 `isLoading` 하나로 로딩 덮개와 **다시 시도 버튼이 있는 실패 덮개**를 갈아
+  끼운다. **터치를 삼키는 책임이 슬롯으로 내려간 것**이 이 변경이 옮긴 계약이라, `YGLoadingOverlay`에서
+  Dim 판·터치 삼킴·병합 시맨틱을 뽑아낸 `YGDimOverlay`가 그것을 지키는 공용 판이 됐다. ⚠️ 함께
+  **접근성 차단 수단이 정정됐다** — `hideFromAccessibility()`는 **그 노드 하나만** 감추고 자식 시맨틱은
+  트리에 남아, 덮개 아래 버튼이 그대로 읽혔다(`clearAndSetSemantics { }`로 교체. 규칙 자체는 ygscaffold-v2
+  스펙 as-built ①이 세운 그대로다 — 틀렸던 것은 수단이다).
+
+  **G-001은 실패의 갈림이 세 번째로 뒤집혔다** — "목록이 남아 있는가"에서 **"사용자가 당겼는가"**로.
+  당기는 동안 화면이 목록을 비우므로(디자인의 새로고침 프레임이 빈 컵이다) 실패를 받아 줄 자리가 에러
+  화면뿐이 됐고, `ShowRefreshError` 토스트·문구·Route의 토스트 호스트가 함께 걷혔다. `isError`에 규칙이
+  하나 붙는다 — **켜기만 하고 끄는 것은 성공한 조회뿐**이다. 세 번 뒤집히는 동안 **세 필드 독립은 한 번도
+  안 바뀌었다**(OQ-P-112 ②). 새로고침 인디케이터는 로띠 + 안내 문구 2줄이 되어 **플랫폼 기본을 벗어났다**
+  — OQ-P-113 ①이 닫혔다. ⚠️ 다만 **②(파르페 메타포 전용 에셋)는 어긋난 방향으로 채워졌다**: 화면 전용
+  로띠가 이번에 처음 생겼는데 그것은 G-001이 아니라 **C-001 몫**(`YGLoadingArt.Topping`)이고, 위키가
+  전용 그래픽을 요구한 화면은 여전히 공통 애셋을 쓴다.
+
+  ⚠️ **다시 시도가 절반만 되살린다 — OQ-P-356 신설.** `retryKey`는 표시용 요청의 캐시를 건너뛰지만
+  알파 마스크는 url 목록만 보는 자리라 재요청되지 않는다. 마스크가 없으면 판정이 사각형으로 떨어지도록
+  설계돼 있어 못 누르게 되지는 않지만, **그림이 돌아온 뒤에도 투명한 자리가 눌린다.**
+  ⚠️ **연출의 근거도 코드뿐이다 — OQ-P-357 신설**(400ms 간격 · 재진입 생략 조건 · 총 대기 상한 미정).
+
+  **계측이 두 배가 됐는데 실행은 여전히 0회다.** 파일 6 → 11 · `@Test` 17 → 35이고 `core:ui`가 계측
+  소스셋을 처음 가졌는데, CI `test.yml`은 그대로 `:core:util:android`·`:core:designsystem` 두 줄이라
+  **새 모듈의 계측은 컴파일조차 안 된다.** 이번에 들어온 것들이 잠그려는 규칙(덮개 아래 접근성 차단 ·
+  드러나기 전 클릭 차단 · 재시도 시 캐시 우회)은 전부 **눈으로 확인이 안 되는 종류**다(OQ-P-102 ②).
+
+  **이번 회차가 확인한 것** — **미머지 브랜치를 보고 미리 적어 둔 것은 예고이지 사실이 아니다.**
+  이 문서는 [2026-07-13] 규율대로 머지 전에 스펙을 고치지 않고 미결에만 메모를 달아 왔는데, 그 메모가
+  머지 회차의 **대조표**로 쓰인다는 점이 이번에 드러났다. 세 항목이 어긋났고 셋 다 브랜치가 마지막에
+  방향을 바꾼 자리였다(한 장씩 내던 것을 한 번에 내는 쪽으로, 이미지를 기다리던 것을 안 기다리는 쪽으로).
+  그러므로 머지 회차에 할 일은 "예고한 항목을 지우는 것"이 아니라 **예고와 머지본을 한 줄씩 맞춰 보고
+  다른 자리를 적는 것**이다 — 이번에 OQ-P-346의 해소 메모가 그 형태를 취했다.
+
+  **미머지 브랜치는 일곱에서 여섯이 됐다** — 들어온 것이 `feature/image-loading-placeholder` 하나이고
+  새로 올라온 것은 없다(`feature/debug-mode` · `feature/#420-canvas-tutorial` ·
+  `feature/#423-canvas-save-preview` · `feature/push-fcm-service` · `feature/push-notification-deeplink` ·
+  `feature/push-notification-permission`). 셋이 푸시 축이라 OQ-P-341·351·352가 다음 회차의 후보다.
+
+  직전 회차 요약(65회차, `2b1dce3a`): **앱 코드는 한 줄도 안 바뀌었는데 서버 계약을 손으로 확인할 자리가 둘 생겼다**
   (delta 1건, **5파일 · 삽입 550줄 · 삭제 3줄** — 전부 `http/` 아래의 요청 모음과 사용법이다).
   유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동
   0건**, 미결은 **하나가 생기고 넷이 갱신됐다**(OQ-P-354 신설 / 092·108·341·352 갱신,
@@ -1519,6 +1579,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-04 | `e6ce42b1` | Merge #440(원격 이미지 로딩 표현 — 캔버스 일괄 드러내기 · G-001 순차 등장) | delta 1건, **41파일 1697/224**. 유닛 1029 → **1047건**(+18: `reveal/` 순수 함수 11 · `CanvasLoadState` 7), 계측 17 → **35건**(+18, 파일 6 → 11 — `core:ui` 첫 계측 소스셋). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#440**: 세 라운드째 미머지로 세어 온 `feature/image-loading-placeholder`가 들어왔고 **머지본이 예고와 셋 달랐다**(`YGToppingGroup` 무변경 · 두 화면의 구현이 갈림 · `YGSkeleton` 소비처는 `YGCanvas` 배경 하나) → OQ-P-346 해소 메모가 그 대조를 적는다. **같은 문제에 반대 답 둘** — C-001은 `rememberBatchRevealState`로 다 모일 때까지 안 내고(빈 목록은 완료가 아니다, 리셋 키는 그리는 캔버스), G-001은 안 기다리는 대신 `rememberStaggeredRevealState`로 400ms씩 쌓는다. 잇는 것은 `core:ui` `reveal/`과 `Modifier.revealed`(알파 0 + 시맨틱 제거, 측정·배치는 유지)뿐이다. 실패도 반대다(캔버스는 한 장만 실패해도 전체 차단, 목록은 실패분만 폴백). **`YGScaffoldV2`에 `loadingOverlay` 슬롯**(기본값이 종전 동작이라 호출부 무변경, C-001이 실패 덮개를 끼운다) + **터치 삼킴이 슬롯 몫으로 내려가며 `YGDimOverlay` 분리**. ⚠️ 접근성 차단이 `hideFromAccessibility()` → `clearAndSetSemantics { }`로 **수단 정정**(앞의 것은 노드 하나만 감춘다). G-001 실패 갈림이 세 번째로 뒤집혀 **"당겼는가"** 기준이 되고 `ShowRefreshError`·문구·토스트 호스트 삭제, 새로고침 인디케이터가 로띠 + 문구 2줄로 플랫폼 기본을 벗어났다(OQ-P-113 ① 해소). 조치: architecture 3건(design-system — 신설 컴포넌트 2·`YGLoadingArt`·이미지 로더·덮개 슬롯 / module-structure — `core:ui` `reveal/` / state-management — 실패 갈림), 아카이브 스펙 5건(g001-group-list · ygscaffold-v2 · screen-resume-refetch · c001-canvas-today-detail · topping-alpha-hit-test), specs/README 5행, open-questions 9항목(355·356·357 신설 / 346 해소 · 348 부분 해소 / 102·112·113·167·330·349 갱신), doc-baseline·index 기준선 갱신. ⚠️ **실기기 확인 0회**이고 늘어난 계측 18건도 실행되지 않는다(CI가 `core:ui`를 컴파일 대상에 안 넣는다). 미머지 **일곱 → 여섯**(신규 0) |
 | 2026-09-04 | `2b1dce3a` | Merge #451(API 현행화 260903 — `http/` 요청 모음) | delta 1건, **5파일 550/3**(전부 `http/`). 유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#451**: `notifications.http`(기기 토큰 등록 — 204·본문 없음·upsert 재호출·400 4종·401 대조군)와 `fcm-test.http`(**서버를 거치지 않고 FCM v1 API 로 직접** 발송해 앱 수신을 확인)가 신설되고 `http-client.env.json`·`_reset.http`·`http/README.md` 가 함께 맞춰졌다(`fcm_*` 세 변수는 손으로 채우는 값이라 `_reset.http` 비우기 목록에서 제외). `http/` 커버 **25/29 → 26/29, 일곱 번째 왕복**이고 **방향이 반대다** — 요청 모음이 앱 코드보다 앞서 나갔다(등록을 부를 수단이 develop 에 0건). `.kt`·gradle 무변경이라 **코드 드리프트 0건**이고 `android_status`·Android 매핑 판정은 그대로 옳다. 조치: api/README(파일 목록·커버 셈·`fcm-test.http` 성격), api/notification.md(Android 매핑에 확인 수단 표·미결 2항목), open-questions 5항목(OQ-P-354 신설 — 서버 발송 페이로드 복제를 세는 축이 없다 / OQ-P-092·108·341·352 갱신), doc-baseline·index 기준선 갱신. ⚠️ 두 파일 다 **실행 기록 0건**(`fcm_access_token` 1시간 만료·서비스 계정 키 필요, 받을 쪽도 없다). 미머지 **다섯 → 일곱**: `feature/push-notification-permission`(OQ-P-341 ②③④) · `feature/#420-canvas-tutorial` 추가 |
 | 2026-09-03 | `c74f40eb` | Merge #444(스플래시 로띠 교체) | delta 1건, **1파일 0/0**(바이너리 교체). 유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#444**: `feature/intro/impl` `res/raw/splash.lottie` 가 새 로고 애니메이션으로 교체됐다. dotLottie 를 풀어 대조하니 manifest 판본·애니메이션 id(`Lottie-Logo`)·프레임률·재생 길이·화면 크기·레이어 여덟(`Parfait` 일곱 글자 + `Stroke`)이 교체 전과 동일하고 각 레이어의 패스·키프레임만 다르다 → `R.raw.splash`·`SplashScreen` 무변경, 위키 [[스플래시-애니메이션]] A-001 정본의 **60fps·3.5초** 타임라인 유지, 진입 대기 길이(OQ-P-229) 불변. **드리프트 0건**. 조치: open-questions 3항목(OQ-P-350 신설 — 바뀐 그림을 본 사람 0건·회귀 감지 수단 없음 / OQ-P-229·341 갱신), doc-baseline·index 기준선 갱신. ⚠️ 실기기 확인 0회. 미머지 **둘 → 다섯**: `feature/debug-mode` · `feature/image-loading-placeholder` · `feature/#423-canvas-save-preview` · `feature/push-fcm-service` · `feature/push-notification-deeplink` |
 | 2026-09-03 | `40e1fca6` | Merge #439(README 소개·스크린샷) · #437(기기 FCM 토큰 등록 data 표면) · #438(ML Kit 모듈 설치 대기·실패 처리) · #442(누끼 영역 빨간 틴트) | delta 4건, 52파일 940/101. 유닛 1015 → **1029건**(+14: 설치기 7 · 세그멘테이션 ViewModel 3 · 알림 DataSource 4), 계측 **17건** 유지. **선작성 스펙 1·계획 1 아카이브 이동**(segmentation-module-install), 미결 1건 신설·3건 갱신(`oq-next` 347 → 348). **#438**: `installModules` 의 Task 반환을 설치 완료로 읽던 것을 고쳐 `InstallStatusListener` 의 종료 신호까지 기다린다 — `SegmentationModuleInstaller`(`Mutex` + `CompletableDeferred` 로 진행 중 설치 공유) · `ModuleInstallGateway`(GMS 이음매) · `PlayServicesModuleInstallGateway` · `ModuleInstallModule` · `PrepareSegmentationModuleUseCase` 신설, `ImageSegmentationRepository` 메서드 5 → **6**. 사전 설치는 **사진 확인 화면 진입**(촬영·갤러리 합류점). `isError` → `SegmentationErrorKind`(`SubjectNotFound`/`ModuleNotReady`) + `Retry` 인텐트 + `YGButton` 재시도(**디자인 검토 대기 시안**) → **OQ-P-153 ③ 해소, ④ 잔존**. 패키지 재배치: `repository/image` → `installer/image`(설치 3종)·`utils/image`(순수 커널 7), `data/util` → `data/utils` 통합. ⚠️ 모듈 없는 상태의 화면 경로는 재현 수단이 사라져 **미확인**. **#437**: `NotificationService`(`POST /api/v1/notifications/devices`, 204 본문 없음 → `safeApiCallNoContent`) · `NotificationRemoteDataSource`(+`Impl`, `platform` 을 `"ANDROID"` 상수로 고정) · `domain.model.notification.DeviceToken`. **표면만이고 호출부 0건**, FCM 토큰 취득 심볼도 여전히 0건 → **OQ-P-341·342 는 열린 채 갱신**. api 표면 27/29 → **28/29, 공백 1**. **#442**: `ToppingEditScreen` 이 남는 영역에 `Cherry500` 틴트 한 겹(`MASK_TINT_ALPHA`, `SrcAtop`), 영역 탭 전용. 위키 [[누끼-편집]]에 대응 조항 없음 → **OQ-P-347 신설**. **#439**: README 소개·스크린샷(코드·계약 무변경). 조치: 스펙 1·계획 1 아카이브 + README 2행, api 3문서(notification.md `android_status` `none` → `partial`·엔드포인트 표·Android 매핑 절, README 도메인 표·총계), architecture 1건(data-layer — 메서드 6·모듈 설치 절 재작성·`util/image` → `utils/image` 정정·여덟 번째 Service), ADR-0012 머지 표기, 아카이브 스펙 c103 정책 대조 표 1행, open-questions 4항목. ⚠️ 실기기 확인 0회. 미머지: `feature/debug-mode` · `feature/image-loading-placeholder`(OQ-P-346) |

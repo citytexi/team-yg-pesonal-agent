@@ -4,8 +4,8 @@ title: YGScaffoldV2 — 공통 로딩 오버레이·에러 토스트 (common loa
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-18
-related_code: YGScaffoldV2.kt#YGScaffoldV2, YGLoadingOverlay.kt#YGLoadingOverlay, YGLoadingLottie.kt#YGLoadingLottie, YGLoadingLottie.kt#YGLoadingTone, YGToastPolicy.kt#showError, YGScaffold.kt#YGScaffold, LoginRoute.kt#LoginRoute, LoginError.kt#LoginError, AppSettingRoute.kt#AppSettingRoute, AccountInfoRoute.kt#AccountInfoRoute, BaseViewModel.kt#launch
+verified: 2026-09-04
+related_code: YGScaffoldV2.kt#YGScaffoldV2, YGLoadingOverlay.kt#YGLoadingOverlay, YGLoadingLottie.kt#YGLoadingLottie, YGLoadingLottie.kt#YGLoadingArt, YGToastPolicy.kt#showError, YGScaffold.kt#YGScaffold, LoginRoute.kt#LoginRoute, LoginError.kt#LoginError, AppSettingRoute.kt#AppSettingRoute, AccountInfoRoute.kt#AccountInfoRoute, BaseViewModel.kt#launch
 related_adr: ADR-0020, ADR-0016, ADR-0007
 related_spec: mvi-error-infrastructure
 related_architecture: design-system, state-management
@@ -126,14 +126,14 @@ Scaffold(containerColor, contentWindowInsets) { innerPadding ->
 | 요소 | 조건 | 토큰·심볼 |
 |---|---|---|
 | Dim | `isLoading = true` | ~~`YGAtomicColors.Transparency.Black25`~~ → **`Black75`**(🔁 #305) |
-| 인디케이터 | 동일 | ~~`CircularProgressIndicator` + `Cherry100`~~ → **`YGLoadingLottie`**(`YGLoadingTone.Light`, `SizeTokens.Size44`, 🔁 #305) |
+| 인디케이터 | 동일 | ~~`CircularProgressIndicator` + `Cherry100`~~ → **`YGLoadingLottie`**(`YGLoadingArt.Light`, 44×44 — 🔁 #305, #440에서 enum 개명 + 크기를 애셋이 스스로 깔아 준다) |
 | 에러 토스트 | `showError()` 호출 | `YGToastType.Fail`(`Cherry500` 문구 · `Black75` 배경) |
 
 ~~Dim 농도·인디케이터 모양은 **디자인 미확정 상태의 자리 채움**이다. 현행 `SegmentationLoadingScreen`이
 쓰는 값(`CircularProgressIndicator` + `Cherry100`)을 그대로 따른다 — 새 값을 지어내지 않는다.~~
 
 🔁 **as-built 정정 (2026-08-18, develop 머지 #305) — 인디케이터가 디자인 로띠로 확정됐다.**
-`YGLoadingLottie`(+`YGLoadingTone`)가 같은 패키지에 신설되고 오버레이가 그것을 쓴다. 크기를
+`YGLoadingLottie`(+`YGLoadingTone` — #440에서 `YGLoadingArt`로 개명)가 같은 패키지에 신설되고 오버레이가 그것을 쓴다. 크기를
 `Size44`로 묶는 이유는 **애셋 원본이 그 치수**라 다시 그리는 일이 없어서다. 로띠가 Dim 위에 얹히므로
 화면 테마와 무관하게 `Light` 고정이고, Dim은 `Black25` → **`Black75`**로 짙어졌다(로띠가 배경에 묻히지
 않으려면 필요하다). 남은 미확정은 **Dim 농도의 근거와 문구 유무**이며 `SegmentationLoadingScreen`의
@@ -324,6 +324,11 @@ V1 삭제 시점만 이관 완료에 걸린다.
 `isLoading`일 때만 `semantics { hideFromAccessibility() }`를 건다(겹침 결정이 스캐폴드 소관이라
 오버레이가 아니라 여기서 푼다).
 
+> 🔁 **수단이 틀렸다(2026-09-04, PR #440 develop 머지)** — 규칙("덮개가 접근성 순회도 막는다")은
+> 그대로인데 `hideFromAccessibility()`는 **그 노드 하나만** 감추고 자식이 붙인 시맨틱은 트리에 남는다.
+> 가려야 할 것이 대개 자식 쪽 문구·버튼이라 덮개 아래가 그대로 읽혔다. `clearAndSetSemantics { }`로
+> 바꿔 서브트리를 통째로 지운다. 아래 ②의 단언 방식도 그에 맞춰 바뀐다.
+
 **② 그 동작은 `assertDoesNotExist()`로 잠글 수 없다** — `hideFromAccessibility()`는 플랫폼
 `AccessibilityNodeInfo` 트리에만 작용하고 Compose 테스트가 걷는 시맨틱 트리에는 노드가 그대로
 남는다. 테스트는 `SemanticsMatcher`로 `SemanticsProperties.HideFromAccessibility` 보유를 단언한다 —
@@ -448,3 +453,17 @@ PR #311(`feature/#253-segmentation-common-loading`, develop `b1b63a3c`)이 이 �
 > ⚠️ 이 판정은 지금 **두 ViewModel에 각각 적혀 있다**(`isInitialLoading` 필드도 각자 하나씩) →
 > OQ-P-205 ②·OQ-P-330. 즉 "켜는 기준은 여전히 귀납한 것"이라는 위 문장은 그대로 참이고, 귀납의
 > 사례가 하나 더 늘었을 뿐이다.
+
+> 🔁 **덮개가 슬롯이 됐고, 그 자리에 실패도 들어온다(2026-09-04, PR #440 develop 머지)** —
+> `loadingOverlay: @Composable () -> Unit`이 세 번째 파라미터로 붙었다. **기본값이 종전 동작
+> (`YGLoadingOverlay()`)이라 호출부는 한 곳도 안 바뀌었다** — 이 스펙이 "신규 파라미터는 전부
+> 기본값"을 편의가 아니라 계약이라고 적어 둔 그대로다.
+> 첫 소비는 C-001 캔버스다. 같은 `isLoading` 하나로 **로딩 덮개와 실패 덮개를 갈아 끼운다**
+> (실패 쪽에는 다시 시도 버튼이 있다). 그래서 이 스펙이 "제외"로 세웠던
+> **차단성 에러 UI = 화면 소관**이 한 번 더 확인되는 동시에, 그 화면 UI가 **스캐폴드의 겹침 자리를
+> 빌려 쓰는** 형태가 새로 생겼다 — 화면이 자기 `Box`를 또 쌓지 않아도 된다.
+> ⚠️ **터치 삼킴의 소유가 슬롯으로 내려갔다.** 스캐폴드는 어디에 겹칠지만 정하므로, 그리기만 하는
+> 것을 넘기면 아래가 그대로 눌린다. `YGLoadingOverlay`에서 Dim 판·터치 삼킴·병합 시맨틱을 뽑아낸
+> `YGDimOverlay`가 그 계약을 지키는 공용 판이고, C-001의 두 덮개가 그것을 쓴다
+> → [design-system](../../architecture/design-system.md) "로딩·덮개".
+> 계측은 `YGScaffoldV2Test` 5 → **7건**, `YGLoadingOverlayTest` 2 → **3건**(여전히 CI는 컴파일만 한다, OQ-P-102 ②).

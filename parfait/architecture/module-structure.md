@@ -4,7 +4,7 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-08-27
+verified: 2026-09-04
 related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016, ADR-0025
 related_architecture:
@@ -35,7 +35,7 @@ app / app-preview
 | 그룹 | 모듈 | 목적 | 적용 컨벤션 플러그인 |
 |------|------|------|----------------------|
 | 진입 | `app`, `app-preview` | 앱 진입점(`BaseApplication`, `MainActivity`, `MainRoute`), 전체 조립 | `AndroidApplication*`, 서명 |
-| core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 여러 feature 공용 레이아웃(`VerticalGridLayout`)·공용 문자열 리소스(유효성 에러 문구) + **도메인 결과 → 표시 문자열 매핑**(`text/NameValidResultUiText.kt`, [[0016-domain-result-presentation-string-mapping]]). `:domain` 의존(#223, 2026-08-13) | android-library + compose |
+| core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 여러 feature 공용 레이아웃(`VerticalGridLayout`)·공용 문자열 리소스(유효성 에러 문구) + **도메인 결과 → 표시 문자열 매핑**(`text/NameValidResultUiText.kt`, [[0016-domain-result-presentation-string-mapping]]) + **드러내기 상태 `reveal/`**(#440, 아래 참고). `:domain` 의존(#223, 2026-08-13) | android-library + compose (+ `parfait.test.android`·`parfait.test.compose` #440) |
 | core | `core:designsystem` | 테마(`YGMaterialTheme`)·토큰(`YGSemanticColors`, `SizeTokens` 등) | android-library + compose |
 | core | `core:navigation` | `Navigator`, NavKey 레지스트리, 엔트리 등록 | android-library |
 | core | `core:util:android` | Android 전용 유틸(`decodeUriToBitmap`, `AndroidBitmap`) — `decodeUriToBitmap`은 API 28 미만 갈래에서 EXIF 회전을 픽셀에 적용한다(`extension/ExifOrientation.kt#exifOrientationToDegrees` + 비공개 `rotatedToUpright`, #349. `androidx.exifinterface` 의존은 이 모듈만 쓴다). 모듈 로거 `Logger.kt#coreUtilAndroidLogger`([[0014-logging-abstraction-kermit]]) + Compose clickable 유틸(`clickable/`: `clickableYG`·`clickableYGNoRipple`·`ygDimRipple`·`ygScaleRipple`, 테마 비의존 — #284로 프로덕션 클릭 전량이 이 패키지를 탄다) + 포커스 유틸(`focus/`: `Modifier.clearFocusOnTap`) + Compose·플랫폼 확장(`extension/`: `Modifier.navigationBarsAndImePadding`·`Modifier.drawTooltipCornerTop`·`AnnotatedString.Builder.withStyle`·`List<Offset>.toPath`/`toAndroidPath`·`ClipDescription.isSensitive`·`Modifier.verticalScrollbar`(#259)·`Modifier.centeredAt`·`Modifier.dragBy`(#264)·`String.toColorOrNull`(#268 — 서버가 주는 `#RRGGBB` 색 문자열은 캔버스 전용이 아니라 어느 화면에나 온다)) + 앱 메타(`AppInfo.kt#APP_VERSION_NAME`, #295 — 이 모듈만 `buildFeatures.buildConfig`를 켜고 `:app`과 **같은 버전 카탈로그 항목**을 `buildConfigField`로 다시 심는다. `versionName`은 애플리케이션 모듈 속성이라 라이브러리 `BuildConfig`에 없기 때문이고, `:app`이 `versionNameSuffix`·플레이버로 갈아 끼우면 따라가지 않는다 → [open-questions](../synthesis/open-questions.md)). `core:util:jvm` 의존 | android-library + compose |
@@ -126,6 +126,16 @@ app / app-preview
   (같은 모듈의 여러 화면이 한 파일 공용), **여러 feature가 공유하는 문구**(유효성 에러 등)는 `core:ui` `res/values/strings.xml`([[0016-domain-result-presentation-string-mapping]]).
   `domain`은 표시 문자열을 보유하지 않는다. 미착수 화면에 잔존한 리터럴은 [open-questions](../synthesis/open-questions.md) [2026-07-26]에서 추적.
 - **`core:ui` → `:domain` 의존**(#223 develop 머지, 2026-08-13) — 표시 매핑 확장(`NameValidResult.Error.toStringResource`)의 리시버가 도메인 타입이라 필요하다. 방향은 허용(ui → domain)이나 **`implementation`이라 public API 시그니처에 domain 타입이 노출되면서 의존은 숨어 있다** — 소비 feature가 컨벤션 플러그인으로 `:domain`을 직접 갖고 있어 지금은 컴파일된다. 저장소에 `api(...)` 선언이 0건이고 컨벤션 플러그인에 `api` 확장 함수 자체가 없어 승격은 팀 결정 대상 → [open-questions](../synthesis/open-questions.md) [2026-08-13].
+- **`core:ui` `reveal/` — 두 화면이 공유하는 드러내기 상태**(#440 develop 머지, 2026-09-04) —
+  원격 이미지를 기다리는 동안 무엇을 가리고 언제 낼지를 정하는 순수 상태다. 인터페이스
+  `RevealState`(+`AllRevealed`) 하나에 구현이 둘 — `BatchRevealState`(전부 결말날 때까지 가렸다 한 번에,
+  C-001 캔버스 토핑)와 `StaggeredRevealState`(간격을 두고 하나씩, G-001 그룹 목록) — 그리고 그리기 쪽
+  `Modifier.revealed`다. **`core:designsystem`이 아니라 여기인 이유**는 이것이 컴포넌트가 아니라
+  화면 상태이고, 소비처가 `:feature` 둘에 걸치기 때문이다(같은 기준으로 `YGToppingCutoutImage`는
+  디자인시스템에 갔다 — 그쪽은 그리는 물건이다). `revealed`는 알파만 0으로 두고 **측정·배치는 살려
+  둔다** — 감춘 자리도 배치가 살아 있어야 이미지 요청이 이어진다. 시맨틱은 `hideFromAccessibility`가
+  아니라 `clearAndSetSemantics`로 지운다(앞의 것은 그 노드 하나만 감추고 자식 문구는 트리에 남는다).
+  같은 라운드에 이 모듈이 **계측 소스셋을 처음 갖게 됐다**(`parfait.test.android`·`parfait.test.compose`).
 - **도메인 enum → 디자인시스템 타입 변환은 feature impl의 `util` 패키지에 둔다**(2026-08-19, PR #308·#310
   develop 머지) — 지금 셋이다: `setting/impl/util/ColorChipType.kt`(12종 1:1 + `DEFAULT` → 중립) ·
   `canvas/impl/util/ColorChipType.kt`(같은 규칙, 앞의 것과 글자까지 같다) ·
