@@ -355,8 +355,12 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 
 TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요청 모음이 있다 — develop 기준
 `auth.http`·`policy.http`·`parfait-group.http`·`parfait.http`·`images.http`·`users.http`·
-`parfait-image.http`·`health.http`·`_reset.http` + `http-client.env.json` + 사용법 `README.md`다. 여기
-문서에 적힌 계약을 서버에 직접 쏴서 확인할 수 있다.
+`parfait-image.http`·`notifications.http`·`health.http`·`_reset.http` + `http-client.env.json` +
+사용법 `README.md`다. 여기 문서에 적힌 계약을 서버에 직접 쏴서 확인할 수 있다.
+
+**같은 디렉토리의 `fcm-test.http`는 성격이 다르다** — 우리 서버가 아니라 **FCM v1 API로 직접** 나가고,
+서버가 만드는 것과 같은 모양의 푸시를 손으로 쏴서 앱 수신을 확인하는 자리다. 서버 엔드포인트가 아니라
+아래 커버 셈의 분자·분모 어디에도 들어가지 않는다.
 
 > ✅ **커버가 다시 전량이다(2026-08-15, PR #250).** 서버 delta로 20/25가 됐던 것이 같은 라운드의 `http/`
 > 보강으로 **25/25**가 됐다 — `parfait.http`에 오늘·과거 조회, `parfait-image.http`에 테두리 수정·삭제,
@@ -387,6 +391,19 @@ TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요�
 > (PR #325). 다만 이 모음은 손으로 쏴서 계약을 확인하는 자리이므로, **앱 표면과 무관하게 지금도
 > 검증할 수 있는 대상**이다 — 등록이 반복 호출을 전제로 설계돼 있어 여러 번 쏴도 upsert로 수렴하고,
 > 지우려면 로그아웃을 부르면 된다(`auth.http`에 이미 있다).
+>
+> ✅ **일곱 번째 왕복이 닫혔다 — 26/29(2026-09-04, PR #451 `2b1dce3a`).** `notifications.http`가
+> 신설돼 기기 토큰 등록을 덮고, `http-client.env.json`·`_reset.http`·`README.md`도 같은 PR에서
+> 함께 갱신됐다(`fcm_project_id`·`fcm_access_token`·`fcm_device_token` 세 변수는 응답에서 뽑는 값이
+> 아니라 **손으로 채우는 값**이라 `_reset.http`의 비우기 목록에는 넣지 않는다). ⚠️ **이번에도 사람이
+> 손으로 메웠고**, 앞선 여섯 번과 달리 **요청 모음이 앱 코드보다 앞서 나갔다** — 등록 엔드포인트를
+> 부를 수단(FCM 토큰 취득)이 develop에 여전히 0건이므로 이 파일은 앱 없이 손으로만 돌릴 수 있다
+> → [open-questions](../synthesis/open-questions.md) OQ-P-108 · OQ-P-341.
+>
+> ⚠️ **같은 PR이 서버 계약의 복제면을 하나 더 늘렸다.** `fcm-test.http`가 서버 발송 페이로드
+> (문구·`data` 키 4종·채널 id·TTL·APNs 헤더)를 **상수로 옮겨 적었다.** 엔드포인트 커버와 달리
+> **이 복제는 세는 축이 없어** 서버가 값을 바꿔도 아무 셈에도 안 잡힌다
+> → [open-questions](../synthesis/open-questions.md) OQ-P-354.
 >
 > ⚠️ **이번엔 왕복이 반만 닫혔다(2026-08-16, PR #266)** — 같은 두 엔드포인트에 **`:data` 표면은 붙었는데
 > `http/`는 그대로 25/27이다. 앞선 네 번은 표면과 요청 모음이 한 라운드에서 함께 메워졌다** — 두 표면이

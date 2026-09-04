@@ -273,6 +273,26 @@ Android 8 이상에서 같은 id의 알림 채널이 앱에 없으면 알림이 
 도메인 모델은 `domain.model.notification.DeviceToken`(`@JvmInline value class`) 하나다.
 `upsert`라 반복 호출해도 된다는 계약은 `NotificationRemoteDataSourceImpl`의 KDoc이 받아 적었다.
 
+✅ **손으로 확인할 자리가 생겼다(2026-09-04, PR #451 `2b1dce3a`)** — 앱 코드는 한 줄도 안 바뀌었고
+저장소 루트 `http/`에 요청 모음 둘이 들어왔다.
+
+| 파일 | 나가는 곳 | 확인 대상 |
+|---|---|---|
+| `http/notifications.http` | 우리 서버 | 등록 성공 204·본문 없음, upsert 재호출, 400 4종·401 |
+| `http/fcm-test.http` | **FCM v1 API**(서버를 거치지 않는다) | 위 [서버가 보내는 푸시](#서버가-보내는-푸시--토핑-등록-알림)를 재현해 앱 수신을 확인 |
+
+**요청 모음이 앱 코드보다 앞서 나간 첫 도메인이다** — 등록 엔드포인트는 앱 표면이 있어도 부를 수단이
+없는데(FCM 토큰 취득 심볼 0건), 이 파일은 토큰을 손으로 넣으므로 **앱 없이도 지금 돌릴 수 있다.**
+`fcm-test.http`는 반대로 **받을 쪽이 없어 지금은 절반만 돌아간다** — 발송은 200이지만 채널이 없어
+기기에 아무것도 뜨지 않는다.
+
+⚠️ **`fcm-test.http`는 이 문서의 페이로드 표를 상수로 복제한다.** 문구·`data` 키·채널 id·TTL·APNs
+헤더가 그 파일에 그대로 적혀 있고, 서버가 값을 바꿀 때 함께 고치는 절차가 없다 — 엔드포인트 커버와
+달리 **이 복제는 세는 축이 없다** → [open-questions](../synthesis/open-questions.md) OQ-P-354.
+
+⚠️ **둘 다 실행 기록은 0건이다.** `fcm_access_token`(유효기간 1시간)과 Firebase 서비스 계정 키가
+있어야 돌릴 수 있고, 이 회차에 그것을 확보해 쏴 본 적이 없다.
+
 ⚠️ **표면뿐이고 결선은 0이다.** 리포지토리도 UseCase도 화면도 없고, 무엇보다 **넣을 토큰을 얻을 수단이
 없다** — `FirebaseMessaging`·FCM 토큰 취득 심볼이 develop 전체에 여전히 0건이고 `firebase-messaging`
 의존도 없다. 즉 `registerDeviceToken`을 부르는 코드는 하나도 없고, 지금 상태로는 **부를 수도 없다.**
@@ -302,5 +322,9 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
   알림 항목 자체가 없다 → [open-questions](../synthesis/open-questions.md) OQ-P-351
 - 앱이 채널 `parfait_default`를 만들지 않으면 발송이 성공해도 표시되지 않는데, 그 합의를 확인할 수단이
   양쪽 어디에도 없다 → [open-questions](../synthesis/open-questions.md) OQ-P-352
+  (2026-09-04 갱신 — `http/fcm-test.http`가 **불일치를 재현하는 요청**을 갖췄다. 다만 앱에 수신부가
+  없어 아직 돌려서 확인할 수 없고, 상수 자체를 대조하는 자동 검사는 여전히 양쪽에 없다)
+- `fcm-test.http`가 서버 발송 페이로드를 앱 저장소에 복제해 두 번째 정본처럼 보인다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-354
 - TTL 6시간과 최대 6시간짜리 재시도 백오프가 겹쳐, 늦게 재시도된 알림이 만료와 경합한다
   → [open-questions](../synthesis/open-questions.md) OQ-P-353
