@@ -5,14 +5,84 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `29c2f050` (`Merge pull request #447 from mash-up-kr/feature/push-fcm-service`)
-- **요약**: **2026-08-22에 걷어냈던 FCM 축이 돌아왔고, 서버가 요구한 다섯 중 셋만 맞췄다**
-  (delta 2건, **17파일 · 삽입 462줄 · 삭제 0줄** — 전부 새 파일이거나 기존 파일에 더한 것이고
-  지운 줄이 하나도 없다). 유닛 1047 → **1060건**(+13: `PushDeepLinkParserTest` 11 ·
-  `PushDeepLinkEventBusImplTest` 2), 계측 **35건** 유지. **선작성 스펙·계획 없음 → 아카이브 이동
-  0건**, 미결은 **넷이 생기고 셋이 부분 해소, 둘이 갱신됐다**(OQ-P-358·359·360·361 신설 /
-  341·351·352 부분 해소 / 343·354 갱신, `oq-next` 358 → 362).
+- **커밋**: `bc216632` (`Merge pull request #449 from mash-up-kr/feature/#420-canvas-tutorial`)
+- **요약**: **첫 진입 안내가 컴포넌트로 들어오면서 기기에만 남는 설정 저장소가 처음 생겼고,
+  갤러리 저장이 화면 하나를 더 거치게 됐다**(delta 3건, **42파일 · 삽입 1535줄 · 삭제 98줄**).
+  유닛 1060 → **1072건**(+12: `UserConfigRepositoryImplTest` 2 · 튜토리얼 ViewModel 10),
+  계측 **35건** 유지. **선작성 스펙·계획 없음 → 아카이브 이동 0건**, 미결은 **일곱이 생기고
+  하나가 갱신됐다**(OQ-P-363~369 신설 / 341 갱신, `oq-next` 363 → 370).
 
+  **직전 회차가 미머지로 세어 둔 넷 중 둘이 들어왔고, 그 둘은 알림과 무관하다**
+  (#449 `feature/#420-canvas-tutorial` · #445 `feature/#423-canvas-save-preview`). 문서가 두 브랜치에
+  대해 미리 적어 둔 것은 **한 줄뿐이었다** — OQ-P-341의 미머지 셈에 "C-001 최초 진입 튜토리얼
+  오버레이·표시 여부를 사용자 설정에 저장"이라고만 남겼다. 그 한 줄은 맞았지만 **범위를 절반도
+  못 짚었다**: 튜토리얼은 C-001 하나가 아니라 **세 화면**에 붙었고, "사용자 설정"은 플래그 하나가
+  아니라 **`:domain`·`:data`를 관통하는 새 저장소 축**이며, 디자인시스템에 컴포넌트 4종이 함께 섰다.
+  세 번째 머지(#453)는 재시도 버튼 문구를 `다시 시도하기` → **`다시 시도`**로 맞춘 한 줄이고, 이로써
+  버튼 라벨은 카메라·약관·캔버스·누끼 네 곳이 같은 문구가 됐다.
+
+  **디자인시스템이 "화면 첫 진입 안내"를 갖게 됐다** — `ygtutorial/`의 `YGTutorialOverlay`·
+  `YGTutorialBox`·`YGTutorialProgress`·`YGTutorialBoxPlacement` 넷이다. **강조할 자리만 뚫은
+  오버레이가 아니라, 딤까지 구워진 알파 없는 풀스크린 목업 PNG 한 장이 실제 화면을 통째로 덮는다.**
+  그래서 목업은 시스템바를 뺀 자리에만 그리고 딤은 인셋을 안 받아 화면 끝까지 이어지며, 소비 화면
+  셋이 모두 오버레이를 **스캐폴드 밖 형제**로 놓는다(안에 넣으면 컨텐츠 인셋을 받아 딤이 상태바
+  밑에서 끊긴다). 버튼 라벨은 호출부가 정하지 않는다 — 마지막 장이면 "시작하기", 아니면 "다음"이고
+  그 판단이 `YGTutorialProgress.isLast` 하나에서 나온다(진행 표시 `3/3`인데 "다음"인 조합이 생길
+  자리를 없앤 것이다). ⚠️ **목업이 실제 화면과 어긋날 길과 정책 근거 부재는 그대로 남는다** —
+  버튼이 옮겨 가도 PNG는 안 따라오고, 위키에 튜토리얼 조항 자체가 없다 → **OQ-P-363 신설**.
+
+  **기기 축 저장소가 처음 생겼다.** `UserConfigLocalDataSource`(평문 JSON 한 키 + `Flow`) ·
+  `UserConfigRepository` · `UserConfigVO`(`seenTutorials` 집합) · `TutorialKind` · UseCase 둘이고,
+  프록시도 함께 났다(`DataStorePreferences` — 암호화 판에서 암호화만 뺀 것). **계정 정보와 갈리는
+  자리가 둘이다**: ① 암호화하지 않는다(담기는 것이 "튜토리얼을 봤는가"뿐이라 지킬 것이 없고,
+  키 회전 한 번에 설정이 통째로 폐기될 위험만 남는다), ② **저장 형태가 도메인 enum이 아니라 이름
+  문자열**이다(구버전이 최신 값을 읽다 모르는 항목에서 터지면 그 폐기가 설정을 다 날린다 — 문자열이면
+  모르는 항목만 조용히 버린다). 즉 `TutorialKind`의 이름이 곧 저장 키라 개명이 곧 기록 소실이다.
+  ⚠️ **`clearConfig()`는 계약·구현만 있고 호출부가 0건**이라 같은 기기에서 계정을 바꾼 사람이
+  앞사람의 "봤다"를 물려받는다 → **OQ-P-366 신설**. ⚠️ 두 프록시가 암호화 두 줄만 빼면 KDoc까지
+  같은 복제이고 `read`는 평문 쪽에서 호출부가 0건이다 → **OQ-P-367 신설**.
+
+  **같은 기능이 화면 수에 따라 두 형태로 갈렸다 — OQ-P-369 신설.** 여러 장짜리인 C-001만
+  `CanvasMainUiState.tutorialStep: CanvasTutorialStep?`을 담는데 **그 enum이 `@DrawableRes`·
+  `@StringRes`를 프로퍼티로 든다**(State가 `Int`를 직접 담지 않을 뿐 표시 리소스가 State를 타고
+  흐른다 — [state-management](architecture/state-management.md) 규약과
+  [ADR-0016](adr/0016-domain-result-presentation-string-mapping.md)에 걸린다).
+  한 장짜리 둘은 `isTutorialVisible: Boolean`만 담고 리소스는 화면이 고른다. **완료를 남기는 시점도
+  갈린다** — 캔버스는 마지막 장을 닫을 때만 남기고(중간에 접으면 다음 진입에서 처음부터 다시 본다)
+  나머지 둘은 누르는 즉시 남긴다. 넷째 화면이 어느 쪽을 따를지는 정해진 것이 없다.
+
+  ⚠️ **문서의 기준과 코드의 관행이 갈렸다 — OQ-P-368 신설.** 튜토리얼 구독 셋이 전부
+  `launchWhileSubscribed`로 열리는데, 이 저장소가 적어 둔 선택 기준은 **"이 구독이 서버를 계속
+  부르는가"**([ADR-0029](adr/0029-canvas-today-ssot-polling.md))이고 이것은 DataStore 한 키를 읽는다.
+  쓰는 곳이 셋에서 **여섯**이 됐고 그중 셋이 기준 밖이다. 딸려 오는 비용도 있다 — 이 구독은 화면이
+  `state`를 보는 동안에만 열려서 **ViewModel 테스트가 `backgroundScope`에서 `state`를 수집**해야 하고,
+  세 테스트가 각자 `shownViewModel()` 헬퍼로 같은 준비를 적는다.
+
+  **갤러리 저장 사이에 화면이 하나 끼었다**(#445). `RequestCanvasCapture`가
+  **`RequestCanvasCaptureForPreview`로 개명**되고, 캡처한 비트맵이 곧바로 저장으로 가지 않는다 —
+  화면이 캐시에 PNG로 굽고 `NavKeyCanvasImageSave(imagePath, date)`로 미리보기를 연 뒤, 확정하고
+  돌아온 결과를 받아 **같은 파일을 다시 읽어** 저장한다(보고 확정한 그림과 갤러리에 남는 그림이
+  같아야 하므로 다시 캡처하지 않는다). **미리보기는 저장하지 않는다** — 결과 토스트가 뜨는 자리가
+  캔버스 메인이고, 미리보기가 저장까지 하면 알림만 남기고 사라지는 화면이 되어 실패했을 때 알릴
+  곳이 없다. 그래서 ViewModel이 없는 두 번째 화면이 됐다(`NavKeyWebView` 이후).
+  ⚠️ **NavKey가 캐시 파일 경로를 나른다** — 비트맵을 키에 실을 수 없어 생긴 형태이고, 복원 시점에
+  그 파일이 있으리라는 보장이 없다(`date`도 `:api`가 kotlinx-datetime을 안 써 문자열이다)
+  → **OQ-P-364 신설**. ⚠️ **캡처 파일 이름이 고정이라 지우는 자리가 없고**, 왕복·캐시 입출력에
+  테스트가 한 줄도 없다 → **OQ-P-365 신설**.
+
+  **미머지 브랜치는 넷에서 둘이 됐다** — 들어온 것이 둘이고 새로 올라온 것은 없다
+  (`feature/debug-mode` · `feature/push-notification-permission`). 남은 푸시 브랜치가 OQ-P-341 ②③④와
+  OQ-P-358을 한꺼번에 답한다.
+
+  **이번 회차가 확인한 것** — **미머지 메모의 한 줄은 범위가 아니라 존재만 말해 준다.**
+  이 문서는 브랜치를 볼 때 커밋 제목에서 읽히는 것만 적어 왔는데, 그 한 줄이 맞았는데도 머지본은
+  세 배 넓었다(화면 하나 → 셋, 플래그 하나 → 저장소 축, 예고에 없던 컴포넌트 4종). 알림 브랜치처럼
+  **미결이 걸린 축**은 커밋 제목을 한 줄씩 대조할 값이 있지만, 그렇지 않은 브랜치의 한 줄 메모는
+  **"들어올 것이 있다"는 표시**로만 읽고 머지 회차에 범위를 처음부터 훑는 편이 맞다.
+
+  직전 회차 요약(67회차, `29c2f050`): **2026-08-22에 걷어냈던 FCM 축이 돌아왔고, 서버가 요구한
+  다섯 중 셋만 맞췄다**(delta 2건, 17파일 462/0). 유닛 1047 → 1060건, 계측 35건 유지.
+  미결 넷 신설·셋 부분 해소·둘 갱신(`oq-next` 358 → 362).
   **직전 회차가 "다음 회차의 후보"로 꼽은 푸시 브랜치 셋 중 둘이 들어왔다**(#446
   `feature/push-notification-deeplink` · #447 `feature/push-fcm-service`). 이번에는 **예고와 머지본이
   어긋나지 않았다** — 미결에 미리 적어 둔 "부를 수단이 브랜치에 있다"가 그대로 사실이 됐고, 대신
@@ -1648,6 +1718,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-05 | `bc216632` | Merge #445(캔버스 저장 미리보기) · #453(재시도 문구 통일) · #449(첫 진입 튜토리얼) | delta 3건, **42파일 1535/98**. 유닛 1060 → **1072건**(+12: `UserConfigRepositoryImplTest` 2 · 튜토리얼 ViewModel 10), 계측 **35건** 유지. **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#449**: 디자인시스템에 `ygtutorial/` 4종(`YGTutorialOverlay`·`YGTutorialBox`·`YGTutorialProgress`·`YGTutorialBoxPlacement`) 신설 — **뚫린 오버레이가 아니라 딤까지 구워진 알파 없는 풀스크린 목업 PNG**가 화면을 통째로 덮고, 소비 셋이 모두 **스캐폴드 밖 형제**로 놓는다(안에 넣으면 딤이 상태바 밑에서 끊긴다). 버튼 라벨·진행 표시가 `isLast` 하나에서 나온다. 함께 **기기 축 저장소가 처음 생겼다** — `UserConfigLocalDataSource`(평문 JSON 한 키 + `Flow`) · `UserConfigRepository` · `UserConfigVO` · `TutorialKind` · UseCase 2 · 프록시 `DataStorePreferences`(암호화 판에서 암호화만 뺀 복제). 저장 형태는 enum 이 아니라 **이름 문자열**(구버전이 모르는 항목에서 터지면 설정을 통째로 날린다). 소비는 C-001(3장, `CanvasTutorialStep`)·갤러리 업로드(1장)·누끼 확인(1장). **#445**: `RequestCanvasCapture` → **`RequestCanvasCaptureForPreview`** 개명, 저장이 `NavKeyCanvasImageSave(imagePath, date)` 미리보기를 거쳐 **같은 캐시 파일을 다시 읽어** 저장한다(다시 캡처하지 않는다). 미리보기는 저장하지 않아 **ViewModel 없는 두 번째 화면**이다. **#453**: 재시도 버튼 문구 `다시 시도하기` → `다시 시도`(네 화면 동일). 조치: architecture 4건(design-system — `ygtutorial/` 트리·인벤토리·항목 / navigation-flow — `캔버스 저장 미리보기 왕복` 절 신설·인자 목적지 / data-layer — `UserConfig*`·평문 프록시·DI 2행 / state-management — `launchWhileSubscribed` 소비 확장·State 이탈), 아카이브 스펙 1건(c001-canvas-gallery-save as-built), open-questions 8항목(363~369 신설 / 341 갱신), doc-baseline·index 기준선 갱신. ⚠️ **실기기 확인 0회**이고 미리보기 왕복·캡처 캐시에 테스트가 0건이다. 미머지 **넷 → 둘**(신규 0) |
 | 2026-09-05 | `29c2f050` | Merge #446(푸시 알림 딥링크) · #447(FCM 수신부) | delta 2건, **17파일 462/0**(삭제 0줄). 유닛 1047 → **1060건**(+13: `PushDeepLinkParserTest` 11 · `PushDeepLinkEventBusImplTest` 2), 계측 **35건** 유지. **`app` 모듈이 유닛 테스트 소스셋을 처음 가졌다**(`parfait.test.unit`이 **진입 모듈**에 처음 붙었다 — 그전까지 core·`data`·`domain`과 feature `impl`에만 있었다. 파싱을 `Intent`에서 뗀 덕에 가능했다). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **2026-08-22 PR #325가 걷어낸 FCM 축이 되살아났다** — `firebase-messaging` 의존 · `push/ParfaitFirebaseMessagingService` · `BaseApplication`의 채널 생성 · 매니페스트 서비스 등록이 돌아왔고 **채널 id는 앱이 정하지 않고 서버가 못 박은 `parfait_default`를 따랐다**(OQ-P-352 ① 해소). 예고에 없던 **딥링크 축**이 함께 왔다 — `:domain` `PushDeepLink`·`PushNotificationType`·`PushDeepLinkEventBus` + `:data` `PushDeepLinkEventBusImpl`(`Channel(CONFLATED)`) + **앱 루트 `MainRoute` 단일 수집**으로 **세션 종료 이동 구조를 그대로 복제**해 새 ADR을 만들지 않았다. **서버가 요구한 다섯 중 셋만 맞다** — ⚠️ `date`를 안 읽어 항상 최신 캔버스로 열고, ⚠️ 중복 수신이 알림 두 개로 쌓이며(`messageId.hashCode()`), ❌ **토큰 등록을 한 번도 안 부른다**(`onNewToken` 주석의 전제는 PR #437이 이미 무너뜨렸다 — OQ-P-341 ②). ⚠️ **`POST_NOTIFICATIONS`는 선언만 돌아오고 요청 코드가 0건**이라 Android 13+에서는 표시 자체가 막힌다(OQ-P-358). 조치: ADR-0013 되살림 정정(+`위험·방어` 정정), api 3문서(notification.md — 요구 표에 앱 열 신설·`푸시 수신·딥링크` 절·미결 4항목 / conventions.md Android 불일치 1건 → **3건** / README 도메인 표·주석), architecture 3건(navigation-flow — `푸시 딥링크 이동` 절 신설 / data-layer — `PushDeepLinkModule`·`domain/model` 하위 패키지 열 · 통로 복제 / module-structure — `app` `push/`·유닛 테스트 소스셋), open-questions 9항목(358·359·360·361 신설 / 341·351·352 부분 해소 / 343·354 갱신), doc-baseline·index 기준선 갱신. ⚠️ **실기기 확인 0회**이고 등록 호출부가 0건이라 발송은 여전히 전부 `NO_DEVICE_TOKEN` 취소다. 미머지 **여섯 → 넷**(신규 0) |
 | 2026-09-04 | `e6ce42b1` | Merge #440(원격 이미지 로딩 표현 — 캔버스 일괄 드러내기 · G-001 순차 등장) | delta 1건, **41파일 1697/224**. 유닛 1029 → **1047건**(+18: `reveal/` 순수 함수 11 · `CanvasLoadState` 7), 계측 17 → **35건**(+18, 파일 6 → 11 — `core:ui` 첫 계측 소스셋). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#440**: 세 라운드째 미머지로 세어 온 `feature/image-loading-placeholder`가 들어왔고 **머지본이 예고와 셋 달랐다**(`YGToppingGroup` 무변경 · 두 화면의 구현이 갈림 · `YGSkeleton` 소비처는 `YGCanvas` 배경 하나) → OQ-P-346 해소 메모가 그 대조를 적는다. **같은 문제에 반대 답 둘** — C-001은 `rememberBatchRevealState`로 다 모일 때까지 안 내고(빈 목록은 완료가 아니다, 리셋 키는 그리는 캔버스), G-001은 안 기다리는 대신 `rememberStaggeredRevealState`로 400ms씩 쌓는다. 잇는 것은 `core:ui` `reveal/`과 `Modifier.revealed`(알파 0 + 시맨틱 제거, 측정·배치는 유지)뿐이다. 실패도 반대다(캔버스는 한 장만 실패해도 전체 차단, 목록은 실패분만 폴백). **`YGScaffoldV2`에 `loadingOverlay` 슬롯**(기본값이 종전 동작이라 호출부 무변경, C-001이 실패 덮개를 끼운다) + **터치 삼킴이 슬롯 몫으로 내려가며 `YGDimOverlay` 분리**. ⚠️ 접근성 차단이 `hideFromAccessibility()` → `clearAndSetSemantics { }`로 **수단 정정**(앞의 것은 노드 하나만 감춘다). G-001 실패 갈림이 세 번째로 뒤집혀 **"당겼는가"** 기준이 되고 `ShowRefreshError`·문구·토스트 호스트 삭제, 새로고침 인디케이터가 로띠 + 문구 2줄로 플랫폼 기본을 벗어났다(OQ-P-113 ① 해소). 조치: architecture 3건(design-system — 신설 컴포넌트 2·`YGLoadingArt`·이미지 로더·덮개 슬롯 / module-structure — `core:ui` `reveal/` / state-management — 실패 갈림), 아카이브 스펙 5건(g001-group-list · ygscaffold-v2 · screen-resume-refetch · c001-canvas-today-detail · topping-alpha-hit-test), specs/README 5행, open-questions 9항목(355·356·357 신설 / 346 해소 · 348 부분 해소 / 102·112·113·167·330·349 갱신), doc-baseline·index 기준선 갱신. ⚠️ **실기기 확인 0회**이고 늘어난 계측 18건도 실행되지 않는다(CI가 `core:ui`를 컴파일 대상에 안 넣는다). 미머지 **일곱 → 여섯**(신규 0) |
 | 2026-09-04 | `2b1dce3a` | Merge #451(API 현행화 260903 — `http/` 요청 모음) | delta 1건, **5파일 550/3**(전부 `http/`). 유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#451**: `notifications.http`(기기 토큰 등록 — 204·본문 없음·upsert 재호출·400 4종·401 대조군)와 `fcm-test.http`(**서버를 거치지 않고 FCM v1 API 로 직접** 발송해 앱 수신을 확인)가 신설되고 `http-client.env.json`·`_reset.http`·`http/README.md` 가 함께 맞춰졌다(`fcm_*` 세 변수는 손으로 채우는 값이라 `_reset.http` 비우기 목록에서 제외). `http/` 커버 **25/29 → 26/29, 일곱 번째 왕복**이고 **방향이 반대다** — 요청 모음이 앱 코드보다 앞서 나갔다(등록을 부를 수단이 develop 에 0건). `.kt`·gradle 무변경이라 **코드 드리프트 0건**이고 `android_status`·Android 매핑 판정은 그대로 옳다. 조치: api/README(파일 목록·커버 셈·`fcm-test.http` 성격), api/notification.md(Android 매핑에 확인 수단 표·미결 2항목), open-questions 5항목(OQ-P-354 신설 — 서버 발송 페이로드 복제를 세는 축이 없다 / OQ-P-092·108·341·352 갱신), doc-baseline·index 기준선 갱신. ⚠️ 두 파일 다 **실행 기록 0건**(`fcm_access_token` 1시간 만료·서비스 계정 키 필요, 받을 쪽도 없다). 미머지 **다섯 → 일곱**: `feature/push-notification-permission`(OQ-P-341 ②③④) · `feature/#420-canvas-tutorial` 추가 |
