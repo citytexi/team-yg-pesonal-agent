@@ -57,6 +57,9 @@ tags: [adr, parfait]
 - `saveEditedImage`도 같은 `as? AndroidBitmap` 다운캐스트 + `ImageNotFound` 방어를 반복한다 —
   다운캐스트 지점이 하나 늘었고, `BitmapWrapper`는 여전히 멤버 0인 stub이다
   → [open-questions](../synthesis/open-questions.md) [2026-07-12].
+> 📌 **`saveEditedImage`는 2026-09-06 PR #457로 `saveBitmap`이 됐다.** 시그니처·다운캐스트 구조는
+> 그대로이고 이름만 바뀌었다 — 아래 기록은 당시 이름을 유지한다.
+
 - ⚠️ **화면 경계에서는 추상이 벗겨진다** — `SegmentationViewModel`·`ToppingEditViewModel`이
   `(wrapper as? AndroidBitmap)?.getRawData()`로 raw `android.graphics.Bitmap`을 꺼내 **UiState에
   직접 담는다**. 이 ADR이 규정하는 것은 domain 경계뿐이라 규약 위반은 아니지만, 다운캐스트가

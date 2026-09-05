@@ -327,11 +327,11 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
 | 채널 id `parfait_default` | `PUSH_NOTIFICATION_CHANNEL_ID` 상수 — 채널은 `BaseApplication.createPushNotificationChannel`이 앱 시작에 만든다(`IMPORTANCE_HIGH`, 표시 이름·설명은 `strings.xml`의 `notification_channel_default_*`) |
 | `notification` 블록이 늘 실린다 | `onMessageReceived`가 `message.notification`이 없으면 **곧장 return** 한다 — `data`-only 페이로드는 처리하지 않는다(KDoc이 그 전제를 적는다) |
 | 백그라운드는 시스템이 표시 | 앱이 직접 만드는 알림도 `data`의 키를 그대로 `Intent` extras에 실어 **두 경로의 extras 모양을 맞춘다** |
-| `data` 키 `type`·`route`·`groupId` | `PushDeepLinkIntent.kt`의 `EXTRA_TYPE`·`EXTRA_ROUTE`·`EXTRA_GROUP_ID` → `PushDeepLinkParser.parse` |
+| `data` 키 `type`·`route`·`groupId` | `PushDeepLinkIntent.kt`의 `EXTRA_TYPE`·`EXTRA_ROUTE`·`EXTRA_GROUP_ID` → `PushDeepLinkParser.parse`. **`route`·`type` 문자열은 PR #456으로 `PushNotificationRouteType`·`PushNotificationType` 두 enum의 `key`가 물고**, `groupId`를 양수로 읽는 규칙은 `PushDeepLink.AddTopping.parse`에 있다 |
 | `data` 키 `date` | **읽는 코드가 없다** → OQ-P-359 |
 | `route=canvas` | `PushDeepLink.AddTopping(groupId)` → `NavKeyCanvasMain(groupId)` — **날짜 인자가 없어 최신 캔버스로 간다** |
 | `route=group` | `PushDeepLink.GroupList(type)` → `NavKeyGroupList`. **서버에 이 값을 보내는 코드가 없다**(트리거 1종) → OQ-P-361 |
-| 두 `route` 다 로그인 필요 | 이동 전에 `HasActiveSessionUseCase`가 세션을 확인하고 없으면 **딥링크를 버린다** — 로그인을 마쳐도 이어가지 않는다(브랜치 `feature/#454-push-deep-link-edge-case`, develop 미머지) |
+| 두 `route` 다 로그인 필요 | 이동 전에 `HasActiveSessionUseCase`가 세션을 확인하고 없으면 **딥링크를 버린다** — 로그인을 마쳐도 이어가지 않는다(PR #456) |
 | `type` 값 3종 | `PushNotificationType`(`TOPPING`·`REMIND_AM`·`REMIND_PM`). **라우팅에 쓰지 않는다** — 목적지는 `route`가 정하고 `type`은 탭 분석 용도로만 실린다. 모르는 값은 `null`이라 파싱이 실패하지 않는다 |
 
 **전달 통로는 세션 종료 이동과 같은 모양이다** — `:domain`의 `PushDeepLinkEventBus`(발행·구독 겸용
@@ -345,8 +345,7 @@ base intent로 남아 되살릴 때 다시 오는 것은 `FLAG_ACTIVITY_LAUNCHED
 🔁 **여기 있던 두 경고를 걷었다 — 둘 다 낡았다.** ① 권한을 묻는 자리는 PR #450이 붙였다
 (`NotificationPermissionGate`, A-004·A-005 완료 직후 — OQ-P-358은 그때 해소됐다). ② 콜드 스타트에서
 딥링크와 스플래시 백스택 리셋이 겹치는 구간은 **닫혔다** — 수집이 스플래시 이탈을 기다린 뒤 소비하고,
-그 자리에서 세션도 함께 본다(OQ-P-360 ①③ 해소, ② 잔존).
-⚠️ **②의 수정은 브랜치 `feature/#454-push-deep-link-edge-case`에만 있고 develop에 없다.**
+그 자리에서 세션도 함께 본다(OQ-P-360 ①③ 해소, ② 잔존 — 2026-09-06 PR #456으로 develop에 들어왔다).
 
 ### 기기 토큰 등록 결선 (2026-09-05, PR #450)
 

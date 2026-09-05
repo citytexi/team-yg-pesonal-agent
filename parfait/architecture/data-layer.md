@@ -125,7 +125,7 @@ tags: [architecture, parfait]
 > 시간순을 지킨다(종류로 묶으면 뭉쳐서 순서가 깨진다).
 
 ## 예: 이미지 세그멘테이션(누끼)
-`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]] — **API 28 미만 갈래는 EXIF 회전을 적용해 세워서 준다**, #349. 색공간·`Bitmap.Config`·해상도 하한은 여전히 손대지 않는다), subject 이미지는 `cacheDir`의 **세그멘테이션 전용 하위 디렉토리**에 PNG로 저장해 경로를 반환. 실패는 `Result<…>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`PersistSubjectUseCase`·`SaveEditedImageUseCase`·`ClearSegmentationCacheUseCase`.
+`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]] — **API 28 미만 갈래는 EXIF 회전을 적용해 세워서 준다**, #349. 색공간·`Bitmap.Config`·해상도 하한은 여전히 손대지 않는다), subject 이미지는 `cacheDir`의 **세그멘테이션 전용 하위 디렉토리**에 PNG로 저장해 경로를 반환. 실패는 `Result<…>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`PersistSubjectUseCase`·`SaveBitmapUseCase`·`ClearSegmentationCacheUseCase`.
 
 **결과 모델 재편(2026-08-14, PR #221)** — `SegmentationResult`가 `BitmapWrapper`를 더 이상 담지 않는다.
 `subjectImagePath`(파일 경로) + `subjectBounds: SegmentationBounds?`(원본 픽셀 좌표계 바운딩 박스,
@@ -191,9 +191,9 @@ tags: [architecture, parfait]
 **메서드 6개**다 — `prepareSegmentationModule()`(2026-09-03 PR #438 신설, 아래 모듈 설치 절.
 결과를 돌려주지 않는 유일한 계약이다 — 부르는 쪽이 그것으로 할 일이 없다) · `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
 `persistSubject(candidate)`(고른 후보를 캐시에 PNG 두 장으로 떨군다) ·
-`saveEditedImage(bitmapWrapper)`(손편집 결과를 캐시에 PNG로 떨구고 절대 경로 반환) ·
+`saveBitmap(bitmapWrapper)`(구 `saveEditedImage`, 2026-09-06 PR #457 개명 — 비트맵 한 장을 캐시에 PNG로 떨구고 절대 경로 반환. 손편집 결과뿐 아니라 「편집 없이 사용」의 원본도 이 자리로 온다) ·
 `clearSegmentationCache()`(PR #309 신설, 아래 캐시 정리 절).
-`saveEditedImage`는 **넘겨받은 비트맵을 recycle하지 않는다**(수명은 넘겨준 쪽 몫, 코드 주석에 명시).
+`saveBitmap`은 **넘겨받은 비트맵을 recycle하지 않는다**(수명은 넘겨준 쪽 몫, 코드 주석에 명시).
 
 **값을 돌려주는 계약 넷 중 `decodeImage`만 `Result`가 아니다 — 감싸는 자리를 UseCase로 올렸다(2026-08-20, PR #309).**
 `DecodeImageUseCase`가 `runSuspendCatching`으로 감싸 `Result<BitmapWrapper>`를 주고, 리포지토리

@@ -1,10 +1,10 @@
 ---
 id: c103-error-use-original
 title: C-103-Error 실패 화면 통합과 「편집 없이 사용」
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-09-05
+verified: 2026-09-06
 related_code:
   - SegmentationViewModel.kt#SegmentationState
   - SegmentationViewModel.kt#SegmentationIntent
@@ -33,11 +33,15 @@ tags: [spec, parfait, segmentation, c103, error]
 
 # Spec: C-103-Error 실패 화면 통합과 「편집 없이 사용」
 
-> ✅ **구현 완료(2026-09-06, 로컬 브랜치 `feature/#348-segmentation-error-button` `28da3c246`, 미푸시)** —
-> 4 Task 전부 리뷰를 통과했고 최종 브랜치 리뷰가 스펙 준수를 확인했다. 유닛 테스트가 25건에서
-> 28건이 됐다. `develop` 머지 전이라 이 문서는 `draft`로 남고 `archive/`로 옮기지 않는다.
-> ⚠️ **프리뷰 육안 대조를 아직 하지 않았다** — 버튼 폭 161.5dp와 설명·버튼 사이 24dp는 코드로만
+> ✅ **구현 완료·develop 머지(2026-09-06, PR #457 `5f860cb9c`)** — 4 Task 전부 리뷰를 통과했고
+> 머지본을 스펙과 줄 단위로 대조한 결과 **설계와 어긋난 자리가 없다.** 유닛 테스트가 25건에서
+> 28건이 됐고, 스펙이 적어 둔 정리 검사 넷(`SegmentationErrorKind`·`errorKind`·
+> `segmentation_module_error_*`·`saveEditedImage`)이 `develop`에서 모두 0건이다.
+> ⚠️ **프리뷰 육안 대조는 여전히 하지 않았다** — 버튼 폭 161.5dp와 설명·버튼 사이 24dp는 코드로만
 > 확인했고 테스트가 잡지 못하는 자리다.
+> 📌 **본문 「편집 없이 사용」절의 코드 블록보다 머지본이 한 겹 두껍다** — 초안 기록을
+> `runSuspendCatching { … }.getOrDefault(false)`로 감싸 실패하면 `ShowError`로 보낸다. 같은 절의
+> 「실패 처리와 중복 실행」이 요구한 동작 그대로이고, 예시가 저장 실패만 보여 준 것이다.
 >
 > 디자인 `C-103-Error`가 확정되어 실패 화면이 한 벌 문구와 버튼 둘을 갖는다. 이 스펙은 그
 > 확정본에 코드를 맞추고, 오래 열려 있던 「원본 사용」 선택지를 채운다.
@@ -56,7 +60,7 @@ tags: [spec, parfait, segmentation, c103, error]
 두 가지 행동을 안내하는데 화면에는 닫기 버튼 하나뿐이었고, 닫기는
 `navigator.popUpTo<NavKeyCanvasMain>()`이라 캔버스까지 나가 버려 안내한 두 행동 중 어느 것도
 그 자리에서 할 수 없었다. 이후 PR #438이 재시도 버튼을 넣어 절반을 채웠지만, 그 버튼은
-[segmentation-module-install](archive/2026-09-02-segmentation-module-install.md) 「재시도」 절이
+[segmentation-module-install](2026-09-02-segmentation-module-install.md) 「재시도」 절이
 적어 둔 대로 **디자인 검토를 받으려고 먼저 놓은 시안**이었다.
 
 검토 결과가 디자인 `C-103-Error`로 나왔다. 재시도 버튼은 확정됐고, 두 번째 버튼
@@ -78,7 +82,7 @@ Galaxy Z Flip 3(SM-F711N)에서 GMS가 `INTERNAL_ERROR`로 모듈 설치를 몇 
 - **제외**
   - **실패 원인별 문구 분기** — 디자인이 한 벌이다. 원인은 로그로만 남긴다.
   - **원본 사용 전용 확인 화면** — 기존 `C-103-confirm`을 그대로 쓴다.
-  - **모듈 설치 설계 변경** — [segmentation-module-install](archive/2026-09-02-segmentation-module-install.md)의
+  - **모듈 설치 설계 변경** — [segmentation-module-install](2026-09-02-segmentation-module-install.md)의
     설치 대기·공유 대기·종료 판정은 그대로 유효하다.
   - **캔버스에서 원본 토핑을 다르게 취급하는 규칙** — 저장 이후 경로는 후보 선택과 같다.
 
@@ -334,7 +338,7 @@ data 계층과 도메인 모델은 바뀌지 않는다. `persistSubject`·`Segme
   정의하는데, 이 경로가 만드는 토핑은 그 정의에 들어맞지 않는다. 디자인이 명시적으로 요구한
   선택지라 구현은 따르되, 정책 문서와의 간격은 남는다. 캔버스에서 사각형 토핑을 다르게 취급할지는
   이 스펙의 범위 밖이다.
-- ⚠️ **[segmentation-module-install](archive/2026-09-02-segmentation-module-install.md)의 두 절이
+- ⚠️ **[segmentation-module-install](2026-09-02-segmentation-module-install.md)의 두 절이
   이 스펙으로 뒤집힌다.** 「화면 상태」 절의 원인별 문구 분기와 「재시도」 절의 시안 표기다.
   **전면 대체가 아니다** — 그 스펙의 설치 대기·공유 대기·종료 판정·예외 매핑은 그대로 살아 있다.
   구 스펙에는 이 스펙을 가리키는 📌 표기만 더하고 `superseded_by`는 비워 둔다.

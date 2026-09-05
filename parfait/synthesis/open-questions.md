@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-05
+verified: 2026-09-06
 related_spec: push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -1796,7 +1796,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-153
 - **출처**: `feature/segmentation/impl` `screen/SegmentationScreen.kt`(로딩/에러/본문 3분기, 본문은 `subjectBounds` 하나만 하이라이트) · `screen/SegmentationErrorScreen.kt`(닫기 버튼 하나)(PR #221 develop 머지) — 위키 [[누끼-따기]]는 [[기능정의서-v5]] 기준으로 **C-103-loading이 다중 검출 시 C-103-select로 분기**하고 **실패 시 재시도 또는 원본 사용 옵션**을 주라고 한다. 코드는 ML Kit `foregroundConfidenceMask`(단일 전경 마스크)만 쓰므로 대상이 애초에 하나이고, 에러 화면에는 재시도·원본 사용이 없다(닫기마저 빈 람다 → [2026-08-15] 출구 항목). `ModuleNotReady`는 코드가 "잠시 후 재시도하면 해결"이라 적어 둔 **일시적** 실패인데도 재시도할 수단이 없다.
 - **항목**: ① 다중 피사체 선택을 지원할지 — 지원하려면 `SubjectSegmenter`의 `subjects`(개별 피사체 목록)로 갈아타야 하고 결과 모델이 `SegmentationBounds` 단수에서 복수로 바뀐다, ② 안 할 거면 위키의 C-103-select를 폐기 표기할지, ③ 에러 화면에 재시도 버튼을 둘지(최소한 `ModuleNotReady`에는 필요), ④ "원본 사용" 옵션을 살릴지.
-- **상태**: 미해결 (**①②③ 해소, ④만 남았다** — 아래 2026-08-23 표기 참고)
+- **상태**: **해소됨**(2026-09-06, PR #457 `5f860cb9c` — ①②③에 이어 ④가 닫혔다)
   > ✅ **①②③이 닫혔다(2026-08-23)** — ① 다중 피사체 선택을 **지원한다.** `subjects`로 갈아탔고
   > 결과 모델이 `SegmentationCandidate` 목록이 됐다. 실기기에서 점선 박스가 둘 이상 뜨는 것까지
   > 확인했다 → [c103-multi-subject-selection 스펙](../specs/archive/2026-08-23-c103-multi-subject-selection.md).
@@ -1823,11 +1823,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 검토를 받으려고 먼저 놓은 시안이라 모양도 자리도 바뀔 수 있다** — 디자인 `C-103-Error`에는
   > 여전히 버튼이 없다 → [segmentation-module-install 스펙](../specs/archive/2026-09-02-segmentation-module-install.md) 「재시도」.
   > **④(원본 사용)는 그대로 남는다.**
-  > 📌 **④의 답이 정해졌다(2026-09-05, 구현 전)** — 디자인 `C-103-Error` 확정본이 「편집 없이 사용」
-  > 버튼을 실었다. 누르면 원본 사진을 그대로 토핑 재료로 삼아 `C-103-confirm`으로 가고, 그 화면에서
-  > 손으로 다듬을 수도 있다. 같은 확정본이 실패 문구를 한 벌로 합쳐 ③에 붙어 있던 "디자인에는 버튼이
-  > 없다"는 단서도 걷힌다 → [c103-error-use-original 스펙](../specs/2026-09-05-c103-error-use-original.md).
-  > **코드가 들어오면 이 미결을 닫는다.**
+  > ✅ **④가 코드로 닫혔다(2026-09-06, PR #457 `5f860cb9c`)** — 디자인 `C-103-Error` 확정본의
+  > 「편집 없이 사용」 버튼이 들어왔다. 누르면 원본 사진을 그대로 토핑 재료로 삼아 `C-103-confirm`으로
+  > 가고, 그 화면에서 손으로 다듬을 수도 있다(`sourceImageUri`가 널이 아니라 `isBorderOnlyEdit`가
+  > 거짓이다). 같은 PR이 실패 문구를 한 벌로 합쳐 ③에 붙어 있던 "디자인에는 버튼이 없다"는 단서도
+  > 걷었다 → [c103-error-use-original 스펙](../specs/archive/2026-09-05-c103-error-use-original.md).
+  > ⚠️ **위키 [[토핑]]과의 간격은 남는다** — 이 경로가 만드는 토핑은 배경이 남은 불투명한 사각형이라
+  > "누끼 사진 객체"라는 정의에 들어맞지 않는다. 캔버스에서 다르게 취급할지는 정하지 않았다.
 - **해소 메모**: ①②는 위키 [[누끼-따기]] "버전별 보강" 절과 [c103 스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 화면 ID 대응 표를 함께 정리한다. ③④는 [ADR-0012](../adr/0012-mlkit-subject-segmentation.md) As-built 절의 실패 처리 서술과 정합을 본다.
 
 ### [2026-08-15] C-105 테두리 색 팔레트 9종이 정책 소스 없이 코드로 확정됐다
@@ -6293,7 +6295,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 모듈을 못 받는 기기에서 토핑 만들기를 아예 막을지, 누끼 없이 원본으로 진행하게 할지,
   수동 편집(C-104)으로 우회하게 할지 — **정책 결정이 필요하다.** ② 실패가 얼마나 흔한지 모른다.
   실기기 한 대의 관찰이고 모수가 없다. ③ 프로덕션에서 이 실패를 셀 수단이 없다.
-- **상태**: 미해결, **전제 축소**(같은 날 후속 관측) — 그 기기에 **모듈이 결국 도착했다.**
+- **상태**: 미해결, **전제 축소 2회**. ✅ **①에 우회로가 생겼다(2026-09-06, PR #457)** — 실패 화면의
+  「편집 없이 사용」이 누끼 없이 원본을 토핑 재료로 보내므로, 모듈이 안 와도 **토핑을 만들 경로가 있다.**
+  ①은 "막을지"가 아니라 "우회로를 이대로 둘지"로 좁아졌고 ②가 남는 본체다.
+  아래는 1차 축소(같은 날 후속 관측) — 그 기기에 **모듈이 결국 도착했다.**
   오전 내내 `INTERNAL_ERROR`로 실패하던 설치가 몇 시간 뒤 성공했고 세그멘테이션이 정상 동작했다.
   "끝내 못 받는 기기"가 아니라 **아주 늦게 받는 기기**였을 수 있다. ①의 무게는 그만큼 줄었고,
   ②(빈도를 셀 수단이 없다)가 남는 본체다.
@@ -6469,7 +6474,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ③ `data` 키 이름·값(특히 `type`의 `TOPPING`)을 앞으로 늘릴 때 누가 관리하는지 — 지금은 서버 코드가
   유일한 정본이라 앱이 오타를 내도 아무 데서도 안 걸린다.
 - **상태**: **부분 해소** (②가 코드로 답해졌다 — 앱이 목적지를 정했다. ①③ 잔존.
-  **동작 영향 0** — 등록 호출부가 0건이라 아직 아무도 이 문구를 못 본다)
+  ⚠️ **2026-09-06 정정: "등록 호출부가 0건이라 동작 영향 0"은 낡았다** — PR #450이 등록을 세션 축
+  넷에 걸었으므로 **이 문구는 실제로 사용자에게 닿는다**)
   > ✅ **②를 앱이 정했다(2026-09-05, PR #446)** — `route=canvas` → `NavKeyCanvasMain(groupId)`,
   > `route=group` → `NavKeyGroupList`이고 **`date`는 안 읽는다.** `PushDeepLink.AddTopping`의 KDoc이
   > "알림이 가리키던 날짜가 아니라 항상 그 그룹의 최신 캔버스"라고 못 박으므로 **오늘/지난 캔버스의
@@ -6497,7 +6503,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   누가 정하는지(서버는 id만 보내고 나머지는 앱 몫이다). ③ **이 어긋남을 무엇이 잡는지** — 서버 테스트도
   앱 테스트도 상대편 상수를 모르므로 실기기로 받아 보기 전에는 드러나지 않는다.
 - **상태**: **부분 해소** (① 앱이 서버 id를 따랐다 — 2026-09-05 PR #447 / ②는 앱이 정했고 근거가 없다 /
-  ③ 잔존. **지금은 도달 불가** — 등록된 토큰이 0건이라 발송이 전부 취소된다)
+  ③ 잔존. ⚠️ **2026-09-06 정정: "등록된 토큰이 0건이라 도달 불가"는 낡았다** — PR #450으로 등록이
+  붙어 발송이 실제로 나간다)
   > 📌 **③에 재현 수단이 생겼다(2026-09-04, PR #451 `2b1dce3a`)** — `http/fcm-test.http` 3번이
   > **일부러 다른 채널 id로 쏘는 대조군**이고, 응답이 200인데 알림이 안 뜨는 상황을 그대로 만든다.
   > 다만 ③이 물은 것은 "무엇이 자동으로 잡는가"이고 **그 답은 여전히 없다** — 이 요청도 사람이
@@ -6651,8 +6658,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   쪽 멱등일 뿐이라 재시도로 온 같은 알림은 `messageId`가 달라 **알림 두 개로 쌓인다.** 접으려면
   알림 id를 `data`에서 끌어와야 한다(예: 그룹·날짜 조합). ③ 어느 쪽도 지금은 확인할 수단이 없다 —
   `http/fcm-test.http`를 두 번 쏘면 재현되지만 실행 기록이 0건이다.
-- **상태**: 미해결 (**지금은 도달 불가** — 등록 호출부가 0건이라 알림 자체가 오지 않는다.
-  등록이 붙는 순간 둘 다 사용자에게 보인다)
+- **상태**: 미해결 (⚠️ **2026-09-06 정정: 더 이상 도달 불가가 아니다** — PR #450으로 등록 호출부가
+  넷 생겨 알림이 실제로 온다. ①②가 곧바로 사용자에게 보이는 상태다)
 - **해소 메모**: ①이 정해지면 [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것"
   표와 [api/conventions.md](../api/conventions.md) "Android 불일치"의 두 행을 함께 닫는다. ②는 앱만
   고치면 되므로 ①과 독립이다.
@@ -6672,8 +6679,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   딥링크로 연 화면 아래에 **그때까지의 백스택이 남는다**(다른 경계는 `replaceAll` 관용구를 쓴다) —
   로그인 화면 위에 캔버스가 얹히는 상태가 허용 범위인지. ③ 로그인 안 된 상태로 탭했을 때 무엇을 보여줄지
   — 지금은 목적지로 그냥 간다.
-- **상태**: **부분 해소** (①③ 해소, ② 잔존). ⚠️ **develop 미머지** — 브랜치
-  `feature/#454-push-deep-link-edge-case`에만 있다
+- **상태**: **부분 해소** (①③ 해소, ② 잔존). ✅ **develop 머지**(2026-09-06, PR #456 `618ead927`)
   > ✅ **①은 순서를 갈라 보는 대신 구간 자체를 없앴다** — 수집이
   > `snapshotFlow { navigator.backStack.lastOrNull() }.first { it != NavKeySplash }`로 스플래시 이탈을
   > 기다린 뒤 소비하므로, `replaceAll`이 딥링크를 걷어낼 창이 남지 않는다. ⚠️ **수정 전에 그 순서가
@@ -6688,8 +6694,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ⚠️ **이 항목이 근거로 삼았던 "등록 호출부가 0건"은 틀렸다** — PR #450(`da26d084a`)이
   > `BootstrapSessionUseCase`·`LoginWithKakaoUseCase`·`SignUpUseCase`·`onNewToken` 넷에
   > `DeviceTokenRegistrar.register()`를 붙였고, 권한 요청도 `NotificationPermissionGate`가
-  > `GroupCreateRoute`·`GroupNickNameRoute` 두 자리에서 한다. **같은 문구가 OQ-P-351·OQ-P-359의
-  > 상태에도 남아 있어 함께 낡았다** — 다음 기준선 감사가 걷을 자리다.
+  > `GroupCreateRoute`·`GroupNickNameRoute` 두 자리에서 한다. **같은 문구가 OQ-P-351·OQ-P-352·
+  > OQ-P-359의 상태에도 남아 있었고 2026-09-06 감사가 셋 다 걷었다.**
+  > 📌 **같은 PR이 딥링크 파싱 축을 enum으로 옮겼다** — `route`는 `PushNotificationRouteType`,
+  > `type`은 `PushNotificationType`이 각자 `key`로 물고, `groupId`를 양수로 읽는 규칙은
+  > `PushDeepLink.AddTopping.parse`가 든다. **문자열 복제면이 줄어든 것이지 사라진 것은 아니다**
+  > (서버 값이 바뀌면 여전히 조용히 `null`이 된다 — OQ-P-351 ③).
 - **해소 메모**: 검증은 콜드/웜 × 로그인/비로그인 네 시나리오의 실기기 수동 확인이다. 자동 테스트는
   없다 — `app` 모듈에 `androidTest` 소스셋이 없고, 이 로직은 `LaunchedEffect` 안의 UI 배선이라
   JVM 단위 테스트로 잡히지 않는다. ②를 "리셋한다"로 정하면 그 자리의 관용구가 `replaceAll`로 바뀐다.
@@ -6932,4 +6942,37 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ②는 OQ-P-102와 같은 자리에서 정한다 — CI가 계측을 실행하지 않는 한 하니스 신설의
   값이 얇다. ①만이라도 잠그려면 판정을 Composable 밖 순수 함수로 한 번 더 빼는 길이 있다.
 
-<!-- oq-next: 374 -->
+### [2026-09-06] 알림 아이콘의 여백 보정이 벡터 안의 임시 변환으로 들어갔다
+
+- **ID**: OQ-P-374
+- **출처**: `app/src/main/res/drawable/ic_notification.xml`(PR #456 신설) ·
+  `ParfaitFirebaseMessagingService#showNotification`(`setSmallIcon`) — 런처 아이콘
+  `ic_launcher_monochrome`은 어댑티브 세이프존 여백을 안고 있어 상태바 24dp 규격에서 실루엣이 작게
+  찍힌다. 전용 에셋을 새로 두면서 **원본 SVG의 여백을 `group`의 `scale`·`translate`로 줄여** 라이브
+  영역을 채웠고, 그 사실을 파일 주석이 적는다.
+- **항목**: ① 디자인이 여백을 조인 알림 아이콘을 정식으로 줄지 — 주면 `group` 변환을 걷어낸다.
+  ② 이 실루엣이 승인받은 모양인지 근거가 없다. 알림 아이콘 규격을 적은 정책 문서가 위키에도 parfait에도
+  없다. ③ 확인 수단이 실기기 눈뿐이다 — 상태바 아이콘은 시스템이 알파만 쓰고 색을 덮으므로 프리뷰로
+  최종 모습을 볼 수 없다.
+- **상태**: 미해결 (**동작은 의도대로** — 임시 보정과 정책 근거 부재다)
+- **해소 메모**: ①이 오면 파일 주석의 지시대로 `group`을 걷고 이 항목을 닫는다. ②는 위키
+  [[open-questions]]와 갈리는 자리다 — 알림 항목 자체가 정책 소스에 없다(OQ-P-343).
+
+### [2026-09-06] 파르페 크림 하한이 3칸이 됐지만 근거가 커밋 제목뿐이다
+
+- **ID**: OQ-P-375
+- **출처**: `GroupListParfaitLayout.kt#MIN_MIDDLE_COUNT`(PR #455에서 1 → 2) × 위키
+  [[무한-파르페-그리드]] — 크림은 `topSection`(`parfait_cream_top`) 한 칸에 `middleSection`이 쌓이는
+  구조라 하한이 2칸에서 **3칸**이 됐고, 이는 위키가 요구한 "토핑 0~3개 → 크림 3개"와 **처음으로
+  맞는다.** 그런데 그 의도를 적은 것은 커밋 제목 한 줄뿐이고 코드에는 정책 참조가 없다.
+- **항목**: ① 상수가 위키 규칙을 구현한 것이 맞는지 — 맞다면 이름이나 KDoc이 그 사실을 말해야 한다.
+  지금은 왜 2인지 코드만 봐서는 알 수 없다. ② **KDoc이 코드와 어긋난다** — 함수 주석이 여전히
+  "기본적으로 middleSection 을 1개만 배치하지만"이라고 적는다. ③ **증가 규칙은 여전히 다르다** —
+  위키는 "4개부터 토핑 1개당 크림 1칸"인데 코드는 `content` 높이를 덮을 때까지 반복이라 토핑 수가
+  아니라 높이가 개수를 정한다. 하한만 맞고 기울기는 안 맞는 상태다.
+- **상태**: 미해결 (**동작 변화 있음** — 그룹이 적은 사용자에게 크림 한 칸이 더 보인다)
+- **해소 메모**: ②는 한 줄 수정이라 다음 이 파일을 여는 작업에 얹는다. ③은
+  [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) 정책 대조 표의 "크림 개수 규칙"
+  행과 같은 자리이고, 높이 기반을 유지할지 토핑 수 기반으로 갈지는 디자인 확인이 먼저다.
+
+<!-- oq-next: 376 -->

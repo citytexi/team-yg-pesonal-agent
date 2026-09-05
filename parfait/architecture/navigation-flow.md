@@ -156,7 +156,7 @@ TokenAuthenticator(재발급 거절) → SessionEventBusImpl.postForcedLogout()
   둘 다 백스택을 비운다.
 - ⚠️ **수집 지점이 하나라는 것은 규약일 뿐 기계 검사가 없다** → [open-questions](../synthesis/open-questions.md) [2026-08-16].
 
-## 푸시 딥링크 이동 (2026-09-05, PR #446·#447)
+## 푸시 딥링크 이동 (2026-09-05, PR #446·#447 · 2026-09-06, PR #456)
 
 **네트워크 계층에 이어 두 번째로 화면 밖이 이동을 일으키는 경로**이고, 구조는 위 세션 종료 이동을
 그대로 본떴다. 근거는 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 되살림 정정,
@@ -197,8 +197,7 @@ TokenAuthenticator(재발급 거절) → SessionEventBusImpl.postForcedLogout()
 - **이동 수단은 `goTo`다** — 위 세 관용구(`replaceAll`·`goToSingleClearTop`·`popUpTo`)를 쓰지 않으므로
   딥링크로 연 화면 아래에 **그때까지의 백스택이 그대로 남는다.**
 
-✅ **소비 시점에 두 게이트가 걸린다(2026-09-05, 브랜치 `feature/#454-push-deep-link-edge-case`).**
-⚠️ **아직 develop에 머지되지 않았다.**
+✅ **소비 시점에 두 게이트가 걸린다(2026-09-06, PR #456 `618ead927`).**
 
 - **스플래시 이탈을 기다린 뒤 소비한다.** `MainRoute`의 수집은 `LaunchedEffect(Unit)`이라 첫 컴포지션에
   곧바로 시작하는데, 그 시점의 백스택은 `NavKeySplash` 하나이고
@@ -211,6 +210,10 @@ TokenAuthenticator(재발급 거절) → SessionEventBusImpl.postForcedLogout()
   뒤에 `HasActiveSessionUseCase`(근거는 `BootstrapSessionUseCase`와 같은 `AuthRepository.hasSession`)가
   false면 이동하지 않고, **로그인을 마쳐도 원래 목적지로 이어가지 않는다.** 판정이 대기 뒤에 있는 이유는
   부트스트랩이 인증 거절을 받으면 토큰을 지우기 때문이다.
+- **알림 상태바 아이콘이 전용 에셋으로 갈렸다** — `ic_launcher_monochrome`은 어댑티브 세이프존 여백을
+  안고 있어 24dp 규격에서 콘텐츠가 작게 찍힌다. `ic_notification`을 새로 두고 그 안에서 여백을 조여
+  라이브 영역을 채운다. ⚠️ **여백 보정이 벡터의 `group` 변환으로 들어가 있다** — 디자인이 여백을 조인
+  에셋을 다시 주면 걷어낼 자리다 → [open-questions](../synthesis/open-questions.md) OQ-P-374.
 - 남은 미결은 이동 수단이다 — `goTo`라 딥링크로 연 화면 아래에 백스택이 남는다
   → [open-questions](../synthesis/open-questions.md) OQ-P-360 ②.
 

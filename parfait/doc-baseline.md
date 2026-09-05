@@ -5,8 +5,77 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `489b14cc` (`Merge pull request #450 from mash-up-kr/feature/push-notification-permission`)
-- **요약**: **여덟 회차를 끌어온 푸시 축이 닫혔다 — 기기 토큰 등록과 알림 권한 안내가 develop에
+- **커밋**: `5907e286` (`Merge pull request #458 from mash-up-kr/chore/bump-version-1.1.0-7`)
+- **요약**: **선작성 스펙이 예고한 화면 하나가 들어왔고, 푸시 딥링크가 두 엣지 케이스를 닫으며
+  버전이 1.1.0(코드 7)이 됐다**(delta 4건, **24파일 · 삽입 399줄 · 삭제 130줄**). 유닛 1091 →
+  **1096건**(+5: 「편집 없이 사용」 셋 · 되살린 태스크 판정 둘), 계측 **35건** 유지.
+  **선작성 스펙 1건·계획 1건 아카이브 이동**(`c103-error-use-original` — 하루 만이고, **머지본을 줄
+  단위로 대조한 결과 설계와 어긋난 자리가 없다**). 미결은 **하나가 닫히고 둘이 생겼으며 다섯이
+  정정·갱신됐다**(OQ-P-153 해소 / 374·375 신설 / 344 완화 · 351·352·359·360 정정, `oq-next` 374 → 376).
+
+  **이 회차의 성격은 "앞 회차가 남긴 숙제를 걷는 일"이다.** 직전 두 회차가 브랜치를 보고 문서에
+  미리 적어 둔 것 — 「편집 없이 사용」 설계 전문과 딥링크 게이트 둘 — 이 **한 줄도 어긋나지 않고
+  머지본이 됐다.** 그래서 새로 알아낸 것보다 **낡은 문장을 걷은 것이 많다**: 미머지 표기 셋,
+  개명된 심볼 하나, 그리고 앞 회차가 "다음 감사 몫"이라고 이름까지 적어 둔 문구 셋이다.
+
+  **OQ-P-153 ④가 닫혔다 — 2026-08-15에 열려 스물 몇 회차를 산 미결이다.** 누끼 실패 화면이
+  「다시 시도」와 「편집 없이 사용」 두 버튼을 갖고, 뒤엣것은 원본 사진을 그대로 토핑 재료로 보낸다.
+  **핵심 결정은 새 경로를 만들지 않은 것**이다 — 후보 선택 경로(저장 → 초안 기록 → `GoToConfirm`)를
+  그대로 재사용하되, 원본은 잘린 판과 캔버스 판이 같은 그림이라 `saveBitmap` **한 번**으로 떨군
+  경로를 두 자리에 싣는다. `persistSubject`로 보내면 원본 크기 비트맵을 한 벌 더 만들어 카메라 사진
+  한 장에 수십 MB가 두 배로 뛴다.
+
+  **같은 PR이 실패 화면의 도달 조건을 좁혔다.** 디코드 실패는 이제 실패 화면이 아니라 **뒤로 가기**로
+  간다(`SegmentationEffect.GoBack`, 토스트 없음). 그 덕분에 **실패 화면은 원본 비트맵이 반드시 살아
+  있는 상태에서만 뜨고**, 「편집 없이 사용」 버튼에 비활성 분기가 필요 없어진다. 실패 원인 분기
+  (`SegmentationErrorKind`)는 통째로 걷혔다 — 디자인이 문구를 한 벌로 요구했고, 원인은 화면이 아니라
+  로그가 든다.
+
+  **`SaveEditedImageUseCase`가 `SaveBitmapUseCase`가 됐다**(`saveEditedImage` → `saveBitmap`).
+  「편집 없이 사용」이 원본을 같은 자리로 보내면서 이름이 역할보다 좁아졌기 때문이고, 기계적 치환
+  여섯 파일이다. `data-layer`의 메서드 목록과 ADR-0011·0012의 기록 자리에 개명 각주를 달았다 —
+  **ADR 본문은 결정 시점의 기록이라 이름을 되쓰지 않고 각주만 얹는다.**
+
+  **푸시 딥링크는 게이트 둘과 판정 하나를 더 얻었다.** 게이트 둘(스플래시 이탈 대기 · 세션 확인)은
+  직전 회차에 브랜치 코드로 이미 문서에 적어 둔 그대로다. 새로 온 것은 **되살린 태스크 판정**이다 —
+  알림이 만든 인텐트가 **태스크의 base intent**로 남아, 뒤로가기로 나간 뒤 최근 앱·런처로 되살리면
+  같은 extras가 다시 온다. `setIntent(Intent())`는 액티비티 인스턴스의 필드만 비우므로 그 경로에
+  닿지 못하고, `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`가 가른다(유닛 둘이 잠근다 — `app` 모듈의 두 번째
+  유닛 테스트 파일이다).
+
+  **딥링크 파싱의 문자열 축이 enum으로 옮겨갔다** — `route`는 `PushNotificationRouteType`,
+  `type`은 `PushNotificationType`이 각자 `key`로 물고, `groupId`를 양수로 읽는 규칙은
+  `PushDeepLink.AddTopping.parse`가 든다. **복제면이 줄어든 것이지 사라진 것은 아니다**: 서버가 값을
+  바꾸면 여전히 조용히 `null`이 되어 평범한 실행과 구분되지 않는다(OQ-P-351 ③).
+
+  **알림 상태바 아이콘이 전용 에셋으로 갈렸다.** 런처 아이콘 `ic_launcher_monochrome`은 어댑티브
+  세이프존 여백을 안고 있어 24dp 규격에서 실루엣이 작게 찍힌다. 신설한 `ic_notification`은 벡터
+  안에서 `group` 변환으로 여백을 조여 라이브 영역을 채우는데, **그 보정이 임시라는 것을 파일 주석이
+  적는다** — 디자인이 조인 에셋을 주면 걷어낼 자리다 → OQ-P-374.
+
+  **크림 하한이 3칸이 됐다**(`MIN_MIDDLE_COUNT` 1 → 2, 크림은 `topSection` 한 칸 + `middleSection`).
+  위키 [[무한-파르페-그리드]]의 "토핑 0~3개 → 크림 3개"와 **저개수 구간이 처음으로 맞는다.** 그런데
+  그 의도를 적은 것은 커밋 제목 한 줄뿐이고, **KDoc은 아직 "middle 1개"라고 적으며** 증가 규칙은
+  여전히 높이 기반이라 정책의 "토핑 1개당 1칸"과 갈린다 → OQ-P-375.
+
+  **앞 회차가 이름까지 적어 둔 숙제를 걷었다** — "등록 호출부가 0건이라 도달 불가"라는 문구가
+  OQ-P-351·352·359 셋에 남아 있었고 셋 다 정정했다. PR #450으로 등록이 세션 축 넷에 걸린 뒤로
+  **그 문구가 가리키던 안전지대는 없다**: 서버 문구도, 채널 id 어긋남도, `date` 미사용도 이제 곧바로
+  사용자에게 닿는다.
+
+  **이번 회차가 확인한 것** — **미결에 "다음 감사 몫"이라고 적어 두면 실제로 걷힌다.** 직전 회차가
+  OQ-P-360 안에 "같은 문구가 351·359에도 남아 있다"고 **번호까지** 적어 둔 덕분에, 이번 감사는 그
+  자리를 찾는 데 시간을 쓰지 않았다(352는 같은 문구를 찾다가 함께 걸렸다). 반대로 **브랜치 한 줄
+  메모로는 부족하다**는 앞 회차의 관찰도 그대로다 — #455는 커밋 제목 하나뿐이라 무엇이 왜 바뀌었는지
+  코드를 열어 크림 구조를 세어 보고서야 위키 정책과 이어졌다.
+
+  직전 회차 요약(69회차, `489b14cc`): **여덟 회차를 끌어온 푸시 축이 닫혔다 — 기기 토큰 등록과 알림
+  권한 안내가 develop에 섰다**(delta 1건, 42파일 944/77). 유닛 1072 → 1091건, 계측 35건 유지.
+  선작성 스펙 1건 아카이브 이동, 미결 둘 해소·넷 신설·하나 갱신(`oq-next` 370 → 374). 등록과 권한이
+  **별개 축**이라는 결정이 핵심이고, `register()`는 `suspend`가 아니라 `@ApplicationScope`에서 돈다.
+  아래가 그 회차의 상세다.
+
+  **여덟 회차를 끌어온 푸시 축이 닫혔다 — 기기 토큰 등록과 알림 권한 안내가 develop에
   섰다**(delta 1건, **42파일 · 삽입 944줄 · 삭제 77줄**). 유닛 1072 → **1091건**(+19: 등록구 · 등록
   UseCase · 세션 트리거 셋 · 권한 판정 · Saver 둘), 계측 **35건** 유지. **선작성 스펙 1건 아카이브
   이동**(`push-notification-permission-and-device-token` — 두 회차 만이고, **대조 결과 설계와 코드가
@@ -1633,7 +1702,7 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-09-04 (65회차)
+- **검증일**: 2026-09-06 (70회차)
 
   📌 **이 줄이 여섯 회차 동안 낡아 있었다** — 58~63회차(`27e85d0d`·`afde8c4c`·`6a1da1b0`·`fa46e5cf`·
   `0173e454`·`40e1fca6`)가 기준선 해시와 이력 표는 갱신하면서 이 줄만 건너뛰어 `2026-08-28 (57회차)`
@@ -1662,7 +1731,10 @@
   `d634efd3`)가 기준선 해시와 이력 표는 갱신하면서 이 두 줄만 건너뛰어 `2026-08-22 (42회차)`로
   멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
   적이 있다) **직전 회차의 이 줄 + 1**이다.
-- **미머지 추적 항목**: **0.**
+- **미머지 추적 항목**: **하나**(`feature/debug-mode`, OQ-P-311 계보).
+  📌 **70회차 재확인(2026-09-06)** — 이번 delta 넷은 전부 `origin/develop` 안이고, 69회차가 세어 둔
+  `feature/debug-mode` 하나가 그대로 남았다. `origin/release/*` 넷은 릴리스 계보라 이 셈에 넣지 않는다
+  (이번 회차의 `release/version-1.1.0-7`은 #458로 develop에 들어왔다).
   📌 **65회차에 일곱으로 늘었다(2026-09-04)** — 아래 다섯에 `feature/push-notification-permission`
   (도메인 계약 → `NotificationRepository` 결선 → `onNewToken` 등록 → 권한 허용 직후 등록 → 그룹
   생성·참여 직후 권한 안내, OQ-P-341 ②③④) 과 `feature/#420-canvas-tutorial`(C-001 최초 진입
@@ -1787,6 +1859,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-06 | `5907e286` | Merge #455(크림 하한 3칸) · #456(푸시 딥링크 엣지 케이스) · #457(C-103-Error 통합·「편집 없이 사용」) · #458(버전 1.1.0 코드 7) | delta 4건, **24파일 399/130**. 유닛 1091 → **1096건**(+5), 계측 **35건** 유지. **선작성 스펙 1·계획 1 아카이브 이동**(`c103-error-use-original`, 하루 만 — 대조 결과 **설계와 코드가 어긋난 자리 0건**). **#457**: 실패 원인 분기(`SegmentationErrorKind`)를 걷어 문구를 한 벌로 합치고, 원본을 그대로 토핑 재료로 보내는 「편집 없이 사용」을 더했다 — 후보 선택 경로를 재사용하되 `saveBitmap` **한 번**으로 떨군 경로를 두 자리에 싣는다. 디코드 실패는 실패 화면이 아니라 **뒤로 가기**라 실패 화면은 원본이 사는 상태에서만 뜬다. `SaveEditedImageUseCase` → **`SaveBitmapUseCase`** 개명(6파일). OQ-P-153 ④ 종결·OQ-P-344 완화. **#456**: 되살린 태스크가 같은 딥링크를 다시 발행하던 경로를 `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`로 막고(유닛 2), 게이트 둘(스플래시 이탈 대기·`HasActiveSessionUseCase`)이 develop에 섰다. `route`·`type` 파싱이 enum `key`로 옮겨갔고 알림 아이콘이 전용 에셋 `ic_notification`으로 갈렸다(임시 여백 보정 → OQ-P-374). **#455**: `MIN_MIDDLE_COUNT` 1 → 2로 크림 하한이 3칸이 돼 위키 저개수 규칙과 처음 맞았다(증가 규칙은 여전히 높이 기반 → OQ-P-375). 앞 회차가 이름까지 적어 둔 "등록 호출부 0건" 낡은 문구를 OQ-P-351·352·359에서 걷었다. `oq-next` 374 → 376 |
 | 2026-09-05 | `489b14cc` | Merge #450(알림 권한 안내 · 기기 토큰 등록 · 이벤트 버스 재배치) | delta 1건, **42파일 944/77**. 유닛 1072 → **1091건**(+19), 계측 **35건** 유지. **선작성 스펙 1건 아카이브 이동** — 대조 결과 **설계와 코드가 어긋난 자리 0건**(정정은 결정 2 표의 비고 한 칸: 등록을 거는 자리가 `saveSession` 직후가 아니라 `refreshMyAccount` 뒤다). **OQ-P-341이 닫혔다**(2026-09-02 개설, 여덟 회차) — ②는 **세션 축 넷**(`LoginWithKakaoUseCase`·`SignUpUseCase`·`BootstrapSessionUseCase` 성공 분기 + `onNewToken`), ③은 **A-004·A-005 완료 직후**, ④는 **거부해도 등록한다**. 핵심은 **등록과 권한이 별개 축**이라는 것 — 토큰은 권한과 무관하게 발급되므로 등록을 권한에 매달면 재로그인·기기교체·재설치 사용자가 등록 경로에 닿지 못한다. `register()`는 **`suspend`가 아니고** 실행은 `:data` 구현이 `@ApplicationScope`에서 하며 재시도 3회(3초·6초)·`Mutex` 겹침 방지가 그 안에 있다. **OQ-P-358도 닫혔고** API 33 미만 정책(`NotificationPermissionManager` — 그 아래는 **허용으로 본다**)이 되살아난 `showNotification`의 같은 결함까지 고쳤다. **이벤트 버스 개명**(`domain/event`·`data/event`, 인터페이스 `~EventBus`·구현 `~Impl`, 동작 무변경)과 **`:app` 최초 Hilt 모듈**(`DeviceTokenModule` — Firebase 경계 때문에 `:data`로 못 내린다)이 함께 왔다. 조치: 스펙 1건 아카이브 + specs/README 1행, ADR 3건(0013 되살림 완결 · 0004 평면 배치 예외 · 0021 개명 · README 3행), api 3문서(notification.md — 엔드포인트 표·요구 표 2행·`기기 토큰 등록 결선` 절 신설·미결 절 / conventions.md 관측 가능 메모 / README 도메인 표·본문), architecture 4건(data-layer — 개명·등록구·DI 2행·Repository 1행 / module-structure — `event/`·`notification/`·`:app` di·권한 판정 / navigation-flow — 그룹 플로우에 게이트 / state-management — 심볼), open-questions 7항목(341·358 해소 / 370·371·372·373 신설 / 362 갱신). ⚠️ **실서버·실기기 확인 0회** — 등록이 204를 받는지, 발송이 `NO_DEVICE_TOKEN`을 벗어나는지 아무도 보지 않았다. 미머지 **둘 → 하나**(신규 0) |
 | 2026-09-05 | `bc216632` | Merge #445(캔버스 저장 미리보기) · #453(재시도 문구 통일) · #449(첫 진입 튜토리얼) | delta 3건, **42파일 1535/98**. 유닛 1060 → **1072건**(+12: `UserConfigRepositoryImplTest` 2 · 튜토리얼 ViewModel 10), 계측 **35건** 유지. **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#449**: 디자인시스템에 `ygtutorial/` 4종(`YGTutorialOverlay`·`YGTutorialBox`·`YGTutorialProgress`·`YGTutorialBoxPlacement`) 신설 — **뚫린 오버레이가 아니라 딤까지 구워진 알파 없는 풀스크린 목업 PNG**가 화면을 통째로 덮고, 소비 셋이 모두 **스캐폴드 밖 형제**로 놓는다(안에 넣으면 딤이 상태바 밑에서 끊긴다). 버튼 라벨·진행 표시가 `isLast` 하나에서 나온다. 함께 **기기 축 저장소가 처음 생겼다** — `UserConfigLocalDataSource`(평문 JSON 한 키 + `Flow`) · `UserConfigRepository` · `UserConfigVO` · `TutorialKind` · UseCase 2 · 프록시 `DataStorePreferences`(암호화 판에서 암호화만 뺀 복제). 저장 형태는 enum 이 아니라 **이름 문자열**(구버전이 모르는 항목에서 터지면 설정을 통째로 날린다). 소비는 C-001(3장, `CanvasTutorialStep`)·갤러리 업로드(1장)·누끼 확인(1장). **#445**: `RequestCanvasCapture` → **`RequestCanvasCaptureForPreview`** 개명, 저장이 `NavKeyCanvasImageSave(imagePath, date)` 미리보기를 거쳐 **같은 캐시 파일을 다시 읽어** 저장한다(다시 캡처하지 않는다). 미리보기는 저장하지 않아 **ViewModel 없는 두 번째 화면**이다. **#453**: 재시도 버튼 문구 `다시 시도하기` → `다시 시도`(네 화면 동일). 조치: architecture 4건(design-system — `ygtutorial/` 트리·인벤토리·항목 / navigation-flow — `캔버스 저장 미리보기 왕복` 절 신설·인자 목적지 / data-layer — `UserConfig*`·평문 프록시·DI 2행 / state-management — `launchWhileSubscribed` 소비 확장·State 이탈), 아카이브 스펙 1건(c001-canvas-gallery-save as-built), open-questions 8항목(363~369 신설 / 341 갱신), doc-baseline·index 기준선 갱신. ⚠️ **실기기 확인 0회**이고 미리보기 왕복·캡처 캐시에 테스트가 0건이다. 미머지 **넷 → 둘**(신규 0) |
 | 2026-09-05 | `29c2f050` | Merge #446(푸시 알림 딥링크) · #447(FCM 수신부) | delta 2건, **17파일 462/0**(삭제 0줄). 유닛 1047 → **1060건**(+13: `PushDeepLinkParserTest` 11 · `PushDeepLinkEventBusImplTest` 2), 계측 **35건** 유지. **`app` 모듈이 유닛 테스트 소스셋을 처음 가졌다**(`parfait.test.unit`이 **진입 모듈**에 처음 붙었다 — 그전까지 core·`data`·`domain`과 feature `impl`에만 있었다. 파싱을 `Intent`에서 뗀 덕에 가능했다). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **2026-08-22 PR #325가 걷어낸 FCM 축이 되살아났다** — `firebase-messaging` 의존 · `push/ParfaitFirebaseMessagingService` · `BaseApplication`의 채널 생성 · 매니페스트 서비스 등록이 돌아왔고 **채널 id는 앱이 정하지 않고 서버가 못 박은 `parfait_default`를 따랐다**(OQ-P-352 ① 해소). 예고에 없던 **딥링크 축**이 함께 왔다 — `:domain` `PushDeepLink`·`PushNotificationType`·`PushDeepLinkEventBus` + `:data` `PushDeepLinkEventBusImpl`(`Channel(CONFLATED)`) + **앱 루트 `MainRoute` 단일 수집**으로 **세션 종료 이동 구조를 그대로 복제**해 새 ADR을 만들지 않았다. **서버가 요구한 다섯 중 셋만 맞다** — ⚠️ `date`를 안 읽어 항상 최신 캔버스로 열고, ⚠️ 중복 수신이 알림 두 개로 쌓이며(`messageId.hashCode()`), ❌ **토큰 등록을 한 번도 안 부른다**(`onNewToken` 주석의 전제는 PR #437이 이미 무너뜨렸다 — OQ-P-341 ②). ⚠️ **`POST_NOTIFICATIONS`는 선언만 돌아오고 요청 코드가 0건**이라 Android 13+에서는 표시 자체가 막힌다(OQ-P-358). 조치: ADR-0013 되살림 정정(+`위험·방어` 정정), api 3문서(notification.md — 요구 표에 앱 열 신설·`푸시 수신·딥링크` 절·미결 4항목 / conventions.md Android 불일치 1건 → **3건** / README 도메인 표·주석), architecture 3건(navigation-flow — `푸시 딥링크 이동` 절 신설 / data-layer — `PushDeepLinkModule`·`domain/model` 하위 패키지 열 · 통로 복제 / module-structure — `app` `push/`·유닛 테스트 소스셋), open-questions 9항목(358·359·360·361 신설 / 341·351·352 부분 해소 / 343·354 갱신), doc-baseline·index 기준선 갱신. ⚠️ **실기기 확인 0회**이고 등록 호출부가 0건이라 발송은 여전히 전부 `NO_DEVICE_TOKEN` 취소다. 미머지 **여섯 → 넷**(신규 0) |

@@ -1,3 +1,22 @@
+---
+id: c103-error-use-original
+title: C-103-Error 실패 화면 통합과 「편집 없이 사용」 구현 계획
+status: done
+type: work-order
+created: 2026-09-05
+updated: 2026-09-06
+archived_reason: 구현 완료·develop 머지(2026-09-06, PR #457 5f860cb9c). 브랜치 feature/#348-segmentation-error-button, 4 Task 전량 수행, 신규 테스트 3건.
+platforms: android
+owner: Parfait 팀
+related_adr: ADR-0012
+related_spec: c103-error-use-original, segmentation-module-install
+related_code:
+  - SegmentationViewModel.kt#useOriginal
+  - SegmentationErrorScreen.kt#SegmentationErrorScreen
+  - SaveBitmapUseCase.kt
+tags: [plan, parfait, segmentation, c103]
+---
+
 # C-103-Error 실패 화면 통합과 「편집 없이 사용」 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -8,7 +27,7 @@
 
 **Tech Stack:** Kotlin, Jetpack Compose, Navigation3, Hilt, 자체 MVI(`BaseViewModel`), MockK, Turbine, `kotlinx-coroutines-test`, ktlint
 
-**Spec:** [`parfait/specs/2026-09-05-c103-error-use-original.md`](../specs/2026-09-05-c103-error-use-original.md)
+**Spec:** [`parfait/specs/archive/2026-09-05-c103-error-use-original.md`](../../specs/archive/2026-09-05-c103-error-use-original.md)
 
 > 📌 **실행 뒤 이름이 바뀌었다(2026-09-06, 코드 리뷰 반영).** 아래 코드 블록은 실제로 실행한 그대로
 > 두되, `SaveEditedImageUseCase` → `SaveBitmapUseCase`, `saveEditedImage` → `saveBitmap` 으로 읽어라.
@@ -16,6 +35,8 @@
 > 근거는 스펙의 「편집 없이 사용」절 📌 표기.
 
 **작업 대상 저장소:** `TJYG-Android` (이 문서가 있는 저장소가 아니다). 브랜치 `feature/#348-segmentation-error-button`이 이미 있고 `develop`과 같은 커밋이다.
+
+> ✅ **완료·develop 머지(2026-09-06, PR #457 `5f860cb9c`)** — 4 Task를 전부 수행했고 신규 테스트 3건이 붙었다. 머지본과 스펙을 대조한 결과 어긋난 자리가 없다.
 
 ## Global Constraints
 
