@@ -6170,6 +6170,25 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **미머지 브랜치는 일곱에서 넷이 됐다**(`feature/debug-mode` · `feature/#420-canvas-tutorial` ·
   > `feature/#423-canvas-save-preview` · `feature/push-notification-permission`). 남은 푸시 브랜치가
   > ②③④를 한꺼번에 답하는 그 브랜치다.
+  > 📌 **그 브랜치의 답이 2026-09-05에 바뀌었다 — 리뷰가 ②를 뒤집었다(미푸시, develop 밖).**
+  > 직전 회차가 커밋 제목에서 읽은 답(②는 `onNewToken` + 권한 허용 직후)이 **결함이었다.** FCM 토큰은
+  > 알림 권한과 무관하게 SDK가 설치 시점에 발급하므로 등록을 권한에 매달면 **재로그인·기기교체·재설치
+  > 사용자가 토큰을 영영 등록하지 못한다**(서버가 로그아웃에서 매핑을 지우는데 기기 토큰은 그대로라
+  > `onNewToken`이 안 불리고, 권한은 이미 허용이라 안내가 건너뛴다). 브랜치가 등록 시점을 **세션 축**
+  > (`LoginWithKakaoUseCase`·`SignUpUseCase`의 `saveSession` 직후 · `BootstrapSessionUseCase`의 성공
+  > 분기)과 `onNewToken` 넷으로 다시 세웠다 — 서버가 전제한 "앱 시작·`onNewToken`·권한 허용마다
+  > 재호출"에 맞는 형태다. ④는 **거부 상태에서도 등록한다**로 답해졌다(서버가 권한 상태를 모르니
+  > 발송이 나가고 OS가 버리지만, 사용자가 나중에 설정에서 켜면 앱이 아무것도 안 해도 동작한다).
+  > ③은 **A-004·A-005 완료 직후**로 유지하되 영구 거부 시 앱 설정으로 보내는 갈래가 붙었다.
+  > ⚠️ **브랜치가 미결 하나를 새로 드러냈다** — `POST_NOTIFICATIONS`가 API 33 신설이라 `minSdk` 26의
+  > API 26~32에서는 `checkSelfPermission`이 항상 거부를 답하는데 알림은 기본으로 켜져 있다. develop의
+  > `ParfaitFirebaseMessagingService.showNotification`이 정확히 그 함정을 밟아 **그 기기군의 포그라운드
+  > 알림을 전부 버리고 있다.** 브랜치가 판정을 `NotificationPermissionManager`로 빼서 두 자리를 함께
+  > 고쳤다. 설계 정본은
+  > [specs/2026-09-05-push-notification-permission-and-device-token](../specs/2026-09-05-push-notification-permission-and-device-token.md)이다.
+  > 머지 전에는 문서를 고치지 않는다([2026-07-13] 규율) — 머지 회차에 ②③④와 ADR-0013 되살림 정정,
+  > 그리고 **ADR-0004의 평면 배치 규칙 예외**(`DeviceTokenModule`이 `:app` 최초의 Hilt 모듈이다.
+  > ADR-0013이 Firebase 의존을 `:app`에 가둬 `:data`로 못 내린다)를 함께 본다.
 - **해소 메모**: 정하면 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)에 **되살림 정정**을 더하고
   (철회 정정을 지우지 않는다 — 두 결정이 다 이력이다), [api/notification.md](../api/notification.md)
   Android 매핑 절과 [data-layer](../architecture/data-layer.md)에 적는다. ①이 "미룬다"로 정해져도
