@@ -6667,10 +6667,27 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   딥링크로 연 화면 아래에 **그때까지의 백스택이 남는다**(다른 경계는 `replaceAll` 관용구를 쓴다) —
   로그인 화면 위에 캔버스가 얹히는 상태가 허용 범위인지. ③ 로그인 안 된 상태로 탭했을 때 무엇을 보여줄지
   — 지금은 목적지로 그냥 간다.
-- **상태**: 미해결 (**미관측** — 실기기 확인 0회이고, 등록 호출부가 0건이라 알림을 받아 볼 수도 없다)
-- **해소 메모**: ①은 `http/fcm-test.http`로 앱을 죽인 상태에서 쏴 보면 한 번에 갈린다(권한·등록이
-  붙은 뒤다). 정해지면 [navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동"의 ⚠️를
-  관측 결과로 바꾸고, ②를 "리셋한다"로 정하면 그 자리의 관용구가 `replaceAll`로 바뀐다.
+- **상태**: **부분 해소** (①③ 해소, ② 잔존). ⚠️ **develop 미머지** — 브랜치
+  `feature/#454-push-deep-link-edge-case`에만 있다
+  > ✅ **①은 순서를 갈라 보는 대신 구간 자체를 없앴다** — 수집이
+  > `snapshotFlow { navigator.backStack.lastOrNull() }.first { it != NavKeySplash }`로 스플래시 이탈을
+  > 기다린 뒤 소비하므로, `replaceAll`이 딥링크를 걷어낼 창이 남지 않는다. ⚠️ **수정 전에 그 순서가
+  > 실제로 났는지는 관측하지 않았다** — 수정 뒤 콜드 스타트 딥링크가 캔버스에 도착하는 것만 확인했다.
+  > ✅ **③은 "버린다"로 정해졌다** — `AddTopping`·`GroupList` 두 목적지 모두 로그인이 필요하므로,
+  > 대기 뒤에 `HasActiveSessionUseCase`가 false면 딥링크를 버린다. 판정 근거는
+  > `BootstrapSessionUseCase`와 같은 `AuthRepository.hasSession`이다 — 근거가 갈리면 부트스트랩은
+  > 로그인으로 보냈는데 이쪽은 통과시키는 어긋남이 생긴다. **로그인을 마쳐도 원래 목적지로 이어가지
+  > 않는다.** 판정이 대기 뒤에 있는 이유는 부트스트랩이 인증 거절을 받으면 토큰을 지우기 때문이다.
+  > 📌 **②는 그대로다** — 이동 수단은 여전히 `goTo`라 딥링크로 연 캔버스 아래에 백스택이 남는다.
+  > 다만 ③이 닫히면서 **"로그인 화면 위에 캔버스가 얹힌다"는 갈래는 사라졌다.**
+  > ⚠️ **이 항목이 근거로 삼았던 "등록 호출부가 0건"은 틀렸다** — PR #450(`da26d084a`)이
+  > `BootstrapSessionUseCase`·`LoginWithKakaoUseCase`·`SignUpUseCase`·`onNewToken` 넷에
+  > `DeviceTokenRegistrar.register()`를 붙였고, 권한 요청도 `NotificationPermissionGate`가
+  > `GroupCreateRoute`·`GroupNickNameRoute` 두 자리에서 한다. **같은 문구가 OQ-P-351·OQ-P-359의
+  > 상태에도 남아 있어 함께 낡았다** — 다음 기준선 감사가 걷을 자리다.
+- **해소 메모**: 검증은 콜드/웜 × 로그인/비로그인 네 시나리오의 실기기 수동 확인이다. 자동 테스트는
+  없다 — `app` 모듈에 `androidTest` 소스셋이 없고, 이 로직은 `LaunchedEffect` 안의 UI 배선이라
+  JVM 단위 테스트로 잡히지 않는다. ②를 "리셋한다"로 정하면 그 자리의 관용구가 `replaceAll`로 바뀐다.
 
 ### [2026-09-05] 앱이 "FCM 페이로드 스펙 v1"을 근거로 서버에 없는 알림 둘을 먼저 구현했다
 

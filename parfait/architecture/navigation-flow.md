@@ -165,6 +165,7 @@ TokenAuthenticator(재발급 거절) → SessionEventBusImpl.postForcedLogout()
 ```
 알림 탭 → MainActivity(onCreate | onNewIntent) → Intent.toPushDeepLinkOrNull()
     → PushDeepLinkEventBus.post() → MainRoute의 LaunchedEffect 단일 수집
+    → 스플래시 이탈 대기 → 세션 없으면 버림
     → AddTopping: navigator.goTo(NavKeyCanvasMain(groupId))
     → GroupList: navigator.goTo(NavKeyGroupList)
 ```
@@ -181,18 +182,31 @@ TokenAuthenticator(재발급 거절) → SessionEventBusImpl.postForcedLogout()
 - **목적지는 `route` 하나가 정한다.** `type`(`TOPPING`·`REMIND_AM`·`REMIND_PM`)은 라우팅에 안 쓰고
   탭 분석 용도로 `PushDeepLink`에 실려만 간다. 모르는 `route`·잘못된 `groupId`(숫자 아님·0 이하)는
   `null`이라 **평범한 실행과 구분되지 않는다** — 파싱 실패가 화면에 보이지 않는다는 뜻이다.
+  두 문자열 축은 각각 `PushNotificationRouteType`(`canvas`·`group`)과 `PushNotificationType` enum이
+  들고 있고, `groupId`를 양수로 읽는 규칙은 `PushDeepLink.AddTopping.parse`에 있다.
 - **이동 수단은 `goTo`다** — 위 세 관용구(`replaceAll`·`goToSingleClearTop`·`popUpTo`)를 쓰지 않으므로
   딥링크로 연 화면 아래에 **그때까지의 백스택이 그대로 남는다.**
 
-⚠️ **콜드 스타트에서 스플래시 부트스트랩과 겹치는 구간이 검증되지 않았다.** `MainRoute`의 수집은
-`LaunchedEffect(Unit)`이라 **첫 컴포지션에 곧바로 시작**하는데(코드 KDoc은 "로그인·부트스트랩이 끝난
-뒤"라고 적지만 그것을 강제하는 것은 아무것도 없다), 그 시점의 백스택은 `NavKeySplash` 하나이고
-[앱 진입 체인](#앱-진입-체인-2026-08-09-pr-220)의 `SplashRoute`는 부트스트랩이 끝나면
-`replaceAll(...)`로 백스택을 갈아 끼운다. 즉 **딥링크가 먼저 쌓이고 리셋이 뒤따르는 순서**가 가능하다
-→ [open-questions](../synthesis/open-questions.md) OQ-P-360.
+✅ **소비 시점에 두 게이트가 걸린다(2026-09-05, 브랜치 `feature/#454-push-deep-link-edge-case`).**
+⚠️ **아직 develop에 머지되지 않았다.**
 
-⚠️ **Android 13+에서는 알림 표시 자체가 막혀 이 경로에 들어올 일이 없다** — `POST_NOTIFICATIONS`를
-묻는 코드가 develop에 없다(OQ-P-358).
+- **스플래시 이탈을 기다린 뒤 소비한다.** `MainRoute`의 수집은 `LaunchedEffect(Unit)`이라 첫 컴포지션에
+  곧바로 시작하는데, 그 시점의 백스택은 `NavKeySplash` 하나이고
+  [앱 진입 체인](#앱-진입-체인-2026-08-09-pr-220)의 `SplashRoute`는 부트스트랩이 끝나면
+  `replaceAll(...)`로 백스택을 갈아 끼운다. **딥링크가 먼저 쌓이고 리셋이 뒤따르는 순서**가 가능하므로,
+  `snapshotFlow { navigator.backStack.lastOrNull() }.first { it != NavKeySplash }`로 이탈을 기다린 뒤
+  소비한다. 이미 벗어난 웜 스타트에서는 그대로 통과한다. 그 순서가 수정 전에 실제로 났는지는 관측하지
+  않았다 — 창을 없애는 쪽을 택했다.
+- **세션이 없으면 딥링크를 버린다.** `AddTopping`·`GroupList` 두 목적지 모두 로그인이 필요하다. 대기
+  뒤에 `HasActiveSessionUseCase`(근거는 `BootstrapSessionUseCase`와 같은 `AuthRepository.hasSession`)가
+  false면 이동하지 않고, **로그인을 마쳐도 원래 목적지로 이어가지 않는다.** 판정이 대기 뒤에 있는 이유는
+  부트스트랩이 인증 거절을 받으면 토큰을 지우기 때문이다.
+- 남은 미결은 이동 수단이다 — `goTo`라 딥링크로 연 화면 아래에 백스택이 남는다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-360 ②.
+
+> 🔁 **여기 있던 "Android 13+에서는 알림 표시 자체가 막힌다"는 문장을 걷었다** — `POST_NOTIFICATIONS`를
+> 묻는 자리가 PR #450으로 들어왔다(`NotificationPermissionGate`, A-004·A-005 완료 직후). OQ-P-358은
+> 그때 이미 해소됐는데 이 문서만 옛 상태로 남아 있었다.
 
 ## 그룹 생성·참여 플로우 (2026-08-12, PR #224)
 
