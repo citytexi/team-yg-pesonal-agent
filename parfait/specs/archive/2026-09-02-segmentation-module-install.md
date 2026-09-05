@@ -289,6 +289,8 @@ ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적
 
 ### 화면 상태
 
+> 📌 **이 절의 결정이 뒤집혔다(2026-09-05)** — 디자인 `C-103-Error` 확정본이 실패 문구를 한 벌로 요구해 `SegmentationErrorKind` 분기와 모듈 실패 문구 2건을 걷는다. 아래 설계는 그 시점까지의 기록이다 → [c103-error-use-original](../2026-09-05-c103-error-use-original.md).
+
 `SegmentationState.isError: Boolean`을 `errorKind: SegmentationErrorKind?`로 바꾼다.
 
 - `SubjectNotFound` — 후보도 폴백도 못 얻은 기존 실패. 문구를 유지한다.
@@ -315,6 +317,8 @@ ML Kit가 못 읽는" 상태를 보고했고, 우리는 그 상태를 겪은 적
 `SegmentationViewModel`이 실패 원인을 로그 없이 삼키던 것도 함께 고친다.
 
 ### 재시도
+
+> 📌 **검토가 끝났고 버튼이 확정됐다(2026-09-05)** — 디자인 `C-103-Error`에 「다시 시도」와 「편집 없이 사용」 두 버튼이 들어왔다. 아래의 시안 경고는 더 이상 유효하지 않다 → [c103-error-use-original](../2026-09-05-c103-error-use-original.md).
 
 ⚠️ **이 버튼은 디자인 검토를 받으려고 먼저 놓는 시안이다.**
 [c103-multi-subject-selection](2026-08-23-c103-multi-subject-selection.md)이 실패 화면의
