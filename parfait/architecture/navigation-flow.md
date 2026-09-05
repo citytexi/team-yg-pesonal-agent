@@ -42,8 +42,8 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
     `PictureConfirmRoute`(`returnResultOnly = true`)의 확인·닫기 → `popUpTo<NavKeyCanvasBGEdit>()`,
     `CanvasToppingPlaceRoute`의 배치 완료 → `popUpTo<NavKeyCanvasMain>()`
     ([segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)).
-- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasMain`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`(#290 이후 도달 불가)·`NavKeyCanvasBGEdit`(#231)·`NavKeyCanvasToppingPlace`(#290), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
-- **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`ImageAdd`·`BGEdit`·`Edit`·`ImageSelect`·`Move`) entry를 한 함수에서 등록.
+- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasMain`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`(#290 이후 도달 불가)·`NavKeyCanvasBGEdit`(#231)·`NavKeyCanvasToppingPlace`(#290)·`NavKeyCanvasImageSave`(#445), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
+- **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`ImageAdd`·`BGEdit`·`Edit`·`ImageSelect`·`Move`·`ImageSave`(#445)) entry를 한 함수에서 등록.
 - **NavTransition**(`core:navigation`, #326 신설) — 화면 전환 한 벌(`push`·`pop`·`predictivePop`)을
   묶은 값. `metadata`로 NavEntry에 실어 화면별로 앱 기본을 덮는다 → 아래 [화면 전환](#화면-전환-2026-08-22-pr-326).
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
@@ -428,6 +428,43 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 - `feature/groups/canvas/impl` → `feature/groups/setting/api`, `feature/groups/setting/impl` →
   `feature/groups/list/api`. 둘 다 규약대로 `:api`만 본다.
 
+## 캔버스 저장 미리보기 왕복 (2026-09-05, PR #445)
+
+갤러리 저장이 한 번에 끝나던 것이 **화면 하나를 거쳐** 돈다.
+
+```
+C-001 캔버스 메인
+  OnClickSaveToGallery ─▶ [VM] RequestCanvasCaptureForPreview
+                      ─▶ [Route] graphicsLayer.toImageBitmap()
+                                 writeToCanvasCaptureCache(Dispatchers.IO)
+                                   성공 ─▶ goTo(NavKeyCanvasImageSave(imagePath, date))
+                                   실패 ─▶ 토스트(canvas_main_capture_failure)
+                                              │
+                              C-001 저장 미리보기(CanvasImageSaveRoute, ViewModel 없음)
+                                   닫기 ─▶ onBack()
+                                   저장 ─▶ sendResult(CANVAS_IMAGE_SAVE_RESULT_KEY,
+                                              CanvasImageSaveResult(imagePath)) + onBack()
+                                              │
+  [Route] ResultEffect<CanvasImageSaveResult> ─▶ readCanvasCaptureCache(Dispatchers.IO)
+                                   성공 ─▶ 권한 있음: SaveCapturedCanvas(bitmap)
+                                           권한 없음: 런처 → 승인 시 같은 자리로 합류
+                                   실패 ─▶ 토스트(canvas_main_gallery_save_failure)
+                      ─▶ [VM] ShowGallerySaveResult(isSuccess, date) ─▶ [Route] 토스트
+```
+
+- **미리보기는 저장하지 않는다.** 결과 토스트가 뜨는 자리는 캔버스 메인이고, 미리보기가 저장까지
+  맡으면 알림만 남기고 사라지는 화면이 되어 실패했을 때 알릴 곳이 없다. 그래서 돌려주는 결과는
+  받은 경로를 그대로 되돌리는 `CanvasImageSaveResult` 하나뿐이다.
+- **ViewModel이 없는 두 번째 화면이다**(`NavKeyWebView` 이후) — 그릴 것이 인자뿐이고 부를 API가 없다.
+  엔트리 빌더가 `navKey`를 Route에 그대로 넘기고 Route가 `LocalResultEventBus`만 잡는다.
+- **돌아온 뒤 캔버스를 다시 캡처하지 않는다.** 사용자가 보고 확정한 그림과 갤러리에 남는 그림이
+  같아야 하므로 미리보기가 쓰던 파일을 다시 읽는다. 권한 승인 뒤의 길과 미리보기에서 돌아온 길이
+  `saveWithPermission` 한 자리로 모이는 것도 같은 이유다.
+- **캐시 파일명이 고정이다**(`canvas_capture/canvas_preview.png`) — 저장을 그만둔 캡처가 쌓이지 않게
+  한 것이고, 대신 같은 경로를 반복해 그리므로 미리보기가 Coil 요청에
+  `addLastModifiedToFileCacheKey`를 걸어 이전 캡처가 다시 뜨는 것을 막는다. 지우는 자리는 없다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-365.
+
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.
 2. `feature/xxx/impl`에 `featureXxxEntryBuilder()` 작성: `entry<NavKeyXxx> { XxxRoute(navigator = navigator, modifier = Modifier.fillMaxSize()) }`.
@@ -539,7 +576,8 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
 `NavKeyCanvasMain`(#268 승격 — `groupId`, **#411에서 `welcomeGroupName`·`welcomeInviteCode` 추가**)·`NavKeyGroupSetting`(#285 승격 — `groupId`)·
 `NavKeyWebView`(#296 신설 — `title`·`url`)·`NavKeyCanvasToppingPlace`(#290 신설 — `imageUri`, **#334에서 인자를 잃고 `data object`로 되돌아갔다**)·
-`NavKeyCanvasBGEdit`(#329 승격 — `groupId`·`parfaitId`, **#400에서 `initialToppingId` 추가**)).
+`NavKeyCanvasBGEdit`(#329 승격 — `groupId`·`parfaitId`, **#400에서 `initialToppingId` 추가**)·
+`NavKeyCanvasImageSave`(#445 신설 — `imagePath`·`date`)).
 **목적지 둘이 인자 하나로 합쳐진 첫 사례가 #296이다** — `NavKeyServiceTerms`·`NavKeyPrivacyPolicy`
 두 `data object`가 삭제되고 `NavKeyWebView(title, url)` 하나가 됐다. 두 화면은 상단바 제목과 여는
 주소만 달랐고 그 둘이 이제 서버 응답 값이라(`GET /api/v1/policies`의 `title`·`url`,
@@ -562,6 +600,14 @@ API가 없다) → [s004-terms-privacy-webview 스펙](../specs/archive/2026-07-
 고른다.** 앞선 둘이 "안 주면 종전대로"였다면 이쪽은 잊고 안 주면 컴파일이 깨지는 쪽이고, 그것이
 빠뜨림을 막으려는 의도다(둘 중 무엇이 기본인지 정할 근거가 없다). 불린 두 개가 우연히 만들던
 분기를 열거 하나로 옮긴 형태이기도 하다.
+**인자가 값이 아니라 캐시 파일의 자리인 형태가 나왔다**(2026-09-05, PR #445) —
+`NavKeyCanvasImageSave.imagePath`는 미리보기가 그릴 **비트맵 자체를 실을 수 없어서** 생겼다(NavKey는
+`@Serializable`이라 직렬화돼 오간다). 캔버스 메인이 캡처를 캐시에 PNG로 굽고 그 절대경로만 넘긴다.
+그래서 이 인자는 **키가 복원되는 시점에 가리키는 파일이 남아 있으리라는 보장이 없다** — 앞선 인자들이
+"뜻이 없어져도 값은 유효한" 형태였다면 이쪽은 값 자체가 썩을 수 있는 쪽이다. 같은 키의 `date`는
+`LocalDate.toString()`(ISO-8601) 문자열이다 — canvas `:api` 모듈이 kotlinx-datetime을 쓰지 않아
+도메인 타입을 못 싣고, **받는 쪽이 `LocalDate.parse`로 되돌린다**(앞의 "원시 타입으로 넘기고 받는
+쪽에서 감싼다"와 같은 형태이되 이유가 직렬화가 아니라 모듈 의존이다) → OQ-P-364.
 **서버 응답 값이 다음 화면의 인자가 되는 형태가 develop에 자리 잡았다**(2026-08-15) — 로그인 응답의
 가입 토큰이 `NavKeyTermAgree(registrationToken)`으로, 참여 응답의 그룹 ID가 `NavKeyGroupNickName(groupId)`로
 간다. 두 값 다 원시 타입으로 넘기고 **받는 쪽에서 value class로 감싼다**(`RegistrationToken`·`GroupId`) —

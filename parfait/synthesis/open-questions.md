@@ -6170,6 +6170,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **미머지 브랜치는 일곱에서 넷이 됐다**(`feature/debug-mode` · `feature/#420-canvas-tutorial` ·
   > `feature/#423-canvas-save-preview` · `feature/push-notification-permission`). 남은 푸시 브랜치가
   > ②③④를 한꺼번에 답하는 그 브랜치다.
+  > 📌 **넷에서 둘이 됐다(2026-09-05 확인)** — `feature/#420-canvas-tutorial`·`feature/#423-canvas-save-preview`가
+  > develop에 들어갔고(둘 다 알림과 무관하다), 남은 것은 `feature/debug-mode`와
+  > `feature/push-notification-permission` 둘이다. **이 미결의 ②③④를 답하는 브랜치는 아직 밖에 있다.**
   > 📌 **그 브랜치의 답이 2026-09-05에 바뀌었다 — 리뷰가 ②를 뒤집었다(미푸시, develop 밖).**
   > 직전 회차가 커밋 제목에서 읽은 답(②는 `onNewToken` + 권한 허용 직후)이 **결함이었고, 같은
   > 브랜치 안에서 되돌려졌다**(`7e984099` → `a99a899e`). develop은 애초에 등록을 부르지 않았으므로
@@ -6705,4 +6708,117 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   다시 볼 조건 셋: ① 서버의 `fid` 지원 확인 ② Firebase 의 등록 토큰 제거 일정 발표
   ③ deprecated API 의 실제 동작 중단.
 
-<!-- oq-next: 363 -->
+### [2026-09-05] 튜토리얼이 실제 화면 대신 목업 스크린샷을 덮는다 — 어긋날 길과 정책 근거
+
+- **ID**: OQ-P-363
+- **출처**: `YGTutorialOverlay`·`CanvasTutorialStep`(PR #449 develop 머지) — `imageResource`가
+  **딤까지 구워진 알파 없는 풀스크린 목업 PNG**이고 그 한 장이 실제 화면을 통째로 덮는다
+  (`img_canvas_tutorial_1~3`·`img_upload_tutorial`·`img_segmentation_tutorial`, `drawable-xxhdpi` 단일 밀도).
+  강조할 자리만 뚫은 오버레이가 아니다.
+- **항목**: ① **화면이 바뀌어도 그림은 안 따라온다** — 안내가 가리키는 버튼이 옮겨 가거나 문구가
+  바뀌면 목업만 낡는데, 어긋남을 잡는 수단이 없다(계측 테스트도 없다). ② 통짜 스크린샷이라
+  **기기 폭·글자 크기·다크 테마**에 맞춰 다시 그려지지 않는다 — `ContentScale.Crop`이라 폭이 다른
+  기기에서는 잘린다. ③ **정책 근거가 없다** — 위키에 튜토리얼 조항 자체가 없고, 노출 조건(설치 후
+  화면별 첫 진입 1회)·문구·장 수·카드 위치가 전부 코드에만 있다. ④ 에셋이 큰 편인데(업로드
+  튜토리얼 한 장이 이 저장소 최대 크기 드로어블이다) 밀도별 세트가 아니라 xxhdpi 하나다.
+- **상태**: 미해결 (**동작은 의도대로** — 어긋남과 근거 부재의 문제다)
+- **해소 메모**: ③은 위키 판단이 선행이다 — 정책으로 확정되면 위키에 조항을 만들고 여기는 구현
+  소관만 남긴다. ①②는 [design-system](../architecture/design-system.md) 「튜토리얼 4종」 항목에
+  대응 규칙을 적는다(뚫는 방식으로 바꿀지, 목업을 유지하고 갱신 책임을 명시할지).
+
+### [2026-09-05] 미리보기 NavKey가 캐시 파일 경로를 나른다 — 값이 썩을 수 있다
+
+- **ID**: OQ-P-364
+- **출처**: `NavKeyCanvasImageSave(imagePath, date)`(PR #445 develop 머지) — 미리보기가 그릴 비트맵을
+  키에 실을 수 없어(NavKey는 `@Serializable`) 캔버스 메인이 캡처를 캐시에 굽고 **절대경로만** 넘긴다.
+  `date`도 도메인 타입이 아니라 `LocalDate.toString()` 문자열이고 받는 쪽이 `LocalDate.parse`로 되돌린다
+  (canvas `:api`가 kotlinx-datetime을 쓰지 않는다).
+- **항목**: ① **키가 복원되는 시점에 그 파일이 있으리라는 보장이 없다** — 프로세스 사망 뒤 복원이나
+  OS의 캐시 정리를 지나면 경로만 살아 돌아온다. 지금은 미리보기가 `AsyncImage`로 그리다 조용히 비고,
+  확정하면 읽기 실패 토스트로 끝난다(크래시는 아니다). ② `date`를 문자열로 나르는 것이 관용구인지 —
+  `:api` 모듈에 날짜 의존을 들이지 않으려는 판단이지만, 파싱 실패는 `LocalDate.parse`가 던지고
+  아무도 잡지 않는다. ③ 같은 형태의 화면이 또 생기면 "캐시 경로를 키에 싣는다"를 규약으로 올릴지.
+- **상태**: 미해결 (**동작 영향 낮음** — 복원 경로에서만 드러난다)
+- **해소 메모**: ①③은 [navigation-flow](../architecture/navigation-flow.md) 「인자 있는 목적지」에
+  적고, 대안(결과 버스로 비트맵을 나르거나 미리보기가 자기 소유 캐시를 갖는 형태)을 그 자리에서 견준다.
+
+### [2026-09-05] 캡처 캐시 파일을 지우는 자리가 없고 저장 왕복에 테스트가 없다
+
+- **ID**: OQ-P-365
+- **출처**: `CanvasCaptureCache.kt#writeToCanvasCaptureCache`·`readCanvasCaptureCache`·
+  `CanvasImageSaveRoute`(PR #445) — 캡처는 `cacheDir/canvas_capture/canvas_preview.png`라는
+  **고정 이름**으로 쓰인다(쌓이지 않게 하려는 선택이다). 지우는 호출은 어디에도 없고, 같은 경로를
+  반복해 그리므로 미리보기가 Coil 요청에 `addLastModifiedToFileCacheKey`를 걸어 이전 캡처가 다시
+  뜨는 것을 막는다.
+- **항목**: ① 저장을 그만둔 캡처가 캐시에 남는다 — OS가 캐시를 정리할 때까지 마지막 캔버스 한 장이
+  기기에 남고, 그것이 남아도 되는지 정한 적이 없다. ② **이름이 고정이라 동시성 전제가 생겼다** —
+  캔버스를 연달아 캡처하면 같은 파일을 덮어쓰고, 앞선 미리보기가 살아 있으면 다른 그림을 보게 된다.
+  ③ **테스트가 없다** — 붙은 유닛은 저장 클릭이 `RequestCanvasCaptureForPreview`를 보내는지 하나뿐이고
+  쓰기·읽기·결과 왕복·미리보기 화면은 한 줄도 잠기지 않았다.
+- **상태**: 미해결 (**동작 영향 낮음** — ②는 한 화면에서 연달아 캡처해야 재현된다)
+- **해소 메모**: 정하면 [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md)
+  「드리프트 / 잔존」에 적는다. ①은 미리보기를 떠날 때 지우는 것이 가장 싸고, 그러면 ②도 함께 좁아진다.
+
+### [2026-09-05] 사용자 설정을 지우는 계약만 있고 부르는 자리가 없다
+
+- **ID**: OQ-P-366
+- **출처**: `UserConfigRepository.clearConfig`·`UserConfigRepositoryImpl.clearConfig`·
+  `UserConfigLocalDataSourceImpl.clear`(PR #449) — 계약·구현·데이터소스까지 다 있는데 **호출부가 0건**이다.
+  로그아웃(`LogoutUseCase`)·탈퇴(`WithdrawUseCase`)는 계정 정보와 토큰만 지운다.
+- **항목**: ① 로그아웃·탈퇴가 이 설정을 지워야 하는가 — 지우면 같은 기기에서 계정을 바꾼 사람이
+  튜토리얼을 다시 보고, 안 지우면 **다른 계정이 앞사람의 "봤다"를 물려받는다.** 둘 다 근거가 없다.
+  ② 지운다면 자리가 어디인가 — 계정 정보를 지우는 자리와 같은 곳인지, 설정이 계정에 매이는 것이
+  맞는지(지금 이 저장소는 계정 축이 아니라 **기기 축**이다). ③ 쓰이지 않는 계약을 남겨 둘지.
+- **상태**: 미해결 (**동작 영향 있음** — 계정 전환 시 튜토리얼이 안 뜬다)
+- **해소 메모**: 정하면 [data-layer](../architecture/data-layer.md) DataStore 항목에 소유 축(계정 vs 기기)을
+  적는다. 계정 축이면 [ADR-0022](../adr/0022-user-info-local-ssot.md)의 정리 경로에 합류시킨다.
+
+### [2026-09-05] 평문·암호화 DataStore 프록시가 서로의 복제다
+
+- **ID**: OQ-P-367
+- **출처**: `DataStorePreferences`(PR #449) · `EncryptedPreferences`(PR #263) — `observe`·`read`·
+  `write`(단건·다건)·`remove`·`decodeOrDiscard`가 **KDoc까지 같고**, 다른 것은 쓰기의
+  `cryptoManager.encrypt`와 읽기의 `decrypt` 두 줄뿐이다.
+- **항목**: ① 한쪽이 다른 쪽을 감싸거나 공통 부분을 뽑을지 — 지금은 폐기 규칙(못 읽는 저장분을 버린다)
+  같은 미묘한 결정이 **두 벌로 존재**해서, 한쪽만 고치면 조용히 갈린다. ② `DataStorePreferences.read`는
+  **호출부가 0건**이다(쓰는 곳이 `observe`·`write`·`remove`만 쓴다) — 대칭을 위해 남길지.
+  ③ 평문·암호문이 **같은 `DataStore<Preferences>` 하나**를 공유하므로 키가 섞인다 — 지금은 문제가
+  없지만 어느 키가 어느 형태인지는 코드로만 안다.
+- **상태**: 미해결 (**동작 영향 0** — 복제와 미사용 표면의 문제다)
+- **해소 메모**: ①을 정하면 [data-layer](../architecture/data-layer.md) 「평문 DataStore 프록시」 항목에
+  적고, 뽑아낸다면 [ADR-0019](../adr/0019-encrypted-token-storage.md)의 결정 범위를 건드리는지 함께 본다.
+
+### [2026-09-05] `launchWhileSubscribed`를 고르는 기준과 실제 쓰임이 갈렸다
+
+- **ID**: OQ-P-368
+- **출처**: `CanvasMainViewModel#observeCanvasTutorial`·`CustomGalleryPickerViewModel#observeTutorial`·
+  `SegmentationConfirmViewModel`(PR #449) — 셋 다 `launchWhileSubscribed`로 튜토리얼 노출 여부를 구독한다.
+  [state-management](../architecture/state-management.md)가 적어 둔 선택 기준은 **"이 구독이 서버를 계속
+  부르는가"**([ADR-0029](../adr/0029-canvas-today-ssot-polling.md))인데, 이 구독은 DataStore 한 키를 읽는다.
+- **항목**: ① 기준을 넓힐지(로컬 구독에도 기본으로 쓴다), 아니면 이 셋을 `launch`로 되돌릴지 —
+  지금은 문서의 기준과 코드의 관행이 어긋난 채 **쓰는 곳이 셋에서 여섯**이 됐다. ② 딸려 오는 비용이
+  하나 있다 — 이 구독은 화면이 `state`를 보는 동안에만 열려서 **ViewModel 테스트가 `backgroundScope`에서
+  `state`를 수집해야** 하고, 세 테스트가 각자 `shownViewModel()` 헬퍼로 같은 준비를 적는다.
+- **상태**: 미해결 (**동작은 의도대로** — 기준 문서와 관행의 어긋남이다)
+- **해소 메모**: 정하면 [state-management](../architecture/state-management.md) 해당 절의 기준 문장을
+  고친다. ②는 테스트 헬퍼를 `core:testing`으로 올릴지와 같은 자리에서 본다.
+
+### [2026-09-05] 같은 튜토리얼 상태가 화면마다 두 형태다 — 한쪽은 리소스를 State에 싣는다
+
+- **ID**: OQ-P-369
+- **출처**: `CanvasMainUiState.tutorialStep: CanvasTutorialStep?` vs
+  `CustomGalleryPickerState.isTutorialVisible: Boolean`·`SegmentationConfirmState`(PR #449) —
+  여러 장짜리인 캔버스만 enum을 담는데, 그 `CanvasTutorialStep`이 `@DrawableRes`·`@StringRes` 상수를
+  프로퍼티로 든다. State가 `Int`를 직접 담지는 않아도 **표시 리소스가 State를 타고 흐른다.**
+- **항목**: ① 리소스를 든 enum이 State에 있어도 되는가 — [state-management](../architecture/state-management.md)의
+  "표시 문자열·리소스 ID를 State에 담지 않는다"와 [ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)에
+  걸린다(도메인 의미만 담고 화면이 리소스를 고르는 형태로 하려면 `CanvasTutorialStep`에서 리소스를
+  떼어 화면 매핑으로 내리면 된다). ② 한 장짜리·여러 장짜리가 두 형태로 갈린 것을 유지할지 —
+  네 번째 화면이 붙을 때 어느 쪽을 따를지 정해진 것이 없다. ③ 완료를 남기는 시점도 갈린다 —
+  캔버스는 **마지막 장을 닫을 때만** 남기고(중간에 접으면 다음 진입에서 처음부터 다시 본다),
+  한 장짜리 둘은 누르는 즉시 남긴다. 앞의 것은 의도가 KDoc에 적혀 있으나 규칙으로 올라간 적은 없다.
+- **상태**: 미해결 (**동작은 의도대로** — 형태 분기와 규약 이탈이다)
+- **해소 메모**: ①②를 정하면 [state-management](../architecture/state-management.md) 「UI State가 담는 것」에
+  적고, ③은 [design-system](../architecture/design-system.md) 「튜토리얼 4종」에 노출·완료 규칙으로 적는다.
+
+<!-- oq-next: 370 -->

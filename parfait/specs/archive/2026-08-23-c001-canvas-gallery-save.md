@@ -4,7 +4,7 @@ title: C-001 지난 캔버스 갤러리 저장 — 캔버스 캡처·MediaStore 
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-09-01
+verified: 2026-09-05
 related_code:
   - YGCanvas.kt#YGCanvas
   - YGCanvas.kt#CanvasArea
@@ -16,7 +16,13 @@ related_code:
   - GalleryRepository.kt#saveImageToGallery
   - GalleryRepositoryImpl.kt#saveImageToGallery
   - SaveCanvasToGalleryUseCase.kt#SaveCanvasToGalleryUseCase
-  - CanvasMainViewModel.kt#CanvasMainEffect.RequestCanvasCapture
+  - CanvasMainViewModel.kt#CanvasMainEffect.RequestCanvasCaptureForPreview
+  - NavKeyCanvasImageSave.kt#NavKeyCanvasImageSave
+  - NavKeyCanvasImageSave.kt#CanvasImageSaveResult
+  - CanvasImageSaveRoute.kt#CanvasImageSaveRoute
+  - CanvasImageSaveScreen.kt#CanvasImageSaveScreen
+  - CanvasCaptureCache.kt#writeToCanvasCaptureCache
+  - CanvasCaptureCache.kt#readCanvasCaptureCache
   - CanvasMainViewModel.kt#CanvasMainEffect.ShowGallerySaveResult
   - CanvasMainViewModel.kt#CanvasMainIntent.SaveCapturedCanvas
   - CanvasMainViewModel.kt#handleClickSaveToGallery
@@ -87,6 +93,20 @@ ViewModel은 비트맵을 만들 수 없다(Compose `GraphicsLayer`는 컴포지
 
 `handleSaveCapturedCanvas`는 `selectedDate`를 **`launch` 밖에서** 붙든다. 저장이 도는 동안 사용자가
 다른 날짜를 골라도 안내 문구가 방금 저장한 캔버스의 날짜를 말하게 하려는 것이다.
+
+> 📌 **저장 사이에 화면이 하나 끼었다(2026-09-05, PR #445 develop 머지)** — 위 도식의
+> `RequestCanvasCapture`는 **`RequestCanvasCaptureForPreview`로 개명됐고**, 캡처한 비트맵이 곧바로
+> `SaveCapturedCanvas`로 가지 않는다. 화면이 캡처를 캐시에 PNG로 굽고
+> `NavKeyCanvasImageSave(imagePath, date)`로 미리보기를 연 뒤, 거기서 확정하고 돌아온
+> `CanvasImageSaveResult`를 받아 **같은 파일을 다시 읽어** 저장으로 넘긴다(사용자가 보고 확정한
+> 그림과 갤러리에 남는 그림이 같아야 하므로 다시 캡처하지 않는다). 권한 판정은 그대로이되 자리가
+> 옮겨, 미리보기에서 돌아온 길과 권한 승인 뒤의 길이 `saveWithPermission` 한 곳으로 모인다.
+> 캡처·캐시 쓰기 실패는 새 문구 `canvas_main_capture_failure`로 알린다. 왕복 전체는
+> [navigation-flow](../../architecture/navigation-flow.md) 「캔버스 저장 미리보기 왕복」이 정본이다.
+>
+> **미리보기 화면은 저장하지 않는다** — 결과 토스트가 뜨는 자리가 캔버스 메인이기 때문이고, 그래서
+> 이 스펙의 결과 표현 절은 그대로 유효하다. 미리보기가 그리는 것은 **스토리 규격 프레임 안의 캡처**
+> 한 장과 확정 버튼뿐이라 ViewModel이 없다.
 
 ### 캡처 대상은 배경 + 토핑뿐이다
 
@@ -189,6 +209,10 @@ KDoc이 그 이유를 적고 있다. 비트맵은 [ADR-0011](../../adr/0011-cros
    판정·캡처 자체는 한 줄도 잠기지 않았다.
 5. **실기기 확인 0회** — 이 라운드는 유닛으로 덮을 수 없는 것이 대부분이다(권한 다이얼로그·갤러리
    앱에 뜨는 결과물·캡처 결과의 모양).
+6. 📌 **미리보기 경로도 테스트가 없다**(2026-09-05, PR #445) — 붙은 유닛은 저장 클릭이
+   `RequestCanvasCaptureForPreview`를 보내는지 하나뿐이고, 캐시 쓰기·읽기(`CanvasCaptureCache`)와
+   결과 왕복·미리보기 화면은 한 줄도 잠기지 않았다. 캡처 파일은 이름이 고정이라 지우는 자리가
+   없다 → [open-questions](../../synthesis/open-questions.md) OQ-P-365.
 
 ## 테스트
 
