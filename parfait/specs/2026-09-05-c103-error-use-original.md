@@ -263,10 +263,10 @@ postSideEffect(
 버튼은 세로로 쌓고 간격은 `YGTheme.layout.gap.gap3`(8dp)를 쓴다. 바깥 `Column`이 아이콘·문구
 블록·버튼 블록 사이에 쓰는 값과 같다. ⚠️ `gap1`은 2dp라 버튼 둘이 거의 붙는다.
 
-**두 버튼의 폭은 같다.** 디자인에서 「다시 시도」와 「편집 없이 사용」이 같은 너비인데, `YGButton`은
-`modifier`를 주지 않으면 자기 텍스트 폭으로 감싸므로 글자 수가 다른 두 버튼이 계단처럼 어긋난다.
-감싸는 `Column`에 `Modifier.width(IntrinsicSize.Max)`를 주고 각 버튼에 `Modifier.fillMaxWidth()`를
-줘서 넓은 쪽에 맞춘다. 고정 폭을 박지 않는 이유는 문구가 바뀌어도 따라오게 하기 위해서다.
+**두 버튼의 폭은 디자인 실측값으로 같게 고정한다.** `YGButton`은 `modifier`를 주지 않으면 자기
+텍스트 폭으로 감싸므로 글자 수가 다른 두 버튼이 계단처럼 어긋난다. 감싸는 `Column`에 폭을 한 번
+주고 각 버튼이 `Modifier.fillMaxWidth()`로 그것을 채운다. 값을 한 곳에만 두어 문구가 바뀌어도
+버튼 폭은 디자인을 따르게 한다.
 
 아이콘·제목·설명의 배치와 닫기 버튼(`YGFloatingBarClose`)은 건드리지 않는다.
 

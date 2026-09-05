@@ -726,13 +726,13 @@ internal fun SegmentationErrorScreen(
 
 간격은 `gap3`(8dp)다. 바깥 `Column` 이 아이콘·문구 블록·버튼 블록 사이에 쓰는 값과 같다. ⚠️ `gap1` 은 2dp라 버튼 둘이 거의 붙는다.
 
-폭은 `IntrinsicSize.Max` 로 맞춘다. `YGButton` 은 `modifier` 를 안 주면 자기 텍스트 폭으로 감싸는데, 디자인의 두 버튼은 같은 너비다. 고정 폭을 박지 않는 이유는 문구가 바뀌어도 따라오게 하기 위해서다.
+폭은 디자인 실측값 `161.5.dp` 로 둘을 같게 고정한다. `YGButton` 은 `modifier` 를 안 주면 자기 텍스트 폭으로 감싸서 글자 수가 다른 두 버튼이 어긋난다. 값은 감싸는 `Column` 에 한 번만 주고 버튼은 `fillMaxWidth()` 로 채운다 — 숫자가 한 곳에만 있어야 나중에 한 줄로 고친다.
 
 ```kotlin
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(YGTheme.layout.gap.gap3),
-                    modifier = Modifier.width(IntrinsicSize.Max),
+                    modifier = Modifier.width(BUTTON_WIDTH),
                 ) {
                     YGButton(
                         text = stringResource(R.string.segmentation_error_retry),
@@ -752,11 +752,18 @@ internal fun SegmentationErrorScreen(
                 }
 ```
 
+폭 상수는 프리뷰 함수 위에 둔다.
+
+```kotlin
+/** 디자인 `C-103-Error` 실측값. 두 버튼이 같은 폭이라 감싸는 Column 이 한 번만 든다 */
+private val BUTTON_WIDTH = 161.5.dp
+```
+
 import 둘을 더한다. 파일이 이미 `Column`·`Arrangement`·`Alignment`·`fillMaxWidth` 는 가지고 있다.
 
 ```kotlin
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.dp
 ```
 
 Preview에 콜백을 더한다.
