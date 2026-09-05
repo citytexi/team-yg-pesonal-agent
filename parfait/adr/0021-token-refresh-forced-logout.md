@@ -62,8 +62,14 @@ tags: [adr, parfait, auth, network, session]
   재발급은 계약상 403을 내지 않는 반면 WAF·프록시는 HTML과 함께 403을 내므로, 403은 본문 `code`가
   거절 코드일 때만 인정한다. 그러지 않으면 로그인 상태를 유지했어야 할 사용자가 조용히 로그아웃된다.
 - **`SessionEvent.ForcedLogout`은 `:domain`에 둔다.** feature 모듈은 `:data`를 보지 않으므로
-  (ADR-0001) 인터페이스 `SessionEventSource`가 `:domain`에 있고, 구현 `SessionEventBus`
-  (`@Singleton`, `Channel(CONFLATED)` + `receiveAsFlow()`)가 `:data`에서 발행과 구독을 겸한다.
+  (ADR-0001) 인터페이스가 `:domain`에 있고 구현(`@Singleton`, `Channel(CONFLATED)` +
+  `receiveAsFlow()`)이 `:data`에서 발행과 구독을 겸한다.
+  > 📌 **이름과 자리가 바뀌었다(2026-09-05, PR #450)** — 인터페이스 `SessionEventSource` → **`SessionEventBus`**
+  > (`:domain` `event/`), 구현 `SessionEventBus` → **`SessionEventBusImpl`**(`:data` `event/`)이다.
+  > 푸시 딥링크 통로와 규칙을 맞춘 것이고(**인터페이스가 `~EventBus`, 구현이 `~Impl`**), `Source`가 이
+  > 저장소에서 DataSource 계열 이름이라 이벤트 구독구에 붙으면 오독을 부른다는 것이 근거다.
+  > **결정 자체는 그대로다** — 채널 선택·단일 수집·비대칭(구독만 도메인에 내놓는다) 모두 변함없고
+  > Hilt 그래프도 같다.
   `SharedFlow`가 아닌 이유는 ADR-0020이 이펙트에서 정리한 것과 같다 — 구독 전 발행이 버퍼에
   남아야 하고 소비한 이벤트가 재구독으로 다시 오면 안 된다. `CONFLATED`는 401이 여러 건 터져도
   이동을 한 번으로 접는다. 수집은 **앱 루트 한 곳** — 화면마다 구독하면 한 이벤트로 여러 번 이동한다.

@@ -16,9 +16,9 @@ related_code:
   - BootstrapSessionUseCase.kt#BootstrapSessionUseCase
   - LoginWithKakaoUseCase.kt#LoginWithKakaoUseCase
   - SignUpUseCase.kt#SignUpUseCase
-related_adr: ADR-0013
+related_adr: ADR-0004, ADR-0013, ADR-0021
 related_spec:
-related_architecture: data-layer, state-management
+related_architecture: data-layer, module-structure, navigation-flow, state-management
 supersedes:
 superseded_by:
 tags: [spec, parfait, notification, permission]
@@ -67,8 +67,8 @@ FCM 토큰은 **알림 권한과 무관하게** SDK 가 설치 시점에 발급�
 
 | 시점 | 자리 | 비고 |
 |---|---|---|
-| 로그인 성공 | `LoginWithKakaoUseCase` | 기존 회원 분기, `saveSession` 직후 |
-| 가입 성공 | `SignUpUseCase` | `saveSession` 직후 |
+| 로그인 성공 | `LoginWithKakaoUseCase` | 기존 회원 분기 안, `refreshMyAccount` 뒤 |
+| 가입 성공 | `SignUpUseCase` | `refreshMyAccount` 뒤 |
 | 앱 진입 | `BootstrapSessionUseCase` | `refreshMyAccount` 성공 분기에서만 |
 | 토큰 회전 | `ParfaitFirebaseMessagingService.onNewToken` | 토큰이 바뀔 때 |
 
@@ -153,7 +153,7 @@ sessionId)` 로 로그아웃 시 토큰을 지운다. 세션마다 재등록하�
 이 브랜치의 두 번째 축이다. 알림과 직접 관계는 없으나 같은 브랜치에 실려 있다.
 
 세션 종료와 푸시 딥링크는 같은 구조(도메인 인터페이스 + `:data` `Channel` 구현 + 앱 루트
-단일 수집, [ADR-0021](../adr/0021-token-refresh-forced-logout.md))인데 패키지가
+단일 수집, [ADR-0021](../../adr/0021-token-refresh-forced-logout.md))인데 패키지가
 `repository/session`·`repository/push`·`data/session`·`data/push` 넷으로 흩어져 있었다.
 `domain/event`·`data/event` 로 모은다. 둘 다 Repository 가 아니므로 `repository/` 아래
 있을 이유가 없었다.
@@ -166,8 +166,10 @@ sessionId)` 로 로그아웃 시 토큰을 지운다. 세션마다 재등록하�
 ⚠️ **계약의 비대칭은 그대로 남는다** — `SessionEventBus` 는 구독만 내놓고 발행
 (`postForcedLogout`)은 `:data` 구현에만 있다. `PushDeepLinkEventBus` 가 `post` 를 계약에
 함께 두는 것과 다르다. 발행 자리가 `TokenAuthenticator` 하나뿐이라 밖으로 낼 이유가 없어서다.
-`architecture/data-layer.md` 가 이 차이를 의도된 설계로 적어 두었으므로, **머지 회차에 그
-문단의 심볼명을 갱신해야 한다**(`module-structure.md` 의 domain/data 패키지 목록도 같다).
+`architecture/data-layer.md` 가 이 차이를 의도된 설계로 적어 두었다.
+✅ **머지 회차에 갱신했다**(2026-09-05, PR #450 develop 머지) — [data-layer](../../architecture/data-layer.md)
+「이벤트 버스 개명」·[module-structure](../../architecture/module-structure.md) domain/data 패키지 목록·
+[ADR-0021](../../adr/0021-token-refresh-forced-logout.md) 정정.
 
 ## 결정 6 — 등록 토큰 축에 남는다 (FID 전환은 서버와 함께)
 
@@ -229,8 +231,12 @@ API 가 그 셋이다(25.1.2 소스로 확인).
 
 ## 주의 / 열린 질문
 
-- ⚠️ **아직 develop 밖이다** — 로컬 브랜치 `feature/push-notification-permission`, 미푸시.
-  ADR-0013 되살림 정정과 ADR-0004 예외 기록은 머지 회차에 함께 쓴다([2026-07-13] 규율).
+- ✅ **develop 에 들어왔다**(2026-09-05, PR #450 `489b14cc`). 대조 결과 **설계와 코드가 어긋난 자리는
+  없다** — 등록 시점 넷·`suspend` 아닌 `register()`·앱 스코프·뮤텍스·3회 재시도(3초·6초)·API 33 미만
+  허용·두 번 읽기 비교·`rememberSaveable` 대기가 모두 스펙대로다. 위 결정 2 표의 비고만 한 칸
+  정정했다(등록을 거는 자리가 `saveSession` 직후가 아니라 `refreshMyAccount` 뒤다).
+  [ADR-0013](../../adr/0013-firebase-fcm-crashlytics.md) 되살림 정정에 등록·권한 결선을 더했고,
+  [ADR-0004](../../adr/0004-hilt-ksp-di.md) 에 `:app` Hilt 모듈 예외를 적었다.
 
 - **게이트 자체에 테스트가 없다.** 이 모듈에 `androidTest` 소스셋이 없어 Compose 테스트
   하니스 신설이 필요하다. JVM 으로 덮인 것은 **API 33 미만에서 `hasPermission` 이 `Context`

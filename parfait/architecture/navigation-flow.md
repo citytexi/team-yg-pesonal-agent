@@ -143,12 +143,12 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 [session-token-refresh-infra 스펙](../specs/archive/2026-08-15-session-token-refresh-infra.md).
 
 ```
-TokenAuthenticator(재발급 거절) → SessionEventBus.postForcedLogout()
+TokenAuthenticator(재발급 거절) → SessionEventBusImpl.postForcedLogout()
     → MainRoute의 LaunchedEffect 단일 수집 → navigator.replaceAll(NavKeyLogin)
 ```
 
 - **수집 지점은 앱 루트 `MainRoute` 한 곳**이다(`NavDisplay` 상위 `LaunchedEffect`). 화면마다 구독하면
-  한 이벤트로 이동이 여러 번 일어난다. `SessionEventSource`는 `MainActivity`가 주입받아 내려준다.
+  한 이벤트로 이동이 여러 번 일어난다. `SessionEventBus`(#450 개명, 구 `SessionEventSource`)는 `MainActivity`가 주입받아 내려준다.
 - 통로는 `Channel(CONFLATED)`이라 **단일 소비자**이고, 401이 여러 건 터져도 이동은 한 번이다. 이
   성질이 규약이 아니라 타입에서 나온다는 점이 화면 이펙트(`BaseViewModel`)와 같다([ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md)).
 - 사용자가 직접 누르는 로그아웃은 같은 목적지를 화면 이펙트로 간다 — S-001 앱 설정의
@@ -236,6 +236,21 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
   요청 중에 모달이 떠 있지는 않다(OQ-P-137 ④·OQ-P-204).
   같은 라운드에서 **A-005의 닉네임 필드가 열렸다** — `NavKeyGroupCreate(nickName)`으로 넘어오는 값이
   읽기 전용 표시값이 아니라 초기값이 됐고, 확인은 그룹명과 닉네임을 함께 검사한다.
+- 📌 **이동이 안내 하나를 거쳐 간다(2026-09-05, PR #450)** — 두 갈래의 마지막 이펙트
+  (`NavigateToNext`)가 곧바로 `replaceAll` + `goTo`를 부르지 않고, **목적지를 들고 대기**한다.
+  그 사이에 `NotificationPermissionGate`가 알림 권한 안내를 띄우고, 허용·거부·"나중에" 어느
+  갈래로 끝나든 `onFinished`가 불려 원래 이동이 이어진다(이미 허용돼 있으면 안내 없이 곧장 통과).
+  **이 저장소에서 이펙트가 화면 상태를 거쳐 지연되는 첫 자리**다.
+  - 대기하는 값은 `rememberSaveable`이다. `remember`로 두면 구성 변경으로 Activity가 다시 설 때
+    값이 유실되는데, 이펙트가 `Channel`이라 **다시 오지 않는다** — 서버에서는 그룹 생성·참여가 끝났는데
+    사용자만 이전 화면에 갇힌다. 두 Route가 각자 `listSaver`(`NavigateToNextSaver`)를 두고 그 왕복을
+    유닛 테스트로 잠근다. **프로세스 사망은 이 구조가 막지 못한다** — `Navigator` 백스택이
+    `@ActivityRetainedScoped`의 순수 `mutableStateListOf`라 스플래시로 초기화된다.
+  - ⚠️ **배선이 두 Route에 복제됐다** — 이펙트 타입이 달라 공용화하려면 제네릭이나 공통 인터페이스가
+    필요하고, 지금은 이득이 얇아 두었다 → [open-questions](../synthesis/open-questions.md) OQ-P-372.
+  - **기기 토큰 등록은 이 게이트에 매달려 있지 않다** — 등록은 세션 축이 맡고 권한과 독립이다
+    ([data-layer](data-layer.md) 「기기 토큰 등록」 ·
+    [스펙](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md) 결정 1).
 - 의존은 규약대로 `:api`만: `feature/groups/enter/impl` → `feature/groups/list/api`(#224에서 추가).
 - ✅ **위키 정본과 목적지가 맞았다(2026-09-01, PR #411)** — [[기능정의서-v6]]이 중간 화면 G-002를
   삭제하며 A-004(참여)·A-005(생성)의 다음 단계로 적어 둔 **C-001(메인 캔버스) 직접 진입**이 코드에

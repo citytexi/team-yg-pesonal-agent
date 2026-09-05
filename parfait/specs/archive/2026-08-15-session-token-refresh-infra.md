@@ -27,6 +27,10 @@ tags: [spec, parfait, auth, network, session]
 > ② `SessionEventBus.postForcedLogout()`이 `trySend` 실패를 **로그로 남긴다** — `CONFLATED`인 지금은
 > 실패할 수 없지만 채널 종류가 바뀌면 조용한 유실이 되므로 그 회귀가 드러나게 남겼다.
 > ③ `SessionEventSource` ↔ `SessionEventBus` 바인딩은 신설 **`SessionModule`**이 `@Provides`로 준다.
+> 📌 **이름과 자리가 바뀌었다(2026-09-05, PR #450)** — 인터페이스 `SessionEventSource` → **`SessionEventBus`**
+> (`:domain` `event/`), 구현 `SessionEventBus` → **`SessionEventBusImpl`**(`:data` `event/`)이다. 이 문서
+> 본문은 **당시 이름을 그대로 둔다**(아카이브 규율). 결정·배선은 변하지 않았고 바뀐 것은 이름과 패키지뿐이다
+> → [ADR-0021](../../adr/0021-token-refresh-forced-logout.md) 정정 · [data-layer](../../architecture/data-layer.md) 「이벤트 버스 개명」.
 > **서술 오류 1건 정정**: 아래 "범위 → 제외"가 회원 탈퇴를 "서버에 엔드포인트 계약이 없다"고 적었으나
 > 2026-08-15 서버 delta로 `DELETE /api/v1/users/me`가 생겼고 앱 표면(`MemberService`·DataSource)도
 > PR #250으로 들어와 있다([api/member.md](../../api/member.md)). 제외 사유는 계약 부재가 아니라

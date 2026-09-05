@@ -34,7 +34,7 @@ tags: [architecture, parfait]
 > 스트림(`error`)이 생겼다가 철회됐다.
 >
 > **화면 밖 이벤트는 이 계약 밖이다**(2026-08-15, PR #260) — 강제 로그아웃은 ViewModel이 아니라
-> `:data`의 `SessionEventBus`가 발행하고 앱 루트가 수집한다. 채널 선택 근거(`Channel` + 단일 소비자)는
+> `:data`의 `SessionEventBusImpl`이 발행하고 앱 루트가 수집한다(#450에서 인터페이스가 `SessionEventBus`, 구현이 `~Impl`로 개명됐다 — [data-layer](data-layer.md) 「이벤트 버스 개명」). 채널 선택 근거(`Channel` + 단일 소비자)는
 > 같지만 소유자가 화면이 아니라 세션이다 → [navigation-flow](navigation-flow.md) "세션 종료 이동".
 
 ## 3분할 계약 (`MviContract`)
