@@ -724,7 +724,24 @@ internal fun SegmentationErrorScreen(
 
 기존 `YGButton` 하나를 `Column` 으로 감싸 둘을 세로로 쌓는다. 두 번째 버튼은 `Medium.Secondary` 를 쓴다 — Gray100 채움에 Gray500 테두리라 디자인의 두 번째 버튼과 그대로 맞는다.
 
-간격은 `gap3`(8dp)다. 바깥 `Column` 이 아이콘·문구 블록·버튼 블록 사이에 쓰는 값과 같다. ⚠️ `gap1` 은 2dp라 버튼 둘이 거의 붙는다.
+버튼 사이 간격은 `gap3`(8dp)다. ⚠️ `gap1` 은 2dp라 버튼 둘이 거의 붙는다.
+
+설명 문구와 버튼 블록 사이는 `gap7`(24dp)다. **바깥 `Column` 의 `Arrangement.spacedBy` 를 걷고 명시적 `Spacer` 로 바꾼다** — 균일 배치를 남기면 스페이서 위아래로 8dp가 한 번 더 붙어 32dp가 된다.
+
+```kotlin
+            // 아이콘·문구·버튼의 간격이 서로 달라 균일 배치를 쓰지 않는다
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Image( … )
+
+                Spacer(modifier = Modifier.height(YGTheme.layout.gap.gap3))
+
+                Column( … 제목·설명 … )
+
+                Spacer(modifier = Modifier.height(YGTheme.layout.gap.gap7))
+
+                Column( … 버튼 둘 … )
+            }
+```
 
 폭은 디자인 실측값 `161.5.dp` 로 둘을 같게 고정한다. `YGButton` 은 `modifier` 를 안 주면 자기 텍스트 폭으로 감싸서 글자 수가 다른 두 버튼이 어긋난다. 값은 감싸는 `Column` 에 한 번만 주고 버튼은 `fillMaxWidth()` 로 채운다 — 숫자가 한 곳에만 있어야 나중에 한 줄로 고친다.
 
@@ -762,6 +779,8 @@ private val BUTTON_WIDTH = 161.5.dp
 import 둘을 더한다. 파일이 이미 `Column`·`Arrangement`·`Alignment`·`fillMaxWidth` 는 가지고 있다.
 
 ```kotlin
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.dp
 ```
