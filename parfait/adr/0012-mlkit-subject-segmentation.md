@@ -61,6 +61,10 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 | sealed `SegmentationException`(`ClientInit`·`ImageNotFound`) | `ModuleNotReady`·`Process` 2종 추가. `Tasks.await`의 `ExecutionException`을 한 겹 벗겨 `MlKitException.UNAVAILABLE`이면 `ModuleNotReady` |
 | (없음) | `saveEditedImage(BitmapWrapper): Result<String>` 신설 — 손편집 결과를 `cacheDir` PNG로 떨구고 경로 반환 |
 
+> 📌 **`saveEditedImage`는 2026-09-06 PR #457로 `saveBitmap`이 됐다**(`SaveEditedImageUseCase` → `SaveBitmapUseCase`).
+> 「편집 없이 사용」이 원본을 같은 자리로 보내면서 이름이 역할보다 좁아졌기 때문이고, 시그니처와 동작은
+> 그대로다. 아래 기록은 당시 이름을 유지한다 → [c103-error-use-original](../specs/archive/2026-09-05-c103-error-use-original.md).
+
 - "결과 전달이 메모리 비트맵 + 파일경로로 **이원**"이라던 트레이드오프는 **경로 단일로 정리됐다**.
   대신 화면이 경로를 다시 디코드하므로 디코드 비용이 화면 쪽으로 옮겨졌다.
 - **캐시 파일 정리 정책은 더 급해졌다** — 추출 1장에 더해 편집을 마칠 때마다 최대 2장이 늘고
