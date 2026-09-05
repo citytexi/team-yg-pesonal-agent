@@ -14,8 +14,8 @@ related_code:
   - SegmentationErrorScreen.kt#SegmentationErrorScreen
   - SegmentationScreen.kt
   - SegmentationConfirmViewModel.kt#SegmentationConfirmState
-  - SaveEditedImageUseCase.kt
-  - ImageSegmentationRepository.kt#saveEditedImage
+  - SaveBitmapUseCase.kt
+  - ImageSegmentationRepository.kt#saveBitmap
   - YGButtonType.kt#Medium
   - strings.xml
 related_adr:
@@ -169,7 +169,7 @@ internal fun SegmentationErrorScreen(
 
 ```
 후보 선택     → persistSubject → 초안 기록 → GoToConfirm
-편집 없이 사용 → saveEditedImage → 초안 기록 → GoToConfirm
+편집 없이 사용 → saveBitmap     → 초안 기록 → GoToConfirm
 ```
 
 다른 것은 저장 단계 하나다. 후보 선택은 `persistSubject`가 잘린 판과 원본 크기 캔버스 판
@@ -177,7 +177,7 @@ internal fun SegmentationErrorScreen(
 때문이다. 그래서 **한 번만 저장하고 같은 경로를 두 자리에 싣는다.**
 
 ```kotlin
-val path = saveEditedImageUseCase(originBitmapWrapper).getOrElse {
+val path = saveBitmapUseCase(originBitmapWrapper).getOrElse {
     releaseLoading()
     postSideEffect(SegmentationEffect.ShowError)
     return@launch
@@ -204,9 +204,14 @@ postSideEffect(
 `state.originBitmap`을 다시 감쌀 수 없으므로, ViewModel이 디코드에서 받은 `BitmapWrapper`를
 필드로 들고 있다가 그대로 넘긴다. 화면이 그리는 `state.originBitmap`은 지금처럼 유지한다.
 
-⚠️ `SaveEditedImageUseCase`의 이름과 KDoc이 "손으로 다듬은 결과"만 가리킨다. 실제로 하는 일은
-비트맵 한 장을 캐시에 PNG로 떨구는 것뿐이라 동작은 맞다. **KDoc을 넓히고 이름은 그대로 둔다** —
-이름을 바꾸면 편집 저장 호출부까지 건드리게 되어 이 작업의 범위를 넘는다.
+📌 **이름을 바꿨다(2026-09-06, 코드 리뷰 반영).** 처음에는 KDoc만 넓히고 이름을 두려 했다. 근거는
+"편집 저장 호출부까지 건드리면 범위를 넘는다"였는데, 실제로 세어 보니 순수 기계적 치환 6파일이었다.
+이름과 역할이 어긋나는 것을 주석으로 변명하는 상태가 더 비싸다.
+
+- `SaveEditedImageUseCase` → `SaveBitmapUseCase`
+- `ImageSegmentationRepository.saveEditedImage()` → `saveBitmap()`
+
+이름이 역할을 말하게 됐으므로 "편집 결과에 한정되지 않는다"고 적어 둔 KDoc 두 줄은 지운다.
 
 ### 도착한 확인 화면의 상태
 
@@ -294,7 +299,7 @@ postSideEffect(
 | `SegmentationScreen.kt` | KDoc이 `[SegmentationState.errorKind]`를 가리킨다. 링크만 고친다 |
 | `SegmentationErrorScreen.kt` | 제목·설명 파라미터 제거, `Medium.Secondary` 버튼 추가, 시안 경고 KDoc 정리 |
 | `strings.xml` | 문구 통합, 모듈 실패 문구 2건 삭제, 「편집 없이 사용」 라벨 추가 |
-| `SaveEditedImageUseCase.kt` · `ImageSegmentationRepository.kt` | KDoc만 넓힌다(원본도 지나간다) |
+| `SaveBitmapUseCase.kt`(구 `SaveEditedImageUseCase.kt`) · `ImageSegmentationRepository.kt` · `ImageSegmentationRepositoryImpl.kt` · `ToppingEditViewModel.kt` | `saveBitmap` 으로 이름을 바꾼다 |
 | `SegmentationViewModelTest.kt` | `errorKind` 를 읽는 6곳 전환 + 신규 3건 |
 
 data 계층과 도메인 모델은 바뀌지 않는다. `persistSubject`·`SegmentationCandidate`·모듈 설치기는
@@ -311,7 +316,7 @@ data 계층과 도메인 모델은 바뀌지 않는다. `persistSubject`·`Segme
 
 신규 3건을 더한다.
 
-1. `useOriginal_savesOnceAndGoesToConfirm` — `saveEditedImage` 호출이 **1회**이고 `record`와
+1. `useOriginal_savesOnceAndGoesToConfirm` — `saveBitmap` 호출이 **1회**이고 `record`와
    `GoToConfirm`이 같은 경로를 두 자리에 싣는다. 저장을 두 번 하지 않는다는 것이 이 설계의
    핵심이라 여기서 잠근다.
 2. `useOriginal_saveFails_showsToastAndStaysOnErrorScreen` — `ShowError`가 뜨고 `isError`가

@@ -10,6 +10,11 @@
 
 **Spec:** [`parfait/specs/2026-09-05-c103-error-use-original.md`](../specs/2026-09-05-c103-error-use-original.md)
 
+> 📌 **실행 뒤 이름이 바뀌었다(2026-09-06, 코드 리뷰 반영).** 아래 코드 블록은 실제로 실행한 그대로
+> 두되, `SaveEditedImageUseCase` → `SaveBitmapUseCase`, `saveEditedImage` → `saveBitmap` 으로 읽어라.
+> Task 3 Step 7이 지시한 KDoc 확장도 이름이 역할을 말하게 되면서 필요 없어져 걷었다.
+> 근거는 스펙의 「편집 없이 사용」절 📌 표기.
+
 **작업 대상 저장소:** `TJYG-Android` (이 문서가 있는 저장소가 아니다). 브랜치 `feature/#348-segmentation-error-button`이 이미 있고 `develop`과 같은 커밋이다.
 
 ## Global Constraints
