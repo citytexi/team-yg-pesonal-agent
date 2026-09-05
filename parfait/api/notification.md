@@ -331,6 +331,7 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
 | `data` 키 `date` | **읽는 코드가 없다** → OQ-P-359 |
 | `route=canvas` | `PushDeepLink.AddTopping(groupId)` → `NavKeyCanvasMain(groupId)` — **날짜 인자가 없어 최신 캔버스로 간다** |
 | `route=group` | `PushDeepLink.GroupList(type)` → `NavKeyGroupList`. **서버에 이 값을 보내는 코드가 없다**(트리거 1종) → OQ-P-361 |
+| 두 `route` 다 로그인 필요 | 이동 전에 `HasActiveSessionUseCase`가 세션을 확인하고 없으면 **딥링크를 버린다** — 로그인을 마쳐도 이어가지 않는다(브랜치 `feature/#454-push-deep-link-edge-case`, develop 미머지) |
 | `type` 값 3종 | `PushNotificationType`(`TOPPING`·`REMIND_AM`·`REMIND_PM`). **라우팅에 쓰지 않는다** — 목적지는 `route`가 정하고 `type`은 탭 분석 용도로만 실린다. 모르는 값은 `null`이라 파싱이 실패하지 않는다 |
 
 **전달 통로는 세션 종료 이동과 같은 모양이다** — `:domain`의 `PushDeepLinkEventBus`(발행·구독 겸용
@@ -339,9 +340,11 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
 (`launchMode="singleTop"`) 양쪽을 덮고, 소비한 `Intent`는 `setIntent(Intent())`로 비운다 — 안 비우면
 구성 변경으로 `onCreate`가 다시 돌 때 같은 딥링크를 또 발행한다.
 
-⚠️ **여기까지가 develop이 확인해 주는 전부이고, 실기기 확인은 0회다.** 권한을 묻는 코드가 없어
-Android 13+에서는 표시 자체가 막히고(OQ-P-358), 콜드 스타트에서 딥링크 이동과 스플래시 부트스트랩의
-백스택 리셋이 겹치는 구간이 검증되지 않았다(OQ-P-360).
+🔁 **여기 있던 두 경고를 걷었다 — 둘 다 낡았다.** ① 권한을 묻는 자리는 PR #450이 붙였다
+(`NotificationPermissionGate`, A-004·A-005 완료 직후 — OQ-P-358은 그때 해소됐다). ② 콜드 스타트에서
+딥링크와 스플래시 백스택 리셋이 겹치는 구간은 **닫혔다** — 수집이 스플래시 이탈을 기다린 뒤 소비하고,
+그 자리에서 세션도 함께 본다(OQ-P-360 ①③ 해소, ② 잔존).
+⚠️ **②의 수정은 브랜치 `feature/#454-push-deep-link-edge-case`에만 있고 develop에 없다.**
 
 ### 기기 토큰 등록 결선 (2026-09-05, PR #450)
 
