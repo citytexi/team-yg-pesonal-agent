@@ -169,6 +169,46 @@ sessionId)` 로 로그아웃 시 토큰을 지운다. 세션마다 재등록하�
 `architecture/data-layer.md` 가 이 차이를 의도된 설계로 적어 두었으므로, **머지 회차에 그
 문단의 심볼명을 갱신해야 한다**(`module-structure.md` 의 domain/data 패키지 목록도 같다).
 
+## 결정 6 — 등록 토큰 축에 남는다 (FID 전환은 서버와 함께)
+
+`firebase-messaging` 25.1.0 이 **`FirebaseMessaging.getToken()`·`deleteToken()` 과
+`FirebaseMessagingService.onNewToken()` 을 전부 deprecated 로 돌렸다.** 이 브랜치가 쓰는
+API 가 그 셋이다(25.1.2 소스로 확인).
+
+대체는 **FID(Firebase Installation ID) 기반 등록**이고, 모양이 다르다.
+
+| | 지금(등록 토큰) | 대체(FID) |
+|---|---|---|
+| 값 얻기 | `getToken(): Task<String>` — 값을 돌려준다 | `register(): Task<Void>` — **값을 안 돌려준다** |
+| 값 수신 | `onNewToken(token)` | `onRegistered(installationId)` |
+| 서버 발송 | Admin SDK `Message.setToken(...)` | Send API 의 `fid` 필드 |
+
+⚠️ **두 API 는 매니페스트 플래그로 갈리고 서로 배타적이다.**
+`firebase_messaging_installation_id_enabled` 가 없으면 `register()` 가
+`IllegalStateException` 을 던지고, **있으면 반대로 `getToken()` 이 던진다.** 앱이 절반만
+옮길 수 없다.
+
+**그래서 지금은 옮기지 않는다.** 근거 셋이다.
+
+1. **서버가 함께 움직여야 한다.** `TEAMYG-SERVER` 의 `FcmNotificationSender` 는
+   `Message.builder().setToken(token)` 으로 보낸다(Admin SDK 9.9.0). 앱만 FID 로 바꾸면
+   등록 토큰 자리에 FID 가 들어간다. Java Admin SDK 의 `fid` 지원 여부는 **확인하지 못했다** —
+   공식 문서가 Node.js 예시만 보여 준다.
+2. **급하지 않다.** Firebase 문서가 두 방식을 "fully co-supported" 로 적고 제거 일정을 두지
+   않았다. 기존 등록 토큰은 계속 동작한다.
+3. **이 브랜치의 범위를 넘는다.** 전환하면 `DeviceTokenProvider` 와
+   `RegisterCurrentDeviceTokenUseCase` 가 통째로 사라진다 — 값을 당겨오는 자리가 없어지고
+   "`register()` 를 부르고 `onRegistered` 에서 올린다"는 콜백 모델이 되기 때문이다.
+   지금의 `DeviceTokenRegistrar` 는 그 모델에서도 진입점으로 남을 수 있다.
+
+**전환을 다시 볼 조건**: ① 서버가 `fid` 발송을 지원한다고 확인되거나, ② Firebase 가 등록
+토큰 제거 일정을 발표하거나, ③ deprecated API 가 실제로 동작을 멈출 때.
+
+부수적으로 이번에 **토큰 계약을 비널로 좁혔다.** `getToken()` 은 `Task<String>` 이고 미발급
+상태를 `Task` **실패**로 주므로, `currentToken(): DeviceToken?` 의 `null` 분기는 도달하지
+않는 경로였다(그것을 검증하던 테스트도 함께 걷었다). 지금은 미발급이 예외로 오고 등록구의
+재시도와 다음 세션 트리거가 메운다.
+
 ## 파일 구성
 
 | 파일 | 역할 |

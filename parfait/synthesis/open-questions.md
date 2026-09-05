@@ -6669,4 +6669,35 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ⚠️ 함께 발견: `ParfaitFirebaseMessagingService` KDoc의 `toPushDeepLinkOrNull` 링크가 옛 패키지
   (`com.teamyg.parfait.pushdeeplink`)를 가리킨다 — 같은 PR이 `push`로 줄이면서 남은 자국이다.
 
-<!-- oq-next: 362 -->
+### [2026-09-05] FCM이 등록 토큰을 FID로 갈아타는데 앱·서버가 함께 움직여야 한다
+
+- **ID**: OQ-P-362
+- **출처**: `firebase-messaging` 25.1.2 소스 원문 — `FirebaseMessaging.getToken()`·`deleteToken()` 과
+  `FirebaseMessagingService.onNewToken()` 이 **전부 `@Deprecated`** 이고 대체가 FID 기반
+  `register()`·`onRegistered(installationId)` 다(25.1.0 부터). 미머지 브랜치
+  `feature/push-notification-permission` 이 쓰는 API 가 정확히 그 셋이다
+  (`FirebaseDeviceTokenProvider`·`ParfaitFirebaseMessagingService`).
+- **항목**: ① 언제 옮길지. ② **Java Admin SDK 가 `fid` 발송을 지원하는지** — 공식 문서가 Node.js
+  예시만 보여 주고, `TEAMYG-SERVER` 의 `FcmNotificationSender` 는 Admin SDK 9.9.0 으로
+  `Message.builder().setToken(token)` 을 쓴다. 앱만 옮기면 등록 토큰 자리에 FID 가 들어간다.
+  ③ 옮길 때 `DeviceTokenProvider`·`RegisterCurrentDeviceTokenUseCase` 를 걷을지 — FID 모델에는
+  값을 당겨오는 자리가 없고 `register()` 후 `onRegistered` 에서 올리는 콜백 모델이 된다
+  (`DeviceTokenRegistrar` 는 그 모델에서도 진입점으로 남는다).
+- **상태**: 미해결 (**급하지 않다** — Firebase 문서가 두 방식을 "fully co-supported" 로 적고 제거
+  일정이 없다. 기존 등록 토큰은 계속 동작한다)
+  > ⚠️ **앱이 절반만 옮길 수 없다.** 두 API 는 매니페스트 플래그
+  > `firebase_messaging_installation_id_enabled` 로 갈리고 **서로 배타적**이다 — 플래그가 없으면
+  > `register()` 가 `IllegalStateException` 을 던지고, 있으면 반대로 `getToken()` 이 던진다.
+  > 그래서 이 미결은 앱 단독으로 닫을 수 없다.
+  > 📌 브랜치는 등록 토큰 축에 남기로 하고 근거·전환 조건을
+  > [specs/2026-09-05-push-notification-permission-and-device-token](../specs/2026-09-05-push-notification-permission-and-device-token.md)
+  > 결정 6에 적었다. 같은 라운드에 **토큰 계약을 비널로 좁혔다** — `getToken()` 은 `Task<String>` 이고
+  > 미발급을 `Task` 실패로 주므로 `currentToken(): DeviceToken?` 의 `null` 분기가 도달하지 않는
+  > 경로였다(그것을 검증하던 테스트도 걷었다).
+- **해소 메모**: 전환을 결정하면 **서버 delta 와 같은 회차에** 본다 — 앱의 매니페스트 플래그와
+  서버의 발송 필드가 동시에 바뀌어야 한다. ADR-0013 에 정정으로 적고
+  [api/notification.md](../api/notification.md) 등록 절의 `token` 필드 설명도 함께 고친다.
+  다시 볼 조건 셋: ① 서버의 `fid` 지원 확인 ② Firebase 의 등록 토큰 제거 일정 발표
+  ③ deprecated API 의 실제 동작 중단.
+
+<!-- oq-next: 363 -->
