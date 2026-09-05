@@ -70,28 +70,35 @@ FCM 토큰은 **알림 권한과 무관하게** SDK 가 설치 시점에 발급�
 | 로그인 성공 | `LoginWithKakaoUseCase` | 기존 회원 분기, `saveSession` 직후 |
 | 가입 성공 | `SignUpUseCase` | `saveSession` 직후 |
 | 앱 진입 | `BootstrapSessionUseCase` | `refreshMyAccount` 성공 분기에서만 |
-| 토큰 회전 | `ParfaitFirebaseMessagingService.onNewToken` | 값이 주어지는 자리 |
+| 토큰 회전 | `ParfaitFirebaseMessagingService.onNewToken` | 토큰이 바뀔 때 |
 
-앞의 셋은 값 없이 부르는 `RegisterCurrentDeviceTokenUseCase`, 마지막은 값이 손에 있는
-`RegisterDeviceTokenUseCase` 를 쓴다.
+**네 자리 모두 `DeviceTokenRegistrar.register()` 하나를 부른다.** `onNewToken` 도 전달받은
+값을 쓰지 않고 이 진입점을 탄다 — 등록구가 지금 값을 다시 읽으므로 결과가 같고, 같은 뮤텍스를
+타야 세션 축과 겹치지 않는다.
 
-**실패는 로그만 남기고 원래 결과를 그대로 돌려준다.** 등록 실패가 로그인·가입·앱 진입을 막을
-이유가 없고, 다음 등록 시점이 메운다. 로그인·가입 두 자리는 `refreshMyAccount` 를 이미 같은
-삼키기 형태로 부르고 있어 그 결을 따랐다. `BootstrapSessionUseCase` 는 다르다 — 그쪽의
-`refreshMyAccount` 실패는 라우팅을 `ToLogin` 으로 바꾸고 인증 거절이면 `logout()` 까지
-부르므로, **등록 실패만 삼키고 조회 실패는 그대로 둔다.**
+`register()` 는 **`suspend` 가 아니다.** 걸어만 두고 곧장 돌아간다. 부르는 자리가 로그인·가입·
+앱 진입이라 사용자가 스피너를 보고 있고, 등록 결과로 그 화면이 달라질 것도 없다. 초판은 세
+UseCase 가 등록을 직렬로 await 해서 **로그인 스피너와 스플래시가 FCM `getToken()` + 등록 POST
+두 왕복을 그대로 떠안았다.** 최초 설치 직후에는 `getToken()` 이 FCM 등록 왕복까지 포함한다.
 
-⚠️ 셋 다 결과를 로그 외에는 쓰지 않는데 **직렬로 await 한다.** 로그인 스피너와 스플래시가
-FCM `getToken()` + 등록 POST 두 왕복을 그대로 떠안는다. 최초 설치 직후에는 `getToken()` 이
-FCM 등록 왕복을 포함해 길어질 수 있다 → 미결.
+실제 실행은 `:data` 의 `DeviceTokenRegistrarImpl` 이 `@ApplicationScope` 에서 한다. 호출자
+스코프에 매달면 곧바로 갈아 끼워지는 화면과 함께 등록이 취소된다. 계약이 `:domain` 에 있고
+구현이 `:data` 에 있으므로 **`ApplicationScope` 를 `:domain` 으로 올릴 필요가 없다.**
+
+**재시도는 최대 3회, 3초·6초 백오프다.** 무한히 끌지 않는 이유는 실패가 이어지는 상황이 대개
+이 스코프보다 오래 가고, 서버가 반복 호출을 전제로 upsert 를 설계했기 때문이다. 나머지는 다음
+세션 트리거가 메운다. WorkManager 도, "등록됨" 영속 플래그도 들이지 않는다.
+
+⚠️ **`Mutex` 로 겹침을 막는다.** `api/notification.md` 등록 절이 "같은 신규 토큰으로 두 요청이
+동시에 들어가면 두 번째가 유니크 제약 위반으로 500" 을 경고한다. 진행 중이면 두 번째 호출은
+대기하지 않고 그냥 돌아간다 — 기다려 봐야 같은 토큰을 한 번 더 올릴 뿐이다.
 
 세션이 없는 경로에서는 부르지 않는다 — 이 엔드포인트는 인증이 필요하다(화이트리스트 밖).
 신규 회원 로그인 분기, 필수 약관 미동의, 저장된 토큰이 없는 부트스트랩이 그렇다.
 
-**재시도·유실 기록을 따로 두지 않는다.** 앱 시작 등록이 이미 무조건 돌기 때문에 미등록
-플래그를 남겨도 그것을 확인할 트리거가 앱 시작뿐이라 동작이 같다. 남는 구멍은 "등록에
-실패한 그 세션 동안 푸시를 못 받는다"이고, WorkManager 도입이나 전역 포그라운드 훅을 들일
-크기가 아니다.
+로그인·가입 두 자리는 `refreshMyAccount` 를 이미 삼키기 형태로 부르고 있어 그 결을 따랐다.
+`BootstrapSessionUseCase` 는 다르다 — 그쪽의 `refreshMyAccount` 실패는 라우팅을 `ToLogin` 으로
+바꾸고 인증 거절이면 `logout()` 까지 부른다. 등록은 그 성공 분기에서만 건다.
 
 부수 효과 — 서버는 등록 시점 access token 클레임에서 `sessionId` 를 꺼내고 `(memberId,
 sessionId)` 로 로그아웃 시 토큰을 지운다. 세션마다 재등록하므로 옛 세션이 남지 않는다.
@@ -169,6 +176,8 @@ sessionId)` 로 로그아웃 시 토큰을 지운다. 세션마다 재등록하�
 | `core/util/android/permission/NotificationPermissionManager.kt` | 버전 갈림 판정과 `shouldShowRationale` 노출 |
 | `feature/groups/enter/impl/component/NotificationPermissionGate.kt` | 안내 모달과 권한 요청 |
 | `domain/notification/DeviceTokenProvider.kt` | 현재 토큰 읽기 계약(Repository 가 아니라 `repository/` 밖) |
+| `domain/notification/DeviceTokenRegistrar.kt` | 등록을 걸기만 하는 계약(`suspend` 아님) |
+| `data/notification/DeviceTokenRegistrarImpl.kt` | 앱 스코프 실행·뮤텍스·재시도 |
 | `app/push/FirebaseDeviceTokenProvider.kt` | 위 구현(Firebase 의존이 `:app` 에 갇혀 있다) |
 | `app/push/di/DeviceTokenModule.kt` | 위 바인딩 — `:app` 최초의 Hilt 모듈 |
 | `domain/usecase/notification/` | 값 있는 등록 / 값 없는 등록 두 유스케이스 |
