@@ -6677,18 +6677,23 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `register()`·`onRegistered(installationId)` 다(25.1.0 부터). 미머지 브랜치
   `feature/push-notification-permission` 이 쓰는 API 가 정확히 그 셋이다
   (`FirebaseDeviceTokenProvider`·`ParfaitFirebaseMessagingService`).
-- **항목**: ① 언제 옮길지. ② **Java Admin SDK 가 `fid` 발송을 지원하는지** — 공식 문서가 Node.js
-  예시만 보여 주고, `TEAMYG-SERVER` 의 `FcmNotificationSender` 는 Admin SDK 9.9.0 으로
-  `Message.builder().setToken(token)` 을 쓴다. 앱만 옮기면 등록 토큰 자리에 FID 가 들어간다.
-  ③ 옮길 때 `DeviceTokenProvider`·`RegisterCurrentDeviceTokenUseCase` 를 걷을지 — FID 모델에는
-  값을 당겨오는 자리가 없고 `register()` 후 `onRegistered` 에서 올리는 콜백 모델이 된다
-  (`DeviceTokenRegistrar` 는 그 모델에서도 진입점으로 남는다).
+- **항목**: ① 언제 옮길지 — **선행 조건은 서버다**(아래 상태 참고). ② 서버가 Admin SDK 를
+  9.10.0 이상으로 올리고 `setFid` 로 바꾸는 회차를 언제 잡을지.
 - **상태**: 미해결 (**급하지 않다** — Firebase 문서가 두 방식을 "fully co-supported" 로 적고 제거
   일정이 없다. 기존 등록 토큰은 계속 동작한다)
   > ⚠️ **앱이 절반만 옮길 수 없다.** 두 API 는 매니페스트 플래그
   > `firebase_messaging_installation_id_enabled` 로 갈리고 **서로 배타적**이다 — 플래그가 없으면
   > `register()` 가 `IllegalStateException` 을 던지고, 있으면 반대로 `getToken()` 이 던진다.
   > 그래서 이 미결은 앱 단독으로 닫을 수 없다.
+  > ✅ **②가 답해졌다(2026-09-05, jar 대조).** `firebase-admin` **9.9.0 의 `Message.Builder` 에는
+  > `setFid` 가 없고, 9.10.0 에는 있다.** 서버는 9.9.0 이므로 **앱만 옮기면 FID 가 `setToken`
+  > 자리에 들어가 모든 발송이 실패한다.** 순서는 하나뿐이다 — ① 서버가 9.10.0 으로 올려 `setFid`
+  > 로 바꾸고 ② 그 뒤 앱이 플래그를 켠다. 앱 플래그를 먼저 켜면 `getToken()` 이 던져 되돌아갈
+  > 중간 상태가 없다.
+  > 📌 **앱 쪽 전환 비용은 생각보다 작다** — `FirebaseInstallations.getId()` 로 FID 를 당겨올 수
+  > 있어 지금의 pull 모델이 그대로 성립한다. `DeviceTokenRegistrar` 와 세션 트리거 넷은 남고
+  > `FirebaseDeviceTokenProvider` 구현·`onNewToken`→`onRegistered`·매니페스트 플래그만 바뀐다.
+  > (초판이 "값을 당겨오는 자리가 없어져 구조가 통째로 바뀐다"고 적었으나 사실이 아니다.)
   > 📌 브랜치는 등록 토큰 축에 남기로 하고 근거·전환 조건을
   > [specs/2026-09-05-push-notification-permission-and-device-token](../specs/2026-09-05-push-notification-permission-and-device-token.md)
   > 결정 6에 적었다. 같은 라운드에 **토큰 계약을 비널로 좁혔다** — `getToken()` 은 `Task<String>` 이고

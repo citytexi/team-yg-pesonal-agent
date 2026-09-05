@@ -190,19 +190,23 @@ API 가 그 셋이다(25.1.2 소스로 확인).
 
 **그래서 지금은 옮기지 않는다.** 근거 셋이다.
 
-1. **서버가 함께 움직여야 한다.** `TEAMYG-SERVER` 의 `FcmNotificationSender` 는
-   `Message.builder().setToken(token)` 으로 보낸다(Admin SDK 9.9.0). 앱만 FID 로 바꾸면
-   등록 토큰 자리에 FID 가 들어간다. Java Admin SDK 의 `fid` 지원 여부는 **확인하지 못했다** —
-   공식 문서가 Node.js 예시만 보여 준다.
+1. **서버가 먼저 움직여야 하고, 순서를 뒤집을 수 없다.** `TEAMYG-SERVER` 의
+   `FcmNotificationSender` 는 `Message.builder().setToken(token)` 으로 보낸다(Admin SDK
+   **9.9.0**). 그 판의 `Message.Builder` 에는 **`setFid` 가 없다**(jar 로 확인). `setFid` 는
+   **9.10.0** 부터 있다. 즉 앱만 옮기면 FID 가 `setToken` 자리에 들어가고 **모든 발송이
+   실패한다.** 순서는 ① 서버가 9.10.0 으로 올리고 `setFid` 로 바꾼다 ② 그 뒤 앱이 플래그를
+   켠다 뿐이다 — 앱 플래그를 켜는 순간 `getToken()` 이 던지므로 되돌아갈 중간 상태가 없다.
 2. **급하지 않다.** Firebase 문서가 두 방식을 "fully co-supported" 로 적고 제거 일정을 두지
    않았다. 기존 등록 토큰은 계속 동작한다.
-3. **이 브랜치의 범위를 넘는다.** 전환하면 `DeviceTokenProvider` 와
-   `RegisterCurrentDeviceTokenUseCase` 가 통째로 사라진다 — 값을 당겨오는 자리가 없어지고
-   "`register()` 를 부르고 `onRegistered` 에서 올린다"는 콜백 모델이 되기 때문이다.
-   지금의 `DeviceTokenRegistrar` 는 그 모델에서도 진입점으로 남을 수 있다.
+3. **이 브랜치의 범위를 넘는다.** 다만 **구조가 통째로 바뀌지는 않는다** —
+   `FirebaseInstallations.getId()` 로 FID 를 당겨올 수 있어 지금의 pull 모델이 그대로
+   성립한다. `DeviceTokenRegistrar` 와 세션 트리거 넷은 남고, 바뀌는 것은
+   `FirebaseDeviceTokenProvider` 의 구현과 `onNewToken` → `onRegistered` 콜백,
+   그리고 매니페스트 플래그다.
 
-**전환을 다시 볼 조건**: ① 서버가 `fid` 발송을 지원한다고 확인되거나, ② Firebase 가 등록
-토큰 제거 일정을 발표하거나, ③ deprecated API 가 실제로 동작을 멈출 때.
+**전환을 다시 볼 조건**: ① 서버가 Admin SDK 9.10.0 이상으로 올라가고 `setFid` 로 바뀌거나,
+② Firebase 가 등록 토큰 제거 일정을 발표하거나, ③ deprecated API 가 실제로 동작을 멈출 때.
+①이 선행 조건이고 나머지 둘은 시급성만 바꾼다.
 
 부수적으로 이번에 **토큰 계약을 비널로 좁혔다.** `getToken()` 은 `Task<String>` 이고 미발급
 상태를 `Task` **실패**로 주므로, `currentToken(): DeviceToken?` 의 `null` 분기는 도달하지
