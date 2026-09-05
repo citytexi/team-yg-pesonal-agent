@@ -5,8 +5,77 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `e6ce42b1` (`Merge pull request #440 from mash-up-kr/feature/image-loading-placeholder`)
-- **요약**: **원격 이미지를 기다리는 방식이 두 화면에서 각각 정해졌고, 그 방식이 반대다**
+- **커밋**: `29c2f050` (`Merge pull request #447 from mash-up-kr/feature/push-fcm-service`)
+- **요약**: **2026-08-22에 걷어냈던 FCM 축이 돌아왔고, 서버가 요구한 다섯 중 셋만 맞췄다**
+  (delta 2건, **17파일 · 삽입 462줄 · 삭제 0줄** — 전부 새 파일이거나 기존 파일에 더한 것이고
+  지운 줄이 하나도 없다). 유닛 1047 → **1060건**(+13: `PushDeepLinkParserTest` 11 ·
+  `PushDeepLinkEventBusImplTest` 2), 계측 **35건** 유지. **선작성 스펙·계획 없음 → 아카이브 이동
+  0건**, 미결은 **넷이 생기고 셋이 부분 해소, 둘이 갱신됐다**(OQ-P-358·359·360·361 신설 /
+  341·351·352 부분 해소 / 343·354 갱신, `oq-next` 358 → 362).
+
+  **직전 회차가 "다음 회차의 후보"로 꼽은 푸시 브랜치 셋 중 둘이 들어왔다**(#446
+  `feature/push-notification-deeplink` · #447 `feature/push-fcm-service`). 이번에는 **예고와 머지본이
+  어긋나지 않았다** — 미결에 미리 적어 둔 "부를 수단이 브랜치에 있다"가 그대로 사실이 됐고, 대신
+  **예고에 없던 축이 하나 붙었다**(딥링크). 남은 하나(`feature/push-notification-permission`)가
+  안 들어온 것이 이번 회차의 성격을 정한다.
+
+  **[ADR-0013](adr/0013-firebase-fcm-crashlytics.md)에 되살림 정정을 더했다**(철회 정정은 지우지
+  않는다 — 두 결정이 다 이력이다). **되살린 근거가 걷어낸 근거와 정확히 짝을 이룬다** — 철회 사유는
+  "보낼 서버가 없다"였고 서버가 실제로 보내기 시작하면서 그 전제가 사라졌다. 다만 **돌아온 것의
+  이름과 자리가 달라졌다**: `fcm/YGFirebaseMessagingService` → `push/ParfaitFirebaseMessagingService`,
+  채널 id는 앱이 정하던 `fcm_default_channel` → **서버가 못 박은 `parfait_default`를 따랐고**
+  (OQ-P-352 ① 해소), 채널 생성 자리는 `MainActivity` → `BaseApplication`이다.
+
+  **서버가 요구한 다섯 중 셋만 맞았다.** ✅ 채널 id · ✅ `data` 키 셋 · ✅ 딥링크 도달은 됐고,
+  ⚠️ **`date`를 안 읽어 항상 최신 캔버스로 열며**(`AddTopping` KDoc이 그렇게 못 박는다),
+  ⚠️ **중복 수신을 알림 두 개로 쌓고**(알림 id가 `messageId.hashCode()`),
+  ❌ **토큰 등록을 한 번도 안 부른다.** 앞의 둘은 [api/conventions.md](api/conventions.md)
+  "Android 불일치"에 행 둘로 올렸다(1건 → **3건**, 그중 둘은 HTTP 왕복이 아니라 **단방향 푸시의
+  간극**이라 엔드포인트 셈에 안 잡힌다) → OQ-P-359 신설.
+
+  ⚠️ **가장 큰 것은 안 들어온 것이다 — OQ-P-358 신설.** `POST_NOTIFICATIONS`가 **매니페스트 선언만**
+  돌아왔고 **런타임 요청 코드는 develop에 0건**이다. 그래서 Android 13+에서는 수신부·채널·딥링크가
+  다 서 있어도 **표시 단계에서 막힌다.** ADR-0013이 "되살릴 때 다시 정하라"고 남긴 물음 둘 중
+  권한 쪽은 답이 아니라 **공백으로 돌아온 셈**이다. 등록 호출도 같은 부류다 — `onNewToken`이 돌아왔는데
+  주석이 "등록 API 스펙이 아직 배포되지 않았다"고 적고, **그 전제는 PR #437이 이미 무너뜨렸다.**
+  판정은 "부를 수단이 없다"에서 **"부를 수 있는데 안 부른다"**로 옮겼다(OQ-P-341 ②).
+
+  **딥링크 축은 세션 종료 이동을 그대로 본떴다.** `:domain`의 `PushDeepLinkEventBus` + `:data`의
+  `PushDeepLinkEventBusImpl`(`Channel(CONFLATED)`) + **앱 루트 `MainRoute` 단일 수집**이고, 접히는
+  규칙의 뜻만 다르다(401 여러 건 → 로그아웃 한 번 / 알림 연달아 탭 → 마지막 한 곳). 구조가 같으므로
+  **새 ADR을 만들지 않고** ADR-0013 정정과 [navigation-flow](architecture/navigation-flow.md)
+  "푸시 딥링크 이동"에 적었다. 발행은 `MainActivity`의 `onCreate`·`onNewIntent` 둘이고
+  (`launchMode="singleTop"`가 이번에 붙었다), 소비한 `Intent`는 `setIntent(Intent())`로 비운다.
+
+  ⚠️ **콜드 스타트 경합이 미검증이다 — OQ-P-360 신설.** 코드 주석은 딥링크 수집이 "로그인·부트스트랩이
+  끝난 뒤" 시작한다고 적지만 `LaunchedEffect(Unit)`은 **앱 루트 첫 컴포지션에 곧바로** 시작하고,
+  그 시점의 백스택은 `NavKeySplash` 하나다. 스플래시가 끝나며 `replaceAll(...)`로 백스택을 갈아
+  끼우므로 **딥링크가 먼저 쌓이고 리셋이 뒤따르는 순서**가 가능하다. 이동 수단이 `goTo`인 것도
+  이 저장소의 다른 경계와 다르다.
+
+  ⚠️ **앱이 서버보다 앞서 갔다 — OQ-P-361 신설.** `PushNotificationType`이 셋
+  (`TOPPING`·`REMIND_AM`·`REMIND_PM`)이고 `route=group`이 그룹 목록으로 떨어지는데, **서버에 그것을
+  보내는 코드가 없다**(트리거 1종). 근거로 코드가 가리키는 "FCM 페이로드 스펙 v1"은 **parfait에도
+  위키에도 서버 저장소에도 없다.** 채널 설명 문구(`새 토핑, 캔버스 마감 안내 알림`)도 서버가 안 보내는
+  알림을 약속한다.
+
+  **`app` 모듈이 유닛 테스트 소스셋을 처음 가졌다.** `parfait.test.unit`이 **진입 모듈**에 붙은 것도
+  처음이고(그전까지 core·`data`·`domain`과 feature `impl`에만 있었다), 그것을 가능하게 한 것은 **파싱을 `Intent`에서 떼어 둔 설계**다 — `PushDeepLinkParser`가
+  원시 문자열만 받으므로 프레임워크 타입 없이 JVM에서 돈다. 잠근 것은 `groupId` 경계값 넷
+  (0·음수·숫자 아님·없음) · 모르는 `type`·`route`의 폴백 · 평범한 실행이다.
+
+  **이번 회차가 확인한 것** — **되살림은 걷어냄의 역연산이 아니다.** 이 문서는 철회 정정에 "되살릴 때
+  다시 정해야 하는 것" 둘을 적어 두었는데, 되살아난 코드는 **하나를 답하고 하나를 비운 채** 왔다.
+  그러므로 되살림 회차에 할 일은 "복원됐는지" 확인이 아니라 **걷어낼 때 적어 둔 물음 목록을 한 줄씩
+  대조하는 것**이고, 답이 없는 자리는 "아직 안 왔다"가 아니라 **새 미결로 세워야** 다음 회차가 그것을
+  본다(OQ-P-358이 그 형태다). 미머지 브랜치가 그 답을 갖고 있다는 사실은 문서가 기다릴 이유가 되지
+  않는다 — develop이 지금 그 상태이기 때문이다.
+
+  **미머지 브랜치는 여섯에서 넷이 됐다** — 들어온 것이 둘이고 새로 올라온 것은 없다
+  (`feature/debug-mode` · `feature/#420-canvas-tutorial` · `feature/#423-canvas-save-preview` ·
+  `feature/push-notification-permission`). 마지막 하나가 OQ-P-341 ②③④와 OQ-P-358을 한꺼번에 답한다.
+
+  직전 회차 요약(66회차, `e6ce42b1`): **원격 이미지를 기다리는 방식이 두 화면에서 각각 정해졌고, 그 방식이 반대다**
   (delta 1건, **41파일 · 삽입 1697줄 · 삭제 224줄**). 유닛 1029 → **1047건**(+18: `reveal/` 순수 함수 11 ·
   `CanvasLoadState` 7), 계측 17 → **35건**(+18, 파일 6 → 11 — `core:ui`가 계측 소스셋을 처음 가졌다).
   **선작성 스펙·계획 없음 → 아카이브 이동 0건**, 미결은 **셋이 생기고 하나가 해소, 하나가 부분 해소,
@@ -1579,6 +1648,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-05 | `29c2f050` | Merge #446(푸시 알림 딥링크) · #447(FCM 수신부) | delta 2건, **17파일 462/0**(삭제 0줄). 유닛 1047 → **1060건**(+13: `PushDeepLinkParserTest` 11 · `PushDeepLinkEventBusImplTest` 2), 계측 **35건** 유지. **`app` 모듈이 유닛 테스트 소스셋을 처음 가졌다**(`parfait.test.unit`이 **진입 모듈**에 처음 붙었다 — 그전까지 core·`data`·`domain`과 feature `impl`에만 있었다. 파싱을 `Intent`에서 뗀 덕에 가능했다). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **2026-08-22 PR #325가 걷어낸 FCM 축이 되살아났다** — `firebase-messaging` 의존 · `push/ParfaitFirebaseMessagingService` · `BaseApplication`의 채널 생성 · 매니페스트 서비스 등록이 돌아왔고 **채널 id는 앱이 정하지 않고 서버가 못 박은 `parfait_default`를 따랐다**(OQ-P-352 ① 해소). 예고에 없던 **딥링크 축**이 함께 왔다 — `:domain` `PushDeepLink`·`PushNotificationType`·`PushDeepLinkEventBus` + `:data` `PushDeepLinkEventBusImpl`(`Channel(CONFLATED)`) + **앱 루트 `MainRoute` 단일 수집**으로 **세션 종료 이동 구조를 그대로 복제**해 새 ADR을 만들지 않았다. **서버가 요구한 다섯 중 셋만 맞다** — ⚠️ `date`를 안 읽어 항상 최신 캔버스로 열고, ⚠️ 중복 수신이 알림 두 개로 쌓이며(`messageId.hashCode()`), ❌ **토큰 등록을 한 번도 안 부른다**(`onNewToken` 주석의 전제는 PR #437이 이미 무너뜨렸다 — OQ-P-341 ②). ⚠️ **`POST_NOTIFICATIONS`는 선언만 돌아오고 요청 코드가 0건**이라 Android 13+에서는 표시 자체가 막힌다(OQ-P-358). 조치: ADR-0013 되살림 정정(+`위험·방어` 정정), api 3문서(notification.md — 요구 표에 앱 열 신설·`푸시 수신·딥링크` 절·미결 4항목 / conventions.md Android 불일치 1건 → **3건** / README 도메인 표·주석), architecture 3건(navigation-flow — `푸시 딥링크 이동` 절 신설 / data-layer — `PushDeepLinkModule`·`domain/model` 하위 패키지 열 · 통로 복제 / module-structure — `app` `push/`·유닛 테스트 소스셋), open-questions 9항목(358·359·360·361 신설 / 341·351·352 부분 해소 / 343·354 갱신), doc-baseline·index 기준선 갱신. ⚠️ **실기기 확인 0회**이고 등록 호출부가 0건이라 발송은 여전히 전부 `NO_DEVICE_TOKEN` 취소다. 미머지 **여섯 → 넷**(신규 0) |
 | 2026-09-04 | `e6ce42b1` | Merge #440(원격 이미지 로딩 표현 — 캔버스 일괄 드러내기 · G-001 순차 등장) | delta 1건, **41파일 1697/224**. 유닛 1029 → **1047건**(+18: `reveal/` 순수 함수 11 · `CanvasLoadState` 7), 계측 17 → **35건**(+18, 파일 6 → 11 — `core:ui` 첫 계측 소스셋). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#440**: 세 라운드째 미머지로 세어 온 `feature/image-loading-placeholder`가 들어왔고 **머지본이 예고와 셋 달랐다**(`YGToppingGroup` 무변경 · 두 화면의 구현이 갈림 · `YGSkeleton` 소비처는 `YGCanvas` 배경 하나) → OQ-P-346 해소 메모가 그 대조를 적는다. **같은 문제에 반대 답 둘** — C-001은 `rememberBatchRevealState`로 다 모일 때까지 안 내고(빈 목록은 완료가 아니다, 리셋 키는 그리는 캔버스), G-001은 안 기다리는 대신 `rememberStaggeredRevealState`로 400ms씩 쌓는다. 잇는 것은 `core:ui` `reveal/`과 `Modifier.revealed`(알파 0 + 시맨틱 제거, 측정·배치는 유지)뿐이다. 실패도 반대다(캔버스는 한 장만 실패해도 전체 차단, 목록은 실패분만 폴백). **`YGScaffoldV2`에 `loadingOverlay` 슬롯**(기본값이 종전 동작이라 호출부 무변경, C-001이 실패 덮개를 끼운다) + **터치 삼킴이 슬롯 몫으로 내려가며 `YGDimOverlay` 분리**. ⚠️ 접근성 차단이 `hideFromAccessibility()` → `clearAndSetSemantics { }`로 **수단 정정**(앞의 것은 노드 하나만 감춘다). G-001 실패 갈림이 세 번째로 뒤집혀 **"당겼는가"** 기준이 되고 `ShowRefreshError`·문구·토스트 호스트 삭제, 새로고침 인디케이터가 로띠 + 문구 2줄로 플랫폼 기본을 벗어났다(OQ-P-113 ① 해소). 조치: architecture 3건(design-system — 신설 컴포넌트 2·`YGLoadingArt`·이미지 로더·덮개 슬롯 / module-structure — `core:ui` `reveal/` / state-management — 실패 갈림), 아카이브 스펙 5건(g001-group-list · ygscaffold-v2 · screen-resume-refetch · c001-canvas-today-detail · topping-alpha-hit-test), specs/README 5행, open-questions 9항목(355·356·357 신설 / 346 해소 · 348 부분 해소 / 102·112·113·167·330·349 갱신), doc-baseline·index 기준선 갱신. ⚠️ **실기기 확인 0회**이고 늘어난 계측 18건도 실행되지 않는다(CI가 `core:ui`를 컴파일 대상에 안 넣는다). 미머지 **일곱 → 여섯**(신규 0) |
 | 2026-09-04 | `2b1dce3a` | Merge #451(API 현행화 260903 — `http/` 요청 모음) | delta 1건, **5파일 550/3**(전부 `http/`). 유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#451**: `notifications.http`(기기 토큰 등록 — 204·본문 없음·upsert 재호출·400 4종·401 대조군)와 `fcm-test.http`(**서버를 거치지 않고 FCM v1 API 로 직접** 발송해 앱 수신을 확인)가 신설되고 `http-client.env.json`·`_reset.http`·`http/README.md` 가 함께 맞춰졌다(`fcm_*` 세 변수는 손으로 채우는 값이라 `_reset.http` 비우기 목록에서 제외). `http/` 커버 **25/29 → 26/29, 일곱 번째 왕복**이고 **방향이 반대다** — 요청 모음이 앱 코드보다 앞서 나갔다(등록을 부를 수단이 develop 에 0건). `.kt`·gradle 무변경이라 **코드 드리프트 0건**이고 `android_status`·Android 매핑 판정은 그대로 옳다. 조치: api/README(파일 목록·커버 셈·`fcm-test.http` 성격), api/notification.md(Android 매핑에 확인 수단 표·미결 2항목), open-questions 5항목(OQ-P-354 신설 — 서버 발송 페이로드 복제를 세는 축이 없다 / OQ-P-092·108·341·352 갱신), doc-baseline·index 기준선 갱신. ⚠️ 두 파일 다 **실행 기록 0건**(`fcm_access_token` 1시간 만료·서비스 계정 키 필요, 받을 쪽도 없다). 미머지 **다섯 → 일곱**: `feature/push-notification-permission`(OQ-P-341 ②③④) · `feature/#420-canvas-tutorial` 추가 |
 | 2026-09-03 | `c74f40eb` | Merge #444(스플래시 로띠 교체) | delta 1건, **1파일 0/0**(바이너리 교체). 유닛 **1029건**·계측 **17건** 유지(테스트 파일 무변경). **선작성 스펙·계획 없음 → 아카이브 이동 0건**. **#444**: `feature/intro/impl` `res/raw/splash.lottie` 가 새 로고 애니메이션으로 교체됐다. dotLottie 를 풀어 대조하니 manifest 판본·애니메이션 id(`Lottie-Logo`)·프레임률·재생 길이·화면 크기·레이어 여덟(`Parfait` 일곱 글자 + `Stroke`)이 교체 전과 동일하고 각 레이어의 패스·키프레임만 다르다 → `R.raw.splash`·`SplashScreen` 무변경, 위키 [[스플래시-애니메이션]] A-001 정본의 **60fps·3.5초** 타임라인 유지, 진입 대기 길이(OQ-P-229) 불변. **드리프트 0건**. 조치: open-questions 3항목(OQ-P-350 신설 — 바뀐 그림을 본 사람 0건·회귀 감지 수단 없음 / OQ-P-229·341 갱신), doc-baseline·index 기준선 갱신. ⚠️ 실기기 확인 0회. 미머지 **둘 → 다섯**: `feature/debug-mode` · `feature/image-loading-placeholder` · `feature/#423-canvas-save-preview` · `feature/push-fcm-service` · `feature/push-notification-deeplink` |

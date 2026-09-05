@@ -4,7 +4,7 @@ title: 모듈 구조
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-04
+verified: 2026-09-05
 related_spec: a005-group-create, g001-group-list, c101-camera-picture-confirm, unit-test-infrastructure, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab
 related_adr: ADR-0001, ADR-0002, ADR-0003, ADR-0011, ADR-0015, ADR-0016, ADR-0025
 related_architecture:
@@ -34,7 +34,7 @@ app / app-preview
 
 | 그룹 | 모듈 | 목적 | 적용 컨벤션 플러그인 |
 |------|------|------|----------------------|
-| 진입 | `app`, `app-preview` | 앱 진입점(`BaseApplication`, `MainActivity`, `MainRoute`), 전체 조립 | `AndroidApplication*`, 서명 |
+| 진입 | `app`, `app-preview` | 앱 진입점(`BaseApplication`, `MainActivity`, `MainRoute`), 전체 조립 + **푸시 수신·딥링크 파싱 `push/`**(#446·#447 — `ParfaitFirebaseMessagingService`·`PushDeepLinkParser`·`Intent.toPushDeepLinkOrNull`. Firebase SDK 의존을 `app`에만 두는 [[0013-firebase-fcm-crashlytics]] 경계를 지킨다) | `AndroidApplication*`, 서명 (+ **`parfait.test.unit`** #447) |
 | core | `core:ui` | MVI 베이스(`BaseViewModel`, `MviContract`), 공유 전환 스코프, 여러 feature 공용 레이아웃(`VerticalGridLayout`)·공용 문자열 리소스(유효성 에러 문구) + **도메인 결과 → 표시 문자열 매핑**(`text/NameValidResultUiText.kt`, [[0016-domain-result-presentation-string-mapping]]) + **드러내기 상태 `reveal/`**(#440, 아래 참고). `:domain` 의존(#223, 2026-08-13) | android-library + compose (+ `parfait.test.android`·`parfait.test.compose` #440) |
 | core | `core:designsystem` | 테마(`YGMaterialTheme`)·토큰(`YGSemanticColors`, `SizeTokens` 등) | android-library + compose |
 | core | `core:navigation` | `Navigator`, NavKey 레지스트리, 엔트리 등록 | android-library |
@@ -68,6 +68,12 @@ app / app-preview
   않으므로 `bundles.test-unit`과 짝일 때만 성립한다([spec](../specs/archive/2026-08-06-unit-test-infrastructure.md)).
   **`parfait.test.unit`은 화면 결선 라운드마다 그 feature `impl`에 붙는다**(2026-08-15 기준 인트로·로그인·
   그룹 목록·그룹 참여·그룹 설정·앱 설정). 적용 목록의 SoT는 각 `build.gradle.kts`다.
+  > 📌 **진입 모듈에 처음 붙었다(2026-09-05, PR #447)** — 그전까지 이 플러그인은 core·`data`·`domain`과
+  > feature `impl`에만 있었다. `app`에 붙으면서
+  > `app/src/test`가 생겼다(`PushDeepLinkParserTest`). 진입 모듈이 유닛 테스트 소스셋을 가진 것은
+  > 처음이고, 그것을 가능하게 한 것은 **파싱을 `Intent`에서 떼어 둔 것**이다 — `PushDeepLinkParser`가
+  > 원시 문자열만 받으므로 Android 프레임워크 타입 없이 JVM에서 돌아간다. `Intent` 쪽 얇은 확장
+  > (`toPushDeepLinkOrNull`)은 테스트가 없다.
 - ⚠️ **표시 규격이 `domain`에 들어온 사례**(2026-08-15, PR #231) — `domain` `model/CanvasConst.kt`의
   `CANVAS_ASPECT_RATIO`는 캔버스 화면 비율이라 도메인 규칙이 아니라 표시 규격이고, 같은 값이
   `core:designsystem` `YGCanvas`의 private `CANVAS_AREA_ASPECT_RATIO`로 이미 있다. Android 의존은

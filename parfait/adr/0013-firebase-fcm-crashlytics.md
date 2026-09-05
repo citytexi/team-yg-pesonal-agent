@@ -6,7 +6,7 @@ date: 2026-07-18
 deciders: Parfait 팀
 supersedes:
 superseded_by:
-related_adr: ADR-0014
+related_adr: ADR-0014, ADR-0021
 related_spec:
 related_architecture:
 platforms: android
@@ -55,6 +55,39 @@ tags: [adr, parfait]
 > → [open-questions](../synthesis/open-questions.md) OQ-P-309.
 > 자체 네이티브 코드가 생기면 그때 이 스위치를 다시 본다.
 
+> 🔁 **FCM 축이 되살아났다 (2026-09-05, PR #446 `feature/push-notification-deeplink` · #447
+> `feature/push-fcm-service` develop 머지).** 위 철회 정정(2026-08-22)을 지우지 않는다 — 두 결정이
+> 모두 이력이고, 되살린 근거가 걷어낸 근거와 정확히 짝을 이룬다. **철회 근거는 "보낼 서버가
+> 없었다"였고, 서버가 실제로 보내기 시작하면서 그 전제가 사라졌다**
+> ([api/notification.md](../api/notification.md) "서버가 보내는 푸시").
+>
+> 돌아온 것과 **이름·자리가 달라진 것**:
+>
+> | 걷어낸 것(2026-08-22) | 되살아난 것(2026-09-05) |
+> |---|---|
+> | `app` `fcm/YGFirebaseMessagingService` | `app` `push/ParfaitFirebaseMessagingService` |
+> | 채널 id `fcm_default_channel`(앱이 정한 값) | 채널 id `parfait_default` — **서버가 못 박아 보내는 값을 앱이 따랐다**(`PUSH_NOTIFICATION_CHANNEL_ID`, OQ-P-352 ①) |
+> | 채널 생성이 `MainActivity.onCreate` | `BaseApplication.onCreate`(`createPushNotificationChannel`, `IMPORTANCE_HIGH` · 표시 이름·설명은 `strings.xml`) |
+> | `fcmLogger`·`tokenLogger` | `Loggers.create("Push")` 하나([[0014-logging-abstraction-kermit]]) |
+> | 매니페스트 `POST_NOTIFICATIONS` **선언 + 런타임 요청** | **선언만 돌아왔다** — 요청하는 코드는 develop에 없다 → OQ-P-358 |
+> | `onNewToken`이 `TODO("서버에 FCM 토큰 전송")` | `onNewToken`이 로그만 남긴다 — **등록 표면(`NotificationRemoteDataSource`, PR #437)이 이미 있는데 부르지 않는다**(OQ-P-341 ②) |
+>
+> **함께 들어온 것은 딥링크 축**이다(#446). 이것은 철회 전에 없던 새 결정이라 위 표에 짝이 없다 —
+> `:domain`의 `PushDeepLink`(sealed) · `PushNotificationType` · `PushDeepLinkEventBus`와 `:data`의
+> `PushDeepLinkEventBusImpl`(`Channel(CONFLATED)`), `app`의 `PushDeepLinkParser`·`toPushDeepLinkOrNull`이다.
+> **세션 종료 이동의 구조를 그대로 재사용한다**(도메인 인터페이스 + `:data` 채널 구현 + 앱 루트 단일
+> 수집, [ADR-0021](0021-token-refresh-forced-logout.md)) — 그래서 별도 ADR을 만들지 않고 여기 적는다.
+> 다른 점은 하나다: 발행자가 `app`의 `MainActivity`라 **`post`를 도메인 인터페이스에 함께 뒀다**
+> (세션 쪽은 구독구만 도메인에 있고 발행은 `:data` 구현이 갖는다).
+> 배선은 [navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동", 계약 대조는
+> [api/notification.md](../api/notification.md) Android 매핑에 있다.
+>
+> **되살릴 때 다시 정하라고 남긴 둘 중 하나만 답해졌다.** 토큰 라이프사이클은 여전히 미정이고
+> (`onNewToken`이 등록을 안 부른다), **알림 권한을 언제 묻는가는 답이 아니라 공백으로 돌아왔다** —
+> 걷어낸 형태(`MainActivity.onCreate`에서 무조건)를 되풀이하지 않은 대신 **묻는 코드 자체가 없어**
+> Android 13 이상에서는 사용자가 OS 설정으로 직접 켜기 전까지 알림이 표시되지 않는다.
+> 둘 다 미머지 브랜치 `feature/push-notification-permission`가 건드리는 자리다(OQ-P-341 ②③④).
+
 ## 대안
 - **푸시 미도입(로컬 알림만)** — 외부 SDK·GMS 의존 회피. 그러나 서버발 이벤트(마감·초대) 푸시 불가로 핵심 UX 결손.
   **→ 기각:** 그룹 협업 앱에서 푸시는 사실상 필수.
@@ -81,3 +114,9 @@ tags: [adr, parfait]
 > 추적할 대상이 없다(OQ-P-012 해소). **남는 것은 GMS 의존과 `google-services.json`**이다 —
 > 전자는 세그멘테이션([[0012-mlkit-subject-segmentation]])이 같은 의존을 이미 지고 있어 FCM이
 > 빠져도 그대로이고, 후자는 Analytics·Crashlytics가 계속 요구한다.
+
+> 🔁 **방어 둘이 2026-09-05에 형태를 바꿔 돌아왔다**(위 되살림 정정). 지금 코드가 하는 것은
+> `showNotification` 진입부의 `ContextCompat.checkSelfPermission(POST_NOTIFICATIONS)` 확인
+> 하나이고, **`areNotificationsEnabled()` 확인도 `@RequiresPermission` 표기도 없다.**
+> 권한이 없으면 조용히 `return` 한다 — 실패가 로그에도 안 남는다. 토큰 라이프사이클 미완은
+> 대상이 다시 생겼으므로 OQ-P-341이 이어서 추적한다(OQ-P-012 해소는 그대로 이력이다).

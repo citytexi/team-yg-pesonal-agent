@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-04
+verified: 2026-09-05
 related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
 related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -6129,7 +6129,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   설계했다(반복 호출이 정상이라는 뜻이다). ③ 알림 권한을 언제 묻는지 — ADR-0013이 "되살릴 때 다시
   정하라"고 남긴 물음이고, 걷어낸 형태(`MainActivity.onCreate`에서 무조건)가 문제였다.
   ④ 권한 거부 상태에서도 토큰을 등록할지.
-- **상태**: 미해결 (**동작 영향 0** — 앱이 부르지 않으므로 지금은 도달하지 않는다)
+- **상태**: **부분 해소** (① 되살렸다 — 2026-09-05 PR #446·#447 develop 머지 / ②③④ 잔존.
+  **동작 영향 0** — 등록 호출부가 0건이라 서버 발송은 전부 `NO_DEVICE_TOKEN`으로 취소된다)
   > 📌 **`:data` 표면이 생겼다(2026-09-03, PR #437 `7019a550`)** — `NotificationService` ·
   > `NotificationRemoteDataSource`(+`Impl`) · `DeviceToken`. **미결은 그대로다** — ①이 묻는 것은
   > 표면의 유무가 아니라 **FCM 축을 되살릴지**이고, 토큰을 얻는 심볼(`FirebaseMessaging`·
@@ -6153,6 +6154,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **손으로 돌려 볼 자리가 develop에 생겼다(2026-09-04, PR #451 `2b1dce3a`)** — `http/notifications.http`(등록)와 `http/fcm-test.http`(FCM 직접 발송)다. **앱 코드는 여전히 한 줄도 안 바뀌었고** 이 미결의 ①~④ 어느 것도 답해지지 않았다. 값은 두 가지다 — ① 등록 계약(204·upsert·400 4종)을 **앱 없이 지금 확인할 수 있게** 됐고, ② 수신부가 붙은 뒤 채널 id·`data` 파싱·딥링크를 **토핑을 실제로 올리지 않고** 재현할 수 있다. ⚠️ **아직 아무도 안 돌렸다** — `fcm_access_token`(1시간 만료)과 Firebase 서비스 계정 키가 필요하다.
   > 📌 **미머지 브랜치 `feature/push-notification-permission` 이 이 미결의 ②③④를 한꺼번에 건드린다(2026-09-04 확인)** — 커밋 제목이 `기기 토큰 등록의 도메인 계약을 만든다` · `NotificationRepository를 이미 있는 기기 토큰 등록 API에 연결한다` · `FCM 토큰 발급 시(onNewToken) 서버에 등록한다` · `알림 권한을 허용한 직후 지금 토큰을 바로 등록한다` · `그룹 생성·참여 직후 알림 권한 안내를 추가한다`로, ②(등록 호출 시점)는 **`onNewToken` + 권한 허용 직후**, ③(권한을 언제 묻는지)은 **그룹 생성·참여 직후**로 답해져 있다. 직전 회차가 `feature/push-fcm-service` 에서 본 "등록을 안 부르는 자리"도 이 브랜치가 잇는다. 머지 전에는 문서를 고치지 않는다([2026-07-13] 규율) — 머지 회차에 ②③④와 ADR-0013 되살림 정정을 함께 본다.
   > 📌 **미머지 브랜치가 다섯에서 일곱이 됐다(2026-09-04 확인)** — 위 권한 브랜치와 `feature/#420-canvas-tutorial`(C-001 최초 진입 튜토리얼 오버레이·표시 여부를 사용자 설정에 저장)이 더해졌다.
+  > ✅ **①이 답해졌다 — 되살렸다(2026-09-05, PR #447 `feature/push-fcm-service` · #446 `feature/push-notification-deeplink` develop 머지).**
+  > `firebase-messaging` 의존 · `app` `push/ParfaitFirebaseMessagingService`(수신·표시) ·
+  > `BaseApplication`의 채널 생성 · 매니페스트의 서비스 등록과 `POST_NOTIFICATIONS` 선언이 돌아왔고,
+  > 예고에 없던 딥링크 축이 함께 들어왔다 → [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 되살림 정정.
+  > **결정의 형태가 걷어낼 때와 다르다** — 채널 id를 앱이 정하지 않고 **서버가 못 박은 `parfait_default`를
+  > 따랐고**(OQ-P-352 ①), 채널 생성 자리가 `MainActivity`에서 `BaseApplication`으로 옮겼다.
+  > ⚠️ **②는 그대로 미해결이고 성격만 바뀌었다** — `onNewToken`이 돌아왔는데 **등록을 부르지 않는다.**
+  > 그 자리의 `TODO` 주석은 "등록 API 스펙이 아직 배포되지 않았다"고 적지만 **그 전제는 PR #437이 이미
+  > 무너뜨렸다**(`NotificationRemoteDataSource`가 develop에 있다). 직전 회차가 브랜치를 보고 예고한
+  > 그대로다 — 판정은 "부를 수단이 없다"에서 **"부를 수 있는데 안 부른다"**로 옮겼다.
+  > ⚠️ **③은 답이 아니라 공백으로 돌아왔다** — 권한을 묻는 코드가 develop에 0건이고, 그래서 Android 13+
+  > 에서는 수신부와 채널이 다 있어도 표시가 막힌다 → **OQ-P-358 신설**. ④(권한 거부 상태에서도 등록할지)는
+  > 등록 호출부가 0건이라 여전히 도달하지 않는다.
+  > 📌 **미머지 브랜치는 일곱에서 넷이 됐다**(`feature/debug-mode` · `feature/#420-canvas-tutorial` ·
+  > `feature/#423-canvas-save-preview` · `feature/push-notification-permission`). 남은 푸시 브랜치가
+  > ②③④를 한꺼번에 답하는 그 브랜치다.
 - **해소 메모**: 정하면 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)에 **되살림 정정**을 더하고
   (철회 정정을 지우지 않는다 — 두 결정이 다 이력이다), [api/notification.md](../api/notification.md)
   Android 매핑 절과 [data-layer](../architecture/data-layer.md)에 적는다. ①이 "미룬다"로 정해져도
@@ -6203,6 +6220,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 후보의 발송 코드가 없다. 이것이 ①에 남은 물음이다.
   > ③④는 서버가 손대지 않았다. 수신 설정 축이 없어 **끄는 방법이 OS 설정뿐**이고, 권한 요청 시점은
   > 여전히 앱 몫이다(OQ-P-341 ③과 같은 자리).
+  > 📌 **앱이 ①의 나머지 둘을 먼저 구현했다(2026-09-05, PR #446)** — `PushNotificationType`이
+  > `TOPPING`·**`REMIND_AM`·`REMIND_PM`** 셋이고 `route=group`이 그룹 목록으로 떨어진다. 즉 앱은
+  > **P-01/P-02/P-03 세 알림을 전제로 서 있는데 서버가 보내는 것은 하나뿐**이다. 근거로 코드가
+  > 가리키는 것은 "FCM 페이로드 스펙 v1"인데 **그 문서가 어느 저장소에도 없다** → **OQ-P-361 신설**.
+  > ⚠️ **④는 더 나빠졌다** — 서버가 안 손댄 것은 그대로이고, 앱은 **권한을 묻는 코드 없이** 수신부만
+  > 붙였다(OQ-P-358). ③(수신 설정)도 그대로라 끄는 방법은 여전히 OS 설정뿐이다.
 - **해소 메모**: ①②③은 **정책 소관이라 위키 [[open-questions]]와 갈리는 자리**다 — 여기는 앱이
   무엇을 구현해야 하는지만 추적한다. 정해지면 스펙을 `specs/`에 세우고
   [api/notification.md](../api/notification.md) 미결 절을 지운다.
@@ -6393,7 +6416,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `date`가 오늘이 아닐 수 있으므로 오늘 캔버스와 지난 캔버스 중 어디로 가는지가 갈린다.
   ③ `data` 키 이름·값(특히 `type`의 `TOPPING`)을 앞으로 늘릴 때 누가 관리하는지 — 지금은 서버 코드가
   유일한 정본이라 앱이 오타를 내도 아무 데서도 안 걸린다.
-- **상태**: 미해결 (**동작 영향 0** — 앱에 수신부가 없어 아직 아무도 이 문구를 못 본다)
+- **상태**: **부분 해소** (②가 코드로 답해졌다 — 앱이 목적지를 정했다. ①③ 잔존.
+  **동작 영향 0** — 등록 호출부가 0건이라 아직 아무도 이 문구를 못 본다)
+  > ✅ **②를 앱이 정했다(2026-09-05, PR #446)** — `route=canvas` → `NavKeyCanvasMain(groupId)`,
+  > `route=group` → `NavKeyGroupList`이고 **`date`는 안 읽는다.** `PushDeepLink.AddTopping`의 KDoc이
+  > "알림이 가리키던 날짜가 아니라 항상 그 그룹의 최신 캔버스"라고 못 박으므로 **오늘/지난 캔버스의
+  > 갈림은 "항상 오늘"로 닫혔다.** ⚠️ 그런데 그 선택의 근거도 코드 한 줄이고, 계약 표는 여전히
+  > `date`로 도달할 것을 요구한다 → **OQ-P-359 신설**.
+  > 📌 **③의 대가가 코드로 옮겨왔다** — `type`·`route`·`groupId` 세 키 이름과 `canvas`·`group`,
+  > `TOPPING`·`REMIND_AM`·`REMIND_PM` 값이 이제 **앱 프로덕션 코드에도 문자열 상수로** 있다
+  > (`PushDeepLinkIntent.kt`·`PushDeepLinkParser`). 서버가 값을 바꾸면 조용히 `null`이 되어
+  > **딥링크가 평범한 실행과 구분되지 않는다**(OQ-P-354와 같은 축이고 복제면이 넷째로 늘었다).
+  > ①(문구 승인 여부)은 그대로다 — 앱은 서버 문구를 그대로 표시하므로 승인 없이 사용자에게 닿는다.
 - **해소 메모**: ①은 정책 소관이라 위키 [[open-questions]]와 갈리는 자리다. ②③이 정해지면
   [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것" 표와
   [navigation-flow](../architecture/navigation-flow.md)에 적는다.
@@ -6410,13 +6444,22 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   다른 쪽이 조용히 깨지는 자리**라 어느 쪽이 정본인지 정해야 한다. ② 채널의 사용자 표시 이름·중요도를
   누가 정하는지(서버는 id만 보내고 나머지는 앱 몫이다). ③ **이 어긋남을 무엇이 잡는지** — 서버 테스트도
   앱 테스트도 상대편 상수를 모르므로 실기기로 받아 보기 전에는 드러나지 않는다.
-- **상태**: 미해결 (**지금은 도달 불가** — 등록된 토큰이 0건이라 발송이 전부 취소된다.
-  앱이 토큰을 등록하는 순간 활성화된다)
+- **상태**: **부분 해소** (① 앱이 서버 id를 따랐다 — 2026-09-05 PR #447 / ②는 앱이 정했고 근거가 없다 /
+  ③ 잔존. **지금은 도달 불가** — 등록된 토큰이 0건이라 발송이 전부 취소된다)
   > 📌 **③에 재현 수단이 생겼다(2026-09-04, PR #451 `2b1dce3a`)** — `http/fcm-test.http` 3번이
   > **일부러 다른 채널 id로 쏘는 대조군**이고, 응답이 200인데 알림이 안 뜨는 상황을 그대로 만든다.
   > 다만 ③이 물은 것은 "무엇이 자동으로 잡는가"이고 **그 답은 여전히 없다** — 이 요청도 사람이
   > 손으로 쏴야 하고, 앱에 수신부·채널이 없어 지금은 절반만 돌아간다(발송만 되고 받을 쪽이 없다).
   > 두 상수를 대조하는 검사는 서버에도 앱에도 없다.
+  > ✅ **①이 코드로 답해졌다 — 앱이 따라갔다(2026-09-05, PR #447)** — `PUSH_NOTIFICATION_CHANNEL_ID`가
+  > `parfait_default`이고 `BaseApplication.createPushNotificationChannel`이 앱 시작에 만든다.
+  > **정본은 서버라는 뜻이지만 그 사실을 적어 둔 곳이 양쪽 코드의 상수뿐**이라 ③(무엇이 어긋남을
+  > 잡는가)은 그대로다 — 오히려 같은 문자열을 가진 자리가 셋(서버·`fcm-test.http`·앱)이 됐다.
+  > 📌 **②도 앱이 정했다** — 중요도 `IMPORTANCE_HIGH`, 표시 이름 `파르페 알림`, 설명
+  > `새 토핑, 캔버스 마감 안내 알림`(`strings.xml`). ⚠️ **설명이 서버가 안 보내는 알림을 약속한다** —
+  > 캔버스 마감 알림은 발송 코드가 없다(OQ-P-343 ①). 이 문구를 승인한 정책 문서도 없다(OQ-P-351 ①).
+  > ⚠️ **채널이 있어도 표시되지 않는 구간이 새로 드러났다** — 권한을 묻는 코드가 없어 Android 13+
+  > 에서는 채널과 무관하게 막힌다(OQ-P-358).
 - **해소 메모**: 정해지면 [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것"에
   정본 표기를 남기고, 앱이 채널을 만들 때 그 상수 옆에 이 문서 포인터를 둔다. ①은 OQ-P-341(FCM 축을
   되살릴지)이 먼저 답해져야 실행에 옮길 수 있다.
@@ -6449,8 +6492,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ② 이 파일을 계약 서술 없이 "쏘는 방법"으로만 깎고 값은 `api/notification.md`를 보게 할지.
   ③ 대조군 요청(3~6번)은 **일부러 계약과 다르게** 쏘는 것이라, 나중에 읽는 사람이 정본과 구분할 수
   있는 표식이 파일 주석뿐인 것이 충분한지.
-- **상태**: 미해결 (**지금은 무해** — 앱에 수신부가 없어 이 파일을 돌려도 확인할 것이 없고,
-  서버 값도 2026-09-04 기준 셋이 일치한다)
+- **상태**: 미해결, **복제면이 넷이 됐다** (2026-09-05 PR #446·#447로 **앱 프로덕션 코드**가
+  같은 값들을 갖게 됐다 — 채널 id `parfait_default`(`PUSH_NOTIFICATION_CHANNEL_ID`)와
+  `data` 키·값 문자열(`PushDeepLinkIntent.kt`·`PushDeepLinkParser`). 이제 어긋나면 무해하지 않다 —
+  키가 안 맞으면 딥링크가 **평범한 실행처럼 조용히 무시되고**, 채널 id가 안 맞으면 알림이 안 뜬다)
 - **해소 메모**: OQ-P-092와 같은 자리에서 함께 정한다 — 둘 다 "계약 서술을 어디에 두는가"이고,
   이 항목은 **셈으로 안 잡히는 복제**라는 점만 다르다. 정하면
   [api/README.md](../api/README.md) "계약을 실제로 확인하는 법"에 반영한다.
@@ -6513,4 +6558,86 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ①이 정해지면 [g001 스펙](../specs/archive/2026-08-01-g001-group-list.md) 「토핑 배치」의
   갱신 블록과 정책 대조 표에 행을 더한다. ②는 실기기 관측이 선행이다.
 
-<!-- oq-next: 358 -->
+### [2026-09-05] 알림 권한을 묻는 코드가 없어 Android 13+에서는 푸시가 표시되지 않는다
+
+- **ID**: OQ-P-358
+- **출처**: `app/src/main/AndroidManifest.xml`(`POST_NOTIFICATIONS` **선언**) ×
+  `push/ParfaitFirebaseMessagingService#showNotification`(`ContextCompat.checkSelfPermission` 실패 시
+  조용히 `return`) × develop 전체 검색 — `ActivityResultContracts.RequestPermission`으로 이 권한을
+  요청하는 자리가 **한 곳도 없다**(카메라·갤러리 권한에는 있다). 2026-08-22 PR #325가 걷어낸 것 중
+  권한 요청만 돌아오지 않았다([ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 되살림 정정).
+- **항목**: ① 언제 묻는지 — 미머지 브랜치 `feature/push-notification-permission`은 **그룹 생성·참여
+  직후**로 답해 두었고(OQ-P-341 ③), 그 브랜치가 들어오기 전까지 develop은 묻지 않는다.
+  ② 거부·미허용 상태를 사용자에게 알릴지 — 지금은 표시 실패가 **로그에도 안 남는다**.
+  ③ Android 12 이하에서는 권한이 필요 없어 같은 코드가 다르게 동작하는데, 그 차이를 확인한 사람이 없다.
+- **상태**: 미해결 (**동작 차단** — 수신부·채널·딥링크가 다 있어도 Android 13+에서는 사용자가 OS 설정에서
+  직접 켜기 전까지 아무것도 안 뜬다. 다만 등록 호출부가 0건이라 지금은 애초에 알림이 오지 않는다)
+- **해소 메모**: 권한 브랜치가 머지되는 회차에 OQ-P-341 ②③④와 함께 본다. 정해지면
+  [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것"의 마지막 행과
+  [navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동"의 ⚠️를 고친다.
+
+### [2026-09-05] 앱 수신부가 계약의 `date`를 버리고 중복 수신을 알림 두 개로 쌓는다
+
+- **ID**: OQ-P-359
+- **출처**: `push/PushDeepLinkIntent.kt`(extras 키 `type`·`route`·`groupId` — `date` 없음) ·
+  `domain.model.push.PushDeepLink.AddTopping` KDoc("알림이 가리키던 날짜가 아니라 항상 그 그룹의 최신
+  캔버스로 연다") · `ParfaitFirebaseMessagingService#showNotification`
+  (`notificationId = message.messageId?.hashCode()`) × [api/notification.md](../api/notification.md)
+  "이 계약이 앱에 요구하는 것" — 계약은 `date`로 캔버스에 도달할 것과 **같은 알림을 두 번 받아도 부작용이
+  없을 것**을 요구한다.
+- **항목**: ① 알림이 가리킨 날짜의 캔버스로 갈지, 늘 오늘로 갈지 — 재시도가 최대 6시간이고 캔버스 마감이
+  03시라 **두 값이 갈리는 구간이 실제로 있다**(위키 [[캔버스-마감-스케줄]]). "항상 오늘"이 맞다면
+  서버가 `date`를 보내는 이유가 무엇인지 정해야 한다. ② 중복 알림을 접을지 — `dedup_key`는 서버 생산
+  쪽 멱등일 뿐이라 재시도로 온 같은 알림은 `messageId`가 달라 **알림 두 개로 쌓인다.** 접으려면
+  알림 id를 `data`에서 끌어와야 한다(예: 그룹·날짜 조합). ③ 어느 쪽도 지금은 확인할 수단이 없다 —
+  `http/fcm-test.http`를 두 번 쏘면 재현되지만 실행 기록이 0건이다.
+- **상태**: 미해결 (**지금은 도달 불가** — 등록 호출부가 0건이라 알림 자체가 오지 않는다.
+  등록이 붙는 순간 둘 다 사용자에게 보인다)
+- **해소 메모**: ①이 정해지면 [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것"
+  표와 [api/conventions.md](../api/conventions.md) "Android 불일치"의 두 행을 함께 닫는다. ②는 앱만
+  고치면 되므로 ①과 독립이다.
+
+### [2026-09-05] 콜드 스타트 딥링크가 스플래시 부트스트랩의 백스택 리셋과 겹친다
+
+- **ID**: OQ-P-360
+- **출처**: `MainActivity#onCreate`(`consumePushDeepLink(intent)`를 `setContent` 앞에서 부른다) ·
+  `MainRoute`의 `LaunchedEffect(Unit)` 수집 · `PushDeepLinkEventBusImpl`(`Channel(CONFLATED)`,
+  구독 전에 발행한 것이 남는다 — `PushDeepLinkEventBusImplTest`가 잠근다) ×
+  [navigation-flow](../architecture/navigation-flow.md) "앱 진입 체인" — 부트스트랩이 끝나면
+  `SplashRoute`가 `replaceAll(...)`로 백스택을 갈아 끼운다. **코드 주석은 딥링크 수집이 "로그인·부트스트랩이
+  끝난 뒤"에 시작한다고 적지만, `LaunchedEffect(Unit)`은 앱 루트의 첫 컴포지션에 곧바로 시작한다** —
+  그 시점의 백스택은 `NavKeySplash` 하나다.
+- **항목**: ① 딥링크가 먼저 쌓이고 리셋이 뒤따르면 **딥링크 목적지가 백스택째 걷힌다** — 실제로 그
+  순서가 나는지, 아니면 부트스트랩이 늘 먼저 끝나는지 아무도 확인하지 않았다. ② 이동 수단이 `goTo`라
+  딥링크로 연 화면 아래에 **그때까지의 백스택이 남는다**(다른 경계는 `replaceAll` 관용구를 쓴다) —
+  로그인 화면 위에 캔버스가 얹히는 상태가 허용 범위인지. ③ 로그인 안 된 상태로 탭했을 때 무엇을 보여줄지
+  — 지금은 목적지로 그냥 간다.
+- **상태**: 미해결 (**미관측** — 실기기 확인 0회이고, 등록 호출부가 0건이라 알림을 받아 볼 수도 없다)
+- **해소 메모**: ①은 `http/fcm-test.http`로 앱을 죽인 상태에서 쏴 보면 한 번에 갈린다(권한·등록이
+  붙은 뒤다). 정해지면 [navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동"의 ⚠️를
+  관측 결과로 바꾸고, ②를 "리셋한다"로 정하면 그 자리의 관용구가 `replaceAll`로 바뀐다.
+
+### [2026-09-05] 앱이 "FCM 페이로드 스펙 v1"을 근거로 서버에 없는 알림 둘을 먼저 구현했다
+
+- **ID**: OQ-P-361
+- **출처**: `push/PushDeepLinkParser` KDoc("FCM 페이로드 스펙 v1 §3") ·
+  `ParfaitFirebaseMessagingService` KDoc("FCM 페이로드 스펙 v1은 세 알림(P-01/P-02/P-03) 모두
+  `notification` 블록을 항상 함께 보낸다") · `domain.model.push.PushNotificationType`
+  (`TOPPING`·`REMIND_AM`·`REMIND_PM`) × 서버 `NotificationMessageFactory`(문구 조립 함수 1개) ×
+  [api/notification.md](../api/notification.md) — **그 스펙 문서가 parfait에도 위키에도 서버 저장소에도
+  없다.** 앱은 `route=group`과 리마인드 2종을 파싱·라우팅까지 갖췄는데 **서버에는 그것을 보내는 코드가
+  없다**(OQ-P-343 ①의 "나머지 둘").
+- **항목**: ① 그 스펙이 실재하는지 — 노션 등 저장소 밖에 있다면 어디인지 적어야 하고, 구두 합의였다면
+  근거가 코드 주석뿐이다. ② P-02/P-03의 트리거·문구·발송 시각을 누가 정하는지 — 채널 설명 문구
+  (`새 토핑, 캔버스 마감 안내 알림`)는 이미 마감 알림을 약속하고 있다. ③ 앱이 서버보다 앞서 구현한
+  경로를 무엇이 지키는지 — `route=group`은 **아무도 안 보내므로 테스트도 실기기도 지나가지 않는다.**
+  ④ 이 저장소의 `parfait/api/notification.md`가 그 스펙의 자리를 대신할지.
+- **상태**: 미해결 (**동작 영향 0** — 서버가 안 보내므로 그 갈래는 실행되지 않는다.
+  다만 유닛 테스트 넷이 그 갈래를 잠그고 있어 **코드는 계속 살아 있다**)
+- **해소 메모**: ①이 먼저다 — 문서가 있으면 `raw/`로 들여 위키가 흡수하고(정책 소관), 없으면
+  [api/notification.md](../api/notification.md)가 정본 자리를 맡는다는 것을 명시한다. ②는 정책 소관이라
+  위키 [[open-questions]]와 갈리는 자리이고 OQ-P-343 ①과 같은 물음이다.
+  ⚠️ 함께 발견: `ParfaitFirebaseMessagingService` KDoc의 `toPushDeepLinkOrNull` 링크가 옛 패키지
+  (`com.teamyg.parfait.pushdeeplink`)를 가리킨다 — 같은 PR이 `push`로 줄이면서 남은 자국이다.
+
+<!-- oq-next: 362 -->

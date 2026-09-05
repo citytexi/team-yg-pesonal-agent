@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-03
+verified: 2026-09-05
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
-related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
+related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0013, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient, SegmentationModuleInstaller, ModuleInstallGateway, PlayServicesModuleInstallGateway, ModuleInstallModule, PrepareSegmentationModuleUseCase, NotificationService, NotificationRemoteDataSource, NotificationRemoteDataSourceImpl, DeviceToken
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient, SegmentationModuleInstaller, ModuleInstallGateway, PlayServicesModuleInstallGateway, ModuleInstallModule, PrepareSegmentationModuleUseCase, NotificationService, NotificationRemoteDataSource, NotificationRemoteDataSourceImpl, DeviceToken, PushDeepLink, PushNotificationType, PushDeepLinkEventBus, PushDeepLinkEventBusImpl
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -26,6 +26,10 @@ tags: [architecture, parfait]
     **2026-08-17(PR #279)에 `parfait/`가 통째로 사라져 다시 아홉이 됐다** — 그 안의 유일한 선언
     `ParfaitHistory`가 계약 VO `PastCanvasVO`로 대체됐기 때문이고, 같은 도메인의 날짜 헬퍼
     `parfaitToday()`는 여전히 루트 평면(`model/ParfaitDay.kt`)에 있다. 규약이 없다는 사실은 그대로다.
+    **2026-09-05(PR #446)에 `push/`가 들어와 다시 열이 됐다**(`PushDeepLink`·`PushNotificationType`).
+    `session/`과 같은 부류다 — 원격 VO가 아니라 **앱 안에서 도는 사건**이고, 짝이 되는 인터페이스도
+    `repository/session/`을 본떠 `repository/push/`에 놓였다. 즉 하위 패키지를 만드는 실제 기준은
+    "원격 VO"가 아니라 **선례를 따라간다**는 것에 가깝다. 규약은 여전히 없다.
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
 ## DataSource 종류
@@ -94,6 +98,7 @@ tags: [architecture, parfait]
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
 | `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) + **`@UploadClient` `OkHttpClient`**(#322 — S3 presigned PUT 전용. Retrofit이 없는 유일한 표면이고 인터셉터를 하나도 안 단다) + **`@DownloadClient` `OkHttpClient`**(#369 — 서버 공개 이미지 GET 전용. 로깅만 달고 타임아웃은 메인과 같으며, `newBuilder()` 파생이 아니라 새 `Builder`여야 `Dispatcher` 격리가 산다) |
 | `SessionModule` | `SessionEventBus` → `SessionEventSource` 바인딩(#260 신설) |
+| **`PushDeepLinkModule`**(#446) | `PushDeepLinkEventBusImpl` → `PushDeepLinkEventBus` `@Provides @Singleton`. `SessionModule`과 **형태까지 같다**(`object` + `@Provides`) |
 | `DataStoreModule` | `DataStore<Preferences>` 싱글톤 |
 | `JsonModule` | `@LocalJson`·`@RemoteJson` `Json` 2종(현재 설정 동일: `ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`) |
 | **`ApplicationScopeModule`**(#404) | `@ApplicationScope CoroutineScope` — 프로세스 수명 스코프. `CanvasPoller`의 주기 루프가 화면 수명(`viewModelScope`)에 걸리면 안 되고, 되감기 직전의 강제 갱신도 호출자 취소에 끊기면 안 된다 |
@@ -598,6 +603,22 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   [spec](../specs/archive/2026-08-15-session-token-refresh-infra.md)). `NetworkModuleTest`가 두
   클라이언트가 `Dispatcher`·인증기·`AuthInterceptor`를 공유하지 않는다는 **배선의 구조적 성질**을
   잠근다 — 데드락 자체는 재현하지 않는다(회귀가 실패가 아니라 무한 대기로 나타난다).
+  > 📌 **같은 통로가 둘이 됐다(2026-09-05, PR #446)** — 푸시 딥링크가 `PushDeepLinkEventBus`
+  > (`:domain` `repository/push/`)와 `PushDeepLinkEventBusImpl`(`:data` `push/`, 역시
+  > `Channel(CONFLATED)` + `receiveAsFlow()`)로 **같은 모양을 복제했다.** 두 통로가 공유하는 성질은
+  > 셋이다 — 구독자가 없는 순간 발행해도 잃지 않는다 · 단일 소비자다 · **수집은 앱 루트 `MainRoute`
+  > 한 곳**이다. 접히는 규칙의 뜻만 다르다: 세션 쪽은 401이 여러 건 터져도 로그아웃 이동이 한 번이면
+  > 되고, 푸시 쪽은 알림을 연달아 탭해도 **마지막으로 탭한 곳 하나에만 도착하면 된다.**
+  > ⚠️ **인터페이스를 가른 방식은 다르다.** 세션은 도메인에 **구독구만** 내놓고(`SessionEventSource`)
+  > 발행은 `:data` 구현 클래스의 `postForcedLogout`이 갖는다 — 발행자 `TokenAuthenticator`가 같은
+  > `:data` 안에 있어 성립한다. 푸시는 **발행자가 `app`의 `MainActivity`**라 그 수가 안 통해서,
+  > 도메인 인터페이스 하나가 `post`와 `deepLinks`를 **겸한다**(#446이 그 방향을 커밋 하나로 못 박았다 —
+  > 액티비티가 구현체 대신 도메인 인터페이스만 보게 했다). 대가는 **구독자도 발행할 수 있다**는 것이고,
+  > 그것을 막는 것은 타입이 아니라 규약이다.
+  > 프로세스가 죽으면 채널도 사라지므로 "세션 종료 시 딥링크 폐기"가 별도 코드 없이 성립한다.
+  > `PushDeepLinkEventBusImplTest`가 **구독 전에 발행한 것이 남아 있다가 전달된다**는 것과
+  > **두 번 발행하면 마지막 것만 온다**는 것을 잠근다. 배선은
+  > [navigation-flow](navigation-flow.md) "푸시 딥링크 이동".
 - **토큰·계정 정보 저장 경로**: `CryptoManager`(Android Keystore AES/GCM, `security/`) →
   **`EncryptedPreferences`**(`datastore/`) → `EncryptedTokenStore`(`TokenStore` 구현,
   `source/token/local/`) → `TokenStore`(`LocalDataSourceModule.bindTokenStore`) →

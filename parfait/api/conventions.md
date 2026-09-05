@@ -384,12 +384,19 @@ Flyway 마이그레이션이 운영 히스토리에는 V4까지만 기록돼 있
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
 
-⚠️ **2026-09-01 기준 1건.** 2026-08-31 서버 delta(`02e11be`)가 그룹 목록 `recentImageUrl`의 뜻을 좁히면서
-새로 벌어졌다.
+⚠️ **2026-09-05 기준 3건.** 하나는 2026-08-31 서버 delta(`02e11be`)가 그룹 목록 `recentImageUrl`의 뜻을
+좁히면서 벌어진 것이고, **둘은 2026-09-05에 앱이 푸시 수신부를 붙이며 새로 생겼다**(PR #446·#447).
+뒤의 둘은 HTTP 왕복이 아니라 **서버→앱 단방향 푸시의 간극**이라 엔드포인트 셈에 안 잡힌다.
 
 | 항목 | 계약 | 앱 | 결과 |
 |---|---|---|---|
 | `MyParfaitGroupResponse.recentImageUrl`의 뜻 | **오늘 캔버스**(`ParfaitDay.current()` — 03시 경계)에 토핑이 있으면 그 이미지, 없으면 `null`. 어제 이전 토핑은 안 잡힌다 | `MyParfaitGroupVO.recentImageUploadedAt` KDoc과 `feature/groups/list/impl/util/ToppingImage.kt`의 `toToppingImage`가 `null`을 **"토핑이 하나도 없는 그룹"**으로 읽는다 | 어제까지 토핑이 있었고 오늘 캔버스만 빈 그룹이 G-001에서 **템플릿 그래픽**으로 그려지는데, 같은 줄의 경과 시간은 **어제 토핑 시각**을 가리킨다 — 두 표시가 서로를 반박한다 → [parfait-group.md](parfait-group.md) · OQ-P-336 |
+| 푸시 `data`의 `date` | 알림이 가리키는 **캔버스 날짜**를 함께 보낸다(`NotificationMessageFactory`) — 계약 표가 `route`·`groupId`와 함께 이 값으로 캔버스에 도달할 것을 요구한다 | `PushDeepLinkIntent.kt`가 `type`·`route`·`groupId` 셋만 extras에서 읽는다. `PushDeepLink.AddTopping`은 **항상 그 그룹의 최신 캔버스**로 연다 | 지난 캔버스에 올라온 토핑 알림을 탭해도 오늘 캔버스가 열린다. 발송 지연·재시도(최대 6시간)와 03시 마감이 겹치면 **알림이 가리킨 캔버스가 아닌 곳**에 도착한다 → [notification.md](notification.md) · OQ-P-359 |
+| 푸시 중복 수신 | at-least-once라 **같은 알림이 두 번 올 수 있고** 앱이 그것을 견뎌야 한다(`dedup_key`는 생산 쪽 멱등일 뿐이다) | 알림 id가 `message.messageId?.hashCode()`라 재시도로 온 같은 알림이 **다른 id**를 받는다 | 이동은 접히지만(`Channel(CONFLATED)`) **알림은 두 개로 쌓인다** → [notification.md](notification.md) · OQ-P-359 |
+
+**아래 문단은 첫 행(`recentImageUrl`, 2026-09-01)에 대한 것이다.** 뒤의 두 행은 잡은 수단이 다르다 —
+계약 문서와 앱 코드를 나란히 놓는 `develop` 기준 문서 점검이 찾았고, 그 자리에서 자동으로 잡을 수단은
+서버·앱 어느 쪽에도 없다(OQ-P-352 ③과 같은 성격이다).
 
 ⚠️ **이번 것도 계약 문서 감사가 잡았다.** 앱 쪽 타입도 `@SerialName` 키도 하나 안 바뀌었고 서버가 같은
 필드에 담는 **뜻**만 바뀐 부류라, 역직렬화도 매퍼도 초록으로 지나간다. OQ-P-234 ③이 붙이려는 와이어

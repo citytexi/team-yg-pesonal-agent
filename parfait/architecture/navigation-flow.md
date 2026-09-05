@@ -4,9 +4,9 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-01
+verified: 2026-09-05
 related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
-related_adr: ADR-0002, ADR-0006, ADR-0021, ADR-0022
+related_adr: ADR-0002, ADR-0006, ADR-0013, ADR-0021, ADR-0022
 related_architecture:
 related_code: core:navigation, Navigator, Navigator.kt#popUpTo, NavTransition
 tags: [architecture, parfait]
@@ -155,6 +155,44 @@ TokenAuthenticator(재발급 거절) → SessionEventBus.postForcedLogout()
   `AppSettingSideEffect.NavigateToLogin` → `replaceAll(NavKeyLogin)`. 즉 **같은 이동에 진입점이 둘**이고
   둘 다 백스택을 비운다.
 - ⚠️ **수집 지점이 하나라는 것은 규약일 뿐 기계 검사가 없다** → [open-questions](../synthesis/open-questions.md) [2026-08-16].
+
+## 푸시 딥링크 이동 (2026-09-05, PR #446·#447)
+
+**네트워크 계층에 이어 두 번째로 화면 밖이 이동을 일으키는 경로**이고, 구조는 위 세션 종료 이동을
+그대로 본떴다. 근거는 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 되살림 정정,
+계약 대조는 [api/notification.md](../api/notification.md) "푸시 수신·딥링크".
+
+```
+알림 탭 → MainActivity(onCreate | onNewIntent) → Intent.toPushDeepLinkOrNull()
+    → PushDeepLinkEventBus.post() → MainRoute의 LaunchedEffect 단일 수집
+    → AddTopping: navigator.goTo(NavKeyCanvasMain(groupId))
+    → GroupList: navigator.goTo(NavKeyGroupList)
+```
+
+- **수집 지점은 앱 루트 `MainRoute` 한 곳**이다(세션 사건과 같은 이유 — 화면마다 구독하면 한 번의
+  탭으로 이동이 여러 번 일어난다). 통로도 같은 `Channel(CONFLATED)`이라 **단일 소비자**이고, 알림을
+  연달아 탭하면 **마지막 것 하나로 접힌다**.
+- **발행은 `MainActivity`가 두 자리에서 한다** — 콜드 스타트는 `onCreate`의 `intent`, 이미 떠 있으면
+  `onNewIntent`다. 뒤엣것이 성립하려면 매니페스트의 `launchMode="singleTop"`이 필요하고 이 PR이
+  그것을 함께 붙였다(앱 전 화면에 걸리는 매니페스트 변경이다 — 단일 액티비티라 그렇다).
+- **소비한 `Intent`는 `setIntent(Intent())`로 비운다.** 안 비우면 화면 회전이 없어도 재구성이 일어나는
+  경로(다크모드 토글·폰트/언어 변경·폴더블 리사이즈)에서 `onCreate`가 같은 `intent`를 다시 받아
+  이미 처리한 딥링크를 또 발행한다.
+- **목적지는 `route` 하나가 정한다.** `type`(`TOPPING`·`REMIND_AM`·`REMIND_PM`)은 라우팅에 안 쓰고
+  탭 분석 용도로 `PushDeepLink`에 실려만 간다. 모르는 `route`·잘못된 `groupId`(숫자 아님·0 이하)는
+  `null`이라 **평범한 실행과 구분되지 않는다** — 파싱 실패가 화면에 보이지 않는다는 뜻이다.
+- **이동 수단은 `goTo`다** — 위 세 관용구(`replaceAll`·`goToSingleClearTop`·`popUpTo`)를 쓰지 않으므로
+  딥링크로 연 화면 아래에 **그때까지의 백스택이 그대로 남는다.**
+
+⚠️ **콜드 스타트에서 스플래시 부트스트랩과 겹치는 구간이 검증되지 않았다.** `MainRoute`의 수집은
+`LaunchedEffect(Unit)`이라 **첫 컴포지션에 곧바로 시작**하는데(코드 KDoc은 "로그인·부트스트랩이 끝난
+뒤"라고 적지만 그것을 강제하는 것은 아무것도 없다), 그 시점의 백스택은 `NavKeySplash` 하나이고
+[앱 진입 체인](#앱-진입-체인-2026-08-09-pr-220)의 `SplashRoute`는 부트스트랩이 끝나면
+`replaceAll(...)`로 백스택을 갈아 끼운다. 즉 **딥링크가 먼저 쌓이고 리셋이 뒤따르는 순서**가 가능하다
+→ [open-questions](../synthesis/open-questions.md) OQ-P-360.
+
+⚠️ **Android 13+에서는 알림 표시 자체가 막혀 이 경로에 들어올 일이 없다** — `POST_NOTIFICATIONS`를
+묻는 코드가 develop에 없다(OQ-P-358).
 
 ## 그룹 생성·참여 플로우 (2026-08-12, PR #224)
 
