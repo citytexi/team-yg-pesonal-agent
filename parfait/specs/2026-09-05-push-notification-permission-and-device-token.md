@@ -40,7 +40,12 @@ tags: [spec, parfait, notification, permission]
 ## 결정 1 — 등록과 권한은 별개 축이다
 
 FCM 토큰은 **알림 권한과 무관하게** SDK 가 설치 시점에 발급한다. 따라서 등록을 권한 허용에
-매달면 안 된다. 초기 구현이 그렇게 묶어 두어 다음 사용자군이 토큰을 영영 등록하지 못했다.
+매달면 안 된다.
+
+⚠️ **이 브랜치 초판이 그렇게 묶었고 리뷰가 되돌렸다**(커밋 `7e984099` → `a99a899e`).
+**출시된 적은 없다** — develop 의 `onNewToken` 은 등록을 아예 부르지 않았고
+(`api/notification.md` 가 그 표면을 "호출부 0"으로 기록한다) 초판도 머지 전에 걷혔다.
+아래는 그 초판을 그대로 뒀다면 놓쳤을 사용자군이다.
 
 - 로그아웃 후 재로그인 — 서버는 토큰 매핑을 지웠는데 기기 토큰은 그대로라 `onNewToken` 이
   불리지 않고, 권한은 이미 허용이라 안내 게이트가 건너뛴다.
@@ -71,8 +76,14 @@ FCM 토큰은 **알림 권한과 무관하게** SDK 가 설치 시점에 발급�
 `RegisterDeviceTokenUseCase` 를 쓴다.
 
 **실패는 로그만 남기고 원래 결과를 그대로 돌려준다.** 등록 실패가 로그인·가입·앱 진입을 막을
-이유가 없고, 다음 등록 시점이 메운다. 세 자리 모두 그 자리에서 이미 같은 형태로
-`refreshMyAccount` 를 부르고 있어 그 결을 따랐다.
+이유가 없고, 다음 등록 시점이 메운다. 로그인·가입 두 자리는 `refreshMyAccount` 를 이미 같은
+삼키기 형태로 부르고 있어 그 결을 따랐다. `BootstrapSessionUseCase` 는 다르다 — 그쪽의
+`refreshMyAccount` 실패는 라우팅을 `ToLogin` 으로 바꾸고 인증 거절이면 `logout()` 까지
+부르므로, **등록 실패만 삼키고 조회 실패는 그대로 둔다.**
+
+⚠️ 셋 다 결과를 로그 외에는 쓰지 않는데 **직렬로 await 한다.** 로그인 스피너와 스플래시가
+FCM `getToken()` + 등록 POST 두 왕복을 그대로 떠안는다. 최초 설치 직후에는 `getToken()` 이
+FCM 등록 왕복을 포함해 길어질 수 있다 → 미결.
 
 세션이 없는 경로에서는 부르지 않는다 — 이 엔드포인트는 인증이 필요하다(화이트리스트 밖).
 신규 회원 로그인 분기, 필수 약관 미동의, 저장된 토큰이 없는 부트스트랩이 그렇다.
@@ -109,10 +120,17 @@ sessionId)` 로 로그아웃 시 토큰을 지운다. 세션마다 재등록하�
   띄우지 않고 즉시 거부 콜백을 준다 — 그대로 닫으면 "눌러도 아무 일 없는 버튼"이 된다.
 - 별도 안내 모달을 두지 않는다. 기존 문구 하나로 끝낸다.
 
-⚠️ **영구 거부 판정은 요청 콜백 안에서만 한다.** `shouldShowRequestPermissionRationale` 은
-첫 요청 전에도 `false` 라서 버튼 클릭 시점에 미리 확인하면 아직 한 번도 묻지 않은 사용자까지
-설정으로 보낸다. 거부로 돌아온 직후라면 `false` 는 영구 거부만 뜻한다.
-`GalleryPermissionManager.resolveAccessLevelAfterRequest` 와 같은 판단 시점이다.
+⚠️ **`shouldShowRequestPermissionRationale` 을 두 번 읽어 비교한다.** 이 값은 첫 요청 전에도,
+두 번 거부된 뒤에도 `false` 라 **한 번만 읽으면 두 상태를 구분하지 못한다.** 요청 직전 값이
+`true` 였다가 콜백에서 `false` 로 떨어진 경우만 이번 요청에서 거부가 확정된 것으로 본다.
+한 번만 읽으면 다이얼로그를 바깥 탭으로 닫은 첫 사용자까지 설정으로 보낸다 — 바깥 탭 닫기는
+시스템이 거부로 집계하지 않아 `false` 가 그대로 남기 때문이다.
+
+⚠️ **그래서 남는 사각지대가 있다** — 이전 세션에서 이미 두 번 거부해 둔 사용자는 요청 직전
+값이 `false` 라 설정으로 보내지 못하고 버튼이 무반응으로 남는다. 닫으려면 "한 번은 요청했다"를
+로컬에 영속해야 한다 → 미결.
+
+설정 이동이 실패해도(`ActivityNotFoundException`) 흐름은 잇는다 — `onFinished` 는 반드시 부른다.
 
 **노출 횟수를 제한하지 않는다.** 거부·「나중에」 선택을 영속하지 않으므로 허용 전까지
 그룹 생성·참여 흐름마다 다시 뜬다. 최초 1회로 줄이려면 별도 플래그가 필요하다 → 미결.
@@ -123,13 +141,34 @@ sessionId)` 로 로그아웃 시 토큰을 지운다. 세션마다 재등록하�
 이전 화면에 갇힌다.** 프로세스 사망은 이 구조가 막지 못한다 — `Navigator` 백스택이
 `@ActivityRetainedScoped` 의 순수 `mutableStateListOf` 라 스플래시로 초기화된다.
 
+## 결정 5 — 이벤트 버스를 `event` 패키지로 모은다
+
+이 브랜치의 두 번째 축이다. 알림과 직접 관계는 없으나 같은 브랜치에 실려 있다.
+
+세션 종료와 푸시 딥링크는 같은 구조(도메인 인터페이스 + `:data` `Channel` 구현 + 앱 루트
+단일 수집, [ADR-0021](../adr/0021-token-refresh-forced-logout.md))인데 패키지가
+`repository/session`·`repository/push`·`data/session`·`data/push` 넷으로 흩어져 있었다.
+`domain/event`·`data/event` 로 모은다. 둘 다 Repository 가 아니므로 `repository/` 아래
+있을 이유가 없었다.
+
+이름 규칙도 푸시 쪽으로 통일한다 — **인터페이스가 `~EventBus`, 구현이 `~Impl`.** 전에는
+세션만 인터페이스가 `SessionEventSource`, 구현이 `SessionEventBus` 라 두 축의 규칙이
+반대였다. `Source` 는 이 저장소에서 `LocalDataSource`·`RemoteDataSource` 계열 이름이라
+이벤트 구독구에 붙으면 오독을 부른다.
+
+⚠️ **계약의 비대칭은 그대로 남는다** — `SessionEventBus` 는 구독만 내놓고 발행
+(`postForcedLogout`)은 `:data` 구현에만 있다. `PushDeepLinkEventBus` 가 `post` 를 계약에
+함께 두는 것과 다르다. 발행 자리가 `TokenAuthenticator` 하나뿐이라 밖으로 낼 이유가 없어서다.
+`architecture/data-layer.md` 가 이 차이를 의도된 설계로 적어 두었으므로, **머지 회차에 그
+문단의 심볼명을 갱신해야 한다**(`module-structure.md` 의 domain/data 패키지 목록도 같다).
+
 ## 파일 구성
 
 | 파일 | 역할 |
 |---|---|
-| `core/util/android/permission/NotificationPermissionManager.kt` | 버전 갈림·영구 거부 판정 |
+| `core/util/android/permission/NotificationPermissionManager.kt` | 버전 갈림 판정과 `shouldShowRationale` 노출 |
 | `feature/groups/enter/impl/component/NotificationPermissionGate.kt` | 안내 모달과 권한 요청 |
-| `domain/repository/notification/DeviceTokenProvider.kt` | 현재 토큰 읽기 계약 |
+| `domain/notification/DeviceTokenProvider.kt` | 현재 토큰 읽기 계약(Repository 가 아니라 `repository/` 밖) |
 | `app/push/FirebaseDeviceTokenProvider.kt` | 위 구현(Firebase 의존이 `:app` 에 갇혀 있다) |
 | `app/push/di/DeviceTokenModule.kt` | 위 바인딩 — `:app` 최초의 Hilt 모듈 |
 | `domain/usecase/notification/` | 값 있는 등록 / 값 없는 등록 두 유스케이스 |
@@ -141,8 +180,9 @@ sessionId)` 로 로그아웃 시 토큰을 지운다. 세션마다 재등록하�
   ADR-0013 되살림 정정과 ADR-0004 예외 기록은 머지 회차에 함께 쓴다([2026-07-13] 규율).
 
 - **게이트 자체에 테스트가 없다.** 이 모듈에 `androidTest` 소스셋이 없어 Compose 테스트
-  하니스 신설이 필요하다. 순수 함수로 뺀 버전 갈림과 두 `NavigateToNextSaver` 왕복만
-  JVM 테스트로 덮여 있다.
+  하니스 신설이 필요하다. JVM 으로 덮인 것은 **API 33 미만에서 `hasPermission` 이 `Context`
+  를 묻지 않고 `true` 를 준다**는 것과 두 `NavigateToNextSaver` 왕복뿐이다. 33 이상 분기와
+  `shouldShowRationale` 두 번 읽기 비교는 덮이지 않았다.
 - **안내 노출 횟수 정책이 미정이다**(위 결정 4).
 - **게이트 배선이 두 Route 에 복제돼 있다.** 타입이 달라 공용화하려면 제네릭이나 공통
   인터페이스가 필요하고, 지금은 이득이 얇아 두었다.

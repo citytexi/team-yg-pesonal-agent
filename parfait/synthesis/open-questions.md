@@ -6171,10 +6171,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > `feature/#423-canvas-save-preview` · `feature/push-notification-permission`). 남은 푸시 브랜치가
   > ②③④를 한꺼번에 답하는 그 브랜치다.
   > 📌 **그 브랜치의 답이 2026-09-05에 바뀌었다 — 리뷰가 ②를 뒤집었다(미푸시, develop 밖).**
-  > 직전 회차가 커밋 제목에서 읽은 답(②는 `onNewToken` + 권한 허용 직후)이 **결함이었다.** FCM 토큰은
-  > 알림 권한과 무관하게 SDK가 설치 시점에 발급하므로 등록을 권한에 매달면 **재로그인·기기교체·재설치
-  > 사용자가 토큰을 영영 등록하지 못한다**(서버가 로그아웃에서 매핑을 지우는데 기기 토큰은 그대로라
-  > `onNewToken`이 안 불리고, 권한은 이미 허용이라 안내가 건너뛴다). 브랜치가 등록 시점을 **세션 축**
+  > 직전 회차가 커밋 제목에서 읽은 답(②는 `onNewToken` + 권한 허용 직후)이 **결함이었고, 같은
+  > 브랜치 안에서 되돌려졌다**(`7e984099` → `a99a899e`). develop은 애초에 등록을 부르지 않았으므로
+  > **출시된 적 없는 결함이다.** FCM 토큰은 알림 권한과 무관하게 SDK가 설치 시점에 발급하는데, 등록을
+  > 권한에 매달면 **재로그인·기기교체·재설치 사용자가 등록 경로에 닿지 못한다**(서버가 로그아웃에서
+  > 매핑을 지우는데 기기 토큰은 그대로라 `onNewToken`이 안 불리고, 권한은 이미 허용이라 안내가
+  > 건너뛴다). 브랜치가 등록 시점을 **세션 축**
   > (`LoginWithKakaoUseCase`·`SignUpUseCase`의 `saveSession` 직후 · `BootstrapSessionUseCase`의 성공
   > 분기)과 `onNewToken` 넷으로 다시 세웠다 — 서버가 전제한 "앱 시작·`onNewToken`·권한 허용마다
   > 재호출"에 맞는 형태다. ④는 **거부 상태에서도 등록한다**로 답해졌다(서버가 권한 상태를 모르니
@@ -6186,9 +6188,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 알림을 전부 버리고 있다.** 브랜치가 판정을 `NotificationPermissionManager`로 빼서 두 자리를 함께
   > 고쳤다. 설계 정본은
   > [specs/2026-09-05-push-notification-permission-and-device-token](../specs/2026-09-05-push-notification-permission-and-device-token.md)이다.
+  > 📌 **브랜치가 알림과 무관한 축 하나를 더 싣고 있다** — 이벤트 버스 재배치다. `domain/event`·
+  > `data/event`를 신설해 세션 종료·푸시 딥링크 버스를 `repository/`·`data/{session,push}`에서 옮기고,
+  > `SessionEventSource`를 `SessionEventBus`로, `:data` 구현을 `SessionEventBusImpl`로 개명했다(둘 다
+  > Repository가 아니고, `Source`는 이 저장소에서 DataSource 계열 이름이라 오독을 부른다).
+  > **동작 변경은 없다**(Hilt 그래프 동일, 12파일 rename). `SessionEventBus`가 구독만 내놓고 발행은
+  > `:data` 구현이 갖는 비대칭은 그대로다 — [data-layer](../architecture/data-layer.md)가 그 차이를
+  > 의도된 설계로 적어 두었으므로 머지 회차에 그 문단의 심볼명을 갱신해야 한다.
   > 머지 전에는 문서를 고치지 않는다([2026-07-13] 규율) — 머지 회차에 ②③④와 ADR-0013 되살림 정정,
-  > 그리고 **ADR-0004의 평면 배치 규칙 예외**(`DeviceTokenModule`이 `:app` 최초의 Hilt 모듈이다.
-  > ADR-0013이 Firebase 의존을 `:app`에 가둬 `:data`로 못 내린다)를 함께 본다.
+  > **ADR-0004의 평면 배치 규칙 예외**(`DeviceTokenModule`이 `:app` 최초의 Hilt 모듈이다.
+  > ADR-0013이 Firebase 의존을 `:app`에 가둬 `:data`로 못 내린다), 그리고 위 이벤트 버스 개명에 따른
+  > `data-layer.md`·`module-structure.md` 갱신을 함께 본다.
 - **해소 메모**: 정하면 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)에 **되살림 정정**을 더하고
   (철회 정정을 지우지 않는다 — 두 결정이 다 이력이다), [api/notification.md](../api/notification.md)
   Android 매핑 절과 [data-layer](../architecture/data-layer.md)에 적는다. ①이 "미룬다"로 정해져도
