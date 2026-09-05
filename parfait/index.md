@@ -20,10 +20,16 @@ Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data
 돌아왔고 채널 id는 서버가 못 박은 `parfait_default`를 앱이 따랐다([ADR-0013](adr/0013-firebase-fcm-crashlytics.md)
 되살림 정정). 딥링크는 세션 종료 이동 구조를 그대로 복제했다(`PushDeepLinkEventBus` + `MainRoute` 단일
 수집 → [navigation-flow](architecture/navigation-flow.md) "푸시 딥링크 이동").
-⚠️ **다만 가운데 한 줄이 비어 통하지 않는다** — `onNewToken`이 돌아왔는데 **토큰 등록을 안 부르고**
-(OQ-P-341 ②), **`POST_NOTIFICATIONS`를 묻는 코드가 0건**이라 Android 13+에서는 표시 자체가 막힌다
-(OQ-P-358). 계약 다섯 중 둘도 안 맞아 `api/conventions.md` "Android 불일치"가 **1건 → 3건**이 됐다 —
-`date`를 안 읽어 항상 최신 캔버스로 열고, 중복 수신이 알림 두 개로 쌓인다(OQ-P-359).
+✅ **같은 날 #450이 가운데 한 줄을 이었다 — 푸시 축이 닫혔다.** 등록을 **세션 축 넷**(로그인·가입·앱
+진입의 성공 분기 + `onNewToken`)에서 부르고, 알림 권한은 **A-004·A-005 완료 직후** 묻는다. 핵심 결정은
+**등록과 권한이 별개 축**이라는 것이다 — 토큰은 권한과 무관하게 발급되므로 등록을 권한에 매달면
+재로그인·기기교체·재설치 사용자가 등록 경로에 닿지 못한다(OQ-P-341·358 해소,
+[스펙](specs/archive/2026-09-05-push-notification-permission-and-device-token.md)).
+**API 33 미만은 허용으로 본다** — 그 아래에서 `checkSelfPermission`이 항상 거부를 답하는데 알림은
+기본으로 켜져 있어, 판정이 사실과 정반대인 채 **그 기기군의 포그라운드 알림을 통째로 버리고 있었다.**
+⚠️ **남은 것은 계약 두 건과 실행 확인이다** — `api/conventions.md` "Android 불일치" 3건 중 둘이 푸시
+쪽이고(`date`를 안 읽어 항상 최신 캔버스로 열고, 중복 수신이 알림 두 개로 쌓인다 — OQ-P-359),
+**실서버·실기기 확인은 0회**다.
 ⚠️ **2026-09-01 — 그룹 목록 `recentImageUrl`이 "오늘 캔버스의 토핑"으로 좁혀져 `api/conventions.md`의
 "Android 불일치"가 0건에서 1건이 됐다**(엔드포인트 증감 없음, 앱 코드도 그대로인데 뜻만 바뀐 자리 —
 OQ-P-336).
@@ -288,7 +294,7 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
 | 토핑 만들기 흐름 상태(초안 SSOT) | [ADR-0026](adr/0026-topping-draft-datastore-ssot.md) |
 | 화면 방향(세로 고정)·대화면 예외 | [ADR-0027](adr/0027-portrait-orientation-lock.md) |
 | 시스템바 아이콘 색·다크모드 미지원 | [ADR-0028](adr/0028-system-bar-light-fixed.md) |
-| Crashlytics·Analytics·Firebase 설정 (**푸시(FCM)는 2026-08-22 철회** — 되살릴 때 참고할 결정만 남아 있다. ⚠️ **철회 근거였던 "보낼 서버가 없다"가 2026-09-02 서버 delta로 사라졌고, 2026-09-04에는 서버가 실제로 보내기 시작했다** — OQ-P-341) | [ADR-0013](adr/0013-firebase-fcm-crashlytics.md) |
+| Crashlytics·Analytics·Firebase 설정 + **푸시(FCM)** (2026-08-22 철회 → **2026-09-05 되살림**(#446·#447)에 이어 **#450이 기기 토큰 등록과 알림 권한 안내까지 채웠다** — 등록은 세션 축 넷, 권한은 A-004·A-005 완료 직후, API 33 미만은 허용. OQ-P-341·358 해소. ⚠️ 쓰고 있는 FCM API 셋이 deprecated이나 서버가 선행 조건이라 등록 토큰 축에 남는다 — OQ-P-362) | [ADR-0013](adr/0013-firebase-fcm-crashlytics.md) |
 | 로깅·Logger 추상화(Kermit) | [ADR-0014](adr/0014-logging-abstraction-kermit.md) |
 | 유효성 결과·에러 문자열 다국어 매핑(domain 의미↔표시 분리) | [ADR-0016](adr/0016-domain-result-presentation-string-mapping.md) + [state-management](architecture/state-management.md) |
 | 구현 직전 기능·컴포넌트 설계 스펙 | [specs/README.md](specs/README.md) |
@@ -311,7 +317,7 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `bc216632`(2026-09-05 검증, #449까지 — **첫 진입 안내가 컴포넌트로 들어오면서 기기에만 남는 설정 저장소가 처음 생겼고, 갤러리 저장이 화면 하나를 더 거치게 됐다**. delta 3건(#445 캔버스 저장 미리보기 · #453 재시도 문구 통일 · #449 첫 진입 튜토리얼), **42파일 1535/98**. 유닛 1060 → **1072**, 계측 **35** 유지, 아카이브 이동 0건, 미결 7건 신설(OQ-P-363~369)·1건 갱신(341). 디자인시스템 `ygtutorial/` 4종은 **뚫린 오버레이가 아니라 딤까지 구워진 풀스크린 목업 PNG**가 화면을 덮는 형태이고, 소비 셋(C-001 3장 · 갤러리 업로드 · 누끼 확인)이 모두 **스캐폴드 밖 형제**로 놓는다. 기기 축 저장소(`UserConfigRepository`·`TutorialKind`·평문 프록시 `DataStorePreferences`)는 저장 형태를 **enum 이 아니라 이름 문자열**로 둔다. 갤러리 저장은 `RequestCanvasCaptureForPreview` → `NavKeyCanvasImageSave` → **같은 캐시 파일 재독** 순으로 돌고 미리보기는 저장하지 않는다. ⚠️ 목업이 실제 화면과 어긋날 길·정책 근거 부재(OQ-P-363), `clearConfig()` 호출부 0건(366), 프록시 복제(367), `launchWhileSubscribed` 기준 이탈(368), 리소스 든 enum 이 State 에(369), 미리보기 왕복·캡처 캐시 테스트 0건(365). 실기기 확인 0회. 미머지 넷 → **둘**. 직전 회차(`29c2f050`, #447까지) 요약은 doc-baseline 본문에 있다).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `489b14cc`(2026-09-05 검증, #450까지 — **여덟 회차를 끌어온 푸시 축이 닫혔다: 기기 토큰 등록과 알림 권한 안내가 develop에 섰다**. delta 1건, **42파일 944/77**. 유닛 1072 → **1091**, 계측 **35** 유지, **선작성 스펙 1건 아카이브 이동**(대조 결과 설계와 코드가 어긋난 자리 0건), 미결 2건 해소(OQ-P-341·358)·4건 신설(370~373)·1건 갱신(362). 핵심 결정은 **등록과 권한이 별개 축**이라는 것 — FCM 토큰은 권한과 무관하게 발급되므로 등록은 **세션 축 넷**(로그인·가입·앱 진입의 성공 분기 + `onNewToken`)에 걸고, 권한을 거부한 사용자의 토큰도 등록한다. `register()`는 `suspend`가 아니라 `@ApplicationScope`에서 돌며 재시도 3회·`Mutex`를 든다. 권한 안내는 **A-004·A-005 완료 직후**이고 **API 33 미만은 허용으로 본다**(그 아래에서 판정이 사실과 정반대라 포그라운드 알림을 통째로 버리던 결함이 함께 고쳐졌다). 알림과 무관한 **이벤트 버스 개명**(`domain/event`·`data/event`, 인터페이스 `~EventBus`·구현 `~Impl`, 동작 무변경)과 **`:app` 최초 Hilt 모듈**(Firebase 경계)이 같은 브랜치에 실려 왔다. ⚠️ 안내 노출 횟수 미정(OQ-P-370), 두 번 거부한 사용자의 사각지대(371), 게이트 배선 복제(372), 게이트 테스트 0건(373), **실서버·실기기 확인 0회**. 미머지 둘 → **하나**. 직전 회차(`bc216632`, #449까지) 요약은 doc-baseline 본문에 있다).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md

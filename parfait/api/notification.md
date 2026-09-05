@@ -31,7 +31,7 @@ tags: [api, parfait, server-contract, notification]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| POST | `/api/v1/notifications/devices` | **필요**(화이트리스트 밖) | `RegisterDeviceTokenRequest` | 없음(204, envelope 없음) | 구현됨(표면만, **호출부 0** — 2026-09-05에 `onNewToken`이 돌아왔는데 이 표면을 부르지 않는다) |
+| POST | `/api/v1/notifications/devices` | **필요**(화이트리스트 밖) | `RegisterDeviceTokenRequest` | 없음(204, envelope 없음) | **구현됨·결선됨**(PR #450 — 세션 축 넷에서 부른다: 로그인·가입·앱 진입의 성공 분기 + `onNewToken`) |
 
 **삭제 엔드포인트는 없다.** 커밋 제목이 "저장/삭제 API"라고 적지만 HTTP 표면은 등록 하나뿐이고,
 삭제는 다른 도메인·발송 경로의 부수 효과로만 일어난다
@@ -255,8 +255,8 @@ Android 8 이상에서 같은 id의 알림 채널이 앱에 없으면 알림이 
 | `data` 파싱 | `type`·`route`·`groupId`·`date` 네 키, 값은 전부 문자열 | `NotificationMessageFactory` | ⚠️ **셋만 읽는다** — `PushDeepLinkIntent.kt`의 extras 키가 `type`·`route`·`groupId`이고 `date`는 어디서도 안 읽힌다 |
 | 딥링크 | `route=canvas` + `groupId` + `date`로 캔버스에 도달 | 같은 곳 | ⚠️ `groupId`로만 간다 — `PushDeepLink.AddTopping` KDoc이 **"알림이 가리키던 날짜가 아니라 항상 그 그룹의 최신 캔버스"**라고 못 박는다 → OQ-P-359 |
 | 중복 내성 | 같은 알림을 두 번 받아도 부작용이 없어야 함 | at-least-once 보장 | ⚠️ 이동은 견딘다(`Channel(CONFLATED)`) 그러나 **표시는 안 견딘다** — 알림 id가 `message.messageId?.hashCode()`라 재시도로 온 같은 알림이 **알림 두 개**로 쌓인다 → OQ-P-359 |
-| 토큰 등록 | 앱 시작·`onNewToken`·권한 허용마다 재호출(실패는 다음 호출이 메움) | `DeviceTokenAdapter.save` 주석 | ❌ **한 번도 안 부른다** — `onNewToken`이 로그만 남긴다 → OQ-P-341 ② |
-| (앱 쪽 전제) | Android 13+에서 `POST_NOTIFICATIONS` 런타임 허용 | Android 플랫폼 | ❌ **묻는 코드가 없다** — 매니페스트 선언만 있고 요청 코드가 develop에 0건이라, 사용자가 OS 설정에서 직접 켜지 않으면 표시 단계에서 막힌다 → OQ-P-358 |
+| 토큰 등록 | 앱 시작·`onNewToken`·권한 허용마다 재호출(실패는 다음 호출이 메움) | `DeviceTokenAdapter.save` 주석 | ✅ **부른다**(PR #450) — 자리는 **세션 축 넷**이다(로그인·가입·앱 진입의 성공 분기 + `onNewToken`). 권한 허용 직후는 **빼고** 세션 쪽으로 옮겼다 — 토큰이 권한과 무관하게 발급되기 때문이다. 실패는 3회 재시도(3초·6초) 뒤 다음 트리거에 맡긴다 |
+| (앱 쪽 전제) | Android 13+에서 `POST_NOTIFICATIONS` 런타임 허용 | Android 플랫폼 | ✅ **묻는다**(PR #450) — A-004·A-005 완료 직후 `NotificationPermissionGate`가 안내하고, 영구 거부면 앱 설정으로 보낸다. API 33 미만은 `NotificationPermissionManager`가 **허용으로 본다**(그 아래에서 `checkSelfPermission`이 항상 거부를 답하던 것이 포그라운드 알림을 통째로 버리고 있었다) |
 
 ## Android 매핑
 
@@ -343,13 +343,39 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
 Android 13+에서는 표시 자체가 막히고(OQ-P-358), 콜드 스타트에서 딥링크 이동과 스플래시 부트스트랩의
 백스택 리셋이 겹치는 구간이 검증되지 않았다(OQ-P-360).
 
+### 기기 토큰 등록 결선 (2026-09-05, PR #450)
+
+✅ **표면이 실제로 불린다.** 설계 정본은
+[push-notification-permission-and-device-token 스펙](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md),
+계층 배치는 [data-layer](../architecture/data-layer.md) 「기기 토큰 등록」.
+
+| 계약 | Android |
+|---|---|
+| 반복 호출이 안전한 upsert(`token`이 유일 키) | 부르는 자리가 **넷**이다 — `LoginWithKakaoUseCase`·`SignUpUseCase`(성공 분기) · `BootstrapSessionUseCase`(`refreshMyAccount` 성공 분기만) · `ParfaitFirebaseMessagingService.onNewToken`. **그 반복이 곧 실패 복구 수단**이라 "등록됨" 영속 플래그도 WorkManager도 두지 않았다 |
+| 같은 신규 토큰의 동시 요청은 유니크 제약 위반으로 500 | `DeviceTokenRegistrarImpl`이 `Mutex`로 막는다. 진행 중이면 두 번째 호출은 **대기하지 않고 그냥 돌아간다** |
+| 인증 필요(화이트리스트 밖) | 세션이 없는 경로에서는 부르지 않는다 — 신규 회원 로그인 분기, 필수 약관 미동의, 저장된 토큰이 없는 부트스트랩 |
+| `platform` 은 앱이 고정 | 종전대로 `NotificationRemoteDataSourceImpl`이 `"ANDROID"` 상수로 채운다 |
+| 로그아웃이 `(memberId, sessionId)` 로 매핑을 지운다 | 세션마다 재등록하므로 옛 세션 행이 남지 않는다 — 재로그인이 곧 재등록이다 |
+
+**`onNewToken` 도 전달받은 값을 쓰지 않고 같은 진입점을 탄다** — 등록구가 지금 값을 다시 읽으므로
+결과가 같고, 같은 뮤텍스를 타야 세션 축과 겹치지 않는다. 토큰 계약은 이 라운드에 **비널로 좁혀졌다**
+(`DeviceTokenProvider.currentToken(): DeviceToken`) — `getToken()` 이 미발급을 값이 아니라 `Task`
+실패로 주므로 `null` 분기가 도달하지 않는 경로였다.
+
+⚠️ **실서버·실기기 확인은 여전히 0회다.** `http/notifications.http` 도 이 회차에 돌리지 않았고,
+등록이 실제로 204를 받는지, 발송이 `NO_DEVICE_TOKEN` 을 벗어나는지 확인된 바 없다.
+
+⚠️ **쓰고 있는 FCM API 셋이 deprecated 다**(`getToken()`·`deleteToken()`·`onNewToken()`). 대체는 FID
+기반이고 **서버 Admin SDK 가 9.10.0 이상이어야 `setFid` 가 있다** — 앱만 옮기면 모든 발송이 실패하므로
+등록 토큰 축에 남는다 → [open-questions](../synthesis/open-questions.md) OQ-P-362.
+
 ## 미결
 
 - ~~2026-08-22에 걷어낸 FCM 축을 되살릴지~~ → **되살렸다**(2026-09-05, PR #446·#447 — [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)
-  되살림 정정). 남은 것은 **등록 호출 시점**이다 — `onNewToken`이 돌아왔는데 등록 표면을 안 부른다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-341 ②
-- 앱이 `POST_NOTIFICATIONS` 런타임 허용을 **묻지 않아** Android 13+에서는 수신부·채널이 다 있어도
-  표시 단계에서 막힌다 → [open-questions](../synthesis/open-questions.md) OQ-P-358
+  되살림 정정). ~~남은 것은 **등록 호출 시점**이다~~ → ✅ **답해졌다**(PR #450, 세션 축 넷) — OQ-P-341 해소
+- ~~앱이 `POST_NOTIFICATIONS` 런타임 허용을 **묻지 않아** Android 13+에서는 표시 단계에서 막힌다~~
+  → ✅ **묻는다**(PR #450, A-004·A-005 완료 직후) — OQ-P-358 해소. 다만 **노출 횟수 정책이 없어**
+  허용 전까지 그룹 생성·참여 흐름마다 다시 뜬다 → [open-questions](../synthesis/open-questions.md) OQ-P-370
 - 앱이 `date`를 버리고 항상 최신 캔버스로 열며, 중복 수신이 **알림 두 개**로 쌓인다 — 위
   [이 계약이 앱에 요구하는 것](#이-계약이-앱에-요구하는-것)의 ⚠️ 셋
   → [open-questions](../synthesis/open-questions.md) OQ-P-359

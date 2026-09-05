@@ -5,8 +5,8 @@ category: meta
 status: living
 platforms: android
 verified: 2026-09-05
-related_spec: canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
-related_adr: ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
+related_spec: push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
 tags: [meta, parfait]
@@ -6129,8 +6129,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   설계했다(반복 호출이 정상이라는 뜻이다). ③ 알림 권한을 언제 묻는지 — ADR-0013이 "되살릴 때 다시
   정하라"고 남긴 물음이고, 걷어낸 형태(`MainActivity.onCreate`에서 무조건)가 문제였다.
   ④ 권한 거부 상태에서도 토큰을 등록할지.
-- **상태**: **부분 해소** (① 되살렸다 — 2026-09-05 PR #446·#447 develop 머지 / ②③④ 잔존.
-  **동작 영향 0** — 등록 호출부가 0건이라 서버 발송은 전부 `NO_DEVICE_TOKEN`으로 취소된다)
+- **상태**: **해소됨** (①은 2026-09-05 PR #446·#447, ②③④는 같은 날 PR #450 develop 머지.
+  ⚠️ 실서버·실기기 확인은 0회라 등록이 실제로 통하는지는 아무도 보지 않았다)
   > 📌 **`:data` 표면이 생겼다(2026-09-03, PR #437 `7019a550`)** — `NotificationService` ·
   > `NotificationRemoteDataSource`(+`Impl`) · `DeviceToken`. **미결은 그대로다** — ①이 묻는 것은
   > 표면의 유무가 아니라 **FCM 축을 되살릴지**이고, 토큰을 얻는 심볼(`FirebaseMessaging`·
@@ -6190,7 +6190,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > `ParfaitFirebaseMessagingService.showNotification`이 정확히 그 함정을 밟아 **그 기기군의 포그라운드
   > 알림을 전부 버리고 있다.** 브랜치가 판정을 `NotificationPermissionManager`로 빼서 두 자리를 함께
   > 고쳤다. 설계 정본은
-  > [specs/2026-09-05-push-notification-permission-and-device-token](../specs/2026-09-05-push-notification-permission-and-device-token.md)이다.
+  > [specs/2026-09-05-push-notification-permission-and-device-token](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md)이다.
   > 📌 **브랜치가 알림과 무관한 축 하나를 더 싣고 있다** — 이벤트 버스 재배치다. `domain/event`·
   > `data/event`를 신설해 세션 종료·푸시 딥링크 버스를 `repository/`·`data/{session,push}`에서 옮기고,
   > `SessionEventSource`를 `SessionEventBus`로, `:data` 구현을 `SessionEventBusImpl`로 개명했다(둘 다
@@ -6202,6 +6202,21 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > **ADR-0004의 평면 배치 규칙 예외**(`DeviceTokenModule`이 `:app` 최초의 Hilt 모듈이다.
   > ADR-0013이 Firebase 의존을 `:app`에 가둬 `:data`로 못 내린다), 그리고 위 이벤트 버스 개명에 따른
   > `data-layer.md`·`module-structure.md` 갱신을 함께 본다.
+  > ✅ **②③④가 모두 답해졌다 — 이 미결은 닫힌다(2026-09-05, PR #450 `489b14cc` develop 머지).**
+  > 위에 예고한 그대로 들어왔고 어긋난 자리가 없다.
+  > - **②(등록 호출 시점)** — 세션 축 넷이다: `LoginWithKakaoUseCase`·`SignUpUseCase`의
+  >   `refreshMyAccount` 뒤, `BootstrapSessionUseCase`의 성공 분기, `onNewToken`. 네 자리 모두
+  >   **`suspend`가 아닌 `DeviceTokenRegistrar.register()`** 하나를 부르고 실행은 `:data` 구현이
+  >   `@ApplicationScope`에서 한다. 재시도 3회(3초·6초)와 `Mutex`가 그 안에 있다.
+  > - **③(권한을 언제 묻는지)** — A-004·A-005 완료 직후다(OQ-P-358 해소).
+  > - **④(거부 상태에서도 등록할지)** — **등록한다.** 서버가 권한 상태를 모르므로 발송이 나가고 OS가
+  >   버리지만, 사용자가 나중에 설정에서 켜면 앱이 아무것도 안 해도 동작한다.
+  > 예고했던 문서 일도 함께 끝났다 — [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 되살림 정정에
+  > 등록·권한 결선을 더했고, [ADR-0004](../adr/0004-hilt-ksp-di.md)에 `:app` Hilt 모듈 예외를,
+  > [data-layer](../architecture/data-layer.md)·[module-structure](../architecture/module-structure.md)·
+  > [ADR-0021](../adr/0021-token-refresh-forced-logout.md)에 이벤트 버스 개명을 적었다.
+  > ⚠️ **남은 것은 실행 확인이다** — 실서버·실기기 확인이 0회라 등록이 실제로 204를 받는지, 발송이
+  > `NO_DEVICE_TOKEN`을 벗어나는지 아무도 보지 않았다.
 - **해소 메모**: 정하면 [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)에 **되살림 정정**을 더하고
   (철회 정정을 지우지 않는다 — 두 결정이 다 이력이다), [api/notification.md](../api/notification.md)
   Android 매핑 절과 [data-layer](../architecture/data-layer.md)에 적는다. ①이 "미룬다"로 정해져도
@@ -6602,11 +6617,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   직후**로 답해 두었고(OQ-P-341 ③), 그 브랜치가 들어오기 전까지 develop은 묻지 않는다.
   ② 거부·미허용 상태를 사용자에게 알릴지 — 지금은 표시 실패가 **로그에도 안 남는다**.
   ③ Android 12 이하에서는 권한이 필요 없어 같은 코드가 다르게 동작하는데, 그 차이를 확인한 사람이 없다.
-- **상태**: 미해결 (**동작 차단** — 수신부·채널·딥링크가 다 있어도 Android 13+에서는 사용자가 OS 설정에서
-  직접 켜기 전까지 아무것도 안 뜬다. 다만 등록 호출부가 0건이라 지금은 애초에 알림이 오지 않는다)
-- **해소 메모**: 권한 브랜치가 머지되는 회차에 OQ-P-341 ②③④와 함께 본다. 정해지면
-  [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것"의 마지막 행과
-  [navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동"의 ⚠️를 고친다.
+- **상태**: **해소됨** (2026-09-05, PR #450 develop 머지)
+  > ✅ **①이 답해졌다** — `NotificationPermissionGate`가 **A-004·A-005 완료 직후, 캔버스 진입 전**에
+  > 묻는다. 이미 허용돼 있으면 안내 없이 통과하고, 영구 거부면 앱 설정으로 보낸다.
+  > ✅ **③도 함께 닫혔다** — API 33 미만은 권한이 정의돼 있지 않아 `checkSelfPermission`이 **항상 거부를
+  > 답하는데** 알림은 기본으로 켜져 있다. `NotificationPermissionManager`가 버전으로 먼저 갈라
+  > **허용으로 본다.** 위 출처가 지목한 `showNotification`이 정확히 그 함정을 밟아 **그 기기군의
+  > 포그라운드 알림을 전부 버리고 있었고**, 같은 판정으로 교체되며 고쳐졌다.
+  > ⚠️ **②(거부·미허용을 사용자에게 알릴지)는 답해지지 않았다** — 표시 실패는 여전히 조용하다.
+  > 다만 이제 안내 자체가 있으므로 **성격이 "알릴 수단이 없다"에서 "안내를 지나친 뒤를 안 알린다"로
+  > 바뀌었고**, 노출 횟수 정책 미정(OQ-P-370)과 같은 자리에서 본다.
+- **해소 메모**: [api/notification.md](../api/notification.md) "이 계약이 앱에 요구하는 것"의 마지막
+  행과 미결 절, [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 되살림 정정을 함께 고쳤다.
+  설계 정본은 [push-notification-permission-and-device-token 스펙](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md) 결정 3·4.
 
 ### [2026-09-05] 앱 수신부가 계약의 `date`를 버리고 중복 수신을 알림 두 개로 쌓는다
 
@@ -6677,9 +6700,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-362
 - **출처**: `firebase-messaging` 25.1.2 소스 원문 — `FirebaseMessaging.getToken()`·`deleteToken()` 과
   `FirebaseMessagingService.onNewToken()` 이 **전부 `@Deprecated`** 이고 대체가 FID 기반
-  `register()`·`onRegistered(installationId)` 다(25.1.0 부터). 미머지 브랜치
-  `feature/push-notification-permission` 이 쓰는 API 가 정확히 그 셋이다
-  (`FirebaseDeviceTokenProvider`·`ParfaitFirebaseMessagingService`).
+  `register()`·`onRegistered(installationId)` 다(25.1.0 부터). **develop 이 쓰는 API 가 정확히 그
+  셋이다**(`FirebaseDeviceTokenProvider`·`ParfaitFirebaseMessagingService`, 2026-09-05 PR #450 머지 —
+  둘 다 `@Suppress("DEPRECATION")` 과 전환 근거 주석을 달고 있다).
 - **항목**: ① 언제 옮길지 — **선행 조건은 서버다**(아래 상태 참고). ② 서버가 Admin SDK 를
   9.10.0 이상으로 올리고 `setFid` 로 바꾸는 회차를 언제 잡을지.
 - **상태**: 미해결 (**급하지 않다** — Firebase 문서가 두 방식을 "fully co-supported" 로 적고 제거
@@ -6698,7 +6721,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > `FirebaseDeviceTokenProvider` 구현·`onNewToken`→`onRegistered`·매니페스트 플래그만 바뀐다.
   > (초판이 "값을 당겨오는 자리가 없어져 구조가 통째로 바뀐다"고 적었으나 사실이 아니다.)
   > 📌 브랜치는 등록 토큰 축에 남기로 하고 근거·전환 조건을
-  > [specs/2026-09-05-push-notification-permission-and-device-token](../specs/2026-09-05-push-notification-permission-and-device-token.md)
+  > [specs/2026-09-05-push-notification-permission-and-device-token](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md)
   > 결정 6에 적었다. 같은 라운드에 **토큰 계약을 비널로 좁혔다** — `getToken()` 은 `Task<String>` 이고
   > 미발급을 `Task` 실패로 주므로 `currentToken(): DeviceToken?` 의 `null` 분기가 도달하지 않는
   > 경로였다(그것을 검증하던 테스트도 걷었다).
@@ -6707,6 +6730,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [api/notification.md](../api/notification.md) 등록 절의 `token` 필드 설명도 함께 고친다.
   다시 볼 조건 셋: ① 서버의 `fid` 지원 확인 ② Firebase 의 등록 토큰 제거 일정 발표
   ③ deprecated API 의 실제 동작 중단.
+  > 📌 **브랜치가 develop 이 됐다(2026-09-05, PR #450)** — 이 미결이 가리키던 코드는 이제 미머지가
+  > 아니라 **출시 경로에 있다.** 판단(등록 토큰 축에 남는다)과 선행 조건(서버 Admin SDK 9.10.0)은
+  > 그대로이고, 바뀐 것은 **어긋났을 때의 대가**다: 전에는 브랜치 하나가 못 나가는 것이었고 지금은
+  > 발송이 전부 실패하는 것이다. 서버 delta 회차에 `FcmNotificationSender` 와 Admin SDK 판을 함께 본다.
 
 ### [2026-09-05] 튜토리얼이 실제 화면 대신 목업 스크린샷을 덮는다 — 어긋날 길과 정책 근거
 
@@ -6821,4 +6848,66 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ①②를 정하면 [state-management](../architecture/state-management.md) 「UI State가 담는 것」에
   적고, ③은 [design-system](../architecture/design-system.md) 「튜토리얼 4종」에 노출·완료 규칙으로 적는다.
 
-<!-- oq-next: 370 -->
+### [2026-09-05] 알림 권한 안내를 몇 번 보여줄지 정한 적이 없다
+
+- **ID**: OQ-P-370
+- **출처**: `NotificationPermissionGate`(PR #450) — 거부·"나중에"를 **영속하지 않는다.** 노출 조건은
+  "지금 권한이 없다" 하나이므로, 허용하기 전까지 **그룹 생성·참여 흐름을 탈 때마다 다시 뜬다.**
+  스펙이 이 사실을 적고 미결로 남겼다
+  ([결정 4](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md)).
+- **항목**: ① 최초 1회로 줄일지 — 줄이려면 "안내를 보여줬다"를 로컬에 영속해야 하고, 자리는 이미 있다
+  (`UserConfigRepository`, PR #449). ② 반대로 매번 뜨는 것이 의도인지 — 그룹을 새로 만들 때마다 묻는
+  것은 맥락이 달라졌다고 볼 수도 있다. **정책 근거가 없다** — 위키에 알림 권한 조항 자체가 없다.
+  ③ **안내를 지나친 뒤를 알리지 않는다**(OQ-P-358 ②에서 옮겨 온 항목) — 거부한 사용자는 알림이 왜
+  안 오는지 앱 어디서도 알 수 없고, 표시 실패는 로그에도 안 남는다.
+- **상태**: 미해결 (**동작은 의도대로** — 근거 부재와 반복 노출이다)
+- **해소 메모**: ①②는 위키 판단이 선행이다. 1회로 정하면 `TutorialKind`와 같은 자리
+  (`UserConfigVO`)에 항목을 더하는 것이 가장 싸고, 그때 [data-layer](../architecture/data-layer.md)
+  DataStore 항목과 위 스펙 결정 4를 함께 고친다.
+
+### [2026-09-05] 이전 세션에서 이미 두 번 거부한 사용자는 설정으로 보내지 못한다
+
+- **ID**: OQ-P-371
+- **출처**: `NotificationPermissionGate`(PR #450) — 영구 거부 판정이 `shouldShowRequestPermissionRationale`
+  을 **요청 직전과 콜백에서 두 번 읽어 `true` → `false` 로 떨어진 경우**만 인정한다. 한 번만 읽으면
+  "아직 안 물어봤다"와 "두 번 거부됐다"가 같은 `false` 라 **처음 온 사용자까지 설정으로 보내기** 때문이다.
+- **항목**: ① 그 대가로 **이전 세션에서 이미 두 번 거부해 둔 사용자**는 요청 직전 값이 `false` 라
+  판정에 걸리지 않는다 — 「알림 받기」를 눌러도 시스템 다이얼로그가 안 뜨고 설정으로도 안 가서
+  **버튼이 무반응으로 남는다.** ② 닫으려면 "한 번은 요청했다"를 로컬에 영속해야 하고, 그러면
+  OQ-P-370 ①과 같은 저장소를 쓰게 된다 — 두 물음을 함께 정하는 편이 낫다. ③ 이 갈래를 확인한 사람이
+  없다 — 재현하려면 두 번 거부한 상태로 앱을 다시 켜야 하는데 실기기 확인이 0회다.
+- **상태**: 미해결 (**동작 영향 있음** — 해당 사용자에게는 버튼이 아무 일도 하지 않는다)
+- **해소 메모**: ②를 택하면 위 스펙 결정 4의 ⚠️ 두 문단과
+  `NotificationPermissionManager.shouldShowRationale` KDoc을 함께 고친다.
+
+### [2026-09-05] 이펙트를 붙잡아 두는 게이트 배선이 두 Route에 복제됐다
+
+- **ID**: OQ-P-372
+- **출처**: `GroupCreateRoute`·`GroupNickNameRoute`(PR #450) — 둘 다 `NavigateToNext` 이펙트를 곧바로
+  실행하지 않고 `rememberSaveable`에 담아 두었다가 게이트가 끝나면 잇는다. **같은 구조가 두 벌이고**
+  `NavigateToNextSaver`도 각자 있다(이펙트 타입이 달라 공용화하려면 제네릭이나 공통 인터페이스가 필요하다).
+- **항목**: ① 세 번째 화면이 같은 게이트를 필요로 할 때 또 복제할지 — 지금은 "이득이 얇다"가 근거이고
+  스펙이 그렇게 적었다. ② **이펙트를 화면 상태로 붙잡아 두는 것 자체가 새 관용구**인데 규약이 없다 —
+  이 저장소의 이펙트는 지금까지 전부 즉시 소비였다. ③ `rememberSaveable`은 구성 변경만 막고
+  **프로세스 사망은 막지 못한다** — `Navigator` 백스택이 `@ActivityRetainedScoped`의 순수
+  `mutableStateListOf`라 스플래시로 초기화되므로, 그 경우 사용자는 그룹이 만들어진 채 처음 화면에 선다.
+- **상태**: 미해결 (**동작은 의도대로** — 복제와 규약 부재다. ③은 이 구조가 못 막는 범위의 문제다)
+- **해소 메모**: ②를 정하면 [state-management](../architecture/state-management.md)에 "이펙트를 지연
+  소비하는 자리" 절을 두고, ①은 그때 함께 본다. ③은 백스택 복원(OQ-P-339와 같은 자리)이 선행이다.
+
+### [2026-09-05] 알림 권한 게이트에 자기 테스트가 없다
+
+- **ID**: OQ-P-373
+- **출처**: `feature/groups/enter/impl` — 이 모듈에 **`androidTest` 소스셋이 없다.** PR #450이 JVM으로
+  덮은 것은 `NotificationPermissionManagerTest`(API 33 미만에서 `Context`를 묻지 않고 `true`를 준다)와
+  두 `NavigateToNextSaver` 왕복뿐이다.
+- **항목**: ① **33 이상 분기와 `shouldShowRationale` 두 번 읽기 비교가 한 줄도 안 잠겼다** — 정확히
+  OQ-P-371이 가리키는 갈래이고, 잘못 고치면 처음 온 사용자를 설정으로 보내는 회귀가 조용히 들어온다.
+  ② 하니스를 신설할지 — `parfait.test.compose`를 이 모듈에 붙이면 되지만, **CI가 계측을 컴파일만 하는
+  문제**가 그대로라 붙여도 돌지 않는다(OQ-P-102 ②). ③ 게이트가 `onFinished`를 세 갈래 모두에서
+  부른다는 계약도 테스트가 아니라 KDoc으로만 유지된다.
+- **상태**: 미해결 (**동작은 의도대로** — 잠금 부재다)
+- **해소 메모**: ②는 OQ-P-102와 같은 자리에서 정한다 — CI가 계측을 실행하지 않는 한 하니스 신설의
+  값이 얇다. ①만이라도 잠그려면 판정을 Composable 밖 순수 함수로 한 번 더 빼는 길이 있다.
+
+<!-- oq-next: 374 -->

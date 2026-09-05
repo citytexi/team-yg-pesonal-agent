@@ -88,6 +88,33 @@ tags: [adr, parfait]
 > Android 13 이상에서는 사용자가 OS 설정으로 직접 켜기 전까지 알림이 표시되지 않는다.
 > 둘 다 미머지 브랜치 `feature/push-notification-permission`가 건드리는 자리다(OQ-P-341 ②③④).
 
+> ✅ **남은 둘이 2026-09-05 PR #450 `feature/push-notification-permission` 으로 답해졌다.**
+> 위 표의 마지막 두 행이 닫힌다.
+>
+> - **토큰 라이프사이클** — `onNewToken` 이 이제 `DeviceTokenRegistrar.register()` 를 부르고,
+>   등록 시점이 그 하나가 아니라 **세션 축 넷**이다(로그인·가입·앱 진입의 성공 분기 + `onNewToken`).
+>   **권한과 독립**이라는 것이 이 결정의 핵심이다 — FCM 토큰은 알림 권한과 무관하게 SDK 가 설치
+>   시점에 발급하므로, 등록을 권한에 매달면 재로그인·기기교체·재설치 사용자가 등록 경로에 닿지
+>   못한다. **권한을 거부한 사용자의 토큰도 등록한다**(서버가 권한 상태를 모르니 발송이 나가고 OS 가
+>   버리지만, 사용자가 나중에 설정에서 켜면 앱이 아무것도 안 해도 동작한다).
+> - **알림 권한을 언제 묻는가** — **A-004·A-005 완료 직후, 캔버스 진입 전**이다
+>   (`NotificationPermissionGate`). 걷어낸 형태("첫 실행마다 무조건")로 돌아가지 않았고, 이미
+>   허용돼 있으면 안내 없이 통과한다. 영구 거부면 앱 설정으로 보낸다.
+> - 함께 **API 33 미만 정책**이 생겼다 — `POST_NOTIFICATIONS` 가 그 아래 플랫폼에 정의돼 있지 않아
+>   `checkSelfPermission` 이 항상 거부를 답하는데 알림은 기본으로 켜져 있다. 판정을
+>   `NotificationPermissionManager` 로 빼고 **허용으로 본다.** 되살아난
+>   `ParfaitFirebaseMessagingService.showNotification` 이 그 함정을 그대로 밟고 있었으므로
+>   **그 기기군의 포그라운드 알림을 전부 버리던 것**이 이 라운드에 함께 고쳐졌다.
+>
+> ⚠️ **Firebase 경계가 `:app` Hilt 모듈을 낳았다** — 토큰을 읽는 `FirebaseDeviceTokenProvider` 가
+> SDK 를 쓰므로 `:app` 에 있어야 하고, 그 바인딩 `DeviceTokenModule` 도 함께 `:app` 에 생겼다.
+> [ADR-0004](0004-hilt-ksp-di.md) 의 "DI 모듈은 `:data` `di/` 평면 배치" 규칙의 **첫 예외**다.
+>
+> ⚠️ **쓰고 있는 FCM API 셋이 전부 deprecated 다** — `getToken()`·`deleteToken()`·`onNewToken()` 이고
+> 대체는 FID 기반이다. **서버가 선행 조건이라 지금은 옮기지 않는다**(Admin SDK 9.9.0 에는 `setFid` 가
+> 없다) → OQ-P-362. 근거·전환 조건의 정본은
+> [스펙](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md) 결정 6.
+
 ## 대안
 - **푸시 미도입(로컬 알림만)** — 외부 SDK·GMS 의존 회피. 그러나 서버발 이벤트(마감·초대) 푸시 불가로 핵심 UX 결손.
   **→ 기각:** 그룹 협업 앱에서 푸시는 사실상 필수.

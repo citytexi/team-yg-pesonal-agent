@@ -8,7 +8,7 @@ verified: 2026-09-05
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0013, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient, SegmentationModuleInstaller, ModuleInstallGateway, PlayServicesModuleInstallGateway, ModuleInstallModule, PrepareSegmentationModuleUseCase, NotificationService, NotificationRemoteDataSource, NotificationRemoteDataSourceImpl, DeviceToken, PushDeepLink, PushNotificationType, PushDeepLinkEventBus, PushDeepLinkEventBusImpl, DataStorePreferences, UserConfigLocalDataSource, UserConfigLocalDataSourceImpl, UserConfigEntity, UserConfigRepository, UserConfigRepositoryImpl, UserConfigVO, TutorialKind
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient, SegmentationModuleInstaller, ModuleInstallGateway, PlayServicesModuleInstallGateway, ModuleInstallModule, PrepareSegmentationModuleUseCase, NotificationService, NotificationRemoteDataSource, NotificationRemoteDataSourceImpl, DeviceToken, PushDeepLink, PushNotificationType, PushDeepLinkEventBus, PushDeepLinkEventBusImpl, SessionEventBusImpl, NotificationRepository, NotificationRepositoryImpl, DeviceTokenProvider, DeviceTokenRegistrar, DeviceTokenRegistrarImpl, FirebaseDeviceTokenProvider, RegisterDeviceTokenUseCase, RegisterCurrentDeviceTokenUseCase, DataStorePreferences, UserConfigLocalDataSource, UserConfigLocalDataSourceImpl, UserConfigEntity, UserConfigRepository, UserConfigRepositoryImpl, UserConfigVO, TutorialKind
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -30,6 +30,11 @@ tags: [architecture, parfait]
     `session/`과 같은 부류다 — 원격 VO가 아니라 **앱 안에서 도는 사건**이고, 짝이 되는 인터페이스도
     `repository/session/`을 본떠 `repository/push/`에 놓였다. 즉 하위 패키지를 만드는 실제 기준은
     "원격 VO"가 아니라 **선례를 따라간다**는 것에 가깝다. 규약은 여전히 없다.
+    📌 **2026-09-05(PR #450)에 그 선례가 한 번 정리됐다** — 세션 종료와 푸시 딥링크의 인터페이스가
+    `repository/session/`·`repository/push/`에서 **`domain/event/`로 모였다**(구현은 `data/event/`).
+    둘 다 Repository가 아니라 이벤트 통로이므로 `repository/` 아래 있을 이유가 없었다는 것이 근거다.
+    `domain/model/`의 하위 패키지 셈은 그대로 열이고(`push/`는 모델만 남는다), **정리된 것은
+    `repository/` 쪽**이다. 규약은 여전히 문서에 없다.
 - **data** — Repository **구현**(예: `RecentImageRepositoryImpl`, `ImageSegmentationRepositoryImpl`), DataSource, DI 모듈.
 
 ## DataSource 종류
@@ -95,13 +100,14 @@ tags: [architecture, parfait]
 
 | 모듈 | 제공/바인딩 |
 |------|-------------|
-| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)·**imageFile**(#329)) + `NonceGenerator`·**`userConfig`**(#449). `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
+| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)·**imageFile**(#329)·**notification**(#450)) + `NonceGenerator`·**`userConfig`**(#449). `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
 | `ModuleInstallModule` | `ModuleInstallGateway` ↔ `PlayServicesModuleInstallGateway` `@Binds @Singleton`(2026-09-02). 리포지토리 결선이 아니라 `RepositoryModule`에 두지 않았다 — `di/`의 역할당 파일 1개 규약을 따른 것이다 |
 | `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenStore` ↔ `EncryptedTokenStore`·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)·`ImageFileLocalDataSource` ↔ `ImageFileLocalDataSourceImpl`(#329)·**`CanvasLocalDataSource` ↔ `CanvasLocalDataSourceImpl`**(#404)·**`UserConfigLocalDataSource` ↔ `UserConfigLocalDataSourceImpl`**(#449)) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
 | `NetworkModule` | `TokenProvider`(=`TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) + **`@UploadClient` `OkHttpClient`**(#322 — S3 presigned PUT 전용. Retrofit이 없는 유일한 표면이고 인터셉터를 하나도 안 단다) + **`@DownloadClient` `OkHttpClient`**(#369 — 서버 공개 이미지 GET 전용. 로깅만 달고 타임아웃은 메인과 같으며, `newBuilder()` 파생이 아니라 새 `Builder`여야 `Dispatcher` 격리가 산다) |
-| `SessionModule` | `SessionEventBus` → `SessionEventSource` 바인딩(#260 신설) |
+| `SessionModule` | `SessionEventBusImpl` → `SessionEventBus` 바인딩(#260 신설, **#450에서 양쪽 이름이 함께 바뀌었다** — 아래 「이벤트 버스 개명」) |
+| **`DeviceTokenRegistrarModule`**(#450) | `DeviceTokenRegistrarImpl` → `DeviceTokenRegistrar` `@Binds @Singleton`. 짝이 되는 `DeviceTokenProvider` 바인딩은 **`:app`의 `DeviceTokenModule`**에 있다 — 구현이 Firebase 의존이라 `:data`로 못 내린다([ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 경계, [ADR-0004](../adr/0004-hilt-ksp-di.md) 평면 배치 규칙의 첫 예외) |
 | **`PushDeepLinkModule`**(#446) | `PushDeepLinkEventBusImpl` → `PushDeepLinkEventBus` `@Provides @Singleton`. `SessionModule`과 **형태까지 같다**(`object` + `@Provides`) |
 | `DataStoreModule` | `DataStore<Preferences>` 싱글톤 |
 | `JsonModule` | `@LocalJson`·`@RemoteJson` `Json` 2종(현재 설정 동일: `ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`) |
@@ -286,6 +292,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 | `ParfaitRepository`(#268, #279, #329, **#404**) | `getYears`(#279) · **읽기** `todayCanvas(groupId): Flow<CanvasVO?>` · `todayCanvasRefreshFailures(groupId): Flow<Unit>` / **갱신** `refreshTodayCanvasDetail`(suspend) · `requestTodayCanvasRefresh`(즉시 반환) / **정리** `clearTodayCanvas`(non-suspend) · `getPastCanvases` · `getCanvasDetail` · **`changeCanvasBackground`**(#329) | `GetParfaitYearsUseCase`(C-201 연도 드롭다운) · `GetTodayParfaitFlowUseCase`(C-001·C-301·C-106 구독) · `RefreshTodayParfaitDetailUseCase`·`RequestTodayParfaitRefreshUseCase`(쓰기 직후 강제 갱신) · `ObserveTodayParfaitRefreshFailureUseCase`(첫 조회 덮개 해제) · `GetParfaitHistoriesUseCase`(C-201 달력, 연 단위) · `GetParfaitDetailUseCase`(C-001 날짜 선택) · `ChangeCanvasBackgroundUseCase`(C-301 확인) · `LogoutUseCase`(`clearTodayCanvas`) |
 | `ImageUploadRepository`(#322) | `upload(filePath, imageType): Result<ImageId>` — 발급·S3 PUT·확인 3단계를 하나로 닫고 **이미 `COMPLETED`인 `imageId`**를 준다 | `AddToppingUseCase`(C-106 배치) · `UploadImageUseCase`(#329, C-301 배경) |
 | **`ImageFileRepository`**(#329) | `copyToCache(uri): Result<String>` — `content://`를 캐시 파일로 떨구고 **절대경로**를 준다 | `UploadImageUseCase` |
+| **`NotificationRepository`**(#450) | `registerDeviceToken(deviceToken): Result<Unit>` — 204·본문 없음이라 `safeApiCallNoContent` 뒤 `mapErrorToAppError`만 탄다 | `RegisterDeviceTokenUseCase`(값이 손에 있는 자리) · `RegisterCurrentDeviceTokenUseCase`(값 없이 부르는 자리 — 지금 토큰을 직접 읽어 넘긴다) → 세션 트리거 넷 |
 | `ToppingRepository`(#322, #335, #336→2026-08-31, #369) | `place(groupId, parfaitId, imageId, transform, border): Result<PlacedToppingVO>` · **`delete(groupId, parfaitId, parfaitImageId): Result<Unit>`**(#335) · **`updateAll(groupId, parfaitId, updates): Result<List<UpdatedToppingVO>>`**(#428→2026-09-01 develop 머지 — #336의 단건 `update`를 대체) · **`updateBorder(groupId, parfaitId, parfaitImageId, border): Result<UpdatedToppingBorderVO>`**(#369) | `AddToppingUseCase`(C-106 배치) · `DeleteToppingUseCase`(C-301 편집 탭 삭제) · `UpdateToppingsUseCase`·`UpdateToppingBorderUseCase`(C-301 편집 탭 확인) |
 
 > ✅ **오늘 캔버스가 그룹 SSoT와 같은 형태로 갈렸다(2026-08-31, PR #404)** — `getTodayCanvas` 하나가 구독·갱신 둘·정리·실패 축 다섯으로 나뉘고 `GetTodayParfaitUseCase`가 사라졌다. 갱신이 `Result<Unit>`만 주는 것도 ADR-0023과 같은 이유다.
@@ -601,19 +608,19 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   지연 주입이 필요 없다. **실패는 두 부류**다 — 서버가 refresh token을 거절한 경우(401, 또는 본문
   `code`가 `INVALID_TOKEN`·`EXPIRED_TOKEN`·`FORBIDDEN_REFRESH_TOKEN`)만 `clear()` + `ForcedLogout`,
   네트워크 실패·5xx·본문 없는 403은 **토큰을 유지**한 채 `null`을 반환해 원요청 401이 화면의 기존
-  `AppError` 경로로 간다. 세션 종료는 `:domain`의 `SessionEvent.ForcedLogout`·`SessionEventSource`로
-  알리고 구현 `SessionEventBus`(`session/`, `Channel(CONFLATED)` + `receiveAsFlow()`)가 발행·구독을
+  `AppError` 경로로 간다. 세션 종료는 `:domain`의 `SessionEvent.ForcedLogout`·`SessionEventBus`로
+  알리고 구현 `SessionEventBusImpl`(`event/`, `Channel(CONFLATED)` + `receiveAsFlow()`)가 발행·구독을
   겸하며, **수집은 앱 루트 `MainRoute` 한 곳**이다([ADR-0021](../adr/0021-token-refresh-forced-logout.md),
   [spec](../specs/archive/2026-08-15-session-token-refresh-infra.md)). `NetworkModuleTest`가 두
   클라이언트가 `Dispatcher`·인증기·`AuthInterceptor`를 공유하지 않는다는 **배선의 구조적 성질**을
   잠근다 — 데드락 자체는 재현하지 않는다(회귀가 실패가 아니라 무한 대기로 나타난다).
   > 📌 **같은 통로가 둘이 됐다(2026-09-05, PR #446)** — 푸시 딥링크가 `PushDeepLinkEventBus`
-  > (`:domain` `repository/push/`)와 `PushDeepLinkEventBusImpl`(`:data` `push/`, 역시
+  > (`:domain` `event/`)와 `PushDeepLinkEventBusImpl`(`:data` `event/`, 역시
   > `Channel(CONFLATED)` + `receiveAsFlow()`)로 **같은 모양을 복제했다.** 두 통로가 공유하는 성질은
   > 셋이다 — 구독자가 없는 순간 발행해도 잃지 않는다 · 단일 소비자다 · **수집은 앱 루트 `MainRoute`
   > 한 곳**이다. 접히는 규칙의 뜻만 다르다: 세션 쪽은 401이 여러 건 터져도 로그아웃 이동이 한 번이면
   > 되고, 푸시 쪽은 알림을 연달아 탭해도 **마지막으로 탭한 곳 하나에만 도착하면 된다.**
-  > ⚠️ **인터페이스를 가른 방식은 다르다.** 세션은 도메인에 **구독구만** 내놓고(`SessionEventSource`)
+  > ⚠️ **인터페이스를 가른 방식은 다르다.** 세션은 도메인에 **구독구만** 내놓고(`SessionEventBus`)
   > 발행은 `:data` 구현 클래스의 `postForcedLogout`이 갖는다 — 발행자 `TokenAuthenticator`가 같은
   > `:data` 안에 있어 성립한다. 푸시는 **발행자가 `app`의 `MainActivity`**라 그 수가 안 통해서,
   > 도메인 인터페이스 하나가 `post`와 `deepLinks`를 **겸한다**(#446이 그 방향을 커밋 하나로 못 박았다 —
@@ -623,6 +630,32 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   > `PushDeepLinkEventBusImplTest`가 **구독 전에 발행한 것이 남아 있다가 전달된다**는 것과
   > **두 번 발행하면 마지막 것만 온다**는 것을 잠근다. 배선은
   > [navigation-flow](navigation-flow.md) "푸시 딥링크 이동".
+  > 📌 **이벤트 버스 개명(2026-09-05, PR #450)** — 두 통로가 같은 규칙을 쓰게 됐다.
+  > **인터페이스가 `~EventBus`, 구현이 `~Impl`**이고 자리는 `:domain` `event/`·`:data` `event/`다.
+  > 전에는 세션만 반대였다(인터페이스 `SessionEventSource`, 구현 `SessionEventBus`) — `Source`가 이
+  > 저장소에서 `LocalDataSource`·`RemoteDataSource` 계열 이름이라 이벤트 구독구에 붙으면 오독을 부른다.
+  > **동작은 하나도 안 바뀌었다**(Hilt 그래프 동일, 파일 이동·개명뿐). 위에 적은 **계약의 비대칭은
+  > 그대로다** — `SessionEventBus`는 여전히 구독만 내놓고 발행은 `:data` 구현에만 있다.
+- **기기 토큰 등록**(#450) — `DeviceTokenRegistrar`(`:domain` `notification/`)는 **`suspend`가 아니다.**
+  `register()`가 걸어만 두고 곧장 돌아오고, 실제 실행은 `:data`의 `DeviceTokenRegistrarImpl`이
+  `@ApplicationScope`에서 한다. **부르는 자리가 로그인·가입·앱 진입이라** 호출자 스코프에 매달면
+  곧바로 갈아 끼워지는 화면과 함께 등록이 취소되고, 사용자를 기다리게 할 이유도 없다(등록 결과로
+  그 화면이 달라지지 않는다). 재시도는 3회에서 멈추고 백오프는 3초·6초다 — 서버가 `token`을 유일 키로
+  upsert 하도록 설계해 **반복 호출이 곧 실패 복구 수단**이라, 오래 끄는 대신 다음 세션 트리거에 맡긴다.
+  `Mutex`로 겹침을 막는데 근거가 앱이 아니라 서버에 있다 — 같은 신규 토큰으로 두 요청이 동시에 들어가면
+  두 번째가 유니크 제약 위반으로 500이다([api/notification.md](../api/notification.md) 등록 절).
+  진행 중이면 두 번째 호출은 **대기하지 않고 그냥 돌아간다**(기다려 봐야 같은 토큰을 한 번 더 올린다).
+  - 값을 읽는 쪽은 `DeviceTokenProvider`(`:domain` `notification/` — **`repository/` 밖이다**)이고
+    구현 `FirebaseDeviceTokenProvider`는 `:app`에 있다. Firebase 의존을 `:app`에 가두는
+    [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 경계 때문이고, 그래서 바인딩 모듈도 `:app`에
+    생겼다(`push/di/DeviceTokenModule` — [ADR-0004](../adr/0004-hilt-ksp-di.md) 평면 배치의 첫 예외).
+  - 계약은 **비널**이다(`currentToken(): DeviceToken`) — `getToken()`이 미발급을 값이 아니라 `Task`
+    실패로 주므로 `null` 분기가 도달하지 않는 경로였다. 미발급은 예외로 오고 위 재시도가 받는다.
+  - 부르는 자리 넷은 전부 **세션 축**이다(`LoginWithKakaoUseCase`·`SignUpUseCase`·
+    `BootstrapSessionUseCase`의 성공 분기 · `ParfaitFirebaseMessagingService.onNewToken`). `onNewToken`도
+    전달받은 값을 쓰지 않고 같은 진입점을 탄다 — 등록구가 지금 값을 다시 읽고, 같은 뮤텍스를 타야
+    세션 축과 겹치지 않는다. 설계 정본은
+    [push-notification-permission-and-device-token 스펙](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md).
 - **토큰·계정 정보 저장 경로**: `CryptoManager`(Android Keystore AES/GCM, `security/`) →
   **`EncryptedPreferences`**(`datastore/`) → `EncryptedTokenStore`(`TokenStore` 구현,
   `source/token/local/`) → `TokenStore`(`LocalDataSourceModule.bindTokenStore`) →

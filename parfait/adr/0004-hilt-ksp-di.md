@@ -25,6 +25,12 @@ tags: [adr, parfait]
 - 스코프 사용 규칙:
   - **SingletonComponent** — Repository·DataSource·DataStore·네트워크 등 앱 수명 서비스. DI 모듈은 모두 `data` 레이어 `di/`에 **평면 배치, 역할당 파일 1개**로 둔다(`RepositoryModule`·`LocalDataSourceModule`·`RemoteDataSourceModule`·`ServiceModule`·`NetworkModule`·`JsonModule`·`DataStoreModule`·`SingletonInjectModule`) — 배치 규칙은 [[0017-remote-network-datasource]]·[[data-layer]].
   - **ActivityRetainedComponent / ActivityRetainedScoped** — `Navigator`와 feature 엔트리 빌더(`NavigationModule`). 설정 변경을 넘어 백스택 유지.
+    > 📌 **평면 배치 규칙에 예외가 하나 생겼다(2026-09-05, PR #450)** — `DeviceTokenModule`이
+    > **`:app`의 `push/di/`**에 있다. 바인딩 대상 `FirebaseDeviceTokenProvider`가 Firebase SDK를 쓰는데
+    > [[0013-firebase-fcm-crashlytics]]가 그 의존을 `:app`에 가두므로 `:data`로 내릴 수 없다.
+    > **`:app`이 Hilt 모듈을 갖는 첫 자리**이고, 같은 축의 다른 바인딩(`DeviceTokenRegistrarModule`)은
+    > 규칙대로 `:data` `di/`에 있다 — 즉 갈린 기준은 도메인이 아니라 **SDK 의존이 어느 모듈에 갇혀
+    > 있는가**다. 다른 Firebase 표면이 늘면 같은 이유로 `:app` 모듈이 더 생긴다.
 
 Repository·DataSource 인터페이스↔구현 바인딩은 `@Binds`로.
 
