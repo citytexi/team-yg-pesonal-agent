@@ -176,9 +176,19 @@ TokenAuthenticator(재발급 거절) → SessionEventBusImpl.postForcedLogout()
 - **발행은 `MainActivity`가 두 자리에서 한다** — 콜드 스타트는 `onCreate`의 `intent`, 이미 떠 있으면
   `onNewIntent`다. 뒤엣것이 성립하려면 매니페스트의 `launchMode="singleTop"`이 필요하고 이 PR이
   그것을 함께 붙였다(앱 전 화면에 걸리는 매니페스트 변경이다 — 단일 액티비티라 그렇다).
-- **소비한 `Intent`는 `setIntent(Intent())`로 비운다.** 안 비우면 화면 회전이 없어도 재구성이 일어나는
-  경로(다크모드 토글·폰트/언어 변경·폴더블 리사이즈)에서 `onCreate`가 같은 `intent`를 다시 받아
-  이미 처리한 딥링크를 또 발행한다.
+- **같은 딥링크가 두 번 발행되는 경로가 둘이고, 막는 수단도 둘이다.**
+  - **액티비티 재구성** — 화면 회전이 없어도 재구성이 일어나는 경로(다크모드 토글·폰트/언어 변경·
+    폴더블 리사이즈)에서 `onCreate`가 같은 `intent`를 다시 받는다. 소비한 `Intent`를
+    `setIntent(Intent())`로 비워 막는다.
+  - **태스크 되살리기** — 알림이 만든 인텐트는 그것이 띄운 **태스크의 base intent**로 남는다.
+    뒤로가기로 액티비티가 끝나도 태스크 기록은 남으므로, 최근 앱이나 런처로 그 태스크를 되살리면
+    시스템이 **같은 extras를 다시 실어** `onCreate`를 부른다. `setIntent(Intent())`는 액티비티
+    인스턴스의 필드만 비우므로 이 경로에는 닿지 못한다. 되살린 인텐트에만 붙는
+    `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`로 가르고, 판정은 `toPushDeepLinkOrNull`이 한다
+    (`PushDeepLinkIntentTest` 2건이 잠근다).
+
+  > 실기기 관측값(Pixel 4, API 29) — 알림 탭은 `flags=0x14000000`, 되살리기는 `0x14100000`이고
+  > extras는 양쪽이 같다. 차이는 `0x00100000` 한 비트다.
 - **목적지는 `route` 하나가 정한다.** `type`(`TOPPING`·`REMIND_AM`·`REMIND_PM`)은 라우팅에 안 쓰고
   탭 분석 용도로 `PushDeepLink`에 실려만 간다. 모르는 `route`·잘못된 `groupId`(숫자 아님·0 이하)는
   `null`이라 **평범한 실행과 구분되지 않는다** — 파싱 실패가 화면에 보이지 않는다는 뜻이다.

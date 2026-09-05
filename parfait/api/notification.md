@@ -337,8 +337,10 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
 **전달 통로는 세션 종료 이동과 같은 모양이다** — `:domain`의 `PushDeepLinkEventBus`(발행·구독 겸용
 인터페이스)와 `:data`의 `PushDeepLinkEventBusImpl`(`Channel(CONFLATED)` + `receiveAsFlow()`)이고,
 **수집은 앱 루트 `MainRoute` 한 곳**이다. 발행은 `MainActivity`가 하며 `onCreate`와 `onNewIntent`
-(`launchMode="singleTop"`) 양쪽을 덮고, 소비한 `Intent`는 `setIntent(Intent())`로 비운다 — 안 비우면
-구성 변경으로 `onCreate`가 다시 돌 때 같은 딥링크를 또 발행한다.
+(`launchMode="singleTop"`) 양쪽을 덮는다. **같은 딥링크가 두 번 발행되는 경로가 둘**이라 막는 수단도
+둘이다 — 구성 변경으로 `onCreate`가 다시 도는 것은 `setIntent(Intent())`가, 알림 인텐트가 태스크의
+base intent로 남아 되살릴 때 다시 오는 것은 `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY` 판정이 막는다.
+자세한 것은 [navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동"에 있다.
 
 🔁 **여기 있던 두 경고를 걷었다 — 둘 다 낡았다.** ① 권한을 묻는 자리는 PR #450이 붙였다
 (`NotificationPermissionGate`, A-004·A-005 완료 직후 — OQ-P-358은 그때 해소됐다). ② 콜드 스타트에서
