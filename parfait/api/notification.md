@@ -31,7 +31,7 @@ tags: [api, parfait, server-contract, notification]
 
 | 메서드 | 경로 | 인증 | 요청 | 응답 | Android |
 |---|---|---|---|---|---|
-| POST | `/api/v1/notifications/devices` | **필요**(화이트리스트 밖) | `RegisterDeviceTokenRequest` | 없음(204, envelope 없음) | 구현됨(표면만, 호출부 0) |
+| POST | `/api/v1/notifications/devices` | **필요**(화이트리스트 밖) | `RegisterDeviceTokenRequest` | 없음(204, envelope 없음) | 구현됨(표면만, **호출부 0** — 2026-09-05에 `onNewToken`이 돌아왔는데 이 표면을 부르지 않는다) |
 
 **삭제 엔드포인트는 없다.** 커밋 제목이 "저장/삭제 API"라고 적지만 HTTP 표면은 등록 하나뿐이고,
 삭제는 다른 도메인·발송 경로의 부수 효과로만 일어난다
@@ -249,13 +249,14 @@ Android 8 이상에서 같은 id의 알림 채널이 앱에 없으면 알림이 
 
 서버 코드가 정한 것이라 **앱이 맞추지 않으면 알림이 동작하지 않는 항목**만 모은다.
 
-| 항목 | 요구 | 근거 |
-|---|---|---|
-| 알림 채널 | id `parfait_default` 채널을 앱이 생성 | `FcmNotificationSender`의 `ANDROID_CHANNEL_ID` |
-| `data` 파싱 | `type`·`route`·`groupId`·`date` 네 키, 값은 전부 문자열 | `NotificationMessageFactory` |
-| 딥링크 | `route=canvas` + `groupId` + `date`로 캔버스에 도달 | 같은 곳 |
-| 중복 내성 | 같은 알림을 두 번 받아도 부작용이 없어야 함 | at-least-once 보장 |
-| 토큰 등록 | 앱 시작·`onNewToken`·권한 허용마다 재호출(실패는 다음 호출이 메움) | `DeviceTokenAdapter.save` 주석 |
+| 항목 | 요구 | 근거 | 앱(2026-09-05, PR #446·#447) |
+|---|---|---|---|
+| 알림 채널 | id `parfait_default` 채널을 앱이 생성 | `FcmNotificationSender`의 `ANDROID_CHANNEL_ID` | ✅ `BaseApplication.createPushNotificationChannel` + `PUSH_NOTIFICATION_CHANNEL_ID` — **같은 문자열이다** |
+| `data` 파싱 | `type`·`route`·`groupId`·`date` 네 키, 값은 전부 문자열 | `NotificationMessageFactory` | ⚠️ **셋만 읽는다** — `PushDeepLinkIntent.kt`의 extras 키가 `type`·`route`·`groupId`이고 `date`는 어디서도 안 읽힌다 |
+| 딥링크 | `route=canvas` + `groupId` + `date`로 캔버스에 도달 | 같은 곳 | ⚠️ `groupId`로만 간다 — `PushDeepLink.AddTopping` KDoc이 **"알림이 가리키던 날짜가 아니라 항상 그 그룹의 최신 캔버스"**라고 못 박는다 → OQ-P-359 |
+| 중복 내성 | 같은 알림을 두 번 받아도 부작용이 없어야 함 | at-least-once 보장 | ⚠️ 이동은 견딘다(`Channel(CONFLATED)`) 그러나 **표시는 안 견딘다** — 알림 id가 `message.messageId?.hashCode()`라 재시도로 온 같은 알림이 **알림 두 개**로 쌓인다 → OQ-P-359 |
+| 토큰 등록 | 앱 시작·`onNewToken`·권한 허용마다 재호출(실패는 다음 호출이 메움) | `DeviceTokenAdapter.save` 주석 | ❌ **한 번도 안 부른다** — `onNewToken`이 로그만 남긴다 → OQ-P-341 ② |
+| (앱 쪽 전제) | Android 13+에서 `POST_NOTIFICATIONS` 런타임 허용 | Android 플랫폼 | ❌ **묻는 코드가 없다** — 매니페스트 선언만 있고 요청 코드가 develop에 0건이라, 사용자가 OS 설정에서 직접 켜지 않으면 표시 단계에서 막힌다 → OQ-P-358 |
 
 ## Android 매핑
 
@@ -268,7 +269,7 @@ Android 8 이상에서 같은 id의 알림 채널이 앱에 없으면 알림이 
 | 요청 `token`·`platform` | `RegisterDeviceTokenRequest`(`@SerialName` 둘). `platform`은 `NotificationRemoteDataSourceImpl`이 `"ANDROID"` 상수로 채운다 — 호출자가 고를 수 없다 |
 | 성공 204·본문 없음 | `ApiCaller.safeApiCallNoContent` — 반환 타입에 envelope를 두지 않는다. `Result<Unit>`으로 나온다 |
 | 등록 해제 엔드포인트 없음 | 서비스에도 없다. 로그아웃·탈퇴가 서버에서 대신 지운다는 사실을 KDoc이 가리킨다 |
-| **푸시 수신·채널·딥링크** | **대응 심볼 0건**(develop 기준) — 아래 |
+| **푸시 수신·채널·딥링크** | ~~**대응 심볼 0건**~~ → **셋 다 생겼다**(2026-09-05, PR #446·#447) — 아래 [푸시 수신·딥링크](#푸시-수신딥링크-2026-09-05-pr-446447) |
 
 도메인 모델은 `domain.model.notification.DeviceToken`(`@JvmInline value class`) 하나다.
 `upsert`라 반복 호출해도 된다는 계약은 `NotificationRemoteDataSourceImpl`의 KDoc이 받아 적었다.
@@ -297,6 +298,11 @@ Android 8 이상에서 같은 id의 알림 채널이 앱에 없으면 알림이 
 없다** — `FirebaseMessaging`·FCM 토큰 취득 심볼이 develop 전체에 여전히 0건이고 `firebase-messaging`
 의존도 없다. 즉 `registerDeviceToken`을 부르는 코드는 하나도 없고, 지금 상태로는 **부를 수도 없다.**
 
+> 🔁 **뒤 문장의 전제가 2026-09-05에 깨졌다** — `firebase-messaging` 의존과 `onNewToken`이 돌아와
+> **토큰을 얻을 수단이 생겼다.** 그런데 `registerDeviceToken` 호출부는 **여전히 0건**이다. 즉 판정이
+> "부를 수 없다"에서 **"부를 수 있는데 안 부른다"**로 바뀌었다(OQ-P-341 ②). 앞 문단의 `:data` 표면
+> 서술 자체는 그대로 옳다.
+
 🔁 **이 공백은 "아직 안 만든 것"이 아니라 "만들었다가 걷어낸 것"이다.** 앱은 FCM 수신 서비스와
 토큰 조회·알림 권한 요청을 갖고 있었고, **2026-08-22 PR #325가 그것을 걷어냈다**
 ([ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)의 철회 정정 — `firebase-messaging` 의존까지 빠졌고
@@ -310,10 +316,45 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
 [이 계약이 앱에 요구하는 것](#이-계약이-앱에-요구하는-것)이 곧바로 구속력을 갖는다 — 특히 채널 id를
 맞추지 못하면 **보내는 쪽은 성공인데 사용자는 못 보는 상태**가 된다 → OQ-P-341·OQ-P-352.
 
+### 푸시 수신·딥링크 (2026-09-05, PR #446·#447)
+
+✅ **받을 쪽이 생겼다.** `firebase-messaging` 의존과 `app` `push/ParfaitFirebaseMessagingService`가
+돌아왔고, 딥링크 축이 새로 붙었다([ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 되살림 정정 ·
+[navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동").
+
+| 계약 | Android |
+|---|---|
+| 채널 id `parfait_default` | `PUSH_NOTIFICATION_CHANNEL_ID` 상수 — 채널은 `BaseApplication.createPushNotificationChannel`이 앱 시작에 만든다(`IMPORTANCE_HIGH`, 표시 이름·설명은 `strings.xml`의 `notification_channel_default_*`) |
+| `notification` 블록이 늘 실린다 | `onMessageReceived`가 `message.notification`이 없으면 **곧장 return** 한다 — `data`-only 페이로드는 처리하지 않는다(KDoc이 그 전제를 적는다) |
+| 백그라운드는 시스템이 표시 | 앱이 직접 만드는 알림도 `data`의 키를 그대로 `Intent` extras에 실어 **두 경로의 extras 모양을 맞춘다** |
+| `data` 키 `type`·`route`·`groupId` | `PushDeepLinkIntent.kt`의 `EXTRA_TYPE`·`EXTRA_ROUTE`·`EXTRA_GROUP_ID` → `PushDeepLinkParser.parse` |
+| `data` 키 `date` | **읽는 코드가 없다** → OQ-P-359 |
+| `route=canvas` | `PushDeepLink.AddTopping(groupId)` → `NavKeyCanvasMain(groupId)` — **날짜 인자가 없어 최신 캔버스로 간다** |
+| `route=group` | `PushDeepLink.GroupList(type)` → `NavKeyGroupList`. **서버에 이 값을 보내는 코드가 없다**(트리거 1종) → OQ-P-361 |
+| `type` 값 3종 | `PushNotificationType`(`TOPPING`·`REMIND_AM`·`REMIND_PM`). **라우팅에 쓰지 않는다** — 목적지는 `route`가 정하고 `type`은 탭 분석 용도로만 실린다. 모르는 값은 `null`이라 파싱이 실패하지 않는다 |
+
+**전달 통로는 세션 종료 이동과 같은 모양이다** — `:domain`의 `PushDeepLinkEventBus`(발행·구독 겸용
+인터페이스)와 `:data`의 `PushDeepLinkEventBusImpl`(`Channel(CONFLATED)` + `receiveAsFlow()`)이고,
+**수집은 앱 루트 `MainRoute` 한 곳**이다. 발행은 `MainActivity`가 하며 `onCreate`와 `onNewIntent`
+(`launchMode="singleTop"`) 양쪽을 덮고, 소비한 `Intent`는 `setIntent(Intent())`로 비운다 — 안 비우면
+구성 변경으로 `onCreate`가 다시 돌 때 같은 딥링크를 또 발행한다.
+
+⚠️ **여기까지가 develop이 확인해 주는 전부이고, 실기기 확인은 0회다.** 권한을 묻는 코드가 없어
+Android 13+에서는 표시 자체가 막히고(OQ-P-358), 콜드 스타트에서 딥링크 이동과 스플래시 부트스트랩의
+백스택 리셋이 겹치는 구간이 검증되지 않았다(OQ-P-360).
+
 ## 미결
 
-- 2026-08-22에 걷어낸 FCM 축을 되살릴지 — 철회 근거(보낼 서버가 없다)가 사라진 데 더해, 이제 **보내고
-  있는 알림을 받을 쪽이 없다** → [open-questions](../synthesis/open-questions.md) OQ-P-341
+- ~~2026-08-22에 걷어낸 FCM 축을 되살릴지~~ → **되살렸다**(2026-09-05, PR #446·#447 — [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)
+  되살림 정정). 남은 것은 **등록 호출 시점**이다 — `onNewToken`이 돌아왔는데 등록 표면을 안 부른다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-341 ②
+- 앱이 `POST_NOTIFICATIONS` 런타임 허용을 **묻지 않아** Android 13+에서는 수신부·채널이 다 있어도
+  표시 단계에서 막힌다 → [open-questions](../synthesis/open-questions.md) OQ-P-358
+- 앱이 `date`를 버리고 항상 최신 캔버스로 열며, 중복 수신이 **알림 두 개**로 쌓인다 — 위
+  [이 계약이 앱에 요구하는 것](#이-계약이-앱에-요구하는-것)의 ⚠️ 셋
+  → [open-questions](../synthesis/open-questions.md) OQ-P-359
+- 앱이 서버에 없는 알림 둘(P-02·P-03 리마인드, `route=group`)을 먼저 구현했고 그 근거인
+  "FCM 페이로드 스펙 v1"이 **어느 저장소에도 없다** → [open-questions](../synthesis/open-questions.md) OQ-P-361
 - 세션 없는(`session_id` 널) 행을 로그아웃이 못 지우는 구간을 서버가 닫을지, 앱이 재등록으로 덮을지
   → [open-questions](../synthesis/open-questions.md) OQ-P-342
 - 알림 종류가 토핑 등록 1종뿐이고(커밋 제목의 "3종"과 어긋난다), 수신 설정·권한 요청 시점도 없다

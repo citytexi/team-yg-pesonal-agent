@@ -16,6 +16,14 @@ Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data
 지금은 등록된 토큰이 0건이라 발송이 전부 취소돼 **동작 영향이 0**이지만, 앱이 등록을 시작하는 순간
 구속력을 갖는다. 특히 **채널 id를 안 맞추면 서버는 성공인데 사용자는 아무것도 못 본다**
 (OQ-P-341·343·351·352·353 → [api/notification.md](api/notification.md)).
+✅ **2026-09-05 — 받을 앱이 생겼다**(#446 딥링크 · #447 FCM 수신부). 2026-08-22에 걷어낸 FCM 축이
+돌아왔고 채널 id는 서버가 못 박은 `parfait_default`를 앱이 따랐다([ADR-0013](adr/0013-firebase-fcm-crashlytics.md)
+되살림 정정). 딥링크는 세션 종료 이동 구조를 그대로 복제했다(`PushDeepLinkEventBus` + `MainRoute` 단일
+수집 → [navigation-flow](architecture/navigation-flow.md) "푸시 딥링크 이동").
+⚠️ **다만 가운데 한 줄이 비어 통하지 않는다** — `onNewToken`이 돌아왔는데 **토큰 등록을 안 부르고**
+(OQ-P-341 ②), **`POST_NOTIFICATIONS`를 묻는 코드가 0건**이라 Android 13+에서는 표시 자체가 막힌다
+(OQ-P-358). 계약 다섯 중 둘도 안 맞아 `api/conventions.md` "Android 불일치"가 **1건 → 3건**이 됐다 —
+`date`를 안 읽어 항상 최신 캔버스로 열고, 중복 수신이 알림 두 개로 쌓인다(OQ-P-359).
 ⚠️ **2026-09-01 — 그룹 목록 `recentImageUrl`이 "오늘 캔버스의 토핑"으로 좁혀져 `api/conventions.md`의
 "Android 불일치"가 0건에서 1건이 됐다**(엔드포인트 증감 없음, 앱 코드도 그대로인데 뜻만 바뀐 자리 —
 OQ-P-336).
@@ -303,7 +311,7 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
   - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
   - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
   - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `e6ce42b1`(2026-09-04 검증, #440까지 — **원격 이미지를 기다리는 방식이 두 화면에서 각각 정해졌고, 그 방식이 반대다**. delta 1건(#440 이미지 로딩 표현), **41파일 1697/224**. 유닛 1029 → **1047**, 계측 17 → **35**(`core:ui` 첫 계측 소스셋), 아카이브 이동 0건, 미결 3건 신설(OQ-P-355·356·357)·1건 해소(346)·1건 부분 해소(348)·6건 갱신(102·112·113·167·330·349). C-001은 **다 모일 때까지 아무것도 안 내고**(`rememberBatchRevealState`), G-001은 **아예 안 기다리는 대신** 400ms 간격으로 쌓는다(`rememberStaggeredRevealState`) — 잇는 것은 `core:ui` `reveal/`뿐이고 실패 처리도 반대다(캔버스는 한 장만 실패해도 전체 차단 → OQ-P-355). `YGScaffoldV2`에 `loadingOverlay` **슬롯**이 열리며 터치 삼킴이 슬롯 몫으로 내려가 `YGDimOverlay`가 분리됐고, 접근성 차단 수단이 `clearAndSetSemantics`로 정정됐다. G-001 실패 갈림은 **"당겼는가"**로 세 번째 뒤집힘(`ShowRefreshError` 삭제). ⚠️ 실기기 확인 0회이고 늘어난 계측 18건은 CI가 실행도 컴파일도 안 한다. 미머지 일곱 → **여섯**. 직전 회차(`2b1dce3a`, #451까지) 요약은 doc-baseline 본문에 있다).
+- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `29c2f050`(2026-09-05 검증, #447까지 — **2026-08-22에 걷어냈던 FCM 축이 돌아왔고, 서버가 요구한 다섯 중 셋만 맞췄다**. delta 2건(#446 푸시 딥링크 · #447 FCM 수신부), **17파일 462/0**. 유닛 1047 → **1060**, 계측 **35** 유지, **`app` 모듈 첫 유닛 테스트 소스셋**, 아카이브 이동 0건, 미결 4건 신설(OQ-P-358·359·360·361)·3건 부분 해소(341·351·352)·2건 갱신(343·354). [ADR-0013](adr/0013-firebase-fcm-crashlytics.md)에 **되살림 정정**을 더했다(철회 정정은 이력으로 남긴다) — 채널 id는 서버가 못 박은 `parfait_default`를 앱이 따랐고, 딥링크는 **세션 종료 이동 구조를 그대로 복제**해 (`PushDeepLinkEventBus` + `MainRoute` 단일 수집) 새 ADR을 만들지 않았다. ⚠️ **안 들어온 것이 더 크다** — `POST_NOTIFICATIONS` 요청 코드가 0건이라 Android 13+에서는 표시가 막히고(OQ-P-358), `onNewToken`이 **등록을 부르지 않으며**(OQ-P-341 ②), `date`를 버리고 중복 수신이 알림 둘로 쌓인다(OQ-P-359 · api/conventions.md "Android 불일치" 1건 → 3건). 실기기 확인 0회. 미머지 여섯 → **넷**. 직전 회차(`e6ce42b1`, #440까지) 요약은 doc-baseline 본문에 있다).
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md
