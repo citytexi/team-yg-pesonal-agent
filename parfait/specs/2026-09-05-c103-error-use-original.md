@@ -12,6 +12,7 @@ related_code:
   - SegmentationViewModel.kt#loadCandidates
   - SegmentationRoute.kt#SegmentationRoute
   - SegmentationErrorScreen.kt#SegmentationErrorScreen
+  - SegmentationScreen.kt
   - SegmentationConfirmViewModel.kt#SegmentationConfirmState
   - SaveEditedImageUseCase.kt
   - ImageSegmentationRepository.kt#saveEditedImage
@@ -144,8 +145,13 @@ internal fun SegmentationErrorScreen(
 
 ### 뒤로 가기
 
-`GoBack`은 Route에서 `navigator.onBack()`으로 받는다. 사진 확인 화면으로 한 칸만 물러나므로
-사용자는 곧바로 다른 사진을 고르거나 다시 찍을 수 있다. **토스트는 띄우지 않는다.**
+`GoBack`은 Route에서 `navigator.onBack()`으로 받는다. **토스트는 띄우지 않는다.**
+
+⚠️ **돌아가는 곳은 사진 확인 화면이 아니라 카메라 화면 또는 갤러리 피커다.** `PictureConfirmRoute`가
+세그멘테이션으로 갈 때 `goTo`가 아니라 `goToAndPopCurrent`를 써서 사진 확인 화면을 백스택에서
+치환하기 때문이다. 그 아래에 남아 있는 것은 촬영 화면이거나 갤러리 피커다. 목적지가 예상과 달라도
+설계의 목적은 그대로 선다 — 원본을 못 읽었으면 다른 원본을 고르는 것이 유일한 길이고, 두 화면 다
+그 일을 할 수 있는 자리다.
 
 ⚠️ 이 결정은 기존 동작을 바꾼다. 지금은 디코드가 실패해도 실패 화면이 뜨고 사용자가 재시도를
 누를 수 있었다. 만료된 URI나 깨진 파일은 재시도해도 결과가 같아서, 그 자리에 머무는 것이 사용자에게
@@ -252,7 +258,15 @@ postSideEffect(
 | 편집 없이 사용 | `YGButtonType.Medium.Secondary` | Gray100 채움, Gray500 테두리, Gray900 글자 |
 
 디자인 시스템에 이미 있는 두 타입이 디자인 `C-103-Error`의 두 버튼과 그대로 맞는다.
-**새 컴포넌트를 만들지 않는다.** 버튼은 세로로 쌓고 간격은 기존 `YGTheme.layout.gap` 토큰을 쓴다.
+**새 컴포넌트를 만들지 않는다.**
+
+버튼은 세로로 쌓고 간격은 `YGTheme.layout.gap.gap3`(8dp)를 쓴다. 바깥 `Column`이 아이콘·문구
+블록·버튼 블록 사이에 쓰는 값과 같다. ⚠️ `gap1`은 2dp라 버튼 둘이 거의 붙는다.
+
+**두 버튼의 폭은 같다.** 디자인에서 「다시 시도」와 「편집 없이 사용」이 같은 너비인데, `YGButton`은
+`modifier`를 주지 않으면 자기 텍스트 폭으로 감싸므로 글자 수가 다른 두 버튼이 계단처럼 어긋난다.
+감싸는 `Column`에 `Modifier.width(IntrinsicSize.Max)`를 주고 각 버튼에 `Modifier.fillMaxWidth()`를
+줘서 넓은 쪽에 맞춘다. 고정 폭을 박지 않는 이유는 문구가 바뀌어도 따라오게 하기 위해서다.
 
 아이콘·제목·설명의 배치와 닫기 버튼(`YGFloatingBarClose`)은 건드리지 않는다.
 
@@ -262,17 +276,18 @@ postSideEffect(
 |---|---|
 | `SegmentationViewModel.kt` | `SegmentationErrorKind` 삭제, `errorKind` → `isError`, 디코드 실패를 `GoBack`으로, `UseOriginal` 인텐트와 `useOriginal()` 추가, 원본 `BitmapWrapper` 보관 |
 | `SegmentationRoute.kt` | `titleRes()`·`descriptionRes()` 삭제, `GoBack` 수신, `onClickUseOriginal` 결선 |
+| `SegmentationScreen.kt` | KDoc이 `[SegmentationState.errorKind]`를 가리킨다. 링크만 고친다 |
 | `SegmentationErrorScreen.kt` | 제목·설명 파라미터 제거, `Medium.Secondary` 버튼 추가, 시안 경고 KDoc 정리 |
 | `strings.xml` | 문구 통합, 모듈 실패 문구 2건 삭제, 「편집 없이 사용」 라벨 추가 |
 | `SaveEditedImageUseCase.kt` · `ImageSegmentationRepository.kt` | KDoc만 넓힌다(원본도 지나간다) |
-| `SegmentationViewModelTest.kt` | 단언 5곳 전환 + 신규 3건 |
+| `SegmentationViewModelTest.kt` | `errorKind` 를 읽는 6곳 전환 + 신규 3건 |
 
 data 계층과 도메인 모델은 바뀌지 않는다. `persistSubject`·`SegmentationCandidate`·모듈 설치기는
 그대로다.
 
 ## 테스트
 
-`SegmentationViewModelTest`에서 기존 단언 5곳을 `isError`로 바꾼다. 그중 둘은 단순 치환이 아니다.
+`SegmentationViewModelTest`에서 `errorKind` 를 읽는 6곳을 `isError`로 바꾼다. 그중 둘은 단순 치환이 아니다.
 
 | 기존 테스트 | 어떻게 바뀌는가 |
 |---|---|
@@ -306,6 +321,10 @@ data 계층과 도메인 모델은 바뀌지 않는다. `persistSubject`·`Segme
 - ⚠️ **모듈 실패 문구가 사라지면서 "네트워크 상태를 확인하라"는 안내도 사라진다.** 모듈을 못 받는
   원인이 네트워크인 경우 사용자는 그 사실을 화면에서 알 수 없다. 대신 「편집 없이 사용」이 있어
   막히지는 않는다. 디자인의 결정을 따른다.
+- ⚠️ **확인 화면에서 뒤로 돌아와 재시도를 누르면 방금 저장한 원본 파일이 지워진다.**
+  `loadCandidates()`가 첫 줄에서 `clearSegmentationCache()`를 부르기 때문이다. 후보 선택 경로에도
+  이미 있는 성질이라 이 스펙이 만든 결함은 아니지만, 「편집 없이 사용」이 그 경로를 하나 늘린다.
+  초안이 가리키는 파일이 사라지므로 확인 화면은 초안 없음으로 잠긴다. 이 스펙의 범위 밖이다.
 - ✅ **OQ-P-153 ④(원본 사용 옵션을 살릴지)가 이 스펙으로 닫힌다.** ③에 붙어 있던 "디자인에는
   버튼이 없다"는 단서도 함께 걷힌다.
 - ⚠️ **OQ-P-344(모듈이 끝내 안 오는 기기)의 성격이 바뀐다.** 여전히 앱이 고칠 수 없는 문제지만,

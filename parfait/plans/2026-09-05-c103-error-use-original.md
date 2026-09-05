@@ -40,6 +40,7 @@
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModel.kt`
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/route/SegmentationRoute.kt`
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/screen/SegmentationErrorScreen.kt`
+- Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/screen/SegmentationScreen.kt`
 - Modify: `feature/segmentation/impl/src/main/res/values/strings.xml`
 - Test: `feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModelTest.kt`
 
@@ -49,10 +50,12 @@
 
 - [ ] **Step 1: 테스트의 단언을 `isError`로 바꾼다(먼저 깨뜨린다)**
 
-`SegmentationViewModelTest.kt`에서 `errorKind`를 읽는 5곳을 아래처럼 바꾼다.
+`SegmentationViewModelTest.kt`에서 `errorKind`를 읽는 6곳을 아래처럼 바꾼다.
+
+⚠️ 첫 번째 자리(`init_decodeFails_tellsTheUserWithoutSegmenting`)는 **Task 2가 이 테스트를 통째로 대체한다.** 여기서는 컴파일만 되게 최소로 치환하고 의미는 따지지 않는다.
 
 ```kotlin
-// init_decodeFails_tellsTheUserWithoutSegmenting 안
+// init_decodeFails_tellsTheUserWithoutSegmenting 안 — Task 2 가 대체할 자리다
 assertTrue(viewModel.state.value.isError)
 
 // init_segmentationFails_tellsTheUser 안
@@ -143,6 +146,16 @@ data class SegmentationState(
                 }
 ```
 
+`SegmentationEffect.ShowError`의 KDoc이 지워진 프로퍼티를 가리키게 되므로 같이 고친다.
+
+```kotlin
+    /**
+     * 고른 뒤의 실패에만 쓴다. 후보 목록이 그대로 남아 다른 대상을 고를 수 있으므로 화면을 덮지 않고
+     * 토스트로 한 번 알린다. 대상을 아예 못 얻은 실패는 [SegmentationState.isError] 가 받는다.
+     */
+    data object ShowError : SegmentationEffect
+```
+
 `toErrorKind()` 확장 함수를 통째로 지운다. 함께 쓰이지 않게 된 import도 지운다.
 
 ```kotlin
@@ -227,7 +240,18 @@ private fun PreviewSegmentationErrorScreen() = PreviewBox {
  */
 ```
 
-- [ ] **Step 6: 문구를 통합한다**
+- [ ] **Step 6: 죽은 KDoc 참조를 고친다**
+
+`SegmentationScreen.kt` 상단 KDoc이 지워진 프로퍼티를 가리킨다. **컴파일도 ktlint도 이것을 잡지 못하고**, `SegmentationErrorKind`를 찾는 grep에도 안 걸린다.
+
+```kotlin
+/**
+ * 대상을 하나 이상 얻은 뒤의 화면만 그린다 — 못 얻은 실패는 [SegmentationErrorScreen] 이
+ * 받고, 둘 중 무엇을 띄울지는 상위 Route 가 [SegmentationState.isError] 로 고른다.
+ */
+```
+
+- [ ] **Step 7: 문구를 통합한다**
 
 `strings.xml`에서 설명을 바꾸고 모듈 실패 문구 2개를 지운다.
 
@@ -243,14 +267,16 @@ private fun PreviewSegmentationErrorScreen() = PreviewBox {
     <string name="segmentation_module_error_description">네트워크 상태를 확인하고 잠시 후 다시 시도해 주세요</string>
 ```
 
-`segmentation_error_message`는 그대로 둔다. 화면을 덮지 않는 실패(고른 뒤 저장 실패)에 쓰는 별개 문구다.
+모듈 문구 두 줄을 지우면 `segmentation_error_retry`가 앞 블록과 빈 줄로 갈린 채 남는다. 위 목표 블록처럼 제목·설명·재시도를 한 블록으로 붙이고 남는 빈 줄을 정리한다.
 
-- [ ] **Step 7: 테스트가 통과하는지 확인한다**
+`segmentation_error_message`는 그대로 둔다. 화면을 덮지 않는 실패(고른 뒤 저장 실패)에 쓰는 별개 문구다. ⚠️ 그 문구가 "사진 편집에 실패했어요. 잠시 후 다시 시도해 주세요."라 실패 화면 제목과 첫 문장이 겹치는데, **의도한 것이라 건드리지 않는다**(스펙 확인 완료).
+
+- [ ] **Step 8: 테스트가 통과하는지 확인한다**
 
 Run: `./gradlew :feature:segmentation:impl:testDebugUnitTest --tests '*SegmentationViewModelTest*'`
 Expected: PASS
 
-- [ ] **Step 8: ktlint를 돌린다**
+- [ ] **Step 9: ktlint를 돌린다**
 
 Run: `./gradlew :feature:segmentation:impl:ktlintCheck`
 Expected: PASS. 실패하면 남은 미사용 import를 지운다.
@@ -260,6 +286,8 @@ Expected: PASS. 실패하면 남은 미사용 import를 지운다.
 ### Task 2: 원본을 못 읽으면 뒤로 보낸다
 
 디코드 실패를 실패 화면에서 떼어 낸다. 이 Task가 끝나면 **실패 화면은 원본 비트맵이 반드시 살아 있을 때만 뜬다.** Task 3의 「편집 없이 사용」이 비활성 분기 없이 성립하는 근거가 여기서 만들어진다.
+
+⚠️ **뒤로 가면 사진 확인 화면이 아니라 카메라 화면 또는 갤러리 피커가 나온다.** `PictureConfirmRoute`가 `goToAndPopCurrent`로 이동해 사진 확인 화면을 백스택에서 치환하기 때문이다. 다시 찍거나 다른 사진을 고를 수 있는 자리라 설계 목적은 그대로다. **이 사실을 코드 주석으로 옮겨 적지 않는다** — 다른 화면의 현재 상태라 낡는다.
 
 **Files:**
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModel.kt`
@@ -334,7 +362,7 @@ sealed interface SegmentationEffect : UiSideEffect {
 
 - [ ] **Step 4: Route가 뒤로 가기를 받게 한다**
 
-`SegmentationRoute.kt`의 이펙트 수집 `when`에 분기를 더한다. 토스트는 띄우지 않는다.
+`SegmentationRoute.kt`의 이펙트 수집 `when`에 분기를 더한다. 토스트는 띄우지 않는다. 주석을 달지 않는다 — `GoBack`의 KDoc이 이미 이유를 말한다.
 
 ```kotlin
             when (effect) {
@@ -369,7 +397,7 @@ Expected: PASS
 - Test: `feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModelTest.kt`
 
 **Interfaces:**
-- Consumes: `SegmentationState.isError` (Task 1), `SegmentationEffect.GoBack` (Task 2)
+- Consumes: `SegmentationState.isError` (Task 1). Task 2가 만든 **불변식**에 기댄다 — 실패 화면이 뜨는 순간 원본은 반드시 살아 있다. 심볼을 쓰지는 않는다.
 - Produces: `SegmentationIntent.UseOriginal` — 인자 없는 `data object`. Task 4의 `onClickUseOriginal`이 이것을 보낸다.
 
 - [ ] **Step 1: 테스트 하니스에 유스케이스를 더한다**
@@ -405,7 +433,7 @@ private const val ORIGIN_PATH = "/cache/segmentation/origin.png"
     )
 ```
 
-import를 더한다.
+import를 더한다. ktlint가 알파벳순을 요구하므로 `PersistSubjectUseCase`와 `SegmentImageUseCase` **사이**에 넣는다.
 
 ```kotlin
 import com.teamyg.parfait.domain.usecase.image.SaveEditedImageUseCase
@@ -519,7 +547,7 @@ sealed interface SegmentationIntent : UiIntent {
     private val toppingDraftRepository: ToppingDraftRepository,
 ```
 
-import를 더한다.
+import를 더한다. ktlint 정렬 때문에 `BitmapWrapper`는 `runSuspendCatching` 바로 뒤에, `SaveEditedImageUseCase`는 `PersistSubjectUseCase`와 `SegmentImageUseCase` 사이에 넣는다.
 
 ```kotlin
 import com.teamyg.parfait.core.util.jvm.model.BitmapWrapper
@@ -536,6 +564,8 @@ import com.teamyg.parfait.domain.usecase.image.SaveEditedImageUseCase
 ```
 
 `loadCandidates()`의 디코드 성공 직후에 채운다. 재시도가 이 함수를 다시 타므로 값도 함께 갱신된다.
+
+진입부 리셋에서 이 필드를 비우지 않아도 낡은 값이 쓰일 경로가 없다. 재시도의 디코드가 실패하면 Task 2의 `GoBack`으로 화면을 떠나기 때문이다.
 
 ```kotlin
             val originBitmap = (bitmapWrapper as? AndroidBitmap)?.getRawData()
@@ -666,7 +696,7 @@ Expected: PASS
 - Modify: `feature/segmentation/impl/src/main/res/values/strings.xml`
 
 **Interfaces:**
-- Consumes: `SegmentationIntent.UseOriginal` (Task 3)
+- Consumes: `SegmentationIntent.UseOriginal` (Task 3). Task 1이 만든 화면 시그니처(`title`·`description` 제거본)와 `strings.xml` 상태 위에 얹는다.
 - Produces: `SegmentationErrorScreen(onClickRetry, onClickUseOriginal, onClickClose, modifier)`
 
 - [ ] **Step 1: 버튼 라벨을 더한다**
@@ -694,16 +724,22 @@ internal fun SegmentationErrorScreen(
 
 기존 `YGButton` 하나를 `Column` 으로 감싸 둘을 세로로 쌓는다. 두 번째 버튼은 `Medium.Secondary` 를 쓴다 — Gray100 채움에 Gray500 테두리라 디자인의 두 번째 버튼과 그대로 맞는다.
 
+간격은 `gap3`(8dp)다. 바깥 `Column` 이 아이콘·문구 블록·버튼 블록 사이에 쓰는 값과 같다. ⚠️ `gap1` 은 2dp라 버튼 둘이 거의 붙는다.
+
+폭은 `IntrinsicSize.Max` 로 맞춘다. `YGButton` 은 `modifier` 를 안 주면 자기 텍스트 폭으로 감싸는데, 디자인의 두 버튼은 같은 너비다. 고정 폭을 박지 않는 이유는 문구가 바뀌어도 따라오게 하기 위해서다.
+
 ```kotlin
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(YGTheme.layout.gap.gap1),
+                    verticalArrangement = Arrangement.spacedBy(YGTheme.layout.gap.gap3),
+                    modifier = Modifier.width(IntrinsicSize.Max),
                 ) {
                     YGButton(
                         text = stringResource(R.string.segmentation_error_retry),
                         buttonType = YGButtonType.Medium.Primary,
                         isEnabled = true,
                         onClick = onClickRetry,
+                        modifier = Modifier.fillMaxWidth(),
                     )
 
                     YGButton(
@@ -711,8 +747,16 @@ internal fun SegmentationErrorScreen(
                         buttonType = YGButtonType.Medium.Secondary,
                         isEnabled = true,
                         onClick = onClickUseOriginal,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
+```
+
+import 둘을 더한다. 파일이 이미 `Column`·`Arrangement`·`Alignment`·`fillMaxWidth` 는 가지고 있다.
+
+```kotlin
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
 ```
 
 Preview에 콜백을 더한다.
@@ -759,7 +803,7 @@ Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 7: 화면을 눈으로 확인한다**
 
-`PreviewSegmentationErrorScreen`을 IDE 프리뷰로 열어 디자인 `C-103-Error`와 대조한다. 아이콘, 제목, 설명, 버튼 둘의 순서와 색을 본다.
+`PreviewSegmentationErrorScreen`을 IDE 프리뷰로 열어 디자인 `C-103-Error`와 대조한다. 아이콘, 제목, 설명, 버튼 둘의 순서와 색을 본다. **두 버튼의 폭이 같은지, 간격이 디자인과 맞는지를 특히 본다** — 이 둘은 테스트가 잡지 못하는 자리다.
 
 ⚠️ **실기기 확인은 재현 수단이 없을 수 있다.** 모듈이 이미 도착한 기기에서는 모듈 실패 경로를 만들 수 없다. 후보 0건 경로(피사체가 없는 사진)로는 실패 화면에 도달할 수 있으므로, 그 경로로 「편집 없이 사용」이 확인 화면까지 가는지 본다.
 
@@ -770,6 +814,7 @@ Expected: BUILD SUCCESSFUL
 구현이 끝나면 아래를 확인한다.
 
 - [ ] `SegmentationErrorKind`가 저장소 어디에도 남아 있지 않다 — `grep -rn "SegmentationErrorKind" --exclude-dir=build .`가 0건이다.
+- [ ] `errorKind`라는 이름이 남아 있지 않다 — `grep -rn "errorKind" --exclude-dir=build .`가 0건이다. **KDoc 안의 죽은 참조는 위 grep에 안 걸리므로 이 검사가 따로 필요하다.**
 - [ ] `segmentation_module_error_`로 시작하는 문자열이 남아 있지 않다.
 - [ ] 실패 화면이 뜨는 세 경로(모듈 실패·처리 실패·후보 0건)에서 문구가 같다.
 - [ ] 디코드 실패는 실패 화면을 띄우지 않고 뒤로 간다.
