@@ -33,6 +33,12 @@ tags: [spec, parfait, segmentation, c103, error]
 
 # Spec: C-103-Error 실패 화면 통합과 「편집 없이 사용」
 
+> ✅ **구현 완료(2026-09-06, 로컬 브랜치 `feature/#348-segmentation-error-button` `28da3c246`, 미푸시)** —
+> 4 Task 전부 리뷰를 통과했고 최종 브랜치 리뷰가 스펙 준수를 확인했다. 유닛 테스트가 25건에서
+> 28건이 됐다. `develop` 머지 전이라 이 문서는 `draft`로 남고 `archive/`로 옮기지 않는다.
+> ⚠️ **프리뷰 육안 대조를 아직 하지 않았다** — 버튼 폭 161.5dp와 설명·버튼 사이 24dp는 코드로만
+> 확인했고 테스트가 잡지 못하는 자리다.
+>
 > 디자인 `C-103-Error`가 확정되어 실패 화면이 한 벌 문구와 버튼 둘을 갖는다. 이 스펙은 그
 > 확정본에 코드를 맞추고, 오래 열려 있던 「원본 사용」 선택지를 채운다.
 > 대응 이슈는 [#348](https://github.com/mash-up-kr/TEAMYG-Android/issues/348)이다.
