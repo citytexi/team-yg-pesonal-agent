@@ -4,8 +4,8 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-05
-related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
+verified: 2026-09-07
+related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, canvas-save-preview-capture-holder
 related_adr: ADR-0002, ADR-0006, ADR-0013, ADR-0021, ADR-0022
 related_architecture:
 related_code: core:navigation, Navigator, Navigator.kt#popUpTo, NavTransition
@@ -50,6 +50,15 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
   - `rememberSaveableStateHolderNavEntryDecorator` — 엔트리별 상태 보존.
   - `rememberViewModelStoreNavEntryDecorator` — 엔트리별 ViewModel 수명.
   - `rememberResultEventBusNavEntryDecorator` — 엔트리 간 결과 전달.
+- **백스택은 저장되지 않는다** — `Navigator`가 백스택을 `mutableStateListOf`로 들고
+  `@ActivityRetainedScoped`로 살 뿐이다. `MainRoute`는 그것을 그대로 `NavDisplay`에 넘기며
+  `rememberNavBackStack`도 `SavedStateHandle`도 쓰지 않고, `MainActivity.onCreate`도
+  `savedInstanceState`를 읽지 않는다. 그래서 **프로세스가 죽고 돌아오면 백스택은
+  `NavigatorConst.INITIAL_NAVIGATION_KEY`(=`NavKeySplash`) 하나로 리셋된다.** NavKey가
+  `@Serializable`인 것은 Navigation3의 관용구이고, 이 앱이 그것을 실제로 직렬화해 저장하는 자리는
+  없다. **이 성질은 아래 모든 흐름의 전제다** — "프로세스 사망 뒤 복원"을 전제한 서술은 이 앱에서
+  성립하지 않는다. `NavKeyCanvasImageSave`의 KDoc("NavKey 는 직렬화돼 오간다")과 OQ-P-364 ①이 그
+  전제로 쓰여 있다 → [open-questions](../synthesis/open-questions.md) OQ-P-364.
 
 ## 이동/뒤로
 - 이동: ViewModel의 side effect → Screen이 소비 → `navigator.goTo(NavKeyXxx(...))`.
@@ -470,7 +479,7 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 - `feature/groups/canvas/impl` → `feature/groups/setting/api`, `feature/groups/setting/impl` →
   `feature/groups/list/api`. 둘 다 규약대로 `:api`만 본다.
 
-## 캔버스 저장 미리보기 왕복 (2026-09-05, PR #445)
+## 캔버스 저장 미리보기 왕복 (2026-09-05, PR #445 · 2026-09-07 캡처 홀더 — develop 미머지)
 
 갤러리 저장이 한 번에 끝나던 것이 **화면 하나를 거쳐** 돈다.
 
@@ -479,10 +488,14 @@ C-001 캔버스 메인
   OnClickSaveToGallery ─▶ [VM] RequestCanvasCaptureForPreview
                       ─▶ [Route] graphicsLayer.toImageBitmap()
                                  writeToCanvasCaptureCache(Dispatchers.IO)
-                                   성공 ─▶ goTo(NavKeyCanvasImageSave(imagePath, date))
+                                   성공 ─▶ CanvasCaptureHolder.put(bitmap)
+                                           goTo(NavKeyCanvasImageSave(imagePath, date))
                                    실패 ─▶ 토스트(canvas_main_capture_failure)
                                               │
                               C-001 저장 미리보기(CanvasImageSaveRoute, ViewModel 없음)
+                                   remember { CanvasCaptureHolder.peek()?.asImageBitmap() }
+                                     비트맵 있음 ─▶ Image(bitmap)
+                                     비트맵 없음 ─▶ AsyncImage(fallbackImagePath)
                                    닫기 ─▶ onBack()
                                    저장 ─▶ sendResult(CANVAS_IMAGE_SAVE_RESULT_KEY,
                                               CanvasImageSaveResult(imagePath)) + onBack()
@@ -497,15 +510,31 @@ C-001 캔버스 메인
 - **미리보기는 저장하지 않는다.** 결과 토스트가 뜨는 자리는 캔버스 메인이고, 미리보기가 저장까지
   맡으면 알림만 남기고 사라지는 화면이 되어 실패했을 때 알릴 곳이 없다. 그래서 돌려주는 결과는
   받은 경로를 그대로 되돌리는 `CanvasImageSaveResult` 하나뿐이다.
-- **ViewModel이 없는 두 번째 화면이다**(`NavKeyWebView` 이후) — 그릴 것이 인자뿐이고 부를 API가 없다.
+- **ViewModel이 없는 두 번째 화면이다**(`NavKeyWebView` 이후) — navKey 인자와 전역 CanvasCaptureHolder만 읽어 그리면 되고 부를 API가 없다.
   엔트리 빌더가 `navKey`를 Route에 그대로 넘기고 Route가 `LocalResultEventBus`만 잡는다.
 - **돌아온 뒤 캔버스를 다시 캡처하지 않는다.** 사용자가 보고 확정한 그림과 갤러리에 남는 그림이
-  같아야 하므로 미리보기가 쓰던 파일을 다시 읽는다. 권한 승인 뒤의 길과 미리보기에서 돌아온 길이
+  같아야 하므로 미리보기에 들어가기 전에 구운 파일을 다시 읽는다. 권한 승인 뒤의 길과 미리보기에서 돌아온 길이
   `saveWithPermission` 한 자리로 모이는 것도 같은 이유다.
+- **정상 경로는 미리보기가 파일을 다시 열지 않는다**(2026-09-07, 브랜치
+  `bugfix/#462-canvas-image-preview` — develop 미머지) — 캔버스 메인이 `goTo` 직전에
+  `CanvasCaptureHolder.put(bitmap)`으로 방금 캡처한 비트맵을 넘기고, 미리보기가
+  `remember { CanvasCaptureHolder.peek()?.asImageBitmap() }`로 받아 `Image`로 그린다. 파일을 열어
+  전체 해상도 PNG를 디코드하고 크로스페이드하던 자리가 사라진다. **`NavKeyCanvasImageSave`는 그대로다** —
+  키가 나르는 것은 여전히 경로와 날짜이고 홀더는 비트맵만 담는다(표시할 날짜의 출처를 하나로 두려는
+  것이다). 홀더는 `internal object`라 프로세스 전역이고 **읽으면서 비우지 않는다** — 미리보기는 화면에서
+  사라지지 않고도 다시 컴포즈되므로(Activity 재생성·백스택 하강 후 복귀) 읽으며 비우면 그때마다 보고
+  있던 그림을 잃는다. 근거는
+  [캔버스 저장 미리보기 캡처 전달 스펙](../specs/2026-09-07-canvas-save-preview-capture-holder.md).
 - **캐시 파일명이 고정이다**(`canvas_capture/canvas_preview.png`) — 저장을 그만둔 캡처가 쌓이지 않게
   한 것이고, 대신 같은 경로를 반복해 그리므로 미리보기가 Coil 요청에
   `addLastModifiedToFileCacheKey`를 걸어 이전 캡처가 다시 뜨는 것을 막는다. 지우는 자리는 없다
   → [open-questions](../synthesis/open-questions.md) OQ-P-365.
+  ⚠️ **정상 경로는 더 이상 그 파일을 그리지 않는다** — 홀더가 들어오면서 `addLastModifiedToFileCacheKey`는
+  홀더가 비었을 때의 **방어 분기(`AsyncImage(fallbackImagePath)`)에서만** 의미를 갖는다. 파일 자체는
+  여전히 필요하다 — 저장을 확정하면 `readCanvasCaptureCache`가 그것을 읽는다.
+- **프로세스가 죽으면 이 왕복도 복원되지 않는다** — 백스택이 저장되지 않기 때문이다(위
+  [구성 요소](#구성-요소)). 그래서 "프로세스 사망 뒤 경로만 살아 돌아온다"를 전제한 서술은 이
+  흐름에도 해당되지 않는다 → [open-questions](../synthesis/open-questions.md) OQ-P-364 ① 정정.
 
 ## 신규 목적지 등록 체크리스트
 1. `feature/xxx/api`에 `@Serializable NavKeyXxx : NavKey` 추가.

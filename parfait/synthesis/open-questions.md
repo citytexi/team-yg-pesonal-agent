@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-06
-related_spec: push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch
+verified: 2026-09-07
+related_spec: push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder
 related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -6800,6 +6800,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**동작 영향 낮음** — 복원 경로에서만 드러난다)
 - **해소 메모**: ①③은 [navigation-flow](../architecture/navigation-flow.md) 「인자 있는 목적지」에
   적고, 대안(결과 버스로 비트맵을 나르거나 미리보기가 자기 소유 캐시를 갖는 형태)을 그 자리에서 견준다.
+  > 🔁 **①의 "프로세스 사망 뒤 복원" 전제가 사실이 아니다(2026-09-07, 브랜치
+  > `bugfix/#462-canvas-image-preview` — develop 미머지).** 이 앱은 **백스택을 저장하지 않는다** —
+  > `Navigator`가 백스택을 `mutableStateListOf`로 들고 `@ActivityRetainedScoped`로 살 뿐이고,
+  > `MainRoute`는 그것을 그대로 `NavDisplay`에 넘기며 `rememberNavBackStack`도 `SavedStateHandle`도
+  > 쓰지 않고, `MainActivity.onCreate`도 `savedInstanceState`를 읽지 않는다. 프로세스가 죽고 돌아오면
+  > 백스택은 `NavigatorConst.INITIAL_NAVIGATION_KEY`(=`NavKeySplash`) 하나로 리셋되므로 **미리보기
+  > 화면 자체가 복원되지 않고, 그러니 경로만 살아 돌아오는 일도 없다.** 남는 갈래는 프로세스가 살아
+  > 있는 동안의 OS 캐시 정리 하나뿐이라 상태 줄의 "복원 경로에서만 드러난다"도 그만큼 좁아진다.
+  > 같은 전제가 `NavKeyCanvasImageSave`의 KDoc("NavKey 는 직렬화돼 오간다")에도 남아 있어 함께 정정할
+  > 자리다. 같은 라운드에서 `CanvasCaptureHolder`가 들어와 **정상 경로는 미리보기가 그 파일을 아예 읽지
+  > 않게 됐다** — 파일이 없어 드러나는 자리는 저장 확정의 `readCanvasCaptureCache` 하나로 좁아졌고,
+  > ①이 물은 "키에 캐시 경로를 싣는 것" 자체는 그대로 남는다
+  > → [navigation-flow](../architecture/navigation-flow.md) 「캔버스 저장 미리보기 왕복」.
 
 ### [2026-09-05] 캡처 캐시 파일을 지우는 자리가 없고 저장 왕복에 테스트가 없다
 
@@ -6817,6 +6830,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**동작 영향 낮음** — ②는 한 화면에서 연달아 캡처해야 재현된다)
 - **해소 메모**: 정하면 [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md)
   「드리프트 / 잔존」에 적는다. ①은 미리보기를 떠날 때 지우는 것이 가장 싸고, 그러면 ②도 함께 좁아진다.
+  > 🔁 **②가 홀더에도 그대로 옮겨 갔고, 재현 조건은 "한 화면에서 연달아"보다 넓다(2026-09-07, 브랜치
+  > `bugfix/#462-canvas-image-preview` — develop 미머지).** 캡처 비트맵을 `CanvasCaptureHolder`가
+  > 나르게 되면서 **고정 파일과 홀더가 같은 자리에서 함께 덮인다** — 홀더도 한 장만 들고 `put`이 이전
+  > 것을 밀어낸다. 게다가 `MainRoute`가 푸시 딥링크를 앱 루트 한 곳에서 수집해 **지금 어느 화면에
+  > 있는지 따지지 않고** `goTo(NavKeyCanvasMain(groupId))`를 부르므로, 미리보기를 열어 둔 채 알림을
+  > 탭해 다른 그룹 캔버스로 가서 저장하면 파일과 홀더가 모두 그 그룹의 캡처로 바뀐다. 아래로 내려갔던
+  > 미리보기로 돌아오면 `remember`가 다시 계산되어 **다른 그룹의 그림을 원래 날짜 라벨과 함께 보게
+  > 된다**(날짜는 계속 `NavKeyCanvasImageSave.date`가 나른다). 이번 라운드가 만든 결함은 아니고 닫지도
+  > 않는다 — 홀더가 파일과 같은 성질을 갖는다는 사실만 싣는다. ③도 그대로다 — 새로 붙은
+  > `CanvasCaptureHolderTest`는 홀더 계약 넷만 잠그고 쓰기·읽기·결과 왕복·미리보기 화면은 여전히 한
+  > 줄도 잠기지 않는다 → [캔버스 저장 미리보기 캡처 전달 스펙](../specs/2026-09-07-canvas-save-preview-capture-holder.md).
 
 ### [2026-09-05] 사용자 설정을 지우는 계약만 있고 부르는 자리가 없다
 
@@ -6975,4 +6999,28 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) 정책 대조 표의 "크림 개수 규칙"
   행과 같은 자리이고, 높이 기반을 유지할지 토핑 수 기반으로 갈지는 디자인 확인이 먼저다.
 
-<!-- oq-next: 376 -->
+### [2026-09-07] 저장 아이콘 연타를 막는 자리가 없다
+
+- **ID**: OQ-P-376
+- **출처**: `CanvasMainViewModel#handleClickSaveToGallery`(PR #445 이후 그대로) — 저장 클릭을 받아
+  `postSideEffect(CanvasMainEffect.RequestCanvasCaptureForPreview)` 한 줄만 하고, 같은 ViewModel의 다른
+  작업들이 쓰는 `BaseViewModel#launch(key = ...)` 중복 가드도 걸지 않는다. 이펙트 통로인
+  `BaseViewModel#effect`는 `Channel(Channel.BUFFERED)`이라 **구독자가 없는 동안 발행해도 버퍼에 남았다가
+  전달된다** — 화면 재진입·Activity 재생성에 이동이 저절로 다시 도는 것을 막으려고 고른 성질이다
+  ([ADR-0020](../adr/0020-mvi-error-effect-infrastructure.md)). 수집은 `CanvasMainRoute`의
+  `LaunchedEffect(viewModel)`이라 미리보기가 위에 쌓여 캔버스 메인의 컴포지션이 사라지면 끊긴다.
+- **항목**: ① 저장 아이콘을 연타하면 두 번째 이펙트가 버퍼에 남았다가 **미리보기에서 돌아온 뒤**
+  전달되어 곧바로 다시 미리보기로 들어간다 — 사용자가 방금 닫은 화면이 저절로 다시 열린다.
+  ② 막는 자리가 어디인가 — ViewModel이 `launch(key)`로 접을지, 캡처가 끝날 때까지 아이콘을 잠글지,
+  통로를 `Channel(CONFLATED)`로 바꿀지. 마지막 것은 이 화면만의 결정이 아니다(`BaseViewModel`이
+  전 화면 공용이고 캔버스 메인의 다른 이펙트까지 함께 접힌다). ③ 같은 성질을 가진 다른 이동 이펙트를
+  세어 본 적이 없다 — 통로가 공용이라 이 화면만의 문제가 아닐 수 있다.
+- **상태**: 미해결 (**동작 영향 낮음** — 연타해야 재현되고 크래시는 아니다. 캡처 홀더 라운드와 독립인
+  기존 결함이다)
+- **해소 메모**: ①②는 [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md)
+  「드리프트 / 잔존」에 적고, 저장 왕복을 다시 여는 라운드에 얹는다(캡처 홀더 라운드가 범위 밖으로
+  둔 항목이다 → [캔버스 저장 미리보기 캡처 전달 스펙](../specs/2026-09-07-canvas-save-preview-capture-holder.md)).
+  ③은 이펙트 통로 자체의 물음이라 [state-management](../architecture/state-management.md)에서
+  ADR-0020과 함께 본다.
+
+<!-- oq-next: 377 -->
