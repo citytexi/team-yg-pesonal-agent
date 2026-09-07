@@ -10,6 +10,7 @@ related_code:
   - YGToppingCutoutImage.kt#buildBorderPlate
   - ToppingBorderPlateCache.kt#ToppingBorderPlateCache
   - ToppingOutline.kt#ToppingOutline
+  - ToppingOutlineSpec.kt#ToppingOutlineSpec
   - ToppingOutlineBitmap.kt#toBorderAlphaBitmap
   - ToppingOutlineCache.kt#ToppingOutlineCache
   - ToppingOutlineCache.kt#rememberToppingOutlines
@@ -96,7 +97,7 @@ tags: [spec, parfait, topping, border, rendering, hit-test]
 
 | 조각 | 자리 | 내용 |
 |------|------|------|
-| `ToppingOutline`, `ToppingBorderBand` | `core:util:jvm` | 거리판 보유·이중선형 보간·띠 채우기·불투명 판정. Android 타입 0건 |
+| `ToppingOutline`(`outline/`), `ToppingBorderBand`·`ToppingBorderTarget`·`ToppingOutlineSpec`(`model/`) | `core:util:jvm` | 거리판 보유·이중선형 보간·띠 채우기·불투명 판정. Android 타입 0건 |
 | `Bitmap.toToppingOutline()`, `ToppingOutline.toBorderBitmap()` | `core:util:android` | 알파 → 거리판, 픽셀 배열 → `Bitmap` |
 | `ToppingOutlineCache`, `rememberToppingOutlines()` | `core:ui` | LRU 캐시·in-flight 합류·Coil 디코딩 |
 | `YGToppingCutoutImage` | `core:designsystem` (제자리) | 띠 한 장 + 원본 한 장 |
@@ -343,6 +344,7 @@ fun YGToppingCutoutImage(
 | 파일 | 처리 |
 |------|------|
 | `core/util/jvm/.../outline/ToppingOutline.kt` | 신설 — 거리판·띠 채우기·불투명 판정 |
+| `core/util/jvm/.../model/ToppingBorderBand.kt`·`ToppingBorderTarget.kt`·`ToppingOutlineSpec.kt` | 신설 — 값 타입 둘과 담기 규격(알파 문턱·거리 눈금·가장자리 물림) |
 | `core/util/android/.../outline/ToppingOutlineBitmap.kt` | 신설 — `Bitmap.toToppingOutline`·`toBorderBitmap` |
 | `core/ui/.../outline/ToppingOutlineCache.kt` | 신설 — `ToppingAlphaMaskCache.kt`가 옮겨 오며 거리판으로 바뀐다 |
 | `core/designsystem/.../ygtoppingcutout/YGToppingCutoutImage.kt` | 수정 — 스탬프 제거, `outline` 파라미터 |
