@@ -236,7 +236,7 @@ TokenAuthenticator(재발급 거절) → SessionEventBusImpl.postForcedLogout()
 
 ```
 NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확인 모달 = POST 생성)──┐
-                 └─ 참여 ─▶ NavKeyGroupInviteCode ─(GET 미리보기)─▶ NavKeyGroupNickName(inviteCode, groupName) ─(확인 모달 = POST 참여 + PATCH 닉네임)─┤
+                 └─ 참여 ─▶ NavKeyGroupInviteCode ─(GET 미리보기)─▶ NavKeyGroupNickName(inviteCode, groupName, nickName) ─(확인 모달 = POST 참여 + PATCH 닉네임)─┤
                                                                                                                                                         └─▶ replaceAll(NavKeyGroupList) → goTo(NavKeyCanvasMain(groupId, welcome*))
 ```
 
@@ -272,6 +272,15 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
   요청 중에 모달이 떠 있지는 않다(OQ-P-137 ④·OQ-P-204).
   같은 라운드에서 **A-005의 닉네임 필드가 열렸다** — `NavKeyGroupCreate(nickName)`으로 넘어오는 값이
   읽기 전용 표시값이 아니라 초기값이 됐고, 확인은 그룹명과 닉네임을 함께 검사한다.
+  📌 **참여 갈래도 같은 모양이 됐다(2026-09-07, PR #461)** — `NavKeyGroupNickName`에
+  세 번째 인자 `nickName`이 붙고 A-004가 계정 SSoT(`GetMyAccountFlowUseCase`)를 구독해 그 값을 실어
+  보낸다. 그전까지 **참여 갈래만 빈 입력칸으로 시작했다** — 생성 갈래는 G-001이 같은 구독으로 값을
+  넘기고 있었는데(#312) 참여 쪽에 그 경로가 없었다. 구독 자리는 두 갈래 모두 **목록·입력 화면의 `init`**
+  이라 진입 시점의 값이 아니라 스트림을 따라간다.
+  ⚠️ **닉네임이 아직 없을 때의 답은 두 갈래가 반대다** — 참여 갈래는 **막지 않고 빈 값으로 넘어가고**
+  (초대코드 조회를 이미 마친 뒤라 여기서 되돌리면 사용자에게는 아무 반응 없는 실패로 보인다), 생성
+  갈래는 `handleClickCreateNewGroup`이 **이동 자체를 접고** 로그만 남긴다(다시 누르면 열린다). 어느
+  쪽이 이 앱의 답인지 정한 적이 없다 → [open-questions](../synthesis/open-questions.md) OQ-P-377.
 - 📌 **이동이 안내 하나를 거쳐 간다(2026-09-05, PR #450)** — 두 갈래의 마지막 이펙트
   (`NavigateToNext`)가 곧바로 `replaceAll` + `goTo`를 부르지 않고, **목적지를 들고 대기**한다.
   그 사이에 `NotificationPermissionGate`가 알림 권한 안내를 띄우고, 허용·거부·"나중에" 어느
@@ -515,8 +524,7 @@ C-001 캔버스 메인
 - **돌아온 뒤 캔버스를 다시 캡처하지 않는다.** 사용자가 보고 확정한 그림과 갤러리에 남는 그림이
   같아야 하므로 미리보기에 들어가기 전에 구운 파일을 다시 읽는다. 권한 승인 뒤의 길과 미리보기에서 돌아온 길이
   `saveWithPermission` 한 자리로 모이는 것도 같은 이유다.
-- **정상 경로는 미리보기가 파일을 다시 열지 않는다**(2026-09-07, 브랜치
-  `bugfix/#462-canvas-image-preview` — develop 미머지) — 캔버스 메인이 `goTo` 직전에
+- **정상 경로는 미리보기가 파일을 다시 열지 않는다**(2026-09-07, PR #463) — 캔버스 메인이 `goTo` 직전에
   `CanvasCaptureHolder.put(bitmap)`으로 방금 캡처한 비트맵을 넘기고, 미리보기가
   `remember { CanvasCaptureHolder.peek()?.asImageBitmap() }`로 받아 `Image`로 그린다. 파일을 열어
   전체 해상도 PNG를 디코드하고 크로스페이드하던 자리가 사라진다. **`NavKeyCanvasImageSave`는 그대로다** —
@@ -528,7 +536,7 @@ C-001 캔버스 메인
   가르는 조건이 그것이고, 닫기·저장 확정·시스템 백이 전부 이 하나로 모인다(`NavDisplay`가
   `onBack = navigator::onBack`으로 시스템 백을 직접 받아, 화면의 닫기 콜백만으로는 그 경로가 안 걸린다).
   근거는
-  [캔버스 저장 미리보기 캡처 전달 스펙](../specs/2026-09-07-canvas-save-preview-capture-holder.md).
+  [캔버스 저장 미리보기 캡처 전달 스펙](../specs/archive/2026-09-07-canvas-save-preview-capture-holder.md).
 - **캐시 파일명이 고정이다**(`canvas_capture/canvas_preview.png`) — 저장을 그만둔 캡처가 쌓이지 않게
   한 것이고, 대신 같은 경로를 반복해 그리므로 미리보기가 Coil 요청에
   `addLastModifiedToFileCacheKey`를 걸어 이전 캡처가 다시 뜨는 것을 막는다. 지우는 자리는 없다
@@ -687,6 +695,11 @@ API가 없다) → [s004-terms-privacy-webview 스펙](../specs/archive/2026-07-
 가입 토큰이 `NavKeyTermAgree(registrationToken)`으로, 참여 응답의 그룹 ID가 `NavKeyGroupNickName(groupId)`로
 간다. 두 값 다 원시 타입으로 넘기고 **받는 쪽에서 value class로 감싼다**(`RegistrationToken`·`GroupId`) —
 NavKey는 `@Serializable`이라 도메인 타입을 직접 싣지 않는다.
+🔁 **뒤엣것은 그 뒤로 두 번 바뀌었다** — #261이 합류를 S-102로 내리면서 인자가 **`groupId`에서
+초대코드·그룹명으로 교체**됐고(참여가 아직 일어나지 않은 시점이라 그룹 ID가 없다), #461이 세 번째
+인자 `nickName`을 더했다. 앞의 예가 **서버 응답**이 인자가 되는 형태라면 뒤엣것은 **로컬 SSoT 값**이
+인자가 되는 형태다 — `GetMyAccountFlowUseCase` 구독값을 A-004가 실어 보내고 S-102가 입력칸 초기값으로
+쓴다. 받는 쪽이 감싸는 것은 같다(`InviteCode`). `NavKeyGroupCreate(nickName)`이 같은 형태의 먼저 난 예다.
 **ViewModel이 없는 화면이면 엔트리 빌더가 `navKey.…` 값을 Route 파라미터로 그냥 넘긴다**
 (`NavKeyPictureConfirm(uri, source)` → `PictureConfirmRoute(uri = …, source = …)`, #182·#191).
 **여러 진입점이 한 화면을 공유하면 출처를 NavKey 인자(`@Serializable` enum)로 넘긴다** — 확인 화면은

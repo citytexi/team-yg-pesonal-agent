@@ -2,13 +2,31 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ✅ **완료·develop 머지(2026-09-07, PR #463 `2285d09da`).** 머지본이 이 계획과 **세 자리에서 다르고,
+> 셋 다 계획보다 나은 쪽으로 갈렸다.** 아래 본문은 실행 당시의 기록이라 되쓰지 않고 여기에 정정만 싣는다.
+> ① **홀더를 비우는 자리가 생겼다.** 아래 Global Constraints의 "앱 코드에 홀더를 비우는 호출을 넣지
+> 않는다"와 Architecture 절의 "다음 `put`이 덮을 때만 빈다"는 **뒤집혔다** — 코드리뷰가 마지막 캡처
+> 한 장이 다음 캡처까지 살아 있는 것을 지적했고, 미리보기의 `onDispose`에서 자기 `NavKey`가
+> `Navigator.backStack`에 남아 있는지 보아 **없을 때만** 비우는 조건 하나가 들어갔다. 비파괴라는
+> 성질은 그대로다(잠깐 내려간 화면은 키가 남아 있어 비우지 않는다). 정본은
+> [스펙 「홀더 수명」](../../specs/archive/2026-09-07-canvas-save-preview-capture-holder.md).
+> ② **압축 실패 분기에 유닛이 붙었다.** Task 2의 "파일 IO라 JVM 유닛으로 감싸기 어렵다"는 판단이
+> 틀렸다 — `Context`를 `mockk`로 세우고 `cacheDir`에 JUnit `TemporaryFolder`를 물리면 실제 파일 IO가
+> 도는 채로 `compress`만 스텁할 수 있다. `CanvasCaptureCacheTest` 2건이 신설됐고 `check`를 지우는
+> 뮤테이션으로 실패 케이스가 실제로 깨지는 것을 확인했다.
+> ③ 그래서 산출 파일이 **신규 2 · 수정 4**가 아니라 **신규 3 · 수정 4**다(Task 4 Step 6의 셈).
+> 유닛은 계획의 4건이 아니라 **6건**이다.
+>
+> 반영하지 않은 리뷰 지적 하나: 홀더에 비트맵이 쌓여 OOM이 난다는 우려는 성립하지 않는다 —
+> `put`이 필드를 덮어쓰므로 언제나 최대 한 장이고 누적 경로가 없다.
+
 **Goal:** 저장 미리보기에 진입했을 때 캡처 이미지가 곧바로 보이게 한다. 캡처 비트맵을 홀더로 건네 정상 경로에서 디스크 왕복과 이미지 디코딩을 없앤다.
 
 **Architecture:** `CanvasCaptureHolder`(전역 `object`, `put`/`peek` 2함수) 하나를 둔다. 캔버스 메인이 캡처 직후 `put`하고, 미리보기 Route가 `remember { peek() }`로 읽어 `Image(bitmap)`으로 직접 그린다. 홀더는 다음 `put`이 덮을 때만 비므로 미리보기가 다시 컴포즈돼도 그림이 남는다. 홀더가 비어 있으면 지금의 `AsyncImage(경로)` 분기로 떨어진다. 곁들여 `writeToCanvasCaptureCache`가 `compress`의 반환값을 확인하게 한다. 내비게이션 계약과 백스택은 바뀌지 않는다.
 
 **Tech Stack:** Kotlin, Jetpack Compose, Navigation3, Coil 3, mockk, kotlin.test
 
-**Spec:** [`parfait/specs/2026-09-07-canvas-save-preview-capture-holder.md`](../specs/2026-09-07-canvas-save-preview-capture-holder.md)
+**Spec:** [`parfait/specs/archive/2026-09-07-canvas-save-preview-capture-holder.md`](../../specs/archive/2026-09-07-canvas-save-preview-capture-holder.md)
 
 ## Global Constraints
 

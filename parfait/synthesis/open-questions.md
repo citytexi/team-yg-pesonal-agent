@@ -6800,8 +6800,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**동작 영향 낮음** — 복원 경로에서만 드러난다)
 - **해소 메모**: ①③은 [navigation-flow](../architecture/navigation-flow.md) 「인자 있는 목적지」에
   적고, 대안(결과 버스로 비트맵을 나르거나 미리보기가 자기 소유 캐시를 갖는 형태)을 그 자리에서 견준다.
-  > 🔁 **①의 "프로세스 사망 뒤 복원" 전제가 사실이 아니다(2026-09-07, 브랜치
-  > `bugfix/#462-canvas-image-preview` — develop 미머지).** 이 앱은 **백스택을 저장하지 않는다** —
+  > 🔁 **①의 "프로세스 사망 뒤 복원" 전제가 사실이 아니다(2026-09-07, PR #463 develop 머지).**
+  > 이 앱은 **백스택을 저장하지 않는다** —
   > `Navigator`가 백스택을 `mutableStateListOf`로 들고 `@ActivityRetainedScoped`로 살 뿐이고,
   > `MainRoute`는 그것을 그대로 `NavDisplay`에 넘기며 `rememberNavBackStack`도 `SavedStateHandle`도
   > 쓰지 않고, `MainActivity.onCreate`도 `savedInstanceState`를 읽지 않는다. 프로세스가 죽고 돌아오면
@@ -6830,17 +6830,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**동작 영향 낮음** — ②는 한 화면에서 연달아 캡처해야 재현된다)
 - **해소 메모**: 정하면 [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md)
   「드리프트 / 잔존」에 적는다. ①은 미리보기를 떠날 때 지우는 것이 가장 싸고, 그러면 ②도 함께 좁아진다.
-  > 🔁 **②가 홀더에도 그대로 옮겨 갔고, 재현 조건은 "한 화면에서 연달아"보다 넓다(2026-09-07, 브랜치
-  > `bugfix/#462-canvas-image-preview` — develop 미머지).** 캡처 비트맵을 `CanvasCaptureHolder`가
+  > 🔁 **②가 홀더에도 그대로 옮겨 갔고, 재현 조건은 "한 화면에서 연달아"보다 넓다(2026-09-07,
+  > PR #463 develop 머지).** 캡처 비트맵을 `CanvasCaptureHolder`가
   > 나르게 되면서 **고정 파일과 홀더가 같은 자리에서 함께 덮인다** — 홀더도 한 장만 들고 `put`이 이전
   > 것을 밀어낸다. 게다가 `MainRoute`가 푸시 딥링크를 앱 루트 한 곳에서 수집해 **지금 어느 화면에
   > 있는지 따지지 않고** `goTo(NavKeyCanvasMain(groupId))`를 부르므로, 미리보기를 열어 둔 채 알림을
   > 탭해 다른 그룹 캔버스로 가서 저장하면 파일과 홀더가 모두 그 그룹의 캡처로 바뀐다. 아래로 내려갔던
   > 미리보기로 돌아오면 `remember`가 다시 계산되어 **다른 그룹의 그림을 원래 날짜 라벨과 함께 보게
   > 된다**(날짜는 계속 `NavKeyCanvasImageSave.date`가 나른다). 이번 라운드가 만든 결함은 아니고 닫지도
-  > 않는다 — 홀더가 파일과 같은 성질을 갖는다는 사실만 싣는다. ③도 그대로다 — 새로 붙은
-  > `CanvasCaptureHolderTest`는 홀더 계약 넷만 잠그고 쓰기·읽기·결과 왕복·미리보기 화면은 여전히 한
-  > 줄도 잠기지 않는다 → [캔버스 저장 미리보기 캡처 전달 스펙](../specs/2026-09-07-canvas-save-preview-capture-holder.md).
+  > 않는다 — 홀더가 파일과 같은 성질을 갖는다는 사실만 싣는다. ③은 **한 칸 좁아졌다** — 새로 붙은
+  > 유닛 여섯 중 `CanvasCaptureHolderTest` 넷은 홀더 계약만 잠그지만, `CanvasCaptureCacheTest` 둘이
+  > **쓰기의 압축 실패·성공 갈래**를 잠근다(`Context`를 `mockk`로 세우고 `cacheDir`에
+  > `TemporaryFolder`를 물려 실제 파일 IO가 도는 채로 `compress`만 스텁한다 — 계획이 "유닛으로 감싸기
+  > 어렵다"고 본 판단이 실행 중에 뒤집혔다). 읽기·결과 왕복·미리보기 화면은 여전히 한 줄도 잠기지
+  > 않는다 → [캔버스 저장 미리보기 캡처 전달 스펙](../specs/archive/2026-09-07-canvas-save-preview-capture-holder.md).
 
 ### [2026-09-05] 사용자 설정을 지우는 계약만 있고 부르는 자리가 없다
 
@@ -7019,8 +7022,30 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   기존 결함이다)
 - **해소 메모**: ①②는 [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md)
   「드리프트 / 잔존」에 적고, 저장 왕복을 다시 여는 라운드에 얹는다(캡처 홀더 라운드가 범위 밖으로
-  둔 항목이다 → [캔버스 저장 미리보기 캡처 전달 스펙](../specs/2026-09-07-canvas-save-preview-capture-holder.md)).
+  둔 항목이다 → [캔버스 저장 미리보기 캡처 전달 스펙](../specs/archive/2026-09-07-canvas-save-preview-capture-holder.md)).
   ③은 이펙트 통로 자체의 물음이라 [state-management](../architecture/state-management.md)에서
   ADR-0020과 함께 본다.
 
-<!-- oq-next: 377 -->
+### [2026-09-07] 앱 닉네임이 없을 때 생성·참여 두 갈래가 반대로 답한다
+
+- **ID**: OQ-P-377
+- **출처**: `GroupListViewModel#handleClickCreateNewGroup`과 `GroupInviteCodeViewModel`의 확인 갈래
+  (후자는 PR #461 develop 머지) — 그룹 내 닉네임의 초기값은 계정 공통 앱 닉네임을 재사용하고, 두 갈래
+  모두 `GetMyAccountFlowUseCase`를 `init`에서 구독해 그 값을 다음 화면의 NavKey 인자로 실어 보낸다.
+  **값이 아직 없을 때의 답이 서로 반대다** — 생성 갈래는 이동 자체를 접고 로그만 남기며(다시 누르면
+  열린다), 참여 갈래는 막지 않고 빈 문자열로 넘어간다.
+- **항목**: ① **사용자에게 보이는 결과가 반대다** — 생성은 버튼을 눌러도 아무 일이 없고(참여 갈래
+  주석이 명시적으로 피하려 한 바로 그 모양이다), 참여는 빈 입력칸으로 선다. 어느 쪽이 이 앱의 답인지
+  정한 적이 없다. ② **도달 조건을 세어 본 적이 없다** — 계정 SSoT는 부트스트랩이 채우므로 두 화면에서
+  값이 비는 창이 실제로 열리는지, 열린다면 얼마나 긴지 아무도 확인하지 않았다. 로그만 남으므로
+  재현되어도 드러나지 않는다. ③ **정책에 없다** — 위키 [[S-102-그룹-닉네임-생성-정책-v0.1]]은 "계정
+  공통 1개 값 재사용"까지만 정하고 **그 값이 없을 때**를 말하지 않는다.
+- **상태**: 미해결 (**동작 영향 낮음** — 두 갈래 다 사용자가 직접 입력하면 진행되고, 확인 버튼이
+  빈 값을 막으므로 닉네임 없는 그룹이 만들어지지는 않는다)
+- **해소 메모**: ①은 [navigation-flow](../architecture/navigation-flow.md) 「그룹 생성·참여 플로우」의
+  같은 자리에 두 답을 나란히 적었고, 하나로 모으기로 정해지면 그 절과
+  [a004 스펙](../specs/archive/2026-08-12-a004-group-invite-code.md)·
+  [s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md)을 함께 고친다. ③은 위키 판단이
+  선행이다 — 정책으로 확정되면 위키에 조항을 만들고 여기는 구현 소관만 남긴다.
+
+<!-- oq-next: 378 -->

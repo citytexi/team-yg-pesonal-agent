@@ -4,7 +4,7 @@ title: S-102 그룹 내 닉네임 입력 화면 (GroupNickName)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-09-01
+verified: 2026-09-07
 related_code:
   - NavKeyGroupNickName
   - GroupNickNameRoute.kt#GroupNickNameRoute
@@ -74,6 +74,14 @@ tags: [spec, parfait, groups, nickname, s102]
 > 다음 화면으로 간다(코드에 안내 토스트 `TODO`). 반대로 참여 실패는 닉네임을 보내지 않고 모달을 닫은 뒤
 > 사유를 입력 자리에 붙인다.
 
+> ⚠️ **as-built 갱신(2026-09-07, #461 develop 머지)**: **입력칸이 앱 닉네임으로 채워진 채 선다.**
+> `NavKeyGroupNickName`에 세 번째 인자 `nickName`이 붙고 A-004가 계정 SSoT 구독값을 실어 보내며,
+> 이 화면은 그것을 `@Assisted`로 받아 초기 상태에 넣는다. 그전까지 이 화면만 빈 칸으로 시작해
+> **위키 [[S-102-그룹-닉네임-생성-정책-v0.1]]의 "계정 공통 1개 값 재사용"과 어긋나 있었다**(생성
+> 갈래 A-005는 #312부터 채워져 있었다). 사용자가 지우고 다시 쓰는 것은 그대로다 — 초기값일 뿐
+> 읽기 전용이 아니다. 앞 화면이 값을 구하지 못했으면 빈 문자열이 오고 화면은 예전처럼 빈 칸으로
+> 선다 → OQ-P-377.
+
 - **화면 ID**: S-102 (그룹 참여 시 그룹 내 닉네임)
 - **대상 모듈**: `feature/groups/enter/impl`(`nickname/`) + `feature/groups/enter/api`(NavKey) + `domain`(UseCase/model) + `core:designsystem`(`YGModalPopup`, #261에서 이관)
 
@@ -130,7 +138,7 @@ class ChangeGroupNicknameUseCase @Inject constructor(
 // impl — MVI (🔁 #179 errorMessageResId, #223 nicknameError, #224 isEntering, #244 submitError, #261 모달)
 data class GroupNickNameUiState(
     val groupName: String = "",                        // #261 — NavKey 인자, 모달 제목에만 쓴다
-    val nickName: String = "",
+    val nickName: String = "",                         // 🔁 #461 — NavKey 인자(앱 닉네임)로 채워진다
     val nicknameError: NameValidResult.Error? = null,   // 입력 형식(로컬 검증)
     val submitError: GroupNickNameError? = null,        // 서버만 알 수 있는 사유(#244)
     val isConfirmPopupVisible: Boolean = false,         // #261 — A-004에서 이관
@@ -149,11 +157,12 @@ sealed interface GroupNickNameIntent {
 }
 sealed interface GroupNickNameSideEffect { data object NavigateToBack; data object NavigateToNext }
 
-// ViewModel — NavKey 인자 둘을 받으므로 Assisted 주입(#244 / 🔁 #261 인자 교체·이름 있는 @Assisted)
+// ViewModel — NavKey 인자를 받으므로 Assisted 주입(#244 / 🔁 #261 인자 교체·이름 있는 @Assisted / 🔁 #461 셋으로 늘었다)
 @HiltViewModel(assistedFactory = GroupNickNameViewModel.Factory::class)
 class GroupNickNameViewModel @AssistedInject constructor(
     @Assisted(ASSISTED_INVITE_CODE) inviteCodeValue: String,
     @Assisted(ASSISTED_GROUP_NAME) groupName: String,
+    @Assisted(ASSISTED_NICK_NAME) nickName: String,   // #461 — 입력칸 초기값(앱 닉네임)
     private val checkNickNameValid: CheckNameValidUseCase,
     private val joinGroup: JoinGroupUseCase,              // #261
     private val changeGroupNickname: ChangeGroupNicknameUseCase,
@@ -214,6 +223,9 @@ class GroupNickNameViewModel @AssistedInject constructor(
 - **자동 포커스**: 화면 진입 시 `FocusRequester.requestFocus()`(`LaunchedEffect(Unit)`).
 - **확인 버튼 활성**: `nickName.isNotEmpty() && isEntering.not()`(🔁 #244 — 진행 중 비활성이 붙었다).
   빈 값만 막고 상세 규칙은 클릭 시 UseCase가 검사한다.
+  🔁 **#461부터 초기값이 채워져 있으면 진입 즉시 활성이다** — 앞 화면이 앱 닉네임을 실어 보내므로
+  사용자가 아무것도 치지 않고 확인을 누를 수 있다. 초기값은 검사 대상이 아니다(위키
+  [[이름-입력-규칙]]도 같은 방향이고, 자동 생성 닉네임은 조합 최대 11자라 상한 15를 넘지 않는다).
 - **모달 표시**(#261): `uiState.isConfirmPopupVisible`일 때만 `YGModalPopup` 호출(표시 여부는 호출자 소관 —
   [ygmodalpopup 스펙](2026-07-15-ygmodalpopup.md)). 제목은 `%1$s`에 `groupName`을 끼운 `group_enter_confirm_title`,
   아이콘 `ic_warning_round`, 좌 Secondary "취소" / 우 Primary "참여하기" — **A-004에서 쓰던 문구·배치 그대로**
