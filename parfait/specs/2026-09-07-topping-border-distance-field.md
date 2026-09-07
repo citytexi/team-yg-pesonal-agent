@@ -241,10 +241,6 @@ fun YGToppingCutoutImage(
 파생시킨다.** 두 상수가 같은 값이면서 서로를 모르던 것이 OQ-P-337 ①의 실체이므로, 파생 한 줄이
 그 화면 몫을 닫는다.
 
-`CanvasBGEditScreen`은 이미 Box를 `outlineInset`만큼 키우고 안쪽으로 덜어내는 우회를 하고 있다
-(`alpha < 1`이 오프스크린 버퍼를 만들어 밀어 찍은 테두리가 잘리기 때문). 위 규칙이 그 우회를
-**네 화면 공통 규칙으로 승격**하므로 이 화면만의 예외가 사라진다.
-
 ### 상태별 동작
 
 | 상황 | 그리기 | 판정 |
@@ -317,7 +313,7 @@ fun YGToppingCutoutImage(
 | `feature/groups/canvas/impl/.../util/ToppingHitTarget.kt` | 수정 — 거리판 조회 판정 |
 | `feature/groups/canvas/impl/.../component/CanvasToppingLayer.kt` | 수정 — 거리판 전달, `loadMasks` 제거 |
 | `feature/groups/canvas/impl/.../screen/CanvasToppingPlaceScreen.kt` | 수정 — `outline` 전달 |
-| `feature/groups/canvas/impl/.../screen/CanvasBGEditScreen.kt` | 수정 — `outline` 전달, 인셋 우회 정리 |
+| `feature/groups/canvas/impl/.../screen/CanvasBGEditScreen.kt` | 수정 — `outline` 전달, 인셋 우회 유지 |
 
 ## 검증
 
