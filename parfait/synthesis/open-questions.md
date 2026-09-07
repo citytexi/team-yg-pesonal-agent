@@ -5,8 +5,8 @@ category: meta
 status: living
 platforms: android
 verified: 2026-09-07
-related_spec: push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder
-related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029
+related_spec: push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field
+related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029, ADR-0030
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
 tags: [meta, parfait]
@@ -3119,8 +3119,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   잰 적이 없다. ② 더 싼 방법(알파 마스크 기반 외곽선, `RenderEffect`)으로 갈지. ③ **테두리 표현 자체에
   정책 소스가 없다** — 위키에 토핑 테두리 규정이 없고 C-104 누끼 편집의 "테두리 2~50px"는 편집 화면
   기준이라 캔버스 렌더 규칙과 다른 자리다. 코드가 먼저 확정한 셋째 사례다.
-- **상태**: 미해결 (실기기 확인 없음)
-- **해소 메모**: ③은 위키 정책 수집 요청이 선행이다. ①②를 처리하면
+- **상태**: 부분 해소 (② **해소**(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+  [ADR-0030](../adr/0030-topping-outline-distance-field.md)) — 알파 마스크 기반 거리장으로 확정돼
+  여덟 방향 스탬프를 대체한다. **①③은 그대로 잔존한다** — ①은 토핑당 프레임 그리기가 9회에서
+  2회로 준 것이 코드에서 읽히는 사실일 뿐 프레임을 잰 적이 없고, ③은 굵기 2~50dp에 정책 소스가
+  없다는 사실을 이번 라운드도 건드리지 않았다)
+- **해소 메모**: ①은 실기기 프레임 측정이 선행이다([topping-border-distance-field
+  스펙](../specs/2026-09-07-topping-border-distance-field.md) 「육안 확인」 4번은 버벅임 유무만
+  보고 수치는 재지 않는다). ③은 위키 정책 수집 요청이 선행이다. 둘 다 처리되면 이 항목과
   [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md) 드리프트 5를 지운다.
 
 ### [2026-08-17] 캔버스가 도달 가능해졌는데 토핑을 얹는 경로는 여전히 없다
@@ -5594,6 +5600,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**동작 영향 0** — 상한 64로 메모리는 묶여 있다. 수명 주체가 없는 것이 문제다)
 - **해소 메모**: ②가 먼저 걸린다. 테스트가 붙는 시점에 `@After`에서 `clearToppingAlphaMasks()`를
   부르거나, 캐시를 최상위 상태가 아니라 주입되는 홀더로 바꾼다.
+- ⚠️ **항목당 크기가 커진다(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+  [ADR-0030](../adr/0030-topping-outline-distance-field.md))** — 캐시가 `core:ui`(`ToppingOutlineCache.kt`,
+  `clearToppingOutlines()`)로 옮겨 가며 비트셋 대신 거리 배열(`ShortArray`, 1/8 필드픽셀 양자화)을
+  담는다. 항목당 크기가 약 8KB에서 약 128KB로 커진다. **상한 64칸은 그대로**라 누수 성질은
+  바뀌지 않지만, 수명 주체가 없는 채로 총량 상한만 8배가 되므로 압박 상황의 체감이 달라질 수 있다.
 
 ### [2026-08-27] 알파 커널에 확인 없이 오래 도는 루프가 남아 있다
 
@@ -6054,9 +6065,16 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `YGToppingCutoutImage`(여덟 방향 스탬프, [ADR-0025](../adr/0025-topping-border-as-server-field.md))로
   그리므로 **한 흐름 안에서 테두리를 그리는 규칙이 둘**이고, 같은 굵기가 화면마다 다르게 잘릴 수
   있다. ③ 실기기에서 두 화면을 나란히 본 사람이 없다 — 어긋남의 크기를 잰 적이 없다.
-- **상태**: 미해결 (**깎이던 것은 고쳐졌다** — 남은 것은 값의 근거와 화면 간 일관성이다)
-- **해소 메모**: ②를 정하면 [design-system](../architecture/design-system.md)
-  `YGToppingCutoutImage` 항목과 [c103-segmentation-topping-edit
+- **상태**: 부분 해소 (① **해소**(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+  [ADR-0030](../adr/0030-topping-outline-distance-field.md)) — `ToppingBorderEditScreen`의
+  `MAX_BORDER_PADDING_DP`가 `MAX_BORDER_WIDTH_DP`에서 파생되는 한 줄로 바뀌어 두 상수가 서로를 안다.
+  ② **코드는 하나가 됐다** — `YGToppingCutoutImage`가 여덟 방향 스탬프 대신 편집 화면과 같은 거리장을
+  그린다. 다만 **③이 아직 닫히지 않아 이번 라운드도 실기기 대조가 없다** — 코드가 통일된 사실과
+  네 화면이 실제로 같아 보이는지는 별개다)
+- **해소 메모**: ③은 실기기 육안 확인이 선행이다([topping-border-distance-field
+  스펙](../specs/2026-09-07-topping-border-distance-field.md) 「육안 확인」 1번). 그것이 끝나면
+  이 항목 전체가 닫히고 [design-system](../architecture/design-system.md) `YGToppingCutoutImage`
+  항목과 [c103-segmentation-topping-edit
   스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 테두리 절에 함께 적는다.
 
 ### [2026-09-01] 되살린 알맹이 편집은 원본 자리에도 알맹이를 넣어, 재편집 좌표계 전제가 진입마다 다르다
@@ -6596,10 +6614,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   부르면 낭비다). ② 아니면 사각형 폴백을 허용 범위로 인정할지 — 그러면 **재시도로 그림이 돌아온
   화면에서 투명한 자리가 눌린다**는 것을 알고 두는 것이다. ③ 판정이 사각형으로 떨어졌다는 것을
   아무 데서도 셀 수 없다(로그도 없다).
-- **상태**: 미해결 (**도달 가능하나 미관측** — 재시도 자체가 이번 라운드 신설이고 실기기 확인이 0회다)
-- **해소 메모**: ②를 고르면 [topping-alpha-hit-test 스펙](../specs/archive/2026-08-26-topping-alpha-hit-test.md)
-  「알파 마스크」에 그 허용을 적는다. ①을 고르면 마스크 캐시의 키 설계를 함께 본다 — 지금 키는 url
-  하나뿐이라 "같은 url을 다시 받는다"를 표현할 자리가 없다.
+- **상태**: 해소됨 (①로 결정·구현됨 — 브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+  [ADR-0030](../adr/0030-topping-outline-distance-field.md))
+- **해소 메모**: 마스크 캐시가 `core:ui`의 거리판 캐시(`ToppingOutlineCache.kt`)로 옮겨 가며 캐시 키가
+  `"$retryKey|$model"`로 바뀌었다 — `retryKey`가 올라가면 같은 모델이라도 새 캐시 항목을 만들어
+  재시도 뒤 그림과 함께 테두리·판정이 되살아난다. ②·③이 다루던 "사각형 폴백을 허용할지" 논의는
+  ①로 닫히며 대상을 잃는다.
 
 ### [2026-09-04] G-001 파르페가 쌓이는 연출의 간격·생략 조건에 정책 근거가 없다
 
@@ -7048,4 +7068,45 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   [s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md)을 함께 고친다. ③은 위키 판단이
   선행이다 — 정책으로 확정되면 위키에 조항을 만들고 여기는 구현 소관만 남긴다.
 
-<!-- oq-next: 378 -->
+### [2026-09-07] 토핑 알파 판정이 그림 사각형 밖으로 넓어졌다
+
+- **ID**: OQ-P-378
+- **출처**: `ToppingHitTarget.kt`(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+  [ADR-0030](../adr/0030-topping-outline-distance-field.md)) — 옛 `ToppingAlphaMask`는 판 범위 밖을
+  투명으로 답해, 실루엣이 그림 왼쪽·위쪽 변에 닿아 있어도 그 바깥은 눌리지 않았다. 새 거리판은 판
+  밖 좌표에서도 거리를 재므로(`ToppingOutline.distanceAt` — 벗어난 만큼을 거리에 더해 하한을 낸다)
+  **테두리를 그린 자리까지 판정이 눌린다.** 회귀 테스트
+  `ToppingHitTestTest#containsPoint_leftOfImageRect_isHitWhenTheBorderReachesThere`·
+  `containsPoint_aboveImageRect_isHitWhenTheBorderReachesThere`의 기대값이 이 변화 때문에 뒤집혔다.
+- **항목**: ① 그리는 모양과 판정 모양을 정의상 일치시키는 것이 이번 라운드의 목적이므로 새 동작이
+  맞다고 본다 — 다만 이것은 **설계 판단이지 사용자 확인이 아니다.** ② 사용자가 체감할 변화인데
+  실기기에서 확인된 적이 없다 — 테두리가 그림 변 밖으로 나가 있는 토핑(캔버스 진입점에 흔한 배치)을
+  눌러 보면 옛 판정이면 안 눌렸을 자리가 눌린다. ③ 위키에 이 판정 범위를 규정한 조항이 없다 —
+  코드가 먼저 정한 사례다.
+- **상태**: 미해결 (**도달 가능하나 미관측** — 유닛 테스트는 새 규칙으로 고정됐지만 실기기 확인은
+  0회다)
+- **해소 메모**: [topping-border-distance-field 스펙](../specs/2026-09-07-topping-border-distance-field.md)
+  「육안 확인」 3번(가장자리 잘림 확인)이 처음으로 실기기에서 이 판정 범위를 건드린다. 확인되면
+  이 항목을 닫고 [토핑 알파 판정 스펙](../specs/archive/2026-08-26-topping-alpha-hit-test.md)의
+  판정 규칙 절에 반영한다.
+
+### [2026-09-07] 편집 화면과 나머지 셋의 거리판 해상도가 다르다
+
+- **ID**: OQ-P-379
+- **출처**: `ToppingBorderEditScreen.kt`의 `PREVIEW_FIELD_LONG_SIDE = 1440` ×
+  `ToppingOutlineCache.kt`의 `OUTLINE_LONG_SIDE = 256`(브랜치 `refactor/#337-topping-border-optimization`,
+  develop 미머지, [ADR-0030](../adr/0030-topping-outline-distance-field.md)) — 편집 화면은 거리판을
+  화면에 나올 크기 그대로(사실상 화면 크기, 상한 1440) 재고, 누끼 확인·배치·캔버스 셋은 캐시가 만든
+  긴 변 256 거리판을 공유한다. 띠의 바깥 곡선은 등거리 곡선이라 굵을 때는 격자 차이가 안 보인다.
+- **항목**: ① **굵기가 얇을수록 256 격자가 실루엣 잔주름을 뭉갠다** — 굵기 최소(2dp)에 토핑이 화면을
+  거의 채우는 자리(누끼 확인 화면 등)에서 편집 화면과 나머지 셋의 모양이 갈릴 수 있다. ②
+  [topping-border-distance-field 스펙](../specs/2026-09-07-topping-border-distance-field.md) 목표인
+  "네 화면 모양 일치"와 정면으로 부딪히는 자리인데 이번 라운드는 256으로 간 채 실기기 확인에
+  넘긴다. ③ 갈리면 `OUTLINE_LONG_SIDE`를 512로 올리는 대응이 이미 스펙에 있지만(항목당 메모리가
+  네 배가 되므로 캐시 칸 수를 함께 줄인다), 그 판단 자체가 아직 실기기 확인 전이다.
+- **상태**: 미해결 (**설계 시점에 알려진 트레이드오프** — 실기기 확인 0회, 갈릴지 자체가 미관측)
+- **해소 메모**: [topping-border-distance-field 스펙](../specs/2026-09-07-topping-border-distance-field.md)
+  「육안 확인」 1번(굵기 최소 2dp 포함)이 이 차이를 처음 잰다. 갈리면 스펙의 "열린 질문" 절에
+  512로 올린 근거를 적고 이 항목을 닫는다. 안 갈리면 256을 유지한 채 이 항목을 닫는다.
+
+<!-- oq-next: 380 -->
