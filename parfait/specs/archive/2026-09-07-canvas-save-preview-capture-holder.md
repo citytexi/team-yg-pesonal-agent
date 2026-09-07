@@ -1,7 +1,7 @@
 ---
 id: canvas-save-preview-capture-holder
 title: 캔버스 저장 미리보기 캡처 전달 (Capture Holder)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-09-07
@@ -32,6 +32,12 @@ tags: [spec, parfait, canvas, gallery, c-001, save-preview]
 # Spec: 캔버스 저장 미리보기 캡처 전달
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+
+> ✅ **구현 완료·develop 머지(2026-09-07, PR #463 `2285d09da`).** 머지본을 줄 단위로 대조한 결과
+> **설계와 어긋난 자리가 없다** — 홀더 세 함수와 `@Volatile` 필드, `onDispose`에서 `navKey !in
+> navigator.backStack`일 때만 비우는 조건, `bitmap`/`fallbackImagePath` 두 인자로 갈린 화면,
+> `check(compress(...))`, 유닛 6건(홀더 4 · 캐시 2)이 모두 이 문서대로다. 코드가 문서보다 더 적은
+> 것도 없다.
 
 > 📌 **초판(2026-09-07)의 전제 셋이 검수에서 뒤집혔다.** ① 폴백이 "프로세스 사망 복원"에서 발동한다고
 > 적었으나 이 앱의 백스택은 저장되지 않아 그 상황에서 미리보기는 **복원 자체가 되지 않는다**.

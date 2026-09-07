@@ -4,7 +4,7 @@ title: A-004 그룹 참여 초대코드 입력 화면 (GroupInviteCode)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-16
+verified: 2026-09-07
 related_code:
   - NavKeyGroupInviteCode
   - GroupInviteCodeRoute.kt#GroupInviteCodeRoute
@@ -15,6 +15,7 @@ related_code:
   - InviteCodePasteBar.kt#InviteCodePasteBar
   - InviteCodeError.kt#InviteCodeError
   - GetGroupJoinPreviewUseCase.kt#GetGroupJoinPreviewUseCase
+  - GetMyAccountFlowUseCase.kt#GetMyAccountFlowUseCase
   - ParfaitGroupRepository.kt#previewJoin
   - ServerErrorCode.kt#ParfaitGroup
   - InviteCode.kt#InviteCode
@@ -61,13 +62,20 @@ tags: [spec, parfait, groups, invite-code, a004]
 > `ClickConfirmPopupEnter`·`DismissConfirmPopup`)는 삭제됐다. **미리보기를 먼저 부르는 이유도 바뀌었다** —
 > 모달을 띄우기 전에 거르는 것이 아니라, 다음 화면에 띄울 그룹명을 얻는 김에 잘못된 코드를 여기서 막는다.
 
+> ⚠️ **as-built 갱신(2026-09-07, #461 develop 머지)**: **이 화면이 앱 닉네임을 하나 더 나른다.**
+> `GetMyAccountFlowUseCase`를 `init`에서 구독해 `nickName`을 들고, `NavigateToNext`의 세 번째 인자로
+> S-102에 넘긴다. 그전까지 **참여 갈래만 빈 입력칸으로 시작했다** — 생성 갈래는 G-001이 같은 구독으로
+> 값을 넘기고 있었는데(#312) 참여 쪽에 그 경로가 없었다. 이 화면은 그 값을 **그리지 않는다.**
+> 값이 아직 없어도 이동을 막지 않는다 → OQ-P-377.
+
 - **화면 ID**: A-004 (그룹 참여 — 초대 코드 입력)
 - **대상 모듈**: `feature/groups/enter/impl`(`invitecode/`) + `feature/groups/enter/api`(NavKey) + `domain`(UseCase·model) + `core:designsystem`(`YGTopBarDetail`·`YGButton`. 🔁 #261에서 `YGModalPopup` 소비가 S-102로 이관)
 
 ## 목표
 
 초대 코드를 한 글자씩 칸에 입력받아 그 코드가 어느 그룹을 가리키는지 미리보기로 확인하고,
-그룹 내 닉네임 입력(S-102)으로 초대코드와 그룹명을 넘긴다(🔁 #261 — 확인 모달·합류는 S-102 몫).
+그룹 내 닉네임 입력(S-102)으로 초대코드와 그룹명을 넘긴다(🔁 #261 — 확인 모달·합류는 S-102 몫,
+🔁 #461 — 앱 닉네임도 함께 넘긴다).
 
 ## 범위
 
@@ -139,6 +147,7 @@ data class GroupInviteCodeUiState(
     // ❌ 삭제(#261): groupName · isConfirmPopupVisible — 모달이 S-102로 이관되며 함께 나갔다
     val isSubmitting: Boolean = false,       // #244 신설. 🔁 #261 — 미리보기 조회 전용
     val clipboardInviteCode: String? = null, // #237
+    val nickName: String? = null,            // #461 — 그리지 않고 S-102 초기값으로 넘길 앱 닉네임
 ) : UiState {
     val codeLength = InviteCode.LENGTH       // #237에서 domain 상수로 이관
 }
@@ -159,7 +168,7 @@ sealed interface GroupInviteCodeIntent : UiIntent {
 sealed interface GroupInviteCodeSideEffect : UiSideEffect {
     data object NavigateToBack
     // 🔁 #261 — 참여 결과가 아니라 참여에 쓸 재료를 넘긴다(#244의 groupId: Long에서 교체)
-    data class NavigateToNext(val inviteCode: String, val groupName: String)
+    data class NavigateToNext(val inviteCode: String, val groupName: String, val nickName: String)  // 🔁 #461 — nickName 추가
 }
 ```
 
@@ -175,12 +184,20 @@ sealed interface GroupInviteCodeSideEffect : UiSideEffect {
   Route가 `HideKeyboard`를 보내 `focusedIndex`를 비운다(양방향).
 - **확인**(`ClickNextButton`, 🔁 #261): 입력이 `codeLength`가 아니면 조회하지 않고 로그만 남긴다.
   통과하면 `GetGroupJoinPreviewUseCase(InviteCode(text))` →
-  - 성공: 곧바로 `NavigateToNext(inviteCode = text, groupName = 응답값)` — **모달도 합류도 여기서 하지 않는다.**
-    미리보기 응답은 상태에 담기지 않고 그대로 다음 화면 인자가 된다(#244의 `groupName` 상태 소멸).
+  - 성공: 곧바로 `NavigateToNext(inviteCode = text, groupName = 응답값, nickName = 구독값 또는 빈 문자열)` —
+    **모달도 합류도 여기서 하지 않는다.** 미리보기 응답은 상태에 담기지 않고 그대로 다음 화면 인자가
+    된다(#244의 `groupName` 상태 소멸).
   - 실패: `inviteCodeError` 반영(입력값·포커스는 남는다 — #237의 `copy` 정정).
   - **미리보기를 먼저 부르는 이유**(🔁 #261): 참여 상태를 바꾸지 않는 호출이라, 다음 화면이 띄울 그룹명을
     얻는 김에 잘못된 코드를 여기서 막는다. 실패 사유 3종이 이 화면과 S-102 양쪽에 있는 것은 그 때문이다 —
     미리보기와 참여 사이에 그룹 상태가 바뀌면 같은 사유가 S-102에서 다시 난다.
+- **앱 닉네임 구독**(`init`, #461): `GetMyAccountFlowUseCase`를 구독해 `nickName`을 갱신한다. 이 화면은
+  그 값을 **그리지 않는다** — S-102 입력칸의 초기값으로 넘길 재료일 뿐이다(그룹 내 닉네임의 초기값은
+  계정 공통 값을 재사용한다). 구독이라 다른 화면에서 닉네임을 바꾸면 따라가고, 그래서 다음 화면으로
+  실려 갈 값이 낡지 않는다. ⚠️ **값이 아직 없어도 이동을 막지 않는다** — 조회를 이미 마친 뒤라
+  되돌리면 사용자에게는 아무 반응 없는 실패로 보이므로, 로그만 남기고 빈 문자열을 넘긴다. 생성 갈래
+  (`GroupListViewModel`)는 같은 자리에서 반대로 답한다 →
+  [open-questions](../../synthesis/open-questions.md) OQ-P-377.
 - **진행 플래그**(`isSubmitting`, #244 / 🔁 #261): 미리보기 조회에만 걸고 `finally`에서 끈다.
   확인 버튼 활성 조건(`text.length == codeLength && isSubmitting.not()`)이 유일한 소비처다
   (모달이 없어져 dismiss 가드는 사라졌다).

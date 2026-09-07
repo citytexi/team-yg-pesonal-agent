@@ -570,6 +570,12 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   G-001이 `GetMyAccountFlowUseCase`를 구독해 **전역 닉네임**을 넘긴다. 그 값이 그룹 내 닉네임의
   초기값으로 서버에 저장되는 것은 위키 [[S-102-그룹-닉네임-생성-정책-v0.1]]의 "계정 공통 1개 값
   재사용"과 방향이 같다 → [open-questions](../synthesis/open-questions.md) OQ-P-197.
+  ✅ **참여 갈래도 같아졌다**(2026-09-07, PR #461) — 그때 닫힌 것은 **생성 갈래(A-005)뿐**이었고,
+  참여 갈래는 S-102 입력칸이 빈 채로 서서 사용자가 손으로 친 이름이 `PATCH nickname`으로 나갔다.
+  이제 A-004가 같은 구독으로 앱 닉네임을 실어 보내 두 갈래가 같은 초기값에서 출발한다. **서버로
+  나가는 값의 형태는 그대로다** — 참여는 여전히 `POST join` 뒤 `PATCH nickname` 두 요청이고, 이
+  변경은 그 요청에 실릴 문자열의 출발점만 바꾼다. 앱 닉네임을 구하지 못하면 빈 초기값으로 서고
+  두 갈래의 답이 갈린다 → [open-questions](../synthesis/open-questions.md) OQ-P-377.
 - ~~⚠️ `recentImageUploadedAt` 파싱이 이 문서의 직렬화 포맷과 어긋난다~~ → ✅ **닫혔다**(2026-08-20,
   PR #310) — 매퍼가 `LocalDateTime::parse` 뒤 `toInstant(PARFAIT_TIME_ZONE)`로 KST를 부여한다.
   앱이 서버 포맷 변경을 기다리지 않고 읽는 쪽을 고쳤고, 근거는 서버 DB 커넥션 세 환경이
