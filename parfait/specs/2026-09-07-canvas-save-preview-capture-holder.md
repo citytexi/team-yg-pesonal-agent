@@ -93,7 +93,8 @@ internal object CanvasCaptureHolder {
 
 - `put` — 캔버스 메인이 캡처한 비트맵을 담는다. 이전 값이 있으면 덮어쓴다.
 - `peek` — 담긴 비트맵을 돌려주되 **비우지 않는다.** 비어 있으면 `null`이다.
-- `clear` — 테스트가 전역 상태를 되돌리는 수단이다. 앱 코드에 호출자를 두지 않는다.
+- `clear` — 비운다. 미리보기가 백스택에서 빠질 때 그 화면이 부르고(아래 「홀더 수명」), 테스트가
+  전역 상태를 되돌릴 때도 쓴다.
 
 같은 디렉토리의 `ToppingAlphaMaskCache`가 이미 파일 최상위 전역 캐시를 두는 선례다. 홀더를
 Hilt로 주입하지 않는 이유는 미리보기 화면에 ViewModel이 없어(그릴 것이 인자뿐이라 만들지 않았다)
@@ -144,8 +145,15 @@ C-001 캔버스 메인
 
 ### 홀더 수명
 
-앱 코드에는 비우는 호출을 두지 않는다 — `put`이 이전 값을 덮어쓸 뿐이고, 실제로 비우는 `clear()`는
-테스트 전용이다. 그래서 홀더는 **언제나 최대 한 장**을 들고, 그 한 장은 다음 캡처까지 산다.
+홀더는 **언제나 최대 한 장**을 든다 — `put`이 이전 값을 덮어쓰기 때문이고, 누적되는 경로가 없다.
+그 한 장은 미리보기가 백스택에서 빠질 때까지 산다.
+
+**비우는 자리는 미리보기의 `onDispose` 하나다.** 거기서 자기 `NavKey`가 `Navigator.backStack`에 아직
+있는지 보고, 없을 때만 비운다. 키가 남아 있다는 것은 화면이 잠깐 내려간 것이므로(아래 두 경로)
+돌아왔을 때 그림이 있어야 하고, 빠졌다는 것은 이 화면이 끝났다는 뜻이다. 닫기·저장 확정·시스템
+백이 전부 이 조건 하나로 모인다 — `MainRoute`가 `NavDisplay(onBack = navigator::onBack)`으로 시스템
+백을 직접 받으므로 화면의 닫기 콜백만으로는 그 경로를 덮지 못한다. `BackHandler`를 따로 달지 않는
+것은 이 화면이 predictive back 전환을 쓰기 때문이다.
 
 초판은 미리보기가 꺼내면서 비우게 했다. 미리보기 컴포지션이 그림을 들고 화면이 사라질 때 함께
 놓인다는 그림이었는데, **미리보기가 화면에서 사라지지 않고도 다시 컴포즈되는 경로가 둘 있다.**
@@ -163,7 +171,7 @@ C-001 캔버스 메인
 `remember`의 계산 블록에 부작용을 두지 않게 되는 것도 함께 얻는다. Compose는 컴포지션을 시도했다
 폐기할 수 있고 그 계산은 되돌려지지 않으므로, 그 자리에서 전역 상태를 비우는 것은 애초에 계약 위반이었다.
 
-대가는 마지막 캡처 한 장이 다음 캡처까지 메모리에 남는 것이다. 그 비트맵의 실체는 API에 따라 갈린다
+대가는 미리보기가 살아 있는 동안 캡처 한 장이 메모리에 남는 것이다. 그 비트맵의 실체는 API에 따라 갈린다
 — Compose `ui-graphics`의 `GraphicsLayer.toImageBitmap()`(`LayerSnapshot.android.kt`)은 API 28 이상에서
 `LayerSnapshotV28`(`Bitmap.createBitmap(Picture)`, 소스 주석이 명시하는 하드웨어 비트맵 생성 경로)을 타
 `Bitmap.Config.HARDWARE` 비트맵을 돌려주고, API 26·27만 `LayerSnapshotV22`(`ImageReader`) 경로로
@@ -237,9 +245,10 @@ C-001 캔버스 메인
 | `impl/util/CanvasCaptureHolder.kt` | 신설 | 캡처 비트맵을 화면 사이로 전달 |
 | `impl/util/CanvasCaptureCache.kt` | 변경 | `compress` 반환값 확인 |
 | `impl/screen/CanvasImageSaveScreen.kt` | 변경 | 인자 2개로 갈리고 비트맵 분기 추가. `@Preview`도 함께 갱신 |
-| `impl/route/CanvasImageSaveRoute.kt` | 변경 | `peek()`으로 비트맵 확보 후 Screen에 전달 |
+| `impl/route/CanvasImageSaveRoute.kt` | 변경 | `peek()`으로 비트맵 확보 후 Screen에 전달. 백스택에서 빠질 때 `clear()` |
 | `impl/route/CanvasMainRoute.kt` | 변경 | `goTo` 직전에 `put(bitmap)` |
 | `impl/src/test/.../util/CanvasCaptureHolderTest.kt` | 신설 | 홀더 계약 |
+| `impl/src/test/.../util/CanvasCaptureCacheTest.kt` | 신설 | 압축 실패가 실패로 나가는가 |
 
 `feature/groups/canvas/api`는 변경이 없다.
 
@@ -254,8 +263,16 @@ C-001 캔버스 메인
 - `put`이 이전 비트맵을 덮어쓴다.
 - 비어 있을 때 `peek`은 `null`이다.
 
-**이 유닛이 보증하는 범위는 홀더 계약뿐이다.** 누군가 `CanvasMainRoute`의 `put`이나
-`CanvasImageSaveRoute`의 `peek`을 지워도 네 건은 전부 통과하고, 앱은 크래시 없이 예전의 느린 경로로
+`CanvasCaptureCacheTest`가 압축 실패 분기를 덮는다. `Context`는 `mockk`로 세우고 `cacheDir`에
+JUnit `TemporaryFolder`를 물리면 실제 파일 IO가 도는 채로 `compress`만 스텁할 수 있다.
+
+- `compress`가 거짓이면 `Result`가 실패다.
+- `compress`가 참이면 `Result`가 성공이다(`check`를 과하게 걸어 정상 경로까지 막는 회귀를 잡는다).
+
+`check`를 지우는 뮤테이션을 걸어 첫 건이 실제로 깨지는 것을 확인했다.
+
+**이 유닛들이 보증하는 범위는 홀더 계약과 압축 실패 분기까지다.** 누군가 `CanvasMainRoute`의 `put`이나
+`CanvasImageSaveRoute`의 `peek`을 지워도 전부 통과하고, 앱은 크래시 없이 예전의 느린 경로로
 조용히 돌아간다. **이 기능의 유일한 관측 가능한 증상이 "느리다"인데 그것을 잡는 자동 검증은 없다.**
 계측 테스트 소스셋 신설을 범위 밖으로 둔 결과이고, 아래 수동 확인이 그 자리를 대신한다.
 
@@ -265,6 +282,7 @@ C-001 캔버스 메인
 - 지난 캔버스에서 저장 → 날짜 라벨과 이미지가 그 날의 것이다.
 - 미리보기에서 확정 → 갤러리 저장이 성공하고 토스트의 날짜가 맞다.
 - 미리보기에서 취소 → 캔버스로 돌아오고, 다시 저장하면 새 캡처가 보인다.
+- 미리보기에서 **시스템 백**으로 나간다 → 닫기 버튼과 같이 동작한다(그 경로도 `onDispose`를 지난다).
 - **미리보기가 떠 있는 상태에서 다크모드를 토글한다** → 그림이 그대로 남아야 한다. 사라졌다가
   페이드로 돌아오면 홀더가 비파괴가 아니라는 뜻이다.
 
