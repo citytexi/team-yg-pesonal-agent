@@ -68,6 +68,16 @@ tags: [spec, parfait, groups, invite-code, a004]
 > 값을 넘기고 있었는데(#312) 참여 쪽에 그 경로가 없었다. 이 화면은 그 값을 **그리지 않는다.**
 > 값이 아직 없어도 이동을 막지 않는다 → OQ-P-377.
 
+> ⚠️ **as-built 갱신(2026-09-07, 브랜치 `refactor/improve-enter-invite-code-ux` — PR·머지 전)**:
+> **코드 입력이 텍스트 필드 하나로 합쳐졌다.** 칸 여섯 개가 각각 `BasicTextField` 였고 저마다 글자
+> 하나만 들고 있어서, **빈 칸에서 지우기를 누르면 아무 일도 일어나지 않았다**(`InputWord` 가 글자를
+> 채우는 경우만 계산했다) — 사용자가 칸을 직접 눌러 옮겨 다녀야 했다. 이제 입력은 `BasicTextField`
+> 하나가 받고 칸은 그 문자열을 나눠 그리기만 한다. **연속 삭제와 중간 글자 삭제 시 뒤 글자 당김이
+> 텍스트 필드의 기본 동작으로 따라오면서 `InputMode` 의 ADD/EDIT 분기가 통째로 사라졌다.**
+> `focusedIndex` 는 `Int?` 에서 `Int` 로 좁혀져 "밑줄을 칠 칸"만 뜻하고, 키보드 노출은 `isFocused` 가
+> 따로 든다 — 구 코드는 한 필드가 둘을 겸했다. 코드 문자 집합 밖의 글자를 입력 단계에서 거른다
+> (`InviteCode.isCodeChar` 신설). 실기기 확인 완료.
+
 - **화면 ID**: A-004 (그룹 참여 — 초대 코드 입력)
 - **대상 모듈**: `feature/groups/enter/impl`(`invitecode/`) + `feature/groups/enter/api`(NavKey) + `domain`(UseCase·model) + `core:designsystem`(`YGTopBarDetail`·`YGButton`. 🔁 #261에서 `YGModalPopup` 소비가 S-102로 이관)
 
@@ -131,7 +141,9 @@ tags: [spec, parfait, groups, invite-code, a004]
 // api
 @Serializable data object NavKeyGroupInviteCode : NavKey
 
-// domain — ADR-0009(@Inject + operator invoke). 🔁 #244에서 mock 2종이 삭제되고 둘로 갈라짐
+// domain — InviteCode 에 isCodeChar(char) 추가(6라운드). CODE_PATTERN 을 CODE_CHAR_PATTERN 에서
+// 조립해 파싱과 입력 필터가 같은 문자 집합을 쓴다 — Char.isLetterOrDigit() 은 한글에도 참이라 못 쓴다
+// ADR-0009(@Inject + operator invoke). 🔁 #244에서 mock 2종이 삭제되고 둘로 갈라짐
 class GetGroupJoinPreviewUseCase @Inject constructor(private val parfaitGroupRepository: ParfaitGroupRepository) {
     suspend operator fun invoke(inviteCode: InviteCode): Result<GroupName>   // GET join-preview
 }
@@ -141,8 +153,8 @@ class GetGroupJoinPreviewUseCase @Inject constructor(private val parfaitGroupRep
 // impl — MVI
 data class GroupInviteCodeUiState(
     val text: String = "",
-    val focusedIndex: Int? = null,
-    val inputMode: InputMode = InputMode.ADD,
+    val focusedIndex: Int = 0,               // 🔁 6라운드 — Int? 에서 좁혀졌다. 밑줄을 칠 칸만 뜻한다
+    val isFocused: Boolean = false,          // 6라운드 신설 — 구 focusedIndex 가 겸하던 키보드 노출
     val inviteCodeError: InviteCodeError? = null,   // 🔁 #244 — errorText: String? 에서 교체
     // ❌ 삭제(#261): groupName · isConfirmPopupVisible — 모달이 S-102로 이관되며 함께 나갔다
     val isSubmitting: Boolean = false,       // #244 신설. 🔁 #261 — 미리보기 조회 전용
@@ -150,8 +162,10 @@ data class GroupInviteCodeUiState(
     val nickName: String? = null,            // #461 — 그리지 않고 S-102 초기값으로 넘길 앱 닉네임
 ) : UiState {
     val codeLength = InviteCode.LENGTH       // #237에서 domain 상수로 이관
+    val cursor: Int                          // 6라운드 — 텍스트 필드에 넘길 커서. focusedIndex 에서 파생
+        get() = if (focusedIndex < text.length) focusedIndex + 1 else focusedIndex
 }
-enum class InputMode { ADD, EDIT }
+// ❌ 삭제(6라운드): enum class InputMode { ADD, EDIT } — 단일 필드에 대응물이 없다
 
 // 실패 사유는 feature 로컬 enum + 화면 매핑(ADR-0016 형태, 소유처는 core:ui가 아니라 이 모듈)
 enum class InviteCodeError { INVALID_CODE, ALREADY_JOINED, MEMBER_LIMIT_REACHED, NETWORK, UNKNOWN }
@@ -159,9 +173,11 @@ enum class InviteCodeError { INVALID_CODE, ALREADY_JOINED, MEMBER_LIMIT_REACHED,
 
 sealed interface GroupInviteCodeIntent : UiIntent {
     data object ClickNextButton; data object ClickBackButton
-    data class InputWord(val index: Int, val word: String)
+    // 🔁 6라운드 — InputWord(index, word) 를 대체. 추가·삭제·붙여넣기가 모두 여기로 들어온다
+    data class ChangeText(val text: String, val cursor: Int)
     data class SelectedTextFieldElement(val index: Int)
-    data object HideKeyboard; data object FocusedFirstIndex
+    data object HideKeyboard; data object RequestFocus            // 🔁 6라운드 — 구 FocusedFirstIndex
+    data class FocusChanged(val isFocused: Boolean)               // 6라운드 신설
     // ❌ 삭제(#261): ClickConfirmPopupEnter · DismissConfirmPopup
     data class ClipboardCodeDetected(val code: String); data object ClickPasteInviteCode  // #237
 }
@@ -174,15 +190,30 @@ sealed interface GroupInviteCodeSideEffect : UiSideEffect {
 
 ## 동작 / 상태
 
-- **입력**(`InputWord`): 현재 `inputMode`에 따라 들어온 글자를 다듬는다 — `ADD`는 그대로, `EDIT`는 앞 한 글자를
-  버린다(이미 있는 글자 뒤에 새 글자가 붙어 들어오므로). 갱신 후 다음 포커스 인덱스를 계산하고
-  `errorText`를 지운다. 총 길이는 `codeLength`로 자른다.
-- **칸 선택**(`SelectedTextFieldElement`): 입력된 길이를 넘는 칸은 선택할 수 없다(`coerceAtMost`).
-  선택 위치가 마지막 글자 뒤면 `ADD`, 중간이면 `EDIT`.
-- **진입 자동 포커스**: Route가 `FocusedFirstIndex`를 한 번 보내 첫 칸을 잡는다.
-- **키보드 동기화**: `focusedIndex`가 `null`이면 키보드를 내리고 아니면 올린다. 반대로 IME가 사라지면
-  Route가 `HideKeyboard`를 보내 `focusedIndex`를 비운다(양방향).
-- **확인**(`ClickNextButton`, 🔁 #261): 입력이 `codeLength`가 아니면 조회하지 않고 로그만 남긴다.
+- **입력**(`ChangeText`, 🔁 6라운드): 텍스트 필드가 통째로 넘긴 문자열과 커서를 받는다. 커서를 기준으로
+  앞뒤를 나눠 각각 `InviteCode.isCodeChar`로 거른 뒤 다시 붙이고 `codeLength`로 자른다 — **통째로 거르면
+  걸러진 글자가 커서 앞이었는지 뒤였는지를 잃어 포커스가 엉뚱한 칸으로 간다.** 포커스 칸은 새 길이에서
+  다시 구한다. 사유(`inviteCodeError`)는 **코드가 실제로 바뀔 때만** 지운다 — 걸러져서 아무것도 안 바뀐
+  입력에 문구가 사라지면 그 순간 화면이 튄다(에러 문구가 `LazyColumn` item이라서).
+- **포커스 칸**(🔁 6라운드): `min(입력한 글자 수, codeLength - 1)`. 입력한 만큼 뒤로 가되 **더 갈 칸이
+  없으면 마지막 칸에 멈춘다** — 구 코드는 `takeIf { it < codeLength }`로 `null`이 되어 6자를 채우면
+  밑줄이 사라졌다.
+- **커서 파생**(`cursor`, 6라운드): 지우기는 커서 앞 글자를 지운다. 포커스 칸이 차 있으면 커서를 그 뒤에,
+  비어 있으면 그 자리에 둔다. 이 한 규칙으로 **"찬 칸은 그 칸이, 빈 칸은 앞 칸이" 지워진다.** 6자를 채운
+  상태와 칸을 탭한 상태가 전자에 해당한다.
+- **칸 선택**(`SelectedTextFieldElement`): 입력된 길이를 넘는 칸은 선택할 수 없다(`coerceIn`) —
+  중간에 빈칸이 생기지 않는다. 차 있는 칸을 누르면 커서가 그 뒤로 가므로 **그 칸의 글자가 지우기 대상이
+  된다**(중간 글자 삭제 → 뒤 글자 당김이 이 경로로 성립한다).
+- **진입 자동 포커스**: Route가 `RequestFocus`를 한 번 보내 첫 칸을 잡는다.
+- **키보드 동기화**(🔁 6라운드): `isFocused`가 키보드 노출을 정하고, `focusedIndex`는 밑줄만 정한다.
+  IME가 사라지면 Route가 `HideKeyboard`를 보낸다. **반대 방향이 하나 더 있다** — 칸 사이 여백을 누르면
+  텍스트 필드가 스스로 포커스를 가져가므로(`tapPressTextFieldModifier`가 decoration 쪽에 붙는다),
+  `onFocusChanged` → `FocusChanged`로 그 사실을 상태에 되먹인다. 없으면 타이핑은 되는데 밑줄만 없는
+  상태가 된다.
+- **포커스 해제**(6라운드): 배경 탭·확인 버튼 클릭이 `isFocused`를 내린다. 키보드의 완료 키는
+  `KeyboardActions(onDone)`으로 **확인 버튼과 같은 `ClickNextButton`**을 쏜다.
+- **확인**(`ClickNextButton`, 🔁 #261 / 6라운드): 먼저 `isFocused`를 내려 키보드를 접는다. 입력이
+  `codeLength`가 아니면 조회하지 않고 로그만 남긴다.
   통과하면 `GetGroupJoinPreviewUseCase(InviteCode(text))` →
   - 성공: 곧바로 `NavigateToNext(inviteCode = text, groupName = 응답값, nickName = 구독값 또는 빈 문자열)` —
     **모달도 합류도 여기서 하지 않는다.** 미리보기 응답은 상태에 담기지 않고 그대로 다음 화면 인자가
@@ -212,7 +243,21 @@ sealed interface GroupInviteCodeSideEffect : UiSideEffect {
 - 상단 `YGTopBarDetail(title = R.string.group_enter)`, 본문 `LazyColumn`(좌우 `padding7`·상하 `padding10`),
   제목 `title.t02B`/`Gray900` + 설명 `body.b02R`/`Gray500`, 하단 고정 `YGButton(Large)`.
 - 코드 입력은 `InviteCodeInputField` + 칸마다 `InviteCodeInputFieldElement`(`weight(1f)`·`aspectRatio(7/8)`,
-  칸 간격 `gap3`). 포커스 칸은 `index == focusedIndex`, 에러는 `inviteCodeError != null`로 전 칸에 함께 걸린다.
+  칸 간격 `gap3`). 포커스 칸은 `isFocused && index == focusedIndex`, 에러는 `inviteCodeError != null`로
+  전 칸에 함께 걸린다.
+- **입력 필드는 하나다**(🔁 6라운드). `InviteCodeInputField`가 `BasicTextField` 하나를 쥐고 `decorationBox`로
+  칸 `Row`를 그린다. `InviteCodeInputFieldElement`는 `BasicTextField`와 `FocusRequester`를 잃고 글자와
+  밑줄만 그린다.
+  - `innerTextField()`는 **투명하게(`alpha(0f)`) 한 번 부른다.** API 계약상 정확히 한 번 불러야 하고,
+    안 부르면 `layoutResult`가 잡히지 않아 **키보드가 올라올 때 입력줄로 스크롤되지 않는다**(이 필드가
+    `LazyColumn` 안에 있어 작은 화면에서 가려진다).
+  - 커서는 칸의 밑줄로 나타내므로 `cursorBrush`는 투명이다.
+  - `KeyboardType.Ascii` · `autoCorrectEnabled = false` · `imeAction = Done` · **`singleLine = true`**.
+    `singleLine`이 없으면 `TYPE_TEXT_FLAG_MULTI_LINE`이 켜져 다수 IME가 `Done` 대신 개행 키를 낸다.
+  - 대문자 자동 변환(`KeyboardCapitalization.Characters`)은 넣지 않았다 — 입력값 자체를 바꾸는 동작이라
+    별도 결정이 필요하다.
+- **배경 탭으로 키보드를 내린다**(6라운드). 루트 `Column`에 `clickableYGNoRipple` — 상단바·입력칸·버튼이
+  각자 클릭을 먹으므로 그 바깥에서만 걸린다.
 - 에러 문구는 입력 필드 아래 `caption.c01R`/`Cherry600`. 문구는 `feature/groups/enter/impl` `strings.xml`
   (`invite_code_error_*` 5종, #244) — 프리뷰 파라미터도 이제 리터럴이 아니라 `InviteCodeError` 값을 넘긴다.
 - ~~**확인 모달**~~ — 🔁 **#261에서 이 화면에서 사라졌다**(모달 호출·프리뷰 케이스·`YGModalPopup` import 전부).
@@ -227,16 +272,21 @@ sealed interface GroupInviteCodeSideEffect : UiSideEffect {
 - `impl/invitecode/GroupInviteCodeViewModel.kt` — UiState·Intent·SideEffect·MVI 처리.
 - `impl/invitecode/GroupInviteCodeScreen.kt` — stateless UI + `PreviewParameterProvider`(🔁 #261 — 모달과 모달 프리뷰 케이스가 빠져 4케이스).
 - `impl/invitecode/GroupInviteCodeRoute.kt` — VM 배선, 키보드·IME 동기화, next→`goTo(NavKeyGroupNickName)`.
-- `impl/invitecode/component/InviteCodeInputField.kt`·`InviteCodeInputFieldElement.kt` — 칸 배열·개별 칸(feature 로컬).
+- `impl/invitecode/component/InviteCodeInputField.kt` — 🔁 6라운드부터 **입력을 받는 단일 `BasicTextField`**
+  (`decorationBox`로 칸을 그린다). `InviteCodeInputFieldElement.kt` — 글자 하나와 밑줄만 그리는 표시 전용.
 - `impl/invitecode/component/InviteCodePasteBar.kt` — 클립보드 붙여넣기 제안 바(#237, feature 로컬).
-- `domain/model/group/InviteCode.kt` — `LENGTH`·`parseOrNull`(#237). `core:util:android` `extension/ClipDescription.kt`.
+- `domain/model/group/InviteCode.kt` — `LENGTH`·`parseOrNull`(#237)·`isCodeChar`(6라운드).
+  `core:util:android` `extension/ClipDescription.kt`.
 - `core/ui` `strings.xml#group_invite_message` — S-101 복사와 공유하는 초대 메시지 템플릿(#237).
 - `impl/navigation/EntryBuilder.kt#featureGroupInviteCodeEntryBuilder` · `NavigationModule.kt` — entry 등록·`@IntoSet`.
 - `impl/invitecode/InviteCodeError.kt` — 실패 사유 enum + `toStringResource()`(#244 신설).
 - `domain/usecase/group/GetGroupJoinPreviewUseCase.kt`(#244 신설). `JoinGroupUseCase.kt`는 남아 있으나
   소비처가 S-102로 옮겨갔다(#261). 삭제: `CheckInviteCodeValidUseCase.kt` · `domain/model/InviteCodeResult.kt`.
-- 테스트(#244 / 🔁 #261): `GroupInviteCodeViewModelTest`에서 참여 케이스가 S-102 테스트로 옮겨가고
-  미리보기 성공이 "초대코드·그룹명을 들고 이동"을 검증하는 형태로 바뀌었다(붙여넣기 케이스는 유지).
+- 테스트(#244 / 🔁 #261 / 6라운드): `GroupInviteCodeViewModelTest`에서 참여 케이스가 S-102 테스트로
+  옮겨가고 미리보기 성공이 "초대코드·그룹명을 들고 이동"을 검증하는 형태로 바뀌었다(붙여넣기 케이스는
+  유지). 6라운드에서 34케이스로 늘었다 — 연속 삭제·중간 삭제 당김·문자 필터·커서 파생·경계
+  (꽉 찬 코드 중간 삽입·커서 앞부분만으로 길이 초과·전부 걸러져 빈 문자열·커서 방어)·사유 유지.
+  `InviteCodeTest`에 `isCodeChar` 2케이스.
 
 ## 정책 대조 (위키)
 
@@ -267,3 +317,13 @@ sealed interface GroupInviteCodeSideEffect : UiSideEffect {
   어긋나지 않지만, 같은 형태의 enum이 S-102에도 따로 생겨 **문구·갈래가 두 벌**이다(`NETWORK`·`UNKNOWN` 문구 동일)
   → [ADR-0016](../../adr/0016-domain-result-presentation-string-mapping.md) as-built.
 - ~~**프리뷰 에러 문구가 코틀린 리터럴**~~ — ✅ **해소(#244)**. 프리뷰도 enum 값을 넘긴다.
+- ~~**빈 칸에서 지우기가 먹지 않는다**~~ — ✅ **해소(6라운드)**. 입력이 텍스트 필드 하나로 합쳐지며
+  연속 삭제와 중간 글자 당김이 기본 동작으로 따라온다.
+- **대문자 정규화가 없다**(6라운드) — 입력 필터는 `[A-Za-z0-9]`만 거르고 대소문자는 그대로 서버에 간다.
+  코드 표기는 대문자인데 `parseOrNull`은 소문자도 인정하므로(`parseOrNull_lowerCaseCode_extractsCodeAsIs`),
+  **소문자 코드를 서버가 받아주는지가 확인되지 않았다.** 정책 문서도 없다.
+- **입력칸에 semantics가 없다**(6라운드 잔존) — 칸 여섯 개와 붙여넣기 바 모두 접근성 라벨이 없고,
+  바는 `clickableYGNoRipple`이라 버튼 role도 없다. 이번 라운드 범위 밖으로 두었다.
+- **`decorationBox` 구성이 지원 범위의 가장자리다**(6라운드) — `innerTextField()`를 투명하게 부르는 것으로
+  계약은 지켰으나, 칸을 눌러 커서를 옮기는 처리가 필드 자신의 탭 제스처와 같은 자리에서 경쟁한다.
+  Compose 판올림 때 이 화면을 먼저 확인할 것.
