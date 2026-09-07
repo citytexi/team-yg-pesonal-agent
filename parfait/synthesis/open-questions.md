@@ -5601,15 +5601,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: ②가 먼저 걸린다. 테스트가 붙는 시점에 `@After`에서 `clearToppingAlphaMasks()`를
   부르거나, 캐시를 최상위 상태가 아니라 주입되는 홀더로 바꾼다.
 - ⚠️ **항목당 크기가 커진다(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
-  [ADR-0030](../adr/0030-topping-outline-distance-field.md))** — 캐시가 `core:ui`(`ToppingOutlineCache.kt`,
-  `clearToppingOutlines()`)로 옮겨 가며 비트셋 대신 거리 배열(`ShortArray`, 1/8 필드픽셀 양자화)을
+  [ADR-0030](../adr/0030-topping-outline-distance-field.md))** — 캐시가 `core:ui`(`ToppingOutlineCache`,
+  전역 상태 셋을 `object` 로 묶었다)로 옮겨 가며 비트셋 대신 거리 배열(`ShortArray`, 1/8 필드픽셀 양자화)을
   담는다. 항목당 크기가 약 8KB에서 약 128KB로 커진다. **상한 64칸은 그대로**라 누수 성질은
   바뀌지 않지만, 수명 주체가 없는 채로 총량 상한만 8배가 되므로 압박 상황의 체감이 달라질 수 있다.
   ⚠️ **같은 성질의 캐시가 하나 더 생겼다(2026-09-07, 같은 브랜치)** — 띠 판이 컴포저블 `remember`
   수명이라 화면 전환·Spotlight 전환마다 사라져 테두리가 깜빡였고, 그래서
-  `core:designsystem` 의 `ToppingBorderPlateCache.kt`(LRU 32칸, `clearToppingBorderPlates()`)가
-  판을 컴포지션 밖에 남긴다. 항목이 `ALPHA_8` 이라 최대 약 256KB, 최악 총량 약 8MB이고 **이쪽도
-  부르는 곳이 없다.** ②(테스트 격리)가 걸리는 표면이 둘로 늘었다.
+  `core:designsystem` 의 `ToppingBorderPlateCache`(LRU 32칸)가 판을 컴포지션 밖에 남긴다. 항목이
+  알맹이 + 사방 굵기라 **굵기에 상한이 없는 한 총량에도 상한이 없고**, 비우는 `clear()` 를 부르는
+  곳도 없다. ②(테스트 격리)가 걸리는 표면이 둘로 늘었다.
 
 ### [2026-08-27] 알파 커널에 확인 없이 오래 도는 루프가 남아 있다
 
@@ -7124,7 +7124,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   열쇠가 `"$retryKey|$model"` 이라 **두 화면이 같은 그림을 서로 다른 항목으로 잡는다.**
 - **항목**: ① 누끼 확인 → 배치로 넘어갈 때 캐시가 미스라 같은 그림을 두 번 디코딩하고 거리판도 두
   장 만든다. ② 그래서 배치 화면 진입 시 테두리가 한 박자 늦는다 — 깜빡임을 없애려고 넣은 동기
-  조회(`peekToppingOutline`)가 이 경로에서는 무력하다. ③ Coil 의 이미지 캐시도 같은 이유로 갈린다.
+  조회(`ToppingOutlineCache.peek`)가 이 경로에서는 무력하다. ③ Coil 의 이미지 캐시도 같은 이유로 갈린다.
 - **상태**: 미해결 (**동작은 맞고 비용만 든다** — 두 판의 내용은 같다)
 - **해소 메모**: 두 화면이 같은 문자열을 쓰도록 맞추면 닫힌다. 어느 쪽으로 맞출지는 Coil 이 두
   형식을 다 받으므로 취향이 아니라 **다른 호출부**를 보고 정해야 한다.

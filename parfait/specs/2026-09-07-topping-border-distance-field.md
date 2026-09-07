@@ -8,11 +8,10 @@ verified: 2026-09-07
 related_code:
   - YGToppingCutoutImage.kt#YGToppingCutoutImage
   - YGToppingCutoutImage.kt#buildBorderPlate
-  - ToppingBorderPlateCache.kt#cachedToppingBorderPlate
+  - ToppingBorderPlateCache.kt#ToppingBorderPlateCache
   - ToppingOutline.kt#ToppingOutline
   - ToppingOutlineBitmap.kt#toBorderAlphaBitmap
-  - ToppingOutlineCache.kt#loadToppingOutline
-  - ToppingOutlineCache.kt#peekToppingOutline
+  - ToppingOutlineCache.kt#ToppingOutlineCache
   - ToppingOutlineCache.kt#rememberToppingOutlines
   - ToppingBorderOutline.kt#ToppingOutlineDistanceField
   - ToppingBorderOutline.kt#toOutlineDistanceField
@@ -99,7 +98,7 @@ tags: [spec, parfait, topping, border, rendering, hit-test]
 |------|------|------|
 | `ToppingOutline`, `ToppingBorderBand` | `core:util:jvm` | 거리판 보유·이중선형 보간·띠 채우기·불투명 판정. Android 타입 0건 |
 | `Bitmap.toToppingOutline()`, `ToppingOutline.toBorderBitmap()` | `core:util:android` | 알파 → 거리판, 픽셀 배열 → `Bitmap` |
-| `loadToppingOutline()`, `rememberToppingOutlines()` | `core:ui` | LRU 캐시·in-flight 합류·Coil 디코딩 |
+| `ToppingOutlineCache`, `rememberToppingOutlines()` | `core:ui` | LRU 캐시·in-flight 합류·Coil 디코딩 |
 | `YGToppingCutoutImage` | `core:designsystem` (제자리) | 띠 한 장 + 원본 한 장 |
 
 `core:designsystem`은 이미 `core:util:{android,jvm}`에 의존하고, Coil은 `parfait.jetpack.compose`
@@ -173,7 +172,11 @@ data class ToppingBorderTarget(
 fun Bitmap.toToppingOutline(fieldLongSide: Int): ToppingOutline
 
 // core:ui
-suspend fun loadToppingOutline(context: Context, model: String, retryKey: Int): ToppingOutline?
+object ToppingOutlineCache {
+    fun peek(model: String, retryKey: Int): ToppingOutline?
+    suspend fun load(context: Context, model: String, retryKey: Int): ToppingOutline?
+    fun clear()
+}
 
 @Composable
 fun rememberToppingOutlines(models: List<String>, retryKey: Int): Map<String, ToppingOutline>
@@ -220,7 +223,7 @@ fun YGToppingCutoutImage(
 테두리가 깜빡인다.** 재생성이 일어나는 자리가 셋이었다 — 화면 전환(새 컴포지션), Spotlight 전환
 (`CanvasToppingLayer` 가 강조된 토핑을 다른 가지에 그려 하위 트리가 폐기된다), 그리고 거리판 맵이
 `suspend` 로만 채워져 캐시가 적중해도 첫 프레임에 비어 있던 것이다. 세 번째는
-`peekToppingOutline` 으로 캐시를 동기 조회해 초기값을 채워 없앴다. 그 조회를 넣을 때 **거리판 맵을
+`ToppingOutlineCache.peek` 으로 캐시를 동기 조회해 초기값을 채워 없앴다. 그 조회를 넣을 때 **거리판 맵을
 `remember` 키로 다시 만들지는 않는다** — `retryKey` 가 오르면 새 열쇠로는 캐시가 반드시 미스라, 맵을
 다시 만들면 재시도하는 동안 이미 받아 둔 거리판까지 사라지고 판정이 사각형 폴백으로 떨어진다.
 배치 화면은 초안이 비동기로 와서 첫 컴포지션의 모델이 언제나 `null` 이므로, `produceState` 대신
@@ -406,7 +409,7 @@ fun YGToppingCutoutImage(
   체감이 달라질 수 있다. **띠 판 캐시(`core:designsystem` 32칸)가 여기에 더해진다** — 항목이
   `ALPHA_8` 이라 판 넓이 × 1바이트다. **총량에 고정 상한을 못 건다** — 판은 알맹이에 사방으로
   굵기만큼 여백을 더한 것이고 굵기는 서버가 주는 값이라 상한이 없다. 이쪽도 비우는 호출부를 두지
-  않았고, `clearToppingBorderPlates` 는 `internal` 인데 `core:designsystem` 에 유닛 소스셋이 없어
+  않았고, `ToppingBorderPlateCache.clear` 는 `internal` 인데 `core:designsystem` 에 유닛 소스셋이 없어
   부를 자리 자체가 없다. 열쇠가 거리판 인스턴스를 강참조하는 것도 남는다 — 1단 LRU 가 거리판을
   밀어내도 판 캐시가 그 인스턴스를 붙잡고, 그 항목은 다시 적중하지 않는 죽은 칸이 된다.
 - **`CanvasToppingLayer`가 마스크를 `topping.imageUrl`로 키를 잡는다.** 캐시의 KDoc은 "그 화면이
