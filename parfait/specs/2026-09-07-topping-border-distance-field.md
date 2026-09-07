@@ -1,13 +1,19 @@
 ---
 id: topping-border-distance-field
 title: 토핑 테두리 거리장 렌더링 통일 (Distance Field Outline)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-09-07
 related_code:
   - YGToppingCutoutImage.kt#YGToppingCutoutImage
-  - YGToppingCutoutImage.kt#TOPPING_OUTLINE_STAMP_COUNT
+  - YGToppingCutoutImage.kt#buildBorderPlate
+  - ToppingBorderPlateCache.kt#cachedToppingBorderPlate
+  - ToppingOutline.kt#ToppingOutline
+  - ToppingOutlineBitmap.kt#toBorderAlphaBitmap
+  - ToppingOutlineCache.kt#loadToppingOutline
+  - ToppingOutlineCache.kt#peekToppingOutline
+  - ToppingOutlineCache.kt#rememberToppingOutlines
   - ToppingBorderOutline.kt#ToppingOutlineDistanceField
   - ToppingBorderOutline.kt#toOutlineDistanceField
   - ToppingBorderOutline.kt#toBorderBands
@@ -17,9 +23,6 @@ related_code:
   - CanvasToppingLayer.kt#rememberToppingHitEntries
   - CanvasToppingPlaceScreen.kt#CanvasToppingPlaceScreen
   - CanvasBGEditScreen.kt#CanvasToppingImage
-  - ToppingAlphaMask.kt#ToppingAlphaMask
-  - ToppingAlphaMaskCache.kt#loadToppingAlphaMask
-  - ToppingAlphaMaskCache.kt#rememberToppingAlphaMasks
   - ToppingHitTarget.kt#ToppingHitTarget
   - FloatArrayExtension.kt#fillWithSquaredDistance
   - ArgbExtension.kt#fadeArgb
@@ -37,6 +40,10 @@ tags: [spec, parfait, topping, border, rendering, hit-test]
 # Spec: 토핑 테두리 거리장 렌더링 통일
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
+
+> 📌 **구현 완료(2026-09-07, 브랜치 `refactor/#337-topping-border-optimization`, develop 미머지).**
+> 본문은 as-built 로 고쳐 두었다. 설계와 갈린 자리는 「띠 비트맵을 언제 다시 만드는가」 하나다 —
+> 재생성을 지연으로 막던 것을 걷어내고, 띠 판을 컴포지션 밖 캐시에 남기도록 바꿨다.
 
 ## 목표
 
@@ -202,29 +209,60 @@ fun YGToppingCutoutImage(
 | 단 | 무엇 | 키 | 수명 |
 |----|------|-----|------|
 | 1 | 거리판 | 그리는 모델 + `retryKey` | `core:ui` LRU 64칸 |
-| 2 | 띠 비트맵 | 거리판 + 표시 크기 + 굵기px + (폴백 시 색) | 컴포저블 `remember` |
+| 2 | 띠 판(비트맵 + 여백) | 거리판 인스턴스 + 굵기px + 알맹이 비율 | `core:designsystem` LRU 32칸 |
 
 1단은 기존 마스크 캐시의 성질을 그대로 물려받는다 — 같은 `ImageRequest` 한 번의 결과로 만들고,
 같은 모델의 동시 요청을 합류시키고, 로드를 컴포지션 밖 스코프에서 돌린다. 디코딩 횟수가 늘지
 않는다.
 
-2단은 캐시가 아니라 컴포지션 수명이라 화면에서 사라지면 함께 사라진다. **표시 크기를 격자로
-반올림하지 않고 실측값 그대로 쓴다.** 반올림한 값으로 만들면 띠가 실제 알맹이보다 그 격자만큼
-크게 그려지고 중심도 어긋난다 — 작은 토핑일수록 오차 비율이 커진다.
+**2단도 컴포지션 밖에 남긴다.** 초판은 2단을 컴포저블 `remember` 수명으로 뒀는데, 그러면 컴포저블이
+다시 만들어질 때마다 판이 사라지고 다시 만드는 동안 테두리를 안 그려 **화면 전환과 Spotlight 마다
+테두리가 깜빡인다.** 재생성이 일어나는 자리가 셋이었다 — 화면 전환(새 컴포지션), Spotlight 전환
+(`CanvasToppingLayer` 가 강조된 토핑을 다른 가지에 그려 하위 트리가 폐기된다), 그리고 거리판 맵이
+`suspend` 로만 채워져 캐시가 적중해도 첫 프레임에 비어 있던 것이다. 세 번째는
+`peekToppingOutline` 으로 캐시를 동기 조회해 초기값을 채워 없앴다. 그 조회를 넣을 때 **거리판 맵을
+`remember` 키로 다시 만들지는 않는다** — `retryKey` 가 오르면 새 열쇠로는 캐시가 반드시 미스라, 맵을
+다시 만들면 재시도하는 동안 이미 받아 둔 거리판까지 사라지고 판정이 사각형 폴백으로 떨어진다.
+배치 화면은 초안이 비동기로 와서 첫 컴포지션의 모델이 언제나 `null` 이므로, `produceState` 대신
+`remember(model)` + `LaunchedEffect` 로 받아야 그 동기 조회가 실제로 먹는다.
 
-핀치 중 매 프레임 다시 만드는 것은 짧은 지연으로 막는다. 크기가 연달아 바뀌는 동안에는 만들지
-않고, 멎은 뒤에 한 번 만든다. 그래도 되는 이유는 **핀치로 크기가 변하는 화면에서 움직이는 토핑이
-하나**이기 때문이다.
+**표시 크기는 2단 키에 넣지 않는다.** 크기까지 맞아야 꺼낼 수 있게 하면 핀치 한 번에 항목이
+쏟아지고 화면 전환마다 미스가 난다. 반대로 **알맹이 비율은 키에 넣는다** — 늘려 그리는 배율이 가로
+하나뿐이라 비율이 다른 판을 꺼내 오면 세로가 어긋난 채로 그려진다.
+
+⚠️ **대신 꺼낸 쪽이 얼마나 어긋났는지 잰다.** 굵기가 판에 구워져 있어서, 다른 크기에서 늘려 그리면
+화면상 굵기가 `지금 알맹이 ÷ 판을 만들 때 알맹이` 배로 틀어진다. 굵기가 화면 dp 고정이라는 계약과
+정면으로 부딪히므로, **그 배율이 1.25배를 넘으면 그 판을 안 그리고 새 판을 기다린다**
+(`ToppingBorderPlate.subjectLongSide` · `fitsSubject`). Spotlight 전환처럼 크기가 그대로인 경로는
+배율이 1이라 항상 통과한다.
+
+**굵기와 비율은 컴포저블 상태의 키가 아니다.** 그 둘이 바뀌는 순간에는 그 조합으로 만든 판이 아직
+없어 캐시가 반드시 미스이므로, 상태를 비우면 새 판이 올 때까지 테두리가 사라진다. 옛 판을 그대로
+두고 이펙트가 갈아 끼우되, 이펙트는 먼저 캐시를 한 번 본다 — 굵기를 바꿨다 되돌리는 경로에서는
+그 조회가 적중한다.
+
+**표시 크기를 격자로 반올림하지 않고 실측값 그대로 쓴다.** 반올림한 값으로 만들면 띠가 실제
+알맹이보다 그 격자만큼 크게 그려지고 중심도 어긋난다 — 작은 토핑일수록 오차 비율이 커진다.
+
+핀치 중 매 프레임 다시 만드는 것은 **지연이 아니라 `conflate` 로 막는다.** 크기를 이펙트의 키로
+두면 크기가 바뀔 때마다 만들던 판을 취소하고 처음부터 다시 시작하므로, 판 한 장이 한 프레임보다
+오래 걸리면 드래그하는 내내 어느 판도 끝을 못 본다. 그래서 크기를 `snapshotFlow` + `conflate` 로
+받아 판을 한 번에 한 장씩 끝까지 만들고 그사이 지나간 중간 크기는 버린다. 버려질 판이 코어를
+태우지 않도록 `buildBorderAlpha`·`buildBorderPixels`·`toBorderAlphaBitmap` 에 `shouldContinue`
+콜백을 두어, 중단되면 반쯤 칠한 판 대신 `null` 을 낸다.
+
+> 초판은 이 자리를 "짧은 지연으로 막는다"로 적었다. 지연은 크기가 매 프레임 바뀌는 드래그 중에는
+> 한 번도 안 터져 판이 낡은 채로 남았다. 그다음에 시도한 16px 격자 양자화는 판을 가상 크기로
+> 만들어 실측 크기로 늘려 그리게 만들어 굵기가 계단처럼 튀었다. 지금 방식이 그 둘을 다 없앤다.
 
 ### 띠 비트맵의 형식과 크기
 
 **`ALPHA_8` + 그릴 때 `ColorFilter.tint`** 를 1순위로 한다. 색이 픽셀에 굽히지 않아 색만 바뀔 때
 다시 만들 필요가 없고, 크기가 `ARGB_8888`의 1/4이다.
 
-⚠️ `ALPHA_8` `ImageBitmap`에 `ColorFilter.tint`가 하드웨어 가속 캔버스에서 의도대로 먹는지는
-**확인되지 않았다.** 계획의 첫 태스크에서 검증하고, 안 되면 `ARGB_8888`로 색을 태우면서 색을 2단
-키에 더하는 것을 폴백으로 쓴다. 폴백은 메모리가 네 배가 되고 색 변경 시 재생성이 생길 뿐,
-설계의 다른 부분은 그대로다.
+✅ `ALPHA_8` `ImageBitmap`에 `ColorFilter.tint`가 하드웨어 가속 캔버스에서 의도대로 먹는 것을
+**실기기에서 확인했다**(2026-09-07). `ARGB_8888` 폴백은 쓰지 않는다. 그래서 색은 2단 키에 안
+들어가고, 색만 바뀔 때는 판을 다시 만들지 않는다.
 
 판 크기는 `표시 크기 + 사방 ⌈굵기px⌉ + 1px`이다. 띠는 알맹이 바깥으로 나가므로 그 자리가 있어야
 한다. **이 유도 규칙이 여백 상수와 굵기 상한이 서로를 모르던 문제(OQ-P-337 ①)를 없앤다** —
@@ -305,6 +343,7 @@ fun YGToppingCutoutImage(
 | `core/util/android/.../outline/ToppingOutlineBitmap.kt` | 신설 — `Bitmap.toToppingOutline`·`toBorderBitmap` |
 | `core/ui/.../outline/ToppingOutlineCache.kt` | 신설 — `ToppingAlphaMaskCache.kt`가 옮겨 오며 거리판으로 바뀐다 |
 | `core/designsystem/.../ygtoppingcutout/YGToppingCutoutImage.kt` | 수정 — 스탬프 제거, `outline` 파라미터 |
+| `core/designsystem/.../ygtoppingcutout/ToppingBorderPlateCache.kt` | 신설 — 띠 판 LRU 32칸(컴포지션 밖 수명) |
 | `feature/segmentation/impl/.../editor/ToppingBorderOutline.kt` | 축소 — `toBorderBands`만 남는다 |
 | `feature/segmentation/impl/.../screen/ToppingBorderEditScreen.kt` | 수정 — 코어 API에 맞춰 호출부만 |
 | `feature/segmentation/impl/.../screen/SegmentationConfirmScreen.kt` | 수정 — `outline` 전달 |
@@ -333,18 +372,23 @@ fun YGToppingCutoutImage(
 `Bitmap` 확장(`core:util:android`)과 캐시(`core:ui`)는 Android 런타임이 필요해 유닛으로 덮지
 않는다. **따라서 "디코딩 한 번으로 거리판을 만든다"는 기계 검증이 없다.**
 
-### 육안 확인 (실기기)
+### 육안 확인 (실기기, 2026-09-07 수행)
 
-1. 네 화면에서 같은 토핑·같은 굵기가 같은 모양으로 보이는가.
-2. 빨대처럼 가는 부위가 갈라지지 않는가.
-3. 누끼 확인 화면에서 테두리가 화면 가장자리에 잘리지 않는가.
-4. 토핑이 여럿인 캔버스에서 진입·스크롤이 버벅이지 않는가.
-5. 배치 화면 핀치 중 테두리가 따라오는가. 크기가 멎은 뒤 띠가 붙기까지 눈에 띄게 느린가.
-6. 이미지 로드 실패 후 재시도했을 때 테두리와 판정이 함께 돌아오는가.
+1. 네 화면에서 같은 토핑·같은 굵기가 같은 모양으로 보이는가. → **네 화면이 같았다.**
+2. 빨대처럼 가는 부위가 갈라지지 않는가. → 갈라지지 않았다.
+3. 누끼 확인 화면에서 테두리가 화면 가장자리에 잘리지 않는가. → 잘리지 않았다.
+4. 토핑이 여럿인 캔버스에서 진입·스크롤이 버벅이지 않는가. → 버벅이지 않았다.
+5. 배치 화면 핀치 중 테두리가 따라오는가. 크기가 멎은 뒤 띠가 붙기까지 눈에 띄게 느린가. →
+   따라온다. 낡은 판이 남던 것과 굵기가 계단처럼 튀던 것은 재생성 방식을 `conflate` 로 바꾸며 없앴다.
+6. 이미지 로드 실패 후 재시도했을 때 테두리와 판정이 함께 돌아오는가. → 함께 돌아온다.
+
+⚠️ **이 확인이 깜빡임을 새로 드러냈다.** 화면을 전환하거나 Spotlight 를 걸고 풀 때마다 띠를
+처음부터 다시 만들어 그동안 테두리가 없었다. 원인과 대응은 「띠 비트맵을 언제 다시 만드는가」에
+적었고, **그 수정 뒤의 실기기 재확인도 마쳤다**(2026-09-07).
 
 ## 주의 / 열린 질문
 
-- **`ALPHA_8` + tint 동작 미확인.** 계획 첫 태스크에서 검증한다. 실패 시 `ARGB_8888` 폴백.
+- ~~**`ALPHA_8` + tint 동작 미확인.**~~ 실기기에서 확인했다(2026-09-07). 폴백을 쓰지 않는다.
 - **거리판 긴 변 256은 판정 정밀도를 기준으로 고른 값이고, 테두리의 요구는 다르다.** 미측정이라는
   지적이 이미 열려 있다(OQ-P-313~316).
 - ⚠️ **편집 화면과 나머지 셋의 거리판 해상도가 다르다.** 편집 화면은 화면에 나올 크기 그대로 재고
@@ -352,13 +396,19 @@ fun YGToppingCutoutImage(
   차이가 안 보이지만, **굵기가 얇을수록 256 격자가 실루엣 잔주름을 뭉갠다.** 확인 화면처럼 토핑이
   화면을 거의 채우는 자리에서 2dp 테두리를 주면 편집 화면과 갈릴 수 있다. 이 라운드는 256으로
   가고 육안 확인 1번이 그 차이를 처음 잰다. 갈리면 512로 올리되 항목당 메모리가 네 배(약 512KB)가
-  되므로 캐시 칸 수를 함께 줄인다.
+  되므로 캐시 칸 수를 함께 줄인다. **육안 확인에서 네 화면이 같아 256을 유지한다**(2026-09-07).
+  다만 얇은 굵기까지 대조했는지는 기록이 없어 OQ-P-379 를 완전히 닫지는 않는다.
 - **굵기에 정책 소스가 없다**(OQ-P-208 ③). 2~50dp는 코드가 먼저 정한 값이고 위키에 대응 정책이
   없다. 이번 라운드는 이 값을 건드리지 않으므로 미결은 그대로 열린 채 남는다. 렌더러를 고쳐도
   굵기 50dp에서는 테두리가 알맹이보다 넓다는 사실은 변하지 않는다.
 - **캐시 수명 주체가 여전히 없다**(OQ-P-317). 캐시가 `core:ui`로 옮겨 가도 비우는 호출부는 생기지
   않는다. 항목 수 상한이 있어 누수는 아니지만, 항목당 크기가 8KB에서 128KB로 커지므로 압박 상황의
-  체감이 달라질 수 있다.
+  체감이 달라질 수 있다. **띠 판 캐시(`core:designsystem` 32칸)가 여기에 더해진다** — 항목이
+  `ALPHA_8` 이라 판 넓이 × 1바이트다. **총량에 고정 상한을 못 건다** — 판은 알맹이에 사방으로
+  굵기만큼 여백을 더한 것이고 굵기는 서버가 주는 값이라 상한이 없다. 이쪽도 비우는 호출부를 두지
+  않았고, `clearToppingBorderPlates` 는 `internal` 인데 `core:designsystem` 에 유닛 소스셋이 없어
+  부를 자리 자체가 없다. 열쇠가 거리판 인스턴스를 강참조하는 것도 남는다 — 1단 LRU 가 거리판을
+  밀어내도 판 캐시가 그 인스턴스를 붙잡고, 그 항목은 다시 적중하지 않는 죽은 칸이 된다.
 - **`CanvasToppingLayer`가 마스크를 `topping.imageUrl`로 키를 잡는다.** 캐시의 KDoc은 "그 화면이
   실제로 그리는 모델"을 요구하는데(편집한 토핑은 투명 여백이 트림된 로컬 파일이라 비율이 다르다),
   이 화면은 `imageUrl`만 쓴다. 거리판이 그리기까지 태우면 이 어긋남이 판정뿐 아니라 외형으로도
