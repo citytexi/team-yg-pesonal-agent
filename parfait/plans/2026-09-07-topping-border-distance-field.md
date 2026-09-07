@@ -28,29 +28,39 @@ tags: [plan, parfait, topping, border, rendering, hit-test]
 하나로 합치고, 같은 거리장이 터치 판정까지 먹이게 한다.
 
 **Architecture:** 거리장 계산기를 `feature/segmentation/impl`의 `internal`에서
-`core:util:jvm`(순수 로직)과 `core:util:android`(비트맵 변환)로 승격한다. `ToppingAlphaMaskCache`는
-`core:ui`로 옮겨 한 번의 디코딩으로 거리판을 내게 확장한다. `YGToppingCutoutImage`는 스탬프 여덟
-장 대신 띠 한 장 + 원본 한 장을 그리고, `ToppingHitTarget`은 여덟 방향 되밀기 대신 거리판을 읽는다.
+`core:util:jvm`(순수 로직)과 `core:util:android`(비트맵 변환)로 승격한다. 캐시는 `core:ui`에 새로
+세워 한 번의 디코딩으로 거리판을 낸다. `YGToppingCutoutImage`는 스탬프 여덟 장 대신 띠 한 장 +
+원본 한 장을 그리고, `ToppingHitTarget`은 여덟 방향 되밀기 대신 거리판을 읽는다.
 
 **Tech Stack:** Kotlin, Jetpack Compose, Coil 3, `kotlin.test` 유닛 테스트, Gradle 컨벤션 플러그인.
 
 **Spec:** [`parfait/specs/2026-09-07-topping-border-distance-field.md`](../specs/2026-09-07-topping-border-distance-field.md)
 
+> 📌 **이 계획은 서브에이전트 검수 3회(코드 대조·Task 순서·알고리즘)를 반영한 2판이다.**
+> 초판의 치명 결함 일곱을 고쳤다 — 판 좌표 매핑이 실루엣을 여백까지 늘이던 것, 양자화한 상자를
+> 기하로 쓰던 것, 판 밖 좌표 클램프로 여백이 통째로 칠해지고 판정이 부풀던 것, 컴파일이 깨진
+> 모듈에서 유닛 테스트를 돌리라던 것, `ToppingAlphaMaskTest.kt` 삭제 누락, `kotlin.math.min`
+> import 누락, 회귀 테스트가 스탬프 방식에서도 통과하던 것이다.
+
 ## Global Constraints
 
 - **커밋하지 않는다.** 사용자가 요청하지 않았다. Task 끝의 검증이 통과하면 다음 Task로 간다.
-- **작업 대상 저장소는 `TJYG-Android`다.** 브랜치는 `refactor/#337-topping-border-optimization`
-  (현재 `develop`과 차이 없음). Task 8의 문서 갱신만 이 문서 저장소에서 한다.
+- **모든 Task 경계에서 빌드가 초록이어야 한다.** 컴파일이 깨진 채 넘어가는 Task는 없다.
+- **작업 대상 저장소는 `TJYG-Android`다.** 브랜치는 `refactor/#337-topping-border-optimization`.
+  Task 8의 문서 갱신만 이 문서 저장소에서 한다.
 - **굵기 규칙을 바꾸지 않는다.** `MIN_BORDER_WIDTH_DP = 2f`, `MAX_BORDER_WIDTH_DP = 50f`,
   화면 dp 고정. 이 값들은 읽기만 한다.
-- **기존 파일을 전문으로 덮어쓰지 않는다.** 추가·치환으로 고친다.
+- **기존 파일을 전문으로 덮어쓰지 않는다.** 추가·치환으로 고친다. 계획이 코드 블록을 통째로 주는
+  자리(Task 1·2·5의 신규 파일, Task 3 Step 1과 Task 4 Step 1의 명시적 치환)는 예외다.
 - **주석 규약**(`parfait/CLAUDE.md`):
   - 코드가 이미 말하는 것은 쓰지 않는다.
   - `@return`·`@param`은 타입·이름이 말하지 못할 때만 쓴다.
   - 다른 컴포넌트의 현재 상태를 단정하지 않는다(낡는다). 필요하면 근거 문서를 가리킨다.
-- **ktlint 한 줄 120자**를 넘기지 않는다.
+- **ktlint 한 줄 120자**를 넘기지 않는다. `.editorconfig`가 `no-unused-imports`와
+  `no-empty-class-body`를 켜 두었으므로 **미사용 import와 빈 `companion object`가 CI를 깬다.**
 - Gradle 태스크 이름이 모듈 종류마다 다르다. `core:util:jvm`은 kotlin-jvm이라 `:test`이고,
-  Android 라이브러리 모듈은 `:testDebugUnitTest`다.
+  나머지(`core:util:android`·`core:ui`·`core:designsystem`·feature impl)는 Android 라이브러리라
+  `:testDebugUnitTest`·`:compileDebugKotlin`이다.
 
 ---
 
@@ -63,15 +73,18 @@ tags: [plan, parfait, topping, border, rendering, hit-test]
 | `core/util/android/src/main/kotlin/com/teamyg/parfait/core/util/android/outline/ToppingOutlineBitmap.kt` | `Bitmap` → 거리판, 거리판 → 띠 `Bitmap` 2종 (신설) | 2 |
 | `feature/segmentation/impl/.../editor/ToppingBorderOutline.kt` | `toBorderBands`만 남는다 (축소) | 3 |
 | `feature/segmentation/impl/.../screen/ToppingBorderEditScreen.kt` | 새 코어 사용 + 여백을 굵기 상한에서 파생 | 3 |
-| `core/designsystem/.../component/ygtoppingcutout/YGToppingCutoutImage.kt` | 띠 1장 + 원본 1장 | 4 |
-| `core/ui/src/main/java/com/teamyg/parfait/core/ui/outline/ToppingOutlineCache.kt` | LRU 캐시·in-flight 합류·Coil 디코딩 (이동+확장) | 5 |
-| `feature/groups/canvas/impl/.../util/ToppingAlphaMask.kt` | 삭제 | 6 |
-| `feature/groups/canvas/impl/.../util/ToppingAlphaMaskCache.kt` | 삭제(`core:ui`로 이동) | 5 |
+| `feature/segmentation/impl/.../viewmodel/ToppingEditViewModel.kt` | 굵기 상한을 `internal`로 연다 | 3 |
+| `core/designsystem/.../component/ygtoppingcutout/YGToppingCutoutImage.kt` | 띠 1장 + 원본 1장 | 4, 6 |
+| `core/ui/src/main/java/com/teamyg/parfait/core/ui/outline/ToppingOutlineCache.kt` | LRU 캐시·in-flight 합류·Coil 디코딩 (신설) | 5 |
 | `feature/groups/canvas/impl/.../util/ToppingHitTarget.kt` | 거리판 조회 판정 | 6 |
-| `feature/groups/canvas/impl/.../component/CanvasToppingLayer.kt` | 거리판 전달, `loadMasks` 제거 | 7 |
-| `feature/groups/canvas/impl/.../screen/CanvasToppingPlaceScreen.kt` | 거리판 전달 | 7 |
-| `feature/groups/canvas/impl/.../screen/CanvasBGEditScreen.kt` | 거리판 전달, 인셋 우회 정리 | 7 |
-| `feature/segmentation/impl/.../screen/SegmentationConfirmScreen.kt` | 거리판 전달 | 7 |
+| `feature/groups/canvas/impl/.../util/ToppingAlphaMask.kt` | 삭제 | 6 |
+| `feature/groups/canvas/impl/.../util/ToppingAlphaMaskCache.kt` | 삭제 | 6 |
+| `feature/groups/canvas/impl/src/test/.../util/ToppingAlphaMaskTest.kt` | 삭제 | 6 |
+| `feature/groups/canvas/impl/src/test/.../util/ToppingHitTestTest.kt` | 거리판 기준으로 갱신 | 6 |
+| `feature/groups/canvas/impl/.../component/CanvasToppingLayer.kt` | 거리판 결선, `loadMasks` 제거 | 6 |
+| `feature/groups/canvas/impl/.../screen/CanvasBGEditScreen.kt` | 거리판 결선, 인셋 우회 **유지** | 6 |
+| `feature/groups/canvas/impl/.../screen/CanvasToppingPlaceScreen.kt` | 거리판 결선 | 7 |
+| `feature/segmentation/impl/.../screen/SegmentationConfirmScreen.kt` | 거리판 결선 | 7 |
 
 ---
 
@@ -82,17 +95,25 @@ tags: [plan, parfait, topping, border, rendering, hit-test]
 - Test: `core/util/jvm/src/test/kotlin/com/teamyg/parfait/core/util/jvm/outline/ToppingOutlineTest.kt`
 
 **Interfaces:**
-- Consumes: `FloatArrayExtension.kt`의 `fillWithSquaredDistance`·`SQUARED_DISTANCE_UNSET`,
-  `ArgbExtension.kt`의 `fadeArgb`·`mixArgb`. 모두 같은 모듈의 `extension` 패키지에 이미 있다.
+- Consumes: 같은 모듈 `extension` 패키지의 `fillWithSquaredDistance`·`SQUARED_DISTANCE_UNSET`·
+  `fadeArgb`·`mixArgb`
 - Produces:
-  - `class ToppingOutline`, 프로퍼티 `width: Int`·`height: Int`·`hasAnySeed: Boolean`
+  - `class ToppingOutline` — `width: Int`·`height: Int`·`hasAnySeed: Boolean`
   - `ToppingOutline.of(width: Int, height: Int, alphaAt: (x: Int, y: Int) -> Int): ToppingOutline`
   - `fun distanceAt(x: Float, y: Float): Float`
   - `fun isOpaqueAt(x: Float, y: Float): Boolean`
-  - `fun buildBorderAlpha(targetWidth: Int, targetHeight: Int, outsetPx: Float): ByteArray?`
-  - `fun buildBorderPixels(targetWidth: Int, targetHeight: Int, bands: List<ToppingBorderBand>): IntArray?`
+  - `fun buildBorderAlpha(target: ToppingBorderTarget, outsetPx: Float): ByteArray?`
+  - `fun buildBorderPixels(target: ToppingBorderTarget, bands: List<ToppingBorderBand>): IntArray?`
   - `data class ToppingBorderBand(val outsetPx: Float, val colorArgb: Int)`
+  - `data class ToppingBorderTarget(width, height, subjectLeft, subjectTop, subjectWidth, subjectHeight)`
   - `const val OUTLINE_ALPHA_THRESHOLD = 128`
+
+**초판에서 고친 것 둘**
+
+1. **판 안에서 알맹이가 놓이는 자리를 따로 받는다.** 초판은 목표 크기만 받아 실루엣을 여백까지
+   늘려 그렸다. 굵기가 굵을수록 배율이 커져 200px 토핑에 150px 테두리면 실루엣이 2.5배로 부풀었다.
+2. **판 밖 좌표를 가장자리 값으로 고정하지 않는다.** 누끼는 보통 트림되어 실루엣이 판 변에 닿으므로,
+   고정하면 여백이 통째로 거리 0으로 답해 칠해지고 판정도 사각형 밖으로 부푼다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -101,9 +122,12 @@ tags: [plan, parfait, topping, border, rendering, hit-test]
 ```kotlin
 package com.teamyg.parfait.core.util.jvm.outline
 
+import kotlin.math.hypot
+import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -118,36 +142,55 @@ private fun outlineOf(vararg rows: String): ToppingOutline =
         if (rows[y][x] == '#') OPAQUE else TRANSPARENT
     }
 
+/** 알맹이가 판을 그대로 채우는 목표. 여백을 따지지 않는 테스트가 쓴다 */
+private fun wholeTarget(
+    width: Int,
+    height: Int,
+): ToppingBorderTarget = ToppingBorderTarget(
+    width = width,
+    height = height,
+    subjectLeft = 0,
+    subjectTop = 0,
+    subjectWidth = width,
+    subjectHeight = height,
+)
+
 /** ByteArray 는 부호가 있어 255 가 -1 로 담긴다. 눈으로 읽을 0~255 로 되돌린다 */
 private fun ByteArray.alphaAt(index: Int): Int = this[index].toInt() and 0xFF
 
 class ToppingOutlineTest {
     @Test
-    fun buildBorderAlpha_thinBar_bandStaysContinuousAlongTheBar() {
-        // Given 폭 2 인 세로 막대. 여덟 방향 스탬프가 갈래로 쪼개던 모양이다
-        val outline = outlineOf(
-            "....##....",
-            "....##....",
-            "....##....",
-            "....##....",
-            "....##....",
-            "....##....",
-            "....##....",
-            "....##....",
-        )
+    fun buildBorderAlpha_fillsEveryCellWithinTheOutset() {
+        // Given 한가운데 한 칸만 불투명한 15x15 판
+        val size = 15
+        val center = 7
+        val outline = ToppingOutline.of(size, size) { x, y ->
+            if (x == center && y == center) OPAQUE else TRANSPARENT
+        }
 
-        // When 막대 폭보다 두꺼운 띠를 두른다
-        val alpha = outline.buildBorderAlpha(targetWidth = 10, targetHeight = 8, outsetPx = 3f)
+        // When 거리 5 까지 두른다
+        val outset = 5f
+        val alpha = outline.buildBorderAlpha(wholeTarget(size, size), outsetPx = outset)
 
-        // Then 막대 바로 옆 세로줄이 위에서 아래까지 한 칸도 안 끊긴다
+        // Then 거리 5 이하인 칸이 하나도 빠짐없이 칠해진다.
+        // 여덟 방향 스탬프는 여기서 여덟 갈래 꽃잎을 만들어 스탬프 사이가 빈다 — 이 단언이
+        // 이번 작업의 목적을 코드로 고정한다
         assertNotNull(alpha)
-        val leftColumn = (0 until 8).map { y -> alpha.alphaAt(y * 10 + 1) }
-        assertTrue(leftColumn.all { it > 0 }, "막대 왼쪽 띠가 끊겼다: $leftColumn")
+        for (y in 0 until size) {
+            for (x in 0 until size) {
+                if (hypot((x - center).toFloat(), (y - center).toFloat()) > outset) continue
+                assertTrue(alpha.alphaAt(y * size + x) > 0, "거리 $outset 안쪽 ($x,$y) 이 비었다")
+            }
+        }
+
+        // 그리고 스탬프가 절대 못 닿는 자리 하나를 따로 못박는다 — 씨앗에서 (3,-3) 은
+        // 여덟 방향 어느 이동으로도 나오지 않는다
+        assertTrue(alpha.alphaAt(4 * size + 10) > 0)
     }
 
     @Test
     fun buildBorderAlpha_edgeSitsAtTheOutsetDistance() {
-        // Given 한가운데 한 칸만 불투명한 판
+        // Given 한가운데 한 칸만 불투명한 7x7 판
         val outline = outlineOf(
             ".......",
             ".......",
@@ -159,12 +202,40 @@ class ToppingOutlineTest {
         )
 
         // When 거리 2 까지 칠한다
-        val alpha = outline.buildBorderAlpha(targetWidth = 7, targetHeight = 7, outsetPx = 2f)
+        val alpha = outline.buildBorderAlpha(wholeTarget(7, 7), outsetPx = 2f)
 
         // Then 거리 2 인 자리는 남고 거리 3 인 자리는 비어 있다
         assertNotNull(alpha)
         assertTrue(alpha.alphaAt(3 * 7 + 1) > 0, "거리 2 인 자리가 비었다")
         assertEquals(0, alpha.alphaAt(3 * 7 + 0), "거리 3 인 자리가 칠해졌다")
+    }
+
+    @Test
+    fun buildBorderAlpha_keepsTheSubjectInsideThePadding() {
+        // Given 4x4 실루엣을 사방 3 씩 비운 10x10 판에 앉힌다
+        val outline = outlineOf(
+            "####",
+            "####",
+            "####",
+            "####",
+        )
+        val target = ToppingBorderTarget(
+            width = 10,
+            height = 10,
+            subjectLeft = 3,
+            subjectTop = 3,
+            subjectWidth = 4,
+            subjectHeight = 4,
+        )
+
+        // When 거리 2 까지 두른다
+        val alpha = outline.buildBorderAlpha(target, outsetPx = 2f)
+
+        // Then 알맹이 자리는 채워지고, 여백 바깥 끝은 비어 있다.
+        // 알맹이 자리를 안 받으면 실루엣이 판 전체로 늘어나 이 칸까지 칠해진다
+        assertNotNull(alpha)
+        assertTrue(alpha.alphaAt(5 * 10 + 5) > 0, "알맹이 한가운데가 비었다")
+        assertEquals(0, alpha.alphaAt(5 * 10 + 0), "여백 바깥 끝이 칠해졌다")
     }
 
     @Test
@@ -176,7 +247,7 @@ class ToppingOutlineTest {
         )
 
         assertFalse(outline.hasAnySeed)
-        assertNull(outline.buildBorderAlpha(targetWidth = 4, targetHeight = 2, outsetPx = 1f))
+        assertNull(outline.buildBorderAlpha(wholeTarget(4, 2), outsetPx = 1f))
     }
 
     @Test
@@ -192,6 +263,16 @@ class ToppingOutlineTest {
     }
 
     @Test
+    fun distanceAt_outsideTheField_addsTheOverflowInsteadOfClamping() {
+        // Given 왼쪽 끝 한 칸만 불투명하다
+        val outline = outlineOf("#..")
+
+        // Then 판 왼쪽 밖 2 칸은 거리 0 이 아니라 2 다.
+        // 가장자리 값으로 고정하면 실루엣이 판 변에 닿은 토핑에서 여백이 통째로 칠해진다
+        assertEquals(2f, outline.distanceAt(-2f, 0f), TOLERANCE)
+    }
+
+    @Test
     fun isOpaqueAt_readsTheNearestCellWithoutInterpolating() {
         // Given 불투명한 칸과 투명한 칸이 붙어 있다
         val outline = outlineOf("#.")
@@ -203,64 +284,43 @@ class ToppingOutlineTest {
 
     @Test
     fun distanceAt_quantizationErrorStaysWithinAnEighthOfAPixel() {
-        // Given 왼쪽 한 줄만 불투명해 x 좌표가 곧 참값인 판
+        // Given 왼쪽 위 한 칸만 불투명해 대각 거리가 1/8 의 배수가 아닌 판
         val outline = outlineOf(
-            "#......",
-            "#......",
+            "#..",
+            "...",
         )
 
-        // Then 눈금이 1/8 필드픽셀이므로 오차가 그 절반을 넘지 않는다
-        for (x in 0..6) {
-            assertEquals(x.toFloat(), outline.distanceAt(x.toFloat(), 0f), 1f / 16f)
+        // Then √5 = 2.2360…은 눈금에 딱 안 맞지만 오차가 1/16 을 넘지 않는다
+        assertEquals(sqrt(5f), outline.distanceAt(2f, 1f), 1f / 16f)
+    }
+
+    @Test
+    fun buildBorderPixels_paintsEachBandWithItsOwnColor() {
+        // Given 한가운데 한 칸만 불투명한 9x9 판에 색이 다른 두 겹을 두른다
+        val outline = ToppingOutline.of(9, 9) { x, y ->
+            if (x == 4 && y == 4) OPAQUE else TRANSPARENT
         }
-    }
-
-    @Test
-    fun buildBorderAlpha_scalesTheBandWhenTheTargetIsBiggerThanTheField() {
-        // Given 4x4 판을 8x8 로 칠한다 — 판보다 넓은 그림이라 칸 사이를 섞어 읽는 경로다
-        val outline = outlineOf(
-            "....",
-            ".##.",
-            ".##.",
-            "....",
-        )
-
-        // When 목표 좌표계에서 2 픽셀 두께로 두른다(판 좌표계로는 1)
-        val alpha = outline.buildBorderAlpha(targetWidth = 8, targetHeight = 8, outsetPx = 2f)
-
-        // Then 네 모서리는 실루엣에서 멀어 비어 있고, 실루엣 바로 바깥은 칠해진다
-        assertNotNull(alpha)
-        assertEquals(0, alpha.alphaAt(0), "왼쪽 위 모서리가 칠해졌다")
-        assertTrue(alpha.alphaAt(3 * 8 + 1) > 0, "실루엣 바로 왼쪽이 안 칠해졌다")
-    }
-
-    @Test
-    fun buildBorderPixels_mixesAdjacentBandColorsAtTheirBoundary() {
-        // Given 한가운데 한 칸만 불투명한 판에 색이 다른 두 겹을 두른다
-        val outline = outlineOf(
-            ".....",
-            ".....",
-            "..#..",
-            ".....",
-            ".....",
-        )
         val red = 0xFFFF0000.toInt()
         val blue = 0xFF0000FF.toInt()
 
-        // When 안쪽 겹이 거리 1 까지, 바깥 겹이 거리 2 까지다
+        // When 안쪽 겹이 거리 2 까지, 바깥 겹이 거리 4 까지다
         val pixels = outline.buildBorderPixels(
-            targetWidth = 5,
-            targetHeight = 5,
+            target = wholeTarget(9, 9),
             bands = listOf(
-                ToppingBorderBand(outsetPx = 1f, colorArgb = red),
-                ToppingBorderBand(outsetPx = 2f, colorArgb = blue),
+                ToppingBorderBand(outsetPx = 2f, colorArgb = red),
+                ToppingBorderBand(outsetPx = 4f, colorArgb = blue),
             ),
         )
 
-        // Then 실루엣 자리는 안쪽 겹 색이고 거리 2 자리는 바깥 겹 색이다
+        // Then 실루엣 자리는 안쪽 겹 색, 바깥 겹 한복판은 바깥 겹 색이다
         assertNotNull(pixels)
-        assertEquals(red, pixels[2 * 5 + 2])
-        assertEquals(blue, pixels[2 * 5 + 0])
+        assertEquals(red, pixels[4 * 9 + 4])
+        assertEquals(blue, pixels[4 * 9 + 1])
+
+        // 겹 경계(거리 2)는 두 색을 반씩 섞은 자리라 어느 쪽 원색도 아니다
+        val boundary = pixels[4 * 9 + 2]
+        assertNotEquals(red, boundary)
+        assertNotEquals(blue, boundary)
     }
 }
 ```
@@ -294,7 +354,7 @@ const val OUTLINE_ALPHA_THRESHOLD = 128
 /** 1 필드픽셀을 이 수만큼 쪼개 담는다 */
 private const val DISTANCE_STEPS_PER_PX = 8
 
-/** 담을 수 있는 가장 먼 거리(필드픽셀). 그 너머는 어떤 굵기보다도 멀어 구분할 이유가 없다 */
+/** 담을 수 있는 가장 먼 거리(필드픽셀). 판의 대각선보다 한참 크다 */
 private const val MAX_STORED_DISTANCE_PX = Short.MAX_VALUE / DISTANCE_STEPS_PER_PX
 
 /** 가장자리 한 겹을 반 픽셀씩 물려 칠해 계단이 지지 않게 한다 */
@@ -314,6 +374,21 @@ data class ToppingBorderBand(
 )
 
 /**
+ * 띠를 칠할 판과, 그 판 안에서 알맹이가 놓이는 자리.
+ *
+ * 알맹이 자리를 따로 받는 것이 핵심이다 — 판은 알맹이보다 사방으로 넓고, 실루엣은 판 전체가
+ * 아니라 그 안쪽 사각형에 대응한다. 이 값이 없으면 실루엣이 여백까지 채우도록 늘어난다.
+ */
+data class ToppingBorderTarget(
+    val width: Int,
+    val height: Int,
+    val subjectLeft: Int,
+    val subjectTop: Int,
+    val subjectWidth: Int,
+    val subjectHeight: Int,
+)
+
+/**
  * 실루엣에서 떨어진 거리를 픽셀마다 담아 둔 판.
  *
  * 실루엣 사본을 원 둘레에 빙 둘러 찍어 테두리를 만들면 굵어질수록 찍은 자국 사이가 벌어져
@@ -330,25 +405,26 @@ class ToppingOutline internal constructor(
 ) {
     val hasAnySeed: Boolean = distances.any { step -> step.toInt() == 0 }
 
-    /** 판보다 넓은 그림을 칠할 수도 있어, 네 칸을 섞어 칸 사이 거리도 이어지게 읽는다 */
+    /**
+     * 판 좌표계 거리.
+     *
+     * 판 밖 좌표는 가장자리 값으로 고정하지 않고 벗어난 만큼을 함께 잰다. 씨앗이 모두 판 안에
+     * 있으므로 `√(가장자리 거리² + 벗어난 거리²)` 가 참값의 하한이고, 가장 가까운 씨앗이 축에
+     * 나란할 때 참값과 같다. 고정하면 실루엣이 판 변에 닿은 토핑에서 판 밖이 통째로 거리 0 이 된다.
+     */
     fun distanceAt(
         x: Float,
         y: Float,
     ): Float {
-        val leftIndex = floor(x).toInt().coerceIn(0, width - 1)
-        val topIndex = floor(y).toInt().coerceIn(0, height - 1)
-        val rightIndex = (leftIndex + 1).coerceAtMost(width - 1)
-        val bottomIndex = (topIndex + 1).coerceAtMost(height - 1)
+        val clampedX = x.coerceIn(0f, (width - 1).toFloat())
+        val clampedY = y.coerceIn(0f, (height - 1).toFloat())
+        val inside = interpolatedAt(clampedX, clampedY)
 
-        val rightWeight = (x - leftIndex).coerceIn(0f, 1f)
-        val bottomWeight = (y - topIndex).coerceIn(0f, 1f)
+        val overflowX = x - clampedX
+        val overflowY = y - clampedY
+        if (overflowX == 0f && overflowY == 0f) return inside
 
-        val topRow = topIndex * width
-        val bottomRow = bottomIndex * width
-        val top = lerp(rawAt(topRow + leftIndex), rawAt(topRow + rightIndex), rightWeight)
-        val bottom = lerp(rawAt(bottomRow + leftIndex), rawAt(bottomRow + rightIndex), rightWeight)
-
-        return lerp(top, bottom, bottomWeight)
+        return sqrt(inside * inside + overflowX * overflowX + overflowY * overflowY)
     }
 
     /**
@@ -368,17 +444,16 @@ class ToppingOutline internal constructor(
     /**
      * 색을 태우지 않은 단색 띠. 칸마다 0~255 의 덮은 정도만 담는다.
      *
-     * @return 실루엣이 없거나 크기가 0 이하면 `null`
+     * @return 실루엣이 없거나 판이 비었으면 `null`
      */
     fun buildBorderAlpha(
-        targetWidth: Int,
-        targetHeight: Int,
+        target: ToppingBorderTarget,
         outsetPx: Float,
     ): ByteArray? {
-        if (!hasAnySeed || targetWidth <= 0 || targetHeight <= 0 || outsetPx <= 0f) return null
+        if (!hasAnySeed || !target.isUsable || outsetPx <= 0f) return null
 
-        val alpha = ByteArray(targetWidth * targetHeight)
-        forEachBandPixel(targetWidth, targetHeight, floatArrayOf(outsetPx)) { index, _, coverage ->
+        val alpha = ByteArray(target.width * target.height)
+        forEachBandPixel(target, floatArrayOf(outsetPx)) { index, _, coverage ->
             alpha[index] = (coverage * ALPHA_MAX).roundToInt().toByte()
         }
         return alpha
@@ -389,17 +464,16 @@ class ToppingOutline internal constructor(
      * 가장 안쪽 겹 색으로 채워 둔다.
      */
     fun buildBorderPixels(
-        targetWidth: Int,
-        targetHeight: Int,
+        target: ToppingBorderTarget,
         bands: List<ToppingBorderBand>,
     ): IntArray? {
-        if (!hasAnySeed || bands.isEmpty() || targetWidth <= 0 || targetHeight <= 0) return null
+        if (!hasAnySeed || bands.isEmpty() || !target.isUsable) return null
 
         val colors = IntArray(bands.size) { index -> bands[index].colorArgb }
-        val pixels = IntArray(targetWidth * targetHeight)
         val outsets = FloatArray(bands.size) { index -> bands[index].outsetPx }
+        val pixels = IntArray(target.width * target.height)
 
-        forEachBandPixel(targetWidth, targetHeight, outsets) { index, bandIndex, coverage ->
+        forEachBandPixel(target, outsets) { index, bandIndex, coverage ->
             // 겹의 끝에 걸친 자리는 반씩 물려, 가장 바깥이면 투명하게 안쪽이면 다음 겹 색으로 이어 준다
             pixels[index] = if (bandIndex == colors.lastIndex) {
                 colors[bandIndex].fadeArgb(coverage)
@@ -413,32 +487,28 @@ class ToppingOutline internal constructor(
     /**
      * 띠 안에 드는 칸만 골라 [onPixel] 에 넘긴다. 단색과 여러 겹이 이 순회를 함께 쓴다.
      *
-     * 거리는 이 판의 좌표계 길이라, 겹의 끝과 가장자리 물림도 같은 좌표계로 바꿔 재야 한다.
+     * 목표 좌표를 판 좌표로 옮길 때 알맹이가 놓인 자리를 빼고 축마다 따로 배율을 잰다. 굵기는
+     * 등방이라 한 축으로만 환산하는데, 알맹이가 실루엣 비율을 지켜 앉으므로 두 배율이 거의 같다.
      */
     private inline fun forEachBandPixel(
-        targetWidth: Int,
-        targetHeight: Int,
+        target: ToppingBorderTarget,
         outsetsPx: FloatArray,
         onPixel: (index: Int, bandIndex: Int, coverage: Float) -> Unit,
     ) {
-        val fieldPerTargetPx = width.toFloat() / targetWidth
-        val targetPxPerField = 1f / fieldPerTargetPx
-        val edges = FloatArray(outsetsPx.size) { index -> outsetsPx[index] * fieldPerTargetPx }
-        val outermostEdge = edges.last() + EDGE_FEATHER_PX * fieldPerTargetPx
+        val fieldPerTargetX = width.toFloat() / target.subjectWidth
+        val fieldPerTargetY = height.toFloat() / target.subjectHeight
+        val targetPxPerField = 1f / fieldPerTargetX
 
-        // 판과 칸이 일대일로 맞으면 섞지 않고 그 칸을 읽는다
-        val fitsField = width == targetWidth && height == targetHeight
+        val edges = FloatArray(outsetsPx.size) { index -> outsetsPx[index] * fieldPerTargetX }
+        val outermostEdge = edges.last() + EDGE_FEATHER_PX * fieldPerTargetX
 
-        for (y in 0 until targetHeight) {
-            val fieldY = (y + 0.5f) * fieldPerTargetPx - 0.5f
-            val rowStart = y * targetWidth
+        for (y in 0 until target.height) {
+            val fieldY = (y + 0.5f - target.subjectTop) * fieldPerTargetY - 0.5f
+            val rowStart = y * target.width
 
-            for (x in 0 until targetWidth) {
-                val distance = if (fitsField) {
-                    rawAt(rowStart + x)
-                } else {
-                    distanceAt((x + 0.5f) * fieldPerTargetPx - 0.5f, fieldY)
-                }
+            for (x in 0 until target.width) {
+                val fieldX = (x + 0.5f - target.subjectLeft) * fieldPerTargetX - 0.5f
+                val distance = distanceAt(fieldX, fieldY)
                 if (distance > outermostEdge) continue
 
                 var bandIndex = 0
@@ -451,8 +521,28 @@ class ToppingOutline internal constructor(
         }
     }
 
-    @PublishedApi
-    internal fun rawAt(index: Int): Float = distances[index].toInt().toFloat() / DISTANCE_STEPS_PER_PX
+    /** 판 밖 보정을 태우지 않는 안쪽 전용 읽기. 네 칸을 섞어 칸 사이도 이어지게 한다 */
+    private fun interpolatedAt(
+        x: Float,
+        y: Float,
+    ): Float {
+        val leftIndex = floor(x).toInt().coerceIn(0, width - 1)
+        val topIndex = floor(y).toInt().coerceIn(0, height - 1)
+        val rightIndex = (leftIndex + 1).coerceAtMost(width - 1)
+        val bottomIndex = (topIndex + 1).coerceAtMost(height - 1)
+
+        val rightWeight = (x - leftIndex).coerceIn(0f, 1f)
+        val bottomWeight = (y - topIndex).coerceIn(0f, 1f)
+
+        val topRow = topIndex * width
+        val bottomRow = bottomIndex * width
+        val top = lerp(rawAt(topRow + leftIndex), rawAt(topRow + rightIndex), rightWeight)
+        val bottom = lerp(rawAt(bottomRow + leftIndex), rawAt(bottomRow + rightIndex), rightWeight)
+
+        return lerp(top, bottom, bottomWeight)
+    }
+
+    private fun rawAt(index: Int): Float = distances[index].toInt().toFloat() / DISTANCE_STEPS_PER_PX
 
     companion object {
         /**
@@ -481,6 +571,9 @@ class ToppingOutline internal constructor(
     }
 }
 
+private val ToppingBorderTarget.isUsable: Boolean
+    get() = width > 0 && height > 0 && subjectWidth > 0 && subjectHeight > 0
+
 private fun lerp(
     start: Float,
     stop: Float,
@@ -488,9 +581,9 @@ private fun lerp(
 ): Float = start + (stop - start) * fraction
 ```
 
-⚠️ `forEachBandPixel`이 `private inline`이라 그 안에서 부르는 `rawAt`·`distanceAt`은
-`private`일 수 없다. `distanceAt`은 공개 API라 문제없고, `rawAt`에는 `@PublishedApi internal`을
-붙였다. 이것이 컴파일을 통과시키는 최소 조합이다.
+⚠️ `forEachBandPixel`이 `private inline`이므로 `rawAt`·`interpolatedAt`을 `private`로 두어도 된다.
+비공개 접근 제한(`NON_PUBLIC_CALL_FROM_PUBLIC_INLINE`)은 **public API인 inline 함수**에만 걸린다.
+`@PublishedApi`를 붙이지 마라 — 이유 없이 모듈 API가 넓어진다.
 
 - [ ] **Step 4: 테스트를 돌려 통과를 확인한다**
 
@@ -498,7 +591,7 @@ private fun lerp(
 ./gradlew :core:util:jvm:test --tests "com.teamyg.parfait.core.util.jvm.outline.ToppingOutlineTest"
 ```
 
-Expected: 8건 PASS.
+Expected: 9건 PASS.
 
 - [ ] **Step 5: 모듈 전체 유닛이 여전히 초록인지 본다**
 
@@ -517,14 +610,14 @@ Expected: 기존 테스트 포함 전부 PASS.
 
 **Interfaces:**
 - Consumes: Task 1의 `ToppingOutline`·`ToppingOutline.of`·`buildBorderAlpha`·`buildBorderPixels`·
-  `ToppingBorderBand`
+  `ToppingBorderBand`·`ToppingBorderTarget`
 - Produces:
   - `fun Bitmap.toToppingOutline(fieldLongSide: Int): ToppingOutline`
-  - `fun ToppingOutline.toBorderAlphaBitmap(targetWidth: Int, targetHeight: Int, outsetPx: Float): Bitmap?`
-  - `fun ToppingOutline.toBorderArgbBitmap(targetWidth: Int, targetHeight: Int, bands: List<ToppingBorderBand>): Bitmap?`
+  - `fun ToppingOutline.toBorderAlphaBitmap(target: ToppingBorderTarget, outsetPx: Float): Bitmap?`
+  - `fun ToppingOutline.toBorderArgbBitmap(target: ToppingBorderTarget, bands: List<ToppingBorderBand>): Bitmap?`
 
 ⚠️ **이 Task에는 자동 테스트가 없다.** `Bitmap`은 Android 런타임 타입이고 이 모듈에 Robolectric이
-없다. 검증은 컴파일과 Task 4의 프리뷰다. 이 사실은 스펙에도 적혀 있다.
+없다. 검증은 컴파일과 Task 4의 실기기 게이트다.
 
 - [ ] **Step 1: 구현한다**
 
@@ -535,9 +628,11 @@ import android.graphics.Bitmap
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import com.teamyg.parfait.core.util.jvm.outline.ToppingBorderBand
+import com.teamyg.parfait.core.util.jvm.outline.ToppingBorderTarget
 import com.teamyg.parfait.core.util.jvm.outline.ToppingOutline
 import java.nio.ByteBuffer
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 private const val ALPHA_SHIFT = 24
@@ -566,25 +661,23 @@ fun Bitmap.toToppingOutline(fieldLongSide: Int): ToppingOutline {
 
 /** 색을 태우지 않은 띠. 그리는 쪽이 `ColorFilter` 로 물들인다 */
 fun ToppingOutline.toBorderAlphaBitmap(
-    targetWidth: Int,
-    targetHeight: Int,
+    target: ToppingBorderTarget,
     outsetPx: Float,
 ): Bitmap? {
-    val alpha = buildBorderAlpha(targetWidth, targetHeight, outsetPx) ?: return null
-    return createBitmap(targetWidth, targetHeight, Bitmap.Config.ALPHA_8).apply {
+    val alpha = buildBorderAlpha(target, outsetPx) ?: return null
+    return createBitmap(target.width, target.height, Bitmap.Config.ALPHA_8).apply {
         copyPixelsFromBuffer(ByteBuffer.wrap(alpha))
     }
 }
 
 /** 색까지 태운 띠. 겹이 여럿이거나 알파 판이 안 통하는 자리가 쓴다 */
 fun ToppingOutline.toBorderArgbBitmap(
-    targetWidth: Int,
-    targetHeight: Int,
+    target: ToppingBorderTarget,
     bands: List<ToppingBorderBand>,
 ): Bitmap? {
-    val pixels = buildBorderPixels(targetWidth, targetHeight, bands) ?: return null
-    return createBitmap(targetWidth, targetHeight)
-        .apply { setPixels(pixels, 0, targetWidth, 0, 0, targetWidth, targetHeight) }
+    val pixels = buildBorderPixels(target, bands) ?: return null
+    return createBitmap(target.width, target.height)
+        .apply { setPixels(pixels, 0, target.width, 0, 0, target.width, target.height) }
 }
 ```
 
@@ -600,17 +693,18 @@ Expected: BUILD SUCCESSFUL.
 
 ### Task 3: 편집 화면을 새 코어로 옮기고 옛 거리장을 지운다
 
-이 Task가 코드 중복을 만들지 않고 끝낸다. 편집 화면은 이 Task 동안 계속 정상 동작해야 한다.
+이 Task가 코드 중복을 남기지 않고 끝낸다. 편집 화면은 이 Task 동안 계속 정상 동작해야 한다.
 
 **Files:**
-- Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/editor/ToppingBorderOutline.kt`
-- Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/screen/ToppingBorderEditScreen.kt`
-- Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/ToppingEditViewModel.kt`
+- Modify: `feature/segmentation/impl/src/main/java/.../editor/ToppingBorderOutline.kt`
+- Modify: `feature/segmentation/impl/src/main/java/.../screen/ToppingBorderEditScreen.kt`
+- Modify: `feature/segmentation/impl/src/main/java/.../viewmodel/ToppingEditViewModel.kt`
 
 **Interfaces:**
-- Consumes: Task 1의 `ToppingBorderBand`, Task 2의 `Bitmap.toToppingOutline`·`toBorderArgbBitmap`
-- Produces: `internal fun List<ToppingBorderLayer>.toBorderBands(pxPerDp: Float): List<ToppingBorderBand>`
-  (반환 타입만 `core:util:jvm`의 것으로 바뀐다), `internal const val MAX_BORDER_WIDTH_DP`
+- Consumes: Task 1의 `ToppingBorderBand`·`ToppingBorderTarget`·`ToppingOutline`,
+  Task 2의 `Bitmap.toToppingOutline`·`toBorderArgbBitmap`
+- Produces: `internal fun List<ToppingBorderLayer>.toBorderBands(pxPerDp: Float): List<ToppingBorderBand>`,
+  `internal const val MAX_BORDER_WIDTH_DP`
 
 - [ ] **Step 1: `ToppingBorderOutline.kt`를 `toBorderBands`만 남기고 비운다**
 
@@ -650,29 +744,30 @@ internal const val MAX_BORDER_WIDTH_DP = 50f
 
 - [ ] **Step 3: `ToppingBorderEditScreen.kt`가 새 코어를 쓰고 여백을 상한에서 파생시킨다**
 
-세 자리를 고친다.
+네 자리를 고친다.
 
-첫째, 파일 상단의 여백 상수를 굵기 상한에서 파생시킨다.
+첫째, 파일 상단의 상수 둘. `MAX_BORDER_WIDTH_DP`가 `const`이므로 여백도 `const`로 둘 수 있다.
 
 ```kotlin
 /** 사방에 남겨 두는 여백. 가장 굵은 테두리도 다 받아낸다 */
-private val MAX_BORDER_PADDING_DP = MAX_BORDER_WIDTH_DP
+private const val MAX_BORDER_PADDING_DP = MAX_BORDER_WIDTH_DP
+
+/** 미리보기 거리판의 긴 변 상한. 원본 해상도로 재면 사진 크기에 비례해 무거워진다 */
+private const val PREVIEW_FIELD_LONG_SIDE = 1440
 ```
 
-둘째, import 를 갈아 끼운다.
+둘째, import를 갈아 끼운다. **`ToppingOutlineDistanceField`와 `toOutlineDistanceField` import를
+둘 다 지우고** `buildCutoutBitmap`은 남긴다.
 
 ```kotlin
 import com.teamyg.parfait.core.util.android.outline.toBorderArgbBitmap
 import com.teamyg.parfait.core.util.android.outline.toToppingOutline
+import com.teamyg.parfait.core.util.jvm.outline.ToppingBorderTarget
 import com.teamyg.parfait.core.util.jvm.outline.ToppingOutline
-import com.teamyg.parfait.feature.segmentation.impl.editor.toBorderBands
 import com.teamyg.parfait.feature.segmentation.impl.viewmodel.MAX_BORDER_WIDTH_DP
 ```
 
-기존의 `ToppingOutlineDistanceField`·`buildCutoutBitmap` 이외 `editor` import 중
-`toOutlineDistanceField` 를 지운다.
-
-셋째, `ToppingBorderStamp` 의 필드 타입과 두 `produceState` 본문을 바꾼다.
+셋째, `ToppingBorderStamp`의 필드 타입을 바꾼다.
 
 ```kotlin
 private data class ToppingBorderStamp(
@@ -682,27 +777,37 @@ private data class ToppingBorderStamp(
 )
 ```
 
-`stamp` 를 만드는 `produceState` 안에서:
+`stamp`를 만드는 `produceState` 안에서 마지막 생성부를 이렇게 바꾼다. 알맹이가 이미 여백 안에
+앉은 `padded`에서 거리를 재므로 **판과 목표가 일대일**이다.
 
 ```kotlin
 ToppingBorderStamp(
     image = padded.asImageBitmap(),
-    // 미리보기는 화면에 나올 크기 그대로라 판을 줄이지 않는다 — 긴 변을 그대로 상한으로 준다
-    outline = padded.toToppingOutline(fieldLongSide = maxOf(padded.width, padded.height)),
+    outline = padded.toToppingOutline(fieldLongSide = PREVIEW_FIELD_LONG_SIDE),
     offset = IntOffset(layout.offsetX, layout.offsetY),
 )
 ```
 
-`borderImage` 를 만드는 `produceState` 안에서:
+넷째, `borderImage`를 만드는 `produceState` 안을 이렇게 바꾼다.
 
 ```kotlin
 current.outline
     .toBorderArgbBitmap(
-        targetWidth = current.image.width,
-        targetHeight = current.image.height,
+        target = ToppingBorderTarget(
+            width = current.image.width,
+            height = current.image.height,
+            // 거리판이 여백까지 포함한 판에서 나왔으므로 알맹이가 목표 전체다
+            subjectLeft = 0,
+            subjectTop = 0,
+            subjectWidth = current.image.width,
+            subjectHeight = current.image.height,
+        ),
         bands = borderLayers.toBorderBands(density),
     )?.asImageBitmap()
 ```
+
+⚠️ `padded`의 긴 변이 `PREVIEW_FIELD_LONG_SIDE`를 넘으면 `toToppingOutline`이 판을 줄인다. 그래도
+위 대응은 옳다 — `subject*`는 **목표 좌표계**의 값이고 판이 줄어든 것은 `outline.width`가 흡수한다.
 
 - [ ] **Step 4: 기존 유닛과 컴파일을 확인한다**
 
@@ -710,42 +815,39 @@ current.outline
 ./gradlew :feature:segmentation:impl:testDebugUnitTest
 ```
 
-Expected: 기존 테스트 전부 PASS. `ToppingBorderPreviewLayoutTest` 는 이 Task가 건드리지 않은
-`toppingBorderPreviewLayoutOrNull` 을 보므로 그대로 통과해야 한다.
+Expected: 기존 테스트 전부 PASS.
 
 - [ ] **Step 5: 사람이 확인한다 — 편집 화면이 그대로다**
 
 앱을 띄워 사진 → 누끼 → 테두리 탭에서 색을 고르고 슬라이더를 끝까지 민다.
-**이 Task는 겉보기 동작을 바꾸지 않는다.** 이전과 같은 모양이 나와야 한다.
-가장 굵은 테두리가 미리보기 가장자리에서 깎이지 않는 것도 함께 본다.
+**이 Task는 겉보기 동작을 바꾸지 않는다.** 이전과 같은 모양이 나와야 하고, 가장 굵은 테두리가
+미리보기 가장자리에서 깎이지 않아야 한다.
 
 ---
 
 ### Task 4: `YGToppingCutoutImage`를 거리판 렌더로 바꾼다 (ALPHA_8 게이트)
 
 **Files:**
-- Modify: `core/designsystem/src/main/kotlin/com/teamyg/parfait/core/designsystem/component/ygtoppingcutout/YGToppingCutoutImage.kt`
-- Modify: `feature/segmentation/impl/.../screen/SegmentationConfirmScreen.kt`
-- Modify: `feature/groups/canvas/impl/.../component/CanvasToppingLayer.kt`
-- Modify: `feature/groups/canvas/impl/.../screen/CanvasToppingPlaceScreen.kt`
-- Modify: `feature/groups/canvas/impl/.../screen/CanvasBGEditScreen.kt`
+- Modify: `core/designsystem/src/main/kotlin/.../component/ygtoppingcutout/YGToppingCutoutImage.kt`
 
 **Interfaces:**
-- Consumes: Task 1의 `ToppingOutline`, Task 2의 `toBorderAlphaBitmap`·`toBorderArgbBitmap`·
-  `toToppingOutline`
-- Produces:
-  - `@Composable fun YGToppingCutoutImage(painter: Painter, outline: ToppingOutline?, borderColor: Color?, borderWidth: Dp, modifier: Modifier = Modifier)`
-  - `TOPPING_OUTLINE_STAMP_COUNT` 는 **삭제된다.** Task 6이 그 마지막 소비자를 지운다.
+- Consumes: Task 1의 `ToppingOutline`·`ToppingBorderTarget`, Task 2의 `toBorderAlphaBitmap`
+- Produces: `@Composable fun YGToppingCutoutImage(painter, borderColor, borderWidth, modifier, outline: ToppingOutline? = null)`
+- 남긴다: `TOPPING_OUTLINE_STAMP_COUNT` — `ToppingHitTarget`이 아직 읽는다. Task 6이 지운다.
+- 지운다: `FULL_TURN_DEGREES` — 이 파일에서 `private`이라 밖에서 안 쓴다.
 
-⚠️ **이 Task부터 Task 7까지 네 화면에 테두리가 안 나온다.** 호출부가 `outline = null` 을 넘겨
-컴파일만 맞춰 두기 때문이다. 의도된 중간 상태다.
+**초판에서 고친 것 셋**
 
-⚠️ **`TOPPING_OUTLINE_STAMP_COUNT` 를 지우면 `ToppingHitTarget.kt` 가 깨진다.** 그래서 이 Task는
-그 상수를 **남겨 둔 채 스탬프 렌더만 걷고**, 상수 삭제는 Task 6이 판정을 갈아 끼우며 한다.
+1. **`outline`에 기본값 `null`을 준다.** 초판은 호출부 넷을 이 Task에서 건드려 임시 비계를 만들었다.
+   기본값이면 이 Task가 `core:designsystem` 안에서 닫혀 리뷰어가 단독으로 판정할 수 있다.
+2. **표시 크기를 양자화하지 않는다.** 초판은 32px 격자로 올림한 값을 기하 계산에 넣어, 띠가 실제
+   알맹이보다 최대 31px 크게, 중심이 최대 15.5px 어긋나게 그려졌다.
+3. **띠 판이 상자 밖으로 나간다는 사실을 계약으로 적는다.** 초판은 이것을 근거로 배경 편집의
+   인셋 우회를 걷으라고 했는데 정반대다.
 
 - [ ] **Step 1: 컴포넌트를 다시 쓴다**
 
-`YGToppingCutoutImage.kt` 를 아래로 치환한다.
+`YGToppingCutoutImage.kt`를 아래로 치환한다.
 
 ```kotlin
 package com.teamyg.parfait.core.designsystem.component.ygtoppingcutout
@@ -763,11 +865,11 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -776,25 +878,33 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.painter.Painter
 import com.teamyg.parfait.core.designsystem.R
 import com.teamyg.parfait.core.designsystem.theme.colors.YGAtomicColors
 import com.teamyg.parfait.core.designsystem.utils.preview.PreviewBox
 import com.teamyg.parfait.core.designsystem.utils.preview.YGPreview
 import com.teamyg.parfait.core.util.android.outline.toBorderAlphaBitmap
+import com.teamyg.parfait.core.util.jvm.outline.ToppingBorderTarget
 import com.teamyg.parfait.core.util.jvm.outline.ToppingOutline
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 /**
- * 표시 크기를 이 격자로 반올림해 띠를 다시 만들 시점을 정한다.
+ * 누끼 외곽선을 찍는 방향 수. 터치 판정이 같은 방향으로 되민 점을 읽으므로 이 값이 정본이다.
  *
- * 굵기가 화면 dp 고정이라 알맹이가 커지면 알맹이 대비 띠 비율이 달라진다. 크기가 바뀔 때마다
- * 다시 칠하면 핀치 중 매 프레임이 되므로, 격자를 넘을 때만 다시 만든다.
+ * ⚠️ 그리는 쪽은 더 이상 이 값을 쓰지 않는다. 판정이 거리판으로 옮겨 가면 함께 사라진다.
  */
-private const val BORDER_SIZE_QUANTUM_PX = 32
+const val TOPPING_OUTLINE_STAMP_COUNT = 8
+
+/**
+ * 크기가 연달아 바뀌는 동안에는 띠를 만들지 않고 멎기를 기다린다.
+ *
+ * 다음 크기 변화가 이 대기를 취소하므로 핀치 한 번에 띠를 한 벌만 만든다. 그래도 되는 이유는
+ * 핀치로 크기가 변하는 화면에서 움직이는 토핑이 하나이기 때문이다.
+ */
+private const val BORDER_REBUILD_DELAY_MS = 48L
 
 /**
  * 누끼 이미지와 그 실루엣을 따르는 테두리를 함께 그린다. 사각 테두리를 두르면 잘라 낸 배경이 다시
@@ -802,16 +912,19 @@ private const val BORDER_SIZE_QUANTUM_PX = 32
  *
  * 테두리를 그리는 화면이 여럿이라 여기서 한 벌만 둔다(`adr/0030-topping-outline-distance-field.md`).
  *
+ * ⚠️ **띠는 이 컴포저블의 상자 밖으로 [borderWidth] 만큼 나간다.** 부르는 쪽이 클리핑 레이어나
+ * `alpha < 1` 을 씌우면 그만큼 잘리므로, 그런 자리는 상자를 굵기만큼 키우고 안쪽으로 덜어내야 한다.
+ *
  * @param outline 준비되기 전에는 `null` 이다 — 그동안은 테두리 없이 알맹이만 그린다
  * @param borderWidth 화면 기준 dp 다 — 토핑을 키워도 굵기는 그대로다
  */
 @Composable
 fun YGToppingCutoutImage(
     painter: Painter,
-    outline: ToppingOutline?,
     borderColor: Color?,
     borderWidth: Dp,
     modifier: Modifier = Modifier,
+    outline: ToppingOutline? = null,
 ) {
     Box(modifier = modifier) {
         if (outline != null && borderColor != null && borderWidth > 0.dp) {
@@ -836,46 +949,47 @@ private fun BoxScope.ToppingBorder(
     val outsetPx = with(LocalDensity.current) { width.toPx() }
     val padding = ceil(outsetPx).toInt() + 1
 
-    // 격자로 반올림한 값만 상태에 쓴다 — 그래야 핀치 중에 매 프레임 다시 칠하지 않는다
-    var quantizedBox by remember { mutableStateOf(IntSize.Zero) }
+    var boxSize by remember { mutableStateOf(IntSize.Zero) }
 
     val plate: ToppingBorderPlate? by produceState<ToppingBorderPlate?>(
         initialValue = null,
         outline,
-        quantizedBox,
+        boxSize,
         outsetPx,
     ) {
-        val box = quantizedBox
+        val box = boxSize
         if (box.width <= 0 || box.height <= 0) return@produceState
+
+        delay(BORDER_REBUILD_DELAY_MS)
 
         value = withContext(Dispatchers.Default) {
             // 알맹이는 Fit 으로 앉으므로 상자가 아니라 실루엣 비율로 그려질 자리를 구한다
             val subject = fitSize(outline.width.toFloat() / outline.height, box)
-            val plateWidth = subject.width + padding * 2
-            val plateHeight = subject.height + padding * 2
+            val target = ToppingBorderTarget(
+                width = subject.width + padding * 2,
+                height = subject.height + padding * 2,
+                subjectLeft = padding,
+                subjectTop = padding,
+                subjectWidth = subject.width,
+                subjectHeight = subject.height,
+            )
 
-            outline
-                .toBorderAlphaBitmap(plateWidth, plateHeight, outsetPx)
-                ?.asImageBitmap()
-                ?.let { image ->
-                    ToppingBorderPlate(
-                        image = image,
-                        offset = IntOffset(
-                            x = (box.width - subject.width) / 2 - padding,
-                            y = (box.height - subject.height) / 2 - padding,
-                        ),
-                    )
-                }
+            outline.toBorderAlphaBitmap(target, outsetPx)?.asImageBitmap()?.let { image ->
+                ToppingBorderPlate(
+                    image = image,
+                    offset = IntOffset(
+                        x = (box.width - subject.width) / 2 - padding,
+                        y = (box.height - subject.height) / 2 - padding,
+                    ),
+                )
+            }
         }
     }
 
     Canvas(
         modifier = Modifier
             .matchParentSize()
-            .onSizeChanged { size ->
-                val quantized = IntSize(size.width.quantize(), size.height.quantize())
-                if (quantized != quantizedBox) quantizedBox = quantized
-            },
+            .onSizeChanged { size -> boxSize = size },
     ) {
         val current = plate ?: return@Canvas
         drawImage(
@@ -893,9 +1007,6 @@ private data class ToppingBorderPlate(
     val offset: IntOffset,
 )
 
-private fun Int.quantize(): Int =
-    ((this + BORDER_SIZE_QUANTUM_PX - 1) / BORDER_SIZE_QUANTUM_PX) * BORDER_SIZE_QUANTUM_PX
-
 private fun fitSize(
     aspectRatio: Float,
     box: IntSize,
@@ -908,10 +1019,8 @@ private fun fitSize(
 @YGPreview
 @Composable
 private fun YGToppingCutoutImagePreview() = PreviewBox {
-    val painter = painterResource(R.drawable.ic_plus)
     YGToppingCutoutImage(
-        painter = painter,
-        outline = null,
+        painter = painterResource(R.drawable.ic_plus),
         borderColor = YGAtomicColors.Cherry.Cherry200,
         borderWidth = 6.dp,
         modifier = Modifier.size(120.dp),
@@ -919,19 +1028,13 @@ private fun YGToppingCutoutImagePreview() = PreviewBox {
 }
 ```
 
-`TOPPING_OUTLINE_STAMP_COUNT` 와 `FULL_TURN_DEGREES` 는 이 파일에 **그대로 남긴다.**
-`ToppingHitTarget` 이 아직 읽으므로 지우면 컴파일이 깨진다. Task 6이 지운다.
+⚠️ `produceState`는 키가 바뀌어도 옛 값을 지우지 않는다. 크기를 바꾸는 동안에는 **직전 크기 기준의
+띠가 잠깐 그대로 그려진다.** 지우는 편으로 바꾸면 그동안 테두리가 사라져 깜빡이므로 이쪽이 낫다.
 
-- [ ] **Step 2: 호출부 넷이 `outline = null` 을 넘기게 한다**
+- [ ] **Step 2: 컴파일과 기존 유닛을 확인한다**
 
-네 파일의 `YGToppingCutoutImage(` 호출에 인자 한 줄씩 더한다. 나머지 인자는 그대로다.
-
-```kotlin
-    // 거리판 결선은 Task 7 이다 — 그때까지 테두리가 안 나온다
-    outline = null,
-```
-
-- [ ] **Step 3: 컴파일과 기존 유닛을 확인한다**
+호출부 넷은 `outline`에 기본값이 있어 **한 글자도 고치지 않는다.** 이 시점에 네 화면은 테두리
+없이 알맹이만 그린다.
 
 ```bash
 ./gradlew :core:designsystem:compileDebugKotlin \
@@ -941,42 +1044,73 @@ private fun YGToppingCutoutImagePreview() = PreviewBox {
 
 Expected: BUILD SUCCESSFUL, 기존 테스트 전부 PASS.
 
+- [ ] **Step 3: ktlint를 돌린다**
+
+```bash
+./gradlew :core:designsystem:ktlintCheck
+```
+
+Expected: BUILD SUCCESSFUL. 미사용 import가 남아 있으면 여기서 잡힌다.
+
 - [ ] **Step 4: 게이트 — `ALPHA_8` + tint 가 실기기에서 먹는지 사람이 확인한다**
 
-프리뷰의 `outline = null` 을 임시로 아래처럼 바꿔 띄운다. **이 편집은 확인 뒤 되돌린다.**
+프리뷰를 임시로 아래처럼 바꿔 띄운다. **확인 뒤 되돌린다.**
 
 ```kotlin
-val outline = remember {
-    ToppingOutline.of(width = 64, height = 64) { x, y ->
-        if (x in 24..39 && y in 8..55) 255 else 0
+@YGPreview
+@Composable
+private fun YGToppingCutoutImagePreview() = PreviewBox {
+    val outline = remember {
+        ToppingOutline.of(width = 64, height = 64) { x, y ->
+            if (x in 24..39 && y in 8..55) 255 else 0
+        }
     }
+    YGToppingCutoutImage(
+        painter = painterResource(R.drawable.ic_plus),
+        borderColor = YGAtomicColors.Cherry.Cherry200,
+        borderWidth = 6.dp,
+        modifier = Modifier.size(120.dp),
+        outline = outline,
+    )
 }
 ```
 
-Android Studio 프리뷰가 아니라 **실기기 또는 에뮬레이터**에서 봐야 한다. 프리뷰 렌더러는
-하드웨어 가속 캔버스가 아니다.
+**Android Studio 프리뷰가 아니라 실기기 또는 에뮬레이터에서 봐야 한다.** 프리뷰 렌더러는
+하드웨어 가속 캔버스가 아니다. 판정 항목이 둘이다.
 
-- 세로 막대 둘레에 `Cherry200` 색 띠가 보이면 **통과다.** 프리뷰를 원래대로 되돌리고 Task 5로 간다.
-- 띠가 안 보이거나 검게 나오면 **폴백으로 간다.** `toBorderAlphaBitmap` 호출을 아래로 바꾸고,
-  `produceState` 의 키 목록에 `color` 를 더한다.
+1. `copyPixelsFromBuffer`가 예외 없이 통과하는가. `ALPHA_8` 비트맵의 `rowBytes`가 `width`와
+   다르게 정렬되는 기기면 `RuntimeException("Buffer not large enough for pixels")`가 난다.
+2. 세로 막대 둘레에 `Cherry200` 색 띠가 보이는가. 검게 나오면 tint가 안 먹은 것이다.
+
+둘 다 통과하면 프리뷰를 원래대로 되돌리고 Task 5로 간다. 하나라도 실패하면 **폴백으로 간다.**
+
+폴백은 `toBorderAlphaBitmap` 대신 `toBorderArgbBitmap`을 쓰고, `produceState` 키에 `color`를
+더하고, `drawImage`의 `colorFilter` 인자를 지운다. import 셋을 함께 더한다.
+
+```kotlin
+import androidx.compose.ui.graphics.toArgb
+import com.teamyg.parfait.core.util.android.outline.toBorderArgbBitmap
+import com.teamyg.parfait.core.util.jvm.outline.ToppingBorderBand
+```
 
 ```kotlin
 outline.toBorderArgbBitmap(
-    plateWidth,
-    plateHeight,
-    listOf(ToppingBorderBand(outsetPx = outsetPx, colorArgb = color.toArgb())),
-)
+    target = target,
+    bands = listOf(ToppingBorderBand(outsetPx = outsetPx, colorArgb = color.toArgb())),
+)?.asImageBitmap()
 ```
 
-폴백을 택하면 `drawImage` 의 `colorFilter` 인자를 지우고, 이 문서의 이 단계에 판정 결과를 적는다.
+폴백을 택했다면 이 문서의 이 단계에 판정 결과를 적는다.
 
 ---
 
-### Task 5: 캐시를 `core:ui`로 옮기고 거리판을 내게 확장한다
+### Task 5: 거리판 캐시를 `core:ui`에 세운다 (추가만)
 
 **Files:**
 - Create: `core/ui/src/main/java/com/teamyg/parfait/core/ui/outline/ToppingOutlineCache.kt`
-- Delete: `feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingAlphaMaskCache.kt`
+
+⚠️ **`ToppingAlphaMaskCache.kt`를 지우지 않는다.** Task 6이 소비자를 옮긴 뒤에 지운다. 잠깐의
+코드 중복이 컴파일이 깨진 Task 경계보다 싸다.
 
 **Interfaces:**
 - Consumes: Task 1의 `ToppingOutline`, Task 2의 `Bitmap.toToppingOutline`
@@ -985,14 +1119,12 @@ outline.toBorderArgbBitmap(
   - `@Composable fun rememberToppingOutlines(models: List<String>, retryKey: Int): Map<String, ToppingOutline>`
   - `fun clearToppingOutlines()`
 
-⚠️ **이 Task에도 자동 테스트가 없다.** `Context`·Coil·`Bitmap` 이 필요하다. 검증은 컴파일과
-Task 8의 실기기 확인이다.
+⚠️ **이 Task에도 자동 테스트가 없다.** `Context`·Coil·`Bitmap`이 필요하다.
 
 - [ ] **Step 1: 새 파일을 만든다**
 
-`ToppingAlphaMaskCache.kt` 의 구조를 그대로 옮기되 세 곳이 다르다 — 캐시 값 타입이
-`ToppingOutline` 이고, 키가 `model` 이 아니라 `"$retryKey|$model"` 이고, 디코딩 뒤 비트셋 대신
-거리판을 만든다.
+`ToppingAlphaMaskCache.kt`의 구조를 그대로 옮기되 셋이 다르다 — 캐시 값이 `ToppingOutline`이고,
+키가 `"$retryKey|$model"`이고, 디코딩 뒤 비트셋 대신 거리판을 만든다.
 
 ```kotlin
 package com.teamyg.parfait.core.ui.outline
@@ -1138,119 +1270,140 @@ fun rememberToppingOutlines(
 }
 ```
 
-⚠️ 기존 `rememberToppingAlphaMasks` 는 `filterNot { loaded.containsKey(it) }` 로 이미 뜬 것을
-건너뛰었다. `retryKey` 가 바뀌면 같은 모델을 **다시** 받아야 하므로 그 필터를 걷었다. 캐시가
-그 자리를 대신한다 — `retryKey` 가 그대로면 첫 조회에서 곧바로 맞는다.
+⚠️ 기존 `rememberToppingAlphaMasks`는 `filterNot { loaded.containsKey(it) }`로 이미 뜬 것을
+건너뛰었다. `retryKey`가 바뀌면 같은 모델을 **다시** 받아야 하므로 그 필터를 걷었다. 캐시가 그
+자리를 대신한다 — `retryKey`가 그대로면 첫 조회에서 곧바로 맞는다.
 
-- [ ] **Step 2: 옛 캐시 파일을 지운다**
+- [ ] **Step 2: 컴파일과 유닛을 확인한다**
 
-```bash
-rm feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingAlphaMaskCache.kt
-```
-
-- [ ] **Step 3: 컴파일을 확인한다**
+옛 캐시가 그대로 있으므로 **어느 모듈도 깨지지 않는다.**
 
 ```bash
-./gradlew :core:ui:compileDebugKotlin
+./gradlew :core:ui:compileDebugKotlin :feature:groups:canvas:impl:testDebugUnitTest
 ```
 
-Expected: BUILD SUCCESSFUL.
-
-⚠️ 이 시점에 `:feature:groups:canvas:impl` 은 **깨져 있다.** `CanvasToppingLayer` 와
-`CanvasBGEditScreen` 이 지워진 `rememberToppingAlphaMasks` 를 부른다. Task 6·7이 닫는다.
+Expected: BUILD SUCCESSFUL, 기존 테스트 전부 PASS.
 
 ---
 
-### Task 6: 판정을 거리판 조회로 바꾸고 `ToppingAlphaMask`를 지운다
+### Task 6: 캔버스 모듈을 거리판으로 옮긴다
+
+canvas impl의 변경을 한 Task에 모은다. **이 Task 안에서만 모듈이 잠깐 깨지고, 끝에서 초록으로
+돌아온다.** 초판은 이 일을 Task 셋으로 쪼개 그 사이에 유닛 테스트를 돌리라고 했는데, 모듈 main이
+안 컴파일되면 `--tests` 필터를 줘도 유닛이 돌지 않으므로 성립하지 않았다.
 
 **Files:**
-- Modify: `feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingHitTarget.kt`
-- Delete: `feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingAlphaMask.kt`
+- Modify: `feature/groups/canvas/impl/.../util/ToppingHitTarget.kt`
+- Modify: `feature/groups/canvas/impl/src/test/.../util/ToppingHitTestTest.kt`
+- Modify: `feature/groups/canvas/impl/.../component/CanvasToppingLayer.kt`
+- Modify: `feature/groups/canvas/impl/.../screen/CanvasBGEditScreen.kt`
 - Modify: `core/designsystem/.../component/ygtoppingcutout/YGToppingCutoutImage.kt` (상수 삭제)
-- Test: `feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingHitTestTest.kt`
+- Delete: `feature/groups/canvas/impl/.../util/ToppingAlphaMask.kt`
+- Delete: `feature/groups/canvas/impl/.../util/ToppingAlphaMaskCache.kt`
+- Delete: `feature/groups/canvas/impl/src/test/.../util/ToppingAlphaMaskTest.kt`
 
 **Interfaces:**
-- Consumes: Task 1의 `ToppingOutline`
-- Produces: `data class ToppingHitTarget(..., val outline: ToppingOutline?)` — `mask` 파라미터가
-  `outline` 으로 바뀐다. Task 7이 이 이름으로 값을 넣는다.
+- Consumes: Task 1의 `ToppingOutline`, Task 5의 `rememberToppingOutlines`, Task 4의 `outline` 파라미터
+- Produces: `data class ToppingHitTarget(..., val outline: ToppingOutline?)` — `mask` 가 `outline` 이 된다
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [ ] **Step 1: 판정 테스트를 먼저 고친다**
 
-`ToppingHitTestTest.kt` 에 아래 3건을 더한다. 파일의 기존 테스트 중 `ToppingAlphaMask` 를 만드는
-자리는 `ToppingOutline.of` 로 바꾼다.
+`ToppingHitTestTest.kt`에서 `ToppingAlphaMask`를 만드는 헬퍼(`leftHalfMask` 등)와
+`targetCenteredAt(... mask = ...)` 헬퍼의 인자 이름을 `ToppingOutline.of` / `outline =`으로 바꾼다.
+
+**판 해상도를 40×40으로 키운다.** 4×4 판으로는 8px 테두리를 해상할 수 없어
+`containsPoint_withBorder_extendsBeyondSilhouette`가 반 칸 편향 때문에 실패한다.
+
+그리고 **두 회귀 테스트의 기대값을 뒤집고 그 이유를 주석에 남긴다.**
+
+```kotlin
+    @Test
+    fun containsPoint_leftOfImageRect_isHitWhenTheBorderReachesThere() {
+        // 옛 판정은 그림 사각형 밖을 무조건 투명으로 답해 여기서 미스였다. 새 판정은 판 밖 거리를
+        // 재므로, 실루엣이 그림 왼쪽 변에 닿아 있으면 테두리를 그린 자리까지 눌린다.
+        // 그리는 모양과 판정을 일치시키는 것이 이 라운드의 목적이라 이쪽이 맞다
+        ...
+        assertTrue(target.containsPoint(...))
+    }
+```
+
+`containsPoint_aboveImageRect_…`도 같은 방식으로 뒤집는다. 이름도 사실에 맞게 바꾼다.
+
+이어서 신규 3건을 더한다.
 
 ```kotlin
     @Test
     fun containsPoint_borderWidth_extendsTheHitAreaByThatDistance() {
-        // Given 가운데 한 칸만 불투명한 8x8 실루엣을 8x8 픽셀로 그린다
-        val outline = ToppingOutline.of(width = 8, height = 8) { x, y ->
-            if (x == 4 && y == 4) 255 else 0
+        // Given 가운데 한 칸만 불투명한 40x40 실루엣을 40x40 픽셀로 그린다
+        val outline = ToppingOutline.of(width = 40, height = 40) { x, y ->
+            if (x == 20 && y == 20) 255 else 0
         }
         val target = ToppingHitTarget(
-            centerXPx = 4f,
-            centerYPx = 4f,
-            imageWidthPx = 8f,
-            imageHeightPx = 8f,
+            centerXPx = 20f,
+            centerYPx = 20f,
+            imageWidthPx = 40f,
+            imageHeightPx = 40f,
             rotationDegrees = 0f,
-            borderWidthPx = 2f,
+            borderWidthPx = 5f,
             outline = outline,
         )
 
-        // Then 실루엣에서 2 떨어진 자리는 눌리고 3 떨어진 자리는 안 눌린다
-        assertTrue(target.containsPoint(2.5f, 4.5f))
-        assertFalse(target.containsPoint(1.5f, 4.5f))
+        // Then 실루엣에서 5 떨어진 자리는 눌리고 7 떨어진 자리는 안 눌린다
+        assertTrue(target.containsPoint(15.5f, 20.5f))
+        assertFalse(target.containsPoint(13.5f, 20.5f))
     }
 
     @Test
     fun containsPoint_withoutBorder_onlyTheSilhouetteIsHit() {
-        val outline = ToppingOutline.of(width = 8, height = 8) { x, y ->
-            if (x == 4 && y == 4) 255 else 0
+        val outline = ToppingOutline.of(width = 40, height = 40) { x, y ->
+            if (x == 20 && y == 20) 255 else 0
         }
         val target = ToppingHitTarget(
-            centerXPx = 4f,
-            centerYPx = 4f,
-            imageWidthPx = 8f,
-            imageHeightPx = 8f,
+            centerXPx = 20f,
+            centerYPx = 20f,
+            imageWidthPx = 40f,
+            imageHeightPx = 40f,
             rotationDegrees = 0f,
             borderWidthPx = 0f,
             outline = outline,
         )
 
         // Then 안 그린 테두리만큼 판정이 넓어지면 안 된다
-        assertTrue(target.containsPoint(4.5f, 4.5f))
-        assertFalse(target.containsPoint(3.5f, 4.5f))
+        assertTrue(target.containsPoint(20.5f, 20.5f))
+        assertFalse(target.containsPoint(17.5f, 20.5f))
     }
 
     @Test
     fun containsPoint_fallsBackToTheRectangleWhenNothingIsOpaque() {
-        val outline = ToppingOutline.of(width = 8, height = 8) { _, _ -> 0 }
+        val outline = ToppingOutline.of(width = 40, height = 40) { _, _ -> 0 }
         val target = ToppingHitTarget(
-            centerXPx = 4f,
-            centerYPx = 4f,
-            imageWidthPx = 8f,
-            imageHeightPx = 8f,
+            centerXPx = 20f,
+            centerYPx = 20f,
+            imageWidthPx = 40f,
+            imageHeightPx = 40f,
             rotationDegrees = 0f,
             borderWidthPx = 0f,
             outline = outline,
         )
 
         // Then 실루엣을 못 읽으면 사각형으로 받는다 — 아무 데도 안 눌리는 것보다 낫다
-        assertTrue(target.containsPoint(1f, 1f))
+        assertTrue(target.containsPoint(2f, 2f))
     }
 ```
 
-- [ ] **Step 2: 테스트를 돌려 실패를 확인한다**
+- [ ] **Step 2: `ToppingAlphaMaskTest.kt`를 지운다**
 
 ```bash
-./gradlew :feature:groups:canvas:impl:testDebugUnitTest --tests "*ToppingHitTestTest"
+rm feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingAlphaMaskTest.kt
 ```
 
-Expected: 컴파일 실패 — `No parameter with name 'outline' found`.
+이 파일의 `@Test` 여덟 건은 전부 `ToppingAlphaMask.of`·`ALPHA_THRESHOLD`를 쓴다. 알파 문턱과
+범위 밖 좌표 규칙은 Task 1의 `ToppingOutlineTest`가 이미 덮는다.
 
-- [ ] **Step 3: `ToppingHitTarget` 을 고친다**
+- [ ] **Step 3: `ToppingHitTarget`을 고친다**
 
-`mask: ToppingAlphaMask?` 를 `outline: ToppingOutline?` 으로 바꾸고, `containsPoint` 의 뒷부분과
-`isOpaqueAtLocal` 을 아래로 치환한다. 앞부분(회전 되돌리기·사각형 검사)은 그대로 둔다.
+`mask: ToppingAlphaMask?`를 `outline: ToppingOutline?`으로 바꾸고, `containsPoint`의 뒷부분과
+`isOpaqueAtLocal`을 아래로 치환한다. 앞부분(회전 되돌리기·사각형 검사)은 그대로 둔다.
 
 ```kotlin
         // 실루엣을 못 읽으면 사각형 판정이다 — 여기까지 왔으면 사각형 안이다
@@ -1266,49 +1419,19 @@ Expected: 컴파일 실패 — `No parameter with name 'outline' found`.
         return usableOutline.distanceAt(fieldX, fieldY) <= borderWidthPx * fieldPerImagePx
 ```
 
-`FULL_TURN_DEGREES` 상수와 `cos`·`sin` import 중 스탬프 되밀기에만 쓰이던 것,
-`floor` import, `TOPPING_OUTLINE_STAMP_COUNT` import 를 함께 지운다. 회전 되돌리기가 여전히
-`cos`·`sin` 을 쓰므로 그 둘은 남는다.
+지울 것: `TOPPING_OUTLINE_STAMP_COUNT` import, `floor` import, `isOpaqueAtLocal` 함수,
+`companion object`와 그 안의 `FULL_TURN_DEGREES`. **companion object 자체를 지운다** — 안이
+비면 ktlint `no-empty-class-body`가 잡는다.
 
-- [ ] **Step 4: `ToppingAlphaMask.kt` 와 스탬프 상수를 지운다**
+더할 것: `import com.teamyg.parfait.core.util.jvm.outline.ToppingOutline`.
 
-```bash
-rm feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingAlphaMask.kt
-```
+남길 것: `cos`·`sin` — 회전 되돌리기가 계속 쓴다.
 
-`YGToppingCutoutImage.kt` 에서 `TOPPING_OUTLINE_STAMP_COUNT` 와 `FULL_TURN_DEGREES` 선언을 지운다.
-
-- [ ] **Step 5: 테스트를 돌린다**
-
-```bash
-./gradlew :feature:groups:canvas:impl:testDebugUnitTest --tests "*ToppingHitTestTest"
-```
-
-Expected: 신규 3건 + 기존 전부 PASS.
-
-⚠️ `:feature:groups:canvas:impl` 의 **다른 소스는 여전히 안 컴파일된다.** Task 7이 닫는다.
-이 단계는 `--tests` 로 좁혀 돌리지 말고 모듈 전체가 초록인지 확인하려 하지 않는다.
-
----
-
-### Task 7: 호출부 넷을 거리판에 결선한다
-
-**Files:**
-- Modify: `feature/groups/canvas/impl/.../component/CanvasToppingLayer.kt`
-- Modify: `feature/groups/canvas/impl/.../screen/CanvasToppingPlaceScreen.kt`
-- Modify: `feature/groups/canvas/impl/.../screen/CanvasBGEditScreen.kt`
-- Modify: `feature/segmentation/impl/.../screen/SegmentationConfirmScreen.kt`
-
-**Interfaces:**
-- Consumes: Task 5의 `rememberToppingOutlines`·`loadToppingOutline`, Task 6의
-  `ToppingHitTarget(outline = ...)`, Task 4의 `YGToppingCutoutImage(outline = ...)`
-- Produces: 없음(결선만)
-
-- [ ] **Step 1: `CanvasToppingLayer` 를 고친다**
+- [ ] **Step 4: `CanvasToppingLayer`를 결선한다**
 
 세 곳이다.
 
-첫째, `ToppingHitEntry` 에 거리판을 싣는다.
+첫째, `ToppingHitEntry`에 거리판을 싣는다.
 
 ```kotlin
 internal data class ToppingHitEntry(
@@ -1321,8 +1444,7 @@ internal data class ToppingHitEntry(
 )
 ```
 
-둘째, `rememberToppingHitEntries` 에서 마스크를 거리판으로 갈고 `loadMasks` 파라미터를 없앤다.
-`hitTestEnabled` 는 판정 배선에만 남는다.
+둘째, `rememberToppingHitEntries`에서 마스크를 거리판으로 갈고 `loadMasks` 파라미터를 없앤다.
 
 ```kotlin
     val outlines = rememberToppingOutlines(
@@ -1331,13 +1453,11 @@ internal data class ToppingHitEntry(
     )
 ```
 
-`ToppingHitEntry` 를 만들 때 `outline = outlines[topping.imageUrl]` 를 넣고,
-`ToppingHitTarget(... mask = masks[topping.imageUrl])` 를 `outline = outlines[topping.imageUrl]` 로 바꾼다.
+`ToppingHitEntry`에 `outline = outlines[topping.imageUrl]`을 넣고,
+`ToppingHitTarget(... mask = masks[topping.imageUrl])`을 `outline = outlines[topping.imageUrl]`로
+바꾼다. 호출부에서 `loadMasks = ...` 인자를 지운다.
 
-호출부(`rememberToppingHitEntries(...)`)에서 `loadMasks = ...` 인자를 지운다.
-`CanvasToppingLayer` 시그니처의 `hitTestEnabled` 는 그대로 둔다.
-
-셋째, `ToppingImage` 가 거리판을 받아 넘긴다.
+셋째, `ToppingImage`가 거리판을 받아 넘긴다.
 
 ```kotlin
 @Composable
@@ -1351,7 +1471,6 @@ private fun ToppingImage(
 
     YGToppingCutoutImage(
         painter = painter,
-        outline = outline,
         // 색을 못 읽으면 테두리를 걸러 낸다 — 임의의 색을 골라 칠하는 것보다 안 그리는 편이 덜 틀리다
         borderColor = solidBorder
             ?.color
@@ -1359,19 +1478,92 @@ private fun ToppingImage(
             ?.takeIf { painterState is AsyncImagePainter.State.Success },
         borderWidth = (solidBorder?.width?.toFloat() ?: 0f).dp,
         modifier = Modifier.fillMaxSize(),
+        outline = outline,
     )
 }
 ```
 
-`CanvasTopping` 안의 호출을 `ToppingImage(painter = entry.painter, outline = entry.outline, border = entry.topping.border)` 로 바꾼다.
+`CanvasTopping` 안의 호출을
+`ToppingImage(painter = entry.painter, outline = entry.outline, border = entry.topping.border)`로 바꾼다.
 
-- [ ] **Step 2: `CanvasToppingPlaceScreen` 을 고친다**
+⚠️ **낡는 KDoc 셋을 함께 고친다**(`parfait/CLAUDE.md` 규약).
 
-배치 중인 토핑은 하나라 목록 API 대신 단건을 쓴다. `YGToppingCutoutImage` 위에 아래를 둔다.
+- `CanvasToppingLayer`의 `hitTestEnabled` 설명 — "끄면 마스크 로딩도 안 단다"가 거짓이 된다.
+  거리판은 그리기에 필요해 판정과 무관하게 뜬다.
+- `rememberToppingHitEntries`의 `@param loadMasks` — 파라미터 자체가 사라진다.
+- 같은 함수의 `@param retryKey` — "알파 마스크는 여기 딸려 오지 않는다"가 거짓이 된다.
+  이제 캐시 키에 들어간다.
 
-이 화면은 `toppingImagePath` 를 `File(path).toUri().toString()` 으로 바꿔
-`rememberAsyncImagePainter(model = ...)` 에 넘긴다. 그 표현식이 이미 `remember(toppingImagePath)` 로
-묶여 있으므로 지역 변수로 빼서 그림과 거리판이 **같은 문자열**을 보게 한다.
+- [ ] **Step 5: `CanvasBGEditScreen`을 결선한다**
+
+거리판을 `drawEntries`와 `hitEntries` 둘이 함께 봐야 하므로, **두 `remember` 함수의 바깥**
+(`drawEntries`를 만드는 자리 바로 아래)에 한 번만 둔다.
+
+```kotlin
+    val outlines = rememberToppingOutlines(
+        models = drawEntries.map { it.topping.drawnModel },
+        retryKey = 0,
+    )
+```
+
+`rememberBGEditHitEntries(drawEntries)`를 `rememberBGEditHitEntries(drawEntries, outlines)`로 바꾸고,
+그 안에서 `mask = masks[entry.topping.drawnModel]`을 `outline = outlines[entry.topping.drawnModel]`로
+바꾼다. 함수 안의 `rememberToppingAlphaMasks` 호출은 지운다.
+
+`CanvasToppingImage`에 `outline: ToppingOutline?` 파라미터를 더하고 호출부에서 넘긴다.
+`YGToppingCutoutImage(...)`에 `outline = outline`을 더한다.
+
+⚠️ **인셋 우회(`outlineInset` 만큼 키운 `requiredSize` + `.padding(outlineInset)`)를 걷지 않고
+그대로 둔다.** 띠 판은 정의상 상자 밖으로 나가므로 `alpha < 1`이 만드는 오프스크린 버퍼가 여전히
+자른다. 그 사실을 적은 KDoc 문단도 남기되 "여덟 방향으로 밀어 찍는다"는 서술만 "거리판으로 만든
+띠가 상자 밖으로 나간다"로 고친다.
+
+⚠️ **`isMine` 필터가 사라진다.** 지금은 내 토핑만 마스크를 뜨는데, 그리기에 거리판이 필요해
+남의 토핑까지 디코딩한다. `rememberBGEditDrawEntries`의 KDoc이 "알파 마스크를 요청하지 않는다"고
+적고 있으니 함께 고친다.
+
+- [ ] **Step 6: 옛 마스크와 스탬프 상수를 지운다**
+
+```bash
+rm feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingAlphaMask.kt
+rm feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingAlphaMaskCache.kt
+```
+
+`YGToppingCutoutImage.kt`에서 `TOPPING_OUTLINE_STAMP_COUNT` 선언과 그 KDoc을 지운다.
+
+- [ ] **Step 7: 모듈 전체가 초록인지 확인한다**
+
+```bash
+./gradlew :feature:groups:canvas:impl:testDebugUnitTest :core:designsystem:compileDebugKotlin
+```
+
+Expected: BUILD SUCCESSFUL, 신규 3건 + 갱신된 기존 테스트 전부 PASS.
+
+- [ ] **Step 8: ktlint를 돌린다**
+
+```bash
+./gradlew :feature:groups:canvas:impl:ktlintCheck :core:designsystem:ktlintCheck
+```
+
+Expected: BUILD SUCCESSFUL.
+
+---
+
+### Task 7: 토핑 하나짜리 화면 둘을 결선한다
+
+**Files:**
+- Modify: `feature/groups/canvas/impl/.../screen/CanvasToppingPlaceScreen.kt`
+- Modify: `feature/segmentation/impl/.../screen/SegmentationConfirmScreen.kt`
+
+**Interfaces:**
+- Consumes: Task 5의 `loadToppingOutline`, Task 4의 `outline` 파라미터
+- Produces: 없음(결선만)
+
+- [ ] **Step 1: `CanvasToppingPlaceScreen`을 고친다**
+
+이 화면은 `toppingImagePath`를 `File(path).toUri().toString()`으로 바꿔 painter에 넘긴다. 그
+표현식이 이미 `remember(toppingImagePath)`로 묶여 있으므로 지역 변수로 빼서 **그림과 거리판이
+같은 문자열**을 보게 한다.
 
 ```kotlin
     val toppingImageModel = remember(toppingImagePath) {
@@ -1389,55 +1581,16 @@ private fun ToppingImage(
     }
 ```
 
-⚠️ **그림과 거리판이 다른 문자열을 보면 안 된다.** 편집본은 투명 여백이 잘려 원본과 비율이 달라,
+`YGToppingCutoutImage(...)` 호출에 `outline = outline`을 더한다.
+
+⚠️ **그림과 거리판이 다른 문자열을 보면 안 된다.** 편집본은 투명 여백이 잘려 원본과 비율이 달라
 실루엣이 통째로 어긋난다.
 
-`YGToppingCutoutImage(...)` 호출의 `outline = null` 을 `outline = outline` 으로 바꾼다.
+더할 import: `androidx.compose.runtime.produceState`, `androidx.compose.runtime.getValue`,
+`androidx.compose.ui.platform.LocalContext`, `com.teamyg.parfait.core.ui.outline.loadToppingOutline`,
+`com.teamyg.parfait.core.util.jvm.outline.ToppingOutline`.
 
-`CanvasToppingLayer(...)` 호출에서 `loadMasks` 관련 인자가 남아 있으면 지운다.
-
-- [ ] **Step 3: `CanvasBGEditScreen` 을 고친다**
-
-`BGEditDrawEntry` 를 만드는 자리에서 `rememberToppingOutlines` 를 쓰고, `CanvasToppingImage` 가
-그것을 `YGToppingCutoutImage(outline = ...)` 로 넘긴다.
-
-`CanvasToppingImage` 의 인셋 우회는 **걷는다.** 띠가 판 안에 들어 있어 오프스크린 버퍼에 잘리지
-않는다.
-
-```kotlin
-    Box(
-        modifier = modifier
-            .centeredAt(entry.center)
-            .requiredSize(entry.size)
-            .graphicsLayer(
-                rotationZ = entry.topping.rotationDegrees,
-                alpha = alpha,
-            )
-            // 이하 semantics 는 그대로
-```
-
-`YGToppingCutoutImage` 의 `modifier` 에서 `.padding(outlineInset)` 을 지우고 `fillMaxSize()` 만
-남긴다. `outlineInset` 지역 변수와 그것을 설명하던 KDoc 문단(`alpha` 가 1 미만일 때 잘린다는 설명)도
-함께 지운다.
-
-⚠️ **`entry.drawnBorderWidthDp` 는 지우지 않는다.** `rememberBGEditHitEntries` 가
-`ToppingHitTarget(borderWidthPx = entry.drawnBorderWidthDp.dp.toPx())` 로도 읽는다. 사라지는 것은
-`outlineInset` 지역 변수뿐이다.
-
-이 화면은 마스크 키로 `CanvasToppingVO.drawnModel`(`editedImagePath ?: imageUrl`)을 쓴다.
-거리판도 **같은 키**를 써야 한다.
-
-```kotlin
-    val outlines = rememberToppingOutlines(
-        models = drawEntries.map { it.topping.drawnModel },
-        retryKey = 0,
-    )
-```
-
-`ToppingHitTarget(... mask = masks[entry.topping.drawnModel])` 를
-`outline = outlines[entry.topping.drawnModel]` 로 바꾸고, `CanvasToppingImage` 에도 같은 값을 넘긴다.
-
-- [ ] **Step 4: `SegmentationConfirmScreen` 을 고친다**
+- [ ] **Step 2: `SegmentationConfirmScreen`을 고친다**
 
 ```kotlin
     val context = LocalContext.current
@@ -1446,19 +1599,21 @@ private fun ToppingImage(
     }
 ```
 
-`YGToppingCutoutImage(...)` 의 `outline = null` 을 `outline = outline` 으로 바꾼다.
+`YGToppingCutoutImage(...)`에 `outline = outline`을 더한다. import는 Step 1과 같은 다섯이다
+(`File`은 필요 없다).
 
-- [ ] **Step 5: 전체 컴파일과 유닛을 확인한다**
+- [ ] **Step 3: 전체 컴파일과 유닛, ktlint를 확인한다**
 
 ```bash
 ./gradlew :feature:groups:canvas:impl:testDebugUnitTest \
           :feature:segmentation:impl:testDebugUnitTest \
           :core:util:jvm:test
+./gradlew ktlintCheck
 ```
 
-Expected: BUILD SUCCESSFUL, 전부 PASS.
+Expected: 전부 PASS.
 
-- [ ] **Step 6: 앱 전체가 빌드되는지 본다**
+- [ ] **Step 4: 앱 전체가 빌드되는지 본다**
 
 ```bash
 ./gradlew :app:assembleDebug
@@ -1470,49 +1625,45 @@ Expected: BUILD SUCCESSFUL.
 
 ### Task 8: 실기기 육안 확인과 문서 갱신
 
-**Files:**
-- Modify(문서 저장소): `parfait/architecture/design-system.md`
-- Modify(문서 저장소): `parfait/architecture/module-structure.md`
-- Modify(문서 저장소): `parfait/synthesis/open-questions.md`
-- Modify(문서 저장소): `parfait/adr/0030-topping-outline-distance-field.md`
-- Modify(문서 저장소): `parfait/specs/2026-09-07-topping-border-distance-field.md`
-
 - [ ] **Step 1: 실기기에서 여섯 가지를 확인한다**
 
 1. 같은 토핑·같은 굵기가 **테두리 편집 → 누끼 확인 → 토핑 배치 → 캔버스** 넷에서 같은 모양인가.
+   ⚠️ **굵기를 최소(2dp)로 놓고도 본다.** 편집 화면은 거리판을 화면 크기로 재고 나머지 셋은 긴 변
+   256으로 재므로, 굵기가 얇을수록 256 격자가 실루엣 잔주름을 뭉갠다.
 2. 빨대처럼 가는 부위가 갈라지지 않는가.
-3. 누끼 확인 화면에서 테두리가 화면 가장자리에 잘리지 않는가.
-4. 토핑을 여럿 올린 캔버스에서 진입·스크롤이 버벅이지 않는가.
-5. 배치 화면에서 핀치로 크기를 바꿀 때 테두리가 따라오는가. `BORDER_SIZE_QUANTUM_PX = 32` 격자가
-   계단으로 보이는가.
+3. 누끼 확인 화면에서 테두리가 화면 가장자리에 잘리지 않는가. 배경 편집에서 딤이 걸린 토핑의
+   테두리도 잘리지 않는가.
+4. 토핑이 여럿인 캔버스에서 진입·스크롤이 버벅이지 않는가.
+5. 배치 화면에서 핀치로 크기를 바꿀 때, 손을 뗀 뒤 테두리가 새 크기로 붙기까지 눈에 띄게 느린가.
+   바꾸는 동안 직전 크기의 띠가 남는 것은 의도한 동작이다.
 6. 이미지 로드에 실패시킨 뒤(비행기 모드 등) 재시도했을 때 테두리와 판정이 함께 돌아오는가.
 
-- [ ] **Step 2: 5번이 계단으로 보이면 격자를 줄인다**
+- [ ] **Step 2: 1번이 갈리면 거리판 해상도를 올린다**
 
-`BORDER_SIZE_QUANTUM_PX` 를 16으로 내리고 다시 본다. 그래도 보이면 8까지 내린다. 정한 값과
-그 이유를 스펙의 "열린 질문" 절에 적는다.
+`OUTLINE_LONG_SIDE`를 512로 올린다. 항목당 메모리가 네 배(약 512KB)가 되므로
+`OUTLINE_CACHE_ENTRIES`를 32로 줄여 총량을 16MB로 묶는다. 올렸다면 그 사실과 근거를 스펙의
+"열린 질문" 절에 적는다.
 
-- [ ] **Step 3: 2번이 여전히 갈라져 보이면 거리판 해상도를 올린다**
+- [ ] **Step 3: 5번이 느리면 지연을 줄인다**
 
-`OUTLINE_LONG_SIDE` 를 512로 올리고 다시 본다. 항목당 메모리가 네 배(약 512KB)가 되므로,
-올렸다면 그 사실과 캐시 64칸 기준 총량을 스펙에 적는다.
+`BORDER_REBUILD_DELAY_MS`를 48에서 16으로 내리고 다시 본다. 정한 값과 이유를 스펙에 적는다.
 
 - [ ] **Step 4: 문서를 갱신한다**
 
-- `design-system.md` 의 `YGToppingCutoutImage` 항목 — 여덟 방향 스탬프 서술을 거리판 렌더로 바꾸고
-  `outline` 파라미터를 적는다.
-- `module-structure.md` — `core:util:jvm` 에 `outline/`, `core:util:android` 에 `outline/`,
-  `core:ui` 에 `outline/` 을 더한다. `core:util:jvm` 항목의 픽셀 연산 문단이 "토핑 테두리를
-  거리장으로 그리려고" 승격했다고 적어 두었으니 그 예고가 실현됐다는 사실을 잇는다.
-- `open-questions.md` — OQ-P-208 ②, OQ-P-337 ①②, OQ-P-356 을 해소로 표시한다.
+- `design-system.md`의 `YGToppingCutoutImage` 항목 — 여덟 방향 스탬프 서술을 거리판 렌더로 바꾸고
+  `outline` 파라미터와 **"띠가 상자 밖으로 나간다"는 계약**을 적는다.
+- `module-structure.md` — `core:util:jvm`·`core:util:android`·`core:ui`에 `outline/`을 더한다.
+  `core:util:jvm` 항목의 픽셀 연산 문단이 "토핑 테두리를 거리장으로 그리려고" 승격했다고 적어
+  두었으니 그 예고가 실현됐다는 사실을 잇는다.
+- `open-questions.md` — OQ-P-208 ②, OQ-P-337 ①②, OQ-P-356을 해소로 표시한다.
   **OQ-P-208 ①(실기기 측정)과 ③(굵기 정책)은 열어 둔다.** OQ-P-317(캐시 수명 주체)에 항목당
-  크기가 커진 사실을 더한다.
-- ADR-0030 `status` 를 `proposed` 에서 `accepted` 로 올리고, Task 4 게이트의 판정 결과
-  (`ALPHA_8` 채택 여부)를 "위험·방어" 절에 적는다.
-- 스펙 `status` 를 `implemented` 로 올리고 `parfait/specs/archive/` 로 옮긴 뒤
-  `parfait/specs/README.md` 의 활성 표에서 아카이브 표로 행을 옮긴다.
-- `parfait/plans/README.md` 활성 카탈로그에 이 계획 한 줄을 더한다(계획 착수 시점에 이미
-  더했다면 as-built 를 덧붙인다).
+  크기가 8KB에서 128KB로 커진 사실을 더한다. **판정이 그림 사각형 밖으로 넓어진 변화**와
+  **편집 화면과 나머지 셋의 거리판 해상도 차이**를 새 항목으로 등록할지 판단한다.
+- ADR-0030 `status`를 `accepted`로 올리고, Task 4 게이트의 판정 결과(`ALPHA_8` 채택 여부)를
+  "위험·방어" 절에 적는다.
+- 스펙 `status`를 `implemented`로 올리고 `parfait/specs/archive/`로 옮긴 뒤
+  `parfait/specs/README.md`의 활성 표에서 아카이브 표로 행을 옮긴다.
+- `parfait/plans/README.md`에 as-built를 덧붙인다.
 
 ---
 
@@ -1520,13 +1671,14 @@ Expected: BUILD SUCCESSFUL.
 
 | 무엇 | 어떻게 | Task |
 |------|--------|------|
-| 얇은 부위가 안 갈라진다 | `:core:util:jvm:test` 회귀 1건 | 1 |
+| 거리 r 안쪽이 하나도 안 빠진다(스탬프가 실패하던 성질) | `:core:util:jvm:test` | 1 |
 | 띠 경계가 기대 거리에 온다 | `:core:util:jvm:test` | 1 |
+| 실루엣이 여백까지 늘어나지 않는다 | `:core:util:jvm:test` | 1 |
+| 판 밖 거리가 클램프되지 않는다 | `:core:util:jvm:test` | 1 |
 | 거리 양자화 오차 상한 | `:core:util:jvm:test` | 1 |
-| 판 크기 ≠ 표시 크기 보간 경로 | `:core:util:jvm:test` | 1 |
-| 겹 색 섞임 | `:core:util:jvm:test` | 1 |
-| 판정이 거리 기준으로 넓어진다 | `:feature:groups:canvas:impl:testDebugUnitTest` 3건 | 6 |
-| `Bitmap` 변환 | **자동 검증 없음** — 컴파일 + Task 4 프리뷰 | 2 |
+| 겹별 색과 경계 섞임 | `:core:util:jvm:test` | 1 |
+| 판정이 거리 기준으로 넓어진다 | `:feature:groups:canvas:impl:testDebugUnitTest` | 6 |
+| `Bitmap` 변환 | **자동 검증 없음** — 컴파일 + Task 4 게이트 | 2 |
+| `ALPHA_8` 버퍼 정렬 + tint | 실기기 게이트 2항목 | 4 |
 | 캐시가 디코딩 한 번을 쓴다 | **자동 검증 없음** — 실기기 확인 | 5 |
-| `ALPHA_8` + tint | 실기기 프리뷰 게이트 | 4 |
-| 네 화면 모양 일치 | 실기기 육안 | 8 |
+| 네 화면 모양 일치(얇은 굵기 포함) | 실기기 육안 | 8 |
