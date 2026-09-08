@@ -19,7 +19,7 @@ related_code:
   - PresignedUploadDataSourceImpl#put
   - UploadImagePreprocessor
   - UploadImagePreprocessorImpl
-  - UploadImageScale#planUploadImage
+  - UploadImagePlan#of
   - ExifOrientation#exifOrientationToDegrees
   - ContentResolver#rotatedToUpright
 related_adr: ADR-0017

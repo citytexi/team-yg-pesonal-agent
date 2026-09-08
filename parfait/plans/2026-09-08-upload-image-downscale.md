@@ -4,12 +4,12 @@ title: 업로드 이미지 다운스케일·배경 JPEG 고정
 status: draft
 type: work-order
 created: 2026-09-08
-updated: 2026-09-08
+updated: 2026-09-09
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0017
 related_spec: upload-image-downscale
-related_code: ImageUploadRepositoryImpl, UploadImagePreprocessor, UploadImagePreprocessorImpl, UploadImageScale, UploadImageFormat, LocalDataSourceModule, ImageUploadRepositoryImplTest
+related_code: ImageUploadRepositoryImpl, UploadImagePreprocessor, UploadImagePreprocessorImpl, UploadImagePlan, PreparedUploadImage, UploadImageFormat, UtilsModule, ImageUploadRepositoryImplTest
 archived_reason:
 tags: [plan, parfait, image, upload]
 ---
@@ -21,6 +21,15 @@ tags: [plan, parfait, image, upload]
 **Goal:** 서버로 나가는 이미지를 업로드 직전에 긴 변 상한까지 줄이고, 배경은 JPEG로 고정한다.
 
 **Architecture:** 축소·재인코딩을 `ImageUploadRepositoryImpl.upload` **한 자리**에서 한다. 판정(목표 치수·`inSampleSize`·출력 포맷)은 Android에 의존하지 않는 순수 함수 `planUploadImage`로 빼서 JVM 유닛으로 덮고, 실제 디코드·인코딩만 `UploadImagePreprocessorImpl`이 맡는다. 저장소는 인터페이스만 알기 때문에 배선 검증도 JVM에서 끝난다.
+
+> 📌 **구현 뒤 재배치했다(2026-09-09, 리뷰 지적).** 아래 태스크 본문의 파일 경로·심볼은 작성 시점
+> 기준이므로 그대로 둔다. 현행은 이렇다 — 순수 판정이 `UploadImageScale.kt`의 top-level
+> `planUploadImage`에서 **`UploadImagePlan.of`**(`model/image/UploadImagePlan.kt`의 companion)로
+> 옮겨졌고 상한 상수·헬퍼는 그 companion의 `private`이다. `UPLOAD_JPEG_QUALITY`는
+> `UploadImagePlan.JPEG_QUALITY`다. `UploadImageSize`·`PreparedUploadImage`는 각자 파일로 갈라져
+> `model/image/`에 있고, `UploadImagePreprocessor`·`UploadImagePreprocessorImpl`은 데이터 접근이
+> 아니라 비트맵 도구라 **`utils/image/`**로 옮겼다. 그 결과 Hilt `@Binds`도 `LocalDataSourceModule`을
+> 떠나 신설 `UtilsModule`로 갔다. 테스트는 `UploadImagePlanTest.kt`이고 메서드 접두사는 `of_`다.
 
 **Tech Stack:** Kotlin, Hilt, `android.graphics.BitmapFactory`/`Bitmap`, Kotlin Coroutines, 테스트는 kotlin-test + MockK + kotlinx-coroutines-test.
 
