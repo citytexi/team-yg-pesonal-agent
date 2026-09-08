@@ -174,9 +174,12 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   이유를 적는다 — **그룹 id만 쥔 채(예: 푸시 알림) 캔버스로 바로 들어오면 상단에 그릴 그룹명을 얻을
   길이 없었다.** 즉 이 필드는 [notification.md](notification.md)의 딥링크 진입을 받치는 자리다.
   ⚠️ **그 조회가 실패 경로를 하나 더 만들었다** — 아래 에러 코드 표의 404 `GROUP_NOT_FOUND`.
-  ⚠️ **앱은 아직 이 필드를 읽지 않는다**(`GetTodayParfaitResponse`·`CanvasVO`에 자리가 없다).
-  `ignoreUnknownKeys = true`라 파싱이 깨지지는 않지만, 푸시로 들어온 캔버스의 그룹명은 여전히
-  다른 경로로 구해야 한다 → [open-questions](../synthesis/open-questions.md) OQ-P-383.
+  ✅ **앱이 하루 만에 이 필드를 읽기 시작했다**(2026-09-08, PR #469 develop 머지) —
+  `GetTodayParfaitResponse`·`CanvasVO`에 `groupName`이 서고 `VOMapper`의 `toCanvasVO`가
+  `GroupName`으로 감싸 나른다. 오늘·상세 두 조회가 같은 매퍼를 타므로 두 경로 모두 값을 얻는다.
+  다만 **그룹명의 정본은 그룹 목록 캐시로 두었다** — 아래 [Android 매핑](#android-매핑).
+  ⚠️ **404 `GROUP_NOT_FOUND`는 여전히 앱이 구별하지 않는다**(앱 코드에 그 상수가 없다)
+  → [open-questions](../synthesis/open-questions.md) OQ-P-383 ④.
 
   ✅ **`nameTagChip`이 두 목록 모두에 있다**(`placedBy` 2026-08-18 · `groupMembers` 2026-08-19). 값 집합·배정
   규칙은 [parfait-group.md](parfait-group.md) "Nametag-Chip 배정 규칙"이 정본이고, JSON에는 enum 이름
@@ -772,6 +775,22 @@ DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조
 "0건으로 마감된 날"이라 뜻이 좁아, 옮기면 진행 중인 오늘의 빈 캔버스에 점이 찍힌다. 두 값이
 같지 않다는 것을 `PastCanvasVO.isEmpty` KDoc이 담는다. **읽는 화면은 아직 0건이다**
 → [open-questions](../synthesis/open-questions.md) OQ-P-333.
+
+✅ **`groupName`을 하루 만에 읽기 시작했다**(2026-09-08, PR #469 develop 머지). `GetTodayParfaitResponse`
+(`:data`)·`CanvasVO`(`:domain`)에 자리가 서고 `toCanvasVO`가 `GroupName`으로 감싼다. 오늘·상세 두 조회가
+같은 매퍼를 타므로 값은 두 경로 모두에 실린다.
+
+**정본을 캔버스로 옮기지 않은 것이 이 결선의 결정이다.** C-001 상단 바의 그룹명은 여전히 그룹 목록
+캐시가 정본이고(`loadCanvasMainInfo`, [ADR-0023](../adr/0023-group-in-memory-ssot.md)), 캔버스가 준
+이름은 **그 캐시가 아직 비어 있을 때만** 상태를 채운다(`groupName.ifEmpty { … }`). 캔버스 SSoT
+([ADR-0029](../adr/0029-canvas-today-ssot-polling.md))가 그룹의 값을 자기 캐시의 정본으로 삼으면 같은
+값의 출처가 둘이 되기 때문이다. 그래서 **서버가 없애 주려던 왕복(목록 조회)은 실제로는 남아 있고**,
+이 필드가 실제로 값을 내는 자리는 **목록 캐시가 빈 진입** — 푸시 딥링크·프로세스 재시작 복귀다.
+
+**같은 라운드가 이름을 지우던 자리도 고쳤다.** 목록 캐시에 그 그룹이 없을 때 `orEmpty()`로 접어
+빈 문자열을 쓰던 것이 `return@collect`로 바뀌었다 — 그러지 않으면 캔버스가 채운 이름이 목록 방출
+때마다 지워져, 부트스트랩이 곧바로 무효가 된다. ⚠️ 뒤집으면 **목록에서 사라진 그룹의 옛 이름이
+화면에 남는다**(탈퇴·삭제 직후). 그 경로는 화면을 떠나는 흐름이라 지금은 드러나지 않는다.
 
 ## 미결
 

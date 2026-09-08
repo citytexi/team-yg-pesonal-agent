@@ -58,6 +58,10 @@ tags: [architecture, parfait]
   같다. 값을 얻는 길은 `todayCanvas(groupId)` 하나이고 **서버 재조회는 이 저장소가 아니라
   `CanvasPoller`가 소유한다** — 그룹 저장소에는 없던 갈래다. 폴러는 그룹별 참조 계수로 주기 루프를
   켜고 끄며, 계수는 `ParfaitRepositoryImpl`이 구독의 `onStart`/`onCompletion`에 걸어 올리고 내린다.
+  📌 **이 캐시가 그룹의 값을 하나 들고 온다**(2026-09-08, PR #469) — 서버 응답에 `groupName`이 붙어
+  `CanvasVO`가 그것을 나른다. 다만 **정본은 그룹 저장소 쪽이고**, 캔버스가 준 이름은 그룹 목록 캐시가
+  빈 진입(푸시 딥링크·프로세스 재시작 복귀)에서만 C-001 상단 바를 채운다
+  → [ADR-0029](../adr/0029-canvas-today-ssot-polling.md).
   **캐시에 쓰는 곳은 폴러 하나뿐이라** 갱신 함수는 `Result<Unit>`만 돌려준다.
 - **암호화 DataStore 프록시** — `EncryptedPreferences`(`data/datastore/`, PR #263). 저장 형태가 값이 아니라 **암호문**인 저장소들이 공유한다(`EncryptedTokenStore`·`UserInfoLocalDataSourceImpl`) — 아래 "토큰·계정 정보 저장 경로" 참고.
 - **평문 DataStore 프록시** — **`DataStorePreferences`**(`data/datastore/`, #449). 암호화 프록시와 같은 표면(`observe`·`read`·`write`·`remove` + 못 읽는 저장분을 버리는 `decodeOrDiscard`)을 갖되 암호화만 뺀 갈래이고, 쓰는 곳은 `UserConfigLocalDataSourceImpl` 하나다. 계정 정보와 달리 담기는 것이 "튜토리얼을 봤는가" 뿐이라 지킬 것이 없고, 암호화하면 **키 회전 한 번에 설정이 통째로 폐기될 위험만** 남는다는 것이 평문의 근거다. ⚠️ 두 프록시는 암호화 두 줄을 빼면 KDoc까지 같은 **복제**이고 `read` 는 이쪽에서 호출부가 0건이다 → [open-questions](../synthesis/open-questions.md) OQ-P-367.

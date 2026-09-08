@@ -7192,10 +7192,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   ② 앱 `Json` 이 `ignoreUnknownKeys = true` 라 파싱은 안 깨지고 **값만 조용히 버려진다.**
   ③ 그래서 서버가 없애 준 왕복(그룹 상세 조회)이 앱에서는 그대로 남는다.
   ④ 그룹 조회가 하나 늘면서 **두 조회에 404 `GROUP_NOT_FOUND` 경로가 생긴 것**도 함께 미반영이다.
-- **상태**: 미해결 (계약과 앱 코드를 나란히 놓아 찾았다 — 실행으로 관측한 것이 아니다)
-- **해소 메모**: `GetTodayParfaitResponse` 에 `groupName` 을 더하고 `CanvasVO` 까지 나르면 끝나는
-  작은 반영이다. 소비처(C-001 상단 바)가 지금 그룹명을 어디서 얻는지 먼저 확인해야 중복 조회가 남지
-  않는다. [api/parfait.md](../api/parfait.md) · [api/conventions.md](../api/conventions.md) "Android 불일치".
+- **상태**: 부분 해소 (**①②③ 닫힘** — 2026-09-08, PR #469 develop 머지 / **④ 잔존**)
+- **해소 메모**: ✅ **하루 만에 반영됐다.** `GetTodayParfaitResponse`(`:data`)·`CanvasVO`(`:domain`)에
+  `groupName` 이 서고 `VOMapper.toCanvasVO` 가 `GroupName` 으로 감싸 나른다 — 오늘·상세가 같은 매퍼를
+  타므로 두 조회 모두 값을 얻는다. **다만 ③의 왕복은 실제로는 안 없앴다** — C-001 상단 바의 정본을
+  그룹 목록 캐시([ADR-0023](../adr/0023-group-in-memory-ssot.md))로 두고, 캔버스가 준 이름은 그 캐시가
+  **아직 비어 있을 때만** 채우기로 했다. 캔버스 SSoT([ADR-0029](../adr/0029-canvas-today-ssot-polling.md))가
+  그룹의 값을 자기 정본으로 삼으면 같은 값의 출처가 둘이 되기 때문이다. 그래서 이 필드가 실제로 값을
+  내는 자리는 **목록 캐시가 빈 진입**(푸시 딥링크·프로세스 재시작 복귀)이고, 그것이 서버가 이 필드를
+  만든 이유(①)와 정확히 겹친다. 같은 라운드가 **목록에 없는 그룹이면 이름을 지우던 자리**도 고쳤다
+  (`orEmpty()` → `return@collect`) — 안 고치면 부트스트랩한 이름이 목록 방출 때마다 지워진다.
+  ⚠️ 뒤집으면 목록에서 사라진 그룹의 옛 이름이 남지만, 그 경로는 화면을 떠나는 흐름이다.
+  **④는 그대로다** — 앱 코드에 `GROUP_NOT_FOUND` 상수가 없어 두 조회의 404 를 다른 실패와 구별하지
+  않는다. [api/parfait.md](../api/parfait.md) "Android 매핑" ·
+  [api/conventions.md](../api/conventions.md) "Android 불일치"(이 항목은 표에서 걷었다).
 
 ### [2026-09-08] 리마인드 발송 대상이 알림 권한을 보지 않는다
 

@@ -64,6 +64,9 @@ tags: [adr, parfait]
 🔁 **as-built(2026-08-26, PR #374) — 앱 버전이 `appVersionCode` 1 → 3, `appVersionName` 0.0.1 → 0.0.3.**
 ⚠️ **2는 어느 브랜치에도 없다**(→ [open-questions](../synthesis/open-questions.md) OQ-P-310) —
 이 값은 손으로 고치고, 저장소가 가진 유일한 배포 표식은 경량 태그 `0.0.3` 하나다.
+📌 **그 뒤로도 카탈로그에서 손으로 올라간다**(2026-09-08, PR #470 — `appVersionCode` 8,
+`appVersionName` 1.1.1). 프리뷰 쪽 두 값은 그대로다. 버전만 바꾸는 커밋이 따로 서는 관행이
+자리 잡았지만 **어떤 커밋이 실제로 배포됐는지를 잇는 표식은 여전히 없다**(OQ-P-310).
 
 ## 대안
 - **모듈별 수기 build.gradle.kts** — 진입 장벽 낮음. 그러나 드리프트·중복.
