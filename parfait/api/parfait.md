@@ -2,9 +2,9 @@
 id: parfait
 title: 파르페(캔버스) 조회·배경·회전
 server_module: http/parfait
-server_commit: aa9cc9b
-verified: 2026-09-04
-android_status: done
+server_commit: 09e7d92
+verified: 2026-09-08
+android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server
 related_adr: ADR-0017
 tags: [api, parfait, server-contract, canvas]
@@ -155,6 +155,7 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 | JSON 키 | 타입 | 널 허용 | 비고 |
 |---|---|---|---|
 | `parfaitId` | Long | 아니오 | 토핑 배치([parfait-image.md](parfait-image.md))가 쓰는 키 |
+| `groupName` | String | 아니오 | **2026-09-07 신설.** 그 캔버스가 속한 그룹의 이름 — 아래 참고 |
 | `date` | LocalDate | 아니오 | 캔버스 날짜 |
 | `status` | String(enum) | 아니오 | `ACTIVE` · `CLOSED` · `EMPTY` |
 | `lastClosedDate` | LocalDate? | 예 | 그 그룹의 **마지막 `CLOSED` 캔버스 날짜**. 아래 참고 |
@@ -166,6 +167,16 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   `positionX`/`positionY`(Double) · `positionZ`(Int) · `scale`/`rotation`(Double) ·
   `borderType`(`NONE`·`SOLID`) · `borderColor`(String?) · `borderWidth`(Double?) ·
   `placedBy`(`groupMemberId`·`nickname`·`nameTagChip`·`ownerType`) · `createdAt`(LocalDateTime).
+
+  ✅ **`groupName`이 응답에 들어왔다**(2026-09-07 신설). `GetTodayParfaitResult`·`GetTodayParfaitResponse`
+  양쪽에 **비널 문자열**로 붙었고, 두 서비스(`GetTodayParfaitService`·`GetParfaitDetailService`)가
+  `ParfaitGroupQueryPort.findById`로 그룹을 다시 조회해 `group.name.value`를 채운다. 커밋 메시지가
+  이유를 적는다 — **그룹 id만 쥔 채(예: 푸시 알림) 캔버스로 바로 들어오면 상단에 그릴 그룹명을 얻을
+  길이 없었다.** 즉 이 필드는 [notification.md](notification.md)의 딥링크 진입을 받치는 자리다.
+  ⚠️ **그 조회가 실패 경로를 하나 더 만들었다** — 아래 에러 코드 표의 404 `GROUP_NOT_FOUND`.
+  ⚠️ **앱은 아직 이 필드를 읽지 않는다**(`GetTodayParfaitResponse`·`CanvasVO`에 자리가 없다).
+  `ignoreUnknownKeys = true`라 파싱이 깨지지는 않지만, 푸시로 들어온 캔버스의 그룹명은 여전히
+  다른 경로로 구해야 한다 → [open-questions](../synthesis/open-questions.md) OQ-P-383.
 
   ✅ **`nameTagChip`이 두 목록 모두에 있다**(`placedBy` 2026-08-18 · `groupMembers` 2026-08-19). 값 집합·배정
   규칙은 [parfait-group.md](parfait-group.md) "Nametag-Chip 배정 규칙"이 정본이고, JSON에는 enum 이름
@@ -213,9 +224,17 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 | HTTP | code | 의미 |
 |---|---|---|
 | 403 | `GROUP_NOT_JOINED` | 그 그룹의 멤버가 아님(`ParfaitGroupApiErrorCode`) |
+| 404 | `GROUP_NOT_FOUND` | **2026-09-07 신설.** 그룹 조회가 널(`ParfaitGroupApiErrorCode`) |
 | 401 | `UNAUTHORIZED` 외 | 전역 인증(`AuthErrorCode`) |
 
+  ⚠️ **404 `GROUP_NOT_FOUND`는 순서상 거의 닿지 않는다.** 멤버십 검사(`isMember`)가 그룹 조회보다
+  먼저라, 그룹이 사라진 경우는 대개 403 `GROUP_NOT_JOINED`로 먼저 걸린다. **멤버십 행은 남았는데 그룹
+  행만 없는 상태에서만** 이 코드가 나온다. 그래도 소비 측은 이 두 조회에서 404가 올 수 있다는 것을
+  전제해야 한다 — 직전 판본까지 이 경로의 404는 상세 조회의 `PARFAIT_NOT_FOUND`뿐이었다.
+
   근거: `ParfaitControllerTest`가 성공·빈 캔버스(`background`·`images` 널)·403 세 케이스를 직접 검증한다.
+  **`groupName`은 같은 테스트가 응답 JSON에 실리는 것을 확인하고**, `GetTodayParfaitServiceTest`가
+  결과 객체에 담기는 것을 단언한다.
 
 ### GET /api/v1/groups/{groupId}/parfaits
 
@@ -286,6 +305,8 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 - **성공**: HTTP 200 · envelope `code` = `"OK"`(`ApiResponse.ok`, `@ResponseStatus` 없음)
 - **요청 필드**: 경로 변수 `groupId`·`parfaitId`(쿼리·바디 없음)
 - **응답 필드**: `today`와 동일 → [위 표](#get-apiv1groupsgroupidparfaitstoday) 참고.
+  **2026-09-07에 붙은 `groupName`도 같다** — 이 경로도 `ParfaitGroupQueryPort.findById`로 그룹을 다시
+  조회해 채우고, 그 조회가 널이면 404 `GROUP_NOT_FOUND`다.
   `lastClosedDate`·`groupMembers`·`background`·`images`의 널 규칙(0건이 빈 배열이 아니라 `null`)도 같다.
   `placedBy.ownerType`(2026-08-26 신설)도 같은 규칙으로 채워진다 — **요청자 기준**이라 과거 캔버스를
   봐도 보는 사람에 따라 값이 갈린다.
@@ -306,11 +327,15 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
 | HTTP | code | 의미 |
 |---|---|---|
 | 404 | `PARFAIT_NOT_FOUND` | 파르페가 없거나 **그 그룹 소속이 아님**(`ParfaitErrorCode`) |
+| 404 | `GROUP_NOT_FOUND` | **2026-09-07 신설.** 그룹 조회가 널(`ParfaitGroupApiErrorCode`) |
 | 403 | `GROUP_NOT_JOINED` | 그 그룹의 멤버가 아님(`ParfaitGroupApiErrorCode`) |
 | 400 | `INVALID_REQUEST` | `parfaitId`가 Long으로 파싱되지 않음(`CommonErrorCode`) |
 | 401 | `UNAUTHORIZED` 외 | 전역 인증(`AuthErrorCode`) |
 
   멤버십 검사가 파르페 조회보다 **먼저**다 — 남의 그룹이면 파르페 존재 여부와 무관하게 403이다.
+  **2026-09-07부터 그 사이에 그룹 조회가 하나 낀다**(멤버십 → 그룹 → 파르페). 같은 404라도
+  `GROUP_NOT_FOUND`가 `PARFAIT_NOT_FOUND`보다 먼저 나오므로, 소비 측이 404를 `PARFAIT_NOT_FOUND` 하나로
+  읽고 분기하면 안 된다.
   근거: `ParfaitControllerTest`가 성공·404·403 세 케이스를 직접 검증한다.
 
 ### PATCH /api/v1/groups/{groupId}/parfaits/{parfaitId}/background
@@ -479,8 +504,9 @@ C-301 배경 편집이 고른 값을 **서버에 저장**하는 경로다. 단�
   멤버가 아니면 **409가 아니라 403**이 먼저 온다(수정·테두리·삭제는 `PARFAIT_IMAGE_NOT_OWNED`,
   배치·배경 변경은 `GROUP_NOT_JOINED`). 소비 측이 "마감된 캔버스면 409"로 읽고 분기하면 그 경우가 빠진다.
 
-이 도메인은 자기 enum 밖의 코드도 던진다 — `ParfaitGroupApiErrorCode.GROUP_NOT_JOINED`(403),
-그리고 배경 변경의 `ImageErrorCode.IMAGE_NOT_FOUND`(404). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
+이 도메인은 자기 enum 밖의 코드도 던진다 — `ParfaitGroupApiErrorCode.GROUP_NOT_JOINED`(403)와
+**`GROUP_NOT_FOUND`(404, 2026-09-07 신설 — 오늘·상세 두 조회)**, 그리고 배경 변경의
+`ImageErrorCode.IMAGE_NOT_FOUND`(404). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
 
 ## Android 매핑
 
