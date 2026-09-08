@@ -113,17 +113,24 @@ data class PreparedUploadImage(val file: File, val format: UploadImageFormat)
 
 ### 결정 표
 
-긴 변 상한은 **1440px**이다. 3x 밀도 기기의 화면 폭과 같은 값이라, 토핑을 상한까지 키워도
-1:1 이상이고 배경도 등배다.
+긴 변 상한은 **imageType마다 다르고, 값의 근거는 iOS다.** `TEAMYG-iOS`가 같은 서버에 같은
+기능으로 올리고 있고 이미 상한을 두고 있다 — `ToppingImageEncoder.maximumLongEdge`가 1500,
+`BackgroundImageLoader.maximumLongEdge`가 2048이며 배경은 `jpegCompressionQuality` 0.9로 굽는다.
+플랫폼마다 상한이 다르면 같은 캔버스를 두 기기에서 볼 때 화질이 갈리므로 그 값을 그대로 쓴다.
+
+| imageType | 긴 변 상한 |
+|---|---|
+| NUKKI | 1500 |
+| BACKGROUND | 2048 |
 
 | imageType | 입력 포맷 | 긴 변 | 동작 |
 |---|---|---|---|
-| NUKKI | PNG | > 1440 | 축소 후 PNG 재인코딩(알파 유지) |
-| NUKKI | PNG | ≤ 1440 | 그대로 통과 |
-| NUKKI | JPEG | > 1440 | 축소 후 JPEG 재인코딩 |
-| NUKKI | JPEG | ≤ 1440 | 그대로 통과 |
-| BACKGROUND | JPEG | > 1440 | 축소 후 JPEG |
-| BACKGROUND | JPEG | ≤ 1440 | **그대로 통과** |
+| NUKKI | PNG | > 1500 | 축소 후 PNG 재인코딩(알파 유지) |
+| NUKKI | PNG | ≤ 1500 | 그대로 통과 |
+| NUKKI | JPEG | > 1500 | 축소 후 JPEG 재인코딩 |
+| NUKKI | JPEG | ≤ 1500 | 그대로 통과 |
+| BACKGROUND | JPEG | > 2048 | 축소 후 JPEG |
+| BACKGROUND | JPEG | ≤ 2048 | **그대로 통과** |
 | BACKGROUND | PNG | 무관 | JPEG 재인코딩, 투명 영역은 흰색 합성 |
 
 누끼의 JPEG 두 행은 방어적이다. `saveToCacheAsPng`가 항상 PNG로 굽기 때문에 지금은 닿지 않는
@@ -138,7 +145,7 @@ data class PreparedUploadImage(val file: File, val format: UploadImageFormat)
 없기 때문이다. 반대로 PNG 배경은 크기와 무관하게 굽는다 — 스크린샷을 배경으로 고르는 경우가
 용량 기여가 가장 크고, 배경은 캔버스를 덮는 불투명 이미지라 알파를 버려도 잃는 것이 없다.
 
-JPEG quality는 85로 둔다.
+JPEG quality는 **90**으로 둔다. iOS의 `jpegCompressionQuality` 0.9와 같은 값이다.
 
 ### 메모리
 
@@ -165,7 +172,8 @@ JPEG quality는 85로 둔다.
 ## 검증
 
 - **JVM 유닛** — 목표 치수 산출, `inSampleSize` 계산, 결정 표의 재인코딩 필요 판정을 순수 함수로
-  빼서 덮는다. 경계값(1440 정확히, 1441, 정사각형, 극단 종횡비)을 포함한다.
+  빼서 덮는다. 경계값(상한 정확히, 상한+1, 정사각형, 극단 종횡비)과 **imageType마다 상한이
+  다르다는 것**(같은 1600px 이미지가 NUKKI에서는 줄고 BACKGROUND에서는 안 준다)을 포함한다.
 - **JVM 유닛** — `ImageUploadRepositoryImpl`은 전처리기를 대역으로 두고, 전처리 결과의 파일과
   포맷이 발급 요청과 PUT에 **같은 값으로** 실리는지 검증한다. 기존 `ImageUploadRepositoryImplTest`의
   구성(mockk + `kotlin.test`)을 그대로 쓴다.
@@ -181,7 +189,9 @@ JPEG quality는 85로 둔다.
   동선인지, 후처리가 알파를 전부 지워 되돌아간 것인지에 따라 대응이 달라진다. 판정 수단은
   `ImageSegmentationRepositoryImpl`이 이미 남기는 되돌림 로그다. **이 스펙과 독립이다** — 어느
   쪽이든 축소의 필요성은 바뀌지 않는다.
-- **1440이라는 값에 실측 근거가 없다.** 화면 폭에서 유도한 값이고, 축소 후 실제 바이트가 얼마나
-  주는지는 위 수동 확인에서 처음 나온다. 기대에 못 미치면 값이 아니라 포맷(WebP)이 다음 레버다.
-- **JPEG quality 85도 마찬가지다.** 배경은 캔버스 전면에 깔리므로 아티팩트가 눈에 띄면 올린다.
+- **상한값의 근거는 iOS와의 정합이지 측정이 아니다.** iOS가 1500·2048을 어떻게 골랐는지는
+  그쪽 코드에 적혀 있지 않다. 축소 후 실제 바이트가 얼마나 주는지는 수동 확인에서 처음
+  나오고(검증 절), 기대에 못 미치면 값이 아니라 포맷(WebP)이 다음 레버다.
+- **두 플랫폼이 같이 낮추는 것은 별건이다.** 소비 측 상계는 캔버스 긴 변이라 2048은 그보다
+  크다. 값을 낮추려면 iOS와 함께 움직여야 하고, 이 스펙은 그 협의를 하지 않는다.
 - **기존 업로드본은 그대로다.** 이미 올라간 큰 파일을 줄이는 마이그레이션은 없다.
