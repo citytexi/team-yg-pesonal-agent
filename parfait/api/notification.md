@@ -2,8 +2,8 @@
 id: notification
 title: 알림(기기 FCM 토큰 등록 · 푸시 발송)
 server_module: http/notification
-server_commit: aa9cc9b
-verified: 2026-09-04
+server_commit: 09e7d92
+verified: 2026-09-08
 android_status: partial
 related_spec:
 related_adr: ADR-0013, ADR-0017
@@ -17,6 +17,8 @@ tags: [api, parfait, server-contract, notification]
 
 `[Feat/#125] 기기(FCM) 토큰 저장/삭제 API + device_token 스키마 (#126)`로 신설된 **여덟 번째 도메인**이고,
 `[Feat/#127] FCM 발송 인프라 + 3종 알림 트리거 연결 (#129)`로 **보내는 쪽이 붙었다.**
+`[Feat/#128] P-02·P-03 데일리 리마인드 배치 스케줄러 (#130)`가 **두 번째·세 번째 알림 종류**를 더해
+푸시가 **1종에서 3종**이 됐다(토핑 등록 · 오전 리마인드 · 저녁 리마인드).
 
 🔁 **이 문서가 2026-09-02에 "발송 인프라와 알림 트리거는 범위 밖"이라고 적은 서술은 폐기됐다.**
 서버는 이제 **실제로 푸시를 보낸다** — 토핑이 새로 배치되면 같은 그룹의 나머지 구성원에게 FCM 단건
@@ -101,13 +103,19 @@ tags: [api, parfait, server-contract, notification]
 ## 서버가 보내는 푸시 — 토핑 등록 알림
 
 `NotificationMessageFactory.toppingPlaced`가 문구와 `data` 스키마를 한 곳에서 조립하고,
-`FcmNotificationSender`가 Firebase Admin SDK로 **단건 발송**한다(멀티캐스트는 후속 스펙으로 미룬다고
-`NotificationSenderPort` KDoc이 적는다).
+`FcmNotificationSender`가 Firebase Admin SDK로 **단건 발송**한다.
+🔁 **"멀티캐스트는 후속 스펙으로 미룬다"는 서술은 폐기됐다** — `NotificationSenderPort.sendMulticast`가
+생겼고(`sendEachForMulticast`, 토큰 최대 500개) **리마인드 배치가 그것을 쓴다.** 토핑 등록 알림은
+그대로 단건 경로다.
 
-⚠️ **커밋 제목은 "3종 알림 트리거 연결"이라고 적지만, 코드에 연결된 트리거는 토핑 등록 하나다.**
-`NotificationMessageFactory`에 문구 조립 함수가 하나뿐이고, `ToppingPlacedNotifier`를 부르는 곳도
-`PlaceParfaitImageService` 한 곳이다(`main` 전체 참조 검색 기준). 캔버스 마감·그룹 초대 등 다른 알림은
-발송 코드가 없다 → [미결](#미결).
+🔁 **"코드에 연결된 트리거는 토핑 등록 하나"라고 적던 서술은 폐기됐다**(2026-09-04, `[Feat/#128]`).
+`NotificationMessageFactory`에 `dailyReminder`가 생겼고 배치 스케줄러가 그것을 부른다. 지금 트리거는
+**셋**이다 — 토핑 등록(이벤트 기반) · 오전 리마인드(`REMIND_AM`) · 저녁 리마인드(`REMIND_PM`).
+아래 [데일리 리마인드](#서버가-보내는-푸시--데일리-리마인드p-02p-03)가 뒤의 둘이다.
+**캔버스 마감·그룹 초대 등 나머지 알림은 여전히 발송 코드가 없다** → [미결](#미결).
+
+⚠️ **두 갈래의 구조가 다르다.** 토핑 등록은 Outbox 큐를 거쳐 단건 발송하고 재시도·중복 수신이 있지만,
+리마인드는 **Outbox를 쓰지 않고** 배치가 멀티캐스트로 한 번만 쏜다. 아래 두 절을 따로 읽어야 한다.
 
 ### 언제 보내는가
 
@@ -129,9 +137,16 @@ FCM `Message`에 **`notification` 블록과 `data` 블록이 함께** 실린다.
 
 | 자리 | 값 |
 |---|---|
-| `notification.title` | `{그룹명} 파르페에 체리 얹을 타이밍!` |
+| `notification.title` | `{그룹명} 파르페에 체리 하나 톡!` |
 | `notification.body` | `{작성자 그룹 닉네임}님이 새 토핑을 쌓았어요` |
 | `notification.body`(작성자 탈퇴 시) | `누군가 새 토핑을 쌓았어요` |
+
+🔁 **제목이 바뀌었다**(2026-09-04) — `{그룹명} 파르페에 체리 얹을 타이밍!` → `{그룹명} 파르페에 체리 하나 톡!`.
+**문구는 서버가 발송 시점에 조립하므로 앱 배포와 무관하게 즉시 바뀐다.**
+
+⚠️ **닉네임이 8자에서 잘린다**(2026-09-04 신설). `NICKNAME_DISPLAY_MAX = 8`이고 초과분은 앞 8자 + `...`로
+줄인다(`NotificationMessageFactory`의 `ellipsize`). **닉네임 상한은 15자**라([parfait-group.md](parfait-group.md))
+9자 이상인 닉네임은 알림에서 온전히 보이지 않는다 — 그룹명은 자르지 않는다.
 
 | `data` 키 | 값 | 비고 |
 |---|---|---|
@@ -195,17 +210,107 @@ Android 8 이상에서 같은 id의 알림 채널이 앱에 없으면 알림이 
 ⚠️ **TTL 6시간이 재시도 일정보다 짧다.** 마지막 두 단계(1시간·6시간)까지 밀린 알림은 FCM 쪽 만료와
 겹칠 수 있다. 서버 코드가 이 상호작용을 조정하지 않는다 → [미결](#미결).
 
-## 기기 토큰이 지워지는 세 경로
+## 서버가 보내는 푸시 — 데일리 리마인드(P-02·P-03)
+
+`[Feat/#128]`이 붙인 **두 번째 계약 축**이다. 이벤트가 아니라 **시각**이 트리거이고, 대상이 그룹이 아니라
+**서비스 전체 이용자**다.
+
+### 언제, 누구에게 보내는가
+
+| 항목 | 값 |
+|---|---|
+| 오전(P-02) | 매일 **10:00 KST**(`notification.reminder.morning-cron` 기본 `0 0 10 * * *`, zone `Asia/Seoul`) |
+| 저녁(P-03) | 매일 **20:00 KST**(`notification.reminder.evening-cron` 기본 `0 0 20 * * *`) |
+| 대상 | `left_at IS NULL`인 그룹 멤버십이 **1개 이상**이고 **기기 토큰을 가진** 이용자의 토큰 전부 |
+| 제외 | 그룹이 하나도 없는 이용자 · 토큰이 없는 이용자 |
+
+대상 조회는 `ReminderTargetQueryPort.findActiveGroupMemberDeviceTokens`이고, 구현
+(`DeviceTokenRepository.findActiveGroupMemberTokens`)이 **`device_token`을 기준으로 `parfait_group_member`를
+`EXISTS` 세미조인**한다. 그래서 **한 사람이 그룹 N개에 속해도 토큰은 한 번만 나온다** — 사용자당 알림 1건이다.
+
+⚠️ **"알림을 끄겠다"는 의사를 보는 자리가 없다.** 서버는 토큰 보유 여부만 본다. `ReminderTargetQueryPort`
+KDoc은 "권한 거부 이용자는 토큰이 없어 결과에 미포함(정책 E-02)"이라고 적지만, **앱은 권한과 무관하게
+토큰을 등록한다** — PR #450이 등록 호출을 권한 허용 직후에서 세션 축으로 옮긴 이유가 바로
+"토큰이 권한과 무관하게 발급되기 때문"이다(아래 [Android 매핑](#기기-토큰-등록-결선-2026-09-05-pr-450)).
+즉 **권한을 거부한 기기의 토큰도 대상에 든다** → [open-questions](../synthesis/open-questions.md) OQ-P-384.
+
+### 어떤 페이로드가 가는가
+
+토핑 알림과 마찬가지로 `notification` 블록과 `data` 블록이 함께 실린다. 봉투(Android 채널 id
+`parfait_default` · priority `HIGH` · APNs 헤더)는 **토핑 알림과 같은 헬퍼가 붙이므로 동일**하고,
+**TTL만 다르다.**
+
+| 자리 | `REMIND_AM`(오전) | `REMIND_PM`(저녁) |
+|---|---|---|
+| `notification.title` | `새벽 3시에 오늘의 새 캔버스가 열렸어요` | `새벽 3시에 오늘의 캔버스가 마감돼요` |
+| `notification.body` | `오늘의 첫 토핑을 쌓아볼까요?` | `오늘의 마지막 토핑을 올리러 가볼까요?` |
+| `data.type` | `REMIND_AM` | `REMIND_PM` |
+| `data.route` | `group` | `group` |
+| TTL | **1시간** | **1시간** |
+
+⚠️ **`data`에 `groupId`가 없다.** 이용자 단위 알림이라 특정 그룹을 가리키지 않고, 목적지는
+`route=group`(그룹 목록)이다. **토핑 알림의 `route=canvas` + `groupId`와 키 구성이 다르므로**, 소비 측은
+`groupId`·`date`가 항상 있다고 전제하면 안 된다.
+
+✅ **앱이 이 두 값을 이미 안다.** `PushNotificationType`에 `REMIND_AM`·`REMIND_PM`이,
+`PushNotificationRouteType`에 `GROUP("group")`이 있고 `PushDeepLinkParser`가 `route=group`을
+`PushDeepLink.GroupList`로 접는다 — **문자열이 양쪽에서 같다.** 앱이 먼저 구현하고 서버가 나중에 따라온
+드문 자리이고(OQ-P-361), 그 근거로 적힌 "FCM 페이로드 스펙 v1 §3.1"은 서버 `ReminderType` KDoc에도
+그대로 인용돼 있다 — **문서 실물은 여전히 어느 저장소에도 없다.**
+
+### 어떻게 보내는가 — 토핑 알림과 다른 점
+
+| 항목 | 토핑 등록 | 데일리 리마인드 |
+|---|---|---|
+| 큐 | `notification_outbox` 경유 | **안 쓴다** — 배치가 직접 발송 |
+| 발송 | 수신자별 단건(`send`) | **토큰 500개씩 멀티캐스트**(`sendMulticast`) |
+| 재시도 | 1분→5분→15분→1시간→6시간, 최대 5회 | **없다** — 그 회차로 끝 |
+| 중복 | at-least-once, 중복 수신 가능 | 잡이 하루 한 번만 도는 한 1회 |
+| 실패 기록 | `notification_outbox` 행(`last_error`) | **서버 로그뿐** |
+
+Outbox를 안 쓰는 근거를 커밋 메시지가 적는다 — 묶일 사용자 트랜잭션이 없고, 배치 잡 자체가 재시작
+모델을 가지며, **리마인드는 시의성 알림이라 다음 날 재발송이 무의미하다.**
+
+- **청킹**: `DailyReminderSender.CHUNK_SIZE = 500`(FCM `sendEachForMulticast` 상한), 청크 **사이**에만
+  `CHUNK_DELAY_MS = 200`ms 지연.
+- **개별 실패는 예외가 아니다** — `MulticastResult`에 담겨 돌아오고, 요청 전체 실패(인증·쿼터 등)만
+  `NotificationSendException`이다.
+- **죽은 토큰은 잡 끝에 일괄 삭제**한다(아래 [토큰이 지워지는 네 경로](#기기-토큰이-지워지는-네-경로)).
+- **잡 중복 실행 방지는 Spring Batch가 한다** — 스케줄러가 `JobParameters`에 `runDate` + `reminderType`을
+  실어 오전·저녁이 서로 다른 `JobInstance`가 되고, 같은 날 각각 1회만 돈다.
+
+⚠️ **P-03에는 하드컷이 있다.** `DailyReminderSender`가 **배치 시작 시각**이 `EVENING_CUTOFF = 21:00`
+이상이면 발송을 **통째로 건너뛴다**(정책 E-09 "21:00 이후 도착 금지"). 그런데 판정이 시작 시각 한 번뿐이라
+**청킹이 길어져 21:00을 넘겨 나가는 뒤쪽 청크는 막지 못한다**
+→ [open-questions](../synthesis/open-questions.md) OQ-P-385.
+
+### FCM 에러 코드 분류가 한곳으로 모였다
+
+`FcmErrorCodes`(`core/notification/domain`)가 두 집합을 든다 — 디스패처와 리마인드 배치가 같은 판정을 쓴다.
+
+| 집합 | 값 | 처리 |
+|---|---|---|
+| `DEAD_TOKEN` | `UNREGISTERED` · `INVALID_ARGUMENT` · `SENDER_ID_MISMATCH` | 토큰 즉시 삭제(정책 E-10/E-12) |
+| `RETRYABLE` | `UNAVAILABLE` · `INTERNAL` · `QUOTA_EXCEEDED` | 재시도(토핑 경로만 — 리마인드는 재시도가 없다) |
+
+**값 자체는 직전 판본과 같다** — `NotificationOutboxDispatcher.DEAD_TOKEN_CODES`와
+`FcmNotificationSender`에 흩어져 있던 것을 옮겨 모았을 뿐이다. `core`가 firebase-admin에 의존하지 않아
+**문자열로 들고 있으므로 오타를 컴파일러가 못 잡는다**고 KDoc이 적는다.
+
+## 기기 토큰이 지워지는 네 경로
 
 | 경로 | 지우는 범위 | 근거 |
 |---|---|---|
 | `POST /api/v1/auth/logout` | 그 **로그인 세션**이 등록한 행(`memberId` + `sessionId`) | `LogoutService`가 `TokenDeletePort.delete` 바로 뒤에서 `DeviceTokenDeletePort.delete` 호출 |
 | `DELETE /api/v1/users/me` | 그 **회원의 전 행**(`memberId`) | `MemberService.withdraw`의 `afterCommit`에서 `deleteAllByMemberId` 호출 |
-| **푸시 발송 실패(신설)** | **죽은 토큰 한 행**(`token`) | `NotificationOutboxDispatcher`가 `UNREGISTERED`·`INVALID_ARGUMENT`·`SENDER_ID_MISMATCH`를 받으면 `DeviceTokenDeletePort.deleteByToken` 호출 |
+| **푸시 발송 실패** | **죽은 토큰 한 행**(`token`) | `NotificationOutboxDispatcher`가 `FcmErrorCodes.DEAD_TOKEN`을 받으면 `DeviceTokenDeletePort.deleteByToken` 호출 |
+| **리마인드 배치(신설)** | **그 회차에서 죽은 토큰 전부**(`token IN (...)`) | `DailyReminderSender`가 `MulticastResult.deadTokens()`를 모아 잡 끝에 `deleteByTokenIn`으로 일괄 삭제(`DELETE_CHUNK = 5000`씩) |
 
 앞의 둘은 범위가 다른 것이 의도다 — 로그아웃은 한 세션만 끝내지만 탈퇴는 그 회원의 모든 세션을 정리한다.
-**세 번째는 클라이언트 요청과 무관하게 서버가 스스로 걷는 경로**다: 앱을 지웠거나 토큰이 회전돼 무효가
+**뒤의 둘은 클라이언트 요청과 무관하게 서버가 스스로 걷는 경로**다: 앱을 지웠거나 토큰이 회전돼 무효가
 된 기기를 발송 시도가 발견해 회수한다. 없는 토큰을 지워도 예외가 아니다(`deleteByToken`).
+**넷째는 셋째와 판정 기준이 같고**(`FcmErrorCodes.DEAD_TOKEN`) **범위만 다르다** — 리마인드는 전 이용자를
+한 회차에 훑으므로 **죽은 토큰이 가장 빨리 걷히는 경로**다. 빈 목록이면 쿼리를 아예 보내지 않는다.
 
 ⚠️ **세션이 없는 행은 로그아웃이 지우지 못한다.** `sessionId`는 널을 허용하고
 (`session_id` 컬럼이 nullable, 클레임 과도기 때문이다), 삭제 조건은 `memberId` **와** `sessionId`를
@@ -252,7 +357,9 @@ Android 8 이상에서 같은 id의 알림 채널이 앱에 없으면 알림이 
 | 항목 | 요구 | 근거 | 앱(2026-09-05, PR #446·#447) |
 |---|---|---|---|
 | 알림 채널 | id `parfait_default` 채널을 앱이 생성 | `FcmNotificationSender`의 `ANDROID_CHANNEL_ID` | ✅ `BaseApplication.createPushNotificationChannel` + `PUSH_NOTIFICATION_CHANNEL_ID` — **같은 문자열이다** |
-| `data` 파싱 | `type`·`route`·`groupId`·`date` 네 키, 값은 전부 문자열 | `NotificationMessageFactory` | ⚠️ **셋만 읽는다** — `PushDeepLinkIntent.kt`의 extras 키가 `type`·`route`·`groupId`이고 `date`는 어디서도 안 읽힌다 |
+| `data` 파싱 | **알림 종류마다 키 구성이 다르다** — 토핑은 `type`·`route`·`groupId`·`date` 넷, 리마인드는 `type`·`route` 둘. 값은 전부 문자열 | `NotificationMessageFactory` | ⚠️ **토핑은 셋만 읽는다** — `PushDeepLinkIntent.kt`의 extras 키가 `type`·`route`·`groupId`이고 `date`는 어디서도 안 읽힌다. 리마인드는 두 키가 그대로 맞는다 |
+| 알림 종류 | `type` 값 **세 개**를 구분 — `TOPPING` · `REMIND_AM` · `REMIND_PM` | `NotificationMessageFactory`·`ReminderType` | ✅ `PushNotificationType`에 셋 다 있다 — **문자열이 같다** |
+| 리마인드 딥링크 | `route=group`(그룹 목록). `groupId`가 **없다** | `NotificationMessageFactory.dailyReminder` | ✅ `PushNotificationRouteType.GROUP("group")` → `PushDeepLink.GroupList`, `groupId` 없이 접는다 |
 | 딥링크 | `route=canvas` + `groupId` + `date`로 캔버스에 도달 | 같은 곳 | ⚠️ `groupId`로만 간다 — `PushDeepLink.AddTopping` KDoc이 **"알림이 가리키던 날짜가 아니라 항상 그 그룹의 최신 캔버스"**라고 못 박는다 → OQ-P-359 |
 | 중복 내성 | 같은 알림을 두 번 받아도 부작용이 없어야 함 | at-least-once 보장 | ⚠️ 이동은 견딘다(`Channel(CONFLATED)`) 그러나 **표시는 안 견딘다** — 알림 id가 `message.messageId?.hashCode()`라 재시도로 온 같은 알림이 **알림 두 개**로 쌓인다 → OQ-P-359 |
 | 토큰 등록 | 앱 시작·`onNewToken`·권한 허용마다 재호출(실패는 다음 호출이 메움) | `DeviceTokenAdapter.save` 주석 | ✅ **부른다**(PR #450) — 자리는 **세션 축 넷**이다(로그인·가입·앱 진입의 성공 분기 + `onNewToken`). 권한 허용 직후는 **빼고** 세션 쪽으로 옮겼다 — 토큰이 권한과 무관하게 발급되기 때문이다. 실패는 3회 재시도(3초·6초) 뒤 다음 트리거에 맡긴다 |
@@ -383,12 +490,22 @@ base intent로 남아 되살릴 때 다시 오는 것은 `FLAG_ACTIVITY_LAUNCHED
 - 앱이 `date`를 버리고 항상 최신 캔버스로 열며, 중복 수신이 **알림 두 개**로 쌓인다 — 위
   [이 계약이 앱에 요구하는 것](#이-계약이-앱에-요구하는-것)의 ⚠️ 셋
   → [open-questions](../synthesis/open-questions.md) OQ-P-359
-- 앱이 서버에 없는 알림 둘(P-02·P-03 리마인드, `route=group`)을 먼저 구현했고 그 근거인
-  "FCM 페이로드 스펙 v1"이 **어느 저장소에도 없다** → [open-questions](../synthesis/open-questions.md) OQ-P-361
+- ~~앱이 서버에 없는 알림 둘(P-02·P-03 리마인드, `route=group`)을 먼저 구현했고~~ → ✅ **서버가 따라붙었고
+  `type`·`route` 문자열이 양쪽에서 같다**(2026-09-04). 다만 근거로 인용되는 **"FCM 페이로드 스펙 v1"은
+  여전히 어느 저장소에도 없다** — 이제 서버 `ReminderType` KDoc까지 그것을 인용한다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-361
 - 세션 없는(`session_id` 널) 행을 로그아웃이 못 지우는 구간을 서버가 닫을지, 앱이 재등록으로 덮을지
   → [open-questions](../synthesis/open-questions.md) OQ-P-342
-- 알림 종류가 토핑 등록 1종뿐이고(커밋 제목의 "3종"과 어긋난다), 수신 설정·권한 요청 시점도 없다
+- ~~알림 종류가 토핑 등록 1종뿐이고(커밋 제목의 "3종"과 어긋난다)~~ → ✅ **3종이 됐다**(2026-09-04,
+  `[Feat/#128]` — 토핑 등록 · `REMIND_AM` · `REMIND_PM`) — OQ-P-343의 그 갈래는 해소. **남은 것은
+  수신 설정이다** — 알림을 끄겠다는 의사를 담는 자리가 서버·앱 어디에도 없다
   → [open-questions](../synthesis/open-questions.md) OQ-P-343
+- 리마인드 대상 산출이 **알림 권한을 보지 않는다** — 서버 KDoc의 "권한 거부 이용자는 토큰이 없다"는
+  전제가 앱 동작(권한과 무관한 세션 축 등록)과 어긋난다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-384
+- P-03의 21:00 하드컷이 **배치 시작 시각만** 보므로 뒤쪽 청크의 도착 시각은 보장되지 않는다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-385
+- 리마인드는 Outbox를 안 써서 **실패 기록이 서버 로그뿐**이다 — 몇 명에게 갔는지 사후에 물을 자리가 없다
 - 문구·`data` 스키마·채널 id·딥링크 목적지가 **서버 코드에만 있고 정책 근거가 없다** — 위키 정책 소스에
   알림 항목 자체가 없다 → [open-questions](../synthesis/open-questions.md) OQ-P-351
 - 앱이 채널 `parfait_default`를 만들지 않으면 발송이 성공해도 표시되지 않는데, 그 합의를 확인할 수단이
