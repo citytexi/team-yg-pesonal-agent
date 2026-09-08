@@ -10,7 +10,9 @@ related_code:
   - ToppingEditEffect
   - ToppingEditRoute
   - ToppingEditMask#buildCutoutBitmap
-  - ToppingEditMask#trimTransparentBounds
+  - ToppingEditMask#measureSubject
+  - ToppingEditMask#trimTo
+  - SubjectCoverage
   - SegmentationCandidateFilter#filterCandidates
   - SegmentationCandidateFilter#coverageFloorPixels
   - ImageSegmentationRepositoryImpl#postProcess
@@ -152,6 +154,13 @@ internal fun measureSubject(pixels: IntArray, width: Int, height: Int): SubjectM
 3. 차단 effect를 던진다.
 4. 함수를 빠져나온다.
 
+**테두리만 고치는 진입(`borderOnly`)은 판정에서 뺀다.** 이 문이 막으려는 것은 사용자가 방금
+비운 알맹이인데, 그 진입에는 영역 탭이 없어 알맹이를 비울 수단이 없다. 반대로 판정을 걸면
+탈출구가 사라진다 — 캔버스에 놓인 토핑을 여는 경로라 로컬 알맹이가 없으면 서버에서 받은
+그림이 원본 자리에 들어오고, 그 커버리지가 하한에 못 미치면 되돌리기로 늘릴 수 없어 두른
+테두리를 잃고 화면을 벗어나는 것 말고 방법이 없다. 하한이 없는 플랫폼이 올렸거나 하한 도입
+이전에 저장된 토핑이 그 경우에 든다.
+
 저장 뒤에 판정하면 쓸모없는 파일 두 개가 캐시에 남고, 지우는 코드를 따로 들여야 한다.
 
 `isSaving` 복구가 빠지면 완료 버튼이 영구히 잠긴 화면이 된다. 이 상태는 사용자가 뒤로
@@ -188,7 +197,9 @@ Robolectric이 없다. 아래는 실기기로 확인한다.
 2. 그 상태에서 되돌리기 → 획이 살아나고 완료가 정상 동작한다.
 3. 아주 작은 조각만 남기고 완료 → 하한 미만이면 같은 Toast가 뜬다.
 4. 정상 편집 후 완료 → 확인 화면으로 넘어가고 업로드까지 성립한다.
-5. 테두리만 고치는 진입(`borderOnly`) → 영역을 건드릴 수 없으므로 차단이 걸리지 않는다.
+5. 테두리만 고치는 진입(`borderOnly`) → 판정을 건너뛰므로 차단이 걸리지 않는다. **로컬 알맹이가
+   없는 토핑**(서버에서 받아 여는 경우)으로 확인해야 의미가 있다 — 방금 편집한 토핑은 어차피
+   하한을 넘으므로 이 갈래가 드러나지 않는다.
 
 ## 주의 / 열린 질문
 
@@ -199,3 +210,5 @@ Robolectric이 없다. 아래는 실기기로 확인한다.
   한쪽에서만 올라가는 토핑이 생긴다. 기획이 확정할 때 함께 정한다.
 - **ViewModel 글루의 테스트 공백.** 차단 분기·`isSaving` 복구·effect는 자동 테스트가 없다.
   Robolectric 도입은 이 스펙의 범위 밖이고, 필요해지면 별도로 판단한다.
+- **업로드 다운스케일과의 상호작용.** 업로드 경로에 축소가 들어가면 서버에 저장되는 알맹이의
+  커버리지가 그만큼 줄어든다. `borderOnly`를 판정에서 뺀 결정이 그 영향을 받는 자리다.
