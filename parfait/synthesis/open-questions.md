@@ -5,7 +5,7 @@ category: meta
 status: living
 platforms: android
 verified: 2026-09-08
-related_spec: push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field
+related_spec: topping-edit-empty-subject-guard, push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field
 related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029, ADR-0030
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -7239,4 +7239,18 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 청크 루프 안에서 컷오프를 다시 보고 남은 청크를 버리면 정확해진다. 그러려면 "몇 명이
   못 받았다" 를 남길 자리가 필요한데 리마인드는 Outbox 를 안 써서 **로그뿐이다**([api/notification.md](../api/notification.md)).
 
-<!-- oq-next: 386 -->
+### [2026-09-08] 빈 알맹이 차단의 하한·문구가 기획에 없다
+
+- **ID**: OQ-P-386
+- **출처**: `specs/2026-09-08-topping-edit-empty-subject-guard.md`. 토핑 편집에서 영역을 전부 지우고
+  완료해도 완전히 투명한 이미지가 서버까지 올라가는 구멍을 막으면서, 판정 하한과 안내 문구를
+  **구현이 정했다**. 하한은 자동 누끼 경로의 커버리지 하한(`SubjectCoverage`, 캔버스 면적의 5/10000·
+  최소 2,500px)을 그대로 재사용했고, 문구는 `topping_edit_subject_too_small` 이다.
+- **항목**: ① "빈 토핑은 올릴 수 없다"는 규칙 자체가 기획 산출물 어디에도 없다. ② 하한을 자동 경로와
+  같게 둘지, 수동 편집만 더 느슨하게 할지가 정해진 바 없다 — 지금은 티끌만 남긴 의도적 편집도 함께
+  막힌다. ③ 문구가 디자인·기획 검수를 거치지 않았다.
+- **상태**: 미해결 (구현은 위 스펙대로 선행한다)
+- **해소 메모**: 같은 서버에 같은 기능으로 올리므로 **iOS와 하한이 갈리면 한쪽에서만 올라가는 토핑이
+  생긴다.** 기획이 확정할 때 플랫폼 공통값으로 정하고, 정책이 서면 위키 쪽 정책 문서에도 자리를 만든다.
+
+<!-- oq-next: 387 -->
