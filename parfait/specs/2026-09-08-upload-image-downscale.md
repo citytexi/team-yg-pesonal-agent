@@ -17,6 +17,11 @@ related_code:
   - ToppingEditViewModel
   - ToppingOutlineCache
   - PresignedUploadDataSourceImpl#put
+  - UploadImagePreprocessor
+  - UploadImagePreprocessorImpl
+  - UploadImageScale#planUploadImage
+  - ExifOrientation#exifOrientationToDegrees
+  - ContentResolver#rotatedToUpright
 related_adr: ADR-0017
 related_spec: segmentation-preprocessing
 related_architecture:
@@ -96,7 +101,11 @@ interface UploadImagePreprocessor {
     suspend fun prepare(file: File, imageType: ImageType): Result<PreparedUploadImage>
 }
 
-data class PreparedUploadImage(val file: File, val format: UploadImageFormat)
+data class PreparedUploadImage(
+    val file: File,
+    val format: UploadImageFormat,
+    val isTemporary: Boolean,
+)
 ```
 
 **소스가 아니라 업로드 경계에 두는 이유**는 로컬 사본의 용도가 업로드 하나가 아니기 때문이다.
@@ -147,22 +156,65 @@ data class PreparedUploadImage(val file: File, val format: UploadImageFormat)
 
 JPEG quality는 **90**으로 둔다. iOS의 `jpegCompressionQuality` 0.9와 같은 값이다.
 
+### EXIF 회전
+
+재인코딩 경로는 **원본의 EXIF orientation을 픽셀에 굽고, 출력에는 EXIF를 쓰지 않는다.**
+
+이 조항이 없으면 조용한 회귀가 난다. 업로드는 지금까지 `copyToCache`가 원본 바이트를 복사해
+태그가 살아 있었고 뷰어(Coil·iOS)가 그 태그로 사진을 세웠다. 그런데 `BitmapFactory.decodeFile`은
+EXIF를 결과에 남기지도, 픽셀에 적용하지도 않는다. 그대로 두면 상한을 넘는 갤러리 JPEG —
+세로로 찍은 폰 사진 대부분 — 이 눕고, **통과 갈래는 태그를 보존하므로 같은 사진이 크기에 따라
+회전이 갈린다.**
+
+픽셀에 굽는 방식은 이 저장소의 기존 선례를 따른다(`core/util/android`의 `rotatedToUpright`).
+각도 판독도 그 모듈의 `exifOrientationToDegrees`를 재사용하므로 **미러링(`FLIP_*`·`TRANSPOSE`·
+`TRANSVERSE`)을 0도로 두는 규약**이 그대로 적용된다.
+
+**회전은 축소 뒤에 적용한다.** 순서가 반대면 원본 해상도 판 둘이 동시에 살아난다 —
+`Bitmap.createBitmap(bitmap, ..., matrix, true)`가 회전본을 다 할당한 뒤에야 원본을 놓기 때문이다.
+축소본을 돌리면 90·270도의 뒤집힌 치수가 그냥 나오므로 치수를 따로 맞바꿀 필요도 없다.
+90도 배수 회전은 픽셀 치환이라 화질 손실이 없다.
+
+⚠️ **ICC 프로파일은 재인코딩에서 소실된다.** Display P3 사진 배경이 sRGB로 앉으면서 채도가 변할
+수 있다. 이 라운드는 그 영향을 측정하지 않았다(아래 주의 절).
+
 ### 메모리
 
-원본을 통째로 디코드하면 축소하려다 OOM이 난다. `BitmapFactory.Options.inJustDecodeBounds`로
-치수를 먼저 읽고 `inSampleSize`(2의 거듭제곱)로 줄여 디코드한 뒤, `createScaledBitmap`으로 목표
-치수에 정확히 맞춘다. 중간 비트맵은 `recycle`한다.
+⚠️ **비교 기준을 바로잡는다 — 변경 전 `upload`는 디코드를 아예 하지 않았다.** 원본 바이트를 그대로
+PUT했다. 그러므로 이 스펙이 넣는 디코드는 "덜 쓰는 경로"가 아니라 **없던 메모리 부담을 새로
+만드는 것**이다. 그 부담을 감수하는 것이 아니라 없애야 한다.
+
+`inJustDecodeBounds`로 치수를 먼저 읽고, `inSampleSize`(2의 거듭제곱)에 더해
+`inDensity`/`inTargetDensity`/`inScaled`로 **디코드 단계에서 목표 치수까지 내려받는다.** 전 해상도
+판이 아예 생기지 않는다. `createScaledBitmap`은 반올림 오차를 정확히 맞추는 역할로만 남는다.
+
+`inSampleSize`만으로는 부족하다는 것이 이 설계의 근거다. 2의 거듭제곱은 목표보다 작아지면 안
+되므로, 4032x3024 배경(상한 2048)은 `4032/2 = 2016 < 2048`이라 **sampleSize가 1에 걸려 48.7MB를
+통째로 올린다.** 노출 구간은 `BACKGROUND` 긴 변 2049~4095이고, 하필 카메라 원본이 그 안에 있다.
+`NUKKI`는 상한이 1500이라 항상 sampleSize 2 이상이 걸려 이 문제가 없다.
+
+밀도 스케일링은 반올림이 끼므로 **결과가 목표보다 작아지지 않는 것을 보장해야 한다.** 작아지면
+뒤에서 확대하게 되고, 그것은 이 스펙의 핵심 불변식 위반이다. 중간 비트맵은 `recycle`한다.
 
 ### 임시 파일
 
-전처리가 새 파일을 만들었으면 업로드의 성공·실패와 무관하게 지운다. 원본을 그대로 통과시킨
-경우에는 아무것도 지우지 않는다 — 그 파일의 수명은 부른 쪽이 쥐고 있다.
+전처리가 새 파일을 만들었으면 업로드의 성공·실패와 무관하게 지운다(`PreparedUploadImage`의
+`isTemporary`가 그 책임을 나른다). 원본을 그대로 통과시킨 경우에는 아무것도 지우지 않는다 —
+그 파일의 수명은 부른 쪽이 쥐고 있다.
+
+**축소본은 언제나 `cacheDir/upload`에 쓴다.** 입력 파일의 디렉터리에 나란히 두면 안 된다 —
+최근 사용 알맹이 재사용 경로의 누끼 파일은 `filesDir/recent_images`에 있어서 고아가 **캐시가
+아니라 영구 내부저장소**에 남고, 세그멘테이션 캐시에 두면 `clearSegmentationCache()`가 전송 도중
+그 파일을 지울 수 있다.
 
 ### 실패 처리
 
-전처리가 실패하면 **업로드 전체를 실패시킨다.** 원본으로 폴백하지 않는다. 축소 경로는 원본
-디코드보다 메모리를 적게 쓰므로 실패한 자리에서 원본을 올리는 것은 더 큰 메모리를 요구하는
-선택이고, 배경 JPEG 고정은 정책이라 조용히 어기면 안 된다.
+전처리가 실패하면 **업로드 전체를 실패시킨다.** 원본으로 폴백하지 않는다. 배경 JPEG 고정은
+정책이라 조용히 어기면 안 되고, 실패가 드러나지 않으면 고칠 수도 없다.
+
+⚠️ 초판은 여기에 "축소 경로가 원본 디코드보다 메모리를 적게 쓰므로 폴백이 더 위험하다"고 적었다.
+**그 비교는 틀렸다** — 변경 전 경로에는 디코드가 없었다. 「메모리」 절이 그 사실 위에 다시 섰다.
+폴백하지 않는 결정 자체는 유지하되 근거는 위 두 줄이다.
 
 ### 로깅
 
@@ -180,7 +232,12 @@ JPEG quality는 **90**으로 둔다. iOS의 `jpegCompressionQuality` 0.9와 같�
 - **수동** — 실제 디코드·인코딩은 실기기에서 눈으로 확인한다. `data` 모듈에 계측 테스트 소스셋이
   없고 프로젝트에 Robolectric도 없어, 새 하니스를 들이지 않기로 확정했다.
   확인 항목: 큰 사진 누끼 업로드 · 상한 이하 누끼(무동작) · JPEG 배경 · PNG 스크린샷 배경 ·
-  투명 PNG 배경(흰색 합성) · 업로드본 재편집(2회차 무동작) · 캔버스에서 토핑 최대 확대 시 화질.
+  투명 PNG 배경(흰색 합성) · 업로드본 재편집(2회차 무동작) · 캔버스에서 토핑 최대 확대 시 화질 ·
+  **EXIF 90/270 세로 사진 배경**(상한 초과본과 이하본을 둘 다 올려 두 결과의 방향이 같은지 대조 —
+  갈리면 회전 방향이 반대다) · **저사양 기기에서 긴 변 2049~4095 배경**(없던 디코드가 생긴 구간) ·
+  **광색역(Display P3) 사진 배경**(ICC 소실로 채도가 변하는지) · **서버가 안 받는 확장자**
+  (`.gif`·`.webp`를 골랐을 때 서버를 부르기 전에 끊기는지 — 판정 자리가 전처리기로 옮겨져
+  자동 테스트가 없다).
 
 ## 주의 / 열린 질문
 
@@ -194,4 +251,12 @@ JPEG quality는 **90**으로 둔다. iOS의 `jpegCompressionQuality` 0.9와 같�
   나오고(검증 절), 기대에 못 미치면 값이 아니라 포맷(WebP)이 다음 레버다.
 - **두 플랫폼이 같이 낮추는 것은 별건이다.** 소비 측 상계는 캔버스 긴 변이라 2048은 그보다
   크다. 값을 낮추려면 iOS와 함께 움직여야 하고, 이 스펙은 그 협의를 하지 않는다.
+- **없던 디코드가 생겼다.** 변경 전 업로드는 바이트 복사뿐이었다. 「메모리」 절이 전 해상도 판을
+  없앴지만, 그래도 이 경로는 이제 비트맵을 만든다. 저사양 기기에서 긴 변 2049~4095 배경이
+  실제로 견디는지는 수동 확인이 처음 판정한다.
+- **ICC 프로파일 소실을 측정하지 않았다.** 광색역 사진 배경이 눈에 띄게 변하면 별건으로 다룬다.
+- **미러링 EXIF는 보정하지 않는다.** `TRANSPOSE`·`TRANSVERSE`는 90도 성분을 품는데
+  `exifOrientationToDegrees`가 0으로 매핑하므로 그 사진만 재인코딩 갈래와 통과 갈래의 방향이
+  갈린다. 미러링을 0도로 두는 것은 [segmentation-preprocessing](2026-08-23-segmentation-preprocessing.md)이
+  정한 저장소 규약이라 이 스펙이 뒤집지 않는다.
 - **기존 업로드본은 그대로다.** 이미 올라간 큰 파일을 줄이는 마이그레이션은 없다.
