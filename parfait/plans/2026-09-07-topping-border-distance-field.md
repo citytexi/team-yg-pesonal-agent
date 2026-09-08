@@ -50,6 +50,8 @@ tags: [plan, parfait, topping, border, rendering, hit-test]
   Task 8의 문서 갱신만 이 문서 저장소에서 한다.
 - **굵기 규칙을 바꾸지 않는다.** `MIN_BORDER_WIDTH_DP = 2f`, `MAX_BORDER_WIDTH_DP = 50f`,
   화면 dp 고정. 이 값들은 읽기만 한다.
+  > **사후 정정(2026-09-08)** — 이 계획 밖의 후속 라운드가 범위를 2~30dp 로 좁히고
+  > `ToppingBorder.WIDTH_RANGE_DP` 한 곳에 뒀다. 아래 본문의 `50f` 는 계획 당시 값이다.
 - **기존 파일을 전문으로 덮어쓰지 않는다.** 추가·치환으로 고친다. 계획이 코드 블록을 통째로 주는
   자리(Task 1·2·5의 신규 파일, Task 3 Step 1과 Task 4 Step 1의 명시적 치환)는 예외다.
 - **주석 규약**(`parfait/CLAUDE.md`):

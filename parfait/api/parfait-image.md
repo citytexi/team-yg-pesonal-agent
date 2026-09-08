@@ -625,6 +625,11 @@ id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `C
 
 - 좌표·`scale`·`rotation`·`borderWidth`에 서버 검증이 없다 — 범위를 서버가 강제할지, 앱 책임으로 둘지
   → [open-questions](../synthesis/open-questions.md)
+  > ⚠️ **`borderWidth` 는 Android 가 매핑에서 임시로 가둔다**(2026-09-08, 브랜치
+  > `refactor/#337-topping-border-optimization`, develop 미머지) — `ToppingBorder.solidClamped`
+  > 가 받은 값을 `WIDTH_RANGE_DP`(2.0..30.0)에 넣는다. 상한을 내리기 전에 50 으로 저장된 행이
+  > 이미 있어 슬라이더만 좁히면 그 행이 계속 굵게 그려지기 때문이고, **서버나 정책이 범위를
+  > 정하면 걷을 자리다** → 같은 문서 OQ-P-381.
   > ⚠️ **앱 쪽 상한도 하나 사라졌다**(2026-08-23, PR #335) — C-301 편집 탭의 `TOPPING_MAX_SCALE`이
   > 삭제돼 배율을 막는 자리가 양쪽 어디에도 없다 → 같은 문서 OQ-P-271.
   > ⚠️ **그 값이 하루 만에 요청 값이 됐다**(2026-08-23, PR #336) — 확인 버튼이 `scale`·`rotation`을
