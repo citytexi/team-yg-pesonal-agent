@@ -118,6 +118,16 @@ tags: [spec, parfait, canvas, topping, c-106, ui]
 기대는 셈이라 어긋나기 쉽다. 같은 이유로 `Image`는 자기 크기를 `intrinsicSize`로 다시 정하지 못하게
 바깥 `Box`가 크기를 고정하고 자신은 채우기만 한다.
 
+> ⚠️ **as-built 갱신(2026-09-08, PR #465 develop 머지)** — **같은 값을 넘기는 것만으로는 부족했다.**
+> 이미지와 스트로크는 좌상단을 직접 계산해 `offset` 으로 넘기고 모서리 버튼만 `centeredAt` 으로
+> 놓았는데, 토핑을 캔버스보다 크게 키우면 **셋이 같은 `center`·`sizeAfterScale` 을 보는데도 버튼만
+> 바깥으로 갔다.** `requiredSize` 가 부모 제약을 무시하는 것은 자기 자식을 잴 때뿐이고, 그 노드가
+> 부모에게 보고하는 겉크기는 잘린다. Compose 는 그 잘린 겉크기 안에 실제 내용을 가운데 정렬하므로
+> (`Placeable.apparentToRealOffset`) 좌상단을 직접 계산한 쪽만 **넘친 양의 절반**만큼 밀렸다.
+> 셋 다 `Modifier.centeredAt` 으로 놓는 방식을 통일했다. 계약은 `core:util:android` 계측 테스트
+> `ModifierCenteredAtTest` 가 두 방식을 나란히 재서 고정한다(밀리는 쪽도 함께 남겼다).
+> 스트로크는 C-301 배경 편집 화면도 공유하므로 거기서도 함께 고쳐졌다.
+
 세 겹은 클리핑 규칙이 갈린다:
 
 | 겹 | 클리핑 |

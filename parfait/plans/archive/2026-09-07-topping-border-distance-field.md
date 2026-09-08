@@ -1,21 +1,24 @@
 ---
 id: topping-border-distance-field
 title: 토핑 테두리 거리장 렌더링 통일
-status: draft
+status: done
 type: work-order
 created: 2026-09-07
-updated: 2026-09-07
+updated: 2026-09-08
 platforms: android
 owner: Parfait 팀
 related_adr: ADR-0030, ADR-0025
 related_spec: topping-border-distance-field
 related_code:
-  - ToppingBorderOutline.kt#ToppingOutlineDistanceField
+  - ToppingOutline.kt#ToppingOutline
+  - ToppingOutlineSpec.kt#ToppingOutlineSpec
+  - ToppingOutlineBitmap.kt#toBorderAlphaBitmap
+  - ToppingOutlineCache.kt#ToppingOutlineCache
+  - ToppingBorderPlateCache.kt#ToppingBorderPlateCache
   - YGToppingCutoutImage.kt#YGToppingCutoutImage
-  - ToppingAlphaMaskCache.kt#loadToppingAlphaMask
   - ToppingHitTarget.kt#ToppingHitTarget
   - FloatArrayExtension.kt#fillWithSquaredDistance
-archived_reason:
+archived_reason: 8 Task 전량 수행·develop 머지(2026-09-08, PR #464 `23675cc1f`)
 tags: [plan, parfait, topping, border, rendering, hit-test]
 ---
 
@@ -34,13 +37,29 @@ tags: [plan, parfait, topping, border, rendering, hit-test]
 
 **Tech Stack:** Kotlin, Jetpack Compose, Coil 3, `kotlin.test` 유닛 테스트, Gradle 컨벤션 플러그인.
 
-**Spec:** [`parfait/specs/2026-09-07-topping-border-distance-field.md`](../specs/2026-09-07-topping-border-distance-field.md)
+**Spec:** [`parfait/specs/archive/2026-09-07-topping-border-distance-field.md`](../../specs/archive/2026-09-07-topping-border-distance-field.md)
 
 > 📌 **이 계획은 서브에이전트 검수 3회(코드 대조·Task 순서·알고리즘)를 반영한 2판이다.**
 > 초판의 치명 결함 일곱을 고쳤다 — 판 좌표 매핑이 실루엣을 여백까지 늘이던 것, 양자화한 상자를
 > 기하로 쓰던 것, 판 밖 좌표 클램프로 여백이 통째로 칠해지고 판정이 부풀던 것, 컴파일이 깨진
 > 모듈에서 유닛 테스트를 돌리라던 것, `ToppingAlphaMaskTest.kt` 삭제 누락, `kotlin.math.min`
 > import 누락, 회귀 테스트가 스탬프 방식에서도 통과하던 것이다.
+
+> ✅ **완료·develop 머지(2026-09-08, PR #464 `23675cc1f`).** 8 Task를 전량 수행했고 머지 트리가
+> 브랜치 팁과 같다. **계획과 갈린 자리는 넷이다.**
+> ① **값 타입과 상수가 `outline/` 밖으로 나갔다** — 계획은 `ToppingOutline.kt` 한 파일이
+> `ToppingBorderBand`·`ToppingBorderTarget`·`OUTLINE_ALPHA_THRESHOLD` 를 함께 내놓게 했는데,
+> 머지본은 셋을 `core:util:jvm` 의 `model/` 로 옮기고 담기 규격을 `ToppingOutlineSpec`
+> (알파 문턱·거리 담기 배수·상한·가장자리 물림) 한 곳에 모았다. 판을 만드는 쪽과 읽는 쪽이 같은
+> 값을 봐야 거리가 어긋나지 않기 때문이다.
+> ② **띠 판 캐시가 새로 생겼다** — Task 4가 예정에 없던 `ToppingBorderPlateCache`
+> (`core:designsystem`, 전역 LRU 32칸)를 낳았다. 컴포저블이 다시 만들어질 때 판까지 다시 만들면
+> 그동안 테두리를 안 그려 깜빡였다. 판을 다시 쓸지는 `ToppingBorderPlate.fitsSubject` 가 배율로
+> 판정한다.
+> ③ **지연 재생성 갈래가 통째로 사라졌다** — Task 4의 `BORDER_REBUILD_DELAY_MS` 와 Task 8 Step 3이
+> 함께 무효가 됐다(위 Task 8 각주).
+> ④ **굵기 범위가 2~30dp 로 좁혀지고 `domain` 한 곳으로 모였다** — 아래 Global Constraints의
+> 사후 정정과 같은 자리다.
 
 ## Global Constraints
 
@@ -117,7 +136,7 @@ tags: [plan, parfait, topping, border, rendering, hit-test]
 2. **판 밖 좌표를 가장자리 값으로 고정하지 않는다.** 누끼는 보통 트림되어 실루엣이 판 변에 닿으므로,
    고정하면 여백이 통째로 거리 0으로 답해 칠해지고 판정도 사각형 밖으로 부푼다.
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 `core/util/jvm/src/test/kotlin/com/teamyg/parfait/core/util/jvm/outline/ToppingOutlineTest.kt`:
 
@@ -327,7 +346,7 @@ class ToppingOutlineTest {
 }
 ```
 
-- [ ] **Step 2: 테스트를 돌려 실패를 확인한다**
+- [x] **Step 2: 테스트를 돌려 실패를 확인한다**
 
 ```bash
 ./gradlew :core:util:jvm:test --tests "com.teamyg.parfait.core.util.jvm.outline.ToppingOutlineTest"
@@ -335,7 +354,7 @@ class ToppingOutlineTest {
 
 Expected: 컴파일 실패 — `Unresolved reference: outline`.
 
-- [ ] **Step 3: 구현한다**
+- [x] **Step 3: 구현한다**
 
 `core/util/jvm/src/main/kotlin/com/teamyg/parfait/core/util/jvm/outline/ToppingOutline.kt`:
 
@@ -587,7 +606,7 @@ private fun lerp(
 비공개 접근 제한(`NON_PUBLIC_CALL_FROM_PUBLIC_INLINE`)은 **public API인 inline 함수**에만 걸린다.
 `@PublishedApi`를 붙이지 마라 — 이유 없이 모듈 API가 넓어진다.
 
-- [ ] **Step 4: 테스트를 돌려 통과를 확인한다**
+- [x] **Step 4: 테스트를 돌려 통과를 확인한다**
 
 ```bash
 ./gradlew :core:util:jvm:test --tests "com.teamyg.parfait.core.util.jvm.outline.ToppingOutlineTest"
@@ -595,7 +614,7 @@ private fun lerp(
 
 Expected: 9건 PASS.
 
-- [ ] **Step 5: 모듈 전체 유닛이 여전히 초록인지 본다**
+- [x] **Step 5: 모듈 전체 유닛이 여전히 초록인지 본다**
 
 ```bash
 ./gradlew :core:util:jvm:test
@@ -621,7 +640,7 @@ Expected: 기존 테스트 포함 전부 PASS.
 ⚠️ **이 Task에는 자동 테스트가 없다.** `Bitmap`은 Android 런타임 타입이고 이 모듈에 Robolectric이
 없다. 검증은 컴파일과 Task 4의 실기기 게이트다.
 
-- [ ] **Step 1: 구현한다**
+- [x] **Step 1: 구현한다**
 
 ```kotlin
 package com.teamyg.parfait.core.util.android.outline
@@ -683,7 +702,7 @@ fun ToppingOutline.toBorderArgbBitmap(
 }
 ```
 
-- [ ] **Step 2: 컴파일을 확인한다**
+- [x] **Step 2: 컴파일을 확인한다**
 
 ```bash
 ./gradlew :core:util:android:compileDebugKotlin
@@ -708,7 +727,7 @@ Expected: BUILD SUCCESSFUL.
 - Produces: `internal fun List<ToppingBorderLayer>.toBorderBands(pxPerDp: Float): List<ToppingBorderBand>`,
   `internal const val MAX_BORDER_WIDTH_DP`
 
-- [ ] **Step 1: `ToppingBorderOutline.kt`를 `toBorderBands`만 남기고 비운다**
+- [x] **Step 1: `ToppingBorderOutline.kt`를 `toBorderBands`만 남기고 비운다**
 
 파일 전체를 아래로 치환한다. `ToppingOutlineDistanceField`·`toOutlineDistanceField`·
 `ToppingBorderBand`·상수 넷이 사라진다 — 전부 `core:util:{jvm,android}`로 갔다.
@@ -735,7 +754,7 @@ internal fun List<ToppingBorderLayer>.toBorderBands(pxPerDp: Float): List<Toppin
 }
 ```
 
-- [ ] **Step 2: `ToppingEditViewModel.kt`의 굵기 상한을 모듈 안에서 읽을 수 있게 연다**
+- [x] **Step 2: `ToppingEditViewModel.kt`의 굵기 상한을 모듈 안에서 읽을 수 있게 연다**
 
 `private const val MAX_BORDER_WIDTH_DP = 50f` 를 아래로 치환한다. 값은 바뀌지 않는다.
 
@@ -744,7 +763,7 @@ internal fun List<ToppingBorderLayer>.toBorderBands(pxPerDp: Float): List<Toppin
 internal const val MAX_BORDER_WIDTH_DP = 50f
 ```
 
-- [ ] **Step 3: `ToppingBorderEditScreen.kt`가 새 코어를 쓰고 여백을 상한에서 파생시킨다**
+- [x] **Step 3: `ToppingBorderEditScreen.kt`가 새 코어를 쓰고 여백을 상한에서 파생시킨다**
 
 네 자리를 고친다.
 
@@ -811,7 +830,7 @@ current.outline
 ⚠️ `padded`의 긴 변이 `PREVIEW_FIELD_LONG_SIDE`를 넘으면 `toToppingOutline`이 판을 줄인다. 그래도
 위 대응은 옳다 — `subject*`는 **목표 좌표계**의 값이고 판이 줄어든 것은 `outline.width`가 흡수한다.
 
-- [ ] **Step 4: 기존 유닛과 컴파일을 확인한다**
+- [x] **Step 4: 기존 유닛과 컴파일을 확인한다**
 
 ```bash
 ./gradlew :feature:segmentation:impl:testDebugUnitTest
@@ -819,7 +838,7 @@ current.outline
 
 Expected: 기존 테스트 전부 PASS.
 
-- [ ] **Step 5: 사람이 확인한다 — 편집 화면이 그대로다**
+- [x] **Step 5: 사람이 확인한다 — 편집 화면이 그대로다**
 
 앱을 띄워 사진 → 누끼 → 테두리 탭에서 색을 고르고 슬라이더를 끝까지 민다.
 **이 Task는 겉보기 동작을 바꾸지 않는다.** 이전과 같은 모양이 나와야 하고, 가장 굵은 테두리가
@@ -847,7 +866,7 @@ Expected: 기존 테스트 전부 PASS.
 3. **띠 판이 상자 밖으로 나간다는 사실을 계약으로 적는다.** 초판은 이것을 근거로 배경 편집의
    인셋 우회를 걷으라고 했는데 정반대다.
 
-- [ ] **Step 1: 컴포넌트를 다시 쓴다**
+- [x] **Step 1: 컴포넌트를 다시 쓴다**
 
 `YGToppingCutoutImage.kt`를 아래로 치환한다.
 
@@ -1033,7 +1052,7 @@ private fun YGToppingCutoutImagePreview() = PreviewBox {
 ⚠️ `produceState`는 키가 바뀌어도 옛 값을 지우지 않는다. 크기를 바꾸는 동안에는 **직전 크기 기준의
 띠가 잠깐 그대로 그려진다.** 지우는 편으로 바꾸면 그동안 테두리가 사라져 깜빡이므로 이쪽이 낫다.
 
-- [ ] **Step 2: 컴파일과 기존 유닛을 확인한다**
+- [x] **Step 2: 컴파일과 기존 유닛을 확인한다**
 
 호출부 넷은 `outline`에 기본값이 있어 **한 글자도 고치지 않는다.** 이 시점에 네 화면은 테두리
 없이 알맹이만 그린다.
@@ -1046,7 +1065,7 @@ private fun YGToppingCutoutImagePreview() = PreviewBox {
 
 Expected: BUILD SUCCESSFUL, 기존 테스트 전부 PASS.
 
-- [ ] **Step 3: ktlint를 돌린다**
+- [x] **Step 3: ktlint를 돌린다**
 
 ```bash
 ./gradlew :core:designsystem:ktlintCheck
@@ -1054,7 +1073,7 @@ Expected: BUILD SUCCESSFUL, 기존 테스트 전부 PASS.
 
 Expected: BUILD SUCCESSFUL. 미사용 import가 남아 있으면 여기서 잡힌다.
 
-- [ ] **Step 4: 게이트 — `ALPHA_8` + tint 가 실기기에서 먹는지 사람이 확인한다**
+- [x] **Step 4: 게이트 — `ALPHA_8` + tint 가 실기기에서 먹는지 사람이 확인한다**
 
 프리뷰를 임시로 아래처럼 바꿔 띄운다. **확인 뒤 되돌린다.**
 
@@ -1123,7 +1142,7 @@ outline.toBorderArgbBitmap(
 
 ⚠️ **이 Task에도 자동 테스트가 없다.** `Context`·Coil·`Bitmap`이 필요하다.
 
-- [ ] **Step 1: 새 파일을 만든다**
+- [x] **Step 1: 새 파일을 만든다**
 
 `ToppingAlphaMaskCache.kt`의 구조를 그대로 옮기되 셋이 다르다 — 캐시 값이 `ToppingOutline`이고,
 키가 `"$retryKey|$model"`이고, 디코딩 뒤 비트셋 대신 거리판을 만든다.
@@ -1276,7 +1295,7 @@ fun rememberToppingOutlines(
 건너뛰었다. `retryKey`가 바뀌면 같은 모델을 **다시** 받아야 하므로 그 필터를 걷었다. 캐시가 그
 자리를 대신한다 — `retryKey`가 그대로면 첫 조회에서 곧바로 맞는다.
 
-- [ ] **Step 2: 컴파일과 유닛을 확인한다**
+- [x] **Step 2: 컴파일과 유닛을 확인한다**
 
 옛 캐시가 그대로 있으므로 **어느 모듈도 깨지지 않는다.**
 
@@ -1308,7 +1327,7 @@ canvas impl의 변경을 한 Task에 모은다. **이 Task 안에서만 모듈�
 - Consumes: Task 1의 `ToppingOutline`, Task 5의 `rememberToppingOutlines`, Task 4의 `outline` 파라미터
 - Produces: `data class ToppingHitTarget(..., val outline: ToppingOutline?)` — `mask` 가 `outline` 이 된다
 
-- [ ] **Step 1: 판정 테스트를 먼저 고친다**
+- [x] **Step 1: 판정 테스트를 먼저 고친다**
 
 `ToppingHitTestTest.kt`에서 `ToppingAlphaMask`를 만드는 헬퍼(`leftHalfMask` 등)와
 `targetCenteredAt(... mask = ...)` 헬퍼의 인자 이름을 `ToppingOutline.of` / `outline =`으로 바꾼다.
@@ -1393,7 +1412,7 @@ canvas impl의 변경을 한 Task에 모은다. **이 Task 안에서만 모듈�
     }
 ```
 
-- [ ] **Step 2: `ToppingAlphaMaskTest.kt`를 지운다**
+- [x] **Step 2: `ToppingAlphaMaskTest.kt`를 지운다**
 
 ```bash
 rm feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingAlphaMaskTest.kt
@@ -1402,7 +1421,7 @@ rm feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/
 이 파일의 `@Test` 여덟 건은 전부 `ToppingAlphaMask.of`·`ALPHA_THRESHOLD`를 쓴다. 알파 문턱과
 범위 밖 좌표 규칙은 Task 1의 `ToppingOutlineTest`가 이미 덮는다.
 
-- [ ] **Step 3: `ToppingHitTarget`을 고친다**
+- [x] **Step 3: `ToppingHitTarget`을 고친다**
 
 `mask: ToppingAlphaMask?`를 `outline: ToppingOutline?`으로 바꾸고, `containsPoint`의 뒷부분과
 `isOpaqueAtLocal`을 아래로 치환한다. 앞부분(회전 되돌리기·사각형 검사)은 그대로 둔다.
@@ -1429,7 +1448,7 @@ rm feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/
 
 남길 것: `cos`·`sin` — 회전 되돌리기가 계속 쓴다.
 
-- [ ] **Step 4: `CanvasToppingLayer`를 결선한다**
+- [x] **Step 4: `CanvasToppingLayer`를 결선한다**
 
 세 곳이다.
 
@@ -1496,7 +1515,7 @@ private fun ToppingImage(
 - 같은 함수의 `@param retryKey` — "알파 마스크는 여기 딸려 오지 않는다"가 거짓이 된다.
   이제 캐시 키에 들어간다.
 
-- [ ] **Step 5: `CanvasBGEditScreen`을 결선한다**
+- [x] **Step 5: `CanvasBGEditScreen`을 결선한다**
 
 거리판을 `drawEntries`와 `hitEntries` 둘이 함께 봐야 하므로, **두 `remember` 함수의 바깥**
 (`drawEntries`를 만드는 자리 바로 아래)에 한 번만 둔다.
@@ -1524,7 +1543,7 @@ private fun ToppingImage(
 남의 토핑까지 디코딩한다. `rememberBGEditDrawEntries`의 KDoc이 "알파 마스크를 요청하지 않는다"고
 적고 있으니 함께 고친다.
 
-- [ ] **Step 6: 옛 마스크와 스탬프 상수를 지운다**
+- [x] **Step 6: 옛 마스크와 스탬프 상수를 지운다**
 
 ```bash
 rm feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/util/ToppingAlphaMask.kt
@@ -1533,7 +1552,7 @@ rm feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/
 
 `YGToppingCutoutImage.kt`에서 `TOPPING_OUTLINE_STAMP_COUNT` 선언과 그 KDoc을 지운다.
 
-- [ ] **Step 7: 모듈 전체가 초록인지 확인한다**
+- [x] **Step 7: 모듈 전체가 초록인지 확인한다**
 
 ```bash
 ./gradlew :feature:groups:canvas:impl:testDebugUnitTest :core:designsystem:compileDebugKotlin
@@ -1541,7 +1560,7 @@ rm feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/
 
 Expected: BUILD SUCCESSFUL, 신규 3건 + 갱신된 기존 테스트 전부 PASS.
 
-- [ ] **Step 8: ktlint를 돌린다**
+- [x] **Step 8: ktlint를 돌린다**
 
 ```bash
 ./gradlew :feature:groups:canvas:impl:ktlintCheck :core:designsystem:ktlintCheck
@@ -1561,7 +1580,7 @@ Expected: BUILD SUCCESSFUL.
 - Consumes: Task 5의 `loadToppingOutline`, Task 4의 `outline` 파라미터
 - Produces: 없음(결선만)
 
-- [ ] **Step 1: `CanvasToppingPlaceScreen`을 고친다**
+- [x] **Step 1: `CanvasToppingPlaceScreen`을 고친다**
 
 이 화면은 `toppingImagePath`를 `File(path).toUri().toString()`으로 바꿔 painter에 넘긴다. 그
 표현식이 이미 `remember(toppingImagePath)`로 묶여 있으므로 지역 변수로 빼서 **그림과 거리판이
@@ -1592,7 +1611,7 @@ Expected: BUILD SUCCESSFUL.
 `androidx.compose.ui.platform.LocalContext`, `com.teamyg.parfait.core.ui.outline.loadToppingOutline`,
 `com.teamyg.parfait.core.util.jvm.outline.ToppingOutline`.
 
-- [ ] **Step 2: `SegmentationConfirmScreen`을 고친다**
+- [x] **Step 2: `SegmentationConfirmScreen`을 고친다**
 
 ```kotlin
     val context = LocalContext.current
@@ -1604,7 +1623,7 @@ Expected: BUILD SUCCESSFUL.
 `YGToppingCutoutImage(...)`에 `outline = outline`을 더한다. import는 Step 1과 같은 다섯이다
 (`File`은 필요 없다).
 
-- [ ] **Step 3: 전체 컴파일과 유닛, ktlint를 확인한다**
+- [x] **Step 3: 전체 컴파일과 유닛, ktlint를 확인한다**
 
 ```bash
 ./gradlew :feature:groups:canvas:impl:testDebugUnitTest \
@@ -1615,7 +1634,7 @@ Expected: BUILD SUCCESSFUL.
 
 Expected: 전부 PASS.
 
-- [ ] **Step 4: 앱 전체가 빌드되는지 본다**
+- [x] **Step 4: 앱 전체가 빌드되는지 본다**
 
 ```bash
 ./gradlew :app:assembleDebug
@@ -1627,7 +1646,7 @@ Expected: BUILD SUCCESSFUL.
 
 ### Task 8: 실기기 육안 확인과 문서 갱신
 
-- [ ] **Step 1: 실기기에서 여섯 가지를 확인한다**
+- [x] **Step 1: 실기기에서 여섯 가지를 확인한다**
 
 1. 같은 토핑·같은 굵기가 **테두리 편집 → 누끼 확인 → 토핑 배치 → 캔버스** 넷에서 같은 모양인가.
    ⚠️ **굵기를 최소(2dp)로 놓고도 본다.** 편집 화면은 거리판을 화면 크기로 재고 나머지 셋은 긴 변
@@ -1640,17 +1659,26 @@ Expected: BUILD SUCCESSFUL.
    바꾸는 동안 직전 크기의 띠가 남는 것은 의도한 동작이다.
 6. 이미지 로드에 실패시킨 뒤(비행기 모드 등) 재시도했을 때 테두리와 판정이 함께 돌아오는가.
 
-- [ ] **Step 2: 1번이 갈리면 거리판 해상도를 올린다**
+- [ ] **Step 2: 1번이 갈리면 거리판 해상도를 올린다** — 조건이 성립하지 않아 수행하지 않았다
 
 `OUTLINE_LONG_SIDE`를 512로 올린다. 항목당 메모리가 네 배(약 512KB)가 되므로
 `OUTLINE_CACHE_ENTRIES`를 32로 줄여 총량을 16MB로 묶는다. 올렸다면 그 사실과 근거를 스펙의
 "열린 질문" 절에 적는다.
 
-- [ ] **Step 3: 5번이 느리면 지연을 줄인다**
+> **as-built(2026-09-08)** — 실기기에서 네 화면 모양이 같아 256을 그대로 뒀다. 다만 **굵기 최소
+> 2dp 조건까지 대조했다는 기록이 없어** 조건이 완전히 배제되지는 않았다(OQ-P-379).
+
+- [ ] **Step 3: 5번이 느리면 지연을 줄인다** — 지연 자체가 폐기되어 무효가 됐다
 
 `BORDER_REBUILD_DELAY_MS`를 48에서 16으로 내리고 다시 본다. 정한 값과 이유를 스펙에 적는다.
 
-- [ ] **Step 4: 문서를 갱신한다**
+> **as-built(2026-09-08)** — 이 Step이 겨냥한 `BORDER_REBUILD_DELAY_MS`가 머지본에 없다. 지연으로
+> 재생성을 미루면 그동안 옛 판을 늘려 그려 굵기가 배율만큼 틀어져 보이다가 손을 떼는 순간 제
+> 굵기로 스냅한다. 굵기 dp 고정이 눈에 보이는 성질이라 지연 갈래를 통째로 되돌리고, 대신
+> `ToppingBorderPlateCache`(컴포지션 밖 전역 LRU)와 `snapshotFlow { boxSize }` + `conflate` 로
+> 바꿨다(OQ-P-382 ②).
+
+- [x] **Step 4: 문서를 갱신한다**
 
 - `design-system.md`의 `YGToppingCutoutImage` 항목 — 여덟 방향 스탬프 서술을 거리판 렌더로 바꾸고
   `outline` 파라미터와 **"띠가 상자 밖으로 나간다"는 계약**을 적는다.

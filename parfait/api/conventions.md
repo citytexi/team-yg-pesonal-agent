@@ -387,15 +387,18 @@ Flyway 마이그레이션이 운영 히스토리에는 V4까지만 기록돼 있
 
 TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
 
-⚠️ **2026-09-05 기준 3건.** 하나는 2026-08-31 서버 delta(`02e11be`)가 그룹 목록 `recentImageUrl`의 뜻을
+⚠️ **2026-09-08 기준 4건.** 하나는 2026-08-31 서버 delta(`02e11be`)가 그룹 목록 `recentImageUrl`의 뜻을
 좁히면서 벌어진 것이고, **둘은 2026-09-05에 앱이 푸시 수신부를 붙이며 새로 생겼다**(PR #446·#447).
 뒤의 둘은 HTTP 왕복이 아니라 **서버→앱 단방향 푸시의 간극**이라 엔드포인트 셈에 안 잡힌다.
+**넷째는 2026-09-08에 앱이 스스로 만든 간극이다**(PR #464) — 서버가 검증하지 않는 범위를 앱이 읽는
+쪽에서 가두기로 했고, 그래서 같은 행을 서버와 앱이 다른 값으로 본다.
 
 | 항목 | 계약 | 앱 | 결과 |
 |---|---|---|---|
 | `MyParfaitGroupResponse.recentImageUrl`의 뜻 | **오늘 캔버스**(`ParfaitDay.current()` — 03시 경계)에 토핑이 있으면 그 이미지, 없으면 `null`. 어제 이전 토핑은 안 잡힌다 | `MyParfaitGroupVO.recentImageUploadedAt` KDoc과 `feature/groups/list/impl/util/ToppingImage.kt`의 `toToppingImage`가 `null`을 **"토핑이 하나도 없는 그룹"**으로 읽는다 | 어제까지 토핑이 있었고 오늘 캔버스만 빈 그룹이 G-001에서 **템플릿 그래픽**으로 그려지는데, 같은 줄의 경과 시간은 **어제 토핑 시각**을 가리킨다 — 두 표시가 서로를 반박한다 → [parfait-group.md](parfait-group.md) · OQ-P-336 |
 | 푸시 `data`의 `date` | 알림이 가리키는 **캔버스 날짜**를 함께 보낸다(`NotificationMessageFactory`) — 계약 표가 `route`·`groupId`와 함께 이 값으로 캔버스에 도달할 것을 요구한다 | `PushDeepLinkIntent.kt`가 `type`·`route`·`groupId` 셋만 extras에서 읽는다. `PushDeepLink.AddTopping`은 **항상 그 그룹의 최신 캔버스**로 연다 | 지난 캔버스에 올라온 토핑 알림을 탭해도 오늘 캔버스가 열린다. 발송 지연·재시도(최대 6시간)와 03시 마감이 겹치면 **알림이 가리킨 캔버스가 아닌 곳**에 도착한다 → [notification.md](notification.md) · OQ-P-359 |
 | 푸시 중복 수신 | at-least-once라 **같은 알림이 두 번 올 수 있고** 앱이 그것을 견뎌야 한다(`dedup_key`는 생산 쪽 멱등일 뿐이다) | 알림 id가 `message.messageId?.hashCode()`라 재시도로 온 같은 알림이 **다른 id**를 받는다 | 이동은 접히지만(`Channel(CONFLATED)`) **알림은 두 개로 쌓인다** → [notification.md](notification.md) · OQ-P-359 |
+| 토핑 `borderWidth` 범위 | 서버가 범위를 검증하지 않는다 — `borderType=SOLID` 면 두께가 있기만 하면 받는다 | `ToppingBorder.solidClamped` 가 읽는 쪽에서 `WIDTH_RANGE_DP`(2.0..30.0)로 가둔다(두 `VOMapper`) | 상한을 내리기 전에 50 으로 저장된 행이 앱에서는 30 으로 그려진다. **서버가 준 값과 앱이 그리는 값이 다르다** — 서버나 정책이 범위를 정하면 걷을 임시 코드다(OQ-P-381) |
 
 **아래 문단은 첫 행(`recentImageUrl`, 2026-09-01)에 대한 것이다.** 뒤의 두 행은 잡은 수단이 다르다 —
 계약 문서와 앱 코드를 나란히 놓는 `develop` 기준 문서 점검이 찾았고, 그 자리에서 자동으로 잡을 수단은

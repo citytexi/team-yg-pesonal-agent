@@ -68,7 +68,7 @@ tags: [spec, parfait, groups, invite-code, a004]
 > 값을 넘기고 있었는데(#312) 참여 쪽에 그 경로가 없었다. 이 화면은 그 값을 **그리지 않는다.**
 > 값이 아직 없어도 이동을 막지 않는다 → OQ-P-377.
 
-> ⚠️ **as-built 갱신(2026-09-07, 브랜치 `refactor/improve-enter-invite-code-ux` — PR·머지 전)**:
+> ⚠️ **as-built 갱신(2026-09-08, PR #466 develop 머지)**:
 > **코드 입력이 텍스트 필드 하나로 합쳐졌다.** 칸 여섯 개가 각각 `BasicTextField` 였고 저마다 글자
 > 하나만 들고 있어서, **빈 칸에서 지우기를 누르면 아무 일도 일어나지 않았다**(`InputWord` 가 글자를
 > 채우는 경우만 계산했다) — 사용자가 칸을 직접 눌러 옮겨 다녀야 했다. 이제 입력은 `BasicTextField`

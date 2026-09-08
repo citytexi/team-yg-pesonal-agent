@@ -471,6 +471,13 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 토핑마다 보낸다. 테두리만 고친 토핑에는 테두리 PATCH 하나만 나간다. 계약이 두 엔드포인트로 갈라져
 있는 것을 앱이 축 단위로 미러링한 결과다. **응답 `UpdatedToppingBorderVO`는 여전히 아무도 읽지 않는다**(실패만 로그로 접는다).
 
+⚠️ **읽는 방향에 앱 클램프가 하나 생겼다**(2026-09-08, PR #464) — 응답을 도메인으로 옮기는 두
+`VOMapper`(`data/source/parfait/`·`data/source/parfaitimage/`)가 `ToppingBorder.Solid` 를 직접 만들지
+않고 `ToppingBorder.solidClamped` 를 지나, 서버가 준 `borderWidth` 를 `WIDTH_RANGE_DP`(2.0..30.0)로
+가둔다. **서버가 범위를 검증하지 않는 자리를 앱이 임시로 메운 것**이라, 서버나 정책이 범위를 정하면
+걷을 코드다(위 「미결」·[open-questions](../synthesis/open-questions.md) OQ-P-381). 두
+`RemoteDataSource` 테스트가 범위 밖 값이 잘리는 것을 각각 한 건씩 잠근다.
+
 | 계약 | Android 심볼 |
 |---|---|
 | `POST .../parfaits/{parfaitId}/images` | `ParfaitImageService.postGroupsByGroupIdParfaitsByParfaitIdImages` → `ParfaitImageRemoteDataSource.placeTopping(groupId, parfaitId, imageId, transform, border)` |
@@ -625,8 +632,8 @@ id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `C
 
 - 좌표·`scale`·`rotation`·`borderWidth`에 서버 검증이 없다 — 범위를 서버가 강제할지, 앱 책임으로 둘지
   → [open-questions](../synthesis/open-questions.md)
-  > ⚠️ **`borderWidth` 는 Android 가 매핑에서 임시로 가둔다**(2026-09-08, 브랜치
-  > `refactor/#337-topping-border-optimization`, develop 미머지) — `ToppingBorder.solidClamped`
+  > ⚠️ **`borderWidth` 는 Android 가 매핑에서 임시로 가둔다**(2026-09-08, PR #464 develop
+  > 머지) — `ToppingBorder.solidClamped`
   > 가 받은 값을 `WIDTH_RANGE_DP`(2.0..30.0)에 넣는다. 상한을 내리기 전에 50 으로 저장된 행이
   > 이미 있어 슬라이더만 좁히면 그 행이 계속 굵게 그려지기 때문이고, **서버나 정책이 범위를
   > 정하면 걷을 자리다** → 같은 문서 OQ-P-381.

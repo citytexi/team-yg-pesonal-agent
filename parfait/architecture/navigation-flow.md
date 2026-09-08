@@ -488,7 +488,7 @@ NavKeyCanvasMain(groupId) ─(상단 메뉴)─▶ NavKeyGroupSetting(groupId)
 - `feature/groups/canvas/impl` → `feature/groups/setting/api`, `feature/groups/setting/impl` →
   `feature/groups/list/api`. 둘 다 규약대로 `:api`만 본다.
 
-## 캔버스 저장 미리보기 왕복 (2026-09-05, PR #445 · 2026-09-07 캡처 홀더 — develop 미머지)
+## 캔버스 저장 미리보기 왕복 (2026-09-05, PR #445 · 2026-09-07 캡처 홀더 PR #463)
 
 갤러리 저장이 한 번에 끝나던 것이 **화면 하나를 거쳐** 돈다.
 
