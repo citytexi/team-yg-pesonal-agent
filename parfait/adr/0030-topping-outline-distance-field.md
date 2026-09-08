@@ -54,8 +54,11 @@ tags: [adr, parfait, topping, border, rendering, hit-test]
   판정 모양이 근사가 아니라 **정의상** 외형과 일치한다.
 - 캐시는 신설하지 않고 `ToppingAlphaMaskCache`를 `core:ui`로 옮겨 거리장을 내게 확장한다. 한 번의
   디코딩이 판정과 그리기를 함께 먹인다.
-- **굵기 규칙은 건드리지 않는다.** 2~50dp와 화면 dp 고정은 [ADR-0025](0025-topping-border-as-server-field.md)가
+- **굵기 규칙은 건드리지 않는다.** 화면 dp 고정은 [ADR-0025](0025-topping-border-as-server-field.md)가
   정한 그대로다. 이 결정은 같은 굵기를 **어떻게 칠하는가**만 바꾼다.
+  > **as-built 정정(2026-09-08)** — 범위는 그대로 두지 못했다. 같은 브랜치의 후속 라운드가
+  > 2~50dp 를 **2~30dp** 로 좁히고 `domain` 의 `ToppingBorder.WIDTH_RANGE_DP` 한 곳에 뒀다.
+  > dp 고정이라는 결정은 그대로다.
 
 ## 대안
 
