@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-07
+verified: 2026-09-08
 related_spec: push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field
 related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029, ADR-0030
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -1065,6 +1065,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > `assembleDebugAndroidTest` 두 줄이라 **새 모듈의 계측은 컴파일조차 안 된다.** 이번에 들어온 것들이
   > 잠그려는 규칙(덮개 아래 접근성 차단·드러나기 전 클릭 차단·재시도 시 캐시 우회)은 전부 **눈으로는
   > 확인이 안 되는 종류**라 ②의 값어치가 또 커졌다.
+  > 📌 **처음으로 계측이 "컴파일은 되는" 자리에 들어왔다(2026-09-08, PR #465 develop 머지)** —
+  > 계측이 파일 11·`@Test` 35건에서 **파일 12·`@Test` 37건**이 됐다(`core:util:android` 에
+  > `ModifierCenteredAtTest` 2건 신설, 이 모듈에 `parfait.test.compose` 가 붙었다). 이 모듈은
+  > CI `test.yml` 의 `assembleDebugAndroidTest` 두 줄 중 하나라 **컴파일은 된다** — 그래도 단언은
+  > 여전히 실행되지 않는다. 이번에 들어온 계약(부모보다 큰 자식을 `centeredAt` 으로 놓으면 중심이
+  > 맞고 `offset` 으로 놓으면 넘친 양의 절반만큼 밀린다)은 **눈으로 보기 전에는 드러나지 않는
+  > 배치 규칙**이라 ②의 값어치가 또 커졌다.
   > 📌 **①이 한 라운드 더 버텼다(2026-08-12, PR #230)** — `data` 유닛 테스트가 3건 늘었는데(`ImageRemoteDataSourceImplTest`·`MemberRemoteDataSourceImplTest`·`ParfaitImageRemoteDataSourceImplTest`) **`MainDispatcherRule` 사용처는 여전히 0건**이다. 셋 다 `runTest`만 쓰고 `Dispatchers.Main`을 건드리지 않는다 — 원인은 그대로 "테스트 대상에 ViewModel이 없다"이고 그 조건은 소비처 결선 라운드까지 안 바뀐다.
 - **해소 메모**: 해소 시 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "주의 / 열린 질문" 절의 대응 항목을 지운다.
 
@@ -3119,14 +3126,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   잰 적이 없다. ② 더 싼 방법(알파 마스크 기반 외곽선, `RenderEffect`)으로 갈지. ③ **테두리 표현 자체에
   정책 소스가 없다** — 위키에 토핑 테두리 규정이 없고 C-104 누끼 편집의 "테두리 2~50px"는 편집 화면
   기준이라 캔버스 렌더 규칙과 다른 자리다. 코드가 먼저 확정한 셋째 사례다.
-- **상태**: 부분 해소 (② **해소**(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+- **상태**: 부분 해소 (② **해소**(PR #464 develop 머지,
   [ADR-0030](../adr/0030-topping-outline-distance-field.md)) — 알파 마스크 기반 거리장으로 확정돼
   여덟 방향 스탬프를 대체한다. **①③은 그대로 잔존한다** — ①은 토핑당 프레임 그리기가 9회에서
   2회로 준 것이 코드에서 읽히는 사실일 뿐 프레임을 잰 적이 없고, ③은 굵기에 정책 소스가
   없다는 사실을 이번 라운드도 건드리지 않았다 — **범위만 2~50dp 에서 2~30dp 로 바뀌었고**
   그 값도 정책이 아니라 눈으로 본 결과다, OQ-P-381)
 - **해소 메모**: ①은 실기기 프레임 측정이 선행이다([topping-border-distance-field
-  스펙](../specs/2026-09-07-topping-border-distance-field.md) 「육안 확인」 4번은 버벅임 유무만
+  스펙](../specs/archive/2026-09-07-topping-border-distance-field.md) 「육안 확인」 4번은 버벅임 유무만
   보고 수치는 재지 않는다). ③은 위키 정책 수집 요청이 선행이다. 둘 다 처리되면 이 항목과
   [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md) 드리프트 5를 지운다.
 
@@ -5601,7 +5608,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **상태**: 미해결 (**동작 영향 0** — 상한 64로 메모리는 묶여 있다. 수명 주체가 없는 것이 문제다)
 - **해소 메모**: ②가 먼저 걸린다. 테스트가 붙는 시점에 `@After`에서 `clearToppingAlphaMasks()`를
   부르거나, 캐시를 최상위 상태가 아니라 주입되는 홀더로 바꾼다.
-- ⚠️ **항목당 크기가 커진다(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+- ⚠️ **항목당 크기가 커진다(PR #464 develop 머지,
   [ADR-0030](../adr/0030-topping-outline-distance-field.md))** — 캐시가 `core:ui`(`ToppingOutlineCache`,
   전역 상태 셋을 `object` 로 묶었다)로 옮겨 가며 비트셋 대신 거리 배열(`ShortArray`, 1/8 필드픽셀 양자화)을
   담는다. 항목당 크기가 약 8KB에서 약 128KB로 커진다. **상한 64칸은 그대로**라 누수 성질은
@@ -6071,14 +6078,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `YGToppingCutoutImage`(여덟 방향 스탬프, [ADR-0025](../adr/0025-topping-border-as-server-field.md))로
   그리므로 **한 흐름 안에서 테두리를 그리는 규칙이 둘**이고, 같은 굵기가 화면마다 다르게 잘릴 수
   있다. ③ 실기기에서 두 화면을 나란히 본 사람이 없다 — 어긋남의 크기를 잰 적이 없다.
-- **상태**: 부분 해소 (① **해소**(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+- **상태**: 부분 해소 (① **해소**(PR #464 develop 머지,
   [ADR-0030](../adr/0030-topping-outline-distance-field.md)) — `ToppingBorderEditScreen`의
   `MAX_BORDER_PADDING_DP`가 `MAX_BORDER_WIDTH_DP`에서 파생되는 한 줄로 바뀌어 두 상수가 서로를 안다.
   ② **코드는 하나가 됐다** — `YGToppingCutoutImage`가 여덟 방향 스탬프 대신 편집 화면과 같은 거리장을
   그린다. 다만 **③이 아직 닫히지 않아 이번 라운드도 실기기 대조가 없다** — 코드가 통일된 사실과
   네 화면이 실제로 같아 보이는지는 별개다)
 - **해소 메모**: ③은 실기기 육안 확인이 선행이다([topping-border-distance-field
-  스펙](../specs/2026-09-07-topping-border-distance-field.md) 「육안 확인」 1번). 그것이 끝나면
+  스펙](../specs/archive/2026-09-07-topping-border-distance-field.md) 「육안 확인」 1번). 그것이 끝나면
   이 항목 전체가 닫히고 [design-system](../architecture/design-system.md) `YGToppingCutoutImage`
   항목과 [c103-segmentation-topping-edit
   스펙](../specs/archive/2026-08-15-c103-segmentation-topping-edit.md) 테두리 절에 함께 적는다.
@@ -6620,7 +6627,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   부르면 낭비다). ② 아니면 사각형 폴백을 허용 범위로 인정할지 — 그러면 **재시도로 그림이 돌아온
   화면에서 투명한 자리가 눌린다**는 것을 알고 두는 것이다. ③ 판정이 사각형으로 떨어졌다는 것을
   아무 데서도 셀 수 없다(로그도 없다).
-- **상태**: 해소됨 (①로 결정·구현됨 — 브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+- **상태**: 해소됨 (①로 결정·구현됨 — PR #464 develop 머지,
   [ADR-0030](../adr/0030-topping-outline-distance-field.md))
 - **해소 메모**: 마스크 캐시가 `core:ui`의 거리판 캐시(`ToppingOutlineCache.kt`)로 옮겨 가며 캐시 키가
   `"$retryKey|$model"`로 바뀌었다 — `retryKey`가 올라가면 같은 모델이라도 새 캐시 항목을 만들어
@@ -7077,7 +7084,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-09-07] 토핑 알파 판정이 그림 사각형 밖으로 넓어졌다
 
 - **ID**: OQ-P-378
-- **출처**: `ToppingHitTarget.kt`(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지,
+- **출처**: `ToppingHitTarget.kt`(PR #464 develop 머지,
   [ADR-0030](../adr/0030-topping-outline-distance-field.md)) — 옛 `ToppingAlphaMask`는 판 범위 밖을
   투명으로 답해, 실루엣이 그림 왼쪽·위쪽 변에 닿아 있어도 그 바깥은 눌리지 않았다. 새 거리판은 판
   밖 좌표에서도 거리를 재므로(`ToppingOutline.distanceAt` — 벗어난 만큼을 거리에 더해 하한을 낸다)
@@ -7100,13 +7107,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-379
 - **출처**: `ToppingBorderEditScreen.kt`의 `PREVIEW_FIELD_LONG_SIDE = 1440` ×
-  `ToppingOutlineCache.kt`의 `OUTLINE_LONG_SIDE = 256`(브랜치 `refactor/#337-topping-border-optimization`,
-  develop 미머지, [ADR-0030](../adr/0030-topping-outline-distance-field.md)) — 편집 화면은 거리판을
+  `ToppingOutlineCache.kt`의 `OUTLINE_LONG_SIDE = 256`(PR #464 develop 머지, [ADR-0030](../adr/0030-topping-outline-distance-field.md)) — 편집 화면은 거리판을
   화면에 나올 크기 그대로(사실상 화면 크기, 상한 1440) 재고, 누끼 확인·배치·캔버스 셋은 캐시가 만든
   긴 변 256 거리판을 공유한다. 띠의 바깥 곡선은 등거리 곡선이라 굵을 때는 격자 차이가 안 보인다.
 - **항목**: ① **굵기가 얇을수록 256 격자가 실루엣 잔주름을 뭉갠다** — 굵기 최소(2dp)에 토핑이 화면을
   거의 채우는 자리(누끼 확인 화면 등)에서 편집 화면과 나머지 셋의 모양이 갈릴 수 있다. ②
-  [topping-border-distance-field 스펙](../specs/2026-09-07-topping-border-distance-field.md) 목표인
+  [topping-border-distance-field 스펙](../specs/archive/2026-09-07-topping-border-distance-field.md) 목표인
   "네 화면 모양 일치"와 정면으로 부딪히는 자리인데 이번 라운드는 256으로 간 채 실기기 확인에
   넘긴다. ③ 갈리면 `OUTLINE_LONG_SIDE`를 512로 올리는 대응이 이미 스펙에 있지만(항목당 메모리가
   네 배가 되므로 캐시 칸 수를 함께 줄인다), 그 판단 자체가 아직 실기기 확인 전이다.
@@ -7121,7 +7127,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-380
 - **출처**: `SegmentationConfirmScreen.kt` 는 `subjectImagePath` 원문(절대경로)을 모델로 쓰고,
   `CanvasToppingPlaceScreen.kt` 는 같은 경로를 `File(path).toUri().toString()`(`file://` 스킴)으로
-  바꿔 쓴다(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지). 거리판 캐시의
+  바꿔 쓴다(PR #464 develop 머지). 거리판 캐시의
   열쇠가 `"$retryKey|$model"` 이라 **두 화면이 같은 그림을 서로 다른 항목으로 잡는다.**
 - **항목**: ① 누끼 확인 → 배치로 넘어갈 때 캐시가 미스라 같은 그림을 두 번 디코딩하고 거리판도 두
   장 만든다. ② 그래서 배치 화면 진입 시 테두리가 한 박자 늦는다 — 깜빡임을 없애려고 넣은 동기
@@ -7134,7 +7140,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-381
 - **출처**: `domain` 의 `ToppingBorder.WIDTH_RANGE_DP`(2.0..30.0) · `ToppingBorder.solidClamped` ·
-  `ToppingEditState` 의 굵기 게터(브랜치 `refactor/#337-topping-border-optimization`, develop 미머지).
+  `ToppingEditState` 의 굵기 게터(PR #464 develop 머지).
   상한 50dp 에서는 테두리가 알맹이를 덮어 버려 30 으로 내렸다. 근거는 정책이 아니라 눈으로 본
   결과다(OQ-P-208 ③ 의 구체 사례).
 - **항목**: ① **iOS 는 20 에서 자른다** — 같은 캔버스가 기기마다 다르게 보인다. 두 플랫폼이 같은
@@ -7150,8 +7156,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-382
 - **출처**: `ToppingOutline.distanceAt` 의 판 밖 씨앗 탐색 · `YGToppingCutoutImage` 의
-  `snapshotFlow { boxSize }` + `conflate`(브랜치 `refactor/#337-topping-border-optimization`,
-  develop 미머지). 판 밖 거리를 씨앗까지 실제로 재면서 판 한 장이 **6.9ms 에서 36ms** 가 됐다
+  `snapshotFlow { boxSize }` + `conflate`(PR #464 develop 머지). 판 밖 거리를 씨앗까지 실제로 재면서 판 한 장이 **6.9ms 에서 36ms** 가 됐다
   (거리판 긴 변 256·알맹이 400px·굵기 150px 기준, JVM 측정).
 - **항목**: ① 리사이즈 핸들을 끄는 동안 크기가 바뀔 때마다 판을 다시 만든다 — 위치 드래그는
   상자 크기를 안 바꿔 해당 없다. ② **손이 멎은 뒤로 미루는 안은 되돌렸다**(2026-09-08) — 그동안

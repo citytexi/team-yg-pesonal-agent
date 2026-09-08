@@ -41,7 +41,7 @@ tags: [spec, parfait, topping, border, rendering, hit-test]
 
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 
-> 📌 **구현 완료(2026-09-07, 브랜치 `refactor/#337-topping-border-optimization`, develop 미머지).**
+> 📌 **구현 완료·develop 머지(2026-09-08, PR #464 `23675cc1f`).**
 > 본문은 as-built 로 고쳐 두었다. 설계와 갈린 자리는 「띠 비트맵을 언제 다시 만드는가」 하나다 —
 > 재생성을 지연으로 막던 것을 걷어내고, 띠 판을 컴포지션 밖 캐시에 남기도록 바꿨다.
 
