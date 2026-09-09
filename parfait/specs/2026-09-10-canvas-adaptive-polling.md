@@ -216,9 +216,9 @@ PushDeepLinkParser.parse(route, groupId, type)
 - 응답이 달라지면 다음 간격이 10초로 돌아온다.
 - 갱신이 실패해도 간격이 늘지 않는다.
 
-푸시 갈래는 테스트를 추가하지 않는다. 파싱은 `PushDeepLinkParserTest`가 원시 문자열로 이미
-덮고 있고, 서비스에 남는 것은 파싱 결과에 따라 UseCase를 부르는 분기뿐이다. `RemoteMessage`는
-계측 없이 만들 수 없어 그 얇은 분기를 덮는 값이 비용을 넘지 않는다.
+`RemoteMessage`를 계측 없이 만들 수 없다는 제약은 그대로다. 그래서 토핑만 고르는 판정을
+`Map<String, String>.toppingGroupIdOrNull()`로 서비스 밖에 꺼내 순수 `Map` 테스트로 잠갔고
+(`PushDeepLinkIntentTest`에 6건), 서비스에는 그 결과를 받아 UseCase를 부르는 줄만 남겼다.
 
 ## 후속
 
