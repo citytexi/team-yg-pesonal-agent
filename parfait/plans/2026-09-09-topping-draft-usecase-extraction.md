@@ -170,9 +170,7 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 /** 토핑 만들기 흐름의 초안 구독. 호출 자체는 구독하지 않고 `Flow` 만 넘긴다 */
-class GetToppingDraftFlowUseCase
-@Inject
-constructor(
+class GetToppingDraftFlowUseCase @Inject constructor(
     private val toppingDraftRepository: ToppingDraftRepository,
 ) {
     operator fun invoke(): Flow<ToppingDraft?> = toppingDraftRepository.draft
@@ -193,9 +191,7 @@ import javax.inject.Inject
  * 토핑 만들기 흐름을 연다. 이전 초안은 통째로 덮인다
  * (`adr/0026-topping-draft-datastore-ssot.md`).
  */
-class StartToppingDraftUseCase
-@Inject
-constructor(
+class StartToppingDraftUseCase @Inject constructor(
     private val toppingDraftRepository: ToppingDraftRepository,
 ) {
     suspend operator fun invoke(
@@ -219,9 +215,7 @@ import com.teamyg.parfait.domain.repository.topping.ToppingDraftRepository
 import javax.inject.Inject
 
 /** 토핑 만들기 흐름을 닫는다 */
-class ClearToppingDraftUseCase
-@Inject
-constructor(
+class ClearToppingDraftUseCase @Inject constructor(
     private val toppingDraftRepository: ToppingDraftRepository,
 ) {
     suspend operator fun invoke() = toppingDraftRepository.clear()
@@ -237,9 +231,7 @@ import com.teamyg.parfait.domain.repository.topping.ToppingDraftRepository
 import javax.inject.Inject
 
 /** 흐름이 만들어 낸 알맹이·테두리를 초안에 적는다 */
-class RecordToppingDraftUseCase
-@Inject
-constructor(
+class RecordToppingDraftUseCase @Inject constructor(
     private val toppingDraftRepository: ToppingDraftRepository,
 ) {
     /** @return 흐름이 열려 있지 않으면 `false`. 호출부가 이 값으로 실패를 알린다 */
@@ -274,9 +266,7 @@ import javax.inject.Inject
  * 판정 기준은 "초안이 비었는가"가 아니라 "이 알맹이를 가리키는가"다
  * (`specs/archive/2026-08-20-c106-topping-place-api.md`).
  */
-class EnsureDraftSubjectRecordedUseCase
-@Inject
-constructor(
+class EnsureDraftSubjectRecordedUseCase @Inject constructor(
     private val toppingDraftRepository: ToppingDraftRepository,
 ) {
     /** @return 초안이 이 알맹이를 가리키게 되었으면 `true`. 이미 가리키던 경우도 포함한다 */
@@ -329,13 +319,17 @@ git commit -m "feat: 토핑 초안 접근 UseCase 다섯을 만든다"
 + import com.teamyg.parfait.domain.usecase.topping.StartToppingDraftUseCase
 
 // 필드 교체
-- private val toppingDraftRepository: ToppingDraftRepository = mockk()
-+ private val startToppingDraft: StartToppingDraftUseCase = mockk()
+- private val toppingDraftRepository: ToppingDraftRepository = mockk(relaxUnitFun = true)
++ private val startToppingDraft: StartToppingDraftUseCase = mockk(relaxUnitFun = true)
 
 // ViewModel 생성 인자 교체
 - toppingDraftRepository = toppingDraftRepository,
 + startToppingDraft = startToppingDraft,
 ```
+
+⚠️ `relaxUnitFun = true`를 **반드시 유지한다.** 이걸 빼면 `startToppingDraft` 호출을 스텁 없이
+통과시키던 테스트 셋(`clickCamera_…`·`clickGallery_opensTheFlowToo`·`clickCamera_stacksTheNewToppingOnTop`)에서
+MockK 예외가 `launch(onError = …)`에 잡혀 `ShowToppingFlowStartError`가 나가고 Navigate 이펙트가 안 나온다.
 
 `coEvery { toppingDraftRepository.start(any(), any(), any()) }` 는
 `coEvery { startToppingDraft(any(), any(), any()) }` 로, `coVerify { toppingDraftRepository.start(...) }` 는
@@ -410,7 +404,11 @@ git commit -m "refactor: CanvasMainViewModel 이 초안 저장소 대신 UseCase
 
 초안 흐름을 세우던 자리(`every { toppingDraftRepository.draft } returns …`)는
 `every { getToppingDraftFlow() } returns …` 로 바꾼다. `clear` 스텁·검증은
-`clearToppingDraft` 로 바꾼다. ViewModel 생성 인자도 둘로 나눠 넘긴다.
+`clearToppingDraft` 로 바꾼다.
+
+⚠️ 이 파일은 **ViewModel을 세 자리에서 만든다.** 셋 다 인자를 둘로 나눠 넘겨야 한다.
+`clear` 스텁은 여덟 자리, 검증은 세 자리에 흩어져 있으니 `toppingDraftRepository` 가
+파일에서 완전히 사라졌는지 마지막에 확인한다.
 
 - [ ] **Step 2: 테스트가 컴파일 실패로 떨어지는지 본다**
 
@@ -479,8 +477,8 @@ git commit -m "refactor: CanvasToppingPlaceViewModel 이 초안 저장소 대신
 - import com.teamyg.parfait.domain.repository.topping.ToppingDraftRepository
 + import com.teamyg.parfait.domain.usecase.topping.RecordToppingDraftUseCase
 
-- private val toppingDraftRepository: ToppingDraftRepository = mockk()
-+ private val recordToppingDraft: RecordToppingDraftUseCase = mockk()
+- private val toppingDraftRepository: ToppingDraftRepository = mockk(relaxed = true)
++ private val recordToppingDraft: RecordToppingDraftUseCase = mockk(relaxed = true)
 ```
 
 `coEvery { toppingDraftRepository.record(any(), any(), any(), any()) } returns …` 는
@@ -576,6 +574,12 @@ git commit -m "refactor: SegmentationViewModel 이 초안 저장소 대신 UseCa
 ViewModel 생성 헬퍼 둘(`viewModel()`·`reuseViewModel(handle)`)의 `toppingDraftRepository = …`
 인자도 세 UseCase 인자로 바꾼다.
 
+⚠️ 이 파일은 `givenDraft` **밖에서도** 초안 흐름을 직접 세운다. 네 자리를 함께 바꿔야 한다 —
+`draft_turnsEmptyMidSession_…`(여러 값 방출), `draft_throws_…`(`flow { throw … }`),
+`reuseEntry_withEmptyDraft_recordsBeforeObserving`(끝나지 않는 `MutableStateFlow`),
+`reuseEntry_afterBorderEdit_survivesProcessDeath_…`(`draftFlow`). 전부
+`every { getToppingDraftFlow() } returns …` 로 바꾼다.
+
 `givenDraft(draft)` 헬퍼는 다음으로 바꾼다.
 
 ```kotlin
@@ -631,10 +635,18 @@ fun reuseEntry_ensuresBeforeObserving() = runTest(mainDispatcherRule.dispatcher)
 
 `io.mockk.coVerifyOrder` import를 더한다.
 
+원 테스트는 "끝나지 않는 `MutableStateFlow`"를 쓰고 "`flowOf` 는 곧장 완결돼 순서가 뒤집혀도
+테스트를 속인다"는 주석을 달고 있다. 여기서는 그 장치를 버려도 된다 — 순서를 지키는 것이
+완결 시점이 아니라 `coVerifyOrder` 이기 때문이다.
+
 - `reuseEntry_afterBorderEdit_survivesProcessDeath_withoutOverwritingTheEdit` — `SavedStateHandle`
   플래그가 화면에 남는다는 것을 지키는 테스트다. 단언을
   `coVerify(exactly = 1) { ensureDraftSubjectRecorded(REUSED_PATH) }` 로 바꾼다. 프로세스 사망
   복원 뒤에도 판정이 **한 번만** 도는 것이 이 테스트의 요지다.
+  ⚠️ 이 테스트는 `givenDraft`를 쓰지 않으므로 **스텁을 직접 넣어야 한다** —
+  `coEvery { ensureDraftSubjectRecorded(any()) } returns true` 와
+  `every { getToppingDraftFlow() } returns draftFlow`. 빠뜨리면 첫 ViewModel에서 예외가 나
+  플래그가 안 서고, 복원된 ViewModel이 한 번 더 불러 `exactly = 1` 이 깨진다.
 - 판정이 실패하면 `DraftMissing`이 나가는 것을 지키는 테스트를 더한다.
 
 ```kotlin
@@ -647,13 +659,26 @@ fun reuseEntry_whenEnsureFails_reportsMissingDraft() = runTest(mainDispatcherRul
 
     viewModel.effect.test {
         advanceUntilIdle()
-        assertIs<SegmentationConfirmEffect.DraftMissing>(awaitItem())
+        assertEquals(SegmentationConfirmEffect.DraftMissing, awaitItem())
     }
 }
 ```
 
-`record` 결과를 다루는 기존 테스트(`OnEditResult` → `DraftWriteFailed`)는 더블 이름만 바꾸고
-단언은 그대로 둔다.
+`assertEquals`는 이미 import되어 있다. `assertIs`는 이 파일에 없으므로 쓰지 않는다.
+
+`onEditResult_recordsBorderValues` 는 더블 이름만 `recordToppingDraft` 로 바꾸고 단언은 그대로 둔다.
+
+⚠️ 지우는 테스트 하나(`reuseEntry_whenDraftAlreadyHasSubject_doesNotRecordAgain`)가 **화면 상태도
+단언한다** — 재사용 진입에서 기존 테두리 색이 화면에 살아남는 것이다. UseCase 테스트는 화면을
+보지 않으므로 이 단언이 사라진다. 새로 넣는
+`reuseEntry_ensuresTheDraftPointsToTheSubject` 에 그 단언을 함께 옮긴다.
+
+```kotlin
+assertEquals(0xFF00FF00.toInt(), viewModel.state.value.borderColorArgb)
+```
+
+(`reuseViewModel()` 의 반환을 변수로 받아 쓴다. 초안 `draft(...)` 인자에 그 테두리 색을 실어야
+한다 — 지우는 테스트가 세우던 값을 그대로 가져온다.)
 
 - [ ] **Step 2: 테스트가 컴파일 실패로 떨어지는지 본다**
 
