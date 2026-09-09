@@ -1,16 +1,16 @@
 ---
 id: topping-edit-empty-subject-guard
 title: 토핑 편집 빈 알맹이 차단
-status: draft
+status: done
 type: work-order
 created: 2026-09-08
-updated: 2026-09-08
+updated: 2026-09-09
 platforms: android
 owner: Parfait 팀
 related_adr:
 related_spec: topping-edit-empty-subject-guard
-related_code: SubjectCoverage, SegmentationCandidateFilter, ImageSegmentationRepositoryImpl, ToppingEditMask, ToppingEditViewModel, ToppingEditEffect, ToppingEditRoute
-archived_reason:
+related_code: SubjectCoverage, SegmentationCandidateFilter, ImageSegmentationRepositoryImpl, ToppingEditMask, SubjectMeasure, ToppingEditViewModel, ToppingEditEffect, ToppingEditRoute, SubjectCoverageTest, ToppingEditMaskTest
+archived_reason: Task 1~4 를 전량 수행하고 develop 에 머지했다(2026-09-09, PR #472 `753675abe`). 신규 유닛 13건(SubjectCoverageTest 8·ToppingEditMaskTest 5). Task 5(실기기 수동 검증)는 저장소에서 확인할 수 없어 미체크로 두고, borderOnly 예외는 구현이 드러낸 뒤 스펙에 반영됐다
 tags: [plan, parfait, segmentation, topping, validation]
 ---
 
@@ -24,7 +24,7 @@ tags: [plan, parfait, segmentation, topping, validation]
 
 **Tech Stack:** Kotlin, `android.graphics.Bitmap`, Kotlin Coroutines, 자체 MVI(`BaseViewModel`), 테스트는 kotlin-test.
 
-**Spec:** [`parfait/specs/2026-09-08-topping-edit-empty-subject-guard.md`](../specs/2026-09-08-topping-edit-empty-subject-guard.md)
+**Spec:** [`parfait/specs/2026-09-08-topping-edit-empty-subject-guard.md`](../../specs/archive/2026-09-08-topping-edit-empty-subject-guard.md)
 
 **작업 저장소:** `TJYG-Android` (remote `mash-up-kr/TEAMYG-Android`). 로컬 절대경로는 `wiki/personal-private/project-paths.md`에 있다.
 
@@ -85,7 +85,7 @@ tags: [plan, parfait, segmentation, topping, validation]
 - Consumes: 없음(첫 Task).
 - Produces: `com.teamyg.parfait.domain.model.SubjectCoverage` — `fun floorPixels(canvasArea: Long): Long`, `fun isLargeEnough(alphaSum: Long, canvasArea: Long): Boolean`. Task 2·4가 이 두 함수를 부른다.
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 `domain/src/test/java/com/teamyg/parfait/domain/model/SubjectCoverageTest.kt`를 새로 만든다.
 
@@ -176,13 +176,13 @@ class SubjectCoverageTest {
 }
 ```
 
-- [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
+- [x] **Step 2: 테스트가 실패하는 것을 확인한다**
 
 Run: `./gradlew :domain:test --tests "com.teamyg.parfait.domain.model.SubjectCoverageTest"`
 
 Expected: 컴파일 실패. `Unresolved reference: SubjectCoverage`.
 
-- [ ] **Step 3: 최소 구현을 쓴다**
+- [x] **Step 3: 최소 구현을 쓴다**
 
 `domain/src/main/java/com/teamyg/parfait/domain/model/SubjectCoverage.kt`를 새로 만든다.
 
@@ -228,13 +228,13 @@ object SubjectCoverage {
 }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
+- [x] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `./gradlew :domain:test --tests "com.teamyg.parfait.domain.model.SubjectCoverageTest"`
 
 Expected: PASS (8건).
 
-- [ ] **Step 5: ktlint를 돌린다**
+- [x] **Step 5: ktlint를 돌린다**
 
 Run: `./gradlew :domain:ktlintCheck`
 
@@ -256,13 +256,13 @@ Expected: BUILD SUCCESSFUL. 실패하면 `./gradlew :domain:ktlintFormat` 후 �
 **이 Task는 TDD의 red를 새로 만들지 않는다.** 판정 결과가 **바뀌면 안 되는** 변경이라, 기존
 `SegmentationCandidateFilterTest` 13건이 그대로 초록인 것이 곧 검증이다. 새 단언을 추가하지 않는다.
 
-- [ ] **Step 1: 기존 테스트가 지금 초록인 것을 먼저 확인한다**
+- [x] **Step 1: 기존 테스트가 지금 초록인 것을 먼저 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "com.teamyg.parfait.data.utils.image.SegmentationCandidateFilterTest"`
 
 Expected: PASS. 이 값이 이관 전후를 비교하는 기준선이다.
 
-- [ ] **Step 2: 필터에서 하한 상수와 계산 함수를 걷어낸다**
+- [x] **Step 2: 필터에서 하한 상수와 계산 함수를 걷어낸다**
 
 `SegmentationCandidateFilter.kt`에서 아래 셋을 **삭제**한다.
 
@@ -300,7 +300,7 @@ private fun SegmentationCandidate.isLargeEnough(): Boolean =
 
 import에 `com.teamyg.parfait.domain.model.SubjectCoverage`를 더한다.
 
-- [ ] **Step 3: 저장소의 bbox 사전 절단도 새 정책을 부르게 한다**
+- [x] **Step 3: 저장소의 bbox 사전 절단도 새 정책을 부르게 한다**
 
 `ImageSegmentationRepositoryImpl.kt`의 `toCandidatePairs`에서 한 줄을 바꾼다.
 
@@ -312,13 +312,13 @@ import에서 `com.teamyg.parfait.data.utils.image.coverageFloorPixels`를 지우
 `com.teamyg.parfait.domain.model.SubjectCoverage`를 더한다. 그 위의 KDoc("후처리 전에 bbox 로
 값싸게 자르는 이유…")은 여전히 사실이므로 **그대로 둔다**.
 
-- [ ] **Step 4: 기존 테스트가 여전히 초록인 것을 확인한다**
+- [x] **Step 4: 기존 테스트가 여전히 초록인 것을 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "com.teamyg.parfait.data.utils.image.SegmentationCandidateFilterTest"`
 
 Expected: PASS, Step 1과 같은 건수. 하나라도 빨개지면 이관 중 값이 바뀐 것이므로 되짚는다.
 
-- [ ] **Step 5: data 모듈 전체 유닛과 ktlint를 돌린다**
+- [x] **Step 5: data 모듈 전체 유닛과 ktlint를 돌린다**
 
 Run: `./gradlew :data:testDebugUnitTest :data:ktlintCheck`
 
@@ -345,7 +345,7 @@ Expected: BUILD SUCCESSFUL. `coverageFloorPixels`를 참조하던 다른 자리�
   `Bitmap.trimTransparentBounds()`는 **삭제된다**(호출부는 `ToppingEditViewModel` 하나뿐이고
   Task 4가 고친다).
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 `feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/editor/ToppingEditMaskTest.kt`를 새로 만든다.
 
@@ -460,13 +460,13 @@ class ToppingEditMaskTest {
 }
 ```
 
-- [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
+- [x] **Step 2: 테스트가 실패하는 것을 확인한다**
 
 Run: `./gradlew :feature:segmentation:impl:testDebugUnitTest --tests "com.teamyg.parfait.feature.segmentation.impl.editor.ToppingEditMaskTest"`
 
 Expected: 컴파일 실패. `Unresolved reference: measureSubject`.
 
-- [ ] **Step 3: 측정 함수를 쓰고 trim을 그 위에 다시 얹는다**
+- [x] **Step 3: 측정 함수를 쓰고 trim을 그 위에 다시 얹는다**
 
 `ToppingEditMask.kt`에서 기존 `trimTransparentBounds`를 **아래로 통째로 대체**한다.
 `buildCutoutBitmap`과 `strokePaint`는 손대지 않는다.
@@ -548,7 +548,7 @@ internal fun Bitmap.trimTo(measure: SubjectMeasure): Bitmap {
 **`:feature:segmentation:impl` 컴파일이 깨진다.** Task 4가 그것을 고친다. Step 4의 명령은
 테스트 소스만 겨냥하지 않으므로, 이 Task에서는 아래 순서대로 확인한다.
 
-- [ ] **Step 4: 새 테스트가 통과하는 것을 확인한다**
+- [x] **Step 4: 새 테스트가 통과하는 것을 확인한다**
 
 Run: `./gradlew :feature:segmentation:impl:testDebugUnitTest --tests "com.teamyg.parfait.feature.segmentation.impl.editor.ToppingEditMaskTest"`
 
@@ -557,7 +557,7 @@ Expected: 컴파일 실패 — 다만 실패 원인이 **`ToppingEditViewModel`�
 
 Task 4의 Step 3까지 마친 뒤 같은 명령을 다시 돌려 PASS(5건)를 확인한다. 이 두 Task는 한 덩이다.
 
-- [ ] **Step 5: ktlint를 돌린다**
+- [x] **Step 5: ktlint를 돌린다**
 
 Run: `./gradlew :feature:segmentation:impl:ktlintCheck`
 
@@ -576,7 +576,7 @@ Expected: BUILD SUCCESSFUL(ktlint는 컴파일과 무관하게 돈다). 실패�
 - Consumes: Task 1의 `SubjectCoverage.isLargeEnough`, Task 3의 `Bitmap.measureSubject()`·`Bitmap.trimTo(measure)`.
 - Produces: `ToppingEditEffect.SubjectTooSmall` — Route가 Toast로 소비한다.
 
-- [ ] **Step 1: 문자열을 더한다**
+- [x] **Step 1: 문자열을 더한다**
 
 `feature/segmentation/impl/src/main/res/values/strings.xml`의 `topping_edit_save_failed` 아래에
 한 줄을 더한다.
@@ -585,7 +585,7 @@ Expected: BUILD SUCCESSFUL(ktlint는 컴파일과 무관하게 돈다). 실패�
     <string name="topping_edit_subject_too_small">남은 영역이 너무 작아 저장할 수 없습니다</string>
 ```
 
-- [ ] **Step 2: effect를 더한다**
+- [x] **Step 2: effect를 더한다**
 
 `ToppingEditViewModel.kt`의 `ToppingEditEffect`에 갈래를 더한다.
 
@@ -607,7 +607,7 @@ sealed interface ToppingEditEffect : UiSideEffect {
 }
 ```
 
-- [ ] **Step 3: 저장 전에 판정하고 되돌린다**
+- [x] **Step 3: 저장 전에 판정하고 되돌린다**
 
 `ToppingEditViewModel.kt`의 `completeEdit()`에서 `cutout` 생성 다음 두 줄
 (`val trimmedCutout = …`)을 아래로 바꾼다.
@@ -638,13 +638,13 @@ import 둘을 바꾼다 — `…impl.editor.trimTransparentBounds`를 지우고
 
 `isSaving` 복구를 빠뜨리면 완료 버튼이 영구히 잠긴 화면이 된다. 되돌아 나가기 전에는 풀 방법이 없다.
 
-- [ ] **Step 4: Task 3의 테스트가 이제 통과하는 것을 확인한다**
+- [x] **Step 4: Task 3의 테스트가 이제 통과하는 것을 확인한다**
 
 Run: `./gradlew :feature:segmentation:impl:testDebugUnitTest --tests "com.teamyg.parfait.feature.segmentation.impl.editor.ToppingEditMaskTest"`
 
 Expected: PASS (5건). Task 3에서 깨져 있던 컴파일이 여기서 다시 초록이 된다.
 
-- [ ] **Step 5: Route에 분기를 더한다**
+- [x] **Step 5: Route에 분기를 더한다**
 
 `ToppingEditRoute.kt`의 `when (effect)`에 갈래를 더한다. `SaveFailed` 바로 아래에 둔다.
 
@@ -658,7 +658,7 @@ Expected: PASS (5건). Task 3에서 깨져 있던 컴파일이 여기서 다시 
 `LoadFailed`와 달리 **`navigator.onBack()`을 부르지 않는다.** 편집 화면에 남아야 되돌리기로
 방금 지운 획을 되살릴 수 있다.
 
-- [ ] **Step 6: 모듈 전체 유닛과 ktlint, 앱 빌드를 돌린다**
+- [x] **Step 6: 모듈 전체 유닛과 ktlint, 앱 빌드를 돌린다**
 
 Run: `./gradlew :domain:test :data:testDebugUnitTest :feature:segmentation:impl:testDebugUnitTest ktlintCheck :app:assembleDebug`
 

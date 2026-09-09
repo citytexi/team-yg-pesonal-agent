@@ -1,10 +1,10 @@
 ---
 id: upload-image-downscale
 title: 업로드 이미지 다운스케일·배경 JPEG 고정 (Upload image downscale)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-09-08
+verified: 2026-09-09
 related_code:
   - ImageUploadRepositoryImpl#upload
   - UploadImageFormat
@@ -20,8 +20,11 @@ related_code:
   - UploadImagePreprocessor
   - UploadImagePreprocessorImpl
   - UploadImagePlan#of
+  - PreparedUploadImage
+  - UploadImageSize
+  - UtilsModule#bindUploadImagePreprocessor
+  - File#readExifDegrees
   - ExifOrientation#exifOrientationToDegrees
-  - ContentResolver#rotatedToUpright
 related_adr: ADR-0017
 related_spec: segmentation-preprocessing
 related_architecture:
@@ -86,7 +89,7 @@ tags: [spec, parfait, image, upload]
 - **누끼 출력 포맷 변경** — 알파가 필요해 PNG를 유지한다.
 - **`cacheDir/upload` 누적 정리** — 이 스펙이 만드는 임시 파일은 지우지만, `copyToCache`가 남기는
   기존 복사본은 건드리지 않는다.
-- **세그멘테이션 입력 해상도** — [segmentation-preprocessing](2026-08-23-segmentation-preprocessing.md)이
+- **세그멘테이션 입력 해상도** — [segmentation-preprocessing](../2026-08-23-segmentation-preprocessing.md)이
   다루는 영역이고 목표 방향이 반대다(그쪽은 모델 입력의 정확도, 이쪽은 서버로 나가는 결과물).
 - 캔버스 캡처(`writeToCanvasCaptureCache`) — 갤러리 저장·미리보기 전용이라 업로드와 무관하다.
 
@@ -170,6 +173,13 @@ EXIF를 결과에 남기지도, 픽셀에 적용하지도 않는다. 그대로 �
 각도 판독도 그 모듈의 `exifOrientationToDegrees`를 재사용하므로 **미러링(`FLIP_*`·`TRANSPOSE`·
 `TRANSVERSE`)을 0도로 두는 규약**이 그대로 적용된다.
 
+📌 **as-built** — 재사용의 실제 모양은 `core:util:android` 에 새로 선 확장
+`File#readExifDegrees` 다. 그 함수가 `ExifInterface` 판독을 감싸고 `exifOrientationToDegrees` 로
+각도를 내며, 태그를 못 읽으면 경고 로그를 남기고 0을 돌려준다 — 태그가 깨진 것과 파일을 못 여는
+것은 다른 사건이라 호출부의 디코드까지 막지 않는다. 회전을 픽셀에 굽는 일 자체는
+`rotatedToUpright` 를 부르지 않고 전처리기 안의 사설 함수가 한다. 두 자리가 같은 규약을 쓰되
+코드를 공유하지는 않는다.
+
 **회전은 축소 뒤에 적용한다.** 순서가 반대면 원본 해상도 판 둘이 동시에 살아난다 —
 `Bitmap.createBitmap(bitmap, ..., matrix, true)`가 회전본을 다 할당한 뒤에야 원본을 놓기 때문이다.
 축소본을 돌리면 90·270도의 뒤집힌 치수가 그냥 나오므로 치수를 따로 맞바꿀 필요도 없다.
@@ -216,6 +226,11 @@ PUT했다. 그러므로 이 스펙이 넣는 디코드는 "덜 쓰는 경로"가
 **그 비교는 틀렸다** — 변경 전 경로에는 디코드가 없었다. 「메모리」 절이 그 사실 위에 다시 섰다.
 폴백하지 않는 결정 자체는 유지하되 근거는 위 두 줄이다.
 
+⚠️ **as-built 이탈** — 머지된 `ImageUploadRepositoryImpl` 의 전처리 호출부 주석이 **철회된 그 비교를
+그대로 들고 있다**("축소본이 원본보다 메모리를 덜 쓰므로 … 폴백하지 않는다"). 코드가 하는 일은
+스펙과 같고 갈린 것은 근거뿐이라 동작에는 영향이 없다. 정정 대상으로
+[`../../synthesis/open-questions.md`](../../synthesis/open-questions.md)에 남긴다.
+
 ### 로깅
 
 축소 전후의 치수와 바이트 수를 남긴다. 이 스펙의 효과는 "서버에 올라간 파일이 작아졌는가"로만
@@ -257,6 +272,6 @@ PUT했다. 그러므로 이 스펙이 넣는 디코드는 "덜 쓰는 경로"가
 - **ICC 프로파일 소실을 측정하지 않았다.** 광색역 사진 배경이 눈에 띄게 변하면 별건으로 다룬다.
 - **미러링 EXIF는 보정하지 않는다.** `TRANSPOSE`·`TRANSVERSE`는 90도 성분을 품는데
   `exifOrientationToDegrees`가 0으로 매핑하므로 그 사진만 재인코딩 갈래와 통과 갈래의 방향이
-  갈린다. 미러링을 0도로 두는 것은 [segmentation-preprocessing](2026-08-23-segmentation-preprocessing.md)이
+  갈린다. 미러링을 0도로 두는 것은 [segmentation-preprocessing](../2026-08-23-segmentation-preprocessing.md)이
   정한 저장소 규약이라 이 스펙이 뒤집지 않는다.
 - **기존 업로드본은 그대로다.** 이미 올라간 큰 파일을 줄이는 마이그레이션은 없다.

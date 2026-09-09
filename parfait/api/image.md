@@ -244,6 +244,23 @@ PR #329). C-301 배경 편집이 고른 사진을 `ImageType.BACKGROUND`로 올�
 
 ⚠️ **캐시가 쌓이기만 한다** — 복사본은 `cacheDir/upload`에 UUID 이름으로 남고 지우는 코드가 없다
 (세그멘테이션 캐시와 달리 정리 경로가 아직 없다) → [open-questions](../synthesis/open-questions.md) OQ-P-262.
+📌 **같은 디렉토리에 수명 정책이 있는 파일이 생겼다**(2026-09-09, PR #473) — 아래 전처리가 만드는
+축소본은 업로드가 끝나면 `finally`에서 지운다. 복사본만 남는다.
+
+📌 **판정 자리가 발급 직전으로 한 번 더 옮겨 갔다**(2026-09-09, PR #473 develop 머지) —
+`ImageUploadRepositoryImpl#upload`이 `UploadImagePreprocessor.prepare(file, imageType)`를 먼저 부르고,
+돌려받은 `PreparedUploadImage`의 **파일과 포맷을 쌍으로** 발급(`fileName`·`contentType`)과 S3 PUT에
+넘긴다. 위 문단이 말한 "발급과 PUT이 같은 값을 쓴다"는 성질은 그대로이고 정하는 자리만 바뀌었다.
+서버가 받지 않는 확장자를 발급 전에 끊는 일도 전처리기로 옮겨 갔다(`UnsupportedImageException`).
+
+이 라운드가 계약 표면에 남기는 사실 둘이다.
+
+- **나가는 `fileName`이 원본 이름이 아닐 수 있다.** 축소·재인코딩을 탄 이미지는 `cacheDir/upload`의
+  새 UUID 파일이라 그 이름으로 발급을 부른다. 그대로 통과한 이미지만 종전대로다.
+- **`contentType`이 원본 확장자를 따라가지 않는 갈래가 생겼다.** `ImageType.BACKGROUND`는 출력 포맷을
+  **JPEG로 고정**하므로 PNG 배경은 `image/jpeg`로 발급·PUT된다(투명 영역은 흰색 합성). `NUKKI`는 알파가
+  필요해 입력 포맷을 그대로 따른다. 서버가 받는 형식이 `image/png`·`image/jpeg` 둘뿐이라는 계약은
+  양쪽 갈래 모두 지킨다 → [spec](../specs/archive/2026-09-08-upload-image-downscale.md).
 
 `http/images.http`가 두 요청 + S3 PUT을 덮는다(요청 모음 20/20 회복).
 
