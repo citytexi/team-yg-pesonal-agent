@@ -77,6 +77,8 @@ Firebase 도입은 ADR-0013 이 FCM·Crashlytics 와 함께 Analytics 까지 묶
   넣어 기대 ID 와 대조하는 유닛 테스트가 그대로 성립한다.
 - 전송 판정을 `ScreenViewTracker` 한 곳에 모아 `snapshotFlow` 없이 JVM 테스트로 덮인다.
   그 객체가 컴포지션 밖에 살아 Activity 재생성이 만드는 헛 이벤트도 함께 막는다.
+  스코프는 `Navigator` 와 같은 `@ActivityRetainedScoped` 다 — 더 넓게 두면 트래커가
+  `Navigator` 보다 오래 살아, 새로 선 `Navigator` 의 첫 화면을 낡은 값과 같다고 보고 버린다.
 - 분석 도구를 바꾸더라도 구현체 하나만 갈면 된다.
 
 **트레이드오프**
@@ -93,6 +95,6 @@ Firebase 도입은 ADR-0013 이 FCM·Crashlytics 와 함께 Analytics 까지 묶
 **위험·방어**
 
 - 매핑에 대응이 없으면 전송하지 않고 경고 로그로 남겨 개발 중에 드러나게 한다.
-- 매핑 함수 유닛 테스트가 `NavKey` 26개와 인자로 갈리는 여섯의 모든 조합을 대조하고,
+- 매핑 함수 유닛 테스트가 `NavKey` 26개와 인자로 갈리는 다섯의 모든 조합을 대조하고,
   `ScreenViewTracker` 테스트가 중복 push·뒤로 가기 복귀·재생성 재방출을 각각 본다.
 - ⚠️ 실기기 GA4 DebugView 로 확인한 적이 0회다. 구현 뒤 첫 검증이 남아 있다.

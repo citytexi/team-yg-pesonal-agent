@@ -66,7 +66,7 @@ data class AnalyticsScreen(
 // 매핑 전체가 이 함수 하나에 있다. 대응이 없으면 null 이다.
 fun NavKey.toAnalyticsScreenOrNull(): AnalyticsScreen?
 
-// 중복 판정과 전송을 맡는다. 컴포지션이 죽어도 살아남아야 해서 @Singleton 이다.
+// 중복 판정과 전송을 맡는다. 컴포지션이 죽어도 살아남아야 해서 @ActivityRetainedScoped 다.
 class ScreenViewTracker(logger: AnalyticsLogger) {
     fun track(backStackSize: Int, top: NavKey?)
 }
@@ -140,8 +140,14 @@ snapshotFlow { navigator.backStack.size to navigator.backStack.lastOrNull() }
 경로가 남아 있다. 다크모드 토글, 폰트·언어 설정 변경, 폴더블·멀티윈도우 리사이즈가 그렇고,
 이 목록은 `MainActivity.consumePushDeepLink`의 주석이 같은 이유로 이미 열거해 둔 것이다.
 
-`ScreenViewTracker`를 `@Singleton`으로 두면 마지막 전송 값이 컴포지션 밖에 남아, 재생성
-직후의 재방출이 같은 짝이므로 걸러진다.
+`ScreenViewTracker`를 `@ActivityRetainedScoped`로 두면 마지막 전송 값이 컴포지션 밖에 남아,
+재생성 직후의 재방출이 같은 짝이므로 걸러진다.
+
+**`@Singleton`으로 두면 안 된다.** 그러면 트래커가 `Navigator`(`@ActivityRetainedScoped`)보다
+오래 산다. Activity 가 실제로 끝난 뒤 프로세스가 살아 있는 채로 다시 들어오면 `Navigator`가
+새로 서면서 언제나 `(1, NavKeySplash)`를 내는데, 그 짝이 낡은 마지막 전송 값과 같아 **그
+실행의 A-001 이 통째로 빠진다.** 두 객체의 수명을 맞추면 그 손실이 사라지고, 구성 변경
+재생성을 막는 성질은 그대로 남는다 — 그때는 `Navigator`도 같은 인스턴스다.
 
 나머지 규칙은 다음과 같다.
 
@@ -167,8 +173,11 @@ snapshotFlow { navigator.backStack.size to navigator.backStack.lastOrNull() }
 | `OS_VER` | `Build.VERSION.RELEASE` |
 | `APP_VER` | `BuildConfig.VERSION_NAME` |
 | `APP_VER_CODE` | `BuildConfig.VERSION_CODE` |
-| `DEVICE` | `Build.MANUFACTURER`와 `Build.MODEL`을 이어 붙인 값 |
+| `DEVICE` | `Build.MANUFACTURER`와 `Build.MODEL`을 이어 붙인 뒤 36자로 자른 값 |
 | `APP_ID` | `BuildConfig.APPLICATION_ID` |
+
+`DEVICE`를 자르는 이유는 GA4 사용자 속성 **값**의 상한이 36자이기 때문이다. 안 자르면 GA4가
+조용히 자른다. 우리가 먼저 자르고 그 규칙을 테스트로 고정한다.
 
 `DeviceInfo`가 나르는 것은 이 중 여섯이다. `IS_DEBUG`는 빌드 설정에서 따로 오므로 그 자료형에
 넣지 않는다.
@@ -198,7 +207,7 @@ release·debug 정의는 `build-logic`의 `AndroidConfig.kt#setConfigAndroidAppl
 
 ### 화면 ID 매핑표
 
-`NavKey` 26개 전부를 대응시킨다. 인자를 보고 갈리는 키가 여섯이고, 그중
+`NavKey` 26개 전부를 대응시킨다. 인자를 보고 갈리는 키가 다섯이고, 그중
 `NavKeyPictureConfirm`은 두 인자를 함께 봐 넷으로 갈린다.
 
 | NavKey | 조건 | 화면 ID |
@@ -289,7 +298,7 @@ Hilt 모듈을 `di` 하위 패키지에 두는 것은 `push/di/DeviceTokenModule
 Turbine·MockK·`kotlinx-coroutines-test`는 이미 유닛 테스트 번들에 있고 `:app`에
 `parfait.test.unit` 플러그인이 적용돼 있다.
 
-- 매핑 함수 — `NavKey` 26개와 갈리는 여섯의 모든 인자 조합을 넣어 기대 ID·클래스명과
+- 매핑 함수 — `NavKey` 26개와 갈리는 다섯의 모든 인자 조합을 넣어 기대 ID·클래스명과
   대조한다. 매핑되지 않은 키가 `null`을 내는 것도 본다.
 - `ScreenViewTracker` — 가짜 `AnalyticsLogger`를 끼우고 다음을 본다. 같은 짝이 연달아 오면
   한 번만 보낸다. **크기만 달라져도 보낸다**(중복 push). 뒤로 가기 복귀(A→B→A)에서 A 가 두
