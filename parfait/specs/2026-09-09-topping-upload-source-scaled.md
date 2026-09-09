@@ -137,7 +137,7 @@ value class SourceLongSide(val px: Int)
 | 자리 | 변경 | 값의 출처 |
 |---|---|---|
 | `SegmentationResult` | `sourceLongSide` 추가 | `SegmentationCandidate`의 `canvasWidth`·`canvasHeight` 중 큰 값 |
-| `ToppingEditResult` | `sourceLongSide` 추가 | 편집 결과 cutout(원본 크기 판)의 긴 변 |
+| `ToppingEditResult` | `sourceLongSide: Int?` 추가 | 편집 결과 cutout(원본 크기 판)의 긴 변 |
 | `ToppingDraft` | 널 가능 필드 추가 | 위 둘, 그리고 `SegmentationViewModel#useOriginal`은 원본 비트맵 치수 |
 | `ToppingDraftEntity` | 널 가능 `Int?` 필드 추가 | 매퍼가 감싸고 푼다 |
 | `ToppingDraftRepository#record` | 인자 추가 | 호출부 |
@@ -237,7 +237,11 @@ fun of(
 
 ### `borderOnly` 진입
 
-`ToppingEditResult.sourceLongSide`는 **널 가능**이다. 이 편집 화면은 두 방향에서 열리는데, 최근
+`ToppingEditResult.sourceLongSide`는 **널 가능**이고, 값 클래스가 아니라 **벌거벗은 `Int?`**다.
+`ToppingEditResult`는 내비게이션 계약이고 `feature/segmentation/api`는 `:domain`을 의존하지 않는다
+(ADR-0002가 그 제한을 의도된 방어기제라고 적었고, 같은 타입이 담은 `ToppingBorderLayer`가 이미 같은
+이유로 색을 ARGB 정수로 내리고 있다). `SourceLongSide`로 감싸는 것은 소비처인
+`SegmentationConfirmViewModel`이 한다 — 그 모듈은 이미 domain을 의존한다. 이 편집 화면은 두 방향에서 열리는데, 최근
 목록에서 되살린 알맹이의 테두리만 고치는 진입에서는 `cutout`이 사진이 아니라 알맹이 자신이다. 그
 긴 변을 분모로 쓰면 배율이 1에 가까워져 규칙이 무력해진다. 상태의 `isBorderOnly`로 가르고 그
 갈래는 `null`을 싣는다.
