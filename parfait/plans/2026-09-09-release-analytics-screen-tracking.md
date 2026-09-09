@@ -1124,13 +1124,19 @@ git commit -m "feat: 화면 진입 계측을 앱에 배선한다" \
 > 이 Task 는 사람이 기기에서 하는 확인이다. 자동화하지 않는다. 확인 항목마다 결과를 적고,
 > 어긋난 것이 있으면 고친 뒤 다시 본다.
 
-- [ ] **Step 1: DebugView 를 켠다**
+> 🔁 **수집 정책이 구현 중 뒤집혀 이 절차가 바뀌었다.** 이제 debug 는 수집 자체를 끄므로
+> 평범한 debug 빌드로는 DebugView 에 아무것도 안 뜬다. 반드시 게이트를 덮어써서 설치한다.
 
-Run: `adb shell setprop debug.firebase.analytics.app com.teamyg.parfait`
+- [x] **Step 1: DebugView 를 켠다** — 완료(2026-09-09)
 
-이어서 앱을 debug 로 설치해 실행하고, Firebase 콘솔의 DebugView 에 기기가 잡히는지 본다.
+```bash
+./gradlew :app:installDebug -Panalytics.isDebug=false
+adb shell setprop debug.firebase.analytics.app com.teamyg.parfait
+```
 
-- [ ] **Step 2: 화면 진입 이벤트를 확인한다**
+앱을 실행하고 Firebase 콘솔의 DebugView 에 기기가 잡히는지 본다.
+
+- [x] **Step 2: 화면 진입 이벤트를 확인한다** — 완료(2026-09-09), 화면 전환이 실제로 도착한다
 
 앱을 스플래시부터 그룹 목록·캔버스·카메라·확인 화면까지 진행하며 DebugView 에서 다음을
 확인한다.
@@ -1149,14 +1155,15 @@ Run: `adb shell setprop debug.firebase.analytics.app com.teamyg.parfait`
 
 - [ ] **Step 4: 사용자 속성을 확인한다**
 
-DebugView 의 사용자 속성에서 7종이 모두 보이고 값이 비어 있지 않은지 본다. `IS_DEBUG` 가
-`true` 인 것도 함께 본다.
+DebugView 의 사용자 속성에서 7종이 모두 보이고 값이 비어 있지 않은지 본다.
 
-- [ ] **Step 5: 덮어쓰기를 확인한다**
+⚠️ `IS_DEBUG` 는 **언제나 `false`** 다. 수집이 켜진 빌드는 정의상 그 값이 `false` 인
+빌드뿐이라, 게이트를 덮어써서 설치한 이 빌드도 `false` 로 온다.
 
-Run: `./gradlew :app:installDebug -Panalytics.isDebug=false`
+- [x] **Step 5: 덮어쓰기를 확인한다** — 완료(2026-09-09)
 
-앱을 다시 실행해 DebugView 에서 `IS_DEBUG` 가 `false` 로 바뀌는지 본다.
+Step 1 이 이미 덮어쓴 빌드를 설치했고, 이벤트가 도착한 것 자체가 게이트가 열렸다는 증거다.
+덮어쓰기가 안 먹었다면 수집이 꺼져 DebugView 에 아무것도 안 왔을 것이다.
 
 - [ ] **Step 6: 확인을 끄고 문서를 갱신한다**
 
