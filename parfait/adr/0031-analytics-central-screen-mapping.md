@@ -1,7 +1,7 @@
 ---
 id: ADR-0031
 title: 분석 계층을 :app 에 가두고 화면 ID 매핑을 한 자리에 둔다
-status: proposed
+status: accepted
 date: 2026-09-09
 deciders: Parfait 팀
 supersedes:
@@ -99,4 +99,5 @@ Firebase 도입은 ADR-0013 이 FCM·Crashlytics 와 함께 Analytics 까지 묶
 - 매핑에 대응이 없으면 전송하지 않고 경고 로그로 남겨 개발 중에 드러나게 한다.
 - 매핑 함수 유닛 테스트가 `NavKey` 26개와 인자로 갈리는 다섯의 모든 조합을 대조하고,
   `ScreenViewTracker` 테스트가 중복 push·뒤로 가기 복귀·재생성 재방출을 각각 본다.
-- ⚠️ 실기기 GA4 DebugView 로 확인한 적이 0회다. 구현 뒤 첫 검증이 남아 있다.
+- ✅ 실기기에서 이벤트 도착을 확인했다(2026-09-09). 화면 전환이 실제로 `screen_view` 가 된다.
+- ⚠️ 뒤로 가기 복귀·Activity 재생성·사용자 속성 7종은 실기기로 아직 안 봤다.

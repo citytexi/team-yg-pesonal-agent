@@ -1,7 +1,7 @@
 ---
 id: release-analytics-screen-tracking
 title: 화면 진입 계측과 기기·앱 사용자 속성 (Firebase Analytics)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-09-09
@@ -320,9 +320,12 @@ Turbine·MockK·`kotlinx-coroutines-test`는 이미 유닛 테스트 번들에 �
 
 ## 주의 / 열린 질문
 
-- ⚠️ **실기기에서 확인한 적이 0회다.** GA4 DebugView 로 이벤트가 실제로 도착하는지,
-  파라미터 두 개가 비어 오지 않는지, `IS_DEBUG` 덮어쓰기가 먹는지 확인하는 절차가 구현 뒤에
-  필요하다.
+- ✅ **실기기에서 이벤트 도착을 확인했다**(2026-09-09). 수집이 release 한정이 된 뒤이므로
+  `-Panalytics.isDebug=false` 로 빌드해 확인한 것이고, 그 사실 자체가 게이트 덮어쓰기가
+  동작한다는 근거이기도 하다.
+- ⚠️ **확인은 전송까지다.** 뒤로 가기 복귀가 다시 찍히는지, 다크모드 토글로 Activity 가
+  재생성돼도 헛 이벤트가 안 나가는지, 사용자 속성 7종이 모두 보이는지는 아직 눈으로 보지
+  않았다. 앞의 둘은 유닛 테스트가 덮고 있으나 실기기 확인은 별개다.
 - ⚠️ **임시 ID 여덟은 기획이 정식 번호를 주면 이름이 바뀐다.** 그 시점에 과거 집계가
   끊긴다. 감수하기로 확정했다.
 - ⚠️ 도달할 수 없는 화면 다섯(`NavKeyCanvasEdit`·`NavKeyCanvasImageSelect`·
