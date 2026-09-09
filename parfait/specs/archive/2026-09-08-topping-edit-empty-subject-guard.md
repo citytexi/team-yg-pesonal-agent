@@ -1,10 +1,10 @@
 ---
 id: topping-edit-empty-subject-guard
 title: 토핑 편집 빈 알맹이 차단 (Topping edit empty subject guard)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-09-08
+verified: 2026-09-09
 related_code:
   - ToppingEditViewModel#completeEdit
   - ToppingEditEffect
@@ -12,9 +12,10 @@ related_code:
   - ToppingEditMask#buildCutoutBitmap
   - ToppingEditMask#measureSubject
   - ToppingEditMask#trimTo
-  - SubjectCoverage
+  - ToppingEditMask#SubjectMeasure
+  - SubjectCoverage#isLargeEnough
   - SegmentationCandidateFilter#filterCandidates
-  - SegmentationCandidateFilter#coverageFloorPixels
+  - SubjectCoverage#floorPixels
   - ImageSegmentationRepositoryImpl#postProcess
   - SegmentationConfirmViewModel
   - ImageUploadRepositoryImpl#upload
@@ -60,7 +61,7 @@ Toast가 뜬다. 되돌릴 방법은 삭제뿐이다.
 
 **자동 경로에는 이미 하한이 있다.** `SegmentationCandidateFilter`가 커버리지 하한
 (캔버스 면적의 5/10000, 최소 2,500px)으로 너무 작은 후보를 버린다. 판정 지표와 그 값의
-근거는 [`archive/2026-08-24-segmentation-mask-postprocessing.md`](archive/2026-08-24-segmentation-mask-postprocessing.md)
+근거는 [`archive/2026-08-24-segmentation-mask-postprocessing.md`](2026-08-24-segmentation-mask-postprocessing.md)
 「필터 판정」에 있다. 즉 새 기준을 만들 필요가 없고, **있는 기준이 수동 편집에 닿지 않는 것이
 문제다.**
 
@@ -205,7 +206,7 @@ Robolectric이 없다. 아래는 실기기로 확인한다.
 
 - **기획 문서에 이 규칙이 없다.** "빈 토핑을 올릴 수 없다"는 기획 산출물 어디에도 적혀 있지
   않고, 하한과 문구도 기획이 정한 값이 아니다. 구현 결정으로 먼저 넣고
-  [`../synthesis/open-questions.md`](../synthesis/open-questions.md)에 확인 항목으로 남긴다.
+  [`../synthesis/open-questions.md`](../../synthesis/open-questions.md)에 확인 항목으로 남긴다.
 - **iOS 정합.** 같은 서버에 같은 기능으로 올리므로 상한이 아니라 하한도 플랫폼마다 다르면
   한쪽에서만 올라가는 토핑이 생긴다. 기획이 확정할 때 함께 정한다.
 - **ViewModel 글루의 테스트 공백.** 차단 분기·`isSaving` 복구·effect는 자동 테스트가 없다.

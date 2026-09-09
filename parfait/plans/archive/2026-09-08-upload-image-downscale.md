@@ -1,7 +1,7 @@
 ---
 id: upload-image-downscale
 title: 업로드 이미지 다운스케일·배경 JPEG 고정
-status: draft
+status: done
 type: work-order
 created: 2026-09-08
 updated: 2026-09-09
@@ -9,8 +9,8 @@ platforms: android
 owner: Parfait 팀
 related_adr: ADR-0017
 related_spec: upload-image-downscale
-related_code: ImageUploadRepositoryImpl, UploadImagePreprocessor, UploadImagePreprocessorImpl, UploadImagePlan, PreparedUploadImage, UploadImageFormat, UtilsModule, ImageUploadRepositoryImplTest
-archived_reason:
+related_code: ImageUploadRepositoryImpl, UploadImagePreprocessor, UploadImagePreprocessorImpl, UploadImagePlan, PreparedUploadImage, UploadImageSize, UploadImageFormat, UtilsModule, File#readExifDegrees, ImageUploadRepositoryImplTest, UploadImagePlanTest
+archived_reason: Task 1~3 을 전량 수행하고 develop 에 머지했다(2026-09-09, PR #473 `acbc4b457`). 신규 유닛 12건(UploadImagePlanTest 8 · ImageUploadRepositoryImplTest 순증 4). Task 4(실기기 수동 검증)는 저장소에서 확인할 수 없어 미체크로 둔다. 각도 판독이 `File#readExifDegrees` 로 서고 전처리 모델이 `data/model/image` 로 내려간 것은 계획 이후의 재배치다
 tags: [plan, parfait, image, upload]
 ---
 
@@ -33,7 +33,7 @@ tags: [plan, parfait, image, upload]
 
 **Tech Stack:** Kotlin, Hilt, `android.graphics.BitmapFactory`/`Bitmap`, Kotlin Coroutines, 테스트는 kotlin-test + MockK + kotlinx-coroutines-test.
 
-**Spec:** [`parfait/specs/2026-09-08-upload-image-downscale.md`](../specs/2026-09-08-upload-image-downscale.md)
+**Spec:** [`parfait/specs/2026-09-08-upload-image-downscale.md`](../../specs/archive/2026-09-08-upload-image-downscale.md)
 
 **작업 저장소:** `TJYG-Android` (remote `mash-up-kr/TEAMYG-Android`). 로컬 절대경로는 `wiki/personal-private/project-paths.md`에 있다. 브랜치 `feature/#471-image-down-scale` 위에서 작업한다.
 
@@ -91,7 +91,7 @@ tags: [plan, parfait, image, upload]
   - `fun planUploadImage(sourceSize: UploadImageSize, imageType: ImageType, sourceFormat: UploadImageFormat): UploadImagePlan`
   - `const val UPLOAD_JPEG_QUALITY = 90`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 `data/src/test/java/com/teamyg/parfait/data/model/image/UploadImageScaleTest.kt`:
 
@@ -215,12 +215,12 @@ class UploadImageScaleTest {
 }
 ```
 
-- [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
+- [x] **Step 2: 테스트가 실패하는 것을 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "com.teamyg.parfait.data.model.image.UploadImageScaleTest"`
 Expected: 컴파일 실패 — `Unresolved reference: planUploadImage`
 
-- [ ] **Step 3: 최소 구현을 쓴다**
+- [x] **Step 3: 최소 구현을 쓴다**
 
 `data/src/main/java/com/teamyg/parfait/data/model/image/UploadImageScale.kt`:
 
@@ -328,12 +328,12 @@ private fun sampleSizeOf(
 }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
+- [x] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "com.teamyg.parfait.data.model.image.UploadImageScaleTest"`
 Expected: PASS (8건)
 
-- [ ] **Step 5: ktlint를 돌린다**
+- [x] **Step 5: ktlint를 돌린다**
 
 Run: `./gradlew :data:ktlintCheck`
 Expected: PASS
@@ -356,7 +356,7 @@ Expected: PASS
 
 ⚠️ **생성자에 인자가 하나 늘어 기존 테스트 12개가 전부 컴파일 실패한다.** Step 1이 그 대역을 세운다.
 
-- [ ] **Step 1: 인터페이스를 만든다**
+- [x] **Step 1: 인터페이스를 만든다**
 
 `data/src/main/java/com/teamyg/parfait/data/source/image/local/UploadImagePreprocessor.kt`:
 
@@ -387,7 +387,7 @@ interface UploadImagePreprocessor {
 }
 ```
 
-- [ ] **Step 2: 실패하는 테스트를 쓴다**
+- [x] **Step 2: 실패하는 테스트를 쓴다**
 
 `ImageUploadRepositoryImplTest.kt`를 고친다. 대역과 생성자를 이렇게 바꾼다(기존 `imageRemoteDataSource`·`presignedUploadDataSource` 선언은 그대로 두고 아래를 더한다):
 
@@ -521,12 +521,12 @@ import com.teamyg.parfait.data.source.image.local.UploadImagePreprocessor
 
 `AppError`·`ImageType`·`File`·`IOException`은 이 파일이 이미 import 하고 있다.
 
-- [ ] **Step 3: 테스트가 실패하는 것을 확인한다**
+- [x] **Step 3: 테스트가 실패하는 것을 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "com.teamyg.parfait.data.repository.image.ImageUploadRepositoryImplTest"`
 Expected: 컴파일 실패 — `ImageUploadRepositoryImpl` 생성자에 `uploadImagePreprocessor` 파라미터가 없다
 
-- [ ] **Step 4: 저장소를 고친다**
+- [x] **Step 4: 저장소를 고친다**
 
 `ImageUploadRepositoryImpl.kt`를 통째로 아래로 바꾼다:
 
@@ -590,12 +590,12 @@ class ImageUploadRepositoryImpl @Inject constructor(
 }
 ```
 
-- [ ] **Step 5: 테스트가 통과하는 것을 확인한다**
+- [x] **Step 5: 테스트가 통과하는 것을 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "com.teamyg.parfait.data.repository.image.ImageUploadRepositoryImplTest"`
 Expected: PASS (기존 11건 + 신규 5건)
 
-- [ ] **Step 6: ktlint를 돌린다**
+- [x] **Step 6: ktlint를 돌린다**
 
 Run: `./gradlew :data:ktlintCheck`
 Expected: PASS
@@ -614,7 +614,7 @@ Expected: PASS
 
 ⚠️ **이 Task에는 자동 테스트가 없다.** `Bitmap`·`BitmapFactory`는 JVM 유닛에서 돌지 않고, 계측 소스셋과 Robolectric은 도입하지 않기로 확정했다. 검증은 Task 4의 수동 확인이다.
 
-- [ ] **Step 1: 구현을 쓴다**
+- [x] **Step 1: 구현을 쓴다**
 
 `data/src/main/java/com/teamyg/parfait/data/source/image/local/UploadImagePreprocessorImpl.kt`:
 
@@ -747,7 +747,7 @@ private val UploadImageFormat.compressFormat: Bitmap.CompressFormat
     }
 ```
 
-- [ ] **Step 2: DI 바인딩을 더한다**
+- [x] **Step 2: DI 바인딩을 더한다**
 
 `data/src/main/java/com/teamyg/parfait/data/di/LocalDataSourceModule.kt`의 `bindImageFileLocalDataSource` 바로 아래에 더한다:
 
@@ -766,17 +766,17 @@ import com.teamyg.parfait.data.source.image.local.UploadImagePreprocessor
 import com.teamyg.parfait.data.source.image.local.UploadImagePreprocessorImpl
 ```
 
-- [ ] **Step 3: 빌드하고 Hilt 그래프가 서는지 확인한다**
+- [x] **Step 3: 빌드하고 Hilt 그래프가 서는지 확인한다**
 
 Run: `./gradlew :app:assembleDebug`
 Expected: BUILD SUCCESSFUL — 바인딩이 빠지면 여기서 `[Dagger/MissingBinding]`이 난다
 
-- [ ] **Step 4: 유닛 테스트 전체를 돌린다**
+- [x] **Step 4: 유닛 테스트 전체를 돌린다**
 
 Run: `./gradlew :data:testDebugUnitTest`
 Expected: PASS
 
-- [ ] **Step 5: ktlint를 돌린다**
+- [x] **Step 5: ktlint를 돌린다**
 
 Run: `./gradlew :data:ktlintCheck`
 Expected: PASS

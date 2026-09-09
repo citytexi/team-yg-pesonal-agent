@@ -4,11 +4,11 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-05
+verified: 2026-09-09
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0013, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient, SegmentationModuleInstaller, ModuleInstallGateway, PlayServicesModuleInstallGateway, ModuleInstallModule, PrepareSegmentationModuleUseCase, NotificationService, NotificationRemoteDataSource, NotificationRemoteDataSourceImpl, DeviceToken, PushDeepLink, PushNotificationType, PushDeepLinkEventBus, PushDeepLinkEventBusImpl, SessionEventBusImpl, NotificationRepository, NotificationRepositoryImpl, DeviceTokenProvider, DeviceTokenRegistrar, DeviceTokenRegistrarImpl, FirebaseDeviceTokenProvider, RegisterDeviceTokenUseCase, RegisterCurrentDeviceTokenUseCase, DataStorePreferences, UserConfigLocalDataSource, UserConfigLocalDataSourceImpl, UserConfigEntity, UserConfigRepository, UserConfigRepositoryImpl, UserConfigVO, TutorialKind
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, EncryptedTokenStore, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, RemoteImageDownloadDataSource, RemoteImageDownloadDataSourceImpl, DownloadClient, SegmentationModuleInstaller, ModuleInstallGateway, PlayServicesModuleInstallGateway, ModuleInstallModule, PrepareSegmentationModuleUseCase, NotificationService, NotificationRemoteDataSource, NotificationRemoteDataSourceImpl, DeviceToken, PushDeepLink, PushNotificationType, PushDeepLinkEventBus, PushDeepLinkEventBusImpl, SessionEventBusImpl, NotificationRepository, NotificationRepositoryImpl, DeviceTokenProvider, DeviceTokenRegistrar, DeviceTokenRegistrarImpl, FirebaseDeviceTokenProvider, RegisterDeviceTokenUseCase, RegisterCurrentDeviceTokenUseCase, DataStorePreferences, UserConfigLocalDataSource, UserConfigLocalDataSourceImpl, UserConfigEntity, UserConfigRepository, UserConfigRepositoryImpl, UserConfigVO, TutorialKind, UploadImagePreprocessor, UploadImagePreprocessorImpl, UploadImagePlan, PreparedUploadImage, UploadImageSize, UtilsModule, SubjectCoverage
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -18,7 +18,7 @@ tags: [architecture, parfait]
 > 근거는 파일명+심볼명으로만.
 
 ## 레이어 배치
-- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, `SegmentationCandidate`, 원격 예시 `PolicyVO`·`MyParfaitGroupVO`) + 도메인 예외(sealed `SegmentationException` — `ImageNotFound`·`ClientInit`·`ModuleNotReady`·`Process` / `SignUpException.RequiredPolicyNotAgreed`).
+- **domain** — Repository **인터페이스**(예: `RecentImageRepository`, `GalleryRepository`, `CameraCacheFileRepository`, `ImageSegmentationRepository`) + UseCase([[0009-usecase-injectable-invoke]]) + 도메인 모델(`GalleryImageGroup`, `KakaoLoginResult`, `DayWindow`, `SegmentationResult`, `SegmentationCandidate`, 원격 예시 `PolicyVO`·`MyParfaitGroupVO`) + 도메인 예외(sealed `SegmentationException` — `ImageNotFound`·`ClientInit`·`ModuleNotReady`·`Process` / `SignUpException.RequiredPolicyNotAgreed`). **플랫폼이 공유해야 하는 판정값은 여기로 올린다** — `ToppingBorder.WIDTH_RANGE_DP`(테두리 굵기 범위)에 이어 **`SubjectCoverage`**(#472, 알맹이 커버리지 하한 `floorPixels`·`isLargeEnough`)가 같은 모양으로 섰다. 그 전까지 하한은 `data` 의 `internal` 상수라 `feature/segmentation/impl` 이 볼 수 없었고, 자동 누끼는 거르는 크기를 수동 편집으로 만들어 낼 수 있었다. 알파 합 비교까지 정책 안에 넣어 호출부가 단위를 각자 이해하지 않게 했다.
   - `domain/model/`은 **루트 평면 선언과 도메인 하위 패키지가 섞여 있다** — 원격 API 라운드가 추가한 VO·value class만 하위 패키지로 들어갔고(PR #197의 `auth/`·`group/`·`id/`·`policy/`에 PR #230이 `image/`·`member/`·`topping/`을, PR #250이 `canvas/`를 더했다), 그 이전 선언 8개는 루트에 남았다. 하위 패키지가 넷에서 여덟이 되며 **비율은 더 기울었는데 규약은 여전히 없다** — 어디에 새 모델을 둘지 매번 판단해야 하는 상태 → [open-questions](../synthesis/open-questions.md).
     2026-08-15~16 라운드가 `session/`(PR #260, `SessionEvent` — **원격 VO가 아닌 첫 하위 패키지**)과
     `parfait/`(PR #259, `ParfaitHistory`)를 더해 **열이 됐다**. "원격 API 라운드가 만든 것만 하위
@@ -117,6 +117,7 @@ tags: [architecture, parfait]
 | `JsonModule` | `@LocalJson`·`@RemoteJson` `Json` 2종(현재 설정 동일: `ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`) |
 | **`ApplicationScopeModule`**(#404) | `@ApplicationScope CoroutineScope` — 프로세스 수명 스코프. `CanvasPoller`의 주기 루프가 화면 수명(`viewModelScope`)에 걸리면 안 되고, 되감기 직전의 강제 갱신도 호출자 취소에 끊기면 안 된다 |
 | **`ClockModule`**(#404) | `kotlin.time.Clock` — 폴러가 캐시의 날짜를 오늘과 견주는 데 쓴다. 주입하지 않으면 하루 경계 전환을 테스트로 고정할 수 없다 |
+| **`UtilsModule`**(#473) | `UploadImagePreprocessorImpl` → `UploadImagePreprocessor` `@Binds @Singleton`. `utils/` 의 협력자를 묶는 첫 모듈이라 `RepositoryModule` 에 얹지 않았다 — `di/` 의 역할당 파일 1개 규약을 따른 것이고, `ModuleInstallModule` 이 같은 이유로 선 선례다 |
 | `SingletonInjectModule` | 기타 앱 전역 싱글톤 |
 
 ## 예: 최근 이미지
@@ -142,8 +143,9 @@ tags: [architecture, parfait]
 > 단위로 겹쳐 그려야 해 **원본 캔버스 크기**를 유지하고, C-106 배치·미리보기는 40%·48dp 계산이
 > 여백까지 세면 어긋나므로 **여백 없는 실제 객체 크기**가 필요하다. `:data`는 이미 구한
 > `subjectBounds`로 바로 잘라 두 번째 PNG를 떨구고(bounds가 `null`이면 원본 경로를 그대로 쓴다),
-> 편집을 거친 경우는 `ToppingEditMask.trimTransparentBounds()`가 알파 있는 픽셀의 최소 사각형을
-> 구한다. **대가는 캐시 파일과 메모리 버퍼가 각각 하나씩 는 것**이다 — `ToppingEditViewModel`의
+> 편집을 거친 경우는 `ToppingEditMask` 가 알파 있는 픽셀의 최소 사각형을 구한다 — **2026-09-09(PR #472)부터
+> `measureSubject` 가 경계와 알파 합을 한 번의 스캔으로 재고 `trimTo(SubjectMeasure)` 가 그 결과로 자른다**
+> (옛 이름 `trimTransparentBounds`. 같은 스캔의 알파 합이 빈 알맹이 차단의 입력이라 두 번 훑지 않는다). **대가는 캐시 파일과 메모리 버퍼가 각각 하나씩 는 것**이다 — `ToppingEditViewModel`의
 > "테두리가 없으면 같은 파일을 두 번 떨구지 않는다" 최적화도 이때 사라졌다
 > ([open-questions](../synthesis/open-questions.md) OQ-P-003 ③·OQ-P-228) →
 > [c106-topping-place 스펙](../specs/archive/2026-08-19-c106-topping-place.md).
@@ -337,6 +339,25 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 파일명 확장자가 그 contentType을 되짚는 유일한 단서이기 때문이다. 갈라 두면 서버가 받는 형식이
 늘어날 때 한쪽만 고쳐도 아무 실패가 드러나지 않는다. `ImageUploadRepositoryImpl`의
 `contentTypeOf(file)` `when` 분기가 이 enum으로 흡수됐다.
+
+✅ **업로드 경계에 전처리가 섰다**(2026-09-09, PR #473) — `ImageUploadRepositoryImpl#upload` 이 발급
+직전에 `UploadImagePreprocessor` 를 부르고, 그 결과 `PreparedUploadImage`(파일·포맷·임시 여부)의
+포맷 하나를 발급과 PUT 양쪽에 넘긴다. 위 문단이 말한 "한 번만 정해 양쪽에 넘긴다"는 성질이
+전처리기 쪽으로 옮겨 간 것이고, 확장자 판정도 함께 옮겨 갔다 — 서버가 안 받는 확장자는 이제
+전처리기가 `UnsupportedImageException` 으로 끊는다.
+
+**소스가 아니라 경계에 두는 이유**는 로컬 사본의 용도가 업로드 하나가 아니기 때문이다. 누끼 파일은
+`ToppingEditViewModel` 의 수동 편집 입력이기도 하고 그 화면은 확대해서 다듬는 UX라 원본 해상도를
+실제로 쓴다. 경계에서 줄이면 **로컬은 원본을 유지하고 서버로 나가는 것만 줄어든다.** 부수 효과로
+배경의 두 입력원(갤러리 선택·`returnResultOnly` 커스텀 카메라)이 같은 자리를 지나 규칙이 한 번만
+적힌다.
+
+판정과 실행은 갈라 두었다. **판정은 `data/model/image` 의 `UploadImagePlan.of` 가 순수하게** 하고
+(`Passthrough` / `Reencode`, 긴 변 상한은 imageType 마다 다르며 배경은 포맷까지 JPEG 로 접는다),
+**실행은 `data/utils/image` 의 `UploadImagePreprocessorImpl`** 이 한다. 판정이 `android.graphics` 를
+안 보므로 상한·표본 배수·결정 표가 JVM 유닛으로 덮인다. 임시 파일은 `cacheDir/upload` 에 쓰고
+업로드의 성공·실패와 무관하게 `finally` 에서 지운다 — 입력 파일 옆에 두면 최근 알맹이 재사용
+경로의 고아가 `filesDir` 에 남는다 → [spec](../specs/archive/2026-09-08-upload-image-downscale.md).
 
 ✅ **`ParfaitRepository`가 DataSource의 다섯 갈래를 전부 연다**(2026-08-22, PR #329) — 마지막 하나였던
 배경 변경이 C-301 확인 버튼이라는 소비자와 함께 올라왔다. "쓰지 않는 갈래를 미리 열지 않는다"는

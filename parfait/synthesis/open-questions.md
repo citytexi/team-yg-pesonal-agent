@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-08
-related_spec: topping-edit-empty-subject-guard, push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field
+verified: 2026-09-09
+related_spec: topping-edit-empty-subject-guard, upload-image-downscale, push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field
 related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029, ADR-0030
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -4509,6 +4509,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   가리키는 것과 같은 부류의 함정이다 → [ADR-0026](../adr/0026-topping-draft-datastore-ssot.md)).
   정하면 [data-layer](../architecture/data-layer.md) "DataSource 종류"의 파일 기반 항목에 적는다.
 
+  📌 **같은 디렉토리에 정책이 있는 파일이 생겼다**(2026-09-09, PR #473) — 업로드 전처리가 만드는
+  축소본도 `cacheDir/upload` 에 UUID 이름으로 앉는데, 이쪽은 업로드의 성공·실패와 무관하게
+  `finally` 에서 지운다(`PreparedUploadImage.isTemporary` 가 그 책임을 나른다). 이 항목이 묻는 ①의
+  답을 한 종류에 대해서는 이미 낸 셈이다 — **업로드가 끝나면 즉시**. 남은 것은 `copyToCache` 가
+  떨구는 복사본이고, 이제 **같은 디렉토리에 수명 정책이 있는 파일과 없는 파일이 섞여 있다.**
+
 ### [2026-08-22] 색을 `#RRGGBB`로 적는 함수가 둘이고, 알파 처리가 서로 정반대다
 
 - **ID**: OQ-P-263
@@ -7242,7 +7248,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 ### [2026-09-08] 빈 알맹이 차단의 하한·문구가 기획에 없다
 
 - **ID**: OQ-P-386
-- **출처**: `specs/2026-09-08-topping-edit-empty-subject-guard.md`. 토핑 편집에서 영역을 전부 지우고
+- **출처**: `specs/archive/2026-09-08-topping-edit-empty-subject-guard.md`. 토핑 편집에서 영역을 전부 지우고
   완료해도 완전히 투명한 이미지가 서버까지 올라가는 구멍을 막으면서, 판정 하한과 안내 문구를
   **구현이 정했다**. 하한은 자동 누끼 경로의 커버리지 하한(`SubjectCoverage`, 캔버스 면적의 5/10000·
   최소 2,500px)을 그대로 재사용했고, 문구는 `topping_edit_subject_too_small` 이다.
@@ -7253,4 +7259,67 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 같은 서버에 같은 기능으로 올리므로 **iOS와 하한이 갈리면 한쪽에서만 올라가는 토핑이
   생긴다.** 기획이 확정할 때 플랫폼 공통값으로 정하고, 정책이 서면 위키 쪽 정책 문서에도 자리를 만든다.
 
-<!-- oq-next: 387 -->
+### [2026-09-09] 업로드 상한 1500·2048 의 근거가 iOS 정합뿐이다
+
+- **ID**: OQ-P-387
+- **출처**: `specs/archive/2026-09-08-upload-image-downscale.md`. 업로드 직전 긴 변 상한을
+  `UploadImagePlan` 이 imageType 마다 다르게 들고 있다(누끼·배경). 그 두 값은 `TEAMYG-iOS` 의
+  `ToppingImageEncoder.maximumLongEdge`·`BackgroundImageLoader.maximumLongEdge` 를 그대로 옮긴 것이다.
+- **항목**: ① iOS 가 그 값을 어떻게 골랐는지는 그쪽 코드에 적혀 있지 않아 근거를 되짚을 데가 없다.
+  ② 소비 측 상계는 캔버스 긴 변이라 배경 상한은 실제 필요보다 크다 — 더 내릴 여지가 있는데 그
+  협의를 아직 하지 않았다. ③ 축소 후 실제로 바이트가 얼마나 주는지 측정치가 없다.
+- **상태**: 미해결 (값은 iOS 와 같게 두고 진행한다)
+- **해소 메모**: 상한은 **두 플랫폼이 같이 움직여야 하는 값**이다. 한쪽만 내리면 같은 캔버스를 두
+  기기에서 볼 때 화질이 갈린다. 기대만큼 안 줄면 다음 레버는 값이 아니라 포맷(WebP)이고, 그것은
+  서버가 `image/png`·`image/jpeg` 둘만 받으므로 서버까지 함께 움직이는 별건이다.
+
+### [2026-09-09] 저장소 주석이 스펙이 철회한 메모리 비교를 들고 있다
+
+- **ID**: OQ-P-388
+- **출처**: `ImageUploadRepositoryImpl#upload` 의 전처리 호출부 주석과
+  `specs/archive/2026-09-08-upload-image-downscale.md` 「실패 처리」.
+- **항목**: 주석은 "축소본이 원본보다 메모리를 덜 쓰므로 폴백이 더 큰 메모리를 요구한다"고 적었는데,
+  스펙은 그 비교를 **명시적으로 철회했다** — 변경 전 `upload` 에는 디코드가 아예 없었으므로 비교
+  대상 자체가 성립하지 않는다. 폴백하지 않는 결정은 양쪽이 같고, 갈린 것은 근거뿐이다.
+- **상태**: 미해결 (동작 영향 없음, 주석 정정 대상)
+- **해소 메모**: 주석을 스펙의 현재 근거 두 줄로 갈아 끼운다 — 배경 JPEG 고정은 정책이라 조용히
+  어기면 안 되고, 실패가 드러나지 않으면 고칠 수도 없다.
+
+### [2026-09-09] 코드 주석 셋이 아카이브로 옮겨진 스펙 경로를 가리킨다
+
+- **ID**: OQ-P-389
+- **출처**: `UploadImagePlan`(1곳)·`UploadImagePreprocessorImpl`(2곳)의 KDoc.
+- **항목**: 셋 다 `specs/2026-09-08-upload-image-downscale.md` 를 근거로 적었는데, 이 회차가 그 스펙을
+  `specs/archive/` 로 옮겼다. 경로가 한 단계 어긋나 근거를 따라가지 못한다.
+- **상태**: 미해결 (경로 문자열만 고치면 되는 정정)
+- **해소 메모**: 같은 정정의 선례가 이번 델타 안에 있다 — `SegmentationCandidateFilter` 의 주석이
+  `specs/…` 에서 `specs/archive/…` 로 바뀌었다. 다음에 그 파일들을 여는 라운드에서 함께 고친다.
+
+### [2026-09-09] 재인코딩이 만드는 세 갈래를 실기기가 아직 판정하지 않았다
+
+- **ID**: OQ-P-390
+- **출처**: `specs/archive/2026-09-08-upload-image-downscale.md` 「검증」·「주의」. 계획의 수동 검증
+  Task 가 미체크로 남아 있다.
+- **항목**: ① **없던 디코드가 생겼다** — 변경 전 업로드는 바이트 복사뿐이었다. 저사양 기기에서 배경
+  긴 변 2049~4095 구간이 견디는지는 실기기가 처음 판정한다. ② **ICC 프로파일이 재인코딩에서
+  소실된다** — Display P3 사진 배경이 sRGB 로 앉으며 채도가 변할 수 있는데 그 영향을 측정하지 않았다.
+  ③ **미러링 EXIF 는 보정하지 않는다** — `exifOrientationToDegrees` 가 `TRANSPOSE`·`TRANSVERSE` 를 0 도로
+  두므로 그 사진만 재인코딩 갈래와 통과 갈래의 방향이 갈린다.
+- **상태**: 미해결 (자동 테스트로는 닿지 않는 갈래들)
+- **해소 메모**: ③ 의 0 도 매핑은 `segmentation-preprocessing` 이 정한 저장소 규약이라 이 라운드가
+  뒤집지 않았다. ①②는 눈에 띄는 회귀가 나오면 각각 별건으로 다룬다.
+
+### [2026-09-09] 업로드본이 작아지면서 알맹이 커버리지 하한의 기준면이 흔들린다
+
+- **ID**: OQ-P-391
+- **출처**: `specs/archive/2026-09-08-topping-edit-empty-subject-guard.md` 「주의」와
+  `specs/archive/2026-09-08-upload-image-downscale.md` 「결정 표」. 두 스펙이 같은 날 나란히 머지됐다.
+- **항목**: 빈 알맹이 차단은 **편집 화면의 원본 해상도 비트맵**에서 알파 합을 재는데, 그 알맹이가
+  서버로 나갈 때는 긴 변 상한까지 줄어든다. 하한을 통과한 알맹이가 축소 뒤에는 같은 하한에 못
+  미치는 구간이 생긴다. 특히 `borderOnly` 진입은 판정에서 빠져 있어, 서버에서 받아 여는 토핑의
+  커버리지가 이미 줄어든 판이다.
+- **상태**: 미해결 (지금까지 드러난 오작동은 없음)
+- **해소 메모**: 하한을 어느 좌표계에서 재는지가 정해진 적이 없다. 기획이 하한을 확정할 때
+  **업로드본 기준인지 편집본 기준인지**를 함께 정하고, iOS 와 값·기준면을 맞춘다(OQ-P-386 과 한 묶음).
+
+<!-- oq-next: 392 -->
