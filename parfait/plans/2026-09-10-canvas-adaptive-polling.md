@@ -34,10 +34,12 @@
 | `data/src/test/java/com/teamyg/parfait/data/source/parfait/local/CanvasPollIntervalTest.kt` | 위 클래스의 단위 테스트 | 신설 |
 | `data/src/main/java/com/teamyg/parfait/data/source/parfait/local/CanvasPoller.kt` | 폴링 트리거 소유. 주기를 위 클래스에 묻고 결과를 되먹인다 | 수정 |
 | `data/src/test/java/com/teamyg/parfait/data/source/parfait/local/CanvasPollerTest.kt` | 폴러 테스트. 기존 5초 가정을 10초로 고치고 램프 케이스를 더한다 | 수정 |
+| `feature/groups/canvas/impl/.../viewmodel/CanvasMainViewModel.kt` | 「폴링은 5초마다」 단정 주석 3곳 정리 | 수정 |
+| `feature/groups/canvas/impl/src/test/.../viewmodel/CanvasMainViewModelTest.kt` | 같은 단정 주석 2곳 정리 | 수정 |
 | `app/src/main/java/com/teamyg/parfait/push/PushDeepLinkIntent.kt` | `Intent`·`Map` extras를 `PushDeepLink`로 | 수정 |
 | `app/src/main/java/com/teamyg/parfait/push/ParfaitFirebaseMessagingService.kt` | 토핑 푸시를 받으면 갱신 요청 | 수정 |
 | `app/src/test/java/com/teamyg/parfait/push/PushDeepLinkIntentTest.kt` | `Map` 파싱 테스트 추가 | 수정 |
-| `parfait/adr/0029-canvas-today-ssot-polling.md` | 고정 주기 서술 교체, 리셋 계기 열거 | 수정(문서 저장소) |
+| `parfait/adr/0029-canvas-today-ssot-polling.md` | 적응형 주기 항목 신설, 리셋 계기 열거 | 수정(문서 저장소) |
 | `parfait/synthesis/open-questions.md` | OQ-P-320 상태 갱신 | 수정(문서 저장소) |
 
 ---
@@ -55,7 +57,8 @@
   `fun onChanged(groupId: GroupId)`,
   `fun onUnchanged(groupId: GroupId)`,
   `fun onReset(groupId: GroupId)`,
-  `fun forget(groupId: GroupId)`
+  `fun forget(groupId: GroupId)`,
+  `fun forgetAll()`
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -133,6 +136,18 @@ class CanvasPollIntervalTest {
     }
 
     @Test
+    fun forgetAll_clearsGroupsThatNobodyReleased() {
+        val interval = CanvasPollInterval()
+        repeat(10) { interval.onUnchanged(GROUP) }
+        repeat(10) { interval.onUnchanged(OTHER_GROUP) }
+
+        interval.forgetAll()
+
+        assertEquals(10.seconds, interval.current(GROUP))
+        assertEquals(10.seconds, interval.current(OTHER_GROUP))
+    }
+
+    @Test
     fun forget_makesTheNextVisitStartOver() {
         val interval = CanvasPollInterval()
         repeat(10) { interval.onUnchanged(GROUP) }
@@ -194,6 +209,10 @@ class CanvasPollInterval @Inject constructor() {
         stages.remove(groupId)
     }
 
+    fun forgetAll() {
+        stages.clear()
+    }
+
     private companion object {
         val STAGES = listOf(10.seconds, 15.seconds, 20.seconds)
     }
@@ -206,7 +225,7 @@ class CanvasPollInterval @Inject constructor() {
 ./gradlew :data:testDebugUnitTest --tests "*CanvasPollIntervalTest*"
 ```
 
-Expected: PASS (7건).
+Expected: PASS (8건).
 
 - [ ] **Step 5: ktlint를 돌린다**
 
@@ -331,25 +350,48 @@ private val CANVAS_POLL_INTERVAL: Duration = 5.seconds
 
 Expected: PASS.
 
-- [ ] **Step 5: ktlint와 컴파일을 확인한다**
+- [ ] **Step 5: 「폴링은 5초마다」를 단정한 주석 다섯을 고친다**
+
+주기가 더는 5초가 아니므로 이 문장들이 전부 거짓이 된다. `parfait/CLAUDE.md`가 「다른 컴포넌트의 현재 상태를 단정하지 않는다 — 낡는다」로 금지한 바로 그 유형이라, 수치를 되살리지 말고 **수치를 빼서** 다시 낡지 않게 만든다.
+
+- `feature/groups/canvas/impl/src/main/kotlin/.../viewmodel/CanvasMainViewModel.kt:221`
+  `— 폴링은 5초마다 돌아 매번 알리면 방해가 된다` → `— 폴링이 주기마다 돌아 매번 알리면 방해가 된다`
+- 같은 파일 `:395`
+  `폴링이 5초마다` → `폴링이 주기마다`
+- 같은 파일 `:447`
+  `폴링은 5초마다 도므로` → `폴링은 주기마다 도므로`
+- `feature/groups/canvas/impl/src/test/kotlin/.../viewmodel/CanvasMainViewModelTest.kt:539`
+  `5초마다 도는 폴링이면 매번 일어난다` → `주기마다 도는 폴링이면 매번 일어난다`
+- 같은 파일 `:1081`
+  `5초마다 도는 폴링의 실패로` → `주기마다 도는 폴링의 실패로`
+
+줄 번호는 이 계획을 쓴 시점의 것이다. 옮겨졌을 수 있으니 `grep -rn "5초" --include="*.kt" feature/groups/canvas/impl/src` 로 다시 찾아 다섯 자리가 모두 처리됐는지 확인한다.
+
+- [ ] **Step 6: ktlint와 컴파일, 영향 모듈 테스트를 확인한다**
 
 ```bash
-./gradlew :data:ktlintCheck :data:compileDebugKotlin
+./gradlew :data:ktlintCheck :data:compileDebugKotlin \
+          :feature:groups:canvas:impl:ktlintCheck :feature:groups:canvas:impl:testDebugUnitTest
 ```
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 6: 커밋한다**
+- [ ] **Step 7: 커밋한다**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/source/parfait/local/CanvasPoller.kt \
-        data/src/test/java/com/teamyg/parfait/data/source/parfait/local/CanvasPollerTest.kt
+        data/src/test/java/com/teamyg/parfait/data/source/parfait/local/CanvasPollerTest.kt \
+        feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/viewmodel/CanvasMainViewModel.kt \
+        feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/viewmodel/CanvasMainViewModelTest.kt
 git commit -F - <<'MSG'
 refactor: 폴링 주기를 상수에서 CanvasPollInterval 로 옮긴다
 
 주기 값은 아직 안 바뀐 동작이고, 대기 직전마다 다시 묻는 자리만 만든다.
 기존 테스트가 고정 5초를 가정하고 있어 함께 고친다. 강제 갱신과 중첩 가드
 테스트 둘은 값만 바꾸면 뜻을 잃어 시간 값을 다시 계산했다.
+
+캔버스 화면의 「폴링은 5초마다」 주석 다섯도 함께 걷는다. 수치를 되살리지 않고
+빼서 다시 낡지 않게 한다.
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 MSG
@@ -446,7 +488,9 @@ MSG
 ./gradlew :data:testDebugUnitTest --tests "*CanvasPollerTest*"
 ```
 
-Expected: FAIL. 되먹임이 없어 주기가 계속 10초라 `poll_whenNothingChanges_stretchesTheInterval`이 `expected:<2> but was:<3>`으로 깨진다.
+Expected: FAIL — 단 **세 건 중 `poll_whenNothingChanges_stretchesTheInterval` 하나만** 깨진다. 되먹임이 없어 주기가 계속 10초라 24초 안에 세 번 나가고 `expected:<2> but was:<3>`이 된다.
+
+나머지 둘은 지금도 통과한다. 주기가 고정 10초일 때의 호출 횟수가 우연히 기대값과 같기 때문이다. 그래도 지우지 말 것 — Step 3 구현 뒤에는 잘못된 구현을 정확히 잡는다. `poll_whenTheCanvasChanges_returnsToTheShortestInterval`은 변화를 보고도 되돌리지 않는 구현에서, `poll_whenItFails_doesNotStretchTheInterval`은 실패를 「변화 없음」으로 세는 구현에서 깨진다. **"왜 안 깨지지"에서 멈추지 말 것.**
 
 - [ ] **Step 3: 되먹임을 구현한다**
 
@@ -457,8 +501,11 @@ Expected: FAIL. 되먹임이 없어 주기가 계속 10초라 `poll_whenNothingC
                 .onSuccess { canvas ->
                     synchronized(lock) {
                         if (generation == startedGeneration) {
-                            // 첫 조회(cached == null)는 변화로 친다 — 막 열린 화면이 가장 촘촘해야 한다
-                            if (cached != canvas) interval.onChanged(groupId) else interval.onUnchanged(groupId)
+                            // 구독자가 없는 갱신(화면 밖 푸시)이 단계를 올려 두면 다음 진입의 첫
+                            // 주기가 10초가 아니게 된다. 첫 조회(cached == null)는 변화로 친다
+                            if (subscriberCounts.containsKey(groupId)) {
+                                if (cached != canvas) interval.onChanged(groupId) else interval.onUnchanged(groupId)
+                            }
                             local.saveTodayCanvas(groupId, canvas)
                         }
                     }
@@ -529,12 +576,12 @@ MSG
         advanceTimeBy(10.seconds)
         runCurrent()
 
-        // 같은 값이 두 번 왔으니 다음 주기는 15초다
+        // 강제 갱신도 조회라, 이 회차까지 세면 되돌리기가 없을 때의 다음 주기는 20초다
         poller.refreshNow(GROUP)
         runCurrent()
         val afterForced = remote.todayCallCount + remote.detailCallCount
 
-        // 되돌렸으니 10초에 나간다 — 15초짜리 주기였다면 아직이다
+        // 되돌렸으니 10초에 나간다 — 되돌리지 않았다면 아직이다
         advanceTimeBy(11.seconds)
         runCurrent()
 
@@ -574,7 +621,24 @@ Expected: FAIL. 되돌리는 자리가 없어 두 테스트 모두 `expected:<N+
 
 - [ ] **Step 3: 되돌리는 자리를 배선한다**
 
-`refreshNow`에서 타이머를 다시 세우기 직전에 되돌린다.
+`acquire`에서 첫 구독일 때 되돌린다. 화면 진입이 가장 촘촘한 단계에서 시작한다는 것을 이 한 줄이 보장한다 — `release`의 `forget`에만 기대면, 구독 없이 나간 갱신이 남긴 단계가 그대로 남는다.
+
+```kotlin
+    fun acquire(groupId: GroupId) {
+        val isFirst = synchronized(lock) {
+            val next = (subscriberCounts[groupId] ?: 0) + 1
+            subscriberCounts[groupId] = next
+            next == 1
+        }
+        if (isFirst.not()) return
+
+        synchronized(lock) { interval.onReset(groupId) }
+        restartPollTimer(groupId)
+        scope.launch { refresh(groupId) }
+    }
+```
+
+`refreshNow`에서도 타이머를 다시 세우기 직전에 되돌린다.
 
 ```kotlin
     suspend fun refreshNow(groupId: GroupId): Result<Unit> {
@@ -606,7 +670,7 @@ Expected: FAIL. 되돌리는 자리가 없어 두 테스트 모두 `expected:<N+
     }
 ```
 
-`stopAll`에서도 지운다. 맵을 비우기 전에 돌아야 키가 남아 있다.
+`stopAll`에서는 전부 지운다.
 
 ```kotlin
     fun stopAll() {
@@ -614,7 +678,8 @@ Expected: FAIL. 되돌리는 자리가 없어 두 테스트 모두 `expected:<N+
             generation++
             pollJobs.values.forEach(Job::cancel)
             pollJobs.clear()
-            subscriberCounts.keys.forEach(interval::forget)
+            // 구독자 없이 단계만 남은 그룹도 있으므로 키 순회로는 부족하다
+            interval.forgetAll()
             subscriberCounts.clear()
             refreshing.clear()
         }
@@ -673,14 +738,14 @@ MSG
 ```kotlin
     @Test
     fun mapToPushDeepLinkOrNull_toppingPayload_readsTheGroupId() {
-        val data = mapOf("route" to "CANVAS", "groupId" to "34", "type" to "TOPPING")
+        val data = mapOf("route" to "canvas", "groupId" to "34", "type" to "TOPPING")
 
         assertEquals(PushDeepLink.AddTopping(groupId = 34L), data.toPushDeepLinkOrNull())
     }
 
     @Test
     fun mapToPushDeepLinkOrNull_remindPayload_isNotAddTopping() {
-        val data = mapOf("route" to "GROUP", "type" to "REMIND_AM")
+        val data = mapOf("route" to "group", "type" to "REMIND_AM")
 
         // 리마인드에는 groupId 가 없다 — 이 갈림이 없으면 하루 두 번 엉뚱한 그룹이 되살아난다
         assertIs<PushDeepLink.GroupList>(data.toPushDeepLinkOrNull())
@@ -688,9 +753,11 @@ MSG
 
     @Test
     fun mapToPushDeepLinkOrNull_unknownRoute_isNull() {
-        assertNull(mapOf("route" to "NOWHERE").toPushDeepLinkOrNull())
+        assertNull(mapOf("route" to "nowhere").toPushDeepLinkOrNull())
     }
 ```
+
+⚠️ `route` 값은 **소문자**다. `PushNotificationRouteType`의 키가 `canvas`·`group`이고 `fromKeyOrNull`이 정확히 일치할 때만 통과한다. 대문자로 쓰면 파서가 `null`을 내 두 테스트가 깨진다.
 
 `import kotlin.test.assertIs`와 `import kotlin.test.assertNull`이 없으면 더한다.
 
@@ -857,6 +924,10 @@ Step 1에서 넣은 항목 바로 아래, 「결정」 절 끝에 표를 붙인�
 | 화면 진입(첫 구독) | `CanvasPoller#acquire` | 즉시 갱신 + 가장 촘촘한 단계에서 시작 |
 | 조회 결과가 캐시와 다름 | `CanvasPoller#refresh` | 가장 촘촘한 단계로 |
 | 조회 결과가 캐시와 같음 | `CanvasPoller#refresh` | 한 칸 올린다(상한에서 멈춤) |
+
+위 두 줄은 **그 그룹에 구독자가 있을 때만** 적용한다. 화면 밖에서 푸시로 나간 갱신이 단계를
+올려 두면 다음 진입의 첫 주기가 가장 촘촘한 단계가 아니게 된다.
+
 | 쓰기 성공 후 강제 갱신 | `CanvasPoller#refreshNow` | 즉시 갱신 + 가장 촘촘한 단계로 |
 | 토핑 푸시 수신 | `RequestTodayParfaitRefreshUseCase` | 위와 같은 경로를 탄다 |
 | 마지막 구독 해제 | `CanvasPoller#release` | 단계를 지운다 — 다시 들어오면 처음부터 |
@@ -911,6 +982,14 @@ MSG
 
 ## 마무리 확인
 
-- [ ] `TJYG-Android`에서 `./gradlew :data:testDebugUnitTest :app:testDebugUnitTest :data:ktlintCheck :app:ktlintCheck`가 전부 통과한다.
+- [ ] `TJYG-Android`에서 아래가 전부 통과한다.
+
+```bash
+./gradlew :data:testDebugUnitTest :app:testDebugUnitTest \
+          :feature:groups:canvas:impl:testDebugUnitTest \
+          :data:ktlintCheck :app:ktlintCheck :feature:groups:canvas:impl:ktlintCheck
+```
+
+- [ ] `grep -rn "5초" --include="*.kt" feature/groups/canvas/impl/src` 가 아무것도 내지 않는다.
 - [ ] `git log --oneline`에 Task 1~5의 커밋 다섯이 있고 push는 하지 않았다.
 - [ ] 실기기에서 캔버스를 열어 두고 다른 계정으로 토핑을 올렸을 때, 알림이 뜨는 즉시 캔버스에 반영되는지 확인한다. 이 확인은 자동화 테스트로 덮지 못한다.

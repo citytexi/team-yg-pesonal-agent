@@ -57,6 +57,8 @@ private val CANVAS_POLL_INTERVAL: Duration = 5.seconds
   - `CanvasPoller`가 고정 주기 대신 그 클래스에 묻고, 조회 결과의 변화 여부를 되먹인다.
   - `ParfaitFirebaseMessagingService`가 토핑 푸시를 받으면 갱신을 요청하는 갈래 추가.
   - `CanvasPollInterval` 단위 테스트 신설, `CanvasPollerTest`에 주기 관련 케이스 추가.
+  - `feature/groups/canvas/impl`에 남은 「폴링은 5초마다」 단정 주석 정리. 이 변경으로 한꺼번에
+    거짓이 된다.
   - ADR-0029 개정. 그 결정문은 주기 **값**을 정한 적이 없고 「주기 폴링」이라고만 썼으므로,
     적응형 주기 항목을 새로 넣고 되돌리는 계기를 열거표로 붙인다. 「위험·방어」에 남은
     `5초 주기마다` 수치도 함께 정정한다.
@@ -99,10 +101,11 @@ private val CANVAS_POLL_INTERVAL: Duration = 5.seconds
 | 변화 없음 | `fun onUnchanged(groupId: GroupId)` | 단계를 한 칸 올린다(상한에서 멈춤) |
 | 리셋 | `fun onReset(groupId: GroupId)` | 단계를 0으로 |
 | 정리 | `fun forget(groupId: GroupId)` | 그 그룹의 단계를 지운다 |
+| 전체 정리 | `fun forgetAll()` | 모든 그룹의 단계를 지운다 |
 
 `onChanged`와 `onReset`은 하는 일이 같지만 부르는 자리의 뜻이 달라 나눈다. 앞은 조회 결과가
 말해 준 것이고, 뒤는 바깥 사건(진입·쓰기·푸시)이 명령한 것이다. 호출부를 읽을 때 어느 쪽인지
-드러나야 리셋 계기 열거표와 코드가 대조된다.
+드러나야 리셋 계기 열거표와 코드가 대조된다. `onReset`은 `acquire`와 `refreshNow` 둘에서 불린다.
 
 상태는 그룹별 단계 인덱스 하나뿐이다. `CanvasPoller`가 이미 `synchronized(lock)`으로 자기 맵
 셋을 지키고 있으므로, 이 클래스도 같은 규칙 아래에서만 불린다. 스스로 락을 들지 않는다 —
@@ -121,8 +124,9 @@ private val CANVAS_POLL_INTERVAL: Duration = 5.seconds
 `toppings`만 가진 data class다. 요청 시각처럼 매번 달라지는 필드가 없어서 구조적 동등성이 곧
 "서버가 준 캔버스가 달라졌는가"다. 별도 비교 함수를 만들지 않는다.
 
-판정은 캐시에 싣는 것과 같은 `synchronized` 블록 안에서, 세대가 유효할 때만 한다. 버려진 세대의
-응답이 주기를 움직이면 안 된다.
+판정은 캐시에 싣는 것과 같은 `synchronized` 블록 안에서, 세대가 유효할 때만, 그리고 **그 그룹에
+구독자가 있을 때만** 한다. 버려진 세대의 응답이 주기를 움직이면 안 되고, 화면을 보지 않는 동안
+푸시로 나간 갱신이 단계를 올려 두면 다음 진입의 첫 주기가 10초가 아니게 된다.
 
 이전 값이 `null`인 첫 조회는 `onChanged`로 친다. 화면이 막 열려 캔버스를 처음 받은 순간은 가장
 촘촘해야 할 때다.
@@ -134,14 +138,14 @@ ADR-0029가 "갱신이 나가는 시점 자체는 여전히 열거한다"를 규
 
 | 계기 | 자리 | 동작 |
 |---|---|---|
-| 화면 진입(첫 구독) | `CanvasPoller#acquire` | 즉시 갱신 + 단계 0에서 시작 |
+| 화면 진입(첫 구독) | `CanvasPoller#acquire` | 즉시 갱신 + `onReset` — 단계 0에서 시작 |
 | 조회 결과가 캐시와 다름 | `CanvasPoller#refresh` | `onChanged` — 다음 회차부터 10초 |
 | 조회 결과가 캐시와 같음 | `CanvasPoller#refresh` | `onUnchanged` — 한 칸 올린다 |
 | 쓰기 성공 후 강제 갱신 | `CanvasPoller#refreshNow` | 즉시 갱신 + `onReset` |
 | 토핑 푸시 수신 | `RequestTodayParfaitRefreshUseCase` | 즉시 갱신 + `onReset`(같은 경로) |
 | 마지막 구독 해제 | `CanvasPoller#release` | `forget` — 다시 들어오면 10초부터 |
 | 갱신 실패 | `CanvasPoller#refresh` | **주기를 건드리지 않는다** |
-| 세션 종료 | `CanvasPoller#stopAll` | 전부 `forget` |
+| 세션 종료 | `CanvasPoller#stopAll` | `forgetAll` — 구독자 없는 그룹의 단계까지 지운다 |
 
 **실패를 램프에서 뺀 이유**: 실패를 "변화 없음"으로 세면 서버가 흔들리는 동안 주기가 20초로
 늘어져, 회복이 가장 필요한 순간에 가장 늦게 회복한다. 실패 전용 백오프가 필요해지면 램프와 다른
@@ -170,9 +174,9 @@ PushDeepLinkParser.parse(route, groupId, type)
 `ParfaitRepositoryImpl#requestTodayCanvasRefresh`가 `CanvasPoller#refreshNowAsync`로 이어진다.
 푸시가 원하는 것("즉시 한 번 받고 주기를 되돌린다")과 그 경로가 하는 일이 정확히 같다.
 
-리마인드 푸시(`REMIND_AM`·`REMIND_PM`)는 `route`가 `GROUP`이라 파서가 `PushDeepLink.GroupList`로
+리마인드 푸시(`REMIND_AM`·`REMIND_PM`)는 `route`가 `group`이라 파서가 `PushDeepLink.GroupList`로
 가른다. 타입을 따로 거르는 코드가 필요 없다. 이 갈림이 없으면 하루 두 번 아무 이유 없이 주기가
-리셋된다.
+리셋된다. `route` 값은 `PushNotificationRouteType`의 키 그대로 **소문자**다(`canvas`·`group`).
 
 `PushDeepLinkEventBus`는 쓰지 않는다. 그것은 `Channel` 기반 단일 소비자이고 **알림을 탭했을 때의
 이동**을 나르는 축이라, 도착 신호로 재사용하면 푸시가 올 때마다 화면이 옮겨 간다.
