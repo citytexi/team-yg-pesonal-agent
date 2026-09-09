@@ -72,9 +72,9 @@ UseCase로 감쌀 단위를 잡기 애매했던 것이 원인으로 보인다. �
 | `RecordToppingDraftUseCase` | `suspend operator fun invoke(subjectImagePath: String, cutoutImagePath: String?, borderColorArgb: Int?, borderWidthDp: Float?): Boolean` | `SegmentationViewModel#selectCandidate`·`#useOriginal`, `SegmentationConfirmViewModel#record` |
 | `EnsureDraftSubjectRecordedUseCase` | `suspend operator fun invoke(subjectImagePath: String): Boolean` | `SegmentationConfirmViewModel`의 `init` 판정 |
 
-이름은 기존 관례를 따른다. Repository의 `Flow`를 그대로 내보내는 것은 `Get…FlowUseCase`
-(`GetTodayParfaitFlowUseCase`·`GetMyAccountFlowUseCase`와 같은 모양)이고, `Observe…UseCase`는
-저장소에서 시간 축 같은 파생 흐름에 쓰이고 있어 여기서는 쓰지 않는다.
+이름은 `GetMyAccountFlowUseCase`를 따른다. 그 KDoc이 `Get…FlowUseCase`를 고른 이유를 적어
+두었다 — 호출 자체는 구독하지 않고 `Flow`만 넘기기 때문이다. 초안 구독도 성질이 같다.
+(`Observe…UseCase`가 통과 흐름에 쓰인 자리도 있어 이름만으로는 두 계열이 갈리지 않는다.)
 
 앞의 넷은 Repository로 그대로 넘기는 위임이다. **위임이라는 사실 자체가 이 스펙의 결정**이다 —
 호출부의 의미가 각각 달라 보여도 도메인 규칙이 붙지 않은 자리에 규칙을 지어내지 않는다.
@@ -91,15 +91,24 @@ UseCase로 감쌀 단위를 잡기 애매했던 것이 원인으로 보인다. �
 성공했을 때가 모두 `true`이고, 적으려다 실패했을 때만 `false`다. 호출부가 두 경우를 갈라 볼 일이
 없어서 결과를 하나로 좁힌다.
 
-`hasRecordedEntrySubject` 플래그는 ViewModel에 남긴다. `SavedStateHandle`에 얹혀 프로세스 사망
-복원까지 살아남는 것이 그 플래그의 존재 이유인데, domain으로 옮기면 그 보장을 잃는다.
-UseCase는 판정만 하고 "이미 했는지"는 화면이 기억한다.
+이 UseCase는 `ToppingDraftRepository`를 직접 받는다. 같은 저장소 표면 둘(`draft`·`record`)을
+한 판정 안에서 함께 쓰므로, 위임 UseCase를 거치면 테스트 더블만 두 겹이 되고 얻는 것이 없다.
+저장소에 UseCase가 다른 UseCase를 받는 선례(`WithdrawUseCase`·`BootstrapSessionUseCase`)가
+있지만 그것은 계층이 다른 부수효과를 재사용하는 경우다.
+
+진입 종류 판정(`cutoutImagePath == null`)과 `hasRecordedEntrySubject` 플래그는 ViewModel에
+남긴다. 앞의 것은 화면이 어떤 인자로 열렸는지의 문제이고, 뒤의 것은 `SavedStateHandle`에 얹혀
+프로세스 사망 복원까지 살아남는 것이 존재 이유라 domain으로 옮기면 그 보장을 잃는다.
+UseCase는 "초안을 이 알맹이에 맞춘다" 하나만 하고, 부를지 말지는 화면이 정한다.
 
 ### 반환 규약
 
 `record`의 `Boolean` 반환(흐름이 열려 있지 않으면 `false`)을 `Result`로 바꾸지 않는다.
-ViewModel 둘이 이미 그 분기로 `DraftWriteFailed`·`DraftMissing`을 내고 있어서, 반환 타입을 바꾸면
-계층을 가르는 이 작업이 오류 처리 설계까지 함께 건드리게 된다. 두 변경을 한 번에 섞지 않는다.
+세 갈래가 이미 그 `Boolean`으로 분기하고 있고 내는 것도 서로 다르다 —
+`SegmentationConfirmViewModel`이 `DraftWriteFailed`와 `DraftMissing`을,
+`SegmentationViewModel`은 `SegmentationEffect.ShowError`를 낸다. 특히 뒤엣것은 **화면 이동
+자체를 가른다**(`recorded`면 `GoToConfirm`, 아니면 `ShowError`). 반환 타입을 바꾸면 계층을
+가르는 이 작업이 오류 처리 설계까지 함께 건드리게 된다. 두 변경을 한 번에 섞지 않는다.
 
 ## 오류 처리
 
@@ -108,7 +117,10 @@ ViewModel 둘이 이미 그 분기로 `DraftWriteFailed`·`DraftMissing`을 내�
 - `EnsureDraftSubjectRecordedUseCase`가 `false`를 내면 ViewModel이 `reportMissingDraft()`를
   부른다. 표시를 남기지 않아 복원된 화면이 다시 적어 보는 성질도 그대로다.
 - `RecordToppingDraftUseCase`가 `false`를 내면 `SegmentationConfirmEffect.DraftWriteFailed`.
-- UseCase는 예외를 삼키지 않는다. `launch(onError = …)` 가드는 호출부에 그대로 둔다.
+- `SegmentationViewModel`의 `record` 두 호출을 감싼 `runSuspendCatching { … }.getOrDefault(false)`
+  **래퍼도 호출부에 그대로 둔다.** 이것을 UseCase 안으로 옮기거나 걷어 내면 실패가
+  `ShowError`가 아니라 `launch(onError = …)` 경로로 빠져 화면 동작이 달라진다.
+- UseCase는 예외를 삼키지 않는다. `launch(onError = …)` 가드도 호출부에 그대로 둔다.
 
 ## 테스트
 
@@ -119,9 +131,16 @@ ViewModel 둘이 이미 그 분기로 `DraftWriteFailed`·`DraftMissing`을 내�
   테스트가 그 경로를 그대로 덮는다.
 - 기존 ViewModel 테스트 4파일(`CanvasMainViewModelTest`·`CanvasToppingPlaceViewModelTest`·
   `SegmentationViewModelTest`·`SegmentationConfirmViewModelTest`)은 `ToppingDraftRepository`
-  더블을 각 UseCase 더블로 바꾼다. 저장소의 ViewModel 테스트가 UseCase를 MockK으로 세우고 있으므로
-  (`GetTutorialVisibleFlowUseCase` 등) 같은 방식을 쓴다. 이 파일들만 Fake로 갈아타면 관례가
-  갈린다. **단언 대상은 바뀌지 않는다** — 화면 상태와 side effect를 그대로 본다.
+  더블을 각 UseCase 더블로 바꾼다. 더블은 MockK을 쓴다. ViewModel 테스트가 이미 UseCase를
+  `mockk()`으로 세우고 있고(`GetTutorialVisibleFlowUseCase` 등), 새 UseCase 테스트도 같은 패키지
+  선례(`AddToppingUseCaseTest`)를 따른다. domain 유닛 테스트에 Fake를 쓴 파일도 있지만 이번
+  변경만 그쪽으로 갈아타면 관례가 갈린다.
+- ⚠️ **`SegmentationConfirmViewModelTest`는 단언 대상이 바뀐다.** 지금 그 파일의 여러 테스트가
+  화면 상태가 아니라 `record` 상호작용 자체를 단언한다 — "이미 가리키면 안 적는다"와 "다르면 새로
+  적는다"가 대표다. 판정이 UseCase로 올라가면 그 둘은 `ensureDraftSubjectRecorded` 호출 하나로
+  붕괴해 서로를 가르지 못한다. **그 커버리지는 `EnsureDraftSubjectRecordedUseCaseTest`로
+  이관하고**, ViewModel 쪽에는 "판정을 부르는가"와 그 결과에 따른 effect만 남긴다.
+  나머지 세 파일은 더블만 갈아끼우면 되고 단언은 그대로다.
 
 ## 주의 / 열린 질문
 
