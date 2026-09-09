@@ -125,6 +125,14 @@ data class PreparedUploadImage(
 
 ### 결정 표
 
+> 🔁 **누끼 행은 [topping-upload-source-scaled](../2026-09-09-topping-upload-source-scaled.md)로 대체됐다.**
+> 상한을 잘린 판에 거는 방식으로는 피사체가 프레임 일부만 차지할 때 원본이 아무리 커도 상한에 닿지
+> 않는다. 새 스펙은 기준을 원본 사진으로 옮긴다. **배경 행은 이 문서가 그대로 정본이다.**
+>
+> 🔁 **아래의 iOS 값 인용 둘은 2026-09-09에 사실이 아니게 됐다.** iOS가 같은 날 누끼 상한을 1200으로,
+> 배경 JPEG 품질을 0.7로 내렸다. 품질은 Android도 70으로 맞췄고(코드 반영 완료) 아래 본문을 정정했다.
+> 누끼 상한은 쫓지 않는다 — 근거는 ADR-0032.
+
 긴 변 상한은 **imageType마다 다르고, 값의 근거는 iOS다.** `TEAMYG-iOS`가 같은 서버에 같은
 기능으로 올리고 있고 이미 상한을 두고 있다 — `ToppingImageEncoder.maximumLongEdge`가 1500,
 `BackgroundImageLoader.maximumLongEdge`가 2048이며 배경은 `jpegCompressionQuality` 0.9로 굽는다.
@@ -157,7 +165,7 @@ data class PreparedUploadImage(
 없기 때문이다. 반대로 PNG 배경은 크기와 무관하게 굽는다 — 스크린샷을 배경으로 고르는 경우가
 용량 기여가 가장 크고, 배경은 캔버스를 덮는 불투명 이미지라 알파를 버려도 잃는 것이 없다.
 
-JPEG quality는 **90**으로 둔다. iOS의 `jpegCompressionQuality` 0.9와 같은 값이다.
+JPEG quality는 **70**으로 둔다. iOS의 `jpegCompressionQuality` 0.7과 같은 값이다.
 
 ### EXIF 회전
 
