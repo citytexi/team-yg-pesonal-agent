@@ -57,7 +57,9 @@ private val CANVAS_POLL_INTERVAL: Duration = 5.seconds
   - `CanvasPoller`가 고정 주기 대신 그 클래스에 묻고, 조회 결과의 변화 여부를 되먹인다.
   - `ParfaitFirebaseMessagingService`가 토핑 푸시를 받으면 갱신을 요청하는 갈래 추가.
   - `CanvasPollInterval` 단위 테스트 신설, `CanvasPollerTest`에 주기 관련 케이스 추가.
-  - ADR-0029 개정(고정 주기 서술 교체, 갱신 시점 열거표에 리셋 계기 추가).
+  - ADR-0029 개정. 그 결정문은 주기 **값**을 정한 적이 없고 「주기 폴링」이라고만 썼으므로,
+    적응형 주기 항목을 새로 넣고 되돌리는 계기를 열거표로 붙인다. 「위험·방어」에 남은
+    `5초 주기마다` 수치도 함께 정정한다.
 - 제외
   - 서버 변경. `ETag`·`If-None-Match`·경량 변경 확인 엔드포인트는 전부 이번 범위 밖이다.
   - 갱신 실패에 대한 백오프. 실패는 주기를 건드리지 않는다(아래 [주기 정책](#주기-정책)).
