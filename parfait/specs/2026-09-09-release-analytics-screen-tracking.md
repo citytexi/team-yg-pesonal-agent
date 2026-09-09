@@ -37,7 +37,7 @@ ADR-0013이 Analytics 를 포함해 결정했으나, 부르는 코드가 없어 
 - 포함
   - 화면 진입 이벤트(`screen_view`) 전송. `NavKey` 전체가 대상이다.
   - 기기·앱 사용자 속성 7종 설정.
-  - 수집 활성화와 `IS_DEBUG` 구분, 그리고 그 값을 빌드 시점에 덮어쓰는 수단.
+  - release 에서만 수집하는 게이트와, 그 게이트를 빌드 시점에 덮어쓰는 수단.
   - `NavKey`를 화면 ID로 바꾸는 매핑과 그 유닛 테스트.
 - 제외
   - 버튼 탭·전환 같은 **액션 이벤트**. 계층을 세우는 첫 라운드라 화면 축 하나만 다룬다.
@@ -190,13 +190,26 @@ Firebase 는 앱 버전·OS 버전·기기 모델을 이미 자동 측정 차원
 ### 수집 활성화와 IS_DEBUG
 
 debug 와 release 가 **같은 Firebase 앱·같은 GA4 속성을 쓴다.** `applicationId`가
-`com.teamyg.parfait` 하나이고 `applicationIdSuffix`가 저장소 어디에도 없기 때문이다. 그래서 두
-빌드 모두 수집을 켜되 `IS_DEBUG`로 가른다. GA4 보고서에서는 `IS_DEBUG`가 `false`인 비교
-관심 세그먼트를 걸어 운영 지표를 본다.
+`com.teamyg.parfait` 하나이고 `applicationIdSuffix`가 저장소 어디에도 없기 때문이다. 개발
+트래픽이 운영 지표와 같은 통에 섞이므로 **debug 는 수집 자체를 끈다.**
 
-`IS_DEBUG`는 `BuildConfig.DEBUG`를 직접 읽지 않는다. `ANALYTICS_IS_DEBUG` 필드를 새로 두고
-Gradle 프로퍼티 `-Panalytics.isDebug=false`로 덮어쓸 수 있게 한다. debug 빌드로도 운영과 같은
-조건을 만들어 검증하기 위한 것이며, 코드를 고칠 필요가 없다.
+```kotlin
+analyticsLogger.setCollectionEnabled(!BuildConfig.ANALYTICS_IS_DEBUG)
+```
+
+수집을 여닫는 것이 `ANALYTICS_IS_DEBUG` 하나이므로, 그 값을 덮어쓰면 debug 빌드로도 전송을
+확인할 수 있다. 거르는 일을 GA4 보고서 쪽에 맡기지 않는 이유는, 세그먼트를 거는 것을 잊은
+지표가 조용히 오염되기 때문이다.
+
+⚠️ **그래서 `IS_DEBUG` 사용자 속성은 도착한 데이터에서 언제나 `false`다.** 수집이 켜진
+빌드는 정의상 그 값이 `false` 인 빌드뿐이다. 이 속성은 지금 지표를 가르지 않고, 나중에 수집
+정책이 바뀔 때를 위한 자리로만 남는다.
+
+`ANALYTICS_IS_DEBUG`는 `BuildConfig.DEBUG`가 아니라 별도 필드다. Gradle 프로퍼티
+`-Panalytics.isDebug=false`로 덮어쓸 수 있게 하기 위해서다. debug 빌드로도 운영과 같은
+조건을 만들어 검증하며, 코드를 고칠 필요가 없다. 프로퍼티를 주지 않으면 빌드 타입 기본값을
+따르고(release `false` / debug `true`), 값이 `true`가 아닌 것은 전부 `false`로 읽는다 —
+값 없이 `-Panalytics.isDebug`만 주면 빈 문자열이 `boolean` 자리에 꽂혀 빌드가 깨지기 때문이다.
 
 ⚠️ **이 필드는 한 줄로 끝나지 않는다.** `app/build.gradle.kts`에는 `buildTypes` 블록이 없고,
 release·debug 정의는 `build-logic`의 `AndroidConfig.kt#setConfigAndroidApplication`에 있다.

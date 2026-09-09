@@ -41,9 +41,9 @@ Firebase 도입은 ADR-0013 이 FCM·Crashlytics 와 함께 Analytics 까지 묶
   실제로 바뀐다.
 - 매핑 함수는 화면 ID 와 화면 클래스명을 **둘 다 문자열 상수로** 돌려준다. 리플렉션으로
   클래스 이름을 얻으면 release 의 R8 난독화가 값을 뭉갠다.
-- debug 와 release 모두 수집을 켜고 `IS_DEBUG` 사용자 속성으로 가른다. 그 값은
-  `BuildConfig.DEBUG` 가 아니라 새 `ANALYTICS_IS_DEBUG` 필드에서 오며 Gradle 프로퍼티로
-  덮어쓸 수 있다.
+- **release 에서만 수집한다.** debug 와 release 가 같은 GA4 속성을 쓰므로 개발 트래픽이
+  운영 지표에 섞인다. 게이트는 `BuildConfig.DEBUG` 가 아니라 새 `ANALYTICS_IS_DEBUG` 필드이고
+  Gradle 프로퍼티로 덮어쓸 수 있어, debug 빌드로도 전송을 확인할 수 있다.
 
 ## 대안
 
@@ -87,8 +87,10 @@ Firebase 도입은 ADR-0013 이 FCM·Crashlytics 와 함께 Analytics 까지 묶
   `when` 이 빠짐없음을 강제할 수 없다.
 - 화면 클래스명을 문자열 상수로 두므로 `NavKey` 이름을 바꿀 때 매핑도 함께 고쳐야 한다.
   둘이 어긋나도 컴파일은 통과한다.
-- 개발 트래픽이 운영과 같은 GA4 속성에 들어간다. 보고서마다 `IS_DEBUG` 비교 관심 세그먼트를
-  걸어야 하고, 거르는 것을 잊은 지표는 오염된다.
+- 기본 상태의 debug 빌드에서는 계측이 아무 일도 하지 않는다. 전송을 눈으로 보려면
+  `-Panalytics.isDebug=false` 로 다시 빌드해야 한다.
+- `IS_DEBUG` 사용자 속성이 도착한 데이터에서 언제나 `false` 다 — 수집이 켜진 빌드는 정의상
+  그 값이 `false` 인 빌드뿐이다. 지금은 지표를 가르지 않는 자리다.
 - 전환 판정이 `Navigator` 의 현재 동작(`goTo` 가 무조건 쌓는다)에 기대고 있다. 그 동작이
   바뀌면 판정 기준도 함께 봐야 한다.
 
