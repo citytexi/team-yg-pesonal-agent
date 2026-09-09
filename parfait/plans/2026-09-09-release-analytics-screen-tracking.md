@@ -41,8 +41,10 @@ JUnit4 + `kotlin.test`, MockK.
 - **작업 대상 저장소는 `TJYG-Android`다.** 이 계획서가 있는 위키 저장소가 아니다.
 - **브랜치는 이미 있는 `feature/release-time-ga`를 쓴다.** 새 브랜치를 만들지 않고 워크트리도
   만들지 않는다. 이 브랜치의 분기점은 `origin/develop` 팁 `acbc4b457`이다.
-- **커밋하지 않는다.** 사용자가 요청하지 않았다. 각 Task는 테스트와 빌드 통과까지만 하고
-  변경을 작업 트리에 남긴다.
+- **Task 마다 커밋한다.** 사용자가 요청했다. 커밋 메시지는 이 저장소 관례를 따라
+  `feat: <한국어 현재형 서술>` 형태로 쓰고, 마지막 줄에
+  `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>` 를 넣는다.
+- **`git push` 와 PR 생성은 하지 않는다.** 리모트로 나가는 작업은 사용자 확인이 먼저다.
 - **feature·core 모듈을 고치지 않는다.** 새 파일은 전부 `:app` 안에 만든다.
 - **기존 파일을 전문으로 덮어쓰지 않는다.** 지정한 자리에만 추가·치환한다.
 - **Robolectric·계측 테스트 소스셋을 새로 들이지 않는다.** JVM 유닛 테스트로 덮이지 않는
@@ -444,6 +446,14 @@ Expected: PASS (테스트 8건)
 Run: `./gradlew :app:ktlintCheck`
 Expected: 통과. 실패하면 `./gradlew :app:ktlintFormat` 후 다시 확인한다. 실패하면 `./gradlew :app:ktlintFormat` 후 다시 확인한다.
 
+- [ ] **Step 7: 커밋한다**
+
+```bash
+git add app/src/main/java/com/teamyg/parfait/analytics/AnalyticsLogger.kt app/src/main/java/com/teamyg/parfait/analytics/NavKeyAnalyticsScreen.kt app/src/test/java/com/teamyg/parfait/analytics/NavKeyAnalyticsScreenTest.kt
+git commit -m "feat: NavKey 를 화면 ID 로 바꾸는 매핑을 둔다" \
+  -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+```
+
 ---
 
 ## Task 2: 전송 판정 트래커
@@ -613,6 +623,14 @@ Expected: PASS (테스트 5건)
 Run: `./gradlew :app:ktlintCheck`
 Expected: 통과. 실패하면 `./gradlew :app:ktlintFormat` 후 다시 확인한다.
 
+- [ ] **Step 6: 커밋한다**
+
+```bash
+git add app/src/main/java/com/teamyg/parfait/analytics/ScreenViewTracker.kt app/src/test/java/com/teamyg/parfait/analytics/ScreenViewTrackerTest.kt
+git commit -m "feat: 화면 진입 전송 판정을 ScreenViewTracker 한 곳에 둔다" \
+  -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+```
+
 ---
 
 ## Task 3: 기기·앱 사용자 속성 값
@@ -763,6 +781,14 @@ Expected: PASS (테스트 2건)
 
 Run: `./gradlew :app:ktlintCheck`
 Expected: 통과. 실패하면 `./gradlew :app:ktlintFormat` 후 다시 확인한다.
+
+- [ ] **Step 7: 커밋한다**
+
+```bash
+git add app/src/main/java/com/teamyg/parfait/analytics/AnalyticsUserProperty.kt app/src/main/java/com/teamyg/parfait/analytics/DeviceInfo.kt app/src/test/java/com/teamyg/parfait/analytics/DeviceInfoTest.kt
+git commit -m "feat: GA 사용자 속성으로 실을 기기·앱 값을 조립한다" \
+  -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+```
 
 ---
 
@@ -931,6 +957,14 @@ Expected: `public static final boolean ANALYTICS_IS_DEBUG = false;`
 Run: `./gradlew :app:ktlintCheck`
 Expected: 통과. 실패하면 `./gradlew :app:ktlintFormat` 후 다시 확인한다.
 
+- [ ] **Step 8: 커밋한다**
+
+```bash
+git add app/src/main/java/com/teamyg/parfait/analytics/FirebaseAnalyticsLogger.kt app/src/main/java/com/teamyg/parfait/analytics/di/AnalyticsModule.kt app/build.gradle.kts app/src/main/AndroidManifest.xml
+git commit -m "feat: Firebase Analytics 구현체와 빌드 설정을 붙인다" \
+  -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+```
+
 ---
 
 ## Task 5: 배선
@@ -1066,6 +1100,14 @@ Expected: BUILD SUCCESSFUL
 
 Run: `./gradlew :app:ktlintCheck`
 Expected: 통과. 실패하면 `./gradlew :app:ktlintFormat` 후 다시 확인한다.
+
+- [ ] **Step 7: 커밋한다**
+
+```bash
+git add app/src/main/java/com/teamyg/parfait/BaseApplication.kt app/src/main/java/com/teamyg/parfait/MainActivity.kt app/src/main/java/com/teamyg/parfait/MainRoute.kt
+git commit -m "feat: 화면 진입 계측을 앱에 배선한다" \
+  -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+```
 
 ---
 
