@@ -1,10 +1,10 @@
 ---
 id: topping-draft-usecase-extraction
 title: 토핑 초안 접근을 UseCase 다섯으로 가른다
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified:
+verified: 2026-09-09
 related_code:
   - ToppingDraftRepository.kt#ToppingDraftRepository
   - CanvasMainViewModel.kt#CanvasMainViewModel
@@ -149,3 +149,28 @@ UseCase는 "초안을 이 알맹이에 맞춘다" 하나만 하고, 부를지 �
   이 스펙의 범위 밖이고, 막을지 여부는 후속 판단이다.
 - 위임만 하는 UseCase 4종은 계층을 지키는 값 말고는 하는 일이 없다. 도메인 규칙이 나중에 붙는
   자리가 여기라는 것이 이 배치의 전제다.
+
+## as-built
+
+설계대로 들어왔다. UseCase 다섯의 이름·시그니처·패키지가 스펙 표와 같고, `feature/` 아래
+`ToppingDraftRepository` 참조는 0건이다. `ToppingDraftRepository` 인터페이스와 `:data` 구현은
+손대지 않았다. Gradle 스크립트 변경도 없다.
+
+구현하며 설계와 달라진 것은 테스트 둘이다.
+
+- **판정 실패 테스트의 초안값을 정정했다.** 스펙이 예고한 대로 `EnsureDraftSubjectRecorded`가
+  `false`를 낼 때 `DraftMissing`이 나가는지 보는 테스트를 새로 넣었는데, 초안을
+  `subjectImagePath = null`로 세우면 `collectDraft()`가 같은 effect를 내서 **판정 갈래를
+  지워도 테스트가 통과한다.** 초안을 정상값으로 세워 `DraftMissing`의 출처가 판정 실패
+  하나만 남게 고쳤다. 갈래를 잠시 지웠을 때 그 테스트만 실패하는 것을 확인했다.
+- **`onEnter_writesNothing`의 단언을 하나 되살렸다.** 판정이 UseCase로 올라가며 단언 대상이
+  `ensureDraftSubjectRecorded` 미호출로 바뀌었는데, 그것만으로는 `init`에서
+  `recordToppingDraft`를 직접 부르는 회귀를 못 잡는다. `record` 미호출 단언을 함께 둔다.
+
+`SegmentationConfirmViewModelTest`는 17건으로 개수가 같다. 판정 갈래를 가르던 둘이 domain
+테스트로 가고, 그 자리에 판정 호출·순서·실패 effect를 보는 셋이 들어왔다. 순서 보장은
+"완결되지 않는 `Flow`에 기대는 간접 증명"에서 `coVerifyOrder` 직접 단언으로 바뀌었다.
+
+⚠️ **`CanvasToppingPlaceViewModelTest`에 죽은 스텁이 남았다.** `clearToppingDraft`를
+`relaxed = true`로 세워서 `coEvery { clearToppingDraft() } returns Unit` 여덟 자리가 이제
+무의미하다. 동작 불변 리팩터의 diff에 무관한 정리를 섞지 않으려고 남겼다.
