@@ -223,6 +223,18 @@ fun of(
 1280이 된다. **특별 취급이 필요 없다.** 지금 이 경로는 트리밍이 없어 원본이 그대로 올라가는
 유일한 구멍인데, 이 스펙이 그 구멍도 함께 막는다.
 
+### `borderOnly` 진입
+
+`ToppingEditResult.sourceLongSide`는 **널 가능**이다. 이 편집 화면은 두 방향에서 열리는데, 최근
+목록에서 되살린 알맹이의 테두리만 고치는 진입에서는 `cutout`이 사진이 아니라 알맹이 자신이다. 그
+긴 변을 분모로 쓰면 배율이 1에 가까워져 규칙이 무력해진다. 상태의 `isBorderOnly`로 가르고 그
+갈래는 `null`을 싣는다.
+
+같은 이유로 `SegmentationConfirmViewModel`의 재사용 진입(`isReuseEntry`)도 `null`을 적는다. 다만
+**이유가 「이미 축소된 파일이라서」가 아니다** — 최근 목록에 남는 것은 업로드 전 원본 해상도 판이다
+(`addRecentImageUseCase`가 초안의 `subjectImagePath`를 그대로 넘긴다). 진짜 이유는 그 알맹이를
+오려낸 사진의 치수를 알 방법이 없다는 것이다.
+
 ### 로깅
 
 `UploadImagePreprocessorImpl`이 이미 남기는 축소 전후 줄에 원본 긴 변과 배율을 덧붙인다. 전후 비교의
@@ -245,7 +257,7 @@ fun of(
 | `data/utils/image/UploadImagePreprocessorImpl.kt` | 인자 전달·로깅 | 수정 |
 | `data/repository/image/ImageUploadRepositoryImpl.kt` | 인자 전달 | 수정 |
 | `data/repository/image/ImageSegmentationRepositoryImpl.kt` | `persistSubject`가 값 채움 | 수정 |
-| `feature/segmentation/impl/.../SegmentationViewModel.kt` | 세 경로에서 `record` | 수정 |
+| `feature/segmentation/impl/.../SegmentationViewModel.kt` | 자동 누끼·「편집 없이 사용」 두 경로에서 `record` | 수정 |
 | `feature/segmentation/impl/.../ToppingEditViewModel.kt` | 결과에 값 실음 | 수정 |
 | `feature/segmentation/api/.../NavKeyToppingEdit.kt` | `ToppingEditResult`에 필드 추가 | 수정 |
 | `feature/segmentation/impl/.../SegmentationConfirmViewModel.kt` | 편집 결과를 초안에 반영 | 수정 |
@@ -257,7 +269,7 @@ fun of(
   확대 금지, 배경 무영향, 그리고 원본 긴 변이 잘린 판보다 작다고 주장하는 망가진 입력.
 - 초안 왕복은 `ToppingDraftLocalDataSourceImplTest`에 넣는다. **필드가 없는 기존 저장분을 읽으면
   `null`이 나오는지**가 핵심 케이스다.
-- `SegmentationViewModelTest`는 세 경로가 `record`에 실은 값을 본다.
+- `SegmentationViewModelTest`는 자동 누끼와 「편집 없이 사용」 **두 경로**가 `record`에 실은 값을 본다. 세 번째 경로(`SegmentationConfirmViewModel`의 재사용 진입)는 그 화면의 테스트가 `null`을 단언한다.
 - 매퍼 단독 테스트는 만들지 않는다. 판단이 든 변환은 DataSource 테스트 케이스로 덮는다.
 
 ## 주의 / 열린 질문
@@ -277,6 +289,9 @@ fun of(
   계단으로 막고 있다. 별도 라운드로 민다.
 - 배율 적용 전후 바이트를 실측해 기록하지 않았다. 위 배경의 3건을 새 규칙으로 다시 올려 로그로
   확인한다.
-- archive의 [upload-image-downscale](archive/2026-09-08-upload-image-downscale.md) 「결정 표」가
-  JPEG 품질을 90으로, 누끼 상한 근거를 iOS 1500으로 적고 있다. iOS가 2026-09-09에 각각 0.7과 1200으로
-  내려 두 값 다 사실이 아니다. 품질은 코드에서 이미 70으로 고쳤으므로 문서도 함께 바로잡는다.
+- ✅ archive의 [upload-image-downscale](archive/2026-09-08-upload-image-downscale.md) 「결정 표」는
+  **정정을 마쳤다** — JPEG 품질 90을 70으로 고치고, 누끼 행이 이 스펙으로 대체됐다는 🔁 표시와 iOS
+  값 인용이 낡았다는 경고를 달았다. 코드의 품질 상수도 이미 70이다.
+- ⚠️ **최근 업로드 재사용 경로는 이 규칙의 이득을 받지 못한다.** 그 알맹이는 원본 해상도 그대로
+  보관되는데 오려낸 사진의 치수가 남지 않아 `null`이 흐르고, 방어선 1280만 걸린다. 이 경로가 자주
+  쓰이면 개선폭이 그만큼 줄어든다. 원본 긴 변을 최근 목록에 함께 저장하면 풀리지만 별도 라운드다.

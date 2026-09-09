@@ -19,7 +19,7 @@
 - 아키텍처 결정은 코드가 아니라 `parfait/adr/`에 쓰고 코드에는 포인터 한 줄만 둔다.
 - **매퍼 단독 테스트를 만들지 않는다.** 판단이 든 변환은 DataSource 테스트 케이스로 덮는다.
 - 테스트 더블은 저장소 관례대로 **MockK**를 쓴다. 순수 함수 테스트는 `kotlin.test`.
-- 상수 값(정본): `NUKKI_SOURCE_LONG_SIDE = 1280`, `NUKKI_LONG_SIDE_LIMIT = 1280`, `NUKKI_MIN_LONG_SIDE = 640`, `BACKGROUND_LONG_SIDE_LIMIT = 2048`, `JPEG_QUALITY = 70`.
+- 상수 값(정본): `NUKKI_SOURCE_LONG_SIDE = 1280`, `NUKKI_LONG_SIDE_LIMIT = 1280`, `NUKKI_MIN_LONG_SIDE = 256`, `BACKGROUND_LONG_SIDE_LIMIT = 2048`, `JPEG_QUALITY = 70`.
 - **확대는 어떤 경우에도 하지 않는다.** 이 성질이 재업로드 누적을 막는다.
 - 배경(`ImageType.BACKGROUND`) 동작은 바꾸지 않는다.
 
@@ -61,6 +61,11 @@ ls domain/src/main/java/com/teamyg/parfait/domain/usecase/topping/
 | `domain/src/main/java/com/teamyg/parfait/domain/usecase/image/UploadImageUseCase.kt` | 배경 경로 — `null` 명시 | 수정 |
 | `domain/src/main/java/com/teamyg/parfait/domain/usecase/topping/AddToppingUseCase.kt` | 값 전달 | 수정 |
 | `feature/groups/canvas/impl/.../CanvasToppingPlaceViewModel.kt` | 초안 값을 UseCase로 | 수정 |
+| `data/src/test/java/.../repository/image/ImageUploadRepositoryImplTest.kt` | `prepare` 스텁 5곳·`upload` 호출 16곳 | 수정 |
+| `data/src/test/java/.../repository/topping/ToppingDraftRepositoryImplTest.kt` | 실구현체 `record` 직접 호출 4곳 | 수정 |
+| `domain/src/test/java/.../usecase/image/UploadImageUseCaseTest.kt` | `upload` 스텁·검증 5곳 | 수정 |
+| `domain/src/test/java/.../usecase/topping/AddToppingUseCaseTest.kt` | `upload` 4곳 + `invoke` 직접 호출 | 수정 |
+| `feature/groups/canvas/impl/src/test/kotlin/.../CanvasBGEditViewModelTest.kt` | `ToppingEditResult` 생성 2곳 | 수정 |
 
 ---
 
@@ -75,6 +80,7 @@ ls domain/src/main/java/com/teamyg/parfait/domain/usecase/topping/
 - Modify: `data/src/main/java/com/teamyg/parfait/data/utils/image/UploadImagePreprocessorImpl.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/repository/image/ImageUploadRepositoryImpl.kt`
 - Test: `data/src/test/java/com/teamyg/parfait/data/model/image/UploadImagePlanTest.kt`
+- Test: `data/src/test/java/com/teamyg/parfait/data/repository/image/ImageUploadRepositoryImplTest.kt`
 
 **Interfaces:**
 - Consumes: 없음(첫 태스크)
@@ -93,8 +99,8 @@ package com.teamyg.parfait.domain.model.image
 /**
  * 누끼를 오려낸 사진 전체의 긴 변(픽셀). 잘린 알맹이의 긴 변이 아니다.
  *
- * 카메라 경로는 뷰파인더로 잘라낸 뒤가 기준이다. 벌거벗은 `Int` 로 나르면 `record` 의
- * `borderColorArgb` 와 인접해 서로 바뀔 수 있어 타입으로 가른다.
+ * 무엇을 「원본」으로 보는지, 벌거벗은 `Int` 를 쓰지 않는 이유, 0 이하를 「모름」과 같게
+ * 취급하는 이유는 `specs/2026-09-09-topping-upload-source-scaled.md`.
  */
 @JvmInline
 value class SourceLongSide(val px: Int)
@@ -151,7 +157,7 @@ value class SourceLongSide(val px: Int)
     }
 ```
 
-`of_sampleSizeNeverUndershootsTarget`은 목표가 1280으로 낮아져 `sampleSize`가 2가 아니라 4가 된다. 단언을 고친다.
+`of_sampleSizeNeverUndershootsTarget`은 목표만 1280으로 낮아지고 `sampleSize`는 그대로 2다 — 2600/4 = 650 이 목표 폭 868 보다 작아 4 로 못 올라간다. **단언 값을 건드리지 말고** 인자와 변수명만 고친다.
 
 ```kotlin
     @Test
@@ -172,7 +178,7 @@ value class SourceLongSide(val px: Int)
 
 `of_limitDiffersByImageType`은 1600x1200이 누끼 1280 초과·배경 2048 이하라 그대로 성립한다. 인자만 더한다.
 
-그리고 새 규칙 케이스 여섯을 더한다.
+그리고 새 규칙 케이스 여덟을 더한다.
 
 ```kotlin
     @Test
@@ -204,28 +210,63 @@ value class SourceLongSide(val px: Int)
     }
 
     @Test
-    fun of_nukkiSmallSubject_keepsSizeAtMinimumBoundary() {
-        // Given 알맹이 긴 변이 하한과 같고 원본은 크다
+    fun of_nukkiScaledBelowMinimum_isPulledBackToMinimum() {
+        // Given 배율대로면 결과가 하한보다 잘아진다
         val fileSize = UploadImageSize(width = 640, height = 400)
         val sourceLongSide = SourceLongSide(4032)
 
         // When 계획을 세운다
         val plan = UploadImagePlan.of(fileSize, ImageType.NUKKI, UploadImageFormat.PNG, sourceLongSide)
 
-        // Then 하한 이하는 줄여도 바이트 이득이 없어 건드리지 않는다
+        // Then 하한까지 되돌린다 - 그 아래로는 앱이 실루엣조차 구분하지 못한다
+        val reencode = assertIs<UploadImagePlan.Reencode>(plan)
+        assertEquals(256, reencode.targetSize.width)
+        assertEquals(160, reencode.targetSize.height)
+    }
+
+    @Test
+    fun of_nukkiMinimumIsMonotonic_noCliffAtTheBoundary() {
+        // Given 1px 만 다른 두 알맹이를 같은 원본에서 오려냈다
+        val sourceLongSide = SourceLongSide(4032)
+
+        // When 각각 계획을 세운다
+        val smaller = UploadImagePlan.of(
+            UploadImageSize(640, 400), ImageType.NUKKI, UploadImageFormat.PNG, sourceLongSide,
+        )
+        val larger = UploadImagePlan.of(
+            UploadImageSize(641, 400), ImageType.NUKKI, UploadImageFormat.PNG, sourceLongSide,
+        )
+
+        // Then 큰 알맹이가 작은 알맹이보다 작게 올라가지 않는다 - 하한을 입력에 걸면 깨지던 성질이다
+        val smallerTarget = assertIs<UploadImagePlan.Reencode>(smaller).targetSize
+        val largerTarget = assertIs<UploadImagePlan.Reencode>(larger).targetSize
+        assertEquals(256, smallerTarget.width)
+        assertEquals(256, largerTarget.width)
+    }
+
+    @Test
+    fun of_nukkiMinimumNeverEnlarges() {
+        // Given 알맹이 자체가 하한보다 작다
+        val fileSize = UploadImageSize(width = 100, height = 80)
+        val sourceLongSide = SourceLongSide(4032)
+
+        // When 계획을 세운다
+        val plan = UploadImagePlan.of(fileSize, ImageType.NUKKI, UploadImageFormat.PNG, sourceLongSide)
+
+        // Then 하한까지 키우지 않는다 - 되돌림의 상한이 알맹이 자신이다
         assertEquals(UploadImagePlan.Passthrough, plan)
     }
 
     @Test
-    fun of_nukkiJustOverMinimum_scales() {
-        // Given 알맹이 긴 변이 하한보다 1px 크다
+    fun of_nukkiWellAboveMinimum_scalesByRatio() {
+        // Given 배율대로 줄여도 결과가 하한보다 크다
         val fileSize = UploadImageSize(width = 641, height = 400)
         val sourceLongSide = SourceLongSide(2560)
 
         // When 계획을 세운다
         val plan = UploadImagePlan.of(fileSize, ImageType.NUKKI, UploadImageFormat.PNG, sourceLongSide)
 
-        // Then 경계 바로 위는 축소 대상이다
+        // Then 하한이 개입하지 않고 배율만 먹는다
         val reencode = assertIs<UploadImagePlan.Reencode>(plan)
         assertEquals(321, reencode.targetSize.width)
         assertEquals(200, reencode.targetSize.height)
@@ -288,17 +329,14 @@ value class SourceLongSide(val px: Int)
         /** 원본 긴 변을 모를 때 걸리는 방어선. 배율 갈래를 지나면 결과가 이미 이 값 이하다 */
         private const val NUKKI_LONG_SIDE_LIMIT = 1280
 
-        /**
-         * 잘린 판이 이 값 이하면 줄이지 않는다. 작은 알맹이는 이미 파일이 작아 이득이 없고,
-         * 640 이면 캔버스 기본 배치를 등배로 덮는다.
-         */
-        private const val NUKKI_MIN_LONG_SIDE = 640
+        /** 축소 **결과**의 하한. 근거는 `specs/2026-09-09-topping-upload-source-scaled.md` 「하한」 */
+        private const val NUKKI_MIN_LONG_SIDE = 256
 
         private const val BACKGROUND_LONG_SIDE_LIMIT = 2048
 
         /**
          * PNG 는 무손실이라 이 값을 보지 않는다. 배경 한정으로 iOS 와 맞춘 값이다
-         * (근거는 `specs/2026-09-08-upload-image-downscale.md` 「결정 표」).
+         * (근거는 `specs/archive/2026-09-08-upload-image-downscale.md` 「결정 표」).
          */
         const val JPEG_QUALITY = 70
 
@@ -338,19 +376,25 @@ value class SourceLongSide(val px: Int)
         }
 
         /**
-         * 원본이 [NUKKI_SOURCE_LONG_SIDE] 였다면 이 알맹이가 가졌을 크기.
+         * 원본이 [NUKKI_SOURCE_LONG_SIDE] 였다면 이 알맹이가 가졌을 크기. 결과가 너무 잘아지면
+         * [NUKKI_MIN_LONG_SIDE] 까지 되돌리되, **되돌림의 상한이 `fileSize` 자신이라 확대가 아니다.**
          *
-         * 세 갈래에서 원본 크기를 그대로 돌려준다 — 값을 모를 때, 원본이 이미 기준 이하일 때,
-         * 알맹이가 하한 이하일 때. 앞의 둘이 확대를 원천 차단한다.
+         * 하한을 입력이 아니라 결과에 거는 이유는 `specs/…-topping-upload-source-scaled.md` 「하한」.
          */
         private fun scaledBySource(
             fileSize: UploadImageSize,
             sourceLongSide: SourceLongSide?,
         ): UploadImageSize {
             if (sourceLongSide == null || sourceLongSide.px <= NUKKI_SOURCE_LONG_SIDE) return fileSize
-            if (maxOf(fileSize.width, fileSize.height) <= NUKKI_MIN_LONG_SIDE) return fileSize
 
-            val ratio = NUKKI_SOURCE_LONG_SIDE.toDouble() / sourceLongSide.px
+            val fileLongSide = maxOf(fileSize.width, fileSize.height)
+            val scaledLongSide = fileLongSide.toDouble() * NUKKI_SOURCE_LONG_SIDE / sourceLongSide.px
+            val targetLongSide = scaledLongSide
+                .coerceAtLeast(NUKKI_MIN_LONG_SIDE.toDouble())
+                .coerceAtMost(fileLongSide.toDouble())
+            if (targetLongSide >= fileLongSide) return fileSize
+
+            val ratio = targetLongSide / fileLongSide
             return UploadImageSize(
                 width = (fileSize.width * ratio).roundToInt().coerceAtLeast(1),
                 height = (fileSize.height * ratio).roundToInt().coerceAtLeast(1),
@@ -410,7 +454,7 @@ value class SourceLongSide(val px: Int)
 /** 업로드 직전에 이미지를 서버로 보낼 형태로 맞춘다 */
 interface UploadImagePreprocessor {
     /**
-     * @param sourceLongSide 누끼를 오려낸 사진 전체의 긴 변. 배경은 보지 않고, 모르면 null 이다
+     * @param sourceLongSide 모르면 null 이다 — 그때는 잘린 판 상한만 걸린다
      */
     suspend fun prepare(
         file: File,
@@ -444,7 +488,9 @@ interface UploadImagePreprocessor {
                         "업로드 이미지를 줄였다 - ${fileSize.width}x${fileSize.height} ${file.length()}B " +
                             "→ ${reencoded.size.width}x${reencoded.size.height} ${reencoded.file.length()}B " +
                             "(${plan.format.contentType}, 회전 ${reencoded.rotationDegrees}도, " +
-                            "원본 긴 변 ${sourceLongSide?.px ?: "모름"})"
+                            "원본 긴 변 ${sourceLongSide?.px ?: "모름"}, " +
+                            "배율 ${maxOf(plan.targetSize.width, plan.targetSize.height).toDouble() /
+                                maxOf(fileSize.width, fileSize.height)})"
                     }
                     PreparedUploadImage(file = reencoded.file, format = plan.format, isTemporary = true)
                 }
@@ -467,15 +513,31 @@ interface UploadImagePreprocessor {
             .getOrElse { return Result.failure(it.toAppError()) }
 ```
 
-- [ ] **Step 6: 테스트가 통과하는지 확인한다**
+- [ ] **Step 6: 깨진 스텁을 고친다**
 
-```bash
-./gradlew :data:testDebugUnitTest --tests "*UploadImagePlanTest*"
+Step 5가 `prepare` 호출을 바꾸는 순간 `ImageUploadRepositoryImplTest`의 스텁 다섯이 컴파일에서 깨진다.
+
+```kotlin
+coEvery { uploadImagePreprocessor.prepare(any(), any()) } returns ...
 ```
 
-기대: PASS(기존 8건 + 신규 6건).
+전부 인자 셋으로 넓힌다.
 
-- [ ] **Step 7: 모듈 전체를 빌드한다**
+```kotlin
+coEvery { uploadImagePreprocessor.prepare(any(), any(), any()) } returns ...
+```
+
+- [ ] **Step 7: 테스트가 통과하는지 확인한다**
+
+`UploadImagePlanTest`만 돌리면 위 스텁 파손을 놓친다. `:data` 유닛 전체를 돌린다.
+
+```bash
+./gradlew :data:testDebugUnitTest
+```
+
+기대: PASS. `UploadImagePlanTest`는 기존 8건 + 신규 8건이다.
+
+- [ ] **Step 8: 모듈 전체를 빌드한다**
 
 ```bash
 ./gradlew :data:compileDebugKotlin :domain:compileDebugKotlin
@@ -483,7 +545,7 @@ interface UploadImagePreprocessor {
 
 기대: BUILD SUCCESSFUL.
 
-- [ ] **Step 8: 커밋 — 사용자가 요청했을 때만**
+- [ ] **Step 9: 커밋 — 사용자가 요청했을 때만**
 
 ```bash
 git add domain/src/main/java/com/teamyg/parfait/domain/model/image/SourceLongSide.kt \
@@ -491,7 +553,8 @@ git add domain/src/main/java/com/teamyg/parfait/domain/model/image/SourceLongSid
         data/src/main/java/com/teamyg/parfait/data/utils/image/UploadImagePreprocessor.kt \
         data/src/main/java/com/teamyg/parfait/data/utils/image/UploadImagePreprocessorImpl.kt \
         data/src/main/java/com/teamyg/parfait/data/repository/image/ImageUploadRepositoryImpl.kt \
-        data/src/test/java/com/teamyg/parfait/data/model/image/UploadImagePlanTest.kt
+        data/src/test/java/com/teamyg/parfait/data/model/image/UploadImagePlanTest.kt \
+        data/src/test/java/com/teamyg/parfait/data/repository/image/ImageUploadRepositoryImplTest.kt
 git commit -m "feat: 누끼 업로드 목표 치수를 원본 긴 변으로 정한다"
 ```
 
@@ -509,6 +572,7 @@ git commit -m "feat: 누끼 업로드 목표 치수를 원본 긴 변으로 정�
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModel.kt`
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationConfirmViewModel.kt`
 - Test: `data/src/test/java/com/teamyg/parfait/data/source/toppingdraft/local/ToppingDraftLocalDataSourceImplTest.kt`
+- Test: `data/src/test/java/com/teamyg/parfait/data/repository/topping/ToppingDraftRepositoryImplTest.kt`
 
 **Interfaces:**
 - Consumes: `SourceLongSide` (Task 1)
@@ -541,9 +605,7 @@ git commit -m "feat: 누끼 업로드 목표 치수를 원본 긴 변으로 정�
         // Given 이 필드가 생기기 전에 저장된 JSON 이 남아 있다
         val legacyJson = """{"groupId":1,"parfaitId":2,"nextPositionZ":4,""" +
             """"subjectImagePath":"/cache/segmentation/subject.png"}"""
-        dataStore.edit { prefs ->
-            prefs[ToppingDraftLocalDataSourceImpl.TOPPING_DRAFT_KEY] = legacyJson
-        }
+        dataStore.putRaw(ToppingDraftLocalDataSourceImpl.TOPPING_DRAFT_KEY_NAME, legacyJson)
 
         // When 읽는다
         val restored = dataSource.draft.first()
@@ -554,9 +616,7 @@ git commit -m "feat: 누끼 업로드 목표 치수를 원본 긴 변으로 정�
     }
 ```
 
-import에 `com.teamyg.parfait.domain.model.image.SourceLongSide`와 `androidx.datastore.preferences.core.edit`를 더한다. `assertNull`은 이미 이 파일이 import하고 있다.
-
-⚠️ `FakePreferencesDataStore`가 `edit` 확장을 받지 못하면(그 페이크가 `DataStore<Preferences>`를 온전히 구현하지 않는 경우) `dataSource.save`로는 옛 JSON을 만들 수 없다. 그때는 페이크를 고치지 말고 `ToppingDraftEntity`를 옛 필드 집합으로 직렬화한 문자열을 같은 키에 넣는 헬퍼를 테스트 안에 두어 우회한다.
+`putRaw`는 `FakePreferencesDataStore`가 이미 가진 헬퍼이고, 같은 파일의 `draft_storedFormatIsUnreadable_isNull`이 그 방식을 쓴다. import에 `com.teamyg.parfait.domain.model.image.SourceLongSide`만 더하면 된다 — `assertNull`은 이미 있다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인한다**
 
@@ -674,18 +734,20 @@ import에 `com.teamyg.parfait.domain.model.image.SourceLongSide`를 더한다.
 
 `SegmentationViewModel.kt`의 두 `record` 호출과 `SegmentationConfirmViewModel.kt`의 두 `record` 호출에 `sourceLongSide = null`을 더한다. 실제 값은 Task 3·4에서 채운다.
 
-- [ ] **Step 6: 기존 테스트의 스텁을 넓힌다**
+- [ ] **Step 6: 기존 테스트를 넓힌다**
 
-`SegmentationViewModelTest.kt`와 `SegmentationConfirmViewModelTest.kt`에서 `record(any(), any(), any(), any())`를 전부 `record(any(), any(), any(), any(), any())`로 바꾼다. 위치 인자로 단언하는 곳(`record(REUSED_PATH, null, null, null)`)은 `record(REUSED_PATH, null, null, null, null)`로 바꾼다.
+세 파일이 깨진다.
+
+- `SegmentationViewModelTest.kt`·`SegmentationConfirmViewModelTest.kt` — `record(any(), any(), any(), any())`를 전부 `record(any(), any(), any(), any(), any())`로 바꾼다. 위치 인자로 단언하는 곳(`record(REUSED_PATH, null, null, null)`)은 `record(REUSED_PATH, null, null, null, null)`로 바꾼다.
+- `ToppingDraftRepositoryImplTest.kt` — **mockk 스텁이 아니라 실구현체를 직접 부르는** 호출 넷이 있다. 각 호출에 `sourceLongSide = null`을 더한다. 이 파일은 초안 왕복이 아니라 `record`의 계약(초안이 없으면 `false`)을 보는 곳이라 값 자체를 단언할 필요는 없다.
 
 - [ ] **Step 7: 테스트가 통과하는지 확인한다**
 
 ```bash
-./gradlew :data:testDebugUnitTest --tests "*ToppingDraftLocalDataSourceImplTest*" \
-  && ./gradlew :feature:segmentation:impl:testDebugUnitTest
+./gradlew :data:testDebugUnitTest :feature:segmentation:impl:testDebugUnitTest
 ```
 
-기대: 둘 다 PASS.
+기대: 둘 다 PASS. `:data` 를 통째로 도는 이유는 `ToppingDraftRepositoryImplTest` 파손을 놓치지 않기 위해서다.
 
 - [ ] **Step 8: 커밋 — 사용자가 요청했을 때만**
 
@@ -695,6 +757,7 @@ git add domain/src/main/java/com/teamyg/parfait/domain/model/topping/ToppingDraf
         data/src/main/java/com/teamyg/parfait/data/model/local/ToppingDraftEntity.kt \
         data/src/main/java/com/teamyg/parfait/data/repository/topping/ToppingDraftRepositoryImpl.kt \
         data/src/test/java/com/teamyg/parfait/data/source/toppingdraft/local/ToppingDraftLocalDataSourceImplTest.kt \
+        data/src/test/java/com/teamyg/parfait/data/repository/topping/ToppingDraftRepositoryImplTest.kt \
         feature/segmentation/impl/src
 git commit -m "feat: 토핑 초안이 원본 긴 변을 들고 다니게 한다"
 ```
@@ -723,7 +786,7 @@ git commit -m "feat: 토핑 초안이 원본 긴 변을 들고 다니게 한다"
     @Test
     fun selectCandidate_recordsSourceLongSideFromResult() = runTest {
         // Given 누끼 저장이 원본 긴 변을 함께 돌려준다
-        coEvery { persistSubjectUseCase(any()) } returns Result.success(
+        coEvery { persistSubject(any()) } returns Result.success(
             SegmentationResult(
                 subjectImagePath = "/cache/canvas.png",
                 trimmedSubjectImagePath = "/cache/trimmed.png",
@@ -733,7 +796,7 @@ git commit -m "feat: 토핑 초안이 원본 긴 변을 들고 다니게 한다"
         coEvery { toppingDraftRepository.record(any(), any(), any(), any(), any()) } returns true
 
         // When 후보를 고른다
-        viewModel.processIntent(SegmentationIntent.OnSelectCandidate(0))
+        viewModel.processIntent(SegmentationIntent.ClickCandidate(index = 0))
         advanceUntilIdle()
 
         // Then 그 값이 초안에 실린다
@@ -749,7 +812,34 @@ git commit -m "feat: 토핑 초안이 원본 긴 변을 들고 다니게 한다"
     }
 ```
 
-인텐트 이름과 후보 세팅은 같은 파일의 기존 후보 선택 테스트를 그대로 따른다.
+그리고 「편집 없이 사용」 경로도 덮는다. 그 경로는 값을 조립하는 방식이 달라(캐스팅이 실패하면 `null`이 흐른다) 검증이 가장 필요한 자리다.
+
+```kotlin
+    @Test
+    fun useOriginal_recordsSourceLongSideFromOriginBitmap() = runTest {
+        // Given 원본 판을 그대로 토핑 재료로 쓴다
+        coEvery { toppingDraftRepository.record(any(), any(), any(), any(), any()) } returns true
+
+        // When 편집 없이 사용을 고른다
+        viewModel.processIntent(SegmentationIntent.ClickUseOriginal)
+        advanceUntilIdle()
+
+        // Then 원본이 곧 알맹이라 그 비트맵의 긴 변이 실린다
+        coVerify {
+            toppingDraftRepository.record(
+                subjectImagePath = any(),
+                cutoutImagePath = any(),
+                borderColorArgb = null,
+                borderWidthDp = null,
+                sourceLongSide = SourceLongSide(ORIGIN_LONG_SIDE),
+            )
+        }
+    }
+```
+
+인텐트 이름과 원본 비트맵 픽스처는 같은 파일의 기존 「편집 없이 사용」 테스트에서 그대로 가져온다. `ORIGIN_LONG_SIDE`는 그 픽스처 비트맵의 긴 변이다.
+
+후보를 상태에 올려 두는 준비 단계는 같은 파일의 기존 후보 선택 테스트를 그대로 복사한다. `persistSubject`는 이 파일이 세운 mockk 프로퍼티 이름이다 — UseCase 타입 이름이 아니다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인한다**
 
@@ -813,9 +903,9 @@ data class SegmentationResult(
 
 ```kotlin
             // 이 경로는 원본이 곧 알맹이라 사진 전체의 긴 변이 비트맵의 긴 변이다
-            val sourceLongSide = SourceLongSide(
-                maxOf(originBitmapWrapper.width, originBitmapWrapper.height),
-            )
+            val sourceLongSide = (originBitmapWrapper as? AndroidBitmap)
+                ?.getRawData()
+                ?.let { SourceLongSide(maxOf(it.width, it.height)) }
 
             val path = saveBitmapUseCase(originBitmapWrapper).getOrElse {
                 releaseLoading()
@@ -834,9 +924,9 @@ data class SegmentationResult(
             }.getOrDefault(false)
 ```
 
-`originBitmapWrapper`가 `width`·`height`를 직접 노출하지 않으면 `(originBitmapWrapper as? AndroidBitmap)?.getRawData()`로 비트맵을 꺼내 치수를 읽는다. 꺼내지 못하면 `null`을 넘긴다 — 방어선이 받는다.
+⚠️ `BitmapWrapper` 인터페이스에는 `width`·`height`가 **없다**(본문이 비어 있는 인터페이스다). 그래서 `AndroidBitmap`으로 캐스팅해 `getRawData()`로 실제 비트맵을 꺼내야 한다. `AndroidBitmap`은 이 파일이 이미 import하고 있고 `loadCandidates()`가 같은 패턴을 쓰고 있으니 그대로 따른다. 캐스팅이 실패하면 `null`이 흘러가고 방어선이 받는다.
 
-import에 `SourceLongSide`를 더한다.
+`import`에 `SourceLongSide`를 더한다. `AndroidBitmap`은 이미 있다.
 
 - [ ] **Step 6: 테스트가 통과하는지 확인한다**
 
@@ -866,6 +956,7 @@ C-104 편집을 거친 알맹이도 같은 배율을 받아야 한다. 편집 �
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/ToppingEditViewModel.kt`
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationConfirmViewModel.kt`
 - Test: `feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationConfirmViewModelTest.kt`
+- Test: `feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/viewmodel/CanvasBGEditViewModelTest.kt`
 
 **Interfaces:**
 - Consumes: `SourceLongSide` (Task 1), `record(..., sourceLongSide)` (Task 2)
@@ -906,23 +997,15 @@ C-104 편집을 거친 알맹이도 같은 배율을 받아야 한다. 편집 �
         }
     }
 
-    @Test
-    fun onReuseEntry_recordsNullSourceLongSide() = runTest {
-        // Given 최근 업로드를 다시 고른 재사용 진입이다 - 이 알맹이의 원본 사진은 남아 있지 않다
-        coEvery { toppingDraftRepository.record(any(), any(), any(), any(), any()) } returns true
-
-        // When 화면에 들어간다
-        viewModel.processIntent(SegmentationConfirmIntent.OnEnter)
-        advanceUntilIdle()
-
-        // Then null 을 적는다 - 이미 한 번 축소된 파일이라 다시 줄이면 두 번 줄어든다
-        coVerify {
-            toppingDraftRepository.record(REUSED_PATH, null, null, null, null)
-        }
-    }
 ```
 
-두 번째 테스트는 같은 파일에 이미 있는 재사용 진입 테스트를 그대로 따라 세운다(`REUSED_PATH` 상수와 진입 인텐트가 이미 있다). 이미 같은 것을 검증하는 테스트가 있으면 새로 만들지 말고 그 단언에 `null` 하나를 더하는 것으로 끝낸다.
+재사용 진입은 **새 테스트를 만들지 않는다.** 그 경로는 인텐트가 아니라 `init` 블록에서 일어나고, `SegmentationConfirmIntent`에는 진입 인텐트 자체가 없다(`OnEditResult`와 `OnConfirmTutorial` 둘뿐이다). 대신 이미 그것을 검증하는 기존 단언 셋을 고친다.
+
+```kotlin
+            toppingDraftRepository.record(REUSED_PATH, null, null, null, null)
+```
+
+마지막 `null`이 재사용 진입의 `sourceLongSide`다. 그 알맹이를 오려낸 사진의 치수를 알 방법이 없어 배율을 지어내지 않는다. Task 2에서 위치 인자를 다섯으로 넓힐 때 이미 같은 모양이 되므로, 이 태스크에서는 **그 단언이 여전히 살아 있는지 확인만 한다.**
 
 - [ ] **Step 2: 테스트가 실패하는지 확인한다**
 
@@ -940,13 +1023,13 @@ C-104 편집을 거친 알맹이도 같은 배율을 받아야 한다. 편집 �
 /**
  * @param subjectImagePath 테두리를 두르지 않은 알맹이. 투명 여백을 걷어 실제 토핑 크기다
  * @param cutoutImagePath 다시 편집할 때의 시작 마스크. 원본 좌표계를 지켜야 해 여백을 걷지 않는다
- * @param sourceLongSide 위 둘을 오려낸 사진 전체의 긴 변. 업로드 배율의 분모다
+ * @param sourceLongSide 원본 사진이 남아 있지 않은 진입에서는 null 이다
  */
 data class ToppingEditResult(
     val subjectImagePath: String,
     val cutoutImagePath: String,
     val borderLayers: List<ToppingBorderLayer>,
-    val sourceLongSide: SourceLongSide,
+    val sourceLongSide: SourceLongSide?,
 )
 ```
 
@@ -957,11 +1040,18 @@ import에 `com.teamyg.parfait.domain.model.image.SourceLongSide`를 더한다.
 `ToppingEditViewModel.kt`의 `completeEdit()`에서 결과를 만드는 자리를 고친다. `cutout`은 원본 크기 판이므로 그 치수를 그대로 쓴다.
 
 ```kotlin
-            // cutout 은 원본 좌표계를 유지한 판이라 그 긴 변이 곧 사진 전체의 긴 변이다
-            val sourceLongSide = SourceLongSide(maxOf(cutout.width, cutout.height))
+            // borderOnly 진입의 cutout 은 사진이 아니라 되살린 알맹이라 배율의 분모가 못 된다.
+            // 그 밖의 진입에서는 cutout 이 원본 좌표계를 유지한 판이라 긴 변이 그대로 쓰인다
+            val sourceLongSide = if (current.isBorderOnly) {
+                null
+            } else {
+                SourceLongSide(maxOf(cutout.width, cutout.height))
+            }
 ```
 
 `cutout.recycle()`이 불리기 **전에** 이 줄을 두어야 한다. 재활용된 비트맵은 치수를 읽을 수 없다. `trimmedCutout` 계산 직후, `saveBitmapUseCase` 블록 앞이 안전한 자리다.
+
+⚠️ **`borderOnly` 갈래를 반드시 가른다.** 이 화면은 두 방향에서 열린다. 하나는 사진에서 딴 누끼를 다듬는 경우이고, 다른 하나는 최근 목록에서 되살린 알맹이의 테두리만 고치는 경우다. 뒤엣것은 `cutout`이 사진이 아니라 알맹이 자신이라, 그 긴 변을 분모로 쓰면 배율이 항상 1에 가까워져 규칙이 무력해진다. 상태의 `isBorderOnly`가 두 경우를 이미 가르고 있다.
 
 그리고 결과를 만들 때 실어 보낸다.
 
@@ -994,7 +1084,7 @@ import에 `SourceLongSide`를 더한다.
             )
 ```
 
-같은 파일의 재사용 진입 갈래(`isReuseEntry`)는 **`null`을 그대로 둔다.** 그 경로가 가리키는 알맹이는 이미 업로드를 한 번 지난 파일이라 원본 사진이 남아 있지 않고, 배율을 또 적용하면 두 번 줄어든다. 그 자리에 이유를 한 줄 남긴다.
+같은 파일의 재사용 진입 갈래(`isReuseEntry`)는 **`null`을 그대로 둔다.** 이유는 "이미 축소된 파일이라서"가 **아니다** — 최근 목록에 남는 것은 업로드 전 원본 해상도 판이다(`addRecentImageUseCase(source = imagePath)`가 초안의 `subjectImagePath`를 그대로 넘긴다). 진짜 이유는 그 알맹이를 오려낸 **사진의 치수를 알 방법이 없다**는 것이다. 그 자리에 이유를 한 줄 남긴다.
 
 ```kotlin
                     val recorded = toppingDraftRepository.record(
@@ -1002,24 +1092,30 @@ import에 `SourceLongSide`를 더한다.
                         cutoutImagePath = null,
                         borderColorArgb = null,
                         borderWidthDp = null,
-                        // 이 알맹이는 이미 업로드를 지나 축소된 판이라 원본 사진이 없다.
-                        // 배율을 또 매기면 두 번 줄어들므로 방어선에만 맡긴다
+                        // 최근 목록에서 되살린 알맹이는 세그멘테이션을 타지 않아 오려낸 사진의
+                        // 치수를 알 방법이 없다. 배율을 지어내지 않고 방어선에만 맡긴다
                         sourceLongSide = null,
                     )
 ```
 
-- [ ] **Step 6: 테스트가 통과하는지 확인한다**
+- [ ] **Step 6: 다른 모듈의 깨진 생성부를 고친다**
+
+`ToppingEditResult`에 기본값을 두지 않으므로, 그것을 만드는 테스트가 전부 깨진다. `CanvasBGEditViewModelTest.kt`에 생성부가 둘 있다. 각각에 `sourceLongSide = null`을 더한다. 그 파일이 다루는 것은 캔버스에 이미 놓인 토핑의 `borderOnly` 편집이라, 값이 널인 것이 그 경로의 실제 모습이다.
+
+`ToppingEditResult`를 **읽기만** 하는 `CanvasBGEditViewModel.handleOnToppingEditResult`와 `CanvasBGEditRoute`는 고칠 것이 없다.
+
+- [ ] **Step 7: 테스트가 통과하는지 확인한다**
 
 ```bash
-./gradlew :feature:segmentation:impl:testDebugUnitTest
+./gradlew :feature:segmentation:impl:testDebugUnitTest :feature:groups:canvas:impl:testDebugUnitTest
 ```
 
-기대: PASS.
+기대: 둘 다 PASS.
 
-- [ ] **Step 7: 커밋 — 사용자가 요청했을 때만**
+- [ ] **Step 8: 커밋 — 사용자가 요청했을 때만**
 
 ```bash
-git add feature/segmentation/api/src feature/segmentation/impl/src
+git add feature/segmentation/api/src feature/segmentation/impl/src feature/groups/canvas/impl/src
 git commit -m "feat: 수동 편집 결과에도 원본 긴 변을 잇는다"
 ```
 
@@ -1036,6 +1132,9 @@ git commit -m "feat: 수동 편집 결과에도 원본 긴 변을 잇는다"
 - Modify: `domain/src/main/java/com/teamyg/parfait/domain/usecase/topping/AddToppingUseCase.kt`
 - Modify: `feature/groups/canvas/impl/src/main/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/viewmodel/CanvasToppingPlaceViewModel.kt`
 - Test: `feature/groups/canvas/impl/src/test/kotlin/com/teamyg/parfait/feature/groups/canvas/impl/viewmodel/CanvasToppingPlaceViewModelTest.kt`
+- Test: `data/src/test/java/com/teamyg/parfait/data/repository/image/ImageUploadRepositoryImplTest.kt`
+- Test: `domain/src/test/java/com/teamyg/parfait/domain/usecase/image/UploadImageUseCaseTest.kt`
+- Test: `domain/src/test/java/com/teamyg/parfait/domain/usecase/topping/AddToppingUseCaseTest.kt`
 
 **Interfaces:**
 - Consumes: `ToppingDraft.sourceLongSide` (Task 2), `UploadImagePreprocessor.prepare(..., sourceLongSide)` (Task 1)
@@ -1050,7 +1149,7 @@ git commit -m "feat: 수동 편집 결과에도 원본 긴 변을 잇는다"
     fun confirm_passesDraftSourceLongSideToUseCase() = runTest {
         // Given 초안이 원본 긴 변을 들고 있다
         every { toppingDraftRepository.draft } returns flowOf(
-            draftFixture(sourceLongSide = SourceLongSide(4032)),
+            draft().copy(sourceLongSide = SourceLongSide(4032)),
         )
 
         // When 배치를 확정한다
@@ -1071,7 +1170,7 @@ git commit -m "feat: 수동 편집 결과에도 원본 긴 변을 잇는다"
     }
 ```
 
-`draftFixture`가 없으면 같은 파일이 초안을 세우는 기존 방식을 그대로 쓰고 `sourceLongSide`만 얹는다. 캔버스 크기·토핑 크기가 준비되어야 확정이 진행되므로 기존 확정 테스트의 준비 단계를 그대로 복사한다.
+`draft(...)`는 이 파일에 이미 있는 초안 헬퍼다. 그 헬퍼에 `sourceLongSide` 파라미터를 새로 뚫지 말고 `copy`로 얹는다 — 헬퍼 시그니처를 넓히면 이 값을 안 보는 기존 테스트까지 흔들린다. 캔버스 크기·토핑 크기가 준비되어야 확정이 진행되므로 기존 확정 테스트의 준비 단계를 그대로 복사한다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인한다**
 
@@ -1088,7 +1187,7 @@ git commit -m "feat: 수동 편집 결과에도 원본 긴 변을 잇는다"
 ```kotlin
     /**
      * @param filePath 파일 시스템 절대경로다. `file://` uri 가 아니다.
-     * @param sourceLongSide 누끼를 오려낸 사진 전체의 긴 변. 배경은 보지 않고, 모르면 null 이다
+     * @param sourceLongSide 모르면 null 이다 — 그때는 잘린 판 상한만 걸린다
      */
     suspend fun upload(
         filePath: String,
@@ -1114,7 +1213,8 @@ git commit -m "feat: 수동 편집 결과에도 원본 긴 변을 잇는다"
 `UploadImageUseCase.kt`:
 
 ```kotlin
-        // 이 UseCase 의 소비자는 배경뿐이고 배경은 원본 배율을 쓰지 않는다
+        // 배경은 원본 배율을 쓰지 않는다
+        // (`specs/2026-09-09-topping-upload-source-scaled.md` 「동작 / 상태」)
         return imageUploadRepository.upload(
             filePath = filePath,
             imageType = imageType,
@@ -1168,15 +1268,28 @@ import에 `SourceLongSide`를 더한다.
 
 import에 `SourceLongSide`를 더한다.
 
-- [ ] **Step 7: 테스트가 통과하는지 확인한다**
+- [ ] **Step 7: 깨진 테스트 넷을 고친다**
+
+`upload`와 `AddToppingUseCase.invoke`의 시그니처가 넓어져 네 파일이 깨진다. 전부 **스텁·호출에 인자 하나를 더하는 기계적 수정**이다.
+
+| 파일 | 무엇을 고치나 |
+|---|---|
+| `ImageUploadRepositoryImplTest.kt` | `repository.upload(filePath = …, imageType = …)` 호출 열여섯에 `sourceLongSide = null`을 더한다 |
+| `UploadImageUseCaseTest.kt` | `imageUploadRepository.upload(any(), any())` 스텁·검증 다섯을 `upload(any(), any(), any())`로 넓힌다 |
+| `AddToppingUseCaseTest.kt` | `upload` 스텁 넷을 넓히고, UseCase를 직접 부르는 헬퍼에 `sourceLongSide = null`을 더한다 |
+| `CanvasToppingPlaceViewModelTest.kt` | `addToppingUseCase(...)` 스텁·검증에 `sourceLongSide = any()`를 더한다 |
+
+`ImageUploadRepositoryImplTest`가 `upload`에 `null`을 넘겨도 되는 이유는 그 파일이 보는 것이 발급·전송·확인 3단계의 순서와 실패 전파이지 축소 배율이 아니어서다. 배율은 `UploadImagePlanTest`가 순수 함수로 덮는다.
+
+- [ ] **Step 8: 테스트가 통과하는지 확인한다**
 
 ```bash
-./gradlew :feature:groups:canvas:impl:testDebugUnitTest
+./gradlew :feature:groups:canvas:impl:testDebugUnitTest :domain:testDebugUnitTest :data:testDebugUnitTest
 ```
 
-기대: PASS. 기존 테스트가 `addToppingUseCase(...)`를 이름 인자로 스텁하고 있으면 `sourceLongSide = any()`를 더해야 한다.
+기대: 전부 PASS.
 
-- [ ] **Step 8: 전체 유닛 테스트를 돌린다**
+- [ ] **Step 9: 전체 유닛 테스트를 돌린다**
 
 ```bash
 ./gradlew testDebugUnitTest
@@ -1184,7 +1297,7 @@ import에 `SourceLongSide`를 더한다.
 
 기대: BUILD SUCCESSFUL.
 
-- [ ] **Step 9: 커밋 — 사용자가 요청했을 때만**
+- [ ] **Step 10: 커밋 — 사용자가 요청했을 때만**
 
 ```bash
 git add domain/src data/src feature/groups/canvas/impl/src
@@ -1243,7 +1356,7 @@ git commit -m "docs: 누끼 상한의 근거를 ADR 로 옮긴다"
 ## 완료 조건
 
 - `./gradlew testDebugUnitTest`가 통과한다.
-- `UploadImagePlanTest`가 배율·방어선·하한·확대금지·망가진 입력·배경 무영향 여섯 갈래를 덮는다.
+- `UploadImagePlanTest`가 배율·방어선·하한 되돌림·하한 단조성·하한이 확대를 안 만듦·확대금지·망가진 입력·배경 무영향을 덮는다.
 - 필드가 없는 옛 초안 JSON을 읽어도 초안을 통째로 버리지 않는다.
-- 실기기 로그에 원본 긴 변과 축소 전후 바이트가 찍힌다.
+- 실기기 로그에 원본 긴 변, 적용 배율, 축소 전후 치수·바이트가 한 줄에 찍힌다.
 - `UploadImagePlan.kt`에 누끼 상한의 iOS 근거가 남아 있지 않다.
