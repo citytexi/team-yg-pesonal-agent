@@ -4,7 +4,7 @@ title: C-102 커스텀 갤러리 선택 화면 (Custom Gallery Picker)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-26
+verified: 2026-09-11
 related_code: CustomGalleryPickerScreen, CustomGalleryPickerViewModel, CustomGalleryPickerRoute, GalleryImageGridComponent, GalleryPermissionRequestComponent, GalleryPartialAccessBanner, GalleryPermissionManager, GalleryRepository, GalleryMediaProvider, LoadFilterYGGalleryImageGroupsUseCase, LoadAllGalleryImageGroupsUseCase, GetRecentCacheImagesUseCase, GalleryImageGroup, DayWindow, DateTextFormat, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, PictureConfirmSource
 related_adr: ADR-0002, ADR-0006, ADR-0016
 related_spec: c101-camera-picture-confirm, c301-canvas-background-edit
@@ -72,7 +72,7 @@ tags: [spec, parfait, gallery, c102]
 - **제외**(이번 라운드에서 안 함):
   - 확인 화면 이후 경로 — "다음"(C-103 로딩)·닫기(C-001)는 여전히 TODO(카메라 경로와 공유).
   - ~~최초 권한 요청 UI — "설정으로 이동"만 있고 시스템 다이얼로그를 띄우는 경로는 PARTIAL 재선택뿐.~~
-    → 2026-09-10 미머지 브랜치에서 진입 시 자동 요청이 들어갔다(아래 「권한 요청 as-built 갱신」).
+    → 2026-09-11 PR #489 develop 머지로 진입 시 자동 요청이 들어갔다(아래 「권한 요청 as-built 갱신」).
   - 다중 선택·정렬·앨범 전환.
 
 ## 동작 / 구조
@@ -84,7 +84,7 @@ tags: [spec, parfait, gallery, c102]
 - 요청 결과는 `resolveAccessLevelAfterRequest`로 해석한다. `RequestPermission` 효과만
   `permissionLauncher`를 태우고, 그 효과를 발신하는 것은 `OnRequestPermission`과
   `OnRequestManageMedia` 두 인텐트다 — 즉 **부분 접근 재선택과 최초 요청이 같은 launcher를 공유**한다.
-  > 📌 **발신처가 하나 더 생겼다(2026-09-10, 미머지 브랜치)**: VM이 첫 권한 없음 확인에서 직접 `RequestPermission`을
+  > 📌 **발신처가 하나 더 생겼다(2026-09-11, PR #489 develop 머지)**: VM이 첫 권한 없음 확인에서 직접 `RequestPermission`을
   > 발행한다(`requestPermissionOnce`). 위 두 인텐트 중 `OnRequestPermission`은 여전히 화면에서 부르는 곳이 없다
   > → 아래 「권한 요청 as-built 갱신」.
 
@@ -213,7 +213,7 @@ tags: [spec, parfait, gallery, c102]
 - **최초 권한 요청 경로 부재**: `onClickGrantPermission`이 여전히 권한 화면에서 호출되지 않는다
   (카메라와 동일, [2026-08-01 항목](../../synthesis/open-questions.md)). **#350이 이 컴포넌트를 다시
   짜면서도 건드리지 않았다.**
-  > 📌 **진입 시 자동 요청이 들어갔다(2026-09-10, 미머지 브랜치)**: 시스템 다이얼로그는 이제 뜬다.
+  > 📌 **진입 시 자동 요청이 들어갔다(2026-09-11, PR #489 develop 머지)**: 시스템 다이얼로그는 이제 뜬다.
   > `onClickGrantPermission` 미사용만 남는다(OQ-P-053 ③) → 아래 「권한 요청 as-built 갱신」.
 - **확인 화면 이후 미결선**: 갤러리 경로도 같은 확인 화면으로 합류하므로 "다음"·닫기 TODO의 영향
   범위가 두 진입점으로 늘었다.
@@ -240,9 +240,10 @@ tags: [spec, parfait, gallery, c102]
 
 **0건이다**(저장소 전체 789·계측 14건 그대로). 배치 변경이라 유닛으로 덮을 수 없다.
 
-## 권한 요청 as-built 갱신 (2026-09-10, 미머지 브랜치)
+## 권한 요청 as-built 갱신 (2026-09-11, PR #489 develop 머지)
 
-> 브랜치 `bugfix/permission-not-required`, 커밋 `1d25a4bb9`. develop 머지 전이다. 카메라와 같은 커밋이고
+> 브랜치 `bugfix/permission-not-required`, 커밋 `1d25a4bb9`. 2026-09-11 PR #489로 develop에 머지됐다
+> (머지 `be537ea93`). 머지 전에 쓴 절이고, 머지 코드와 다시 대조해 어긋난 자리가 없었다. 카메라와 같은 커밋이고
 > 처방도 같다. 결정의 근거와 CameraX 바인딩 결함은 [c101 스펙](2026-08-01-c101-camera-picture-confirm.md)의
 > 같은 날짜 절에 있다.
 

@@ -524,11 +524,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-053
 - **출처**: `feature/camera/impl/.../component/CameraPermissionRequestComponent.kt`·`feature/gallery/impl/.../component/GalleryPermissionRequestComponent.kt`(PR #182 develop 머지) — 두 컴포넌트 모두 `onClickGrantPermission`·`permanentlyDenied`를 파라미터로 받지만 본문에서 쓰지 않고 "설정으로 이동" 버튼 하나만 그린다. Route의 `permissionLauncher`와 VM의 `OnRequestPermission`은 살아 있으나 **발신처가 없어** 시스템 권한 다이얼로그가 뜨는 경로가 없다(갤러리는 부분 접근 배너의 `onClickManageMedia`만 launcher를 탄다).
 - **항목**: ① 최초 진입 시 자동 요청 또는 "권한 허용" 버튼을 둘지, ② 최초 거부와 영구 거부 화면을 나눌지(`permanentlyDenied` 분기 부활), ③ 안 쓸 파라미터면 시그니처에서 뺄지.
-- **상태**: 부분 해소 (①② 결정·구현, develop 미머지: 브랜치 `bugfix/permission-not-required` `1d25a4bb9` / ③ 잔존)
+- **상태**: 부분 해소 (①② 결정·구현, 2026-09-11 PR #489 develop 머지 / ③ 잔존)
   > 📌 **갤러리 쪽 launcher 경로만 실물이 됐다(2026-08-04, PR #191)** — 死코드였던 부분 접근 배너 대신 화면 하단 "사진 재선택" `YGButton`이 PARTIAL일 때 노출돼 `OnRequestManageMedia` → `RequestPermission` → launcher를 탄다. 즉 **부분 접근 상태에서만** 시스템 다이얼로그가 뜨고, 미허용(DENIED/PERMANENTLY_DENIED) 상태의 `onClickGrantPermission`은 여전히 권한 화면에서 호출되지 않는다.
   > 📌 **두 컴포넌트를 다시 짜고도 그대로다(2026-08-25, PR #350)** — 인셋 수정 라운드가 카메라·갤러리 권한 화면의 레이아웃을 통째로 고쳐 놓으면서 `onClickGrantPermission`·`permanentlyDenied`는 손대지 않았다. 두 파라미터는 여전히 받기만 하고 본문에서 쓰이지 않는다. **화면을 여는 사람이 이 자리를 지나갔는데도 안 열렸다**는 뜻이라, 이 항목은 "잊혀서 남아 있는 것"이 아니라 **결정이 없어서 남아 있는 것**이다.
-  > 📌 **①② 결정·구현(2026-09-10, develop 미머지 브랜치 `bugfix/permission-not-required`)** ① **진입 시 자동 요청**으로 정했다. 두 VM이 첫 권한 없음 확인에서 `RequestPermission`을 한 번 발행하고(`requestPermissionOnce`), 다이얼로그가 닫혀 재개 확인이 다시 와도 재요청하지 않는다. 물을 수 없는 상태면 시스템이 다이얼로그 없이 거부로 답하므로 설정 이동 화면이 남는다. 갤러리 PARTIAL은 묻지 않는다. ② **거부 화면을 나누지 않는다.** 다이얼로그가 떠 있는 동안에도 뒤에는 설정 이동 화면을 그대로 둔다(작업자 결정). ③ 카메라 컴포넌트의 `onClickGrantPermission`·`permanentlyDenied`와 갤러리 컴포넌트의 `onClickGrantPermission`은 여전히 쓰이지 않는다(갤러리 컴포넌트에는 `permanentlyDenied` 파라미터가 처음부터 없고 `isDeniedPermission`을 받는다). 같은 브랜치가 카메라에서 권한 전에 CameraX를 바인딩해 허용 뒤에도 프리뷰가 뜨지 않던 결함을 함께 고쳤다(`98286f73e`, 권한 다이얼로그는 Activity를 pause만 시켜 CameraX가 다시 열지 않았다) → [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)·[c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 「권한 요청 as-built 갱신」.
-- **해소 메모**: ③만 남았다. 쓰이지 않는 파라미터를 시그니처에서 뺄지 정하면 닫힌다. develop 머지 후 기준선 점검에서 위 📌와 두 스펙, [specs/README](../specs/README.md) c101·c102 행의 미머지 표기를 걷는다.
+  > 📌 **①② 결정·구현(2026-09-10 결정, 2026-09-11 PR #489 develop 머지 `be537ea93` — 브랜치 `bugfix/permission-not-required`)** ① **진입 시 자동 요청**으로 정했다. 두 VM이 첫 권한 없음 확인에서 `RequestPermission`을 한 번 발행하고(`requestPermissionOnce`), 다이얼로그가 닫혀 재개 확인이 다시 와도 재요청하지 않는다. 물을 수 없는 상태면 시스템이 다이얼로그 없이 거부로 답하므로 설정 이동 화면이 남는다. 갤러리 PARTIAL은 묻지 않는다. ② **거부 화면을 나누지 않는다.** 다이얼로그가 떠 있는 동안에도 뒤에는 설정 이동 화면을 그대로 둔다(작업자 결정). ③ 카메라 컴포넌트의 `onClickGrantPermission`·`permanentlyDenied`와 갤러리 컴포넌트의 `onClickGrantPermission`은 여전히 쓰이지 않는다(갤러리 컴포넌트에는 `permanentlyDenied` 파라미터가 처음부터 없고 `isDeniedPermission`을 받는다). 같은 브랜치가 카메라에서 권한 전에 CameraX를 바인딩해 허용 뒤에도 프리뷰가 뜨지 않던 결함을 함께 고쳤다(`98286f73e`, 권한 다이얼로그는 Activity를 pause만 시켜 CameraX가 다시 열지 않았다) → [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)·[c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 「권한 요청 as-built 갱신」.
+- **해소 메모**: ③만 남았다. 쓰이지 않는 파라미터를 시그니처에서 뺄지 정하면 닫힌다. 위 📌와 두 스펙, [specs/README](../specs/README.md) c101·c102 행의 미머지 표기는 78회차 기준선 점검(2026-09-11, develop `c37dc2b4c`)에서 걷었다.
 
 ### [2026-08-01] 갤러리 빈 상태 그래픽이 상시 노출되고 문구가 리터럴
 - **ID**: OQ-P-054
@@ -5453,6 +5453,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > **0.x 에서 1.0.0 으로 넘어가는 판단조차 손으로 고친 두 줄에만 남는다**는 것이 이번에 드러난
   > 형태다. `previewVersionCode`는 여전히 1이다.
 
+  > 📌 **이름은 두고 코드만 올랐다 — 1.1.3 이 두 트리다(2026-09-11, PR #488·#490)** — #488 이 `9 → 10`·
+  > `1.1.2 → 1.1.3` 을 올렸고, 한 시간 반 뒤 권한 요청 수정(#489)이 머지된 다음 #490 이 **코드만** `10 → 11` 로
+  > 올렸다. 버전 이력에서 이름을 그대로 두고 코드만 올린 커밋은 이것이 처음이다. 그래서 `1.1.3` 이라는 이름
+  > 아래 **코드 10(수정 전 트리)과 코드 11(수정 후 트리)** 이 있다. `origin/release/version-1.1.3-10` 은 #488 머지
+  > 커밋이고 `-11` 은 #490 머지 커밋이다. **경량 태그 `1.1.3` 은 11 쪽만** 가리키므로 **10 을 되짚는 표식은
+  > 브랜치 이름 하나뿐이다.** 코드 10 이 실제로 나갔는지, 다시 뗀 이유가 #489 인지는 PR 본문 셋 어디에도 적혀
+  > 있지 않다. ①이 결번 대신 **같은 이름의 앞선 코드**에 걸리는 형태로 되풀이되고, 이름으로만 묶으면 두 트리의
+  > 리포트가 섞인다(OQ-P-309). ②는 그대로다.
+
 ### [2026-08-26] 릴리즈 계보가 develop 밖에 있다 — 배포된 0.0.3에 develop에 없는 45커밋이 들어 있다
 
 - **ID**: OQ-P-311
@@ -5535,6 +5544,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 옛 release 브랜치 넷은 그대로 남아 있으며 **`feature/debug-mode` 는 여전히 release 쪽에만 있다**
   > ([로그인 디버그 모드 스펙](../specs/2026-08-28-login-debug-mode.md)과
   > [그 계획](../plans/2026-08-28-login-debug-mode.md)이 `draft` 로 남는 이유다).
+
+  > 📌 **①이 이번에도 성립하지 않는다 — 한 이름에 릴리즈 브랜치가 둘이다(2026-09-11, PR #488·#490)** —
+  > `origin/release/version-1.1.3-10` 은 #488 머지 커밋(`544ce434a`)이고 `origin/release/version-1.1.3-11` 은
+  > `origin/develop` HEAD(`c37dc2b4c`) 그 커밋이다. 앞의 것은 develop 의 조상이라(develop 이 5커밋 앞선다)
+  > **release 만 가진 커밋은 둘 다 0** 이다. 직전 회차가 "로컬에만 있고 푸시 전"이라 범위 밖에 둔 `-10` 이
+  > 원격에 올라온 것이다. 뗀 트리가 develop 선 위에 있어도, 같은 이름의 판을 두 번 떼면 **어느 브랜치가
+  > 배포됐는가**를 이름이 아니라 코드 번호로 가려야 한다(OQ-P-310). `feature/debug-mode` 는 여전히 develop 밖이다.
 
 ### [2026-08-26] 토스트가 어느 프레임 위에 뜨는지를 정하는 규칙이 없다
 

@@ -4,7 +4,7 @@ title: C-101 커스텀 카메라 · C-101-confirm 사진 확인 화면 (Custom C
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-26
+verified: 2026-09-11
 related_code: PictureConfirmResult, CameraFeedLayer, CameraPermissionRequestComponent, CustomCameraRoute, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, PictureConfirmSource, GalleryPermissionRequestComponent, DateTextFormat
 related_adr: ADR-0018, ADR-0006
 related_spec: designsystem-button-missing-components, g001-group-list, c102-custom-gallery-picker, c103-segmentation-topping-edit, c301-canvas-background-edit
@@ -143,7 +143,7 @@ Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 �
 `CustomCameraState`: `isInit` · `hasPermission` · `permanentlyDenied` · `lensFacing` · `zoomRatio` ·
 `zoomRange` · `flashMode`. 권한은 `LifecycleResumeEffect`로 재개 시마다 재확인하고, 요청 결과의
 `shouldShowRationale`이 false면 `permanentlyDenied`로 승격한다.
-> 📌 **재확인 결과가 요청을 발행한다(2026-09-10, 미머지 브랜치)**: 첫 권한 없음 확인에서 `RequestPermission`을
+> 📌 **재확인 결과가 요청을 발행한다(2026-09-11, PR #489 develop 머지)**: 첫 권한 없음 확인에서 `RequestPermission`을
 > 한 번 발행한다. 요청 여부는 상태가 아니라 VM 필드 `hasRequestedPermission`이 든다 → 아래 「권한 요청 as-built 갱신」.
 
 ## 정책 대조 (위키 [[카메라-뷰파인더]])
@@ -228,7 +228,7 @@ Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 �
   미허용 상태에서는 "설정으로 이동"만 보인다. 갤러리 쪽도 같은 형태다.
   **#350(2026-08-25)이 두 컴포넌트의 레이아웃을 다시 짜면서도 이 둘은 건드리지 않았다** — 파라미터
   둘은 여전히 받기만 하고 쓰이지 않는다.
-  > 📌 **진입 시 자동 요청이 들어갔다(2026-09-10, 미머지 브랜치)**: VM이 첫 권한 없음 확인에서
+  > 📌 **진입 시 자동 요청이 들어갔다(2026-09-11, PR #489 develop 머지)**: VM이 첫 권한 없음 확인에서
   > `RequestPermission`을 발행하므로 시스템 다이얼로그가 뜬다. 두 파라미터 미사용만 남는다(OQ-P-053 ③)
   > → 아래 「권한 요청 as-built 갱신」.
 - 위 항목은 전부 [open-questions](../../synthesis/open-questions.md) [2026-08-01]에서 추적.
@@ -261,10 +261,12 @@ Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 �
 (저장소 전체 유닛 789·계측 14건 그대로). 첫 커밋의 dp 계산 방식을 버린 이유 자체가
 **검증할 수 없는 중복을 만들지 않으려는 것**이었다. 확인 수단은 실기기 눈으로 보는 것뿐이다.
 
-## 권한 요청 as-built 갱신 (2026-09-10, 미머지 브랜치)
+## 권한 요청 as-built 갱신 (2026-09-11, PR #489 develop 머지)
 
 > 브랜치 `bugfix/permission-not-required`, develop `544ce434a` 위 커밋 둘(`1d25a4bb9`·`98286f73e`).
-> develop 머지 전이다. [open-questions](../../synthesis/open-questions.md) OQ-P-053 ①②의 결정을 구현했다.
+> 2026-09-11 PR #489로 develop에 머지됐다(머지 `be537ea93`, 머지 트리 = 브랜치 팁 `98286f73e`).
+> 이 절은 머지 전에 썼고, 머지 코드와 다시 대조해 어긋난 자리가 없었다.
+> [open-questions](../../synthesis/open-questions.md) OQ-P-053 ①②의 결정을 구현했다.
 
 **진입했을 때 권한이 없으면 시스템 권한 다이얼로그부터 띄운다.** 이전에는 권한을 한 번도 묻지 않은 설치
 직후에도 「설정으로 이동」 화면이 곧바로 떴다.
