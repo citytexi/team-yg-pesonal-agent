@@ -2,8 +2,8 @@
 id: parfait
 title: 파르페(캔버스) 조회·배경·회전
 server_module: http/parfait
-server_commit: 09e7d92
-verified: 2026-09-08
+server_commit: d76b27a
+verified: 2026-09-10
 android_status: partial
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer, 2026-08-16-canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server
 related_adr: ADR-0017
@@ -125,6 +125,16 @@ placedBy에 ownerType(ME/OTHER) 필드 추가`, PR #115). 오늘·상세 두 캔
   parfait-group 도메인의 상세·닉네임변경·탈퇴·신고 4개 엔드포인트와 다른 동작이다.
   **세 조회 엔드포인트가 전부 이 방식이다.**
 
+  🔁 **2026-09-10 — 이 검사의 기준이 좁아졌다**(`fix: 그룹 탈퇴 후 재참여가 불가능하던 문제 해결`).
+  `existsByGroupIdAndMemberId`의 구현이 `existsByParfaitGroupIdAndMemberId`에서
+  `existsByParfaitGroupIdAndMemberIdAndLeftAtIsNull`로 바뀌어, **탈퇴한 회원은 이 검사를 쓰는 다섯 경로**
+  (연도 리스트·오늘·과거·상세 조회와 배경 변경)**에서 403 `GROUP_NOT_JOINED`를 받는다.** 직전까지는 탈퇴한
+  멤버십 행이 남아 있는 것만으로 `true`가 나와 **나간 그룹의 캔버스를 계속 읽고 배경까지 바꿀 수 있었다.**
+  엔드포인트·DTO·에러 코드가 하나도 안 바뀌었는데 **권한 경계가 이동한 delta**다. 그 결과 아래 404
+  `GROUP_NOT_FOUND`가 닿는 조건도 "멤버십 행이 남은 상태"에서 **"활동 중인 멤버십이 남은 상태"**로 좁아졌다.
+  근거: `ParfaitGroupAdapter`·`ParfaitGroupMemberRepositoryQueryTest`("탈퇴한 멤버는
+  `existsByParfaitGroupIdAndMemberIdAndLeftAtIsNull`이 false를 반환한다").
+
 ### GET /api/v1/groups/{groupId}/parfaits/today
 
 C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 내려준다 — 상태·멤버 목록·배경·배치된 토핑 전량이
@@ -220,7 +230,15 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   참여 순). ⚠️ **그런데 `placedBy` 조회에는 그 필터가 없다**(`findAllByIdIn`). 탈퇴한 멤버가 남긴 토핑은
   그대로 보이고 그 `placedBy.nickname`은 `GroupNickname.unknown()`이 넣은 **`(알수없음)`**이다
   (탈퇴 시 닉네임이 이 값으로 대체된다 — [parfait-group.md](parfait-group.md)·[member.md](member.md)).
+
   즉 `images[].placedBy.groupMemberId`가 `groupMembers`에 없을 수 있다 → [미결](#미결).
+
+  🔁 **2026-09-10 — 그 탈퇴는 되돌려질 수 있다.** 재참여가 **기존 멤버십 행을 재활성화**하므로
+  (`ParfaitGroupMember.rejoin`, [parfait-group.md](parfait-group.md)) 같은 `groupMemberId`가 다시 활동
+  중으로 돌아온다. 그러면 **탈퇴 중에 `(알수없음)`·`DEFAULT`로 보였던 그 사람의 과거 토핑이 재참여 후
+  새 닉네임·새 칩으로 다시 표시된다**(닉네임·칩은 재참여 때 새로 정해지므로 탈퇴 전 값으로 돌아가는 것도
+  아니다). `groupMembers`에서 `groupMemberId`로 찾아 색을 정하는 소비 측 매칭도 함께 되살아난다 —
+  **`placedBy`의 표시 이름이 한번 `(알수없음)`이 되면 영구히 굳는다고 전제하면 안 된다.**
 
 - **에러 코드**
 
