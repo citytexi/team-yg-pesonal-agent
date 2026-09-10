@@ -9,7 +9,7 @@ platforms: android
 owner: android
 related_adr: ADR-0012
 related_spec: segmentation-retry-recovery, segmentation-preprocessing, c103-error-use-original
-related_code: ImageSegmentationRepositoryImpl#segmentImage, ImageSegmentationRepositoryImpl#segmentForeground, ImageSegmentationRepositoryImpl#toCandidatePairs, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate, SegmentationMask.kt#maskSubjectAlpha, AlphaPostProcessor.kt#postProcessAlpha, SegmentationCandidateFilter.kt#filterCandidates, SubjectCoverage.kt#floorPixels, SegmentationViewModel.kt#loadCandidates
+related_code: ImageSegmentationRepositoryImpl#segmentImage, ImageSegmentationRepositoryImpl#segmentForeground, ImageSegmentationRepositoryImpl#toCandidatePairs, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate, SegmentationMask.kt#maskSubjectAlpha, AlphaPostProcessor.kt#postProcessAlpha, AlphaComposite.kt#composeCroppedArgb, SegmentationCandidateFilter.kt#filterCandidates, SubjectCoverage.kt#floorPixels, SegmentationViewModel.kt#loadCandidates
 archived_reason:
 tags: [plan, parfait]
 ---
@@ -18,11 +18,15 @@ tags: [plan, parfait]
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ⚠️ **계획 검수 2회가 초판을 뒤집었다.** 대비 LUT가 원본에 직접 쓰던 것, 알파 제자리 소거로 되돌림
+> 커버리지가 틀리던 것, 회복 되돌림 후보가 불투명 사각형이 되던 것, 2단계 폴백 오프셋 누락, 사다리 격회 반복,
+> import 누락이 치명이었다. 스펙도 같은 날 함께 고쳤으므로 **스펙과 이 계획의 시그니처는 일치한다.**
+
 **Goal:** 후보 0건으로 실패한 사진에서 「다시 시도」가 입력을 손봐 가며 다시 검출하게 만든다.
 
-**Architecture:** 저장소에 `recoverCandidates`를 더해 전처리 두 단계를 순서대로 시도한다. 손본 판은
-검출에만 쓰고 알파를 원본 공간으로 되올려 후보를 만들므로 결과 픽셀은 언제나 원본에서 온다.
-판단은 전부 순수 함수로 빼서 기기 없이 검증하고, 비트맵을 만지는 얇은 실행기만 남긴다.
+**Architecture:** 저장소에 `recoverCandidates`를 더해 전처리 두 단계를 순서대로 시도한다. 손본 판은 알파를
+얻는 데만 쓰고 픽셀은 원본에서 읽는다 — 이 규칙은 `PlateSource`와 `DetectionPlate` 두 타입이 구조적으로
+강제한다. 판단은 순수 함수로 빼서 JVM에서 덮는다.
 
 **Tech Stack:** Kotlin, ML Kit Subject Segmentation, Hilt, kotlinx.coroutines, JUnit4 + kotlin.test + MockK + Turbine
 
@@ -30,25 +34,29 @@ tags: [plan, parfait]
 
 ## Global Constraints
 
-- **작업 저장소는 `TJYG-Android`다.** 이 계획 문서만 `team-yg-pesonal-agent`에 있다. 브랜치는
-  `feature/#486-segmentation-error-case`.
-- **커밋은 각 Task 끝에서 한다.** 푸시와 PR은 사용자 승인 전까지 하지 않는다.
-- **1차 경로의 동작을 바꾸지 않는다.** 새 인자는 전부 기본값을 둬서 기존 호출부가 안 바뀐다.
-- **깨진 Task 경계를 만들지 않는다.** `testDebugUnitTest`가 main 소스셋 컴파일을 선행으로 잡으므로,
-  한 Task가 끝난 시점에 그 모듈이 컴파일돼야 한다.
-- **테스트 이름은 카멜케이스다.** 이 저장소에 백틱 테스트명은 0건이다.
-- **ktlint 최대 줄 길이는 120자다.**
-- **`:domain`은 순수 JVM이라 `test`를 쓴다.** `testDebugUnitTest`는 `:domain`을 조용히 건너뛴다.
-- **주석 규약** (`parfait/CLAUDE.md`) — 코드가 이미 말하는 것은 쓰지 않는다. `@return`·`@param`은
-  타입·이름이 말하지 못할 때만 쓴다. 다른 컴포넌트의 현재 상태를 단정하지 않는다(낡는다).
-- **잠정값은 스펙 4-1 표를 그대로 쓴다.** 하한 512, 상한 2048, 퍼센타일 1·99, 여유 20%,
-  수축 가드 70%, 중앙 폴백 70%, 회복 필터 하한 1/4, 대기 상한 30초, 왕복 허용오차 각 축 1px.
+- **작업 저장소는 `TJYG-Android`, 브랜치는 `feature/#486-segmentation-error-case`다.** 이 계획 문서만 다른 저장소에 있다.
+- **커밋은 각 Task 끝에서 한다.** 이번 계획에서 사용자가 요청했다(이 저장소의 기본은 미커밋). **서브에이전트
+  디스패치 프롬프트에 매번 명시한다.** 푸시와 PR은 사용자 승인 전까지 하지 않는다.
+- **커밋 메시지 형식** — 접두어(`feat`/`refactor`/`test`) + "~다"로 끝나는 제목, 빈 줄, 한두 줄 본문, 빈 줄,
+  `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>`.
+- **깨진 Task 경계를 만들지 않는다.** `testDebugUnitTest`가 main 소스셋 컴파일을 선행으로 잡는다.
+- **1차 경로 동작** — Task 4는 순수 이동이다. Task 5의 의도한 변경은 둘뿐이다: 캔버스 밖 후보를 버리는 것,
+  전경 폴백이 `ModuleNotReady`만 실패로 올리는 것. 그 밖에는 바꾸지 않는다.
+- **원본 비트맵에는 쓰지도 회수하지도 않는다.** 크롭도 축소도 없으면 검출 판이 곧 원본 인스턴스이고, 원본은 가변이다.
+- **취소 확인 관용구** — `val job = currentCoroutineContext().job`을 함수 머리에서 호이스팅하고 `job.ensureActive()`를
+  부른다. `job?.ensureActive()`와 `CoroutineContext.ensureActive()`는 **금지**다(Job이 없으면 조용히 통과한다).
+- **테스트 이름은 카멜케이스.** ktlint 최대 줄 길이 120자. `:domain`은 `test`, 나머지는 `testDebugUnitTest`.
+- **주석 규약**(`parfait/CLAUDE.md`) — 코드가 이미 말하는 것은 쓰지 않는다. `@return`·`@param`은 타입·이름이
+  말하지 못할 때만. 다른 컴포넌트의 현재 상태를 단정하지 않는다.
+- **잠정값**(스펙 4-1) — 짧은 변 하한 512, 긴 변 상한 2048, 대비 퍼센타일 1·99, 대비 켬, 힌트 하한
+  `AlphaPostProcessOptions.binaryThreshold`, 힌트 여유 20%, 수축 가드 70%(정수 비교), 중앙 폴백은 **짧은 변 70%
+  정사각형**, 로그용 완화 배수 1/4(**판정에 쓰지 않는다**), 사다리 상한 30초, 왕복 허용오차 각 축 1px.
 
 ---
 
 ### Task 1: 회복 계획 순수 계산
 
-검출 공간과 원본 공간을 가르는 타입, 해상도 목표, 두 단계의 계획과 가드를 만든다. 호출부가 없는
+좌표 타입, 해상도 목표, 두 단계의 계획과 가드, 힌트, 투영과 교집합, 캔버스 검사를 만든다. 호출부가 없는
 순수 추가라 이 Task만으로 컴파일이 닫힌다.
 
 **Files:**
@@ -56,143 +64,155 @@ tags: [plan, parfait]
 - Test: `data/src/test/java/com/teamyg/parfait/data/utils/image/SegmentationRecoveryPlanTest.kt`
 
 **Interfaces:**
-- Consumes: `SegmentationBounds`(domain, 이미 있다)
-- Produces: `DetectionBounds`, `ScaledSize`, `RecoveryTransform`, `resolveTargetSize`,
-  `normalizeStage`, `focusStage`, `hintBounds`, `RecoveryStage`
+- Consumes: `SegmentationBounds`(domain)
+- Produces: `DetectionBounds`, `ScaledSize`, `RecoveryTransform`, `RecoveryStage`, `DetectionProjection`,
+  `ProjectedRegion`, `resolveTargetSize`, `normalizeStage`, `focusCrop`, `cropAreaPercent`, `focusStage`,
+  `hintBounds`, `projectRegion`, `SegmentationBounds.offsetBy`, `isInsideCanvas`, `DETECTION_MIN_SHORT_SIDE`,
+  `ROUND_TRIP_TOLERANCE_PX`
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
-`SegmentationRecoveryPlanTest.kt`:
+`SegmentationRecoveryPlanTest.kt` (24건):
 
 ```kotlin
 package com.teamyg.parfait.data.utils.image
 
 import com.teamyg.parfait.domain.model.SegmentationBounds
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SegmentationRecoveryPlanTest {
+    private val tenfold = RecoveryTransform(scaleX = 10f, scaleY = 10f, offsetX = 0, offsetY = 0)
+
     @Test
     fun resolveTargetSize_shortSideBelowTheFloor_upscalesKeepingTheRatio() {
-        // Given 짧은 변이 하한 미만인 판
-        val target = resolveTargetSize(width = 400, height = 300)
-
-        // Then 짧은 변이 하한이 되고 비율이 보존된다
-        assertEquals(ScaledSize(width = 683, height = 512), target)
+        assertEquals(ScaledSize(width = 683, height = 512), resolveTargetSize(width = 400, height = 300))
     }
 
     @Test
     fun resolveTargetSize_shortSideExactlyTheFloor_doesNotChange() {
-        assertEquals(ScaledSize(width = 683, height = 512), resolveTargetSize(683, 512))
+        assertEquals(ScaledSize(width = 683, height = 512), resolveTargetSize(width = 683, height = 512))
     }
 
     @Test
     fun resolveTargetSize_longSideAboveTheCeiling_downscales() {
-        // Given 12MP 사진
-        val target = resolveTargetSize(width = 4032, height = 3024)
-
-        // Then 긴 변이 상한이 된다
-        assertEquals(ScaledSize(width = 2048, height = 1536), target)
+        assertEquals(ScaledSize(width = 2048, height = 1536), resolveTargetSize(width = 4032, height = 3024))
     }
 
     @Test
     fun resolveTargetSize_floorAndCeilingConflict_theCeilingWins() {
-        // Given 극단 종횡비 — 하한을 맞추면 긴 변이 상한을 넘는다
+        // Given 하한을 맞추면 긴 변이 상한을 넘는 극단 종횡비
         val target = resolveTargetSize(width = 5000, height = 400)
 
-        // Then 상한이 이겨서 짧은 변은 하한에 못 미친다
-        assertEquals(2048, target.width)
+        // Then 상한이 이겨 짧은 변은 하한에 못 미친다
+        assertEquals(ScaledSize(width = 2048, height = 164), target)
         assertTrue(target.height < DETECTION_MIN_SHORT_SIDE)
     }
 
     @Test
     fun normalizeStage_targetEqualsSourceAndNoContrast_isNull() {
-        // Given 하한과 상한 사이에 이미 들어 있는 판
         assertNull(normalizeStage(width = 1920, height = 1080, applyContrast = false))
     }
 
     @Test
     fun normalizeStage_targetEqualsSourceButContrastApplies_isNotNull() {
-        assertTrue(normalizeStage(width = 1920, height = 1080, applyContrast = true) != null)
+        assertNotNull(normalizeStage(width = 1920, height = 1080, applyContrast = true))
     }
 
     @Test
     fun normalizeStage_hasNoCropAndNoOffset() {
-        // Given 축소가 필요한 판
-        val stage = requireNotNull(normalizeStage(4032, 3024, applyContrast = true))
+        val stage = requireNotNull(normalizeStage(width = 4032, height = 3024, applyContrast = true))
 
-        // Then 크롭이 없고 오프셋이 0 이다
         assertNull(stage.cropRect)
         assertEquals(0, stage.transform.offsetX)
         assertEquals(0, stage.transform.offsetY)
     }
 
     @Test
-    fun hintBounds_pixelsAboveTheThreshold_wrapsThemExclusiveOnTheFarSide() {
-        // Given 3x3 판의 가운데 한 칸만 임계를 넘는다
+    fun hintBounds_onePixelAboveTheThreshold_wrapsItExclusively() {
         val alpha = ByteArray(9)
         alpha[4] = 200.toByte()
 
-        // Then 오른쪽·아래는 exclusive 다
-        assertEquals(DetectionBounds(1, 1, 2, 2), hintBounds(alpha, 3, 3, threshold = 127))
+        assertEquals(DetectionBounds(1, 1, 2, 2), hintBounds(alpha, width = 3, height = 3, threshold = 127))
+    }
+
+    @Test
+    fun hintBounds_scatteredPixels_wrapsThemAll() {
+        // Given 대각선 양 끝의 두 점 — 최소·최대를 갱신하지 않고 마지막 값을 대입하면 틀린다
+        val alpha = ByteArray(9)
+        alpha[0] = 200.toByte()
+        alpha[8] = 200.toByte()
+
+        assertEquals(DetectionBounds(0, 0, 3, 3), hintBounds(alpha, width = 3, height = 3, threshold = 127))
     }
 
     @Test
     fun hintBounds_nothingAboveTheThreshold_isNull() {
-        assertNull(hintBounds(ByteArray(9), 3, 3, threshold = 127))
+        assertNull(hintBounds(ByteArray(9), width = 3, height = 3, threshold = 127))
     }
 
     @Test
-    fun hintBounds_thresholdIsExclusive() {
-        // Given 임계와 정확히 같은 값만 있다
-        val alpha = ByteArray(4) { 127.toByte() }
-
-        // Then 초과가 아니므로 없다
-        assertNull(hintBounds(alpha, 2, 2, threshold = 127))
+    fun hintBounds_valueEqualToTheThreshold_isExcluded() {
+        assertNull(hintBounds(ByteArray(4) { 127.toByte() }, width = 2, height = 2, threshold = 127))
     }
 
     @Test
-    fun focusStage_hintIsScattered_isNullBecauseTheCropDoesNotShrink() {
-        // Given 힌트가 판 전체에 걸쳐 있다
-        val hint = DetectionBounds(0, 0, 100, 100)
-        val identity = RecoveryTransform(scaleX = 10f, scaleY = 10f, offsetX = 0, offsetY = 0)
+    fun focusCrop_smallHint_addsTheMarginOnEverySide() {
+        val crop = focusCrop(1000, 1000, hint = DetectionBounds(40, 40, 60, 60), hintTransform = tenfold)
 
-        // Then 여유를 붙이면 원본과 같아지므로 2단계를 건너뛴다
-        assertNull(focusStage(1000, 1000, hint, identity, applyContrast = true))
+        // 원본 좌표 400..600, 크기 200 의 20% 인 40 이 각 변에 붙는다
+        assertEquals(SegmentationBounds(left = 360, top = 360, right = 640, bottom = 640), crop)
     }
 
     @Test
-    fun focusStage_hintIsSmall_cropsAroundItWithMargin() {
-        // Given 원본 좌표로 400..600 에 해당하는 힌트
-        val hint = DetectionBounds(40, 40, 60, 60)
-        val transform = RecoveryTransform(scaleX = 10f, scaleY = 10f, offsetX = 0, offsetY = 0)
+    fun focusCrop_hintTouchesTheEdge_clampsToTheOrigin() {
+        val crop = focusCrop(1000, 1000, hint = DetectionBounds(0, 0, 10, 10), hintTransform = tenfold)
 
-        // When
-        val stage = requireNotNull(focusStage(1000, 1000, hint, transform, applyContrast = true))
+        assertEquals(SegmentationBounds(left = 0, top = 0, right = 120, bottom = 120), crop)
+    }
 
-        // Then 각 변에 힌트 크기의 20% 가 붙는다
-        assertEquals(SegmentationBounds(left = 360, top = 360, right = 640, bottom = 640), stage.cropRect)
+    @Test
+    fun focusCrop_noHintOnALandscapeOrigin_isACenteredSquareOfTheShortSide() {
+        // Given 가로가 긴 원본 — 축마다 70% 로 자르면 2800x2100 이 되어 틀린다
+        val crop = focusCrop(4000, 3000, hint = null, hintTransform = null)
+
+        assertEquals(SegmentationBounds(left = 950, top = 450, right = 3050, bottom = 2550), crop)
+    }
+
+    @Test
+    fun focusStage_cropIsExactlySeventyPercent_isNull() {
+        // Given 넓이가 원본의 정확히 70% — 비교를 > 로 바꾸면 통과해 버리는 경계
+        assertNull(focusStage(10, 10, crop = SegmentationBounds(0, 0, 7, 10), applyContrast = true))
+    }
+
+    @Test
+    fun focusStage_cropIsSmaller_carriesTheCropAsTheOffset() {
+        val crop = SegmentationBounds(left = 360, top = 360, right = 640, bottom = 640)
+
+        val stage = requireNotNull(focusStage(1000, 1000, crop, applyContrast = true))
+
+        assertEquals(crop, stage.cropRect)
+        assertEquals(ScaledSize(512, 512), stage.targetSize)
         assertEquals(360, stage.transform.offsetX)
+        assertEquals(360, stage.transform.offsetY)
     }
 
     @Test
-    fun focusStage_hintTouchesTheEdge_clampsToTheOrigin() {
-        val hint = DetectionBounds(0, 0, 10, 10)
-        val transform = RecoveryTransform(scaleX = 10f, scaleY = 10f, offsetX = 0, offsetY = 0)
-
-        val stage = requireNotNull(focusStage(1000, 1000, hint, transform, applyContrast = true))
-
-        assertEquals(0, requireNotNull(stage.cropRect).left)
-        assertEquals(0, requireNotNull(stage.cropRect).top)
+    fun cropAreaPercent_halfTheArea_isFifty() {
+        assertEquals(50, cropAreaPercent(SegmentationBounds(0, 0, 50, 100), width = 100, height = 100))
     }
 
     @Test
-    fun focusStage_noHint_fallsBackToTheCenterCrop() {
-        val stage = requireNotNull(focusStage(1000, 1000, hint = null, hintTransform = null, applyContrast = true))
+    fun recoveryTransform_differentScalesPerAxis_mapsEachAxisWithItsOwnScale() {
+        // Given 축마다 배율이 다른 변환 — 같은 배율 픽스처만 있으면 scaleY 대신 scaleX 를 써도 통과한다
+        val transform = RecoveryTransform(scaleX = 2f, scaleY = 3f, offsetX = 10, offsetY = 20)
 
-        assertEquals(SegmentationBounds(left = 150, top = 150, right = 850, bottom = 850), stage.cropRect)
+        assertEquals(SegmentationBounds(12, 23, 20, 35), transform.toOrigin(DetectionBounds(1, 1, 5, 5)))
     }
 
     @Test
@@ -206,16 +226,55 @@ class SegmentationRecoveryPlanTest {
             offsetX = crop.left,
             offsetY = crop.top,
         )
-        val detection = DetectionBounds(0, 0, target.width, target.height)
 
-        // When 검출 공간 전체를 원본으로 되돌린다
-        val origin = transform.toOrigin(detection)
+        val origin = transform.toOrigin(DetectionBounds(0, 0, target.width, target.height))
 
-        // Then 각 축 1px 안에서 크롭과 같다
-        assertTrue(kotlin.math.abs(origin.left - crop.left) <= ROUND_TRIP_TOLERANCE_PX)
-        assertTrue(kotlin.math.abs(origin.top - crop.top) <= ROUND_TRIP_TOLERANCE_PX)
-        assertTrue(kotlin.math.abs(origin.right - crop.right) <= ROUND_TRIP_TOLERANCE_PX)
-        assertTrue(kotlin.math.abs(origin.bottom - crop.bottom) <= ROUND_TRIP_TOLERANCE_PX)
+        assertTrue(abs(origin.left - crop.left) <= ROUND_TRIP_TOLERANCE_PX)
+        assertTrue(abs(origin.top - crop.top) <= ROUND_TRIP_TOLERANCE_PX)
+        assertTrue(abs(origin.right - crop.right) <= ROUND_TRIP_TOLERANCE_PX)
+        assertTrue(abs(origin.bottom - crop.bottom) <= ROUND_TRIP_TOLERANCE_PX)
+    }
+
+    @Test
+    fun projectRegion_mappedRectCrossesTheCrop_clipsToTheIntersectionAndKeepsTheMappedRect() {
+        val projection = DetectionProjection(
+            transform = RecoveryTransform(scaleX = 2f, scaleY = 2f, offsetX = 100, offsetY = 100),
+            clip = SegmentationBounds(150, 150, 400, 400),
+        )
+
+        val projected = requireNotNull(projectRegion(DetectionBounds(0, 0, 100, 100), projection, 1000, 1000))
+
+        // 재표본은 사상 사각형 크기로 하므로 잘리기 전 사각형도 들고 나와야 한다
+        assertEquals(SegmentationBounds(100, 100, 300, 300), projected.mapped)
+        assertEquals(SegmentationBounds(150, 150, 300, 300), projected.clipped)
+    }
+
+    @Test
+    fun projectRegion_noOverlapWithTheCrop_isNull() {
+        val projection = DetectionProjection(
+            transform = RecoveryTransform(scaleX = 1f, scaleY = 1f, offsetX = 0, offsetY = 0),
+            clip = SegmentationBounds(500, 500, 600, 600),
+        )
+
+        assertNull(projectRegion(DetectionBounds(0, 0, 10, 10), projection, 1000, 1000))
+    }
+
+    @Test
+    fun offsetBy_movesEveryEdge() {
+        assertEquals(SegmentationBounds(11, 22, 13, 24), SegmentationBounds(1, 2, 3, 4).offsetBy(dx = 10, dy = 20))
+    }
+
+    @Test
+    fun isInsideCanvas_exactFit_isTrue() {
+        assertTrue(isInsideCanvas(SegmentationBounds(0, 0, 100, 50), canvasWidth = 100, canvasHeight = 50))
+    }
+
+    @Test
+    fun isInsideCanvas_anyEdgeOutside_isFalse() {
+        assertFalse(isInsideCanvas(SegmentationBounds(-1, 0, 100, 50), canvasWidth = 100, canvasHeight = 50))
+        assertFalse(isInsideCanvas(SegmentationBounds(0, -1, 100, 50), canvasWidth = 100, canvasHeight = 50))
+        assertFalse(isInsideCanvas(SegmentationBounds(0, 0, 101, 50), canvasWidth = 100, canvasHeight = 50))
+        assertFalse(isInsideCanvas(SegmentationBounds(0, 0, 100, 51), canvasWidth = 100, canvasHeight = 50))
     }
 }
 ```
@@ -241,40 +300,35 @@ internal const val DETECTION_MIN_SHORT_SIDE = 512
 /** 문서 근거가 아니라 자원에서 나온 값이다. 판을 네 번 추론하므로 피크를 여기서 막는다 */
 internal const val DETECTION_MAX_LONG_SIDE = 2048
 
+/** 테스트가 구현의 오차에 맞춰지지 않게 여기서 고정한다 */
+internal const val ROUND_TRIP_TOLERANCE_PX = 1
+
 private const val FOCUS_MARGIN_RATIO = 0.20f
 
-/** 크롭 면적이 원본의 이 비율 미만으로 줄어야 2단계가 값을 한다 */
-private const val FOCUS_SHRINK_CEILING = 0.70f
+/** 정수로 비교한다. 부동소수 비율이면 정확히 70% 인 경계가 반올림 오차로 흔들린다 */
+private const val FOCUS_SHRINK_CEILING_PERCENT = 70
 
 private const val CENTER_CROP_RATIO = 0.70f
-
-/** 왕복 좌표 허용오차. 테스트가 구현의 오차에 맞춰지지 않게 여기서 고정한다 */
-internal const val ROUND_TRIP_TOLERANCE_PX = 1
 
 /**
  * 검출 공간의 사각형.
  *
- * `SegmentationBounds` 는 KDoc 이 원본 좌표를 단정하고 있어, 같은 타입으로 두 좌표계를 겸하면
- * 짝이 안 맞는 조합이 컴파일된다.
+ * `SegmentationBounds` 는 KDoc 이 원본 좌표를 단정하고 있어, 같은 타입으로 두 좌표계를 겸하면 짝이 안 맞는
+ * 조합이 컴파일된다.
  */
 internal data class DetectionBounds(
     val left: Int,
     val top: Int,
     val right: Int,
     val bottom: Int,
-) {
-    val width: Int get() = right - left
-
-    val height: Int get() = bottom - top
-}
+)
 
 internal data class ScaledSize(val width: Int, val height: Int)
 
 /**
  * 검출 공간의 좌표를 원본 공간으로 되돌린다.
  *
- * 축마다 배율이 다른 것은 목표 치수를 정수로 반올림하기 때문이다. 하나로 합치면 긴 축에서 오차가
- * 픽셀 단위로 쌓인다.
+ * 축마다 배율이 다른 것은 목표 치수를 정수로 반올림하기 때문이다.
  */
 internal data class RecoveryTransform(
     val scaleX: Float,
@@ -298,19 +352,27 @@ internal data class RecoveryStage(
     val transform: RecoveryTransform,
 )
 
+/** 검출 공간이 원본에 어떻게 놓이는가. 1차 경로에는 없다 */
+internal data class DetectionProjection(
+    val transform: RecoveryTransform,
+    val clip: SegmentationBounds,
+)
+
+/** 재표본은 [mapped] 크기로 하고, 그다음 [clipped] 로 자른다. 순서를 뒤집으면 알파가 어긋난다 */
+internal data class ProjectedRegion(
+    val mapped: SegmentationBounds,
+    val clipped: SegmentationBounds,
+)
+
 /**
- * 검출에 쓸 치수를 정한다.
- *
- * 하한과 상한이 충돌하면 상한이 이긴다 — 확대는 정보를 늘리지 않지만 상한 초과는 메모리로 죽는다.
+ * 검출에 쓸 치수. 하한과 상한이 충돌하면 상한이 이긴다 — 확대는 정보를 늘리지 않지만 상한 초과는
+ * 메모리로 죽는다. 배율이 하나라 두 축은 언제나 같은 방향으로 움직인다.
  */
 internal fun resolveTargetSize(width: Int, height: Int): ScaledSize {
     require(width > 0 && height > 0) { "size must be positive but was ${width}x$height" }
 
-    val shortSide = minOf(width, height)
-    val longSide = maxOf(width, height)
-
-    val floorScale = maxOf(1f, DETECTION_MIN_SHORT_SIDE.toFloat() / shortSide)
-    val ceilingScale = DETECTION_MAX_LONG_SIDE.toFloat() / longSide
+    val floorScale = maxOf(1f, DETECTION_MIN_SHORT_SIDE.toFloat() / minOf(width, height))
+    val ceilingScale = DETECTION_MAX_LONG_SIDE.toFloat() / maxOf(width, height)
     val scale = minOf(floorScale, ceilingScale)
 
     return ScaledSize(
@@ -319,11 +381,7 @@ internal fun resolveTargetSize(width: Int, height: Int): ScaledSize {
     )
 }
 
-/**
- * 크롭 없는 1단계.
- *
- * 목표 치수가 원본과 같고 대비도 안 걸면 1차 경로의 재실행일 뿐이라 널이다.
- */
+/** 크롭 없는 1단계. 목표 치수가 원본과 같고 대비도 안 걸면 1차 경로의 재실행일 뿐이라 널이다 */
 internal fun normalizeStage(width: Int, height: Int, applyContrast: Boolean): RecoveryStage? {
     val target = resolveTargetSize(width, height)
     if (!applyContrast && target.width == width && target.height == height) return null
@@ -341,26 +399,36 @@ internal fun normalizeStage(width: Int, height: Int, applyContrast: Boolean): Re
     )
 }
 
-/**
- * 힌트로 2단계를 만든다. 힌트가 없으면 중앙 크롭이다.
- *
- * 크롭이 충분히 안 줄면 널이다 — 1단계 재탕에 추론만 더 쓰게 된다.
- */
-internal fun focusStage(
+/** 2단계가 자를 사각형. 힌트가 없으면 짧은 변의 70% 를 한 변으로 하는 중앙 정사각형이다 */
+internal fun focusCrop(
     width: Int,
     height: Int,
     hint: DetectionBounds?,
     hintTransform: RecoveryTransform?,
-    applyContrast: Boolean,
-): RecoveryStage? {
-    val crop = if (hint != null && hintTransform != null) {
-        expandHint(hintTransform.toOrigin(hint), width, height)
-    } else {
-        centerCrop(width, height)
-    }
+): SegmentationBounds {
+    if (hint == null || hintTransform == null) return centerSquare(width, height)
 
-    val originArea = width.toLong() * height
-    if (crop.width.toLong() * crop.height >= originArea * FOCUS_SHRINK_CEILING) return null
+    val origin = hintTransform.toOrigin(hint)
+    val marginX = (origin.width * FOCUS_MARGIN_RATIO).roundToInt()
+    val marginY = (origin.height * FOCUS_MARGIN_RATIO).roundToInt()
+
+    return SegmentationBounds(
+        left = (origin.left - marginX).coerceIn(0, width),
+        top = (origin.top - marginY).coerceIn(0, height),
+        right = (origin.right + marginX).coerceIn(0, width),
+        bottom = (origin.bottom + marginY).coerceIn(0, height),
+    )
+}
+
+internal fun cropAreaPercent(crop: SegmentationBounds, width: Int, height: Int): Int =
+    (crop.width.toLong() * crop.height * 100 / (width.toLong() * height)).toInt()
+
+/** 크롭이 원본의 70% 이상이면 널이다 — 1단계 재탕에 추론만 더 쓰게 된다 */
+internal fun focusStage(width: Int, height: Int, crop: SegmentationBounds, applyContrast: Boolean): RecoveryStage? {
+    if (crop.width <= 0 || crop.height <= 0) return null
+
+    val cropArea = crop.width.toLong() * crop.height
+    if (cropArea * 100 >= width.toLong() * height * FOCUS_SHRINK_CEILING_PERCENT) return null
 
     val target = resolveTargetSize(crop.width, crop.height)
 
@@ -377,32 +445,19 @@ internal fun focusStage(
     )
 }
 
-private fun expandHint(hint: SegmentationBounds, width: Int, height: Int): SegmentationBounds {
-    val marginX = (hint.width * FOCUS_MARGIN_RATIO).roundToInt()
-    val marginY = (hint.height * FOCUS_MARGIN_RATIO).roundToInt()
+private fun centerSquare(width: Int, height: Int): SegmentationBounds {
+    val side = maxOf(1, (minOf(width, height) * CENTER_CROP_RATIO).roundToInt())
+    val left = (width - side) / 2
+    val top = (height - side) / 2
 
-    return SegmentationBounds(
-        left = (hint.left - marginX).coerceIn(0, width),
-        top = (hint.top - marginY).coerceIn(0, height),
-        right = (hint.right + marginX).coerceIn(0, width),
-        bottom = (hint.bottom + marginY).coerceIn(0, height),
-    )
-}
-
-private fun centerCrop(width: Int, height: Int): SegmentationBounds {
-    val cropWidth = maxOf(1, (width * CENTER_CROP_RATIO).roundToInt())
-    val cropHeight = maxOf(1, (height * CENTER_CROP_RATIO).roundToInt())
-    val left = (width - cropWidth) / 2
-    val top = (height - cropHeight) / 2
-
-    return SegmentationBounds(left = left, top = top, right = left + cropWidth, bottom = top + cropHeight)
+    return SegmentationBounds(left = left, top = top, right = left + side, bottom = top + side)
 }
 
 /**
- * 임계를 **초과**하는 픽셀을 감싸는 사각형. 하나도 없으면 널이다.
+ * 임계를 **초과**하는 픽셀을 감싸는 사각형.
  *
- * 임계를 폴백의 이진화와 같은 축에서 받는 것이 중요하다. 더 높은 축을 쓰면 1단계가 실패한 상황에서
- * 힌트가 구조적으로 거의 항상 빈다.
+ * 임계는 폴백 이진화와 같은 축에서 받는다. 더 높은 축을 쓰면 1단계가 실패한 상황에서 힌트가 구조적으로
+ * 거의 항상 빈다.
  */
 internal fun hintBounds(alpha: ByteArray, width: Int, height: Int, threshold: Int): DetectionBounds? {
     require(alpha.size == width * height) { "alpha ${alpha.size} does not match ${width}x$height" }
@@ -417,10 +472,10 @@ internal fun hintBounds(alpha: ByteArray, width: Int, height: Int, threshold: In
         for (x in 0 until width) {
             if ((alpha[row + x].toInt() and 0xFF) <= threshold) continue
 
-            if (x < left) left = x
-            if (x > right) right = x
-            if (y < top) top = y
-            if (y > bottom) bottom = y
+            left = minOf(left, x)
+            right = maxOf(right, x)
+            top = minOf(top, y)
+            bottom = maxOf(bottom, y)
         }
     }
 
@@ -428,24 +483,65 @@ internal fun hintBounds(alpha: ByteArray, width: Int, height: Int, threshold: In
 
     return DetectionBounds(left = left, top = top, right = right + 1, bottom = bottom + 1)
 }
+
+/**
+ * 검출 사각형을 원본에 옮기고 크롭과 원본의 교집합으로 자른다. 교집합이 비면 널이다.
+ *
+ * 원본 경계만으로 자르면 2단계에서 크롭 밖으로 새는 사각형이 생긴다.
+ */
+internal fun projectRegion(
+    detection: DetectionBounds,
+    projection: DetectionProjection,
+    width: Int,
+    height: Int,
+): ProjectedRegion? {
+    val mapped = projection.transform.toOrigin(detection)
+    if (mapped.width <= 0 || mapped.height <= 0) return null
+
+    val clip = projection.clip
+    val left = maxOf(mapped.left, clip.left, 0)
+    val top = maxOf(mapped.top, clip.top, 0)
+    val right = minOf(mapped.right, clip.right, width)
+    val bottom = minOf(mapped.bottom, clip.bottom, height)
+    if (right <= left || bottom <= top) return null
+
+    return ProjectedRegion(mapped = mapped, clipped = SegmentationBounds(left, top, right, bottom))
+}
+
+internal fun SegmentationBounds.offsetBy(dx: Int, dy: Int): SegmentationBounds =
+    SegmentationBounds(left = left + dx, top = top + dy, right = right + dx, bottom = bottom + dy)
+
+/**
+ * 판 치수와 사각형 치수를 비교하는 검사는 사각형을 판에서 만들기 때문에 항진명제다. 실제로 깨질 수 있는
+ * 것은 이쪽이고, 깨지면 예외가 아니라 `persistSubject` 의 `drawBitmap` 이 조용히 자른다.
+ */
+internal fun isInsideCanvas(bounds: SegmentationBounds, canvasWidth: Int, canvasHeight: Int): Boolean =
+    bounds.left >= 0 && bounds.top >= 0 && bounds.right <= canvasWidth && bounds.bottom <= canvasHeight
 ```
 
 - [ ] **Step 4: 테스트가 통과하는지 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*SegmentationRecoveryPlanTest*"`
-Expected: PASS 14건
+Expected: PASS 24건
 
 - [ ] **Step 5: ktlint를 돌린다**
 
 Run: `./gradlew :data:ktlintCheck`
-Expected: 통과. 실패하면 120자 기준으로 줄바꿈한다.
+Expected: 통과
 
 - [ ] **Step 6: 커밋한다**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationRecoveryPlan.kt \
         data/src/test/java/com/teamyg/parfait/data/utils/image/SegmentationRecoveryPlanTest.kt
-git commit -m "feat: 세그멘테이션 회복 단계의 좌표와 해상도 계산을 만든다"
+git commit -m "$(cat <<'MSG'
+feat: 세그멘테이션 회복 단계의 좌표와 해상도 계산을 만든다
+
+검출 공간과 원본 공간을 타입으로 가르고, 두 단계의 계획과 가드를 순수 함수로 둔다.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+MSG
+)"
 ```
 
 ---
@@ -463,6 +559,8 @@ git commit -m "feat: 세그멘테이션 회복 단계의 좌표와 해상도 계
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
+`SegmentationContrastTest.kt` (6건):
+
 ```kotlin
 package com.teamyg.parfait.data.utils.image
 
@@ -471,6 +569,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class SegmentationContrastTest {
+    private fun band(from: Int, to: Int, count: Int = 1_000) = IntArray(LUMINANCE_LEVELS).also { histogram ->
+        for (level in from..to) histogram[level] = count
+    }
+
     @Test
     fun contrastLut_emptyHistogram_isIdentity() {
         val lut = contrastLut(IntArray(LUMINANCE_LEVELS))
@@ -480,24 +582,29 @@ class SegmentationContrastTest {
 
     @Test
     fun contrastLut_everythingOnOneLevel_isIdentity() {
-        // Given 단색 이미지 — 절단점이 겹쳐 분모가 0 이 된다
-        val histogram = IntArray(LUMINANCE_LEVELS)
-        histogram[128] = 10_000
-
-        val lut = contrastLut(histogram)
+        // Given 단색 — 절단점이 겹쳐 분모가 0 이 된다
+        val lut = contrastLut(band(from = 128, to = 128, count = 10_000))
 
         assertTrue((0 until LUMINANCE_LEVELS).all { lut[it] == it })
     }
 
     @Test
     fun contrastLut_narrowBand_stretchesItToTheFullRange() {
-        // Given 100..150 에만 고르게 분포한다
-        val histogram = IntArray(LUMINANCE_LEVELS)
-        for (level in 100..150) histogram[level] = 1_000
+        val lut = contrastLut(band(from = 100, to = 150))
+
+        assertTrue(lut[100] <= 16)
+        assertTrue(lut[150] >= 239)
+    }
+
+    @Test
+    fun contrastLut_outliersAtBothEnds_areClippedByThePercentiles() {
+        // Given 본체는 100..150 인데 양 끝에 이상치 한 픽셀씩 — 최소·최대로 늘리면 대역이 거의 안 벌어진다
+        val histogram = band(from = 100, to = 150)
+        histogram[0] = 1
+        histogram[LUMINANCE_LEVELS - 1] = 1
 
         val lut = contrastLut(histogram)
 
-        // Then 대역의 양 끝이 0 과 255 에 가까워진다
         assertTrue(lut[100] <= 16)
         assertTrue(lut[150] >= 239)
     }
@@ -514,10 +621,7 @@ class SegmentationContrastTest {
 
     @Test
     fun contrastLut_clampsOutsideTheBand() {
-        val histogram = IntArray(LUMINANCE_LEVELS)
-        for (level in 100..150) histogram[level] = 1_000
-
-        val lut = contrastLut(histogram)
+        val lut = contrastLut(band(from = 100, to = 150))
 
         assertEquals(0, lut[0])
         assertEquals(255, lut[LUMINANCE_LEVELS - 1])
@@ -544,12 +648,9 @@ private const val HIGH_PERCENTILE = 0.99f
 private const val MAX_LEVEL = LUMINANCE_LEVELS - 1
 
 /**
- * 퍼센타일 절단 후 선형 확장 LUT.
+ * 퍼센타일 절단 후 선형 확장 LUT. 절단점이 겹치면 항등이다.
  *
- * 전역 히스토그램 평활화를 쓰지 않는 것은 그쪽이 계조를 뭉개서 사진이 부자연스러워지기 때문이다.
- * 여기서는 이상치만 자르고 본체는 비율을 유지한다.
- *
- * @return 절단점이 겹치면 항등 LUT
+ * 전역 히스토그램 평활화를 쓰지 않는 것은 계조를 뭉개기 때문이다. 이상치만 자르고 본체의 비율은 유지한다.
  */
 internal fun contrastLut(histogram: IntArray): IntArray {
     require(histogram.size == LUMINANCE_LEVELS) { "histogram must have $LUMINANCE_LEVELS levels" }
@@ -558,20 +659,19 @@ internal fun contrastLut(histogram: IntArray): IntArray {
     for (count in histogram) total += count
     if (total <= 0L) return identityLut()
 
-    val low = levelAtOrAbove(histogram, (total * LOW_PERCENTILE).toLong())
-    val high = levelAtOrAbove(histogram, (total * HIGH_PERCENTILE).toLong())
+    val low = levelReaching(histogram, (total * LOW_PERCENTILE).toLong())
+    val high = levelReaching(histogram, (total * HIGH_PERCENTILE).toLong())
     if (high <= low) return identityLut()
 
     val span = (high - low).toFloat()
 
     return IntArray(LUMINANCE_LEVELS) { level ->
-        (((level - low) / span) * MAX_LEVEL).roundToInt().coerceIn(0, MAX_LEVEL)
+        ((level - low) / span * MAX_LEVEL).roundToInt().coerceIn(0, MAX_LEVEL)
     }
 }
 
-private fun levelAtOrAbove(histogram: IntArray, target: Long): Int {
+private fun levelReaching(histogram: IntArray, target: Long): Int {
     var accumulated = 0L
-
     for (level in 0 until LUMINANCE_LEVELS) {
         accumulated += histogram[level]
         if (accumulated >= target) return level
@@ -586,41 +686,50 @@ private fun identityLut(): IntArray = IntArray(LUMINANCE_LEVELS) { it }
 - [ ] **Step 4: 테스트가 통과하는지 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*SegmentationContrastTest*"`
-Expected: PASS 5건
+Expected: PASS 6건
 
 - [ ] **Step 5: 커밋한다**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationContrast.kt \
         data/src/test/java/com/teamyg/parfait/data/utils/image/SegmentationContrastTest.kt
-git commit -m "feat: 퍼센타일 절단 대비 LUT 를 만든다"
+git commit -m "$(cat <<'MSG'
+feat: 퍼센타일 절단 대비 LUT 를 만든다
+
+회복 1단계가 검출 판에만 거는 대비 정규화다. 결과 픽셀에는 쓰지 않는다.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+MSG
+)"
 ```
 
 ---
 
-### Task 3: 마스크 유틸 분해와 알파 재표본
+### Task 3: 마스크 유틸 분해와 알파 재표본·자르기·합
 
-`maskSubjectAlpha`는 `FloatBuffer`를 받아 램프와 후처리를 한 덩어리로 돌아서 되올린 알파를 넣을
-입구가 없다. 앞뒤로 쪼개되 **기존 함수는 위임 껍데기로 남겨** 호출부를 안 건드린다.
+`maskSubjectAlpha`는 `FloatBuffer`를 받아 램프와 후처리를 한 덩어리로 돌아서, 되올린 알파를 넣을 입구가 없다.
+앞뒤로 쪼개되 **기존 함수는 위임 껍데기로 남겨** 호출부를 안 건드린다.
 
 **Files:**
 - Modify: `data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationMask.kt`
 - Test: `data/src/test/java/com/teamyg/parfait/data/utils/image/SegmentationMaskTest.kt`
 
 **Interfaces:**
-- Consumes: `postProcessAlpha`, `AlphaPostProcessOptions`, `GuidanceProvider`, `MaskedAlpha`
+- Consumes: `postProcessAlpha`, `AlphaPostProcessOptions`, `GuidanceProvider`, `MaskedAlpha`, Task 1의 `SegmentationBounds.offsetBy`는 쓰지 않는다
 - Produces: `confidenceToAlphaArray(mask, width, height): ByteArray`,
   `postProcessMaskedAlpha(alpha, width, height, options, guidance): MaskedAlpha?`,
-  `resampleAlpha(alpha, width, height, targetWidth, targetHeight): ByteArray`
+  `resampleAlpha(alpha, width, height, targetWidth, targetHeight): ByteArray`,
+  `cropAlpha(alpha, width, height, region): ByteArray`, `alphaSum(alpha): Long`
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
-`SegmentationMaskTest.kt`에 아래를 **추가**한다(기존 테스트는 지우지 않는다).
+`SegmentationMaskTest.kt`에 아래 9건을 **추가**한다. 기존 테스트는 지우지 않는다.
+import에 `com.teamyg.parfait.domain.model.SegmentationBounds`와 `kotlin.test.assertContentEquals`를 더한다.
+`FloatBuffer`·`assertEquals`·`assertFailsWith`는 이미 있다.
 
 ```kotlin
     @Test
     fun confidenceToAlphaArray_mapsEveryPixelThroughTheRamp() {
-        // Given 램프 아래·가운데·위
         val mask = FloatBuffer.wrap(floatArrayOf(0.0f, 0.5f, 1.0f, 0.2f))
 
         val alpha = confidenceToAlphaArray(mask, width = 2, height = 2)
@@ -635,13 +744,21 @@ git commit -m "feat: 퍼센타일 절단 대비 LUT 를 만든다"
     fun resampleAlpha_sameSize_returnsTheSameValues() {
         val alpha = byteArrayOf(0, 64, 128.toByte(), 255.toByte())
 
-        val resampled = resampleAlpha(alpha, 2, 2, 2, 2)
-
-        assertContentEquals(alpha, resampled)
+        assertContentEquals(alpha, resampleAlpha(alpha, 2, 2, 2, 2))
     }
 
     @Test
-    fun resampleAlpha_upscale_keepsTheCornersAndSizesTheOutput() {
+    fun resampleAlpha_upscaleTwoToThree_interpolatesTheMiddle() {
+        // Given 한 줄 두 칸 — 박스 평균이나 최근접으로 바꾸면 가운데가 0 이나 254 가 된다
+        val alpha = byteArrayOf(0, 254.toByte())
+
+        val resampled = resampleAlpha(alpha, width = 2, height = 1, targetWidth = 3, targetHeight = 1)
+
+        assertEquals(127, resampled[1].toInt() and 0xFF)
+    }
+
+    @Test
+    fun resampleAlpha_upscale_keepsTheCorners() {
         val alpha = byteArrayOf(0, 255.toByte(), 0, 255.toByte())
 
         val resampled = resampleAlpha(alpha, 2, 2, 4, 4)
@@ -653,24 +770,40 @@ git commit -m "feat: 퍼센타일 절단 대비 LUT 를 만든다"
 
     @Test
     fun resampleAlpha_downscale_averagesTheBox() {
-        // Given 2x2 가 한 칸으로 접힌다
         val alpha = byteArrayOf(0, 100, 100, 200.toByte())
 
         val resampled = resampleAlpha(alpha, 2, 2, 1, 1)
 
-        assertEquals(1, resampled.size)
-        assertEquals(100, resampled[0].toInt() and 0xFF)
+        assertEquals(100, resampled.single().toInt() and 0xFF)
     }
 
     @Test
     fun resampleAlpha_lengthDoesNotMatch_throws() {
+        assertFailsWith<IllegalArgumentException> { resampleAlpha(ByteArray(3), 2, 2, 2, 2) }
+    }
+
+    @Test
+    fun cropAlpha_middleRegion_copiesOnlyThatRegion() {
+        val alpha = ByteArray(9) { it.toByte() }
+
+        val cropped = cropAlpha(alpha, width = 3, height = 3, region = SegmentationBounds(1, 1, 3, 3))
+
+        assertContentEquals(byteArrayOf(4, 5, 7, 8), cropped)
+    }
+
+    @Test
+    fun cropAlpha_regionOutsideTheSource_throws() {
         assertFailsWith<IllegalArgumentException> {
-            resampleAlpha(ByteArray(3), 2, 2, 2, 2)
+            cropAlpha(ByteArray(9), width = 3, height = 3, region = SegmentationBounds(1, 1, 4, 3))
         }
     }
-```
 
-import에 `kotlin.test.assertContentEquals`를 더한다. `assertFailsWith`·`FloatBuffer`는 이미 있다.
+    @Test
+    fun alphaSum_countsBytesAsUnsigned() {
+        // 부호 있는 합이면 255 가 -1 로 세어진다
+        assertEquals(256L, alphaSum(byteArrayOf(255.toByte(), 1)))
+    }
+```
 
 - [ ] **Step 2: 테스트가 실패하는지 확인한다**
 
@@ -679,7 +812,8 @@ Expected: FAIL — `Unresolved reference: confidenceToAlphaArray`
 
 - [ ] **Step 3: 최소 구현을 쓴다**
 
-`SegmentationMask.kt`의 `maskSubjectAlpha`를 아래로 바꾸고 나머지를 더한다.
+`SegmentationMask.kt`의 `maskSubjectAlpha`를 아래로 바꾸고 나머지를 더한다. 파일 import에
+`com.teamyg.parfait.domain.model.SegmentationBounds`를 더한다.
 
 ```kotlin
 /** 신뢰도를 알파로. 검출 공간에서 돈다 */
@@ -691,9 +825,9 @@ internal fun confidenceToAlphaArray(mask: FloatBuffer, width: Int, height: Int):
 }
 
 /**
- * 알파 후처리. **원본 공간에서 돈다** — [guidance] 가 원본을 읽기 때문이다.
+ * 알파 후처리. 원본 공간에서 돈다 — [guidance] 가 원본을 읽기 때문이다.
  *
- * @return 남은 알파가 없으면 `null`
+ * ⚠️ [alpha] 를 제자리에서 지운다. 되돌림에 쓸 알파는 부르기 전에 사본을 떠 둔다.
  */
 internal suspend fun postProcessMaskedAlpha(
     alpha: ByteArray,
@@ -708,11 +842,9 @@ internal suspend fun postProcessMaskedAlpha(
 }
 
 /**
- * 전경 신뢰도 마스크에서 후처리까지 끝낸 알파를 만든다.
- *
  * 검출 공간과 원본 공간이 같을 때만 쓴다. 다르면 두 단계를 직접 불러 사이에 [resampleAlpha] 를 낀다.
  *
- * @param mask 픽셀별 전경 신뢰도. 길이가 `width * height` 여야 한다 — 호출부가 검사한다
+ * @param mask 길이가 `width * height` 여야 한다 — 호출부가 검사한다
  */
 internal suspend fun maskSubjectAlpha(
     mask: FloatBuffer,
@@ -720,46 +852,50 @@ internal suspend fun maskSubjectAlpha(
     height: Int,
     options: AlphaPostProcessOptions = AlphaPostProcessOptions(),
     guidance: GuidanceProvider? = null,
-): MaskedAlpha? = postProcessMaskedAlpha(
-    confidenceToAlphaArray(mask, width, height),
-    width,
-    height,
-    options,
-    guidance,
-)
+): MaskedAlpha? = postProcessMaskedAlpha(confidenceToAlphaArray(mask, width, height), width, height, options, guidance)
 
 /**
- * 알파를 다른 치수로 옮긴다. 확대와 축소를 모두 받는다.
+ * 알파를 다른 치수로 옮긴다. 확대는 쌍선형, 축소는 박스 평균이다.
  *
- * ⚠️ 확대만 받게 두면 안 된다 — 짧은 변 하한이 걸리거나 크롭이 작으면 되올림이 축소가 된다.
- * 목표 치수가 한 배율에서 나오므로 두 축의 방향은 언제나 같다.
+ * 확대만 받게 두면 안 된다 — 짧은 변 하한이 걸리거나 크롭이 작으면 되올림이 축소가 된다. 목표 치수가 한 배율에서
+ * 나오므로 두 축의 방향은 언제나 같아서 가로만 보고 가른다.
  */
-internal fun resampleAlpha(
-    alpha: ByteArray,
-    width: Int,
-    height: Int,
-    targetWidth: Int,
-    targetHeight: Int,
-): ByteArray {
+internal fun resampleAlpha(alpha: ByteArray, width: Int, height: Int, targetWidth: Int, targetHeight: Int): ByteArray {
     require(alpha.size == width * height) { "alpha ${alpha.size} does not match ${width}x$height" }
-    require(targetWidth > 0 && targetHeight > 0) { "target must be positive" }
+    require(targetWidth > 0 && targetHeight > 0) { "target must be positive but was ${targetWidth}x$targetHeight" }
 
     if (targetWidth == width && targetHeight == height) return alpha.copyOf()
 
     return if (targetWidth < width) {
-        boxAverage(alpha, width, height, targetWidth, targetHeight)
+        boxAverageAlpha(alpha, width, height, targetWidth, targetHeight)
     } else {
-        bilinear(alpha, width, height, targetWidth, targetHeight)
+        bilinearAlpha(alpha, width, height, targetWidth, targetHeight)
     }
 }
 
-private fun bilinear(
-    alpha: ByteArray,
-    width: Int,
-    height: Int,
-    targetWidth: Int,
-    targetHeight: Int,
-): ByteArray {
+internal fun cropAlpha(alpha: ByteArray, width: Int, height: Int, region: SegmentationBounds): ByteArray {
+    require(alpha.size == width * height) { "alpha ${alpha.size} does not match ${width}x$height" }
+    require(
+        region.left >= 0 && region.top >= 0 && region.right <= width && region.bottom <= height &&
+            region.width > 0 && region.height > 0,
+    ) { "region $region escapes ${width}x$height" }
+
+    val out = ByteArray(region.width * region.height)
+    for (y in 0 until region.height) {
+        System.arraycopy(alpha, (region.top + y) * width + region.left, out, y * region.width, region.width)
+    }
+
+    return out
+}
+
+internal fun alphaSum(alpha: ByteArray): Long {
+    var sum = 0L
+    for (value in alpha) sum += value.toInt() and 0xFF
+
+    return sum
+}
+
+private fun bilinearAlpha(alpha: ByteArray, width: Int, height: Int, targetWidth: Int, targetHeight: Int): ByteArray {
     val out = ByteArray(targetWidth * targetHeight)
     val scaleX = if (targetWidth > 1) (width - 1).toFloat() / (targetWidth - 1) else 0f
     val scaleY = if (targetHeight > 1) (height - 1).toFloat() / (targetHeight - 1) else 0f
@@ -776,23 +912,16 @@ private fun bilinear(
             val x1 = (x0 + 1).coerceAtMost(width - 1)
             val weightX = sourceX - x0
 
-            val topRow = lerp(at(alpha, width, x0, y0), at(alpha, width, x1, y0), weightX)
-            val bottomRow = lerp(at(alpha, width, x0, y1), at(alpha, width, x1, y1), weightX)
-
-            out[y * targetWidth + x] = lerp(topRow, bottomRow, weightY).toInt().toByte()
+            val upper = lerpAlpha(alphaAt(alpha, width, x0, y0), alphaAt(alpha, width, x1, y0), weightX)
+            val lower = lerpAlpha(alphaAt(alpha, width, x0, y1), alphaAt(alpha, width, x1, y1), weightX)
+            out[y * targetWidth + x] = (upper + (lower - upper) * weightY).toInt().toByte()
         }
     }
 
     return out
 }
 
-private fun boxAverage(
-    alpha: ByteArray,
-    width: Int,
-    height: Int,
-    targetWidth: Int,
-    targetHeight: Int,
-): ByteArray {
+private fun boxAverageAlpha(alpha: ByteArray, width: Int, height: Int, targetWidth: Int, targetHeight: Int): ByteArray {
     val out = ByteArray(targetWidth * targetHeight)
 
     for (y in 0 until targetHeight) {
@@ -804,410 +933,714 @@ private fun boxAverage(
             val endX = maxOf(startX + 1, (x + 1) * width / targetWidth)
 
             var sum = 0
-            var count = 0
             for (sourceY in startY until endY) {
-                for (sourceX in startX until endX) {
-                    sum += at(alpha, width, sourceX, sourceY)
-                    count++
-                }
+                for (sourceX in startX until endX) sum += alphaAt(alpha, width, sourceX, sourceY)
             }
-
-            out[y * targetWidth + x] = (sum / count).toByte()
+            out[y * targetWidth + x] = (sum / ((endY - startY) * (endX - startX))).toByte()
         }
     }
 
     return out
 }
 
-private fun at(alpha: ByteArray, width: Int, x: Int, y: Int): Int = alpha[y * width + x].toInt() and 0xFF
+private fun alphaAt(alpha: ByteArray, width: Int, x: Int, y: Int): Int = alpha[y * width + x].toInt() and 0xFF
 
-private fun lerp(from: Int, to: Int, weight: Float): Float = from + (to - from) * weight
+private fun lerpAlpha(from: Int, to: Int, weight: Float): Float = from + (to - from) * weight
 ```
 
 - [ ] **Step 4: 테스트가 통과하는지 확인한다**
 
 Run: `./gradlew :data:testDebugUnitTest --tests "*SegmentationMaskTest*"`
-Expected: PASS. 기존 테스트가 전부 그대로 통과해야 한다 — 위임 껍데기가 동작을 안 바꿨다는 증거다.
+Expected: PASS. **기존 테스트가 전부 그대로 통과해야 한다** — 위임 껍데기가 동작을 안 바꿨다는 증거다.
 
 - [ ] **Step 5: 커밋한다**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationMask.kt \
         data/src/test/java/com/teamyg/parfait/data/utils/image/SegmentationMaskTest.kt
-git commit -m "refactor: 마스크 유틸을 램프와 후처리로 쪼개고 알파 재표본을 더한다"
+git commit -m "$(cat <<'MSG'
+refactor: 마스크 유틸을 램프와 후처리로 쪼개고 알파 재표본을 더한다
+
+회복 경로가 검출 공간 알파를 원본 공간으로 옮긴 뒤 후처리할 수 있게 입구를 연다.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+MSG
+)"
 ```
 
 ---
 
-### Task 4: 회복 경로용 완화 필터
+### Task 4: 후보 수확 코드 순수 이동
 
-후보의 캔버스 치수가 언제나 원본이라 면적 하한도 원본 기준이다. 그러면 2단계가 크롭 안에서 찾은
-작은 피사체가 그대로 걸러진다. **회복 경로에만** 낮은 하한을 쓸 수 있게 인자를 연다.
-
-**Files:**
-- Modify: `domain/src/main/java/com/teamyg/parfait/domain/model/SubjectCoverage.kt`
-- Modify: `data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateFilter.kt`
-- Test: `domain/src/test/java/com/teamyg/parfait/domain/model/SubjectCoverageTest.kt`
-- Test: `data/src/test/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateFilterTest.kt`
-
-**Interfaces:**
-- Produces: `SubjectCoverage.RECOVERY_FLOOR_DIVISOR`,
-  `SubjectCoverage.floorPixels(canvasArea, divisor = 1)`,
-  `SubjectCoverage.isLargeEnough(alphaSum, canvasArea, divisor = 1)`,
-  `filterCandidates(candidates, floorDivisor = 1)`
-
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
-
-`SubjectCoverageTest.kt`에 추가:
-
-```kotlin
-    @Test
-    fun floorPixels_recoveryDivisor_lowersTheFloor() {
-        // Given 비율 하한이 이기는 큰 캔버스
-        val strict = SubjectCoverage.floorPixels(BIG_CANVAS_AREA)
-        val relaxed = SubjectCoverage.floorPixels(BIG_CANVAS_AREA, SubjectCoverage.RECOVERY_FLOOR_DIVISOR)
-
-        // Then 회복 하한은 1차의 1/4 이다
-        assertEquals(strict / SubjectCoverage.RECOVERY_FLOOR_DIVISOR, relaxed)
-    }
-
-    @Test
-    fun isLargeEnough_belowTheStrictFloorButAboveTheRelaxedOne_splitsOnTheDivisor() {
-        // Given 엄격한 하한에는 못 미치고 완화 하한은 넘는 커버리지
-        val alphaSum = 255L * 2_000L
-
-        assertFalse(SubjectCoverage.isLargeEnough(alphaSum, BIG_CANVAS_AREA))
-        assertTrue(
-            SubjectCoverage.isLargeEnough(alphaSum, BIG_CANVAS_AREA, SubjectCoverage.RECOVERY_FLOOR_DIVISOR),
-        )
-    }
-```
-
-`SegmentationCandidateFilterTest.kt`에 추가:
-
-```kotlin
-    @Test
-    fun filterCandidates_recoveryDivisor_keepsWhatTheStrictFloorDrops() {
-        // Given 1차 하한 미만, 회복 하한 초과인 후보 하나
-        val small = candidate(
-            width = 100,
-            height = 100,
-            canvasWidth = 4_000,
-            canvasHeight = 3_000,
-            coverageAlphaSum = 255L * 2_000,
-        )
-
-        // Then 기본 하한은 버리고 완화 하한은 남긴다
-        assertEquals(emptyList(), filterCandidates(listOf(small)))
-        assertEquals(listOf(small), filterCandidates(listOf(small), SubjectCoverage.RECOVERY_FLOOR_DIVISOR))
-    }
-```
-
-`SegmentationCandidateFilterTest.kt`의 import에 `com.teamyg.parfait.domain.model.SubjectCoverage`를 더한다.
-
-- [ ] **Step 2: 테스트가 실패하는지 확인한다**
-
-Run: `./gradlew :domain:compileTestKotlin :data:compileDebugUnitTestKotlin`
-Expected: FAIL — `Unresolved reference: RECOVERY_FLOOR_DIVISOR`
-
-- [ ] **Step 3: 최소 구현을 쓴다**
-
-`SubjectCoverage.kt`의 두 함수에 인자를 더한다. **기본값이 1이라 기존 호출부는 안 바뀐다.**
-하한 식 자체는 바꾸지 않고 나누는 것만 더한다.
-
-```kotlin
-    /** 회복 경로가 쓰는 완화 배수. 크롭 안에서 찾은 작은 피사체가 원본 면적 하한에 죽는 것을 막는다 */
-    const val RECOVERY_FLOOR_DIVISOR = 4
-
-    fun floorPixels(
-        canvasArea: Long,
-        divisor: Int = 1,
-    ): Long {
-        require(divisor >= 1) { "divisor must be >= 1 but was $divisor" }
-
-        return maxOf(MIN_COVERAGE_PIXELS, canvasArea * MIN_COVERAGE_PERMYRIAD / PERMYRIAD_BASE) / divisor
-    }
-
-    /**
-     * @param alphaSum 알파의 총합. [MAX_ALPHA] 로 나누면 실제로 칠해진 픽셀 수가 된다
-     */
-    fun isLargeEnough(
-        alphaSum: Long,
-        canvasArea: Long,
-        divisor: Int = 1,
-    ): Boolean {
-        if (canvasArea <= 0L) return false
-
-        // 양변에 255를 곱해 부동소수를 거치지 않는다
-        return alphaSum >= MAX_ALPHA * floorPixels(canvasArea, divisor)
-    }
-```
-
-`SegmentationCandidateFilter.kt`의 `filterCandidates`와 private 확장 함수를 바꾼다.
-
-```kotlin
-internal fun filterCandidates(
-    candidates: List<SegmentationCandidate>,
-    floorDivisor: Int = 1,
-): List<SegmentationCandidate> = candidates
-    .filter { it.isLargeEnough(floorDivisor) }
-    .sortedWith(candidateOrder)
-    .dropNearDuplicates()
-    .take(MAX_SUBJECT_COUNT)
-
-private fun SegmentationCandidate.isLargeEnough(floorDivisor: Int): Boolean = SubjectCoverage.isLargeEnough(
-    alphaSum = coverageAlphaSum,
-    canvasArea = canvasWidth.toLong() * canvasHeight,
-    divisor = floorDivisor,
-)
-```
-
-- [ ] **Step 4: 테스트가 통과하는지 확인한다**
-
-Run: `./gradlew :domain:test :data:testDebugUnitTest --tests "*SubjectCoverageTest*" --tests "*SegmentationCandidateFilterTest*"`
-Expected: PASS. **기존 테스트가 하나도 안 깨져야 한다** — 기본값이 1차 동작을 지킨다는 증거다.
-
-- [ ] **Step 5: 커밋한다**
-
-```bash
-git add domain/src/main/java/com/teamyg/parfait/domain/model/SubjectCoverage.kt \
-        domain/src/test/java/com/teamyg/parfait/domain/model/SubjectCoverageTest.kt \
-        data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateFilter.kt \
-        data/src/test/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateFilterTest.kt
-git commit -m "feat: 회복 경로가 쓸 완화 면적 하한을 연다"
-```
-
----
-
-### Task 5: 후보 수확 분리와 `Subject` 의존 제거
-
-수확 함수를 별도 파일로 옮기면서 ML Kit `Subject` 의존을 걷어내고, 마스크 치수와 출력 치수를 가른다.
-**이 Task는 쪼갤 수 없다** — 수확 함수를 옮기는 순간 저장소 구현이 깨지고, 이 Task 끝에서 다시
-컴파일된다.
+수확 코드를 저장소 구현에서 새 파일로 **옮기기만** 한다. 시그니처도 본문도 바꾸지 않는다. 동작 변경은 Task 5가
+따로 한다 — 리뷰가 "이동은 승인, 변경은 기각"을 가를 수 있게 둘을 나눴다.
 
 **Files:**
 - Create: `data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateHarvest.kt`
 - Modify: `data/src/main/java/com/teamyg/parfait/data/repository/image/ImageSegmentationRepositoryImpl.kt`
-- Test: `data/src/test/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateHarvestTest.kt`
 
 **Interfaces:**
-- Consumes: Task 1의 `DetectionBounds`·`RecoveryTransform`, Task 3의 `postProcessMaskedAlpha`
-- Produces:
-  - `internal class CandidatePair(val original, val postProcessed)`
-  - `internal const val MAX_POST_PROCESS_CANDIDATES`
-  - `internal fun requireInsideCanvas(bounds: SegmentationBounds, canvasWidth: Int, canvasHeight: Int)`
-  - `internal suspend fun harvestCandidate(platePixels, plateAlpha, plateWidth, plateHeight, originOffset, origin): CandidatePair`
-  - `internal class ForegroundHarvest(val candidates: List<SegmentationCandidate>, val hint: DetectionBounds?)`
+- Produces: `MAX_POST_PROCESS_CANDIDATES`, `CandidatePair`, `SubjectSegmentationResult.toCandidatePairs(origin)`,
+  `SubjectSegmentationResult.toForegroundCandidate(origin)` (전부 `internal`, Task 5가 다시 바꾼다)
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [ ] **Step 1: 옮길 선언을 확인한다**
 
-비트맵이 필요 없는 판정만 덮는다.
+`ImageSegmentationRepositoryImpl` 클래스 본문에서 아래 일곱을 찾는다. 전부 클래스 멤버다.
 
-```kotlin
-package com.teamyg.parfait.data.utils.image
+| 지금 | 옮긴 뒤 |
+|---|---|
+| `private val maxPostProcessCandidates = MAX_SUBJECT_COUNT + 3` | `internal const val MAX_POST_PROCESS_CANDIDATES = MAX_SUBJECT_COUNT + 3` (최상위) |
+| `private class CandidatePair` | `internal class CandidatePair` |
+| `private suspend fun SubjectSegmentationResult.toCandidatePairs(origin: Bitmap)` | `internal suspend fun …` |
+| `private suspend fun buildCandidatePair(…)` | `private suspend fun …` |
+| `private fun originalCandidate(…)` | `private fun …` |
+| `private suspend fun postProcess(…)` | `private suspend fun …` |
+| `private suspend fun SubjectSegmentationResult.toForegroundCandidate(origin: Bitmap)` | `internal suspend fun …` |
 
-import com.teamyg.parfait.domain.model.SegmentationBounds
-import kotlin.test.Test
-import kotlin.test.assertFailsWith
+- [ ] **Step 2: 새 파일로 옮긴다**
 
-class SegmentationCandidateHarvestTest {
-    @Test
-    fun requireInsideCanvas_boundsFitExactly_passes() {
-        requireInsideCanvas(SegmentationBounds(0, 0, 100, 50), canvasWidth = 100, canvasHeight = 50)
-    }
-
-    @Test
-    fun requireInsideCanvas_rightExceedsTheCanvas_throws() {
-        // Given 되올림 반올림이 오른쪽으로 1px 넘긴 사각형.
-        // 이게 통과하면 persistSubject 의 drawBitmap 이 말없이 자른다
-        assertFailsWith<IllegalArgumentException> {
-            requireInsideCanvas(SegmentationBounds(0, 0, 101, 50), canvasWidth = 100, canvasHeight = 50)
-        }
-    }
-
-    @Test
-    fun requireInsideCanvas_bottomExceedsTheCanvas_throws() {
-        assertFailsWith<IllegalArgumentException> {
-            requireInsideCanvas(SegmentationBounds(0, 0, 100, 51), canvasWidth = 100, canvasHeight = 50)
-        }
-    }
-
-    @Test
-    fun requireInsideCanvas_negativeOrigin_throws() {
-        assertFailsWith<IllegalArgumentException> {
-            requireInsideCanvas(SegmentationBounds(-1, 0, 100, 50), canvasWidth = 100, canvasHeight = 50)
-        }
-    }
-}
-```
-
-- [ ] **Step 2: 테스트가 실패하는지 확인한다**
-
-Run: `./gradlew :data:compileDebugUnitTestKotlin`
-Expected: FAIL — `Unresolved reference: requireInsideCanvas`
-
-- [ ] **Step 3: 수확 파일을 만든다**
-
-`ImageSegmentationRepositoryImpl.kt`에서 `CandidatePair`, `maxPostProcessCandidates`,
-`toCandidatePairs`, `buildCandidatePair`, `postProcess`, `originalCandidate`, `toForegroundCandidate`를
-**잘라내어** 새 파일로 옮긴다. 옮기면서 셋을 바꾼다.
+KDoc까지 **그대로** 잘라 붙인다. 본문에서 바꾸는 것은 `maxPostProcessCandidates`를
+`MAX_POST_PROCESS_CANDIDATES`로 부르는 자리 하나뿐이다. 파일 머리는 이렇다.
 
 ```kotlin
 package com.teamyg.parfait.data.utils.image
 
 import android.graphics.Bitmap
+import com.google.mlkit.vision.segmentation.subject.Subject
+import com.google.mlkit.vision.segmentation.subject.SubjectSegmentationResult
 import com.teamyg.parfait.core.util.android.extension.toAndroidBitmap
 import com.teamyg.parfait.core.util.jvm.extension.sumArgbAlpha
 import com.teamyg.parfait.data.utils.repositoryLogger
 import com.teamyg.parfait.domain.model.SegmentationBounds
 import com.teamyg.parfait.domain.model.SegmentationCandidate
+import com.teamyg.parfait.domain.model.SubjectCoverage
 import kotlinx.coroutines.CancellationException
 
 /** 후처리를 태울 후보 수 상한. 후처리는 `filterCandidates` 의 상한 절단 앞에 있다 */
 internal const val MAX_POST_PROCESS_CANDIDATES = MAX_SUBJECT_COUNT + 3
 
+// 여기에 Step 1 표의 나머지 여섯을 순서대로 붙인다
+```
+
+`maskSubjectAlpha`·`postProcessAlpha`·`composeCroppedArgb`·`applyAlphaInPlace`·`MAX_SUBJECT_COUNT`는 같은
+패키지라 import가 필요 없다.
+
+- [ ] **Step 3: 저장소 구현의 import를 정리한다**
+
+옮긴 코드만 쓰던 import를 지운다: `com.google.mlkit.vision.segmentation.subject.Subject`,
+`com.teamyg.parfait.core.util.jvm.extension.sumArgbAlpha`, `com.teamyg.parfait.data.utils.image.MAX_SUBJECT_COUNT`,
+`com.teamyg.parfait.data.utils.image.applyAlphaInPlace`, `com.teamyg.parfait.data.utils.image.composeCroppedArgb`,
+`com.teamyg.parfait.data.utils.image.maskSubjectAlpha`, `com.teamyg.parfait.domain.model.SegmentationBounds`,
+`com.teamyg.parfait.domain.model.SubjectCoverage`. 대신 `toCandidatePairs`·`toForegroundCandidate`를 부르는 데
+필요한 import를 더한다(같은 `data.utils.image` 패키지의 확장 함수다).
+
+⚠️ 목록은 지금 코드를 읽고 만든 것이다. **최종 판정은 ktlint가 한다** — Step 4에서 남은 미사용 import를 지운다.
+
+- [ ] **Step 4: 모듈 전체 유닛과 ktlint를 돌린다**
+
+Run: `./gradlew :data:testDebugUnitTest :data:ktlintCheck`
+Expected: PASS. **기존 테스트가 하나도 안 깨져야 한다.** 깨지면 이동 중에 본문이 바뀐 것이다.
+
+- [ ] **Step 5: 커밋한다**
+
+```bash
+git add data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateHarvest.kt \
+        data/src/main/java/com/teamyg/parfait/data/repository/image/ImageSegmentationRepositoryImpl.kt
+git commit -m "$(cat <<'MSG'
+refactor: 후보 수확 코드를 저장소 구현에서 떼어 옮긴다
+
+동작은 바꾸지 않는다. 회복 경로가 같은 코드를 쓰도록 다음 커밋에서 일반화한다.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+MSG
+)"
+```
+
+---
+
+### Task 5: 수확 일반화 — 판 출처 분리와 공통 subject 루프
+
+Task 4가 옮긴 코드를 1차·회복 두 경로가 함께 쓰게 바꾼다. **의도한 1차 동작 변경은 둘뿐이다** — 캔버스 밖 후보를
+버리는 것, 전경 폴백이 `ModuleNotReady`만 실패로 올리는 것. 이 Task는 쪼갤 수 없다: `CandidatePair`를 바꾸는 순간
+저장소 구현이 깨지고 이 Task 끝에서 다시 컴파일된다.
+
+⚠️ **유닛 테스트가 없다.** 수확은 `Bitmap`과 ML Kit를 만진다. 판단은 Task 1·3이 덮었고, 여기서는 기존 유닛이 전부
+초록이고 앱이 빌드되는지를 본다. 구조적 강제 둘을 이 Task가 세운다 — `PlateSource.OriginRegion`에 **픽셀 인자가
+없다**는 것, 출처를 **호출부가 아니라 subject 루프가 투영 유무로 고른다**는 것이다.
+
+**Files:**
+- Modify: `data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateHarvest.kt`
+- Modify: `data/src/main/java/com/teamyg/parfait/data/repository/image/ImageSegmentationRepositoryImpl.kt`
+
+**Interfaces:**
+- Consumes: Task 1의 `DetectionBounds`·`DetectionProjection`·`ProjectedRegion`·`projectRegion`·`offsetBy`·
+  `isInsideCanvas`·`hintBounds`, Task 3의 `confidenceToAlphaArray`·`postProcessMaskedAlpha`·`resampleAlpha`·`cropAlpha`·`alphaSum`
+- Produces:
+  - `internal sealed interface PlateSource { class MlKitPlate(plate: Bitmap, region: SegmentationBounds); class OriginRegion(detectionPlate: Bitmap, projected: ProjectedRegion) }`
+  - `internal class HarvestedCandidate(val candidate: SegmentationCandidate, val reverted: Boolean)`
+  - `internal class ForegroundHarvest(val candidates: List<SegmentationCandidate>, val hint: DetectionBounds?)`
+  - `internal suspend fun harvestSubjects(subjects: List<Subject>, origin: Bitmap, projection: DetectionProjection?): List<HarvestedCandidate>`
+  - `internal suspend fun harvestForeground(mask: FloatBuffer, maskWidth: Int, maskHeight: Int, origin: Bitmap, projection: DetectionProjection?, hintThreshold: Int?): ForegroundHarvest`
+  - `internal const val RELAXED_FLOOR_LOG_DIVISOR = 4`
+
+- [ ] **Step 1: 수확 파일을 새 구조로 다시 쓴다 — 타입과 공통 루프**
+
+Task 4가 옮긴 `CandidatePair`·`toCandidatePairs`·`buildCandidatePair`·`originalCandidate`·`postProcess`·
+`toForegroundCandidate`를 **지우고** 아래로 바꾼다. 옛 KDoc 가운데 살아남는 근거(OOM 가드 위치, 행 단위 읽기,
+ML Kit 판 치수, OQ-P-266 소유권)는 대응하는 새 함수로 옮긴다.
+
+파일 import:
+
+```kotlin
+import android.graphics.Bitmap
+import com.google.mlkit.vision.segmentation.subject.Subject
+import com.teamyg.parfait.core.util.android.extension.toAndroidBitmap
+import com.teamyg.parfait.core.util.jvm.extension.sumArgbAlpha
+import com.teamyg.parfait.data.utils.repositoryLogger
+import com.teamyg.parfait.domain.model.SegmentationBounds
+import com.teamyg.parfait.domain.model.SegmentationCandidate
+import com.teamyg.parfait.domain.model.SubjectCoverage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.job
+import java.nio.FloatBuffer
+```
+
+타입과 공통 루프:
+
+```kotlin
+/** 후처리를 태울 후보 수 상한. 후처리는 `filterCandidates` 의 상한 절단 앞에 있다 */
+internal const val MAX_POST_PROCESS_CANDIDATES = MAX_SUBJECT_COUNT + 3
+
 /**
- * 후처리 전후 후보를 짝지어 들고 다닌다. 후처리가 실패하거나 알파를 전멸시킨 후보를 **개별로**
- * 되돌리기 위해서다.
+ * 로그에만 쓰는 완화 배수. **판정에는 쓰지 않는다** — 수동 편집이 같은 엄격 하한으로 저장을 막으므로, 회복 판정만
+ * 완화하면 고른 후보를 손대지 않고도 저장하지 못한다. 근거는 스펙 「제외」.
  */
-internal class CandidatePair(
-    val original: SegmentationCandidate,
-    val postProcessed: SegmentationCandidate?,
+internal const val RELAXED_FLOOR_LOG_DIVISOR = 4
+
+/** 판 한 장이 어디서 오는가. 어느 쪽을 쓸지는 [harvestSubjects] 가 투영 유무로 정한다 */
+internal sealed interface PlateSource {
+    /** 1차 경로 전용. 검출 공간이 곧 원본 공간이라 이 판의 픽셀이 원본 색이다 */
+    class MlKitPlate(val plate: Bitmap, val region: SegmentationBounds) : PlateSource
+
+    /**
+     * 회복 경로 전용. **픽셀 인자가 없다** — 알파만 [detectionPlate] 에서 가져오고 픽셀은 원본에서 읽는다.
+     * 검출 판은 대비를 건 판이라 그 픽셀을 쓰면 결과 색이 변한다.
+     */
+    class OriginRegion(val detectionPlate: Bitmap, val projected: ProjectedRegion) : PlateSource
+}
+
+internal class HarvestedCandidate(
+    val candidate: SegmentationCandidate,
+    /** 후처리가 실패하거나 알파를 전멸시켜 후처리 이전 판으로 되돌렸다 */
+    val reverted: Boolean,
 )
 
-/** 전경 폴백의 결과. [hint] 는 다음 단계가 어디를 크롭할지 정하는 데만 쓴다 */
 internal class ForegroundHarvest(
     val candidates: List<SegmentationCandidate>,
+    /** 다음 단계가 어디를 크롭할지 정하는 데만 쓴다. 검출 공간 좌표다 */
     val hint: DetectionBounds?,
 )
 
+private class PlacedSubject(val plate: Bitmap, val projected: ProjectedRegion)
+
 /**
- * 사각형이 캔버스 안에 있는지 본다.
+ * subject 들을 후보로 만든다. 1차 경로와 회복 경로가 함께 쓴다.
  *
- * ⚠️ 판 치수와 사각형 치수가 같은지 보는 검사는 사각형을 판에서 만들기 때문에 사실상 항진명제다.
- * 회복 경로가 실제로 깨뜨릴 수 있는 것은 이쪽이고, 깨지면 예외가 아니라 저장 시점의 조용한
- * 클리핑으로 나온다.
+ * [projection] 이 없으면 1차다. **판의 출처를 호출부가 고르지 않는 것이 요점이다** — 회복 경로가 ML Kit 판을
+ * 쓸 길이 없다.
+ *
+ * bbox 사전 절단은 원본 좌표 사각형 면적으로 한다. bbox 픽셀 수는 커버리지의 상계라 하한 미만이면 커버리지도
+ * 하한 미만이다.
  */
-internal fun requireInsideCanvas(bounds: SegmentationBounds, canvasWidth: Int, canvasHeight: Int) {
-    require(
-        bounds.left >= 0 &&
-            bounds.top >= 0 &&
-            bounds.right <= canvasWidth &&
-            bounds.bottom <= canvasHeight,
-    ) {
-        "bounds $bounds escapes canvas ${canvasWidth}x$canvasHeight"
+internal suspend fun harvestSubjects(
+    subjects: List<Subject>,
+    origin: Bitmap,
+    projection: DetectionProjection?,
+): List<HarvestedCandidate> {
+    val job = currentCoroutineContext().job
+    val floor = SubjectCoverage.floorPixels(origin.width.toLong() * origin.height)
+
+    val withPlate = subjects.mapNotNull { subject -> subject.bitmap?.let { subject to it } }
+    val placed = withPlate.mapNotNull { (subject, plate) ->
+        // ML Kit 문서는 getWidth()·getHeight() 가 getBitmap() 의 실제 치수와 같다고 보장하지 않으므로 판에서 뽑는다
+        val detection = DetectionBounds(
+            left = subject.startX,
+            top = subject.startY,
+            right = subject.startX + plate.width,
+            bottom = subject.startY + plate.height,
+        )
+        val projected = if (projection == null) {
+            val region = SegmentationBounds(detection.left, detection.top, detection.right, detection.bottom)
+            ProjectedRegion(mapped = region, clipped = region)
+        } else {
+            projectRegion(detection, projection, origin.width, origin.height) ?: return@mapNotNull null
+        }
+        PlacedSubject(plate, projected)
+    }
+
+    val eligible = placed
+        .filter { it.projected.clipped.area() >= floor }
+        .sortedByDescending { it.projected.clipped.area() }
+
+    repositoryLogger.i {
+        // 1차 로그 한 줄은 그대로 둔다. 회복 경로에서만 완화했다면 통과했을 수를 덧붙인다
+        val relaxed = if (projection == null) {
+            ""
+        } else {
+            val count = placed.count { it.projected.clipped.area() >= floor / RELAXED_FLOOR_LOG_DIVISOR }
+            "(1/$RELAXED_FLOOR_LOG_DIVISOR 하한이었다면 ${count}개)"
+        }
+        "세그멘테이션 후보 쌍 생성: subject ${subjects.size}개 중 판 있음 ${withPlate.size}개, " +
+            "bbox 하한 통과 ${eligible.size}개$relaxed"
+    }
+
+    val considered = eligible.take(MAX_POST_PROCESS_CANDIDATES)
+    if (eligible.size > considered.size) {
+        repositoryLogger.i { "세그멘테이션 후처리 대상을 ${eligible.size}개 중 ${considered.size}개로 자른다" }
+    }
+
+    return considered.mapNotNull { subject ->
+        job.ensureActive()
+        val source = if (projection == null) {
+            PlateSource.MlKitPlate(subject.plate, subject.projected.clipped)
+        } else {
+            PlateSource.OriginRegion(subject.plate, subject.projected)
+        }
+        harvestCandidate(source, origin)
     }
 }
 
-/**
- * 후보 하나를 만든다.
- *
- * ⚠️ ML Kit `Subject` 를 받지 않는다. 그 클래스는 final 이라 원본 좌표를 담은 인스턴스를 만들 수
- * 없어서, 회복 경로가 같은 코드를 쓰려면 좌표를 직접 받아야 한다.
- *
- * @param platePixels 판의 ARGB. 어느 판에서 읽을지는 호출부가 정한다 — 회복 경로는 원본에서 읽는다
- * @param originOffset 판이 원본에서 차지하는 자리. 치수가 판과 같아야 한다
- */
-internal suspend fun harvestCandidate(
-    platePixels: IntArray,
-    plateAlpha: ByteArray,
-    plateWidth: Int,
-    plateHeight: Int,
-    originOffset: SegmentationBounds,
-    origin: Bitmap,
-): CandidatePair {
-    require(originOffset.width == plateWidth && originOffset.height == plateHeight) {
-        "offset $originOffset does not match plate ${plateWidth}x$plateHeight"
-    }
-    requireInsideCanvas(originOffset, origin.width, origin.height)
+private fun SegmentationBounds.area(): Long = width.toLong() * height
 
-    // 기존 buildCandidatePair 의 본문을 옮긴다. OutOfMemoryError·CancellationException·Exception
-    // 세 갈래를 그대로 유지한다
+/** 캔버스 밖으로 새는 후보는 흐름 전체가 아니라 그 후보만 버린다 */
+private suspend fun harvestCandidate(source: PlateSource, origin: Bitmap): HarvestedCandidate? {
+    val region = when (source) {
+        is PlateSource.MlKitPlate -> source.region
+        is PlateSource.OriginRegion -> source.projected.clipped
+    }
+    if (!isInsideCanvas(region, origin.width, origin.height)) {
+        repositoryLogger.w { "세그멘테이션 후보 $region 이 캔버스 ${origin.width}x${origin.height} 밖이라 버린다" }
+        return null
+    }
+
+    return when (source) {
+        is PlateSource.MlKitPlate -> harvestMlKitPlate(source, origin)
+        is PlateSource.OriginRegion -> harvestOriginRegion(source, origin)
+    }
+}
+
+private fun originGuidance(origin: Bitmap, region: SegmentationBounds) = GuidanceProvider { bounds ->
+    IntArray(bounds.width * bounds.height).also { pixels ->
+        origin.getPixels(pixels, 0, bounds.width, region.left + bounds.left, region.top + bounds.top, bounds.width, bounds.height)
+    }
 }
 ```
 
-> 구현 지시: 기존 `postProcess`와 `originalCandidate`의 본문을 이 파일로 옮기되,
-> `subject.startX`·`subject.startY`를 전부 `originOffset.left`·`originOffset.top`으로 바꾼다.
-> `bitmap.getPixels(...)`로 판을 읽던 자리는 인자로 받은 `platePixels`를 쓴다.
-> `guidance` 콜백의 `origin.getPixels(..., subject.startX + bounds.left, ...)`도 같은 방식으로 바꾼다.
-> 후보를 만들 때마다 `requireInsideCanvas`를 부른다.
+> ⚠️ `originGuidance`의 `getPixels` 한 줄이 120자를 넘으면 인자마다 줄바꿈한다.
 
-`toForegroundCandidate`를 옮길 때는 **마스크 치수와 출력 치수를 별도 인자로 가른다.**
+- [ ] **Step 2: 두 출처의 수확을 쓴다**
+
+1차 경로(`MlKitPlate`)는 옛 `buildCandidatePair`·`postProcess`·`originalCandidate`의 동작을 그대로 옮긴다.
+`subject.startX`·`startY`가 `region.left`·`top`이 됐고, 되돌림 후보는 **쓸 때만** 만든다(출력은 같다).
+
+```kotlin
+/**
+ * ⚠️ `try` 가 픽셀 배열 할당까지 감싼다. 12MP 후보에서 `OutOfMemoryError` 가 가장 잘 나는 자리가 후처리 안이
+ * 아니라 그 할당이다.
+ */
+private suspend fun harvestMlKitPlate(source: PlateSource.MlKitPlate, origin: Bitmap): HarvestedCandidate {
+    val postProcessed = try {
+        postProcessMlKitPlate(source.plate, source.region, origin)
+    } catch (e: OutOfMemoryError) {
+        repositoryLogger.w(e) { "세그멘테이션 후처리가 메모리로 실패해 원본 후보로 되돌린다" }
+        null
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        repositoryLogger.w(e) { "세그멘테이션 후처리가 예외로 실패해 원본 후보로 되돌린다" }
+        null
+    }
+
+    if (postProcessed != null) return HarvestedCandidate(postProcessed, reverted = false)
+
+    return HarvestedCandidate(mlKitOriginal(source.plate, source.region, origin), reverted = true)
+}
+
+/** ML Kit 판은 후처리가 지우지 않았으므로 되돌림 커버리지를 그 판에서 센다 */
+private fun mlKitOriginal(plate: Bitmap, region: SegmentationBounds, origin: Bitmap): SegmentationCandidate {
+    require(plate.width == region.width && plate.height == region.height) {
+        "plate ${plate.width}x${plate.height} does not match region $region"
+    }
+
+    // 행 단위로 읽는다 — 판 전체 크기 버퍼는 후처리가 메모리로 실패한 직후 같은 크기를 한 번 더 요구한다
+    val row = IntArray(plate.width)
+    var coverage = 0L
+    for (y in 0 until plate.height) {
+        plate.getPixels(row, 0, plate.width, 0, y, plate.width, 1)
+        coverage += row.sumArgbAlpha()
+    }
+
+    return SegmentationCandidate(
+        bounds = region,
+        bitmap = plate.toAndroidBitmap(),
+        canvasWidth = origin.width,
+        canvasHeight = origin.height,
+        coverageAlphaSum = coverage,
+    )
+}
+
+private suspend fun postProcessMlKitPlate(plate: Bitmap, region: SegmentationBounds, origin: Bitmap): SegmentationCandidate? {
+    val width = plate.width
+    val height = plate.height
+    val pixels = IntArray(width * height)
+    plate.getPixels(pixels, 0, width, 0, 0, width, height)
+
+    val alpha = ByteArray(width * height)
+    for (index in pixels.indices) alpha[index] = (pixels[index] ushr 24).toByte()
+
+    val result = postProcessAlpha(alpha, width, height, guidance = originGuidance(origin, region)) ?: run {
+        repositoryLogger.i { "세그멘테이션 후처리가 후보 ${width}x$height 판의 알파를 전부 지워 원본으로 되돌린다" }
+        return null
+    }
+
+    repositoryLogger.i {
+        "세그멘테이션 후보 부분 알파 ${result.partialAlphaPixels}/${width * height}, " +
+            "정련 ${result.refineElapsedNanos / 1_000_000}ms"
+    }
+
+    val inner = result.bounds
+    // ML Kit 판은 ML Kit 소유라 알파가 안 바뀌면 그대로 써도 된다(OQ-P-266). 회복 경로는 이 최적화를 안 쓴다
+    val unchangedWholePlate = !result.changed && inner.width == width && inner.height == height
+    val trimmed = if (unchangedWholePlate) {
+        plate
+    } else {
+        Bitmap.createBitmap(composeCroppedArgb(pixels, alpha, width, inner), inner.width, inner.height, Bitmap.Config.ARGB_8888)
+    }
+
+    return SegmentationCandidate(
+        bounds = inner.offsetBy(region.left, region.top),
+        bitmap = trimmed.toAndroidBitmap(),
+        canvasWidth = origin.width,
+        canvasHeight = origin.height,
+        coverageAlphaSum = result.alphaSum,
+    )
+}
+```
+
+회복 경로(`OriginRegion`):
+
+```kotlin
+/**
+ * 회복 경로의 후보. **판을 항상 새로 만든다** — 재사용할 판이 원본뿐이다.
+ *
+ * ⚠️ `postProcessAlpha` 는 알파를 제자리에서 지운다. 되돌림에 쓸 알파는 그 전에 사본을 떠 둔다. 원본 픽셀의
+ * 알파는 JPEG 에서 전부 255 라, 사본 없이 되돌리면 불투명 사각형이 커버리지 만점으로 필터 1위에 오른다.
+ *
+ * 후보 하나의 실패는 그 후보만 버린다.
+ */
+private suspend fun harvestOriginRegion(source: PlateSource.OriginRegion, origin: Bitmap): HarvestedCandidate? {
+    val region = source.projected.clipped
+
+    return try {
+        val alpha = originAlphaOf(source)
+        val pristine = alpha.copyOf()
+        val pixels = IntArray(region.width * region.height)
+        origin.getPixels(pixels, 0, region.width, region.left, region.top, region.width, region.height)
+
+        val postProcessed = try {
+            postProcessOriginRegion(pixels, alpha, region, origin)
+        } catch (e: OutOfMemoryError) {
+            repositoryLogger.w(e) { "회복 후처리가 메모리로 실패해 사본 알파로 되돌린다" }
+            null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            repositoryLogger.w(e) { "회복 후처리가 예외로 실패해 사본 알파로 되돌린다" }
+            null
+        }
+
+        if (postProcessed != null) {
+            HarvestedCandidate(postProcessed, reverted = false)
+        } else {
+            HarvestedCandidate(originRegionReverted(pixels, pristine, region, origin), reverted = true)
+        }
+    } catch (e: OutOfMemoryError) {
+        repositoryLogger.w(e) { "회복 후보 $region 이 메모리로 실패해 버린다" }
+        null
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        repositoryLogger.w(e) { "회복 후보 $region 이 예외로 실패해 버린다" }
+        null
+    }
+}
+
+/** 사상 사각형 크기로 **먼저** 재표본하고 그다음 잘린 사각형으로 자른다. 순서를 뒤집으면 알파가 어긋난다 */
+private fun originAlphaOf(source: PlateSource.OriginRegion): ByteArray {
+    val plate = source.detectionPlate
+    val row = IntArray(plate.width)
+    val detectionAlpha = ByteArray(plate.width * plate.height)
+    for (y in 0 until plate.height) {
+        plate.getPixels(row, 0, plate.width, 0, y, plate.width, 1)
+        for (x in 0 until plate.width) detectionAlpha[y * plate.width + x] = (row[x] ushr 24).toByte()
+    }
+
+    val mapped = source.projected.mapped
+    val full = resampleAlpha(detectionAlpha, plate.width, plate.height, mapped.width, mapped.height)
+
+    return cropAlpha(full, mapped.width, mapped.height, source.projected.clipped.offsetBy(-mapped.left, -mapped.top))
+}
+
+private suspend fun postProcessOriginRegion(
+    pixels: IntArray,
+    alpha: ByteArray,
+    region: SegmentationBounds,
+    origin: Bitmap,
+): SegmentationCandidate? {
+    val result = postProcessAlpha(alpha, region.width, region.height, guidance = originGuidance(origin, region))
+        ?: return null
+    val inner = result.bounds
+    // composeCroppedArgb 는 알파 채널을 덮어쓴다. 원본 픽셀의 255 가 남지 않는다
+    val cropped = composeCroppedArgb(pixels, alpha, region.width, inner)
+
+    return SegmentationCandidate(
+        bounds = inner.offsetBy(region.left, region.top),
+        bitmap = Bitmap.createBitmap(cropped, inner.width, inner.height, Bitmap.Config.ARGB_8888).toAndroidBitmap(),
+        canvasWidth = origin.width,
+        canvasHeight = origin.height,
+        coverageAlphaSum = result.alphaSum,
+    )
+}
+
+private fun originRegionReverted(
+    pixels: IntArray,
+    pristine: ByteArray,
+    region: SegmentationBounds,
+    origin: Bitmap,
+): SegmentationCandidate {
+    val whole = SegmentationBounds(0, 0, region.width, region.height)
+    val plate = composeCroppedArgb(pixels, pristine, region.width, whole)
+
+    return SegmentationCandidate(
+        bounds = region,
+        bitmap = Bitmap.createBitmap(plate, region.width, region.height, Bitmap.Config.ARGB_8888).toAndroidBitmap(),
+        canvasWidth = origin.width,
+        canvasHeight = origin.height,
+        coverageAlphaSum = alphaSum(pristine),
+    )
+}
+```
+
+전경 수확:
 
 ```kotlin
 /**
  * 전경 신뢰도에서 후보 하나와 힌트를 만든다.
  *
- * ⚠️ 마스크 치수와 출력 치수가 다를 수 있다 — 회복 경로의 마스크는 검출 판 치수다. 하나로 묶으면
- * 그 경로에서 길이 검사가 언제나 실패해 예외도 로그도 없이 빈 목록이 된다.
+ * ⚠️ 마스크 치수와 출력 치수가 다를 수 있다 — 회복 경로의 마스크는 검출 판 치수다. 하나로 묶으면 길이 검사가
+ * 언제나 실패해 예외도 로그도 없이 빈 목록이 되고, 연쇄로 2단계 힌트까지 사라진다.
+ *
+ * @param hintThreshold 널이면 힌트를 구하지 않는다. 1차 경로에 원본 전체를 한 번 더 훑는 비용을 얹지 않는다
  */
 internal suspend fun harvestForeground(
-    mask: java.nio.FloatBuffer,
+    mask: FloatBuffer,
     maskWidth: Int,
     maskHeight: Int,
-    originOffset: SegmentationBounds,
     origin: Bitmap,
-    hintThreshold: Int,
+    projection: DetectionProjection?,
+    hintThreshold: Int?,
 ): ForegroundHarvest {
+    // absolute get(index) 는 capacity 가 아니라 limit 을 경계로 삼으므로 remaining() 으로 비교한다
     if (mask.remaining() != maskWidth * maskHeight) return ForegroundHarvest(emptyList(), hint = null)
 
     val detectionAlpha = confidenceToAlphaArray(mask, maskWidth, maskHeight)
-    val hint = hintBounds(detectionAlpha, maskWidth, maskHeight, hintThreshold)
+    val hint = hintThreshold?.let { hintBounds(detectionAlpha, maskWidth, maskHeight, it) }
 
-    val originAlpha = resampleAlpha(
-        detectionAlpha,
-        maskWidth,
-        maskHeight,
-        originOffset.width,
-        originOffset.height,
-    )
+    val placed = try {
+        placeForegroundAlpha(detectionAlpha, maskWidth, maskHeight, origin, projection)
+    } catch (e: OutOfMemoryError) {
+        repositoryLogger.w(e) { "세그멘테이션 폴백 알파 되올림이 메모리로 실패했다" }
+        null
+    } ?: return ForegroundHarvest(emptyList(), hint)
 
-    // 이후는 기존 toForegroundCandidate 본문 — postProcessMaskedAlpha 를 원본 공간 치수로 부르고,
-    // 살아남은 영역만 origin 에서 읽어 판을 만든다. 만든 사각형에 requireInsideCanvas 를 건다.
-    // 힌트는 후보가 안 나와도 돌려준다 — 다음 단계가 그것으로 크롭한다
+    val (region, alpha) = placed
+    if (!isInsideCanvas(region, origin.width, origin.height)) return ForegroundHarvest(emptyList(), hint)
+
+    val masked = try {
+        postProcessMaskedAlpha(alpha, region.width, region.height, guidance = originGuidance(origin, region))
+    } catch (e: OutOfMemoryError) {
+        repositoryLogger.w(e) { "세그멘테이션 폴백 후처리가 메모리로 실패했다" }
+        null
+    } ?: return ForegroundHarvest(emptyList(), hint)
+
+    repositoryLogger.i {
+        "세그멘테이션 폴백 부분 알파 ${masked.result.partialAlphaPixels}/${region.width * region.height}, " +
+            "정련 ${masked.result.refineElapsedNanos / 1_000_000}ms"
+    }
+
+    val local = masked.result.bounds
+    // 로컬 사각형에 원점을 더한다. 빠뜨리면 1단계는 오프셋이 0 이라 멀쩡하고 2단계만 엉뚱한 곳을 오린다
+    val bounds = local.offsetBy(region.left, region.top)
+
+    // ⚠️ 이 판이 폴백에서 가장 큰 할당이라 OOM 가드를 여기까지 넓힌다
+    val candidate = try {
+        val trimmedPixels = IntArray(local.width * local.height)
+        origin.getPixels(trimmedPixels, 0, local.width, bounds.left, bounds.top, local.width, local.height)
+        applyAlphaInPlace(trimmedPixels, masked.alpha, region.width, local)
+
+        SegmentationCandidate(
+            bounds = bounds,
+            bitmap = Bitmap.createBitmap(trimmedPixels, local.width, local.height, Bitmap.Config.ARGB_8888)
+                .toAndroidBitmap(),
+            canvasWidth = origin.width,
+            canvasHeight = origin.height,
+            coverageAlphaSum = masked.result.alphaSum,
+        )
+    } catch (e: OutOfMemoryError) {
+        repositoryLogger.w(e) { "세그멘테이션 폴백 판 생성이 메모리로 실패했다" }
+        null
+    }
+
+    return ForegroundHarvest(listOfNotNull(candidate), hint)
+}
+
+/** 1차는 마스크가 곧 원본 전체다. 회복은 사상 사각형 크기로 재표본한 뒤 잘린 사각형으로 자른다 */
+private fun placeForegroundAlpha(
+    detectionAlpha: ByteArray,
+    maskWidth: Int,
+    maskHeight: Int,
+    origin: Bitmap,
+    projection: DetectionProjection?,
+): Pair<SegmentationBounds, ByteArray>? {
+    if (projection == null) return SegmentationBounds(0, 0, maskWidth, maskHeight) to detectionAlpha
+
+    val projected = projectRegion(DetectionBounds(0, 0, maskWidth, maskHeight), projection, origin.width, origin.height)
+        ?: return null
+    val mapped = projected.mapped
+    val full = resampleAlpha(detectionAlpha, maskWidth, maskHeight, mapped.width, mapped.height)
+
+    return projected.clipped to cropAlpha(full, mapped.width, mapped.height, projected.clipped.offsetBy(-mapped.left, -mapped.top))
 }
 ```
 
-- [ ] **Step 4: 저장소 구현을 새 함수에 결선한다**
+- [ ] **Step 3: 저장소 구현을 새 수확에 결선한다**
 
-`ImageSegmentationRepositoryImpl.kt`에서:
+`ImageSegmentationRepositoryImpl#segmentImage`에서 `toCandidatePairs`를 부르던 부분부터 끝까지를 아래로 바꾼다.
+앞의 비트맵 캐스팅·`InputImage`·다중 subject 옵션·`runSegmenter` 호출은 그대로다.
 
-- 옮긴 함수 정의를 지운다.
-- `segmentImage`의 다중 subject 갈래가 subject마다 `subject.bitmap.getPixels(...)`로 `platePixels`를,
-  알파 채널로 `plateAlpha`를 만들어 `harvestCandidate`에 넘기게 바꾼다. `originOffset`은
-  `SegmentationBounds(subject.startX, subject.startY, subject.startX + w, subject.startY + h)`다.
-- `segmentForeground`가 `harvestForeground`를 부르고 **`Result`를 위로 올리게** 바꾼다.
-  `runSegmenter(...).getOrNull() ?: return emptyList()`를 `getOrElse { return Result.failure(it) }`로
-  바꾼다. 이게 없으면 `ModuleNotReady` 즉시 중단이 이 갈래에서 안 돈다.
-- `MAX_POST_PROCESS_CANDIDATES`를 쓰도록 상수 참조를 고친다.
+```kotlin
+        val result = runSegmenter(multipleSubjectOptions, image).getOrElse { return Result.failure(it) }
 
-**폴백 후보는 지금처럼 `filterCandidates`를 거치지 않는다.** 1차 경로의 규칙을 바꾸지 않는다.
+        val harvested = try {
+            withContext(Dispatchers.Default) { harvestSubjects(result.subjects, bitmap, projection = null) }
+        } catch (e: CancellationException) {
+            // 취소는 실패가 아니다 — 값으로 접으면 상위로 전파되지 않아 취소된 흐름이 계속 돈다
+            throw e
+        } catch (e: Exception) {
+            return Result.failure(SegmentationException.Process(e))
+        }
 
-- [ ] **Step 5: 모듈 전체 유닛을 돌린다**
+        if (harvested.isEmpty()) {
+            repositoryLogger.i { "세그멘테이션: 후처리 대상이 0건이다. 전경 마스크 폴백으로 내려간다" }
+            return segmentForeground(image, bitmap)
+        }
 
-Run: `./gradlew :data:testDebugUnitTest`
-Expected: PASS. **기존 테스트가 하나도 안 깨져야 한다** — 이 Task는 동작을 안 바꾸는 이동이다.
+        val reverted = harvested.count { it.reverted }
+        if (reverted > 0) {
+            // 후처리는 개선 수단이지 후보를 없앨 권한이 아니다
+            repositoryLogger.i { "세그멘테이션 후처리: ${harvested.size}개 중 ${reverted}개를 후처리 이전 후보로 되돌린다" }
+        }
 
-- [ ] **Step 6: 앱이 빌드되는지 확인한다**
+        val candidates = try {
+            withContext(Dispatchers.Default) { filterCandidates(harvested.map { it.candidate }) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return Result.failure(SegmentationException.Process(e))
+        }
+
+        // 전멸이 아니라 일부만 걸러진 경우도 남긴다 — 전멸 로그만 있으면 극단값에서만 판정된다
+        repositoryLogger.i { "세그멘테이션 필터 통과 ${candidates.size}/${harvested.size}" }
+
+        if (candidates.isNotEmpty()) return Result.success(candidates)
+
+        repositoryLogger.i { "세그멘테이션: 필터가 후보 ${harvested.size}개를 전부 걸러 냈다. 전경 마스크 폴백으로 내려간다" }
+        return segmentForeground(image, bitmap)
+```
+
+`segmentForeground`를 `Result`로 바꾼다. KDoc의 `SIGSEGV` 경고는 그대로 두고, 「여기서 실패하면 값으로
+접는다」 문단만 아래 주석의 내용으로 바꾼다.
+
+```kotlin
+    private suspend fun segmentForeground(
+        image: InputImage,
+        origin: Bitmap,
+    ): Result<List<SegmentationCandidate>> {
+        val options = SubjectSegmenterOptions
+            .Builder()
+            .enableForegroundConfidenceMask()
+            .build()
+
+        val result = runSegmenter(options, image).getOrElse { cause ->
+            // 모듈이 없으면 위로 올린다. 그 밖의 실패는 종전처럼 「인식된 대상 없음」으로 접는다 — 모두 올리면
+            // 1차의 처리 실패가 빈 목록에서 예외로 분류가 바뀌어 그 사진의 재시도가 회복 경로로 못 간다
+            return if (cause is SegmentationException.ModuleNotReady) {
+                Result.failure(cause)
+            } else {
+                Result.success(emptyList())
+            }
+        }
+        val mask = result.foregroundConfidenceMask ?: return Result.success(emptyList())
+
+        return try {
+            val harvest = withContext(Dispatchers.Default) {
+                harvestForeground(mask, origin.width, origin.height, origin, projection = null, hintThreshold = null)
+            }
+            Result.success(harvest.candidates)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.success(emptyList())
+        }
+    }
+```
+
+import에서 `toCandidatePairs`·`toForegroundCandidate`를 지우고 `harvestSubjects`·`harvestForeground`를 더한다.
+
+- [ ] **Step 4: 모듈 전체 유닛과 ktlint를 돌린다**
+
+Run: `./gradlew :data:testDebugUnitTest :data:ktlintCheck`
+Expected: PASS. 기존 테스트가 하나도 안 깨져야 한다.
+
+- [ ] **Step 5: 앱이 빌드되는지 확인한다**
 
 Run: `./gradlew :app:assembleDebug`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 7: 커밋한다**
+- [ ] **Step 6: 커밋한다**
 
 ```bash
 git add data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateHarvest.kt \
-        data/src/main/java/com/teamyg/parfait/data/repository/image/ImageSegmentationRepositoryImpl.kt \
-        data/src/test/java/com/teamyg/parfait/data/utils/image/SegmentationCandidateHarvestTest.kt
-git commit -m "refactor: 후보 수확을 떼어 내고 ML Kit Subject 의존을 걷는다"
+        data/src/main/java/com/teamyg/parfait/data/repository/image/ImageSegmentationRepositoryImpl.kt
+git commit -m "$(cat <<'MSG'
+refactor: 수확의 판 출처를 타입으로 가르고 subject 루프를 두 경로가 함께 쓰게 한다
+
+1차 경로의 의도한 변경은 둘이다. 캔버스 밖 후보를 그 후보만 버리고, 전경 폴백이 ModuleNotReady 만 실패로 올린다.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+MSG
+)"
 ```
 
 ---
 
-### Task 6: 회복 경로 조합
+### Task 6: 정규화 실행기와 회복 사다리
 
-정규화 실행기와 `recoverCandidates`를 만든다. 실행기는 비트맵을 만지므로 유닛으로 덮지 않는다 —
-판단은 Task 1·2가 이미 덮었고, 여기서는 회귀가 없는지만 본다.
+⚠️ **유닛 테스트가 없고, 회복 경로는 병합 시점에 실기기에서도 돌지 않는다**(검증 수단을 넣지 않기로 했다). 이 Task의
+결함은 리뷰로만 잡힌다. 리뷰어는 아래 셋을 코드로 확인한다 — ① `DetectionPlate.ownedByUs`가 거짓인 판에
+`setPixels`·`recycle`이 닿지 않는가 ② 픽셀 작업이 전부 `Dispatchers.Default` 안인가 ③ 가드에 걸린 단계도 로그가 찍히는가.
 
 **Files:**
 - Create: `data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationRecoveryNormalizer.kt`
@@ -1217,7 +1650,10 @@ git commit -m "refactor: 후보 수확을 떼어 내고 ML Kit Subject 의존을
 
 **Interfaces:**
 - Consumes: Task 1~5 전부
-- Produces: `ImageSegmentationRepository.recoverCandidates`, `RecoverCandidatesUseCase`
+- Produces: `ImageSegmentationRepository.recoverCandidates(bitmapWrapper): Result<List<SegmentationCandidate>>`,
+  `RecoverCandidatesUseCase`
+
+인터페이스 구현체는 `ImageSegmentationRepositoryImpl` 하나뿐이다(테스트 가짜 없음) — 메서드를 더해도 다른 곳이 안 깨진다.
 
 - [ ] **Step 1: 정규화 실행기를 만든다**
 
@@ -1226,81 +1662,86 @@ package com.teamyg.parfait.data.utils.image
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.job
+
+/** [ownedByUs] 가 거짓이면 원본이다. 쓰지도 회수하지도 않는다 */
+internal class DetectionPlate(val bitmap: Bitmap, val ownedByUs: Boolean)
 
 /**
- * 계획을 비트맵에 적용한다.
+ * 계획을 비트맵에 적용한다. 크롭 → 축소 → 축소판에서 히스토그램 → 축소판에 LUT 순서다. 원본에서 히스토그램을
+ * 모으면 그 픽셀 배열 하나가 판 하나만큼 크다.
  *
- * 순서가 중요하다 — **축소를 먼저** 하고, 축소판에서 히스토그램을 모으고, 축소판에 LUT 를 건다.
- * 원본에서 히스토그램을 모으면 그 픽셀 배열 하나가 판 하나만큼 크다.
+ * ⚠️ 크롭도 축소도 필요 없으면 검출 판이 곧 원본 인스턴스다. 원본은 가변으로 디코드되므로 거기에 대비를 적용하면
+ * 예외 없이 사용자 사진이 바뀐다. 그 경우 먼저 복사한다.
  *
  * LUT 적용이 픽셀 루프인 것은 `minSdk` 가 26 이라 `RenderEffect` 를 못 쓰고, 임의 LUT 가
  * `ColorMatrixColorFilter` 로 표현되지 않기 때문이다.
  */
-internal fun normalizeForDetection(origin: Bitmap, stage: RecoveryStage): Bitmap {
-    val cropped = stage.cropRect?.let { rect ->
-        Bitmap.createBitmap(origin, rect.left, rect.top, rect.width, rect.height)
-    } ?: origin
+internal suspend fun normalizeForDetection(origin: Bitmap, stage: RecoveryStage): DetectionPlate {
+    val job = currentCoroutineContext().job
 
-    val scaled = if (cropped.width == stage.targetSize.width && cropped.height == stage.targetSize.height) {
+    val cropped = stage.cropRect
+        ?.let { rect -> Bitmap.createBitmap(origin, rect.left, rect.top, rect.width, rect.height) }
+        ?: origin
+    val target = stage.targetSize
+    val scaled = if (cropped.width == target.width && cropped.height == target.height) {
         cropped
     } else {
-        Bitmap.createScaledBitmap(cropped, stage.targetSize.width, stage.targetSize.height, true)
+        Bitmap.createScaledBitmap(cropped, target.width, target.height, true)
     }
-
-    // 크롭 판은 축소가 끝나면 볼 일이 없다. 원본과 같은 인스턴스면 남의 것이라 건드리지 않는다
+    // 두 팩토리는 조건에 따라 입력을 그대로 돌려준다
     if (cropped !== origin && cropped !== scaled) cropped.recycle()
+    job.ensureActive()
 
-    if (!stage.applyContrast) return scaled
+    val owned = scaled !== origin
+    if (!stage.applyContrast) return DetectionPlate(scaled, owned)
 
-    return applyContrast(scaled)
+    val writable = if (owned && scaled.isMutable) {
+        scaled
+    } else {
+        val copy = requireNotNull(scaled.copy(Bitmap.Config.ARGB_8888, true)) { "detection plate copy failed" }
+        if (owned) scaled.recycle()
+        copy
+    }
+    applyContrastInPlace(writable)
+
+    return DetectionPlate(writable, ownedByUs = true)
 }
 
-private fun applyContrast(bitmap: Bitmap): Bitmap {
+private suspend fun applyContrastInPlace(bitmap: Bitmap) {
+    val job = currentCoroutineContext().job
     val width = bitmap.width
-    val height = bitmap.height
     val row = IntArray(width)
     val histogram = IntArray(LUMINANCE_LEVELS)
 
-    for (y in 0 until height) {
+    for (y in 0 until bitmap.height) {
+        job.ensureActive()
         bitmap.getPixels(row, 0, width, 0, y, width, 1)
-        for (pixel in row) histogram[luminanceOf(pixel)]++
+        for (pixel in row) histogram[contrastLuminance(pixel)]++
     }
 
     val lut = contrastLut(histogram)
 
-    // 판을 새로 만들지 않고 되쓴다. createScaledBitmap 이 준 판이라 우리 것이다
-    for (y in 0 until height) {
+    for (y in 0 until bitmap.height) {
+        job.ensureActive()
         bitmap.getPixels(row, 0, width, 0, y, width, 1)
-        for (index in row.indices) row[index] = mapThroughLut(row[index], lut)
+        for (index in row.indices) row[index] = throughLut(row[index], lut)
         bitmap.setPixels(row, 0, width, 0, y, width, 1)
     }
-
-    return bitmap
 }
 
-private fun luminanceOf(pixel: Int): Int {
-    val red = Color.red(pixel)
-    val green = Color.green(pixel)
-    val blue = Color.blue(pixel)
+private fun contrastLuminance(pixel: Int): Int =
+    (Color.red(pixel) * 299 + Color.green(pixel) * 587 + Color.blue(pixel) * 114) / 1000
 
-    return ((red * 299 + green * 587 + blue * 114) / 1000).coerceIn(0, LUMINANCE_LEVELS - 1)
-}
-
-private fun mapThroughLut(pixel: Int, lut: IntArray): Int = Color.argb(
-    Color.alpha(pixel),
-    lut[Color.red(pixel)],
-    lut[Color.green(pixel)],
-    lut[Color.blue(pixel)],
-)
+private fun throughLut(pixel: Int, lut: IntArray): Int =
+    Color.argb(Color.alpha(pixel), lut[Color.red(pixel)], lut[Color.green(pixel)], lut[Color.blue(pixel)])
 ```
-
-> ⚠️ `Bitmap.createScaledBitmap`이 입력과 같은 인스턴스를 돌려줄 수 있으므로, 회수 전에
-> `!==` 로 확인한다. `applyContrast`가 되쓰는 판이 원본일 수 있는 경우는 없다 —
-> `normalizeStage`가 무동작이면 널이라 이 함수까지 오지 않는다.
 
 - [ ] **Step 2: 저장소 계약을 넓힌다**
 
-`ImageSegmentationRepository.kt`:
+`ImageSegmentationRepository.kt`의 `segmentImage` 아래에 더한다.
 
 ```kotlin
     /**
@@ -1311,33 +1752,56 @@ private fun mapThroughLut(pixel: Int, lut: IntArray): Int = Color.argb(
     suspend fun recoverCandidates(bitmapWrapper: BitmapWrapper): Result<List<SegmentationCandidate>>
 ```
 
-- [ ] **Step 3: 구현을 쓴다**
+- [ ] **Step 3: 사다리를 쓴다**
 
-`ImageSegmentationRepositoryImpl.kt`에 더한다.
+`ImageSegmentationRepositoryImpl.kt`에 import를 더한다.
+
+```kotlin
+import android.os.SystemClock
+import com.teamyg.parfait.data.utils.image.AlphaPostProcessOptions
+import com.teamyg.parfait.data.utils.image.DetectionBounds
+import com.teamyg.parfait.data.utils.image.DetectionProjection
+import com.teamyg.parfait.data.utils.image.RELAXED_FLOOR_LOG_DIVISOR
+import com.teamyg.parfait.data.utils.image.RecoveryStage
+import com.teamyg.parfait.data.utils.image.RecoveryTransform
+import com.teamyg.parfait.data.utils.image.cropAreaPercent
+import com.teamyg.parfait.data.utils.image.focusCrop
+import com.teamyg.parfait.data.utils.image.focusStage
+import com.teamyg.parfait.data.utils.image.normalizeForDetection
+import com.teamyg.parfait.data.utils.image.normalizeStage
+import com.teamyg.parfait.domain.model.SegmentationBounds
+import com.teamyg.parfait.domain.model.SubjectCoverage
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.job
+import kotlinx.coroutines.withTimeoutOrNull
+```
+
+클래스 본문에 더한다.
 
 ```kotlin
     override suspend fun recoverCandidates(bitmapWrapper: BitmapWrapper): Result<List<SegmentationCandidate>> {
         val origin = (bitmapWrapper as? AndroidBitmap)?.getRawData()
             ?: return Result.failure(SegmentationException.ImageNotFound(null))
 
-        return withTimeoutOrNull(RECOVERY_TIMEOUT_MS) {
-            runRecoveryLadder(origin)
-        } ?: run {
-            repositoryLogger.w { "회복: 대기 상한 ${RECOVERY_TIMEOUT_MS}ms 를 넘겨 접는다" }
+        // ⚠️ runSegmenter 는 Tasks.await 블로킹 대기라 추론 도중에는 끊기지 않는다. 상한은 진행 중인 추론 하나가
+        // 끝난 뒤에 걸린다
+        return withTimeoutOrNull(RECOVERY_TIMEOUT_MS) { runRecoveryLadder(origin) } ?: run {
+            repositoryLogger.w { "회복: 대기 상한 ${RECOVERY_TIMEOUT_MS}ms 를 넘겨 빈 결과로 접는다" }
             Result.success(emptyList())
         }
     }
 
     private suspend fun runRecoveryLadder(origin: Bitmap): Result<List<SegmentationCandidate>> {
-        val options = AlphaPostProcessOptions()
-
-        // 1단계 — 목표 치수가 원본과 같고 대비도 안 걸면 1차 재실행일 뿐이라 널이다
-        val normalize = normalizeStage(origin.width, origin.height, applyContrast = true)
+        val job = currentCoroutineContext().job
         var hint: DetectionBounds? = null
         var hintTransform: RecoveryTransform? = null
 
-        if (normalize != null) {
-            when (val outcome = runStage(origin, normalize, options)) {
+        val normalize = normalizeStage(origin.width, origin.height, RECOVERY_APPLY_CONTRAST)
+        if (normalize == null) {
+            repositoryLogger.i { "회복 1단계: 목표 치수가 원본과 같고 대비가 꺼져 있어 무동작 가드로 건너뛴다" }
+        } else {
+            when (val outcome = runStage("1단계", origin, normalize)) {
                 is StageOutcome.Found -> return Result.success(outcome.candidates)
                 is StageOutcome.Aborted -> return Result.failure(outcome.cause)
                 is StageOutcome.Empty -> {
@@ -1346,40 +1810,128 @@ private fun mapThroughLut(pixel: Int, lut: IntArray): Int = Color.argb(
                 }
             }
         }
+        job.ensureActive()
 
-        // 2단계 — 크롭이 충분히 안 줄면 널이다
-        val focus = focusStage(origin.width, origin.height, hint, hintTransform, applyContrast = true)
-            ?: return Result.success(emptyList())
+        val crop = focusCrop(origin.width, origin.height, hint, hintTransform)
+        val percent = cropAreaPercent(crop, origin.width, origin.height)
+        val focus = focusStage(origin.width, origin.height, crop, RECOVERY_APPLY_CONTRAST)
+        if (focus == null) {
+            repositoryLogger.i { "회복 2단계: 크롭이 원본의 ${percent}% 라 수축 가드로 건너뛴다, 힌트 ${hint != null}" }
+            return Result.success(emptyList())
+        }
+        repositoryLogger.i { "회복 2단계: 크롭이 원본의 ${percent}%, 힌트 ${hint != null}" }
 
-        return when (val outcome = runStage(origin, focus, options)) {
+        return when (val outcome = runStage("2단계", origin, focus)) {
             is StageOutcome.Found -> Result.success(outcome.candidates)
             is StageOutcome.Aborted -> Result.failure(outcome.cause)
             is StageOutcome.Empty -> Result.success(emptyList())
         }
     }
-```
 
-> 구현 지시 — `runStage(origin, stage, options)`는 이렇게 한다.
->
-> 1. `normalizeForDetection(origin, stage)`로 검출 판을 만든다.
-> 2. 다중 subject 옵션으로 `runSegmenter`를 부른다. `ModuleNotReady`면 `StageOutcome.Aborted`다.
-> 3. subject마다 검출 좌표 사각형을 만들어 `stage.transform.toOrigin(...)`으로 원본 좌표로 옮기고,
->    **크롭 사각형과 원본의 교집합**으로 자른다. 원본 경계만으로 자르면 크롭 밖으로 새는 사각형이 생긴다.
-> 4. `subject.bitmap`의 알파를 뽑아 `resampleAlpha`로 그 원본 사각형 크기로 옮기고,
->    `origin.getPixels(...)`로 판 픽셀을 읽어 `harvestCandidate`를 부른다.
-> 5. `MAX_POST_PROCESS_CANDIDATES`로 자른 뒤
->    `filterCandidates(candidates, SubjectCoverage.RECOVERY_FLOOR_DIVISOR)`를 건다.
->    **완화 전 후보 수와 완화 후 후보 수를 로그로 갈라 남긴다.**
-> 6. 비면 전경 옵션으로 `runSegmenter`를 한 번 더 부르고 `harvestForeground`에 넘긴다.
->    임계는 `options.binaryThreshold`다. 폴백 후보는 필터를 거치지 않는다.
-> 7. **검출 판을 회수하고 힌트 사각형만 남긴 채** 결과를 돌려준다. 1단계 결과를 2단계까지 들고
->    있으면 피크가 커지고, 네이티브 버퍼 수명 가정에도 기댄다.
-> 8. 단계마다 한 줄을 남긴다 — 단계 이름, 가드에 걸렸는지, 목표 치수와 상한이 걸렸는지,
->    크롭이 원본 대비 얼마인지, 힌트 유무, 완화 전후 후보 수, 소요.
+    /**
+     * 한 단계를 돌린다. `ModuleNotReady` 만 사다리를 멈추고, 그 밖의 실패는 이 단계만 포기한다.
+     *
+     * 단계가 끝나면 ML Kit 결과를 놓고 힌트 좌표 넷만 들고 나온다. 결과를 다음 단계까지 붙들면 피크가 커지고,
+     * 네이티브 신뢰도 버퍼가 새 세그멘터를 연 뒤에도 유효한지에 기대게 된다.
+     */
+    private suspend fun runStage(name: String, origin: Bitmap, stage: RecoveryStage): StageOutcome {
+        val startedAt = SystemClock.elapsedRealtime()
+        val plate = try {
+            withContext(Dispatchers.Default) { normalizeForDetection(origin, stage) }
+        } catch (e: OutOfMemoryError) {
+            repositoryLogger.w(e) { "회복 $name: 검출 판을 만들다 메모리로 실패해 이 단계를 포기한다" }
+            return StageOutcome.Empty(hint = null)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            repositoryLogger.w(e) { "회복 $name: 검출 판을 만들다 실패해 이 단계를 포기한다" }
+            return StageOutcome.Empty(hint = null)
+        }
 
-`StageOutcome`은 이 파일의 private sealed interface다.
+        try {
+            val image = InputImage.fromBitmap(plate.bitmap, 0)
+            val whole = SegmentationBounds(0, 0, origin.width, origin.height)
+            val source = stage.cropRect ?: whole
+            val projection = DetectionProjection(stage.transform, clip = source)
+            val capped = stage.targetSize.width < source.width
 
-```kotlin
+            val multi = runSegmenter(multipleSubjectOptions(), image).getOrElse { cause ->
+                return if (cause is SegmentationException.ModuleNotReady) {
+                    StageOutcome.Aborted(cause)
+                } else {
+                    StageOutcome.Empty(hint = null)
+                }
+            }
+            val harvested = withContext(Dispatchers.Default) { harvestSubjects(multi.subjects, origin, projection) }
+            val candidates = withContext(Dispatchers.Default) { filterCandidates(harvested.map { it.candidate }) }
+            val relaxed = harvested.count { it.candidate.passesRelaxedFloor() }
+
+            repositoryLogger.i {
+                "회복 $name: 목표 ${stage.targetSize.width}x${stage.targetSize.height}, 상한 걸림 $capped, " +
+                    "필터 통과 ${candidates.size}/${harvested.size}(1/$RELAXED_FLOOR_LOG_DIVISOR 하한이었다면 $relaxed)"
+            }
+            if (candidates.isNotEmpty()) return StageOutcome.Found(candidates)
+
+            val foreground = runSegmenter(foregroundOptions(), image).getOrElse { cause ->
+                return if (cause is SegmentationException.ModuleNotReady) {
+                    StageOutcome.Aborted(cause)
+                } else {
+                    StageOutcome.Empty(hint = null)
+                }
+            }
+            val mask = foreground.foregroundConfidenceMask ?: return StageOutcome.Empty(hint = null)
+            val harvest = withContext(Dispatchers.Default) {
+                harvestForeground(
+                    mask = mask,
+                    maskWidth = plate.bitmap.width,
+                    maskHeight = plate.bitmap.height,
+                    origin = origin,
+                    projection = projection,
+                    hintThreshold = AlphaPostProcessOptions().binaryThreshold,
+                )
+            }
+
+            // 폴백 후보는 필터를 거치지 않는다 — 1차 경로와 같은 규칙이다
+            repositoryLogger.i {
+                "회복 $name: 폴백 후보 ${harvest.candidates.size}, 힌트 ${harvest.hint != null}, " +
+                    "소요 ${SystemClock.elapsedRealtime() - startedAt}ms"
+            }
+
+            return if (harvest.candidates.isNotEmpty()) {
+                StageOutcome.Found(harvest.candidates)
+            } else {
+                StageOutcome.Empty(harvest.hint)
+            }
+        } catch (e: OutOfMemoryError) {
+            repositoryLogger.w(e) { "회복 $name: 메모리로 실패해 이 단계를 포기한다" }
+            return StageOutcome.Empty(hint = null)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            repositoryLogger.w(e) { "회복 $name: 실패해 이 단계를 포기한다" }
+            return StageOutcome.Empty(hint = null)
+        } finally {
+            if (plate.ownedByUs) plate.bitmap.recycle()
+        }
+    }
+
+    private fun multipleSubjectOptions(): SubjectSegmenterOptions = SubjectSegmenterOptions
+        .Builder()
+        .enableMultipleSubjects(
+            SubjectSegmenterOptions.SubjectResultOptions.Builder().enableSubjectBitmap().build(),
+        ).build()
+
+    private fun foregroundOptions(): SubjectSegmenterOptions = SubjectSegmenterOptions
+        .Builder()
+        .enableForegroundConfidenceMask()
+        .build()
+
+    /** 로그 전용. 알파 합은 칠해진 픽셀 수의 255 배다 */
+    private fun SegmentationCandidate.passesRelaxedFloor(): Boolean {
+        val floor = SubjectCoverage.floorPixels(canvasWidth.toLong() * canvasHeight) / RELAXED_FLOOR_LOG_DIVISOR
+        return coverageAlphaSum >= floor * 255L
+    }
+
     private sealed interface StageOutcome {
         class Found(val candidates: List<SegmentationCandidate>) : StageOutcome
 
@@ -1391,7 +1943,14 @@ private fun mapThroughLut(pixel: Int, lut: IntArray): Int = Color.argb(
     }
 ```
 
-`RECOVERY_TIMEOUT_MS`는 파일 아래 `private const val RECOVERY_TIMEOUT_MS = 30_000L`이다.
+파일 아래 최상위 상수 둘을 더한다.
+
+```kotlin
+private const val RECOVERY_TIMEOUT_MS = 30_000L
+
+/** 조건부 항목이다. 로그가 대비 스트레치를 철회하면 여기만 끈다 — 그러면 1단계 무동작 가드가 의미를 갖는다 */
+private const val RECOVERY_APPLY_CONTRAST = true
+```
 
 - [ ] **Step 4: UseCase를 만든다**
 
@@ -1418,10 +1977,10 @@ constructor(
 }
 ```
 
-- [ ] **Step 5: 전체 유닛과 빌드를 확인한다**
+- [ ] **Step 5: 전체 유닛·ktlint·빌드를 확인한다**
 
-Run: `./gradlew :domain:test :data:testDebugUnitTest :app:assembleDebug`
-Expected: 전부 통과. 기존 테스트가 안 깨져야 한다.
+Run: `./gradlew :domain:test :data:testDebugUnitTest :data:ktlintCheck :domain:ktlintCheck :app:assembleDebug`
+Expected: 전부 통과
 
 - [ ] **Step 6: 커밋한다**
 
@@ -1430,73 +1989,49 @@ git add data/src/main/java/com/teamyg/parfait/data/utils/image/SegmentationRecov
         data/src/main/java/com/teamyg/parfait/data/repository/image/ImageSegmentationRepositoryImpl.kt \
         domain/src/main/java/com/teamyg/parfait/domain/repository/image/ImageSegmentationRepository.kt \
         domain/src/main/java/com/teamyg/parfait/domain/usecase/image/RecoverCandidatesUseCase.kt
-git commit -m "feat: 재시도 회복 사다리를 저장소에 넣는다"
+git commit -m "$(cat <<'MSG'
+feat: 재시도 회복 사다리를 저장소에 넣는다
+
+검출 판은 원본을 복사해 만들고, 픽셀은 원본에서 읽는다. 단계마다 ModuleNotReady 만 사다리를 멈춘다.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+MSG
+)"
 ```
 
 ---
 
-### Task 7: ViewModel 3치 분기와 취소
+### Task 7: ViewModel 재시도 분기
 
 **Files:**
-- Modify: `core/ui/src/main/java/com/teamyg/parfait/core/ui/BaseViewModel.kt`
 - Modify: `feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModel.kt`
-- Test: `core/ui/src/test/java/com/teamyg/parfait/core/ui/BaseViewModelTest.kt`
 - Test: `feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModelTest.kt`
 
 **Interfaces:**
 - Consumes: `RecoverCandidatesUseCase`
-- Produces: `BaseViewModel.cancel(key: Any)` — 지금 `runningJobs`가 `private`이라 키로 잡을 끊을 표면이 없다
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
-먼저 `BaseViewModelTest.kt`에 취소 표면 테스트를 더한다. 파일의 `TestViewModel`에
-`fun stop(key: Any) = cancel(key)`를 더하고 아래를 추가한다.
-
-```kotlin
-    @Test
-    fun cancel_runningKey_stopsTheJobAndFreesTheKey() = runTest {
-        val viewModel = TestViewModel()
-        var finished = false
-        viewModel.run(key = "k") {
-            awaitCancellation()
-        }
-        runCurrent()
-
-        // When
-        viewModel.stop("k")
-        runCurrent()
-
-        // Then 같은 키로 새 잡이 다시 뜬다 — 키가 풀렸다는 증거다
-        assertNotNull(viewModel.run(key = "k") { finished = true })
-        advanceUntilIdle()
-        assertEquals(true, finished)
-    }
-
-    @Test
-    fun cancel_unknownKey_doesNothing() = runTest {
-        TestViewModel().stop("missing")
-    }
-```
-
-그다음 `SegmentationViewModelTest.kt`에 `private val recoverCandidates: RecoverCandidatesUseCase = mockk()`를
-필드로 더하고, `viewModel()` 헬퍼에 `recoverCandidatesUseCase = recoverCandidates,`를 넘긴 뒤 아래를 추가한다.
+`SegmentationViewModelTest.kt`에 import `com.teamyg.parfait.domain.usecase.image.RecoverCandidatesUseCase`를 더하고,
+필드 `private val recoverCandidates: RecoverCandidatesUseCase = mockk()`를 더한 뒤 `viewModel()` 헬퍼에
+`recoverCandidatesUseCase = recoverCandidates,`를 넘긴다. 아래 7건을 추가한다. `candidate`·`bitmapWrapper`는 기존
+필드이고 `saveBitmap`은 `@Before`가 이미 스텁한다. 파일의 기존 테스트처럼 `runTest {}`를 인자 없이 쓴다.
 
 ```kotlin
     @Test
     fun retry_afterEmptyCandidates_runsTheRecoveryLadder() = runTest {
-        // Given 1차가 빈 목록으로 끝났다
         coEvery { segmentImage(any()) } returns Result.success(emptyList())
         coEvery { recoverCandidates(any()) } returns Result.success(listOf(candidate))
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        // When
         viewModel.processIntent(SegmentationIntent.Retry)
         advanceUntilIdle()
 
-        // Then 1차를 다시 돌지 않는다
+        // 1차를 다시 돌지 않는다
         coVerify(exactly = 1) { segmentImage(any()) }
         coVerify(exactly = 1) { recoverCandidates(any()) }
+        assertEquals(listOf(candidate), viewModel.state.value.candidates)
         assertFalse(viewModel.state.value.isError)
     }
 
@@ -1515,20 +2050,53 @@ git commit -m "feat: 재시도 회복 사다리를 저장소에 넣는다"
 
     @Test
     fun retry_afterTheRecoveryAlsoFailed_fallsBackToTheOriginalPath() = runTest {
-        // Given 1차도 회복도 빈 목록이다
         coEvery { segmentImage(any()) } returns Result.success(emptyList())
         coEvery { recoverCandidates(any()) } returns Result.success(emptyList())
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        // When 두 번 누른다
-        viewModel.processIntent(SegmentationIntent.Retry)
-        advanceUntilIdle()
-        viewModel.processIntent(SegmentationIntent.Retry)
+        repeat(2) {
+            viewModel.processIntent(SegmentationIntent.Retry)
+            advanceUntilIdle()
+        }
+
+        coVerify(exactly = 1) { recoverCandidates(any()) }
+        coVerify(exactly = 2) { segmentImage(any()) }
+    }
+
+    @Test
+    fun retry_pressedFourTimesAfterEmpty_runsTheLadderOnlyOnce() = runTest {
+        // Given 같은 사진이라 1차도 회복도 계속 0건이다
+        coEvery { segmentImage(any()) } returns Result.success(emptyList())
+        coEvery { recoverCandidates(any()) } returns Result.success(emptyList())
+        val viewModel = viewModel()
         advanceUntilIdle()
 
-        // Then 두 번째는 사다리를 또 돌지 않는다
+        // When 네 번 누른다 — 1차의 0건이 플래그를 덮으면 세 번째에 사다리가 다시 돈다
+        repeat(4) {
+            viewModel.processIntent(SegmentationIntent.Retry)
+            advanceUntilIdle()
+        }
+
         coVerify(exactly = 1) { recoverCandidates(any()) }
+        coVerify(exactly = 4) { segmentImage(any()) }
+    }
+
+    @Test
+    fun retry_afterTheLadderWasAbortedByTheModule_mayRunTheLadderAgain() = runTest {
+        // Given 사다리가 모듈 문제로 중간에 접혔다 — 끝까지 돈 것이 아니다
+        coEvery { segmentImage(any()) } returns Result.success(emptyList())
+        coEvery { recoverCandidates(any()) } returns Result.failure(SegmentationException.ModuleNotReady(null))
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        repeat(3) {
+            viewModel.processIntent(SegmentationIntent.Retry)
+            advanceUntilIdle()
+        }
+
+        // 회복 → 1차(0건) → 회복
+        coVerify(exactly = 2) { recoverCandidates(any()) }
         coVerify(exactly = 2) { segmentImage(any()) }
     }
 
@@ -1552,57 +2120,78 @@ git commit -m "feat: 재시도 회복 사다리를 저장소에 넣는다"
     }
 
     @Test
-    fun useOriginal_whileTheRecoveryRuns_cancelsTheLadder() = runTest {
+    fun retry_recoveryThrowsUnexpectedly_restoresTheErrorScreen() = runTest {
         coEvery { segmentImage(any()) } returns Result.success(emptyList())
-        var ladderFinished = false
-        coEvery { recoverCandidates(any()) } coAnswers {
-            delay(10_000)
-            ladderFinished = true
-            Result.success(emptyList())
-        }
+        coEvery { recoverCandidates(any()) } throws IllegalStateException("boom")
         val viewModel = viewModel()
         advanceUntilIdle()
-        viewModel.processIntent(SegmentationIntent.Retry)
-        runCurrent()
 
-        // When 기다리다 「편집 없이 사용」을 누른다
-        viewModel.processIntent(SegmentationIntent.UseOriginal)
+        viewModel.processIntent(SegmentationIntent.Retry)
         advanceUntilIdle()
 
-        // Then 사다리가 끝까지 돌지 않는다
-        assertFalse(ladderFinished)
+        // 되돌리지 않으면 에러도 후보도 없는 화면에 갇힌다
+        assertTrue(viewModel.state.value.isError)
+        assertFalse(viewModel.state.value.isLoading)
     }
 ```
 
-`candidate`·`bitmapWrapper`는 기존 파일의 필드다. `saveBitmap`은 `@Before`가 이미 스텁한다.
-
 - [ ] **Step 2: 테스트가 실패하는지 확인한다**
 
-Run: `./gradlew :core:ui:compileDebugUnitTestKotlin :feature:segmentation:impl:compileDebugUnitTestKotlin`
-Expected: FAIL — `cancel`이 없고 `recoverCandidatesUseCase` 인자가 없다
+Run: `./gradlew :feature:segmentation:impl:compileDebugUnitTestKotlin`
+Expected: FAIL — `No parameter with name 'recoverCandidatesUseCase' found`
 
 - [ ] **Step 3: ViewModel을 고친다**
 
-```kotlin
-    /**
-     * 직전 실패의 성격. 재시도가 무엇을 돌지만 정하므로 상태로 올리지 않는다 — 화면은 이 값을 안 쓴다.
-     */
-    private enum class LastFailure { EXCEPTION, EMPTY_BEFORE_RECOVERY, EMPTY_AFTER_RECOVERY }
+import `com.teamyg.parfait.domain.usecase.image.RecoverCandidatesUseCase`를 더하고, 생성자의 `segmentImageUseCase` 아래에
+`private val recoverCandidatesUseCase: RecoverCandidatesUseCase,`를 더한다.
 
+클래스 본문에 상태를 더한다.
+
+```kotlin
+    private enum class LastFailure { EXCEPTION, EMPTY }
+
+    /** 재시도가 무엇을 돌지만 정한다. 화면이 안 쓰는 값이라 상태로 올리지 않는다 */
     private var lastFailure: LastFailure? = null
+
+    /**
+     * 이 사진으로 사다리를 끝까지 돌렸는가. 입력이 같으면 결과도 같아서 한 번만 돈다.
+     *
+     * ⚠️ 1차에서 다시 0건이 나와도 되돌리지 않는다. 되돌리면 사다리가 한 번 걸러 되풀이된다.
+     */
+    private var recoveryAttempted = false
 ```
 
-`loadCandidates`의 실패 자리에서 `lastFailure`를 채운다. 예외면 `EXCEPTION`, 빈 목록이면
-`EMPTY_BEFORE_RECOVERY`다.
+`loadCandidates`의 세그멘테이션 결과 처리를 바꾼다.
 
-`processIntent`의 `Retry`를 바꾼다.
+```kotlin
+            segmentImageUseCase(bitmapWrapper)
+                .onSuccess { candidates ->
+                    if (candidates.isEmpty()) {
+                        lastFailure = LastFailure.EMPTY
+                        updateState { copy(isError = true) }
+                        return@onSuccess
+                    }
+
+                    lastFailure = null
+                    updateState { copy(candidates = candidates) }
+                }.onFailure { throwable ->
+                    // 화면이 원인을 가르지 않으므로 원인은 여기에만 남는다
+                    viewModelLogger.e(throwable) {
+                        "세그멘테이션 실패 ${throwable::class.simpleName}, 원인 ${throwable.cause}"
+                    }
+                    lastFailure = LastFailure.EXCEPTION
+                    updateState { copy(isError = true) }
+                }
+```
+
+`processIntent`의 `Retry` 갈래를 바꾼다.
 
 ```kotlin
             SegmentationIntent.Retry ->
-                if (lastFailure == LastFailure.EMPTY_BEFORE_RECOVERY) recover() else loadCandidates()
+                if (lastFailure == LastFailure.EMPTY && !recoveryAttempted) recover() else loadCandidates()
 ```
 
-`recover()`를 더한다.
+`recover`를 더한다.
 
 ```kotlin
     /**
@@ -1614,7 +2203,7 @@ Expected: FAIL — `cancel`이 없고 `recoverCandidatesUseCase` 인자가 없�
         launch(
             key = LOAD_CANDIDATES_KEY,
             onError = {
-                lastFailure = LastFailure.EMPTY_AFTER_RECOVERY
+                lastFailure = LastFailure.EXCEPTION
                 updateState { copy(isLoading = false, isError = true) }
             },
         ) {
@@ -1623,8 +2212,10 @@ Expected: FAIL — `cancel`이 없고 `recoverCandidatesUseCase` 인자가 없�
 
             recoverCandidatesUseCase(bitmapWrapper)
                 .onSuccess { candidates ->
+                    // 끝까지 돌았다. 모듈 문제로 중간에 접히면 여기 오지 않아 다시 돌 기회가 남는다
+                    recoveryAttempted = true
                     if (candidates.isEmpty()) {
-                        lastFailure = LastFailure.EMPTY_AFTER_RECOVERY
+                        lastFailure = LastFailure.EMPTY
                         updateState { copy(isError = true) }
                     } else {
                         lastFailure = null
@@ -1641,50 +2232,35 @@ Expected: FAIL — `cancel`이 없고 `recoverCandidatesUseCase` 인자가 없�
     }
 ```
 
-`useOriginal()` 첫 줄에 사다리 취소를 넣는다.
-
-```kotlin
-        // 사다리와 원본 저장은 다른 키라 그냥 두면 함께 돈다. 큰 할당이 겹치면 메모리로 죽는다
-        cancel(LOAD_CANDIDATES_KEY)
-```
-
-`BaseViewModel.kt`에 취소 표면을 더한다. 맵에서 지우지 않는 것은 `launch`가 등록한
-`invokeOnCompletion`이 이미 지우기 때문이다 — 여기서도 지우면 같은 키로 막 등록된 다음 잡을 지울 수 있다.
-
-```kotlin
-    /** [key] 로 띄운 잡을 끊는다. 없거나 이미 끝났으면 아무 일도 없다 */
-    @MainThread
-    protected fun cancel(key: Any) {
-        runningJobs[key]?.cancel()
-    }
-```
-
-`SegmentationViewModel` 생성자에 `private val recoverCandidatesUseCase: RecoverCandidatesUseCase,`를
-더한다.
-
 - [ ] **Step 4: 테스트가 통과하는지 확인한다**
 
-Run: `./gradlew :core:ui:testDebugUnitTest :feature:segmentation:impl:testDebugUnitTest`
+Run: `./gradlew :feature:segmentation:impl:testDebugUnitTest :feature:segmentation:impl:ktlintCheck`
 Expected: PASS. 기존 테스트가 전부 통과해야 한다.
 
 - [ ] **Step 5: 커밋한다**
 
 ```bash
 git add feature/segmentation/impl/src/main/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModel.kt \
-        feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModelTest.kt \
-        core/ui/src/main/java/com/teamyg/parfait/core/ui/BaseViewModel.kt
-git commit -m "feat: 재시도를 실패 성격으로 가르고 사다리를 취소한다"
+        feature/segmentation/impl/src/test/java/com/teamyg/parfait/feature/segmentation/impl/viewmodel/SegmentationViewModelTest.kt
+git commit -m "$(cat <<'MSG'
+feat: 후보 0건 뒤 재시도가 회복 사다리를 한 번만 돌게 한다
+
+직전 실패와 사다리 플래그로 가른다. 플래그는 1차 결과로 되돌리지 않아 사다리가 되풀이되지 않는다.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+MSG
+)"
 ```
 
 ---
 
 ### Task 8: 전체 검증과 문서
 
-코드 변경은 없다. 실기기에서 확인하고 문서를 맞춘다.
+코드 변경은 없다.
 
 **Files:**
-- Modify: `parfait/specs/2026-09-10-segmentation-retry-recovery.md` (다른 저장소)
-- Modify: `parfait/plans/README.md` (다른 저장소)
+- Modify: `parfait/specs/2026-09-10-segmentation-retry-recovery.md` (문서 저장소)
+- Modify: `parfait/specs/README.md`, `parfait/plans/README.md` (문서 저장소)
 
 - [ ] **Step 1: 전체 검증을 돌린다**
 
@@ -1694,61 +2270,64 @@ git commit -m "feat: 재시도를 실패 성격으로 가르고 사다리를 취
 ./gradlew :app:assembleDebug
 ```
 
-- [ ] **Step 2: 실기기에서 다섯 항목을 확인한다**
+Expected: 전부 통과. 새 유닛은 46건이다(Task 1 24, Task 2 6, Task 3 9, Task 7 7).
 
-1. 후보가 나오는 평범한 사진 — 1차에서 성공하고 회복이 안 돈다. 로그에 회복 줄이 없다.
-2. 검출이 안 되는 사진 — 「다시 시도」 한 번에 단계 로그가 순서대로 찍힌다. 대기 중 로딩 덮개만
-   보이고 에러 화면이 겹치지 않는다.
-3. 회복이 성공한 경우 — **저장된 토핑의 색이 원본과 같다.** 대비 스트레치가 결과에 새지 않았다는 증거다.
-4. 회복까지 실패한 뒤 다시 「다시 시도」 — 로그에 회복 줄이 없고 1차 줄만 찍힌다.
-5. 회복 대기 중 「편집 없이 사용」 — 확인 화면으로 넘어가고 사다리 로그가 그 뒤로 안 찍힌다.
+- [ ] **Step 2: 1차 경로 회귀를 실기기에서 확인한다**
 
-⚠️ **1단계 전경 신뢰도 버퍼의 수명을 여기서 확인한다.** 2단계가 도는 동안 크래시나 이상 좌표가
-없어야 한다. 스펙이 힌트를 미리 뽑아 이 의존을 없앴지만 실기기에서 한 번 본다.
+Task 4·5가 1차 경로의 수확을 옮기고 일반화했으므로 그 회귀를 본다.
 
-- [ ] **Step 3: 로그에서 조건부 항목을 판정한다**
+1. 평범한 사진 — 후보가 나오고, 로그에 `회복` 줄이 없다.
+2. 피사체가 여럿인 사진 — 후보를 골라 확인 화면으로 간다. 공통 subject 루프의 회귀를 본다.
+3. 고른 토핑을 캔버스에 올린 뒤 — **색이 원본과 같다.** 수확 이동의 회귀를 본다.
+4. 실패 화면의 「편집 없이 사용」 — 기존 동작 그대로다.
+5. 로그의 `세그멘테이션 후보 쌍 생성` 줄 — 1차에서는 `하한이었다면` 꼬리가 **붙지 않는다.**
 
-단계별 로그를 모아 아래를 본다. 결과를 스펙 「근거 등급」 절에 적는다.
+- [ ] **Step 3: 회복 경로 확인을 보류로 기록한다**
 
-- 1단계가 무동작 가드에 얼마나 걸리는가
-- 2단계가 수축 가드에 얼마나 걸리는가 (힌트가 흩어졌다는 뜻이다)
-- 필터 완화 전후 후보 수 차이 — 이게 크면 다음 라운드는 1차 하한을 봐야 한다
-- 긴 변 상한이 실제로 걸린 비율과 그때 후보 수
+검증 수단을 넣지 않기로 했으므로 회복 경로는 실기기에서 돌지 않는다. 스펙 「주의 / 열린 질문」의 「회복 경로 실기기
+미검증」 항목이 실패 사진이 생겼을 때 볼 네 가지를 이미 적고 있다. PR 본문에도 이 사실을 적는다.
 
 - [ ] **Step 4: 문서를 갱신한다**
 
-스펙의 `status`를 `implemented`로 올리고 as-built 배너를 단다. 계획과 갈린 자리가 있으면 적는다.
-`parfait/plans/README.md` 활성 카탈로그에 이 계획 한 줄을 더한다.
+- 스펙 `status`를 `implemented`로 올리고 머리에 as-built 배너를 단다. ⚠️ 배너에 **회복 경로는 실기기에서 돌지 않았다**를
+  반드시 적는다. 계획과 갈린 자리가 있으면 적는다.
+- `parfait/specs/README.md`와 `parfait/plans/README.md`의 **이미 있는 행**을 갱신한다. 새 행을 더하지 않는다.
+- 머지 뒤 스펙과 계획을 `archive/`로 옮기는 것은 이 Task 밖이다.
 
-- [ ] **Step 5: 커밋한다**
+- [ ] **Step 5: 문서 저장소에 커밋한다**
 
-문서 저장소에서 커밋한다. **푸시와 PR은 사용자 승인 후에 한다.**
+문서 저장소의 `docs/segmentation-retry-recovery-spec` 브랜치에서 커밋한다(`main` 직접 커밋 금지). 푸시와 PR은 사용자
+승인 후에 한다.
 
 ---
 
 ## Self-Review
 
-**스펙 커버리지** — 스펙의 절과 Task 대응은 이렇다.
+**스펙 커버리지**
 
 | 스펙 절 | Task |
 |---|---|
-| §1 재시도 3치 | 7 |
-| §2 사다리 두 단계, 무동작·수축 가드 | 1(계산), 6(실행) |
-| §3 힌트 하한과 선추출 | 1(`hintBounds`), 5(`harvestForeground`), 6(선추출) |
-| §4 검출 해상도 | 1 |
-| §4-1 잠정 초기값 | 1, 2, 4, 6 |
-| §5 좌표계 규칙, 램프 뒤 되올림 | 3, 5, 6 |
-| §6 계약 검사 | 5(`requireInsideCanvas`) |
-| §7 다중 후보와 필터, 완화 | 4, 6 |
-| API 절 전체 | 1, 3, 5, 6 |
-| 동작/상태, 취소 | 7 |
-| 에러 처리, 판 소유권, 메모리 | 5(갈래), 6(회수·상한) |
-| 테스트 | 각 Task |
-| 철회 조건 로그 | 6(로그), 8(판정) |
+| §1 재시도 분기와 끈적한 플래그 | 7 |
+| §2 사다리 두 단계, 무동작·수축 가드 | 1(계산), 6(실행·가드 로그) |
+| §3 힌트 축, 단계 안 추출, 중앙 정사각형, 1차 비계산 | 1, 5(`hintThreshold = null`), 6 |
+| §4·4-1 검출 해상도와 잠정값 | 1, 2, 5, 6 |
+| §5 좌표계, 타입 강제, 재표본 후 자르기, 오프셋 | 1, 3, 5 |
+| §6 알파 사본과 되돌림 새 판 | 5 |
+| §7 캔버스 검사와 후보 단위 버림 | 1, 5 |
+| §8 공통 subject 루프, 엄격 필터, 완화 로그 | 5, 6 |
+| 동작/상태 — 상태 시퀀스, 취소, 디스패처 | 6, 7 |
+| 에러 처리 — `ModuleNotReady` 양 갈래, 단계 포기, 1차 폴백 분류 유지 | 5, 6 |
+| 판 소유권, 메모리 피크 | 5, 6 |
+| 테스트 — 뮤테이션을 잡는 픽스처 | 1, 2, 3, 7 |
+| 철회 조건 로그 다섯 필드 | 5, 6 |
 
-**타입 일관성** — `DetectionBounds`(검출 공간)와 `SegmentationBounds`(원본 공간)를 끝까지 가른다.
-`RecoveryTransform.toOrigin`만 둘을 잇는다. Task 5·6이 쓰는 이름은 Task 1이 정의한 것과 같다.
+**타입 일관성** — `DetectionBounds`(검출 공간)와 `SegmentationBounds`(원본 공간)를 끝까지 가르고
+`RecoveryTransform.toOrigin`·`projectRegion`만 둘을 잇는다. Task 5·6이 쓰는 이름은 Task 1·3이 정의한 것과 같고,
+스펙 API 절과도 같다.
 
-**빈자리** — Task 6의 `runStage`와 Task 5의 옮긴 본문은 코드 블록 대신 구현 지시로 적었다. 옮기는
-원본이 저장소에 그대로 있어 베끼면 되고, 옮기면서 바꿀 것(좌표 이름, 인자, `Result` 승격,
-`requireInsideCanvas` 호출)을 빠짐없이 열거했다.
+**뮤테이션 대응** — 검수가 통과시킨 여섯에 각각 픽스처를 두었다: 축별 배율이 다른 변환(Task 1), 정확히 70% 경계
+(Task 1), 흩어진 두 점(Task 1), 양 끝 이상치(Task 2), 2→3 확대 중간값(Task 3), 네 번 누르기(Task 7). 유닛이 닿지 않는
+규칙 둘(픽셀은 원본에서, 원본에는 쓰지 않는다)은 `PlateSource.OriginRegion`에 픽셀 인자가 없다는 것과
+`DetectionPlate.ownedByUs`가 구조적으로 막고, Task 6 머리의 리뷰 체크리스트가 확인한다.
+
+**빈자리** — Task 4는 코드 블록 대신 이동표로 적었다. 옮기는 원본이 저장소에 그대로 있고 바꿀 것이 상수 이름 하나뿐이다.
