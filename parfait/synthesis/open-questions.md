@@ -524,10 +524,11 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-053
 - **출처**: `feature/camera/impl/.../component/CameraPermissionRequestComponent.kt`·`feature/gallery/impl/.../component/GalleryPermissionRequestComponent.kt`(PR #182 develop 머지) — 두 컴포넌트 모두 `onClickGrantPermission`·`permanentlyDenied`를 파라미터로 받지만 본문에서 쓰지 않고 "설정으로 이동" 버튼 하나만 그린다. Route의 `permissionLauncher`와 VM의 `OnRequestPermission`은 살아 있으나 **발신처가 없어** 시스템 권한 다이얼로그가 뜨는 경로가 없다(갤러리는 부분 접근 배너의 `onClickManageMedia`만 launcher를 탄다).
 - **항목**: ① 최초 진입 시 자동 요청 또는 "권한 허용" 버튼을 둘지, ② 최초 거부와 영구 거부 화면을 나눌지(`permanentlyDenied` 분기 부활), ③ 안 쓸 파라미터면 시그니처에서 뺄지.
-- **상태**: 미해결 (코드 수정 대상 — 최초 설치 후 카메라 진입 시 권한을 얻을 수 없다)
+- **상태**: 부분 해소 (①② 결정·구현, develop 미머지: 브랜치 `bugfix/permission-not-required` `1d25a4bb9` / ③ 잔존)
   > 📌 **갤러리 쪽 launcher 경로만 실물이 됐다(2026-08-04, PR #191)** — 死코드였던 부분 접근 배너 대신 화면 하단 "사진 재선택" `YGButton`이 PARTIAL일 때 노출돼 `OnRequestManageMedia` → `RequestPermission` → launcher를 탄다. 즉 **부분 접근 상태에서만** 시스템 다이얼로그가 뜨고, 미허용(DENIED/PERMANENTLY_DENIED) 상태의 `onClickGrantPermission`은 여전히 권한 화면에서 호출되지 않는다.
   > 📌 **두 컴포넌트를 다시 짜고도 그대로다(2026-08-25, PR #350)** — 인셋 수정 라운드가 카메라·갤러리 권한 화면의 레이아웃을 통째로 고쳐 놓으면서 `onClickGrantPermission`·`permanentlyDenied`는 손대지 않았다. 두 파라미터는 여전히 받기만 하고 본문에서 쓰이지 않는다. **화면을 여는 사람이 이 자리를 지나갔는데도 안 열렸다**는 뜻이라, 이 항목은 "잊혀서 남아 있는 것"이 아니라 **결정이 없어서 남아 있는 것**이다.
-- **해소 메모**: 결정 후 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) "주의/열린 질문"과 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 권한 흐름 절을 정리한다.
+  > 📌 **①② 결정·구현(2026-09-10, develop 미머지 브랜치 `bugfix/permission-not-required`)** ① **진입 시 자동 요청**으로 정했다. 두 VM이 첫 권한 없음 확인에서 `RequestPermission`을 한 번 발행하고(`requestPermissionOnce`), 다이얼로그가 닫혀 재개 확인이 다시 와도 재요청하지 않는다. 물을 수 없는 상태면 시스템이 다이얼로그 없이 거부로 답하므로 설정 이동 화면이 남는다. 갤러리 PARTIAL은 묻지 않는다. ② **거부 화면을 나누지 않는다.** 다이얼로그가 떠 있는 동안에도 뒤에는 설정 이동 화면을 그대로 둔다(작업자 결정). ③ 카메라 컴포넌트의 `onClickGrantPermission`·`permanentlyDenied`와 갤러리 컴포넌트의 `onClickGrantPermission`은 여전히 쓰이지 않는다(갤러리 컴포넌트에는 `permanentlyDenied` 파라미터가 처음부터 없고 `isDeniedPermission`을 받는다). 같은 브랜치가 카메라에서 권한 전에 CameraX를 바인딩해 허용 뒤에도 프리뷰가 뜨지 않던 결함을 함께 고쳤다(`98286f73e`, 권한 다이얼로그는 Activity를 pause만 시켜 CameraX가 다시 열지 않았다) → [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)·[c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 「권한 요청 as-built 갱신」.
+- **해소 메모**: ③만 남았다. 쓰이지 않는 파라미터를 시그니처에서 뺄지 정하면 닫힌다. develop 머지 후 기준선 점검에서 위 📌와 두 스펙, [specs/README](../specs/README.md) c101·c102 행의 미머지 표기를 걷는다.
 
 ### [2026-08-01] 갤러리 빈 상태 그래픽이 상시 노출되고 문구가 리터럴
 - **ID**: OQ-P-054

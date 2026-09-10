@@ -143,6 +143,8 @@ Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 �
 `CustomCameraState`: `isInit` · `hasPermission` · `permanentlyDenied` · `lensFacing` · `zoomRatio` ·
 `zoomRange` · `flashMode`. 권한은 `LifecycleResumeEffect`로 재개 시마다 재확인하고, 요청 결과의
 `shouldShowRationale`이 false면 `permanentlyDenied`로 승격한다.
+> 📌 **재확인 결과가 요청을 발행한다(2026-09-10, 미머지 브랜치)**: 첫 권한 없음 확인에서 `RequestPermission`을
+> 한 번 발행한다. 요청 여부는 상태가 아니라 VM 필드 `hasRequestedPermission`이 든다 → 아래 「권한 요청 as-built 갱신」.
 
 ## 정책 대조 (위키 [[카메라-뷰파인더]])
 
@@ -226,6 +228,9 @@ Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 �
   미허용 상태에서는 "설정으로 이동"만 보인다. 갤러리 쪽도 같은 형태다.
   **#350(2026-08-25)이 두 컴포넌트의 레이아웃을 다시 짜면서도 이 둘은 건드리지 않았다** — 파라미터
   둘은 여전히 받기만 하고 쓰이지 않는다.
+  > 📌 **진입 시 자동 요청이 들어갔다(2026-09-10, 미머지 브랜치)**: VM이 첫 권한 없음 확인에서
+  > `RequestPermission`을 발행하므로 시스템 다이얼로그가 뜬다. 두 파라미터 미사용만 남는다(OQ-P-053 ③)
+  > → 아래 「권한 요청 as-built 갱신」.
 - 위 항목은 전부 [open-questions](../../synthesis/open-questions.md) [2026-08-01]에서 추적.
 
 ## as-built 재정정 (2026-08-26, PR #371 develop 머지)
@@ -255,3 +260,53 @@ Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 �
 **0건이다.** 이 라운드가 바꾼 것은 배치라 유닛으로 덮을 수 없고, 계측도 안 붙었다
 (저장소 전체 유닛 789·계측 14건 그대로). 첫 커밋의 dp 계산 방식을 버린 이유 자체가
 **검증할 수 없는 중복을 만들지 않으려는 것**이었다. 확인 수단은 실기기 눈으로 보는 것뿐이다.
+
+## 권한 요청 as-built 갱신 (2026-09-10, 미머지 브랜치)
+
+> 브랜치 `bugfix/permission-not-required`, develop `544ce434a` 위 커밋 둘(`1d25a4bb9`·`98286f73e`).
+> develop 머지 전이다. [open-questions](../../synthesis/open-questions.md) OQ-P-053 ①②의 결정을 구현했다.
+
+**진입했을 때 권한이 없으면 시스템 권한 다이얼로그부터 띄운다.** 이전에는 권한을 한 번도 묻지 않은 설치
+직후에도 「설정으로 이동」 화면이 곧바로 떴다.
+
+- `CustomCameraViewModel#handleOnPermissionResult`가 권한 없음을 받으면 `requestPermissionOnce()`를 부른다.
+  이 함수는 `private var hasRequestedPermission`이 거짓일 때만 `RequestPermission` 효과를 한 번 발행한다.
+  요청 경로를 위해 Route를 바꾸지는 않았고(`1d25a4bb9`), 이미 있던 효과 수집이 `permissionLauncher`를 띄운다.
+- 요청을 한 번으로 막는 이유는 다이얼로그가 닫히면 `LifecycleResumeEffect`의 재확인이 다시 들어오기 때문이다.
+  막지 않으면 거부할 때마다 다이얼로그가 다시 뜬다. 요청 결과 인텐트 `OnPermissionRequestResult`는 요청을 보내지 않는다.
+- 플래그는 상태가 아니라 ViewModel 필드다. 화면에 새로 들어오면 ViewModel도 새로 생기므로, 한 번만 거부한
+  사용자에게는 다음 진입에서 다시 묻는다. `SavedStateHandle`에 두지 않았으므로 프로세스가 죽었다 복원될 때도 다시 묻는다.
+- 물을 수 없는 상태인지 미리 가르지 않는다. 요청 전의 `shouldShowRationale`은 한 번도 묻지 않은 상태와 영구 거부
+  상태에서 모두 거짓이라 둘을 구분할 수 없다. 그래서 요청을 띄우고 시스템 응답에 맡긴다. 물을 수 없는 상태라면
+  시스템이 다이얼로그 없이 거부로 답하고, 설정 이동 화면이 그대로 남는다.
+- **다이얼로그가 떠 있는 동안 뒤에는 설정 이동 화면이 보인다.** 작업자 결정이다. 뒤를 비우려면 재개 확인 결과를
+  요청이 끝날 때까지 보류하는 로직이 더 필요해서 택하지 않았다. 그 대가로 다이얼로그가 허용 여부를 묻는 동안
+  딤 뒤에는 "설정에서 카메라 권한을 허용해 주세요"가 보인다.
+- 최초 거부와 영구 거부를 다른 화면으로 나누지 않았다(OQ-P-053 ②). `permanentlyDenied`·`onClickGrantPermission`은
+  여전히 받기만 하고 쓰이지 않는다(OQ-P-053 ③ 잔존).
+
+### CameraX 바인딩이 권한을 기다린다 (`98286f73e`)
+
+위 변경을 실기기에서 확인하다 드러난 결함이다. **다이얼로그에서 허용해도 프리뷰가 뜨지 않았고, 앱을 백그라운드에
+내렸다 올려야 보였다.**
+
+- **원인**: `CameraPreviewViewComponent`가 권한과 무관하게 첫 컴포지션에서 `bindToLifecycle`을 호출했고, 다시
+  바인딩하는 계기는 `lensFacing` 변경뿐이었다. 권한 없이 바인딩하면 CameraX가 카메라 열기를 두 번 시도하다 멈춘다.
+  logcat에 `W/CXCP` `SecurityException: ... cannot open camera "0" without camera permission`이 약 0.5초 간격으로
+  두 번 남았다.
+- 권한 다이얼로그는 Activity를 pause만 시키고 stop시키지 않는다. 바인딩된 lifecycle이 STARTED 아래로 내려가지
+  않으므로 CameraX가 카메라를 다시 열 계기가 없다. 백그라운드를 다녀오면 stop과 start를 거치므로 다시 열린다.
+- 이전에는 권한을 얻는 길이 설정 앱을 다녀오는 것뿐이었고, 그 길은 늘 stop과 start를 거쳤다. 그래서 이 결함이
+  드러나지 않았다.
+- **처방**: `CameraPreviewViewComponent`가 `hasPermission`을 받아 `DisposableEffect(lensFacing, hasPermission)`의
+  키로 쓴다. 권한이 없으면 바인딩하지 않고 빈 `onDispose`로 빠진다. `CustomCameraRoute`가 `state.hasPermission`을 넘긴다.
+
+### 검증
+
+- `:feature:camera:impl`에 `parfait.test.unit` 플러그인이 붙어 이 모듈에 처음으로 유닛 테스트가 생겼다.
+  `CustomCameraViewModelTest` 3건이다. 권한 없음이면 요청을 1회 발행하는지, 요청 뒤 권한 없음이 거듭 들어와도
+  재요청하지 않는지, 권한 있음이면 요청하지 않는지를 본다. 앞의 두 건은 구현 전에 실패(요청 효과 미발행)하는 것을
+  확인했다. 모듈 `ktlintCheck`도 통과했다.
+- 바인딩 수정은 실제 CameraX와 lifecycle이 있어야 재현되므로 자동 테스트가 없다. 작업자가 실기기에서 다이얼로그
+  허용 직후 프리뷰가 뜨는 것을 확인했다. 영구 거부 상태에서 다이얼로그 없이 설정 화면이 남는 경로는 실기기로
+  확인하지 않았다.
