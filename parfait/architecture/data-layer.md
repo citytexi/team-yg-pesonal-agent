@@ -373,7 +373,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 
 세그멘테이션 재시도 회복도 같은 갈래를 따른다. 좌표·단계 타입과 잠정 상수 object(`SegmentationRecoverySpec` 등)는
 `data/model/image` 에 선언 하나당 파일 하나로 두고, 계산과 `Bitmap` 실행은 `data/utils/image` 에 둔다
-→ [spec](../specs/2026-09-10-segmentation-retry-recovery.md).
+→ [spec](../specs/archive/2026-09-10-segmentation-retry-recovery.md).
 
 ✅ **`ParfaitRepository`가 DataSource의 다섯 갈래를 전부 연다**(2026-08-22, PR #329) — 마지막 하나였던
 배경 변경이 C-301 확인 버튼이라는 소비자와 함께 올라왔다. "쓰지 않는 갈래를 미리 열지 않는다"는

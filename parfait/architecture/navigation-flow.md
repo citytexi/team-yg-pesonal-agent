@@ -360,6 +360,15 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
   감싸는 곳은 소비처인 `SegmentationConfirmViewModel`이다. `borderOnly` 진입은 `null`을 싣는다 —
   그 진입의 `cutout`은 사진이 아니라 되살린 알맹이라 분모가 못 된다
   → [topping-upload-source-scaled 스펙](../specs/archive/2026-09-09-topping-upload-source-scaled.md).
+- 📌 **실패 화면에서도 편집 화면으로 간다**(2026-09-10, PR #487). `C-103-Error`의 「직접 편집」이 원본을
+  `saveBitmap`으로 한 번 떨구고 `SegmentationEffect.GoToEdit`을 내면, Route가 떨군 원본을 마스크 자리에 실어
+  `NavKeyToppingEdit(sourceImageUri, segmentationImageUri)`로 `goTo`한다. 그래서 편집 화면은 사진 전체가 남은
+  마스크로 열린다. 결과는 **세그멘테이션 Route도 `ResultEffect`로** 같은 `TOPPING_EDIT_RESULT_KEY`에서 받아
+  (`SegmentationIntent.OnEditResult`) 초안을 기록한 뒤 `GoToConfirm`으로 확인 화면에 간다. C-103 안에
+  `Segmentation` → C-104 → `Segmentation` → `SegmentationConfirm` 순서의 갈래가 하나 생긴 셈이다. 결과를 초안에
+  적는 변환은 확인 화면과 함께 쓰는 `RecordToppingDraftUseCase.recordEditResult` 확장이다. 종전 「편집 없이 사용」
+  (초안을 바로 기록하고 확인 화면으로 가던 동작)은 사라졌다
+  → [c103-error-use-original 스펙](../specs/archive/2026-09-05-c103-error-use-original.md).
 - ✅ **플로우를 나가는 경로가 생겼다(2026-08-20, PR #309)** — 세 화면 + C-101-confirm의 `onClickClose`가
   전부 빈 람다이던 것이 `popUpTo<NavKeyCanvasMain>()`으로 결선됐다(OQ-P-152 해소). 세그멘테이션 쪽은
   로딩·에러·본문 세 화면이 콜백 하나를 공유해 **한 자리를 채우자 셋이 함께 출구를 얻었다.**

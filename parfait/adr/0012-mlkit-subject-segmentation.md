@@ -7,7 +7,7 @@ deciders: Parfait 팀
 supersedes:
 superseded_by:
 related_adr:
-related_spec: c103-segmentation-topping-edit, c103-multi-subject-selection, segmentation-pipeline-hardening, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation
+related_spec: c103-segmentation-topping-edit, c103-multi-subject-selection, segmentation-pipeline-hardening, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-retry-recovery
 related_architecture: data-layer
 platforms: android
 tags: [adr, parfait]
@@ -64,6 +64,8 @@ Google **ML Kit Subject Segmentation**(`play-services-mlkit-subject-segmentation
 > 📌 **`saveEditedImage`는 2026-09-06 PR #457로 `saveBitmap`이 됐다**(`SaveEditedImageUseCase` → `SaveBitmapUseCase`).
 > 「편집 없이 사용」이 원본을 같은 자리로 보내면서 이름이 역할보다 좁아졌기 때문이고, 시그니처와 동작은
 > 그대로다. 아래 기록은 당시 이름을 유지한다 → [c103-error-use-original](../specs/archive/2026-09-05-c103-error-use-original.md).
+> 🔁 그 버튼은 2026-09-10 PR #487에서 「직접 편집」이 됐다. 원본을 `saveBitmap`으로 한 번 떨구는 것은 같고,
+> 떨군 원본을 C-104의 마스크로 넘긴다.
 
 - "결과 전달이 메모리 비트맵 + 파일경로로 **이원**"이라던 트레이드오프는 **경로 단일로 정리됐다**.
   대신 화면이 경로를 다시 디코드하므로 디코드 비용이 화면 쪽으로 옮겨졌다.
@@ -200,3 +202,22 @@ dynamite 모듈로 배달된다. 모듈이 도착해 실제로 동작하는 시�
 `SIGSEGV`" 기록과 같은 계열이고, **세그멘터 인스턴스의 동시 존재가 위험하다**는 것이 그 둘을
 관통하는 사실이다. 모듈 판정은 `Feature`만 든 `OptionalModuleApi`로 한다
 → [segmentation-module-install 스펙](../specs/archive/2026-09-02-segmentation-module-install.md).
+
+## As-built 갱신 (2026-09-10, PR #487 develop 머지)
+
+**입력도 손보기 시작했다. 다만 재시도에서만이다.** 후보 0건으로 실패한 사진에서 「다시 시도」를 누르면
+`recoverCandidates`가 전처리 사다리를 한 번 돈다. 1단계는 대비 LUT와 검출 해상도 맞춤(짧은 변 512, 긴 변 2048,
+둘이 충돌하면 상한이 이긴다)이고, 2단계는 1단계가 남긴 힌트로 크롭한다. 1차 경로의 입력은 그대로다.
+
+이 결정의 전제와 닿는 자리는 둘이다.
+
+- **세그멘터를 여는 횟수가 늘었다.** 1차 경로는 여전히 최대 두 번(다중 subject 다음 전경 폴백)이다. 회복 경로는
+  단계마다 같은 두 겹을 돌기 때문에 **재시도 한 번에 최대 네 번** 연다. 두 옵션 계열을 한 요청에 싣지 않는다는
+  위 제약은 그대로 지킨다. 사다리에 30초 상한이 있지만, `Tasks.await` 블로킹 추론 하나가 끝난 뒤에야 걸린다.
+- **모델을 바꿀 수 있다는 전제는 그대로다.** 손본 판은 알파를 얻는 데만 쓰고 후보 픽셀은 원본에서 오려낸다.
+  `PlateSource.OriginRegion`에 픽셀 인자가 없어서 이 규칙이 구조적으로 강제된다. 좌표 변환·가드·LUT는 `Bitmap`도
+  ML Kit 타입도 모르는 순수 함수다.
+
+⚠️ **회복 경로는 실기기에서 한 번도 돌지 않았다.** 조건부 항목(힌트 크롭·대비·512 확대)을 철회할 근거로 삼은
+단계 로그도 logcat 밖으로 나가지 않는다(OQ-P-399)
+→ [segmentation-retry-recovery 스펙](../specs/archive/2026-09-10-segmentation-retry-recovery.md).

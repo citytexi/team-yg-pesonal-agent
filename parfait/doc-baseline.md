@@ -5,8 +5,49 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `69bbbe68` (`Merge pull request #483 from mash-up-kr/chore/version-1.1.2-9`)
-- **요약**: **버전만 오른 회차인데, 이 회차가 새로 알아낸 것은 버전이 아니라 계보다**
+- **커밋**: `95b7fc4d5` (`Merge pull request #487 from mash-up-kr/feature/#486-segmentation-error-case`)
+- **요약**: **선작성 문서가 브랜치 팁 그대로 들어왔는데, 어긋난 자리는 본문이 아니라 문서 둘레에 있었다**
+  (delta 1건, **29파일 · 삽입 2109줄 · 삭제 458줄**, 커밋 15개). **머지 트리가 브랜치 팁 `3217e62f7`과 같다**
+  (충돌 해소 편집 0건). 유닛 1229 → **1282건**(+53), 계측 **39건** 그대로다. **선작성 스펙 1·계획 1을
+  아카이브로 옮겼고**, 미결은 **신설 3건**(OQ-P-399~401, `oq-next` 399 → 402)이다. **원격 연동 코드가 0건**이라
+  `api/` 는 손대지 않았다.
+
+  **본문은 맞았다.** 스펙 API 절의 선언(`harvestSubjects`·`harvestForeground`·`PlateSource`·
+  `normalizeForDetection`·`isLongSideCapped`·`projectAlpha` 등)이 develop 코드와 맞고, as-built 배너가 적은
+  모듈별 테스트 수(`:domain` 133 · `:data` 534 · `:feature:segmentation:impl` 75)도 다시 세어 보니 같았다.
+  브랜치 단계에서 문서를 as-built 로 먼저 고쳐 둔 덕이다(문서 저장소 PR #404).
+
+  **어긋난 자리는 넷이었다.** ① 스펙 frontmatter `related_code` 가 수확 코드를 옮기기 전의 이름 다섯을 들고
+  있었다(`toCandidatePairs`·`buildCandidatePair`·`postProcess`·`toForegroundCandidate`·`originalCandidate`, develop 에서
+  0건). 본문은 옮긴 뒤를 적는데 목록만 설계 시점에 멈춰 있었다. ② 같은 PR 의 마지막 커밋 `3217e62f7` 이 실패 화면
+  「편집 없이 사용」을 「직접 편집」(C-104 직행)으로 바꿨는데, **내비게이션 문서에 그 갈래가 없었다.** 세그멘테이션
+  Route 가 `TOPPING_EDIT_RESULT_KEY` 를 받는 쪽으로 새로 섰다. ③ OQ-P-153 ④와 OQ-P-344 ①이 「편집 없이 사용」을
+  우회로로 적고 있었다. ④ 선행 스펙 `segmentation-preprocessing` 이 512 확대를 "미착수"로만 적고, 재시도 경로에
+  들어온 사실을 담지 못했다.
+
+  **이 회차가 새로 드러낸 것은 판정 수단 쪽이다.** 스펙은 조건부 세 항목의 철회 조건을 "실사용 로그"로 두었는데,
+  `repositoryLogger` 의 출력처가 Kermit `platformLogWriter` 하나라 **로그가 logcat 밖으로 나가지 않는다**(OQ-P-399).
+  회복 경로를 강제로 태우는 수단도 넣지 않았으므로 철회 근거가 들어올 길이 둘 다 막혀 있다. 실기기 확인은
+  회복 경로와 1차 경로 회귀 모두 0회다(OQ-P-400). 「직접 편집」은 디자인 확정본과 다른 이름인데 근거가 문서에
+  없다(OQ-P-401).
+
+  계보는 이 회차에 달라지지 않았다. 원격에는 `release/*` 브랜치가 남아 있지 않고 태그는 직전 기준선의 `1.1.2`
+  까지다. 로컬에만 버전 1.1.3·코드 10 범프 커밋을 얹은 `release/version-1.1.3-10` 이 있는데, 푸시 전이라 이번
+  범위 밖이다.
+
+  **조치**: 스펙·계획 각 1건 아카이브 이동(링크 보정) + 두 README 행 이동 · 스펙 `related_code` 정정과 as-built
+  배너에 머지 사실 추가 · 계획 as-built 배너 신설 ·
+  [c103-error-use-original](specs/archive/2026-09-05-c103-error-use-original.md) 🔁 배너에 머지·심볼·문구 반영 ·
+  [navigation-flow](architecture/navigation-flow.md) 「직접 편집」 갈래 · [data-layer](architecture/data-layer.md) 링크 ·
+  [ADR-0012](adr/0012-mlkit-subject-segmentation.md) As-built 절 신설 · segmentation-preprocessing 📌 둘과 심볼 이동
+  각주 · [open-questions](synthesis/open-questions.md) 📌 다섯(OQ-P-150·153·278·282·344) + 신설 셋 · doc-baseline·index
+  기준선 갱신. 미머지 하나(`feature/debug-mode`) 유지.
+
+  직전 회차 요약(76회차, `69bbbe68`): **버전만 오른 회차인데, 새로 알아낸 것은 버전이 아니라 계보다**(delta 1건,
+  1파일 2/2). `release/version-1.1.2-9` 가 develop HEAD 그 커밋이어서 OQ-P-311 ①이 최신 계보에서 성립하지
+  않았다. 아래가 그 회차의 상세다.
+
+  **버전만 오른 회차인데, 이 회차가 새로 알아낸 것은 버전이 아니라 계보다**
   (delta 1건, **1파일 · 삽입 2줄 · 삭제 2줄**, `.kt` 0건). `appVersionCode` 8 → **9**,
   `appVersionName` 1.1.1 → **1.1.2**, 프리뷰 두 값은 그대로다. **머지 트리가 브랜치 팁과 같다**
   (충돌 해소 편집 0건). 테스트는 유닛 **1229건**·계측 **39건** 그대로고, 아카이브 이동 **0건**,
@@ -2216,6 +2257,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-10 | `95b7fc4d5` | Merge #487(세그멘테이션 재시도 회복 + 실패 화면 「직접 편집」) | delta 1건, **29파일 2109/458**, 커밋 15개, **머지 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 1229 → **1282건**(+53: 스펙 52 + 「직접 편집」 1), 계측 **39건** 유지. **선작성 스펙 1·계획 1 아카이브 이동**(계획 체크박스 43개 전부 미체크 — 진행의 정본은 `git log`). 미결 **신설 3건**(OQ-P-399~401, `oq-next` 399 → 402), 📌 다섯(OQ-P-150·153·278·282·344). **본문은 맞았다** — 스펙 API 절 선언과 모듈별 테스트 수(133·534·75)가 develop 과 같다(문서 저장소 PR #404 가 브랜치 단계에서 as-built 로 먼저 고쳤다). **어긋난 자리는 문서 둘레였다**: ① 스펙 `related_code` 가 옮기기 전 이름 다섯(develop 0건) ② 마지막 커밋 `3217e62f7` 의 「직접 편집」 갈래(세그멘테이션 Route 가 `TOPPING_EDIT_RESULT_KEY` 를 받는다)가 navigation-flow 에 없음 ③ OQ-P-153 ④·OQ-P-344 ①이 옛 버튼을 우회로로 적음 ④ segmentation-preprocessing 이 512 확대를 "미착수"로만 적음. **새로 드러난 것은 판정 수단이다** — 조건부 세 항목의 철회 조건인 단계 로그가 Kermit `platformLogWriter` 하나라 logcat 밖으로 나가지 않고, 회복 경로 강제 수단도 없다(OQ-P-399). 실기기 확인 0회(회복·1차 회귀, OQ-P-400), 「직접 편집」 이름의 디자인 근거 없음(OQ-P-401). 조치: 아카이브 2 · README 2 · c103-error-use-original 🔁 배너 · navigation-flow · data-layer 링크 · ADR-0012 As-built 절 · segmentation-preprocessing 📌 · open-questions. `api/` 는 원격 연동 코드 0건이라 불변. 원격 `release/*` 브랜치 없음, 태그는 `1.1.2` 까지(로컬 `release/version-1.1.3-10` 은 미푸시라 범위 밖). 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-09-10 | `69bbbe68` | Merge #483(버전 1.1.2 코드 9) | delta 1건, **1파일 2/2**, `.kt` **0건**, **머지 트리 = 브랜치 팁**. 유닛 **1229건**·계측 **39건** 그대로, 아카이브 이동 **0건**, 미결 **신설 0건**(`oq-next` 399 유지). `appVersionCode` 8 → **9** · `appVersionName` 1.1.1 → **1.1.2**(프리뷰 두 값 불변). **이 회차의 발견은 버전이 아니라 계보다** — `origin/release/version-1.1.2-9` 가 `origin/develop` HEAD **그 커밋**이고(양방향 0커밋) 직전 `1.1.1-8` 도 그랬다. **OQ-P-311 ①(검증한 트리 ≠ 배포된 트리)이 최신 계보에서는 성립하지 않는다** — 지금 관행은 develop 에서 릴리즈 브랜치를 떼고 **버전 커밋을 develop 이 PR 로 되받는** 것이라 delta 가 곧 릴리즈 브랜치의 내용이다. ⚠️ 그 관행은 어디에도 규칙으로 안 적혔고 `feature/debug-mode` 는 여전히 release 쪽에만 있다(②). 경량 태그 `1.1.2` 신설 — **경량인 채로 가리키는 곳만 develop 커밋이 됐다**(OQ-P-310 ② 불변: 다음 올림을 강제하는 것이 없다). **버전 축을 지키는 테스트는 0건** — `DeviceInfoTest` 의 `1.1.1` 은 `buildDeviceInfo` 인자로 직접 넣는 픽스처라 카탈로그와 무관하다(그래서 안 깨졌고, 같은 이유로 잘못 오른 값도 못 잡는다). 조치: ADR-0003 📌 · adr/README 0003 행 · OQ-P-311 📌 1덩이 · doc-baseline·index. `api/` 는 원격 연동 코드 0건이라 불변. 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-09-10 | `efa77150` | Merge #477(지난 캔버스 알럿) · #478(화면 진입 계측) · #479(토핑 초안 UseCase 분리) · #480(토핑 업로드 원본 기준 축소) · #482(적응형 폴링 + 화면 수정 다섯) | delta 5건, **78파일 2573/305**, **머지 다섯 전부 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 1164 → **1229건**(+65), 계측 37 → **39건**. **선작성 스펙 4·계획 4 아카이브 이동**(계획 체크박스는 실행 세션이 남기지 않아 거의 전부 미체크 — 진행의 정본은 `git log`), **사후 스펙 2건 신규 작성**(past-canvas-alert · canvas-feedback-fixes). 미결 **신설 6건**(OQ-P-392~397, `oq-next` 392 → 398)·**해소 1건**(OQ-P-389). **#477**: 새 상태를 만들지 않고 `CanvasVO.lastClosedDate` 의 변화만 본다. 처음 확인은 기준선만 세우고, `markSeen` 은 띄우기로 확정된 뒤에만 부르며(실패까지 「봤다」로 남기면 그 마감을 영영 못 본다), 인원 수는 **그 마감 당시 참여자**다. ⚠️ 정책 소스 없음(OQ-P-392). **#478**: 앱 최초의 Analytics 소비처. `simpleName` 을 안 쓰는 이유는 release R8 이 **운영 집계에서만** 이름을 뭉개서이고, 판정 기준은 최상단 키가 아니라 **크기와의 짝**이며, 트래커가 `@Singleton` 이면 **그 실행의 A-001 이 통째로 빠진다**. **#479**: 위임 UseCase 넷 + 판정 하나. **위임이라는 사실 자체가 결정**(규칙 없는 자리에 규칙을 지어내지 않는다). ⚠️ 컴파일러가 검사하지 않는다. **#480**: 하한 256 을 **입력이 아니라 결과**에 건다 — 입력에 걸면 641 이 204 로 올라가 더 큰 알맹이가 더 작게 올라간다. #479 와 같은 자리를 밟았고 순서가 **예고대로** 풀렸다. **#482**: 적응형 주기(실패는 램프 불변) + 화면 수정 다섯 — 로딩 덮개 최소 노출이 **`YGScaffoldV2` 의 계약**이 되고, 첫 페인트 뒤 덮개 억제 판정이 **두 번 무너졌다가 잡혔다**. ⚠️ 그 판정에 자기 테스트가 없다(OQ-P-395). **이 회차의 발견은 절차 쪽** — OQ-P-389 가 고쳐지자마자 같은 모양으로 재발했다(OQ-P-396). `api/` 는 원격 연동 코드 0건이라 계약 절 불변, `notification.md` Android 매핑에만 갈래 추가. 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-09-09 | `acbc4b45` | Merge #472(토핑 편집 빈 알맹이 차단) · #473(업로드 이미지 다운스케일) | delta 2건, **21파일 941/68**, **머지 둘 다 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 1139 → **1164건**(+25), 계측 **37건** 유지. **선작성 스펙 2·계획 2 아카이브 이동**(자동 Task 전량 수행, 실기기 수동 검증 Task 만 미체크). 미결 **신설 5건**(OQ-P-387~391, `oq-next` 386 → 392). **#472**: 하한 상수·판정이 `data` 의 `internal` 에서 `domain` 의 `SubjectCoverage` 로 올라가 자동 후보 필터·저장소 알파 정제·편집 화면이 같은 함수를 본다. `trimTransparentBounds` 가 `measureSubject`(경계 + 알파 합, 순수 함수)와 `trimTo(SubjectMeasure)` 로 갈렸고 차단은 파일을 쓰기 전이다. `borderOnly` 진입은 판정에서 빠졌다 — **그 예외는 구현이 먼저 드러내고 스펙이 뒤따라 적었다**. **#473**: `upload` 이 발급 직전 `UploadImagePreprocessor` 를 부르고 파일·포맷을 쌍으로 받는다. 판정(`UploadImagePlan.of`, 순수)과 실행(`UploadImagePreprocessorImpl`)이 갈려 결정 표가 JVM 유닛으로 덮인다. `inSampleSize` 만으로는 배경 2049~4095 구간이 sampleSize 1에 걸려 밀도 비로 디코드 단계까지 내려받는다. ⚠️ **없던 디코드가 생겼다** — 변경 전 업로드는 바이트 복사뿐이었다. 구현이 스스로 잡은 함정 하나(`inTargetDensity` 가 결과 density 로 남아 흰 판 합성이 자동 축소되는 것)는 문서가 예측한 적 없다. 반대로 저장소 주석은 **스펙이 철회한 메모리 비교**를 그대로 들고 있다(OQ-P-388, 동작 영향 없음). **두 라운드가 만나는 자리가 이번의 발견**(OQ-P-391) — 하한은 편집본 원본 해상도에서 재는데 업로드본은 긴 변 1500까지 줄어, **하한을 어느 좌표계에서 재는지가 정해진 적이 없다**. 조치: 아카이브 4건 · architecture 2건 · 미결 5건. `api/` 는 원격 연동 코드 0건이라 불변. 미머지 하나(`feature/debug-mode`) 유지 |
