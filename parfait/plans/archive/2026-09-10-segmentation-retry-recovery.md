@@ -1,7 +1,7 @@
 ---
 id: segmentation-retry-recovery
 title: 세그멘테이션 재시도 회복 구현 계획 (8 Task)
-status: draft
+status: done
 type: work-order
 created: 2026-09-10
 updated: 2026-09-10
@@ -9,14 +9,28 @@ platforms: android
 owner: android
 related_adr: ADR-0012
 related_spec: segmentation-retry-recovery, segmentation-preprocessing, c103-error-use-original
-related_code: ImageSegmentationRepositoryImpl#segmentImage, ImageSegmentationRepositoryImpl#segmentForeground, ImageSegmentationRepositoryImpl#toCandidatePairs, ImageSegmentationRepositoryImpl#postProcess, ImageSegmentationRepositoryImpl#toForegroundCandidate, SegmentationMask.kt#maskSubjectAlpha, AlphaPostProcessor.kt#postProcessAlpha, AlphaComposite.kt#composeCroppedArgb, SegmentationCandidateFilter.kt#filterCandidates, SubjectCoverage.kt#floorPixels, SegmentationViewModel.kt#loadCandidates
-archived_reason:
+related_code: ImageSegmentationRepositoryImpl#segmentImage, ImageSegmentationRepositoryImpl#segmentForeground, ImageSegmentationRepositoryImpl#recoverCandidates, SegmentationCandidateHarvest.kt#harvestSubjects, SegmentationCandidateHarvest.kt#harvestForeground, SegmentationRecoveryNormalizer.kt#normalizeForDetection, SegmentationMask.kt#maskSubjectAlpha, AlphaPostProcessor.kt#postProcessAlpha, AlphaComposite.kt#composeCroppedArgb, SegmentationCandidateFilter.kt#filterCandidates, SubjectCoverage.kt#floorPixels, SegmentationViewModel.kt#loadCandidates, SegmentationViewModel.kt#recover
+archived_reason: develop 머지(PR #487 `95b7fc4d5`, 2026-09-10)
 tags: [plan, parfait]
 ---
 
 # 세그멘테이션 재시도 회복 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+> ✅ **완료·develop 머지(2026-09-10, PR #487 `95b7fc4d5`, 트리 = 브랜치 팁)**: Task 1~7과 Task 8의 자동 검증까지
+> 수행했고 커밋은 `d55880fb0`~`3217e62f7` 15개다. **머지본이 계획과 갈린 자리는 넷이다.**
+> ① 신규 유닛이 46건이 아니라 52건이다(`isLongSideCapped` 4건, `projectAlpha` 2건 추가).
+> ② Task 1·2가 최상위 `const`로 둔 상수와 좌표·단계 타입이 구현 뒤 정리에서 `data/model/image/`(파일 하나에 선언
+> 하나)와 `SegmentationRecoverySpec`·`SegmentationContrastSpec`·`SegmentationMaskSpec` object로 옮겨 갔다. 아래 코드
+> 블록의 `DETECTION_MIN_SHORT_SIDE`·`LUMINANCE_LEVELS` 같은 최상위 이름은 당시 이름이다.
+> ③ 최종 리뷰가 수정 3커밋(`capped` 판정, `CancellationException` 재던짐, `projectAlpha`)을 더 얹었다. 세부는 대응
+> 스펙의 as-built 배너에 있다.
+> ④ 계획에 없던 마지막 커밋 `3217e62f7`이 실패 화면의 「편집 없이 사용」을 「직접 편집」으로 바꿨다(유닛 +1).
+> 그래서 **Task 8 Step 2의 4번 확인 항목은 대상이 사라졌다.**
+>
+> ⚠️ **체크박스는 실행 세션이 남기지 않아 전부 미체크(43개)다.** 진행의 정본은 `git log`다. **Task 8 Step 2(1차
+> 경로 실기기 회귀)는 수행 기록이 없다**(OQ-P-400).
 
 > ⚠️ **계획 검수 2회가 초판을 뒤집었다.** 대비 LUT가 원본에 직접 쓰던 것, 알파 제자리 소거로 되돌림
 > 커버리지가 틀리던 것, 회복 되돌림 후보가 불투명 사각형이 되던 것, 2단계 폴백 오프셋 누락, 사다리 격회 반복,
@@ -30,7 +44,7 @@ tags: [plan, parfait]
 
 **Tech Stack:** Kotlin, ML Kit Subject Segmentation, Hilt, kotlinx.coroutines, JUnit4 + kotlin.test + MockK + Turbine
 
-**Spec:** [`parfait/specs/2026-09-10-segmentation-retry-recovery.md`](../specs/2026-09-10-segmentation-retry-recovery.md)
+**Spec:** [`parfait/specs/archive/2026-09-10-segmentation-retry-recovery.md`](../../specs/archive/2026-09-10-segmentation-retry-recovery.md)
 
 ## Global Constraints
 

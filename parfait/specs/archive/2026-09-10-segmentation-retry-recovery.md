@@ -1,7 +1,7 @@
 ---
 id: segmentation-retry-recovery
 title: 세그멘테이션 재시도 회복 — 입력 전처리 사다리와 좌표 역변환 (Segmentation retry recovery)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-09-10
@@ -9,10 +9,15 @@ related_code:
   - ImageSegmentationRepositoryImpl.kt#segmentImage
   - ImageSegmentationRepositoryImpl.kt#segmentForeground
   - ImageSegmentationRepositoryImpl.kt#runSegmenter
-  - ImageSegmentationRepositoryImpl.kt#toCandidatePairs
-  - ImageSegmentationRepositoryImpl.kt#buildCandidatePair
-  - ImageSegmentationRepositoryImpl.kt#postProcess
-  - ImageSegmentationRepositoryImpl.kt#toForegroundCandidate
+  - ImageSegmentationRepositoryImpl.kt#recoverCandidates
+  - ImageSegmentationRepositoryImpl.kt#runRecoveryLadder
+  - ImageSegmentationRepositoryImpl.kt#runStage
+  - SegmentationCandidateHarvest.kt#harvestSubjects
+  - SegmentationCandidateHarvest.kt#harvestForeground
+  - SegmentationCandidateHarvest.kt#PlateSource
+  - SegmentationRecoveryNormalizer.kt#normalizeForDetection
+  - RecoverCandidatesUseCase.kt#RecoverCandidatesUseCase
+  - SegmentationViewModel.kt#recover
   - ImageSegmentationRepository.kt#segmentImage
   - SegmentationMask.kt#maskSubjectAlpha
   - SegmentationMask.kt#confidenceToAlpha
@@ -29,7 +34,6 @@ related_code:
   - AlphaComponents.kt#applyAreaOpening
   - UploadImagePreprocessorImpl.kt#prepare
   - ImageSegmentationRepositoryImpl.kt#persistSubject
-  - ImageSegmentationRepositoryImpl.kt#originalCandidate
   - SegmentationViewModel.kt#editManually
   - BaseViewModel.kt#launch
   - SegmentationBounds.kt#SegmentationBounds
@@ -58,9 +62,17 @@ tags: [spec, parfait, segmentation, c103, retry]
 > `0735aebf6`·`c7d7e3863`은 선언 위치만 옮긴 정리이고 `9da7187dc`는 주석 정리라서 `:data:testDebugUnitTest`,
 > `:data` ktlint, `:app:assembleDebug`만 다시 돌렸고 모두 통과했다. `3217e62f7`은 실패 화면의 「편집 없이 사용」을
 > 「직접 편집」(C-104 직행)으로 바꾼 변경이며, `:feature:segmentation:impl:testDebugUnitTest` 75건(실패 0), 그 모듈의
-> ktlint, `:app:assembleDebug`가 통과했다. **`status`는 아직
-> `draft`다**: develop 미병합이라 `archive/` 이동 전까지는 login-debug-mode 스펙과 같은 사정으로 `draft`에
-> 남는다(구현 완료와 상태 표기는 별개다).
+> ktlint, `:app:assembleDebug`가 통과했다.
+>
+> ✅ **develop 머지(2026-09-10, PR #487 `95b7fc4d5`)**: 머지 트리가 브랜치 팁 `3217e62f7`과 같다(충돌 해소 편집 0건).
+> develop에서 다시 센 유닛은 `:domain` 133건, `:data` 534건, `:feature:segmentation:impl` 75건이고, 앱 전체로는
+> 1229건에서 1282건이 됐다(+53). 아래 API 절의 선언은 develop 코드와 맞는다. 다만 frontmatter `related_code`가
+> 수확 코드를 옮기기 전의 이름(`toCandidatePairs`·`buildCandidatePair`·`postProcess`·`toForegroundCandidate`·
+> `originalCandidate`)을 들고 있어서, 머지 점검에서 현행 이름으로 바꿨다.
+>
+> ⚠️ **철회 조건인 단계 로그가 운영에서 모이지 않는다.** `repositoryLogger`의 출력처가 Kermit `platformLogWriter`
+> 하나뿐이라 로그가 logcat에만 남는다(OQ-P-399). 아래 「다음 라운드로 미룬 항목」과 실기기 확인 두 건은
+> OQ-P-400이 추적한다.
 >
 > ⚠️ **회복 경로는 실기기에서 한 번도 돌지 않았다.** 강제 수단을 넣지 않기로 한 설계를 그대로 지켰다. 실패 사진이
 > 생기면 아래 「주의 / 열린 질문」의 항목으로 확인한다.
@@ -115,7 +127,7 @@ tags: [spec, parfait, segmentation, c103, retry]
   눌러도 같은 빈 목록이다.**
   ⚠️ ML Kit 추론 자체의 결정성은 코드로 확인할 수 없다. 이 서술의 근거는 우리 코드까지다.
 
-[segmentation-preprocessing](2026-08-23-segmentation-preprocessing.md)이 촬영과 디코드 쪽 입력
+[segmentation-preprocessing](../2026-08-23-segmentation-preprocessing.md)이 촬영과 디코드 쪽 입력
 품질을 다뤘고, 대비·감마 정규화와 후처리 전반을 "문서 근거가 없다"는 이유로 다음 라운드로 밀었다.
 이 스펙이 그 다음 라운드에 해당하되, **적용 지점을 전역이 아니라 재시도 경로로 좁힌다.**
 
@@ -135,7 +147,7 @@ tags: [spec, parfait, segmentation, c103, retry]
 
 **제외**
 
-- **실패 문구의 원인별 분기** — [c103-error-use-original](archive/2026-09-05-c103-error-use-original.md)이
+- **실패 문구의 원인별 분기** — [c103-error-use-original](2026-09-05-c103-error-use-original.md)이
   `SegmentationErrorKind`를 걷어내고 한 벌로 통합했다. 이 스펙의 분기는 ViewModel 내부에만 있고
   화면 문구는 전과 똑같다.
 - **필터 하한 완화를 판정에 적용하는 것** — 후보의 캔버스 치수가 언제나 원본이라 `SubjectCoverage` 하한도
@@ -152,7 +164,7 @@ tags: [spec, parfait, segmentation, c103, retry]
 - **1차 경로의 필터 임계 변경** — 이 스펙과 무관한 회귀가 난다.
 - **`decodeImage` 전역 정규화** — 확대판이 그대로 후보가 되면 알맹이 PNG의 인트린식 치수가 커지고
   그 값이 배치 초기 크기를 거쳐 서버 `scale`로 굳는다(OQ-P-282). 회복 경로는 원본에서 오려내므로
-  그 전파가 아예 없다. [segmentation-preprocessing](2026-08-23-segmentation-preprocessing.md)의
+  그 전파가 아예 없다. [segmentation-preprocessing](../2026-08-23-segmentation-preprocessing.md)의
   「짧은 변 512 하한 확대」 항목은 **미착수로 남고, 이 스펙이 재시도 경로에 한해 그 자리를 대신한다.**
 - **사다리 3단계 이상** — 진짜 탈출구는 실패 화면의 「직접 편집」이다. 2026-09-10에 「편집 없이 사용」을 대신해 C-104로 바로 간다.
 - **단계별 진행 표시** — 문구를 한 벌로 통합한 결정과 같은 이유다.
@@ -314,7 +326,7 @@ subject 하나를 원본으로 되돌리는 순서는 이렇다.
 기준 엄격 하한과 비교한다. 1차는 두 좌표계가 같으므로 지금과 똑같다.
 
 회복 경로도 수확 뒤 `filterCandidates`를 **기본 하한으로** 건다. 폴백 후보는 1차와 같이 필터를 거치지 않는다.
-[c103-multi-subject-selection](archive/2026-08-23-c103-multi-subject-selection.md)이 정의한 선택 UX가
+[c103-multi-subject-selection](2026-08-23-c103-multi-subject-selection.md)이 정의한 선택 UX가
 재시도 전후로 같다.
 
 로그에는 사전 절단과 필터 각각에서 **엄격 하한 통과 수와 1/4 하한이었다면 통과했을 수**를 함께 남긴다.

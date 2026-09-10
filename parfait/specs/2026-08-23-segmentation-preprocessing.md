@@ -30,6 +30,11 @@ tags: [spec, parfait]
 > 보정, 그리고 그 판정을 내리는 고정 사진 세트 측정이 전부 미착수다. 아래 본문에서 현재 코드를
 > 단정하는 문장은 **1단계가 이미 고친 자리에 한해** 낡았다(촬영 빌더·`fileExtension`). 근거로서의
 > 서술은 그대로 두고 바뀐 자리에만 표시를 달았다.
+>
+> 📌 **512 확대가 재시도 경로에 한해 들어왔다**(2026-09-10, PR #487). `decodeImage` 전역 확대는 여전히
+> 미착수다. 후보 0건 뒤 재시도 사다리만 검출 입력을 짧은 변 512·긴 변 2048로 맞추고, 후보 픽셀은 원본에서
+> 오려내므로 OQ-P-282의 크기 전파가 없다. 이 스펙이 예약한 `SegmentationInputNormalizer.kt` 이름은 쓰지 않았다
+> (`SegmentationRecoveryNormalizer.kt`) → [segmentation-retry-recovery](archive/2026-09-10-segmentation-retry-recovery.md).
 
 누끼의 **정확도**를 올린다. 대상을 더 잘 얻는 것이 목표이고 지연·메모리는 목표가 아니다.
 세그멘테이션이 보는 픽셀이 만들어지는 자리를 손봐서, 모델에게 원본에 가장 가까운 입력을 준다.
@@ -45,7 +50,7 @@ tags: [spec, parfait]
 | `ImageCapture` 촬영 품질 상향 | 손실이 실제로 처음 생기는 자리다. 비용이 설정 한 줄이다 | 무조건 넣는다 → ✅ 머지(#349) |
 | API 26·27 EXIF 회전 보정 | 그 갈래가 EXIF를 안 먹인다는 것이 코드로 확정된다 | 무조건 넣는다 → ✅ 머지(#349) |
 | API 28 이상 추가 회전 보정 | `ImageDecoder`의 EXIF 적용 여부를 확인하지 못했다 | 조건부(OQ-P-280) → 미착수 |
-| 짧은 변 512 하한 확대 | 문서가 하한을 명시하나 확대로 회복된다고는 말하지 않는다 | 조건부(OQ-P-278) → 미착수 |
+| 짧은 변 512 하한 확대 | 문서가 하한을 명시하나 확대로 회복된다고는 말하지 않는다 | 조건부(OQ-P-278) → 전역 미착수(재시도 경로에만 PR #487) |
 | 촬영 저장을 PNG로 | 손실의 두 번째 세대만 없앤다. 첫 세대가 더 크다 | 조건부(아래 경고) → 미착수 |
 
 > ⚠️ **PNG 전환은 처음 생각보다 근거가 약하다.** `CameraPreviewComponent.kt`의
@@ -258,7 +263,7 @@ internal fun exifOrientationToDegrees(orientation: Int): Int
   **확대는 픽셀 상한이 막고, 회전은 전체 해상도에 걸리므로 중간 판 회수가 필수다.**
 - **EXIF 읽기·URI 재개방 실패** — 회전 0으로 진행하고 로그를 남긴다.
 
-회전과 확대가 겹치면 중간 비트맵이 생긴다. `toForegroundCandidate`가 `trimmed !== masked`로 하는 것과
+회전과 확대가 겹치면 중간 비트맵이 생긴다. `toForegroundCandidate`(2026-09-10 PR #487에서 `SegmentationCandidateHarvest.kt#harvestForeground`로 옮겨 갔다)가 `trimmed !== masked`로 하는 것과
 같은 관용구로, 입력과 다른 인스턴스일 때만 중간 판을 회수한다.
 
 ## 테스트

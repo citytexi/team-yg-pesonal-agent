@@ -33,10 +33,14 @@ tags: [spec, parfait, segmentation, c103, error]
 
 # Spec: C-103-Error 실패 화면 통합과 「편집 없이 사용」
 
-> 🔁 **「편집 없이 사용」은 2026-09-10에 「직접 편집」으로 바뀌었다**(브랜치 `feature/#486-segmentation-error-case`,
-> develop 미머지). 원본을 한 번 저장하는 것까지는 같지만, 초안을 바로 기록하지 않고 사진 전체가 남은 마스크로
-> C-104를 연다. 편집 결과를 받은 뒤에 초안을 기록하고 C-103-confirm으로 간다. 이 문서의 버튼 동작·문구 서술은
-> 그 시점까지의 기록이다.
+> 🔁 **「편집 없이 사용」은 2026-09-10에 「직접 편집」으로 바뀌었다**(커밋 `3217e62f7`, PR #487 `95b7fc4d5`로
+> develop 머지). 원본을 한 번 저장하는 것까지는 같지만, 초안을 바로 기록하지 않고 사진 전체가 남은 마스크로
+> C-104를 연다. 편집 결과를 받은 뒤에 초안을 기록하고 C-103-confirm으로 간다. 심볼은 `UseOriginal`이
+> `EditManually`·`OnEditResult`로, `useOriginal()`이 `editManually()`·`recordEditResult()`로, `onClickUseOriginal`이
+> `onClickEditManually`로 바뀌었다. 문구는 버튼 `segmentation_error_edit_manually`(「직접 편집」)와 설명 「다시
+> 시도하거나 직접 편집할 수 있어요」다. 이 문서의 버튼 동작·문구 서술은 그 시점까지의 기록이다.
+> ⚠️ 디자인 확정본과 다른 이름이 된 근거가 문서에 없다(OQ-P-401). 편집 화면으로 가는 갈래는
+> [navigation-flow](../../architecture/navigation-flow.md)에 있다.
 
 > ✅ **구현 완료·develop 머지(2026-09-06, PR #457 `5f860cb9c`)** — 4 Task 전부 리뷰를 통과했고
 > 머지본을 스펙과 줄 단위로 대조한 결과 **설계와 어긋난 자리가 없다.** 유닛 테스트가 25건에서
