@@ -449,6 +449,15 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
 base intent로 남아 되살릴 때 다시 오는 것은 `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY` 판정이 막는다.
 자세한 것은 [navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동"에 있다.
 
+📌 **토핑 알림이 이동 말고 하나를 더 한다**(2026-09-10, PR #482 `efa771503`) — `onMessageReceived`가
+알림을 띄운 뒤 같은 `data` 를 다시 읽어, `type=TOPPING`·`route=canvas` 이면
+`RequestTodayParfaitRefreshUseCase` 로 **오늘 캔버스 갱신을 요청한다**(폴링 주기를 기다리지 않는다).
+판정은 `Map<String, String>.toppingGroupIdOrNull()` 하나이고 리마인드(`route=group`)는 파서가 이미
+갈라 준다. 계약 쪽 요구는 **늘지 않았다** — 읽는 키는 종전과 같은 `type`·`route`·`groupId` 셋이고
+`date` 는 여전히 안 읽는다(OQ-P-359). ⚠️ **포그라운드에서만 돈다** — `notification` 블록이 실린
+페이로드를 백그라운드·종료 상태에서 받으면 시스템이 알림을 직접 띄우고 이 콜백을 거치지 않는다
+→ [canvas-adaptive-polling 스펙](../specs/archive/2026-09-10-canvas-adaptive-polling.md).
+
 🔁 **여기 있던 두 경고를 걷었다 — 둘 다 낡았다.** ① 권한을 묻는 자리는 PR #450이 붙였다
 (`NotificationPermissionGate`, A-004·A-005 완료 직후 — OQ-P-358은 그때 해소됐다). ② 콜드 스타트에서
 딥링크와 스플래시 백스택 리셋이 겹치는 구간은 **닫혔다** — 수집이 스플래시 이탈을 기다린 뒤 소비하고,

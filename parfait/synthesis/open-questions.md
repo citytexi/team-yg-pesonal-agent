@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-09
+verified: 2026-09-10
 related_spec: topping-edit-empty-subject-guard, upload-image-downscale, push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field
 related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029, ADR-0030
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -5659,7 +5659,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 
 - **ID**: OQ-P-320
 - **출처**: [캔버스 오늘 SSoT·폴링 스펙](../specs/archive/2026-08-27-canvas-today-ssot-polling.md) 「폴링을
-  어디에 두는가」·「주의」 × [canvas-adaptive-polling 스펙](../specs/2026-09-10-canvas-adaptive-polling.md) ×
+  어디에 두는가」·「주의」 × [canvas-adaptive-polling 스펙](../specs/archive/2026-09-10-canvas-adaptive-polling.md) ×
   [ADR-0029](../adr/0029-canvas-today-ssot-polling.md) — **값을 정하는 방식은 이제 정해졌다**(조회
   결과가 캐시와 같으면 한 칸씩 성기게, 다르면 가장 촘촘한 단계로). 다만 그 방식이 쓰는 단계 값과
   상한 자체는 어떤 지표를 보고 정한 것이 아니다.
@@ -5676,7 +5676,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   단계를 들고 `CanvasPoller`가 대기 직전마다 그것에 묻는 방식으로 상수 하나를 대체했다. 다만
   그 단계 값·상한과, 조정 근거로 쓸 실사용 지표·주체는 여전히 없다)
 - **해소 메모**: 실서버 부하와 캐시-일치 빈도를 실측해 단계·상한을 다시 잰다. 바꾸면
-  [canvas-adaptive-polling 스펙](../specs/2026-09-10-canvas-adaptive-polling.md)과 ADR-0029의
+  [canvas-adaptive-polling 스펙](../specs/archive/2026-09-10-canvas-adaptive-polling.md)과 ADR-0029의
   「주기를 되돌리는 계기」 표를 함께 고친다. 코드 쪽 상수는 `CanvasPollInterval`과
   `BaseViewModel`의 `SUBSCRIPTION_STOP_TIMEOUT` 두 곳이다.
 
@@ -7298,9 +7298,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **출처**: `UploadImagePlan`(1곳)·`UploadImagePreprocessorImpl`(2곳)의 KDoc.
 - **항목**: 셋 다 `specs/2026-09-08-upload-image-downscale.md` 를 근거로 적었는데, 이 회차가 그 스펙을
   `specs/archive/` 로 옮겼다. 경로가 한 단계 어긋나 근거를 따라가지 못한다.
-- **상태**: 미해결 (경로 문자열만 고치면 되는 정정)
-- **해소 메모**: 같은 정정의 선례가 이번 델타 안에 있다 — `SegmentationCandidateFilter` 의 주석이
-  `specs/…` 에서 `specs/archive/…` 로 바뀌었다. 다음에 그 파일들을 여는 라운드에서 함께 고친다.
+- **상태**: 해소됨 (2026-09-09, PR #480 `93cb002b5` — 셋 다 `specs/archive/…` 로 고쳐졌다)
+- **해소 메모**: 같은 파일들을 여는 라운드가 곧바로 왔고 함께 고쳐졌다. **다만 같은 유형이 즉시
+  재발했다** — 이 회차가 스펙 넷을 새로 아카이브로 옮겨, 그 넷을 가리키던 코드 주석이 다시 한 단계
+  어긋났다(OQ-P-396). 스펙을 옮길 때 코드 주석을 함께 보는 절차가 없다는 것이 반복되는 원인이다.
 
 ### [2026-09-09] 재인코딩이 만드는 세 갈래를 실기기가 아직 판정하지 않았다
 
@@ -7329,4 +7330,79 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 하한을 어느 좌표계에서 재는지가 정해진 적이 없다. 기획이 하한을 확정할 때
   **업로드본 기준인지 편집본 기준인지**를 함께 정하고, iOS 와 값·기준면을 맞춘다(OQ-P-386 과 한 묶음).
 
-<!-- oq-next: 392 -->
+### [2026-09-10] 지난 캔버스 알럿의 정책 소스가 없다
+
+- **ID**: OQ-P-392
+- **출처**: `specs/archive/2026-09-09-past-canvas-alert.md`(사후 스펙), `CanvasMainViewModel#checkShowPastCanvasAlert`,
+  `feature/groups/canvas/impl` 의 `canvas_main_closed_canvas_alert_*` 문자열.
+- **항목**: 위키에 이 알럿을 정한 기획 문서가 없다. 코드가 확정한 것이 넷이다 — ① 노출 조건("그
+  마감을 처음 확인하는 순간", 며칠 전 마감도 포함) ② 이 기기·이 그룹이 처음이면 조용히 기준선만
+  세운다 ③ 인원 수를 **그 마감 당시 참여자**로 센다(오늘 멤버가 아니다) ④ 문구 3종.
+- **상태**: 미해결 (동작함, 근거가 코드뿐)
+- **해소 메모**: 기획이 이 알럿을 문서로 확정하면 위키에 소스를 넣고 사후 스펙을 그 근거로 다시
+  묶는다. 특히 ②는 배포 시점 방어라 정책이 다르게 정해지면 첫 사용자 경험이 달라진다.
+
+### [2026-09-10] 알럿 판정이 폴링 회차마다 돌아 실패가 반복 조회를 부른다
+
+- **ID**: OQ-P-393
+- **출처**: `CanvasMainViewModel#checkShowPastCanvasAlert`·`#closedCanvasMemberCount`.
+- **항목**: 판정은 오늘 캔버스를 받을 때마다 돌고, 인원 수를 얻는 지난 캔버스 상세 조회가 실패하면
+  `markSeen` 을 부르지 않는다(그 마감을 영영 못 보는 것을 막는 의도적 설계다). 그래서 그 조회가
+  계속 실패하는 상황에서는 **폴링 회차마다 상세 조회가 한 번씩 더 나간다.**
+  `launch(key = PAST_CANVAS_ALERT_KEY)` 가드는 동시 중복만 막고 재시도 자체는 막지 않는다.
+- **상태**: 미해결 (적응형 주기로 최악의 빈도는 20초에 한 번까지 성기어졌다)
+- **해소 메모**: 재시도 상한이나 백오프를 둘지는 알럿 정책이 확정된 뒤에 정한다(OQ-P-392와 한 묶음).
+  실패 원인이 서버 쪽이면 적응형 주기의 실패-무시 규칙과 같은 축에서 다루는 편이 낫다.
+
+### [2026-09-10] 같은 최소 노출 500ms 를 상수 둘이 각자 든다
+
+- **ID**: OQ-P-394
+- **출처**: `YGScaffoldV2` 의 `YG_LOADING_MINIMUM_VISIBLE_MILLIS`,
+  `GroupListViewModel.REFRESH_MINIMUM_VISIBLE_MILLIS`.
+- **항목**: 로딩 덮개와 당겨서 새로고침 인디케이터가 같은 문제("깜빡이기만 하면 무엇을 기다렸는지
+  알 수 없다")를 같은 값으로 푸는데, 그리는 자리가 달라(스캐폴드 / `isRefreshing` 상태) 상수가 둘로
+  갈렸다. 한쪽만 바뀌면 두 표시의 체감 길이가 어긋난다.
+- **상태**: 미해결 (동작 영향 없음)
+- **해소 메모**: 값을 디자인시스템 한 곳으로 모을지, 아니면 "덮개"와 "인디케이터"를 서로 다른
+  기준으로 볼지 정한다. 후자면 두 값이 다른 것이 정상이므로 그 근거를 문서에 적는다.
+
+### [2026-09-10] 캔버스 첫 페인트 판정에 자기 테스트가 없다
+
+- **ID**: OQ-P-395
+- **출처**: `CanvasMainRoute` 의 `paintedCanvasIds`·`sawLoading`·`observedCanvasId` 상태 셋과 그
+  `LaunchedEffect`, `specs/archive/2026-09-10-canvas-feedback-fixes.md` 「테스트」.
+- **항목**: 이 판정은 구현 중에 두 번 무너졌다가 잡혔다(첫 컴포지션의 `Loaded` 오인, 토핑도 배경도
+  없는 캔버스에서 판정이 굳는 것). 그런데 상태가 전부 Route 컴포지션에 있어 ViewModel 테스트가 닿지
+  않고, 계측 테스트도 없다. **덮개가 다시 뜨는 회귀도, 아예 안 뜨는 회귀도 자동으로는 안 잡힌다.**
+  `paintedCanvasIds` 가 화면 수명 동안 단조 증가하는 것도 같은 이유로 관측되지 않는다.
+- **상태**: 미해결
+- **해소 메모**: 판정을 순수 함수나 상태 홀더로 떼면 JVM 유닛으로 덮인다. 떼는 김에 리셋 조건을
+  한 자리에 모으면 위 두 회귀가 같은 테스트로 잠긴다.
+
+### [2026-09-10] 스펙을 아카이브로 옮기는 절차가 코드 주석을 보지 않는다
+
+- **ID**: OQ-P-396
+- **출처**: OQ-P-389의 재발. 이 회차가 스펙 넷을 `specs/archive/` 로 옮겼고, 그중 셋을 코드 주석
+  **여덟 자리**가 옛 경로로 가리킨다 — `UploadImagePlan`(세 자리)·`UploadImageUseCase`·
+  `SourceLongSide`(topping-upload-source-scaled), `CanvasPollInterval`·
+  `ParfaitFirebaseMessagingService`(canvas-adaptive-polling), `NavKeyAnalyticsScreen`
+  (release-analytics-screen-tracking). topping-draft-usecase-extraction 만 가리키는 주석이 없다.
+- **항목**: 스펙 이동은 문서 저장소에서 일어나고 주석은 코드 저장소에 있어, 옮기는 라운드가 그
+  주석을 건드릴 계기가 없다. 같은 일이 직전 회차에도 있었다(OQ-P-389).
+- **상태**: 미해결 (경로 문자열 정정, 동작 영향 없음)
+- **해소 메모**: 둘 중 하나다 — ① 코드 주석이 파일 경로 대신 스펙 `id` 를 가리키게 바꾼다(이동에
+  견딘다) ② `sync-tjyg-develop-baseline` 이 아카이브 이동 시 그 스펙을 가리키는 코드 주석을 함께
+  세는 단계를 갖는다. ①이 반복을 끝낸다.
+
+### [2026-09-10] 로그아웃이 지난 캔버스 알럿 기록을 지우지 않는다
+
+- **ID**: OQ-P-397
+- **출처**: `LogoutUseCase`(KDoc 이 "무엇을 지우는가의 단일 자리"라고 못 박는다),
+  `PastCanvasAlertLocalDataSourceImpl`.
+- **항목**: 새로 생긴 그룹별 확인 기록은 `DataStore` 에 남는데 로그아웃·탈퇴가 그것을 지우지 않는다.
+  다른 계정으로 로그인해 같은 그룹에 들어가면 **이미 본 것으로 취급돼 알럿을 놓친다.**
+- **상태**: 미해결 (기기를 공유해 계정을 바꾸는 경우에만 드러난다)
+- **해소 메모**: `LogoutUseCase` 에 정리 한 줄을 더하거나, 키를 그룹 id 가 아니라 계정 id + 그룹 id
+  로 묶는다. 앞엣것이 그 KDoc 의 규약과 맞다.
+
+<!-- oq-next: 398 -->

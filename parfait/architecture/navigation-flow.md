@@ -230,6 +230,16 @@ TokenAuthenticator(재발급 거절) → SessionEventBusImpl.postForcedLogout()
 > 묻는 자리가 PR #450으로 들어왔다(`NotificationPermissionGate`, A-004·A-005 완료 직후). OQ-P-358은
 > 그때 이미 해소됐는데 이 문서만 옛 상태로 남아 있었다.
 
+📌 **푸시가 이동 말고 하는 일이 하나 더 생겼다**(2026-09-10, PR #482) —
+`ParfaitFirebaseMessagingService`가 알림을 띄운 뒤 같은 `data` 를 다시 읽어, **토핑 알림이면**
+`RequestTodayParfaitRefreshUseCase` 로 오늘 캔버스 갱신을 요청한다(폴링 주기를 기다리지 않는다).
+**`PushDeepLinkEventBus` 는 쓰지 않는다** — 그것은 `Channel` 기반 단일 소비자이고 **탭했을 때의
+이동**을 나르는 축이라, 도착 신호로 재사용하면 푸시가 올 때마다 화면이 옮겨 간다. 토핑만 고르는
+판정은 `Map<String, String>.toppingGroupIdOrNull()`(`PushDeepLinkIntent.kt`)이 하고 리마인드는
+`route=group` 이라 파서가 이미 갈라 준다. **포그라운드 전용**이다(백그라운드·종료 상태에서는 시스템이
+알림을 직접 띄우고 이 콜백을 거치지 않는다) — 다만 폴러 수명이 화면 구독에 매여 있어 잃는 것이 없다
+→ [canvas-adaptive-polling 스펙](../specs/archive/2026-09-10-canvas-adaptive-polling.md).
+
 ## 그룹 생성·참여 플로우 (2026-08-12, PR #224)
 
 그룹 목록에서 갈라진 두 갈래가 **목록으로 되돌아오며 닫혔다**. 이전에는 양쪽 끝이 stub이라 들어가면 나올 수 없었다.
@@ -293,6 +303,13 @@ NavKeyGroupList ─┬─ 생성 ─▶ NavKeyGroupCreate(nickName) ──(확�
     `@ActivityRetainedScoped`의 순수 `mutableStateListOf`라 스플래시로 초기화된다.
   - ⚠️ **배선이 두 Route에 복제됐다** — 이펙트 타입이 달라 공용화하려면 제네릭이나 공통 인터페이스가
     필요하고, 지금은 이득이 얇아 두었다 → [open-questions](../synthesis/open-questions.md) OQ-P-372.
+  - 📌 **정원 1로 만든 그룹은 그 안내를 건너뛴다**(2026-09-10, PR #482) — 토핑 알림은 서버가 작성자를
+    빼고 보내 혼자인 그룹에서는 영영 오지 않으므로, **한 번뿐인 런타임 권한 요청**을 실익이 적은
+    자리에서 소진하지 않는다. `NavigateToNext`가 `memberLimit`를 함께 나르고 `GroupCreateRoute`가
+    `memberLimit > 1`일 때만 게이트를 세운다. `NavigateToNextSaver`도 그 필드를 저장·복원한다 —
+    빠뜨리면 복원 뒤에 정원 1 그룹에도 모달이 뜬다. **A-004 참여는 그대로다**(참여하는 그룹은
+    정의상 혼자가 아니다)
+    → [canvas-feedback-fixes 스펙](../specs/archive/2026-09-10-canvas-feedback-fixes.md).
   - **기기 토큰 등록은 이 게이트에 매달려 있지 않다** — 등록은 세션 축이 맡고 권한과 독립이다
     ([data-layer](data-layer.md) 「기기 토큰 등록」 ·
     [스펙](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md) 결정 1).
@@ -337,6 +354,12 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
   [open-questions](../synthesis/open-questions.md) [2026-08-10].
 - 재편집을 위해 확인 화면이 **최종본과 "테두리 전 알맹이"를 따로** 들고 있다가 알맹이 쪽을 마스크로
   넘긴다. 최종본을 넘기면 테두리 색이 원본 픽셀로 덮여 사라진다.
+- 📌 **결과가 원본 사진의 긴 변도 나른다**(2026-09-09, PR #480) — `ToppingEditResult.sourceLongSide`가
+  업로드 축소 배율의 분모다. **값 클래스가 아니라 벌거벗은 `Int?`**인 이유는 `feature/segmentation/api`가
+  `:domain`을 의존하지 않기 때문이고(같은 이유로 `ToppingBorderLayer`가 색을 ARGB 정수로 내린다),
+  감싸는 곳은 소비처인 `SegmentationConfirmViewModel`이다. `borderOnly` 진입은 `null`을 싣는다 —
+  그 진입의 `cutout`은 사진이 아니라 되살린 알맹이라 분모가 못 된다
+  → [topping-upload-source-scaled 스펙](../specs/archive/2026-09-09-topping-upload-source-scaled.md).
 - ✅ **플로우를 나가는 경로가 생겼다(2026-08-20, PR #309)** — 세 화면 + C-101-confirm의 `onClickClose`가
   전부 빈 람다이던 것이 `popUpTo<NavKeyCanvasMain>()`으로 결선됐다(OQ-P-152 해소). 세그멘테이션 쪽은
   로딩·에러·본문 세 화면이 콜백 하나를 공유해 **한 자리를 채우자 셋이 함께 출구를 얻었다.**
@@ -564,6 +587,12 @@ C-001 캔버스 메인
    남았다. 수치의 정본은 [design-system](design-system.md) "화면 컨테이너"이고, 잔여 이관·V1 삭제
    시점은 → [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
 3. 빌더를 Hilt 모듈(`NavigationModule`, ActivityRetainedComponent)의 `Set<...>` 멀티바인딩에 `@IntoSet`으로 제공.
+   > 📌 **화면 ID 매핑도 함께 더한다**(2026-09-09, PR #478) — `:app`의 `NavKey.toAnalyticsScreenOrNull()`이
+   > `NavKey`를 기획 화면 ID(`C-001`·`G-001` 등)로 바꿔 `screen_view` 로 보낸다. ⚠️ **컴파일러가 누락을
+   > 잡지 못한다** — `NavKey`는 sealed 가 아니라 `when` 이 빠짐없음을 강제하지 못하고, 잊으면 런타임
+   > 경고 한 줄로만 드러난다. 인자로 화면이 갈리는 키(`returnResultOnly`·`source`·`borderOnly`·
+   > `initialToppingId`)는 그 인자까지 보고 가른다
+   > → [release-analytics-screen-tracking 스펙](../specs/archive/2026-09-09-release-analytics-screen-tracking.md).
 4. 이동 원하는 feature는 대상의 `:api`에 의존 추가(`settings.gradle.kts`/build 파일).
 5. 결과가 필요하면 `ResultEventBus` 데코레이터 경로 사용.
    > ⚠️ **반환 경로를 없앨 땐 호출자의 `ResultEffect`도 같이 본다(2026-08-04, PR #191)** — 커스텀

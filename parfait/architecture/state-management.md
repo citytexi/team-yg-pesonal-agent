@@ -8,7 +8,7 @@ verified: 2026-09-05
 related_spec: c103-multi-subject-selection, c201-canvas-calendar, c201-canvas-calendar-server, session-token-refresh-infra, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, group-ssot, intro-term-agree
 related_adr: ADR-0001, ADR-0005, ADR-0009, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: data-layer, navigation-flow
-related_code: core:ui, BaseViewModel, MviContract, AppError, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase, GetMyGroupsFlowUseCase, GetGroupDetailUseCase, GroupListViewModel, GroupSettingViewModel, CanvasMainViewModel, CanvasBGEditViewModel, CanvasToppingPlaceViewModel, TermAgreeViewModel, TermAgreeError, GetTutorialVisibleFlowUseCase, CompleteTutorialUseCase, CanvasTutorialStep
+related_code: core:ui, BaseViewModel, MviContract, AppError, GetToppingDraftFlowUseCase, EnsureDraftSubjectRecordedUseCase, PastCanvasAlertRepository, LoginViewModel, AccountInfoViewModel, AppSettingViewModel, GetMyAccountFlowUseCase, GetMyGroupsFlowUseCase, GetGroupDetailUseCase, GroupListViewModel, GroupSettingViewModel, CanvasMainViewModel, CanvasBGEditViewModel, CanvasToppingPlaceViewModel, TermAgreeViewModel, TermAgreeError, GetTutorialVisibleFlowUseCase, CompleteTutorialUseCase, CanvasTutorialStep
 tags: [architecture, parfait]
 ---
 # 상태 관리 (MVI) · 데이터 흐름
@@ -134,6 +134,13 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
     기준은 원인별로 갈리기 때문에** 합칠 수 없다 — `YGActionItem(enabled = !isLoggingOut)`은 로그아웃
     항목 하나만 가리키므로, 필드가 하나면 탈퇴 왕복이 엉뚱한 항목을 비활성으로 만든다. 둘 다
     `finally`에서 내려 예외·취소로 빠져나가도 가드가 걸린 채 남지 않는다.
+- ⚠️ **화면 덮개 판정 일부가 State 밖 Route 컴포지션에 산다**(2026-09-10, PR #482) — C-001이
+  "이 캔버스를 이미 한 번 그렸는가"를 `CanvasMainRoute`의 `remember` 상태 셋(`paintedCanvasIds`·
+  `sawLoading`·`observedCanvasId`)으로 들고, `isLoading`을 그것과 `UiState`를 함께 보아 만든다.
+  판정 재료가 **이미지 로드 상태**라 ViewModel이 알 수 없는 것이 이 배치의 이유다. 대가는
+  테스트다 — ViewModel 테스트가 닿지 않고 계측도 없어 **덮개가 다시 뜨는 회귀도, 아예 안 뜨는
+  회귀도 자동으로는 안 잡힌다**([open-questions](../synthesis/open-questions.md) OQ-P-395)
+  → [canvas-feedback-fixes 스펙](../specs/archive/2026-09-10-canvas-feedback-fixes.md).
 - **도메인 VO 보유는 허용**하되 강제는 아니다. S-101(`GroupSettingUiState`, #223 develop 머지)이 `GroupName`·`GroupNickname`·`InviteCode`를 State에 들인 첫 사례다. 단 **편집 중 입력값처럼 유효성이 보장되지 않는 값은 원시 타입으로 둔다** — VO로 감싸면 "타입은 맞는데 유효하지 않다"는 모순이 생긴다.
 - 표시 규칙에 따른 분기(문구 선택·상태 enum 산출)는 화면의 private 헬퍼가 갖는다. State가 계산 프로퍼티로 들 이유가 없다.
   - ⚠️ **이탈 사례(2026-08-16, PR #259)** — C-201 캘린더의 `CanvasMainUiState.selectableMonths`가
@@ -289,4 +296,9 @@ launch(key = …, onError = { postSideEffect(XxxSideEffect.ShowError(it)) }) { �
 - 한 ViewModel의 `effect`를 **두 곳에서 수집** → 이펙트가 한쪽에만 간다(로그로 드러난다).
 - side effect(내비게이션 등)를 **state에 담기** → 재구성 시 중복 실행. 반드시 `SharedFlow<E>`.
 - Screen에서 Repository/UseCase 직접 호출 → 반드시 ViewModel 경유.
+- **ViewModel이 Repository를 직접 주입** → 반드시 UseCase 경유(2026-09-09, PR #479로 마지막 넷이
+  정리됐다 — `feature/*/impl` ViewModel 21개 중 위반이 넷이었고 전부 `ToppingDraftRepository`
+  하나였다). ⚠️ **컴파일러가 검사하지 않는다** — `feature/*/impl`은 `:domain` 전체를 보므로 새
+  ViewModel이 다시 직접 받아도 빌드가 통과한다
+  → [topping-draft-usecase-extraction 스펙](../specs/archive/2026-09-09-topping-draft-usecase-extraction.md).
 - 표시 문자열 매핑을 **feature마다 복제** → 공유 도메인 규칙엔 공유 매핑([ADR-0016](../adr/0016-domain-result-presentation-string-mapping.md)).

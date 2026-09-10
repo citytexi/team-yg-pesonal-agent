@@ -85,7 +85,7 @@ tags: [adr, parfait, canvas, state, cache, polling]
   **상한 20초의 근거는 상한이 곧 최악의 체감 지연이라는 것이다.** 푸시가 그 지연을 메우도록
   설계했지만 푸시는 보장 경로가 아니다(권한 거부·전달 지연). 단계 값과 상한은 실측이 아니라
   응답 크기와 체감 지연으로 정했다(OQ-P-320).
-  설계 근거는 [canvas-adaptive-polling 스펙](../specs/2026-09-10-canvas-adaptive-polling.md).
+  설계 근거는 [canvas-adaptive-polling 스펙](../specs/archive/2026-09-10-canvas-adaptive-polling.md).
 - **하루 경계는 값 스트림이 아니라 시간 축으로 판정하되, 폴러와 캔버스 메인이 보는 시간 축은
   서로 다르다.** `CanvasPoller`는 티커를 구독하지 않는다 — 매 주기 **캐시에 실린 날짜가
   오늘인지**를 스스로 다시 물어 오늘 조회 여부를 정한다. 경계를 넘기면 캐시 날짜가 저절로

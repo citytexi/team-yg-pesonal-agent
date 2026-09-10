@@ -4,7 +4,7 @@ title: 화면 진입 계측과 기기·앱 사용자 속성 (Firebase Analytics)
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-09-09
+verified: 2026-09-10
 related_code:
   - MainRoute.kt#MainRoute
   - MainActivity.kt#MainActivity

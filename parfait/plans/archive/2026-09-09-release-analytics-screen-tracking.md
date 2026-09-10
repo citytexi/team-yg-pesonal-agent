@@ -1,7 +1,7 @@
 ---
 id: release-analytics-screen-tracking
 title: 화면 진입 계측과 기기·앱 사용자 속성 구현 계획
-status: draft
+status: done
 type: work-order
 created: 2026-09-09
 updated: 2026-09-09
@@ -15,13 +15,22 @@ related_code:
   - BaseApplication.kt#BaseApplication
   - Navigator.kt#Navigator
   - app/build.gradle.kts
-archived_reason:
+archived_reason: develop 머지 완료(2026-09-09, PR #478 `c56ed15eb`) — 대응 스펙도 `specs/archive/`로 이동
 tags: [plan, parfait, analytics]
 ---
 
 # 화면 진입 계측과 기기·앱 사용자 속성 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development(권장) 또는 superpowers:executing-plans로 task 단위 구현. 단계는 체크박스(`- [ ]`)로 추적.
+
+> ✅ **완료·develop 머지(2026-09-09, PR #478 `c56ed15eb`).** 머지본이 스펙과 어긋나는 자리는
+> 없다. 다만 **이 계획 문서 자체가 두 자리에서 낡았다** — 아래 Architecture 절이 트래커를
+> `@Singleton`이라고 적었는데 실제 스코프는 `@ActivityRetainedScoped`이고(`@Singleton`이면
+> `Navigator`보다 오래 살아 그 실행의 A-001이 통째로 빠진다), 판정 기준도 "백스택 최상단"이
+> 아니라 **크기와 최상단의 짝**이다. 정본은
+> [스펙](../../specs/archive/2026-09-09-release-analytics-screen-tracking.md) 「중복 억제와 Activity 재생성」.
+> ⚠️ **체크박스는 실행 세션이 남기지 않아 대부분 미체크로 남아 있다**(41개 중 3개만 체크).
+> 진행의 정본은 `git log`이고, 이 문서의 체크 상태는 근거가 아니다.
 
 **Goal:** 사용자가 어느 화면에 들어오는지를 기획의 화면 ID(`C-001`·`G-001` 등)로 Firebase
 Analytics에 보내고, 기기·앱 정보 7종을 사용자 속성으로 함께 싣는다.
@@ -34,7 +43,7 @@ Analytics에 보내고, 기기·앱 정보 7종을 사용자 속성으로 함께
 **Tech Stack:** Kotlin, Jetpack Compose, Navigation3, Hilt, Firebase Analytics(BOM 34.18.0),
 JUnit4 + `kotlin.test`, MockK.
 
-**Spec:** [`parfait/specs/2026-09-09-release-analytics-screen-tracking.md`](../specs/2026-09-09-release-analytics-screen-tracking.md)
+**Spec:** [`parfait/specs/2026-09-09-release-analytics-screen-tracking.md`](../../specs/archive/2026-09-09-release-analytics-screen-tracking.md)
 
 ## Global Constraints
 

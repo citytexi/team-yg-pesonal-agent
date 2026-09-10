@@ -1,7 +1,7 @@
 ---
 id: canvas-adaptive-polling
 title: 캔버스 폴링 적응형 주기 (Adaptive canvas poll interval)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-09-10
@@ -231,3 +231,24 @@ PushDeepLinkParser.parse(route, groupId, type)
 - 상한 20초와 단계 폭(10/15/20)은 실측이 아니라 응답 크기와 체감 지연으로 정한 값이다.
   실사용 데이터가 쌓이면 다시 본다(OQ-P-320의 후속).
 - 푸시 도달률을 모른다. 알림 권한 거부 비율이 높으면 상한을 더 낮춰야 할 수 있다.
+
+## as-built (2026-09-10, PR #482 `efa771503`)
+
+설계대로 들어왔다. `CanvasPollInterval`의 표면 여섯과 단계 셋(10/15/20), 리셋 계기 여덟 자리,
+푸시가 `RequestTodayParfaitRefreshUseCase`를 그대로 부르는 배선이 위 표와 같다. 실패가 램프를
+건드리지 않는 성질도 그대로다. 구현하며 갈린 것은 셋이다.
+
+- **`acquire`의 락이 하나로 합쳐졌다**(`4a167e8a1`). `onReset` + `restartPollTimerLocked`를
+  구독자 판정과 같은 `synchronized` 블록 안에 넣는다 — `refreshNow`가 이미 같은 이유로 그렇게
+  하고 있었고, 진입 쪽만 갈라 두면 그 사이에 마지막 `release`가 끼어들어 구독자가 없는데도 폴
+  잡이 살아난다. 스펙은 `refreshNow`에 대해서만 이 규칙을 적었다.
+- **`CanvasPoller`가 `CanvasPollInterval`을 기본 인자로 받는다**(`= CanvasPollInterval()`).
+  주입은 Hilt가 하고 기본값은 테스트가 폴러만 세울 때 쓴다. `clock`이 이미 같은 모양이다.
+- **토핑 판정이 서비스 밖으로 나왔다**(`45145e1a0`). `RemoteMessage`를 계측 없이 만들 수 없어
+  `Map<String, String>.toppingGroupIdOrNull()`을 `PushDeepLinkIntent.kt`에 두고 순수 `Map`
+  테스트로 잠갔다(`PushDeepLinkIntentTest` 8건). 서비스에는 그 결과로 UseCase를 부르는 줄만
+  남는다. 위 「테스트」 절은 이 결과를 이미 반영해 적혀 있다.
+
+⚠️ **같은 PR이 폴링과 무관한 화면 수정 다섯을 함께 실었다** — 로딩 덮개·인디케이터 최소 노출,
+캔버스 첫 페인트 뒤 덮개 억제, 정원 1 그룹의 알림 권한 건너뛰기, 그룹 추가 메뉴의 딤·칩 반응.
+그 다섯의 as-built 는 [canvas-feedback-fixes](2026-09-10-canvas-feedback-fixes.md)에 있다.
