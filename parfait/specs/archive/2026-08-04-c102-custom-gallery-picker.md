@@ -71,7 +71,8 @@ tags: [spec, parfait, gallery, c102]
   - 빈 상태 그래픽을 벡터 드로어블에서 밀도별 PNG 세트로 교체.
 - **제외**(이번 라운드에서 안 함):
   - 확인 화면 이후 경로 — "다음"(C-103 로딩)·닫기(C-001)는 여전히 TODO(카메라 경로와 공유).
-  - 최초 권한 요청 UI — "설정으로 이동"만 있고 시스템 다이얼로그를 띄우는 경로는 PARTIAL 재선택뿐.
+  - ~~최초 권한 요청 UI — "설정으로 이동"만 있고 시스템 다이얼로그를 띄우는 경로는 PARTIAL 재선택뿐.~~
+    → 2026-09-10 미머지 브랜치에서 진입 시 자동 요청이 들어갔다(아래 「권한 요청 as-built 갱신」).
   - 다중 선택·정렬·앨범 전환.
 
 ## 동작 / 구조
@@ -83,6 +84,9 @@ tags: [spec, parfait, gallery, c102]
 - 요청 결과는 `resolveAccessLevelAfterRequest`로 해석한다. `RequestPermission` 효과만
   `permissionLauncher`를 태우고, 그 효과를 발신하는 것은 `OnRequestPermission`과
   `OnRequestManageMedia` 두 인텐트다 — 즉 **부분 접근 재선택과 최초 요청이 같은 launcher를 공유**한다.
+  > 📌 **발신처가 하나 더 생겼다(2026-09-10, 미머지 브랜치)**: VM이 첫 권한 없음 확인에서 직접 `RequestPermission`을
+  > 발행한다(`requestPermissionOnce`). 위 두 인텐트 중 `OnRequestPermission`은 여전히 화면에서 부르는 곳이 없다
+  > → 아래 「권한 요청 as-built 갱신」.
 
 ### 목록 로드
 - `LoadFilterYGGalleryImageGroupsUseCase`만 쓴다 — `DayWindow.current`(하루 경계 03시)로 창을 잡아
@@ -209,6 +213,8 @@ tags: [spec, parfait, gallery, c102]
 - **최초 권한 요청 경로 부재**: `onClickGrantPermission`이 여전히 권한 화면에서 호출되지 않는다
   (카메라와 동일, [2026-08-01 항목](../../synthesis/open-questions.md)). **#350이 이 컴포넌트를 다시
   짜면서도 건드리지 않았다.**
+  > 📌 **진입 시 자동 요청이 들어갔다(2026-09-10, 미머지 브랜치)**: 시스템 다이얼로그는 이제 뜬다.
+  > `onClickGrantPermission` 미사용만 남는다(OQ-P-053 ③) → 아래 「권한 요청 as-built 갱신」.
 - **확인 화면 이후 미결선**: 갤러리 경로도 같은 확인 화면으로 합류하므로 "다음"·닫기 TODO의 영향
   범위가 두 진입점으로 늘었다.
 - 위 항목은 [open-questions](../../synthesis/open-questions.md)에서 추적한다.
@@ -233,3 +239,27 @@ tags: [spec, parfait, gallery, c102]
 ### 유닛 테스트
 
 **0건이다**(저장소 전체 789·계측 14건 그대로). 배치 변경이라 유닛으로 덮을 수 없다.
+
+## 권한 요청 as-built 갱신 (2026-09-10, 미머지 브랜치)
+
+> 브랜치 `bugfix/permission-not-required`, 커밋 `1d25a4bb9`. develop 머지 전이다. 카메라와 같은 커밋이고
+> 처방도 같다. 결정의 근거와 CameraX 바인딩 결함은 [c101 스펙](2026-08-01-c101-camera-picture-confirm.md)의
+> 같은 날짜 절에 있다.
+
+- `CustomGalleryPickerViewModel#handleOnPermissionResult`의 권한 없음 갈래(DENIED·PERMANENTLY_DENIED)가
+  `requestPermissionOnce()`를 부른다. `private var hasRequestedPermission`으로 진입당 한 번만 `RequestPermission`을
+  발행하고, Route의 기존 효과 수집이 `permissionLauncher`를 띄운다.
+- 갤러리는 요청 결과도 같은 `OnPermissionResult` 인텐트로 들어온다(`resolveAccessLevelAfterRequest`). 거부 콜백이
+  권한 없음 갈래를 다시 타도 플래그가 서 있으므로 재요청하지 않는다.
+- PARTIAL은 권한이 있는 갈래라 요청하지 않는다. 사진 재선택은 종전대로 하단 버튼의 `OnRequestManageMedia`가 맡는다.
+- 다이얼로그 뒤에 설정 이동 화면이 보이는 것, 최초 거부와 영구 거부를 나누지 않은 것, `onClickGrantPermission`이
+  쓰이지 않고 남은 것은 카메라와 같다(OQ-P-053 ③ 잔존).
+- 허용하면 launcher 콜백이 FULL 또는 PARTIAL을 넘기고 VM이 그 자리에서 목록을 로드한다. 카메라처럼 lifecycle
+  재시작을 기다리는 바인딩이 없으므로 같은 결함은 코드상 생기지 않는다.
+
+### 검증
+
+`CustomGalleryPickerViewModelTest`에 3건을 더해 8건에서 11건이 됐다. 권한 없음이면 요청을 1회 발행하는지, 요청 뒤
+거부가 거듭 들어와도 재요청하지 않는지, PARTIAL이면 요청하지 않는지를 본다. 앞의 두 건은 구현 전에 실패하는 것을
+확인했고, PARTIAL 건은 구현 전에도 통과하는 가드다. 모듈 `ktlintCheck`도 통과했다. 갤러리 경로의 실기기 확인
+기록은 없다.
