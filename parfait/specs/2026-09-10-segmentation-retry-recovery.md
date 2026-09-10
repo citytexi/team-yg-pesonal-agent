@@ -1,7 +1,7 @@
 ---
 id: segmentation-retry-recovery
 title: 세그멘테이션 재시도 회복 — 입력 전처리 사다리와 좌표 역변환 (Segmentation retry recovery)
-status: implemented
+status: draft
 category: behavior-spec
 platforms: android
 verified: 2026-09-10
@@ -33,6 +33,8 @@ related_code:
   - SegmentationViewModel.kt#useOriginal
   - BaseViewModel.kt#launch
   - SegmentationBounds.kt#SegmentationBounds
+  - SegmentationRecoveryPlan.kt#isLongSideCapped
+  - SegmentationMask.kt#projectAlpha
 related_adr:
   - 0012-mlkit-subject-segmentation.md
 related_spec:
@@ -52,7 +54,9 @@ tags: [spec, parfait, segmentation, c103, retry]
 
 > ✅ **as-built(2026-09-10)**: 브랜치 `feature/#486-segmentation-error-case`, 커밋 `d55880fb0`~`8da7c35fc`(11개).
 > 전체 검증 통과: `:domain:test` 133건, `:data:testDebugUnitTest` 534건, `:feature:segmentation:impl:testDebugUnitTest`
-> 74건, 실패 0. `ktlintCheck`와 `:app:assembleDebug`도 통과했다. 신규 유닛은 52건이다.
+> 74건, 실패 0. `ktlintCheck`와 `:app:assembleDebug`도 통과했다. 신규 유닛은 52건이다. **`status`는 아직
+> `draft`다**: develop 미병합이라 `archive/` 이동 전까지는 login-debug-mode 스펙과 같은 사정으로 `draft`에
+> 남는다(구현 완료와 상태 표기는 별개다).
 >
 > ⚠️ **회복 경로는 실기기에서 한 번도 돌지 않았다.** 강제 수단을 넣지 않기로 한 설계를 그대로 지켰다. 실패 사진이
 > 생기면 아래 「주의 / 열린 질문」의 항목으로 확인한다.
