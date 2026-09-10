@@ -52,10 +52,13 @@ tags: [spec, parfait, segmentation, c103, retry]
 
 # Spec: 세그멘테이션 재시도 회복
 
-> ✅ **as-built(2026-09-10)**: 브랜치 `feature/#486-segmentation-error-case`, 커밋 `d55880fb0`~`c7d7e3863`(13개).
+> ✅ **as-built(2026-09-10)**: 브랜치 `feature/#486-segmentation-error-case`, 커밋 `d55880fb0`~`3217e62f7`(15개).
 > 전체 검증 통과: `:domain:test` 133건, `:data:testDebugUnitTest` 534건, `:feature:segmentation:impl:testDebugUnitTest`
-> 74건, 실패 0. `ktlintCheck`와 `:app:assembleDebug`도 통과했다. 신규 유닛은 52건이다. 마지막 두 커밋은 선언 위치만
-> 옮긴 정리라서 `:data:testDebugUnitTest`, `:data` ktlint, `:app:assembleDebug`만 다시 돌렸고 모두 통과했다. **`status`는 아직
+> 74건, 실패 0. `ktlintCheck`와 `:app:assembleDebug`도 통과했다. 신규 유닛은 52건이다. 이 검증 뒤에 붙은 커밋은 넷이다.
+> `0735aebf6`·`c7d7e3863`은 선언 위치만 옮긴 정리이고 `9da7187dc`는 주석 정리라서 `:data:testDebugUnitTest`,
+> `:data` ktlint, `:app:assembleDebug`만 다시 돌렸고 모두 통과했다. `3217e62f7`은 실패 화면의 「편집 없이 사용」을
+> 「직접 편집」(C-104 직행)으로 바꾼 변경이며, `:feature:segmentation:impl:testDebugUnitTest` 75건(실패 0), 그 모듈의
+> ktlint, `:app:assembleDebug`가 통과했다. **`status`는 아직
 > `draft`다**: develop 미병합이라 `archive/` 이동 전까지는 login-debug-mode 스펙과 같은 사정으로 `draft`에
 > 남는다(구현 완료와 상태 표기는 별개다).
 >
