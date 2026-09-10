@@ -52,9 +52,10 @@ tags: [spec, parfait, segmentation, c103, retry]
 
 # Spec: 세그멘테이션 재시도 회복
 
-> ✅ **as-built(2026-09-10)**: 브랜치 `feature/#486-segmentation-error-case`, 커밋 `d55880fb0`~`8da7c35fc`(11개).
+> ✅ **as-built(2026-09-10)**: 브랜치 `feature/#486-segmentation-error-case`, 커밋 `d55880fb0`~`c7d7e3863`(13개).
 > 전체 검증 통과: `:domain:test` 133건, `:data:testDebugUnitTest` 534건, `:feature:segmentation:impl:testDebugUnitTest`
-> 74건, 실패 0. `ktlintCheck`와 `:app:assembleDebug`도 통과했다. 신규 유닛은 52건이다. **`status`는 아직
+> 74건, 실패 0. `ktlintCheck`와 `:app:assembleDebug`도 통과했다. 신규 유닛은 52건이다. 마지막 두 커밋은 선언 위치만
+> 옮긴 정리라서 `:data:testDebugUnitTest`, `:data` ktlint, `:app:assembleDebug`만 다시 돌렸고 모두 통과했다. **`status`는 아직
 > `draft`다**: develop 미병합이라 `archive/` 이동 전까지는 login-debug-mode 스펙과 같은 사정으로 `draft`에
 > 남는다(구현 완료와 상태 표기는 별개다).
 >
@@ -71,8 +72,9 @@ tags: [spec, parfait, segmentation, c103, retry]
 > `capped` 판정을 `targetSize.width < source.width`(계획 원안, 하한·상한이 충돌하면 틀렸다)에서 `isLongSideCapped`로
 > 바꿨다. 목표·상한 로그를 판 생성 성공 이전으로 옮겨 실패해도 남게 했다. `runSegmenter`가 `CancellationException`을
 > 다시 던지게 고쳤다. 재표본 후 자르기 중복을 `projectAlpha` 헬퍼로 합쳤다. 마스크 길이 불일치 경고 로그를
-> 추가했다. ktlint가 `normalizeForDetection(): DetectionPlate`를 단일 클래스의 확장으로 오인해
-> `SegmentationRecoveryNormalizer.kt`에 `@file:Suppress("ktlint:standard:filename")`을 달았다.
+> 추가했다. **구현 뒤 정리**: 좌표·단계 타입 여섯과 `DetectionPlate`·`MaskedAlpha`를 `data/model/image/`에 파일
+> 하나씩으로 옮겼고, 상수는 `SegmentationRecoverySpec`·`SegmentationContrastSpec`·`SegmentationMaskSpec` object로
+> 묶었다. 한때 `SegmentationRecoveryNormalizer.kt`에 달았던 ktlint 파일명 억제는 `DetectionPlate`가 빠지면서 지웠다.
 >
 > **기록해 둔 결정**: (a) 사다리 30초 상한을 넘기면 빈 성공으로 접히고 ViewModel의 끈적한 플래그가 서므로 그
 > 사진은 사다리를 다시 돌지 않는다. (b) `SegmentationModuleInstaller.INSTALL_TIMEOUT_MS`(20초)는 30초 사다리
@@ -327,7 +329,7 @@ interface ImageSegmentationRepository {
     suspend fun recoverCandidates(bitmapWrapper: BitmapWrapper): Result<List<SegmentationCandidate>>
 }
 
-// data/utils/image/SegmentationRecoveryPlan.kt — 전부 순수
+// data/model/image/ — 선언 하나에 파일 하나
 internal data class DetectionBounds(val left: Int, val top: Int, val right: Int, val bottom: Int)
 internal data class ScaledSize(val width: Int, val height: Int)
 internal data class RecoveryTransform(val scaleX: Float, val scaleY: Float, val offsetX: Int, val offsetY: Int) {
@@ -343,7 +345,17 @@ internal data class RecoveryStage(
 internal data class DetectionProjection(val transform: RecoveryTransform, val clip: SegmentationBounds)
 /** 재표본은 [mapped] 크기로, 그다음 [clipped] 로 자른다 */
 internal data class ProjectedRegion(val mapped: SegmentationBounds, val clipped: SegmentationBounds)
+/** [ownedByUs] 가 거짓이면 원본이다. 쓰지도 회수하지도 않는다 */
+internal class DetectionPlate(val bitmap: Bitmap, val ownedByUs: Boolean)
+internal class MaskedAlpha(val alpha: ByteArray, val result: AlphaPostProcessResult)
+/** 4-1 잠정값. 짧은 변 하한·긴 변 상한·왕복 허용오차·힌트 여유·수축 가드·중앙 폴백 비율 */
+internal object SegmentationRecoverySpec
+/** 휘도 단계 수와 퍼센타일 절단점 */
+internal object SegmentationContrastSpec
+/** 신뢰도→알파 램프의 바닥·천장과 불투명 값 */
+internal object SegmentationMaskSpec
 
+// data/utils/image/SegmentationRecoveryPlan.kt — 전부 순수
 internal fun resolveTargetSize(width: Int, height: Int): ScaledSize
 internal fun normalizeStage(width: Int, height: Int, applyContrast: Boolean): RecoveryStage?
 internal fun focusCrop(width: Int, height: Int, hint: DetectionBounds?, hintTransform: RecoveryTransform?): SegmentationBounds
@@ -380,8 +392,6 @@ internal suspend fun harvestSubjects(subjects: List<Subject>, origin: Bitmap, pr
 internal suspend fun harvestForeground(mask: FloatBuffer, maskWidth: Int, maskHeight: Int, origin: Bitmap, projection: DetectionProjection?, hintThreshold: Int?): ForegroundHarvest
 
 // data/utils/image/SegmentationRecoveryNormalizer.kt — Bitmap 실행
-/** [ownedByUs] 가 거짓이면 원본이다. 쓰지도 회수하지도 않는다 */
-internal class DetectionPlate(val bitmap: Bitmap, val ownedByUs: Boolean)
 internal suspend fun normalizeForDetection(origin: Bitmap, stage: RecoveryStage): DetectionPlate
 ```
 
@@ -407,7 +417,8 @@ Route가 `SegmentationErrorScreen`을 계속 그리고 `YGScaffoldV2`가 그 위
 
 | 파일 | 역할 | 성격 |
 |---|---|---|
-| `data/utils/image/SegmentationRecoveryPlan.kt` | 신설. 좌표 타입, 해상도 목표, 두 단계 계획과 가드, 힌트, 투영과 교집합, 캔버스 검사 | 순수 |
+| `data/model/image/*.kt` | 신설. 좌표·단계 타입 여섯, `DetectionPlate`, `MaskedAlpha`(이동), 상수 object 셋. 파일 하나에 선언 하나 | 순수 |
+| `data/utils/image/SegmentationRecoveryPlan.kt` | 신설. 해상도 목표, 두 단계 계획과 가드, 힌트, 투영과 교집합, 캔버스 검사 | 순수 |
 | `data/utils/image/SegmentationContrast.kt` | 신설. 퍼센타일 절단 LUT | 순수 |
 | `data/utils/image/SegmentationMask.kt` | 램프와 후처리 분리, 재표본·자르기·알파 합 추가 | 순수(기존) |
 | `data/utils/image/SegmentationCandidateHarvest.kt` | 신설. 수확 코드 이동, `PlateSource`로 출처 분리, 공통 subject 루프, 전경 수확 | `Bitmap` 실행 |
