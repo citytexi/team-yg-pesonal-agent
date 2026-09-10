@@ -2,13 +2,20 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ✅ **완료·develop 머지(2026-09-10, PR #482 `efa771503`).** 주기 단계 셋과 리셋 계기 여덟,
+> 푸시 배선이 설계대로 들어왔다. `acquire`의 락을 하나로 합친 것, 폴러가 `CanvasPollInterval`을
+> 기본 인자로 받는 것, 토핑 판정을 서비스 밖으로 꺼낸 것 셋이 계획과 다르다 — 기록은
+> [스펙 「as-built」](../../specs/archive/2026-09-10-canvas-adaptive-polling.md).
+> ⚠️ 같은 PR이 폴링과 무관한 화면 수정 다섯을 함께 실었다(계획 밖 작업).
+> ⚠️ **체크박스는 실행 세션이 남기지 않아 전부 미체크다**(41개). 진행의 정본은 `git log`다.
+
 **Goal:** 오늘 캔버스 폴링의 고정 5초 주기를 변화 여부에 반응하는 10~20초 적응형 주기로 바꾸고, 토핑 푸시를 받으면 즉시 되돌린다.
 
 **Architecture:** 주기 계산만 아는 순수 클래스 `CanvasPollInterval`을 `:data`에 새로 두고, `CanvasPoller`가 대기 직전마다 그 클래스에 묻는다. 변화 판정은 `refresh`가 이미 읽어 둔 캐시 값과 새 응답의 `CanvasVO` 구조적 동등성이다. 푸시는 기존 `RequestTodayParfaitRefreshUseCase`를 그대로 부른다 — 도메인·저장소 표면을 새로 만들지 않는다.
 
 **Tech Stack:** Kotlin, kotlinx.coroutines, Hilt, kotlinx-coroutines-test(`runTest` 가상 시간), kotlin.test, Firebase Messaging.
 
-**Spec:** [`parfait/specs/2026-09-10-canvas-adaptive-polling.md`](../specs/2026-09-10-canvas-adaptive-polling.md)
+**Spec:** [`parfait/specs/2026-09-10-canvas-adaptive-polling.md`](../../specs/archive/2026-09-10-canvas-adaptive-polling.md)
 
 ## Global Constraints
 
@@ -907,7 +914,7 @@ ADR-0029는 주기 **값**을 결정한 적이 없다. 「주기 폴링」이라
   **상한 20초의 근거는 상한이 곧 최악의 체감 지연이라는 것이다.** 푸시가 그 지연을 메우도록
   설계했지만 푸시는 보장 경로가 아니다(권한 거부·전달 지연). 단계 값과 상한은 실측이 아니라
   응답 크기와 체감 지연으로 정했다(OQ-P-320).
-  설계 근거는 [canvas-adaptive-polling 스펙](../specs/2026-09-10-canvas-adaptive-polling.md).
+  설계 근거는 [canvas-adaptive-polling 스펙](../../specs/archive/2026-09-10-canvas-adaptive-polling.md).
 ```
 
 frontmatter의 `related_spec` 에 `canvas-adaptive-polling` 을 더한다(기존 값과 나란히 둔다).

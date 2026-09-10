@@ -283,6 +283,17 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > 하나만** 감추고 자식이 붙인 시맨틱은 트리에 남아, 덮개 아래 버튼이 TalkBack에 그대로 노출됐다
 > ([ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md) as-built ①이
 > 세운 규칙의 수단이 틀렸던 것이고, 규칙 자체는 그대로다). 계측 5 → **7건**.
+>
+> 📌 **덮개에 최소 노출 500ms 가 생겼다(2026-09-10, PR #482 develop 머지)** — `isLoading` 이 켜진
+> 순간부터 `YG_LOADING_MINIMUM_VISIBLE_MILLIS` 가 지나기 전에는 꺼도 유지한다. **덮개가 깜빡이기만
+> 하고 사라지면 무엇을 기다렸는지 알 수 없어서**이고, 붙드는 대상은 덮개와 접근성 차단 **둘 다**다
+> (하나만 붙들면 터치는 막히는데 TalkBack 은 통과하는 비대칭이 생긴다). **값을 화면이 아니라
+> 디자인시스템이 소유한다** — 처음에는 C-001 안에 있었고, 같은 문제가 스캐폴드를 쓰는 모든 화면의
+> 것이라 여기로 올라왔다. 그래서 이 성질은 `YGScaffoldV2` 를 쓰는 **모든 화면의 계약**이다. 시각은
+> `TimeSource.Monotonic` 으로 재 시각 변경에 흔들리지 않는다. ⚠️ G-001 당겨서 새로고침 인디케이터도
+> 같은 값 500 을 쓰지만 그리는 자리가 달라(`isRefreshing`) **상수가 둘로 갈렸다**
+> ([open-questions](../synthesis/open-questions.md) OQ-P-394). 계측 7 → **9건**
+> → [canvas-feedback-fixes 스펙](../specs/archive/2026-09-10-canvas-feedback-fixes.md).
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.

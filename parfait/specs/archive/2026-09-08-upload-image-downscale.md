@@ -125,7 +125,7 @@ data class PreparedUploadImage(
 
 ### 결정 표
 
-> 🔁 **누끼 행은 [topping-upload-source-scaled](../2026-09-09-topping-upload-source-scaled.md)로 대체됐다.**
+> 🔁 **누끼 행은 [topping-upload-source-scaled](2026-09-09-topping-upload-source-scaled.md)로 대체됐다.**
 > 상한을 잘린 판에 거는 방식으로는 피사체가 프레임 일부만 차지할 때 원본이 아무리 커도 상한에 닿지
 > 않는다. 새 스펙은 기준을 원본 사진으로 옮긴다. **배경 행은 이 문서가 그대로 정본이다.**
 >

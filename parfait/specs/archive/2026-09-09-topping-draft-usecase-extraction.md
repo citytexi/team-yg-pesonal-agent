@@ -4,7 +4,7 @@ title: 토핑 초안 접근을 UseCase 다섯으로 가른다
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-09-09
+verified: 2026-09-10
 related_code:
   - ToppingDraftRepository.kt#ToppingDraftRepository
   - CanvasMainViewModel.kt#CanvasMainViewModel
@@ -39,7 +39,7 @@ tags: [spec, parfait, topping, usecase, refactoring]
 `ToppingDraftRepository`가 `:domain`에 선언되어 있어 모듈 의존 방향이 뒤집힌 것은 아니다.
 어긋난 것은 계층이다. 나머지 ViewModel 17개는 예외 없이 UseCase만 받는다.
 
-토핑 초안이 화면 다섯을 가로지르는 흐름 상태라서([ADR-0026](../adr/0026-topping-draft-datastore-ssot.md))
+토핑 초안이 화면 다섯을 가로지르는 흐름 상태라서([ADR-0026](../../adr/0026-topping-draft-datastore-ssot.md))
 UseCase로 감쌀 단위를 잡기 애매했던 것이 원인으로 보인다. 다만 실제로 쓰이는 Repository 표면은
 `draft`·`start`·`clear`·`record` 넷뿐이고 경계도 뚜렷하다.
 
@@ -84,7 +84,7 @@ UseCase로 감쌀 단위를 잡기 애매했던 것이 원인으로 보인다. �
 다섯 번째만 조합이 있다. `SegmentationConfirmViewModel`은 지금 초안을 `first()`로 한 번 읽어
 그것이 현재 알맹이를 가리키는지 보고, 아니면 `record`로 적는다. 판정 기준이 "초안이 비었는가"가
 아니라 "이 알맹이를 가리키는가"라는 것은
-[c106-topping-place-api](archive/2026-08-20-c106-topping-place-api.md)가 정한 도메인 규칙이므로,
+[c106-topping-place-api](2026-08-20-c106-topping-place-api.md)가 정한 도메인 규칙이므로,
 화면이 아니라 UseCase가 든다.
 
 반환은 **"초안이 이 알맹이를 가리키게 되었는가"** 하나다. 이미 가리키고 있었을 때와 새로 적어
@@ -174,3 +174,11 @@ UseCase는 "초안을 이 알맹이에 맞춘다" 하나만 하고, 부를지 �
 ⚠️ **`CanvasToppingPlaceViewModelTest`에 죽은 스텁이 남았다.** `clearToppingDraft`를
 `relaxed = true`로 세워서 `coEvery { clearToppingDraft() } returns Unit` 여덟 자리가 이제
 무의미하다. 동작 불변 리팩터의 diff에 무관한 정리를 섞지 않으려고 남겼다.
+
+📌 **머지 뒤 같은 라운드에서 시그니처 둘이 넓어졌다**(2026-09-09, PR #480 `93cb002b5`) —
+[topping-upload-source-scaled](2026-09-09-topping-upload-source-scaled.md)가 원본 긴 변을 업로드
+경계까지 나르면서 `RecordToppingDraftUseCase#invoke`에 `sourceLongSide: SourceLongSide?`가 붙었고,
+`EnsureDraftSubjectRecordedUseCase`는 `record`에 그 자리를 `null`로 적는다(최근 목록에서 되살린
+알맹이는 오려낸 사진의 치수를 알 방법이 없다). 위 표의 시그니처는 이 스펙이 머지된 시점의 기록이다.
+**이 스펙이 만든 UseCase 층이 그 인자가 얹힌 자리**이기도 하다 — 스펙 「주의」가 예고한 "그 PR이
+먼저 머지되면 인자 추가 지점이 한 겹 늘어난다"가 실제로 그렇게 됐다.

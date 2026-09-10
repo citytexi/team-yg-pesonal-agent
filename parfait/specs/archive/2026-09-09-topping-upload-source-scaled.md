@@ -1,10 +1,10 @@
 ---
 id: topping-upload-source-scaled
 title: 토핑 업로드 원본 기준 축소 (Topping upload scaled by source photo)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-09-09
+verified: 2026-09-10
 related_code:
   - UploadImagePlan#of
   - UploadImagePreprocessor
@@ -54,7 +54,7 @@ iOS 팀이 토핑 로딩이 느리다고 요청해 왔다(2026-09-09). 서버에
 
 로딩 시간이 바이트를 그대로 따라간다. 그런데 **세 건 모두 긴 변이 현행 상한
 `NUKKI_LONG_SIDE_LIMIT`(1500) 아래**라 지금 규칙은 이 파일들에 아무 일도 하지 않는다.
-[upload-image-downscale](archive/2026-09-08-upload-image-downscale.md)이 상한을 잘린 판에 걸었기
+[upload-image-downscale](2026-09-08-upload-image-downscale.md)이 상한을 잘린 판에 걸었기
 때문이다. 그 스펙을 통째로 대체하지는 않는다 — 배경 규칙은 거기가 그대로 정본이고, 이 스펙은
 누끼 갈래만 갈아 끼운다. 잘린 판은 알파 bbox와 같아서(`postProcess`가 `require`로 강제한다) 피사체가 프레임의
 일부만 차지하면 원본이 아무리 커도 상한에 닿지 않는다.
@@ -84,7 +84,7 @@ EXIF 회전을 보정한 판이 원본이다.
 
 **모델 입력은 건드리지 않는다.** 세그멘테이션은 지금처럼 원본 해상도에서 돌고, 축소는 업로드
 경계에서만 일어난다. 따라서
-[segmentation-preprocessing](2026-08-23-segmentation-preprocessing.md)이 제외 항목으로 적은
+[segmentation-preprocessing](../2026-08-23-segmentation-preprocessing.md)이 제외 항목으로 적은
 「원본 다운샘플」과 충돌하지 않고, 같은 문서의 짧은 변 512 하한과도 무관하다.
 
 **로컬 파일은 원본 해상도로 남는다.** 수동 편집(C-104)이 읽는 것은 원본 크기 캔버스 판이고
@@ -297,6 +297,9 @@ fun of(
   이 스펙의 「파일 구성」은 **현재 develop 기준**으로 적었다. 그 PR이 먼저 머지되면 `record` 호출부가
   `RecordToppingDraftUseCase` 뒤로 옮겨가므로 인자 추가 지점이 한 겹 늘어난다. 구현 착수 시점에
   `develop`을 다시 확인하고, 이미 머지됐으면 UseCase 쪽에 인자를 얹는다.
+  > ✅ **그렇게 됐다**(2026-09-09) — PR #479가 먼저 머지돼 UseCase 다섯이 이미 서 있었고, 인자는
+  > `RecordToppingDraftUseCase`·`EnsureDraftSubjectRecordedUseCase` 쪽에 얹혔다. `record` 직접 호출은
+  > 남지 않았다.
 
 - ⚠️ **화질 손해를 받아들인 결정이다.** 작게 찍힌 피사체일수록 캔버스 확대율이 커지는데 이 규칙은
   바로 그 경우에 픽셀을 덜 준다. 256 하한이 최악값만 막는다. 로딩 개선이 목표라 감수한다.
@@ -305,9 +308,31 @@ fun of(
   계단으로 막고 있다. 별도 라운드로 민다.
 - 배율 적용 전후 바이트를 실측해 기록하지 않았다. 위 배경의 3건을 새 규칙으로 다시 올려 로그로
   확인한다.
-- ✅ archive의 [upload-image-downscale](archive/2026-09-08-upload-image-downscale.md) 「결정 표」는
+- ✅ archive의 [upload-image-downscale](2026-09-08-upload-image-downscale.md) 「결정 표」는
   **정정을 마쳤다** — JPEG 품질 90을 70으로 고치고, 누끼 행이 이 스펙으로 대체됐다는 🔁 표시와 iOS
   값 인용이 낡았다는 경고를 달았다. 코드의 품질 상수도 이미 70이다.
 - ⚠️ **최근 업로드 재사용 경로는 이 규칙의 이득을 받지 못한다.** 그 알맹이는 원본 해상도 그대로
   보관되는데 오려낸 사진의 치수가 남지 않아 `null`이 흐르고, 방어선 1280만 걸린다. 이 경로가 자주
   쓰이면 개선폭이 그만큼 줄어든다. 원본 긴 변을 최근 목록에 함께 저장하면 풀리지만 별도 라운드다.
+
+## as-built (2026-09-09, PR #480 `93cb002b5`)
+
+설계대로 들어왔다. `SourceLongSide` 값 클래스와 값이 지나는 자리 여덟, `UploadImagePlan#of`의
+인자·상수 넷, 배율·하한·방어선의 겹침 순서가 위 표와 같다. `sourceSize` → `fileSize` 개명도
+그대로다. 다른 것은 넷이다.
+
+- **`UploadImagePlan.ruleScaleOf`가 생겼다.** 「로깅」 절이 "원본 긴 변과 배율을 덧붙인다"고만
+  적은 자리다. 로그가 **규칙 배율**(`1280 ÷ 원본 긴 변`)과 **실효 배율**(목표 긴 변 ÷ 잘린 판 긴
+  변) 둘을 함께 남기게 되면서, 앞엣것을 내는 공개 함수가 필요해졌다. KDoc이 "축소 판정에는 쓰이지
+  않는다"고 못 박는다 — 판정은 `scaledBySource` 안에서 따로 계산한다.
+- **`Passthrough` 갈래에도 로그가 붙었다.** 줄이지 않았다는 사실과 그때의 원본 긴 변을 남긴다.
+  실측이 목적인 라운드에서 "안 줄었다"가 침묵으로 나타나면 규칙이 안 걸린 것인지 로그가 빠진
+  것인지 갈리지 않는다.
+- **`ToppingEditResult`에 `domain` 의존이 잠시 들어왔다가 걷혔다**(`d72f4b06c`). 스펙이 벌거벗은
+  `Int?`를 고른 이유가 바로 `feature/segmentation/api`의 의존 제한인데, 구현 중간에 그 제한이 한 번
+  깨졌다가 되돌려졌다. 최종 형태는 스펙대로 `Int?`이고 감싸는 곳은 `SegmentationConfirmViewModel`이다.
+- **배경 JPEG 품질을 70으로 내리는 커밋이 같은 PR에 실렸다**(`95291eda9`). 스펙 「주의」가 코드 상수도
+  이미 70이라고 적었으나 실제로는 이 PR이 내린 것이다. 값·근거(iOS 정합)는 그대로다.
+
+`ToppingEditViewModel`의 `borderOnly` 갈래는 설계대로 `null`을 싣는다. 그 밖의 진입은 편집 결과
+`cutout`의 긴 변을 그대로 쓴다 — 그 판이 원본 좌표계를 유지하기 때문이다.

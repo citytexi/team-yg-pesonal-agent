@@ -2,13 +2,21 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ✅ **완료·develop 머지(2026-09-09, PR #479 `5f3aee286`).** 설계대로 들어왔다 — UseCase 다섯의
+> 이름·시그니처·패키지가 스펙 표와 같고 `feature/` 아래 `ToppingDraftRepository` 참조는 0건이다.
+> 구현하며 갈린 테스트 둘의 기록은
+> [스펙 「as-built」](../../specs/archive/2026-09-09-topping-draft-usecase-extraction.md)에 있다.
+> 📌 같은 날 PR #480이 `RecordToppingDraftUseCase`·`EnsureDraftSubjectRecordedUseCase`에
+> `sourceLongSide` 인자를 얹었다 — 이 계획이 만든 UseCase 층이 그 인자가 앉은 자리다.
+> ⚠️ **체크박스는 실행 세션이 남기지 않아 전부 미체크다**(32개). 진행의 정본은 `git log`다.
+
 **Goal:** `feature/*/impl`의 ViewModel 넷이 `ToppingDraftRepository`를 직접 부르는 자리를 없애고, 그 사이에 UseCase 다섯을 놓는다.
 
 **Architecture:** `:domain`의 `usecase/topping/`에 UseCase 5종을 만든다. 넷은 Repository로 그대로 넘기는 위임이고, 다섯 번째 `EnsureDraftSubjectRecordedUseCase`만 `draft.first()`와 `record`를 조합해 재사용 진입을 판정한다. ViewModel은 생성자 의존성과 호출부만 바뀌고 화면 동작·effect는 하나도 바뀌지 않는다.
 
 **Tech Stack:** Kotlin, Hilt(`@Inject constructor`), kotlinx.coroutines Flow, JUnit4 + kotlin.test + MockK + Turbine.
 
-**Spec:** [`parfait/specs/2026-09-09-topping-draft-usecase-extraction.md`](../specs/2026-09-09-topping-draft-usecase-extraction.md)
+**Spec:** [`parfait/specs/2026-09-09-topping-draft-usecase-extraction.md`](../../specs/archive/2026-09-09-topping-draft-usecase-extraction.md)
 
 **저장소:** 코드는 `TJYG-Android`(브랜치 `refactor/using-usecase`, 이미 체크아웃되어 있고 `develop`과 차이 0). 마지막 Task만 이 문서 저장소에서 한다.
 

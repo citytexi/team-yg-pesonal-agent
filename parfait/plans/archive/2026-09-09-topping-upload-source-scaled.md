@@ -2,13 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ✅ **완료·develop 머지(2026-09-09, PR #480 `93cb002b5`).** 설계대로 들어왔다. 계획이 예고한
+> "PR #479가 먼저 머지되면 인자 추가 지점이 한 겹 늘어난다"가 실제로 그렇게 됐고, 인자는
+> UseCase 쪽에 얹혔다. 로그 함수 신설·`Passthrough` 로그·`domain` 의존이 잠시 들어왔다 걷힌
+> 경위는 [스펙 「as-built」](../../specs/archive/2026-09-09-topping-upload-source-scaled.md).
+> ⚠️ **체크박스는 실행 세션이 남기지 않아 전부 미체크다**(46개). 진행의 정본은 `git log`다.
+
 **Goal:** 누끼 업로드의 축소 기준을 잘린 판이 아니라 원본 사진의 긴 변으로 옮겨, 서버로 나가는 토핑의 바이트를 줄인다.
 
 **Architecture:** 원본 긴 변을 값 클래스 `SourceLongSide`로 감싸 세그멘테이션에서 업로드 경계까지 나른다. 축소 자체는 지금과 같은 자리(`UploadImagePreprocessor`)에서 일어나므로 모델 입력과 로컬 편집용 파일은 원본 해상도로 남는다. `UploadImagePlan.of`가 그 값으로 `1280 ÷ 원본 긴 변` 배율을 정해 잘린 판에 적용한다.
 
 **Tech Stack:** Kotlin, Hilt, DataStore(Preferences) + kotlinx.serialization, MockK, kotlin.test, JUnit4
 
-**Spec:** [`parfait/specs/2026-09-09-topping-upload-source-scaled.md`](../specs/2026-09-09-topping-upload-source-scaled.md)
+**Spec:** [`parfait/specs/2026-09-09-topping-upload-source-scaled.md`](../../specs/archive/2026-09-09-topping-upload-source-scaled.md)
 
 ## Global Constraints
 
