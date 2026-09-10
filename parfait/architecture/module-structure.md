@@ -78,6 +78,10 @@ app / app-preview
   > 처음이고, 그것을 가능하게 한 것은 **파싱을 `Intent`에서 떼어 둔 것**이다 — `PushDeepLinkParser`가
   > 원시 문자열만 받으므로 Android 프레임워크 타입 없이 JVM에서 돌아간다. `Intent` 쪽 얇은 확장
   > (`toPushDeepLinkOrNull`)은 테스트가 없다.
+  > 📌 **버그 수정 라운드에서도 붙었다(2026-09-11, PR #489)** — `feature/camera/impl`은 화면 결선
+  > (#182, 2026-08-01) 뒤 여섯 주 동안 테스트 소스셋 없이 있다가, 권한 요청 수정과 함께 이 플러그인과
+  > `CustomCameraViewModelTest`를 얻었다. 붙는 계기가 결선 라운드만은 아니므로, 위 문장의 "화면 결선
+  > 라운드마다"는 관행이 시작된 자리로만 읽는다.
 - ⚠️ **표시 규격이 `domain`에 들어온 사례**(2026-08-15, PR #231) — `domain` `model/CanvasConst.kt`의
   `CANVAS_ASPECT_RATIO`는 캔버스 화면 비율이라 도메인 규칙이 아니라 표시 규격이고, 같은 값이
   `core:designsystem` `YGCanvas`의 private `CANVAS_AREA_ASPECT_RATIO`로 이미 있다. Android 의존은
