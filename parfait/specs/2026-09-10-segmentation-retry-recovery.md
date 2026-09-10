@@ -1,7 +1,7 @@
 ---
 id: segmentation-retry-recovery
 title: 세그멘테이션 재시도 회복 — 입력 전처리 사다리와 좌표 역변환 (Segmentation retry recovery)
-status: draft
+status: implemented
 category: behavior-spec
 platforms: android
 verified: 2026-09-10
@@ -49,6 +49,35 @@ tags: [spec, parfait, segmentation, c103, retry]
 ---
 
 # Spec: 세그멘테이션 재시도 회복
+
+> ✅ **as-built(2026-09-10)**: 브랜치 `feature/#486-segmentation-error-case`, 커밋 `d55880fb0`~`8da7c35fc`(11개).
+> 전체 검증 통과: `:domain:test` 133건, `:data:testDebugUnitTest` 534건, `:feature:segmentation:impl:testDebugUnitTest`
+> 74건, 실패 0. `ktlintCheck`와 `:app:assembleDebug`도 통과했다. 신규 유닛은 52건이다.
+>
+> ⚠️ **회복 경로는 실기기에서 한 번도 돌지 않았다.** 강제 수단을 넣지 않기로 한 설계를 그대로 지켰다. 실패 사진이
+> 생기면 아래 「주의 / 열린 질문」의 항목으로 확인한다.
+>
+> ⚠️ **1차 경로 실기기 회귀 확인(계획 Task 8 Step 2)도 사용자 확인 대기다.** 에이전트가 실행할 수 없는 단계이기
+> 때문이다.
+>
+> **계획과 갈린 자리**: `harvestForeground`의 `confidenceToAlphaArray` 호출을 OOM 가드 안으로 옮겼다(계획
+> 누락, 안 옮기면 1차 경로가 OOM에서 크래시한다). 다중 subject 단계 로그에도 소요를 넣었다. 1차 경로도 공용
+> `multipleSubjectOptions()`/`foregroundOptions()`를 쓰도록 통합해 중복 인라인 빌더를 지웠다. 사다리 단계 이탈
+> 경로(비-`ModuleNotReady` 실패, 모듈 중단, 전경 마스크 실패)에도 단계 로그를 남겼다. **최종 리뷰가 더한 수정**:
+> `capped` 판정을 `targetSize.width < source.width`(계획 원안, 하한·상한이 충돌하면 틀렸다)에서 `isLongSideCapped`로
+> 바꿨다. 목표·상한 로그를 판 생성 성공 이전으로 옮겨 실패해도 남게 했다. `runSegmenter`가 `CancellationException`을
+> 다시 던지게 고쳤다. 재표본 후 자르기 중복을 `projectAlpha` 헬퍼로 합쳤다. 마스크 길이 불일치 경고 로그를
+> 추가했다. ktlint가 `normalizeForDetection(): DetectionPlate`를 단일 클래스의 확장으로 오인해
+> `SegmentationRecoveryNormalizer.kt`에 `@file:Suppress("ktlint:standard:filename")`을 달았다.
+>
+> **기록해 둔 결정**: (a) 사다리 30초 상한을 넘기면 빈 성공으로 접히고 ViewModel의 끈적한 플래그가 서므로 그
+> 사진은 사다리를 다시 돌지 않는다. (b) `SegmentationModuleInstaller.INSTALL_TIMEOUT_MS`(20초)는 30초 사다리
+> 예산 안에서 소비될 수 있다. 스펙 4-1이 이 값을 선례로 인용하지만 두 값은 다르다. (c) `capped` 정의 정정은
+> 바로 위 항목과 같다.
+>
+> **다음 라운드로 미룬 항목**: 단계 로그가 2단계 크롭의 소스 치수를 "원본"으로 표기한다(크롭 퍼센트 로그로
+> 복구는 가능하다). `focusStage`의 2048x1536/69% 경계 픽스처를 아직 안 넣었다. 예외 경로에서 소유 중간
+> 비트맵을 회수하지 않는다(GC가 회수하며 OOM 경로 피크에만 영향). `maskSubjectAlpha`에 실사용 호출자가 없다.
 
 > ⚠️ **이 스펙은 검수를 네 번 거쳤다.** 설계 검수 2회(사실 대조·설계 공격)가 초안의 치명 결함 여섯을
 > 잡아 전면 개정했고, 구현 계획 검수 2회(실행 가능성·테스트 정합)가 설계 결함을 더 잡아 한 번 더
@@ -320,6 +349,8 @@ internal fun hintBounds(alpha: ByteArray, width: Int, height: Int, threshold: In
 internal fun projectRegion(detection: DetectionBounds, projection: DetectionProjection, width: Int, height: Int): ProjectedRegion?
 internal fun SegmentationBounds.offsetBy(dx: Int, dy: Int): SegmentationBounds
 internal fun isInsideCanvas(bounds: SegmentationBounds, canvasWidth: Int, canvasHeight: Int): Boolean
+/** 하한·상한이 충돌하는 극단 종횡비에서 [resolveTargetSize]가 상한에 걸렸는지. `capped` 로그가 이 함수를 쓴다 */
+internal fun isLongSideCapped(width: Int, height: Int): Boolean
 
 // data/utils/image/SegmentationContrast.kt — 순수
 internal fun contrastLut(histogram: IntArray): IntArray
@@ -330,6 +361,8 @@ internal suspend fun postProcessMaskedAlpha(alpha: ByteArray, width: Int, height
 internal fun resampleAlpha(alpha: ByteArray, width: Int, height: Int, targetWidth: Int, targetHeight: Int): ByteArray
 internal fun cropAlpha(alpha: ByteArray, width: Int, height: Int, region: SegmentationBounds): ByteArray
 internal fun alphaSum(alpha: ByteArray): Long
+/** 사상 사각형 크기로 재표본한 뒤 잘린 사각형으로 자른다(§5 순서 3). originAlphaOf/placeForegroundAlpha가 공유하는 헬퍼다 */
+internal fun projectAlpha(alpha: ByteArray, width: Int, height: Int, projected: ProjectedRegion): ByteArray
 
 // data/utils/image/SegmentationCandidateHarvest.kt — Bitmap 실행
 internal sealed interface PlateSource {
@@ -477,8 +510,9 @@ ML Kit 호출과 `Bitmap` 생성은 유닛으로 덮지 않는다. 그 자리의
 ## 주의 / 열린 질문
 
 - **잠정값** — 위 4-1 표의 값은 전부 잠정이다.
-- **회복 경로 실기기 미검증** — 실패 사진이 생기면 확인한다. 그때 필요한 항목은 단계 로그 순서, 로딩 중 에러 화면 비겹침,
-  **저장된 토핑의 색이 원본과 같은지**, 회복 실패 뒤 재시도가 사다리를 다시 안 도는지다.
+- **회복 경로 실기기 미검증** — 실패 사진이 생기면 확인한다. 그때 필요한 항목은 단계 로그 순서, **타임아웃 시 로그
+  순서**, 로딩 중 에러 화면 비겹침, **저장된 토핑의 색이 원본과 같은지**, 회복 실패 뒤 재시도가 사다리를 다시 안
+  도는지다.
 - **필터 완화와 수동 편집 하한** — 로그가 완화의 수익을 보여 주더라도 회복 판정에만 완화를 넣으면 편집 저장이 막힌다.
   넣으려면 초안에 후보 출처를 싣고 `ToppingEditViewModel`의 판정까지 함께 바꿔야 한다.
 - **ML Kit 추론의 결정성** — "재시도는 항상 같은 결과"의 근거는 우리 코드까지다.
