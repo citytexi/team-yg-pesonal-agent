@@ -2,8 +2,8 @@
 id: parfait-image
 title: 토핑 배치(배치 확정·위치/크기/각도 수정·일괄 수정·테두리 수정·삭제)
 server_module: http/parfaitimage
-server_commit: aa9cc9b
-verified: 2026-09-04
+server_commit: d76b27a
+verified: 2026-09-10
 android_status: done
 related_spec: 2026-08-15-parfait-canvas-topping-member-api-service-layer
 related_adr: ADR-0017
@@ -436,6 +436,14 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 ([parfait.md](parfait.md) "도메인 에러 코드 전수"). 소비 측은 이 도메인 enum만 보고 분기하면 안 된다.
 `GROUP_NOT_JOINED`를 내는 것은 **POST 하나뿐**이다 — 나머지 넷은 그룹 미참여도
 `PARFAIT_IMAGE_NOT_OWNED`로 접는다.
+
+⚠️ **소유권의 기준은 회원 id가 아니라 멤버십 행 id(`groupMemberId`)다.** 네 엔드포인트가
+`findByGroupIdAndMemberId`(= `leftAt IS NULL`)로 찾은 멤버십의 id를 `parfait_image.placed_by_group_member_id`와
+비교한다. **2026-09-10 서버 delta로 이 기준에 되돌림이 생겼다** — 재참여가 새 행을 만들지 않고 기존 행을
+`rejoin`으로 재활성화하므로([parfait-group.md](parfait-group.md)) **탈퇴했던 회원이 같은 그룹에 다시 들어오면
+탈퇴 전에 올린 토핑의 소유권을 그대로 되찾는다.** 마감 검사가 소유권 뒤라 실제로 고칠 수 있는 것은
+**아직 `ACTIVE`인 캔버스의 토핑**(같은 날 나갔다 들어온 경우)뿐이다. 근거: `DeleteParfaitImageService`·
+`UpdateParfaitImageService`의 `groupMember.id != parfaitImage.placedByGroupMemberId` 분기.
 
 ⚠️ **마감 거부의 자리가 엔드포인트마다 다르다.** 넷(POST · 위치 PATCH · 테두리 PATCH · DELETE)은
 마감 검사가 권한 검사 **뒤**라, 마감된 캔버스라도 남의 토핑이면 `PARFAIT_IMAGE_NOT_OWNED`, 그룹 멤버가

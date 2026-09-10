@@ -2,8 +2,8 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: aa9cc9b
-verified: 2026-09-04
+server_commit: d76b27a
+verified: 2026-09-10
 android_status: done
 related_spec: s101-group-setting-api
 related_adr: ADR-0017
@@ -220,6 +220,14 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   `INVALID_GROUP_NICKNAME`은 요청 바디가 아니라 **회원의 전역 닉네임**에 `GroupNickname.of`를 적용한 결과다
   (`requireMemberNickname`이 반환한 값을 그대로 검증) — 아래 [미결](#미결) 참고.
 
+  🔁 **2026-09-10 — `GROUP_ALREADY_JOINED`의 조건이 "탈퇴하지 않은 멤버십"으로 좁아졌다**
+  (`fix: 그룹 탈퇴 후 재참여가 불가능하던 문제 해결`). `alreadyJoined` 판정을 떠받치는 구현이
+  `existsByParfaitGroupIdAndMemberId`에서 `existsByParfaitGroupIdAndMemberIdAndLeftAtIsNull`로 바뀌어
+  **탈퇴 이력만 있는 회원은 미리보기와 참여 양쪽을 다시 통과한다.** 직전까지는 탈퇴한 행이 남아 있는 것만으로
+  409가 나와서 **재참여 자체가 불가능했다.** 정원 계산(`countByGroupId`)은 이미 `leftAt IS NULL` 기준이었으므로
+  바뀐 것이 없다. 근거: `ParfaitGroupMemberRepositoryQueryTest`("탈퇴한 멤버는
+  `existsByParfaitGroupIdAndMemberIdAndLeftAtIsNull`이 false를 반환한다")·`ParfaitGroupAdapterTest`.
+
   🔁 **2026-08-15 — 그룹 내 닉네임 중복 검사가 사라졌다**(`fix: 그룹 내 닉네임 중복 검사 제거`).
   참여·닉네임 변경 양쪽에서 `existsByGroupIdAndNickname` 호출과 그 결과로 던지던
   `GROUP_NICKNAME_ALREADY_USED`가 제거됐고(포트·어댑터·리포지토리 메서드·에러 코드까지 함께 삭제),
@@ -255,6 +263,18 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   `ParfaitGroupService.join`이 같은 `findGroup`·`validateJoin`을 호출한 뒤 멤버십을 저장한다. 코드 표는 위
   join-preview 절 참고(중복 서술 생략). 2026-08-15 이전에 있던 `GROUP_NICKNAME_ALREADY_USED`는
   중복 검사와 함께 삭제됐다(위 join-preview 절 참고).
+
+- **재참여 동작(2026-09-10 신설)**: 탈퇴 이력이 있는 회원이 같은 그룹에 다시 참여하면 **새 멤버십 행을
+  만들지 않고 기존 행을 재활성화한다**(`findAnyByGroupIdAndMemberId`로 탈퇴 여부와 무관하게 찾은 뒤
+  `ParfaitGroupMember.rejoin`). 그 전이는 `leftAt`을 널로 되돌리고 `joinedAt`을 **재참여 시각으로 갱신**하며,
+  `groupNickname`을 `validateJoin`이 돌려준 **회원의 전역 닉네임**으로 덮고, `nametagChip`을
+  `assignNametagChip`으로 **다시 뽑는다.** 즉 탈퇴 전에 바꿔 둔 그룹 닉네임과 칩 타입은 **복원되지 않는다**
+  (정책 문서에 재참여 규정이 없다 → [미결](#미결)). 반면 **멤버십 id(`groupMemberId`)는 그대로 유지된다** —
+  이것이 그 사람의 과거 토핑 귀속을 되살린다([parfait.md](parfait.md)·[parfait-image.md](parfait-image.md)).
+  `(parfait_group_id, member_id)`에 걸린 유니크 제약 때문에 INSERT로는 재참여가 성립하지 않았던 것이
+  이 경로의 근거다. 근거: `ParfaitGroupServiceTest`("한 번 나갔던 멤버가 다시 참여하면 기존 멤버십 row를
+  재활성화한다" — 저장된 행의 id 유지·`leftAt` 널·닉네임 덮어쓰기를 단언한다)·
+  `RejoinAfterLeaveIntegrationTest`(MySQL 컨테이너로 참여 → 탈퇴 → 재참여를 실제로 돌린다).
 
 #### 초대코드 형식
 
@@ -382,6 +402,10 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   [member.md](member.md))가 그 회원의 **모든 그룹 멤버십에 같은 `leave()`를 적용**한다. 즉 이 그룹 API를
   거치지 않고도 멤버가 목록에서 사라질 수 있다.
 
+  **2026-09-10 — 이 전이는 더 이상 최종 상태가 아니다.** 같은 회원이 같은 그룹에 다시 참여하면 이 행이
+  `rejoin`으로 되살아난다(위 [참여 절](#post-apiparfait-groupsjoin)의 재참여 동작). 탈퇴가 비운 값 가운데
+  **닉네임과 칩은 새 값으로 채워지고 멤버십 id는 유지된다.**
+
 ### POST /api/parfait-groups/{groupId}/reports
 
 - **인증**: 필요
@@ -444,8 +468,9 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   ([parfait.md](parfait.md)) · 토핑 배치 응답 `placedBy.nameTagChip`([parfait-image.md](parfait-image.md)).
   뒤의 둘은 2026-08-19에 더해졌다.
 - **닉네임 변경은 칩을 바꾸지 않는다**(`changeNickname`이 값을 그대로 넘긴다).
-- **재배정 경로가 없다.** 한번 받은 타입을 바꾸는 API도, 다시 뽑는 내부 경로도 없다 — 그룹을 나갔다
-  다시 들어오면 새로 뽑힌다.
+- **재배정 API는 없다.** 한번 받은 타입을 바꾸는 엔드포인트가 없다. **내부 재추첨 경로는 2026-09-10에 하나
+  생겼다** — 재참여가 `rejoin`으로 기존 행을 되살릴 때 `assignNametagChip`을 다시 부른다. 직전까지는 재참여
+  자체가 막혀 있어서 "그룹을 나갔다 다시 들어오면 새로 뽑힌다"는 서술이 실제로는 닿지 않는 경로였다.
 - **기존 행**: 마이그레이션 `V14__add_nametag_chip_to_parfait_group_member.sql`이 활동 중인 멤버에게
   그룹별 무작위 순번으로 `TYPE1`~`TYPE12`를, 이미 탈퇴한 행에는 반납 값을 채웠고,
   `V15__rename_nametag_chip_released_to_default.sql`이 그 값을 `DEFAULT`로 갱신하며 컬럼을
@@ -720,3 +745,11 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   (`MyParfaitGroupVO` KDoc · `toToppingImage`)이 아직 옛 뜻으로 읽어, 어제까지 활동한 그룹이 G-001에서
   템플릿 그래픽으로 그려진다. 위키 [[토핑]]의 대체 그래픽 정책은 템플릿을 "첫 토핑 등록 전까지"로 적어
   **정책과도 갈린다** → [open-questions](../synthesis/open-questions.md) OQ-P-336
+
+2026-09-10 서버 delta로 새로 열린 것:
+
+- **재참여 규정이 정책 문서에 없다.** 서버가 재참여를 열면서 **그룹 닉네임 초기화·칩 재추첨·멤버십 id 유지**
+  라는 세 가지를 한꺼번에 정했는데, 위키 [[그룹]]·[[nametag-chip]]·[[닉네임-자동-생성]] 어디에도 "나갔다
+  다시 들어온 사람"에 대한 조항이 없다. 특히 **멤버십 id가 유지되므로 탈퇴 중 `(알수없음)`·`DEFAULT`로
+  보였던 그 사람의 과거 토핑이 재참여 후 새 닉네임·새 칩으로 되살아난다** — 그것이 의도인지 확인되지
+  않았다 → [open-questions](../synthesis/open-questions.md) OQ-P-398
