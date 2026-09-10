@@ -30,7 +30,7 @@ related_code:
   - UploadImagePreprocessorImpl.kt#prepare
   - ImageSegmentationRepositoryImpl.kt#persistSubject
   - ImageSegmentationRepositoryImpl.kt#originalCandidate
-  - SegmentationViewModel.kt#useOriginal
+  - SegmentationViewModel.kt#editManually
   - BaseViewModel.kt#launch
   - SegmentationBounds.kt#SegmentationBounds
   - SegmentationRecoveryPlan.kt#isLongSideCapped
@@ -140,7 +140,7 @@ tags: [spec, parfait, segmentation, c103, retry]
   `ToppingEditViewModel`이 저장할 때 **같은 엄격 하한**으로 판정하므로, 완화 하한으로 통과한 후보를 골라
   「사진 편집」에 들어가면 손대지 않고 저장해도 `SubjectTooSmall`로 막힌다. `SubjectCoverage`의 KDoc이
   바로 이 불일치를 금지한다. **이번에는 완화했다면 살았을 후보 수만 로그로 남기고, 판정은 1차와 같다.**
-- **「편집 없이 사용」 진입 시 사다리 취소** — 그 버튼은 `SegmentationErrorScreen`에만 있다. 회복이 도는
+- **「편집 없이 사용」(2026-09-10부터 「직접 편집」) 진입 시 사다리 취소** — 그 버튼은 `SegmentationErrorScreen`에만 있다. 회복이 도는
   동안에는 `isError`가 거짓이라 에러 화면이 그려지지 않으므로 **UI에서 도달할 경로가 없다.** 넣으면 죽은
   코드이고, 경합으로 도달하면 에러도 후보도 없는 막다른 화면을 남긴다.
 - **회복 경로를 강제로 태우는 디버그 수단** — 검출이 안 되는 실제 사진이 없어 실기기에서 회복 경로를
@@ -151,7 +151,7 @@ tags: [spec, parfait, segmentation, c103, retry]
   그 값이 배치 초기 크기를 거쳐 서버 `scale`로 굳는다(OQ-P-282). 회복 경로는 원본에서 오려내므로
   그 전파가 아예 없다. [segmentation-preprocessing](2026-08-23-segmentation-preprocessing.md)의
   「짧은 변 512 하한 확대」 항목은 **미착수로 남고, 이 스펙이 재시도 경로에 한해 그 자리를 대신한다.**
-- **사다리 3단계 이상** — 진짜 탈출구는 이미 있는 「편집 없이 사용」이다.
+- **사다리 3단계 이상** — 진짜 탈출구는 실패 화면의 「직접 편집」이다. 2026-09-10에 「편집 없이 사용」을 대신해 C-104로 바로 간다.
 - **단계별 진행 표시** — 문구를 한 벌로 통합한 결정과 같은 이유다.
 - **고정 사진 세트** — 합성 사진으로 검증하면 변환 자체를 증명하는 순환 논증이 되기 쉽다.
 

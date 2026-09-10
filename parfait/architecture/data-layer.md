@@ -209,7 +209,7 @@ tags: [architecture, parfait]
 **메서드 6개**다 — `prepareSegmentationModule()`(2026-09-03 PR #438 신설, 아래 모듈 설치 절.
 결과를 돌려주지 않는 유일한 계약이다 — 부르는 쪽이 그것으로 할 일이 없다) · `decodeImage(uri)` · `segmentImage(bitmapWrapper)` ·
 `persistSubject(candidate)`(고른 후보를 캐시에 PNG 두 장으로 떨군다) ·
-`saveBitmap(bitmapWrapper)`(구 `saveEditedImage`, 2026-09-06 PR #457 개명 — 비트맵 한 장을 캐시에 PNG로 떨구고 절대 경로 반환. 손편집 결과뿐 아니라 「편집 없이 사용」의 원본도 이 자리로 온다) ·
+`saveBitmap(bitmapWrapper)`(구 `saveEditedImage`, 2026-09-06 PR #457 개명 — 비트맵 한 장을 캐시에 PNG로 떨구고 절대 경로 반환. 손편집 결과뿐 아니라 실패 화면 「직접 편집」의 시작 원본도 이 자리로 온다) ·
 `clearSegmentationCache()`(PR #309 신설, 아래 캐시 정리 절).
 `saveBitmap`은 **넘겨받은 비트맵을 recycle하지 않는다**(수명은 넘겨준 쪽 몫, 코드 주석에 명시).
 
