@@ -220,8 +220,8 @@ current = plate?.takeIf { fitsSubject(realSubjectLongSide) }
 ### G-001 — `GroupListContent`
 
 ```kotlin
-val borderedUrls = remember(groupList) { groupList.borderedImageUrls() }
-val outlines = rememberToppingOutlines(models = borderedUrls, retryKey = 0)
+val borderedImageUrls = remember(groupList) { groupList.borderedImageUrls() }
+val outlines = rememberToppingOutlines(models = borderedImageUrls, retryKey = 0)
 // …
 YGToppingGroup(image = group.toToppingImage(outlines), …)
 ```
@@ -274,6 +274,7 @@ YGToppingGroup(image = group.toToppingImage(outlines), …)
 | 장수 상한을 넘게 서로 다른 크기를 `put` | 가장 오래된 판이 빠진다 |
 | `get(…)`(크기 없음) | 가장 최근에 넣거나 꺼낸 판 |
 | 크기에 맞는 판이 선반에 없음 | `null` |
+| 서로 대체되지 않는 두 판이 한 크기에 함께 맞음 | 더 최근 판 |
 | 굵기가 다른 열쇠 | 서로 섞이지 않는다 |
 
 **렌더(`YGToppingGroup`)** — 자동 테스트를 새로 두지 않는다. app-preview 카탈로그 샘플과 실기기로 확인한다.
@@ -287,6 +288,7 @@ YGToppingGroup(image = group.toToppingImage(outlines), …)
 4. 테두리가 있는 그룹 카드를 눌러 캔버스로 들어갔다가 돌아오기를 반복해도, 양쪽 모두 그 토핑의 테두리가 깜빡이지 않는다.
 5. 캔버스 화면 넷(캔버스 메인·배경 편집·배치·누끼 확인)에서 토핑 크기를 드래그로 바꾸거나 Spotlight를 전환할 때
    테두리 동작이 지금과 같다 — 판 캐시를 네 화면이 함께 쓰기 때문이다.
+6. 목록을 당겨 새로고침한 뒤에도 테두리가 다시 붙는다.
 
 ## 머지 후 문서 반영
 
@@ -310,7 +312,12 @@ develop 머지 뒤 기준선 점검(`sync-tjyg-develop-baseline`)에서 반영�
 - **띠 판 캐시의 총 장수 상한이 세 배가 된다**(결정 5, 열쇠 상한 × 선반 3장). 판 한 장의 크기는 알맹이 + 사방 굵기라
   원래 총량 상한이 없었고, 이번 변경이 그 성질을 바꾸지는 않는다. 목록 판은 캔버스 판보다 작다.
 - **목록 → 캔버스 첫 프레임 테두리는 선반에 캔버스 판이 남아 있을 때만 즉시 뜬다.** 그 토핑을 캔버스에서 한 번도
-  그린 적이 없거나 판이 밀려났으면 지금처럼 새 판을 기다린다.
+  그린 적이 없거나 판이 밀려났으면 지금처럼 새 판을 기다린다. **반대 방향도 같다** — 캔버스에서 토핑을 1.25배 구간
+  셋 이상에 걸쳐(대략 1.7배 넘게) 키우면 목록 판이 선반에서 밀려나, 목록으로 돌아갈 때 한 번 깜빡인다.
+- **판 캐시 열쇠가 겹치는 것은 비율 float이 같은 토핑뿐이다.** 열쇠의 비율은 `painter.intrinsicSize`에서 오는데, 목록은
+  크기를 명시한 축소 디코딩이고 캔버스는 원본 디코딩이다(`rememberReloadableImageRequest`에 크기가 없다). 축소 반올림으로
+  비율 float이 어긋나는 토핑은 원래 서로 덮어쓰지 않으므로 결정 5가 개입하지 않는다. 그래서 실기기 확인 4번은 정사각에
+  가까운 토핑으로 해야 결정 5를 실제로 검증한다.
 - **실루엣이 긴 변 끝에 닿는 이미지는 최외곽 약 1px이 clip에 걸릴 수 있다.** 띠 가장자리의 반투명 처리
   (`ToppingOutlineSpec#EDGE_FEATHER_PX`)와 `fitSize`·`scaledPadding`의 반올림 때문이다. 실기기에서 눈에 띄면 그때 다룬다.
 - **목록 두께가 캔버스보다 굵어 보인다**(결정 1). 디자인 확인에서 다른 값이 나오면 이 스펙의 결정 1을 고친다.

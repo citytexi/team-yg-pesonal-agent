@@ -157,6 +157,17 @@ class ToppingBorderPlateCacheTest {
     }
 
     @Test
+    fun twoPlatesFitSize_returnsMoreRecentOne() {
+        // Given 서로 대체되지 않지만(130/100 = 1.3) 크기 115 에는 둘 다 맞는 두 판
+        put(plate(subjectLongSide = 100))
+        val newerPlate = plate(subjectLongSide = 130)
+        put(newerPlate)
+
+        // Then 더 최근에 넣은 판이 나온다
+        assertSame(newerPlate, get(subjectLongSide = 115))
+    }
+
+    @Test
     fun differentOutset_doesNotShareShelf() {
         // Given 굵기 4px 로 만든 판
         put(plate(subjectLongSide = 100), outsetPx = 4f)
@@ -196,7 +207,7 @@ Expected: FAIL — `get` 호출에 인자가 넷이라 `Too many arguments for p
 
 - [ ] **Step 3: 선반을 구현한다**
 
-`ToppingBorderPlateCache.kt`에서 `ToppingBorderPlate`·`PLATE_REUSE_RATIO_LIMIT`·`fitsSubject`는 그대로 두고, `internal object ToppingBorderPlateCache { ... }` 블록과 그 아래 `PlateKey` KDoc을 다음으로 바꾼다.
+`ToppingBorderPlateCache.kt`에서 `ToppingBorderPlate`·`PLATE_REUSE_RATIO_LIMIT`·`fitsSubject`는 그대로 둔다. **object 위 KDoc(`/** 컴포저블이 다시 만들어질 때 …`)부터 `private data class PlateKey(` 바로 위 KDoc 끝까지**를 통째로 다음으로 바꾼다. 기존 object KDoc을 남기면 KDoc 두 개가 연달아 붙는다.
 
 ```kotlin
 /**
@@ -204,7 +215,7 @@ Expected: FAIL — `get` 호출에 인자가 넷이라 `Too many arguments for p
  * 전역이고 비우는 주체가 없다(`synthesis/open-questions.md` OQ-P-317).
  *
  * 열쇠마다 판을 크기별로 몇 장 둔다. 같은 토핑을 크기가 크게 다른 두 화면이 그리면 한 장짜리 자리는
- * 서로 덮어써 화면을 오갈 때마다 테두리가 깜빡인다(`specs/2026-09-11-g001-group-list-topping-border.md` 결정 5).
+ * 서로 덮어써 화면을 오갈 때마다 테두리가 깜빡인다(`adr/0030-topping-outline-distance-field.md`).
  */
 internal object ToppingBorderPlateCache {
     /** 항목 크기가 알맹이 + 사방 굵기라 굵기에 상한이 없는 한 **칸 수만 묶이고 총량은 안 묶인다** */
@@ -225,7 +236,7 @@ internal object ToppingBorderPlateCache {
     /**
      * 크기가 안 맞는 판도 돌려준다 — 어긋난 정도는 [ToppingBorderPlate.fitsSubject] 로 잰다
      *
-     * @param subjectLongSide 모르면 `null` — 첫 컴포지션은 아직 크기를 재기 전이다
+     * @param subjectLongSide 모르면 `null` 이다 — 상자 크기를 재기 전에 꺼내는 자리가 있다
      */
     fun get(
         outline: ToppingOutline,
@@ -290,7 +301,7 @@ Expected: BUILD SUCCESSFUL. `YGToppingCutoutImage`의 기존 세 인자 `get` �
 먼저 `adb devices`로 기기 연결을 확인한다. 없으면 멈추고 보고한다.
 
 Run: `./gradlew :core:designsystem:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.teamyg.parfait.core.designsystem.component.ygtoppingcutout.ToppingBorderPlateCacheTest`
-Expected: 6 tests PASS.
+Expected: 7 tests PASS.
 
 - [ ] **Step 6: ktlint**
 
@@ -363,7 +374,7 @@ Expected: BUILD SUCCESSFUL
 기기가 없으면 멈추고 보고한다.
 
 Run: `./gradlew :core:designsystem:connectedDebugAndroidTest`
-Expected: 전체 PASS(Task 1의 6건 포함)
+Expected: 전체 PASS(Task 1의 7건 포함)
 
 - [ ] **Step 4: ktlint**
 
@@ -729,12 +740,9 @@ private fun MyParfaitGroupVO.drawableBorder(): Pair<Color, Double>? {
 }
 ```
 
-- [ ] **Step 5: 테스트가 통과하는지 확인한다**
+- [ ] **Step 5: `GroupListContent`가 거리판을 불러 넘긴다**
 
-Run: `./gradlew :feature:groups:list:impl:testDebugUnitTest --tests '*ToppingImageTest*'`
-Expected: PASS(기존 4건 + 신규 6건 = 10건)
-
-- [ ] **Step 6: `GroupListContent`가 거리판을 불러 넘긴다**
+⚠️ 테스트를 돌리기 전에 이 Step을 먼저 한다. `testDebugUnitTest`는 main 소스도 컴파일하는데, Step 4에서 시그니처가 바뀌어 기존 호출 `group.toToppingImage()`가 `No value passed for parameter 'outlines'`로 컴파일되지 않는다.
 
 `GroupListScreen.kt`의 `GroupListContent` 함수 본문 맨 앞(`GroupListParfaitLayout(` 호출 전)에 추가한다.
 
@@ -756,6 +764,11 @@ Expected: PASS(기존 4건 + 신규 6건 = 10건)
 ```
 
 로 바꾼다. import에 `com.teamyg.parfait.core.ui.outline.rememberToppingOutlines`와 `com.teamyg.parfait.feature.groups.list.impl.util.borderedImageUrls`를 더한다. 프리뷰(`GroupListScreenPreviewParameterProvider`)의 `recentImageBorder = ToppingBorder.None`은 그대로 둔다.
+
+- [ ] **Step 6: 테스트가 통과하는지 확인한다**
+
+Run: `./gradlew :feature:groups:list:impl:testDebugUnitTest --tests '*ToppingImageTest*'`
+Expected: PASS(기존 4건 + 신규 6건 = 10건)
 
 - [ ] **Step 7: 모듈 전체 테스트·컴파일·ktlint**
 
@@ -861,7 +874,7 @@ app-preview(`YGToppingGroup` 카탈로그):
 3. "Remote 실패" 카드의 에러 그래픽이 96dp다(줄지 않는다).
 
 앱(G-001 ↔ C-001):
-4. 테두리가 있는 토핑이 오늘 캔버스에 있는 그룹 카드를 눌러 캔버스로 들어갔다가 돌아오기를 몇 번 반복해도, 양쪽 모두 그 토핑의 테두리가 깜빡이지 않는다.
+4. 테두리가 있는 토핑이 오늘 캔버스에 있는 그룹 카드를 눌러 캔버스로 들어갔다가 돌아오기를 몇 번 반복해도, 양쪽 모두 그 토핑의 테두리가 깜빡이지 않는다. **정사각(1:1)에 가까운 토핑으로 확인한다** — 목록은 축소 디코딩, 캔버스는 원본 디코딩이라 비율 float이 어긋나는 토핑은 판 캐시 열쇠가 애초에 겹치지 않아, 선반(Task 1·2)을 거치지 않고도 통과해 버린다.
 5. 캔버스 화면 넷(캔버스 메인·배경 편집·배치·누끼 확인)에서 토핑 크기를 드래그로 바꾸거나 Spotlight를 전환할 때 테두리 동작이 이전과 같다.
 6. 목록을 당겨 새로고침한 뒤에도 테두리가 다시 붙는다.
 
