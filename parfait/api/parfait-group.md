@@ -2,8 +2,8 @@
 id: parfait-group
 title: 파르페 그룹
 server_module: http/parfaitgroup
-server_commit: d76b27a
-verified: 2026-09-10
+server_commit: 82e6edc
+verified: 2026-09-11
 android_status: done
 related_spec: s101-group-setting-api
 related_adr: ADR-0017
@@ -71,6 +71,9 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 | `groupId` | Long | 아니오 | |
 | `groupName` | String | 아니오 | |
 | `recentImageUrl` | String? | 예 | **오늘 캔버스**(`ParfaitDay.current()` — 03시 경계)에 토핑이 없으면 `null`. 어제 이전 토핑은 이 필드에 안 잡힌다(2026-08-31 변경) |
+| `recentImageBorderType` | String(enum)? | 예 | **2026-09-11 신설.** `recentImageUrl`과 같은 토핑의 테두리 종류(`NONE`·`SOLID`). `recentImageUrl`이 `null`이면 `null`, 값이 있으면 널이 아니다 → 아래 |
+| `recentImageBorderColor` | String? | 예 | **2026-09-11 신설.** 같은 토핑의 테두리 색. `borderType=SOLID`일 때만 값이 보장된다 |
+| `recentImageBorderWidth` | Double? | 예 | **2026-09-11 신설.** 같은 토핑의 테두리 두께. `borderType=SOLID`일 때만 값이 보장되고, 범위는 서버가 검사하지 않는다 |
 | `recentImageUploadedAt` | LocalDateTime | **아니오**(2026-08-19 변경) | 아래 직렬화 포맷 참고. **날짜와 무관하게 마지막 토핑 시각**이고, 토핑이 한 건도 없을 때만 **그룹 생성 시각**으로 대체된다(2026-08-31 변경) |
 | `lastPlacedByNameTagChip` | String(enum) | **아니오**(2026-08-19 변경) | 마지막 토핑을 올린 사람의 Nametag-Chip 타입. 토핑이 없으면 **그룹 생성자의 칩** → 아래 [Nametag-Chip 배정 규칙](#nametag-chip-배정-규칙) |
 
@@ -101,6 +104,29 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   `parfait_group.id` 내림차순이다. 즉 마지막 토핑이 최근인 그룹이 위로 오고, 토핑이 한 건도 없는 그룹은 그룹
   생성 시각으로 줄을 선다. 앱은 응답 순서를 그대로 그린다.
 
+  🔁 **2026-09-11 — 최신 사진의 테두리 세 필드가 붙었다**(`fix: 그룹 목록 응답에 최신 사진 테두리 정보 추가`,
+  PR #139). `recentImageBorderType`·`recentImageBorderColor`·`recentImageBorderWidth`가 프로젝션
+  (`MyParfaitGroupSummaryProjection`)부터 `MyParfaitGroupSummary`·`MyParfaitGroupResult`·
+  `MyParfaitGroupResponse`까지 관통했다. 커밋 메시지가 밝힌 동기는 "클라이언트가 목록 썸네일에 테두리를
+  그릴 수 없었다"는 것이다. 계약 사실은 넷이다.
+
+  - **`recentImageUrl`과 같은 토핑을 가리킨다.** `findMyGroupSummaries`에 서브쿼리 셋이 새로 붙었는데, 셋 다
+    `recentImageUrl` 서브쿼리와 조건(`parfait_date = :today`)도 정렬(`created_at` → `id` 내림차순)도 같다.
+    그래서 오늘 캔버스가 비면 넷이 함께 `null`이고, **어제 토핑의 테두리는 이 응답에 없다**.
+  - **`recentImageBorderType`은 `recentImageUrl`이 있으면 널이 아니다.** 컬럼 `parfait_image.border_type`이
+    `NOT NULL`(V8)이라 행이 잡히면 값이 있다. 어댑터(`ParfaitGroupAdapter`)가 문자열을 `BorderType::valueOf`로
+    되돌리고 Jackson이 다시 이름 문자열로 내보내므로, 와이어 값은 토핑 응답과 같은 `NONE`·`SOLID`다.
+  - **색·두께는 `SOLID`일 때만 믿는다.** 배치(`ParfaitImage.place`)·재배치(`reposition`)·테두리 수정
+    (`updateBorder`)이 모두 `validateBorder`를 거쳐 `SOLID`면 둘 다 있음을 보장한다. `NONE`이면 검사하지 않고
+    보낸 값을 그대로 저장하므로 두 필드에 값이 남아 있을 수 있다([parfait-image.md](parfait-image.md) 배치 절).
+    **소비 측은 `recentImageBorderType`을 먼저 봐야 한다.**
+  - **두께 범위는 여전히 서버가 검사하지 않는다** — 캔버스 조회 응답의 `borderWidth`와 같은 사정이다
+    ([conventions.md](conventions.md) "Android 불일치"의 `borderWidth` 행).
+
+  근거: `ParfaitGroupControllerTest`가 테두리 있는 케이스(`"SOLID"`·`"#FFD54F"`·`6.0`)와 오늘 토핑이 없는
+  케이스(세 필드 모두 `null`)를 `jsonPath`로 단언하고, `ParfaitGroupAdapterTest`가 프로젝션 문자열 →
+  `BorderType` 변환을, `ParfaitGroupServiceTest`가 결과 매핑을 단언한다.
+
   🔁 **2026-08-19 — JSON 키가 `lastPlacedByNametagChip` → `lastPlacedByNameTagChip`으로 바뀌었다**
   (`fix: placedBy 스키마 이름 충돌 해소 및 nameTagChip 필드명을 스펙에 맞게 통일`). 서버 코어·도메인·영속성
   계층의 내부 프로퍼티명은 `nametagChip` 그대로이고 **HTTP 응답 DTO 경계에서만** 바뀌었다 — 계약 문서가
@@ -117,8 +143,9 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
   `null`인데 시각·칩은 값이 있음, `"TYPE3"`)를 각각 `jsonPath`로 단언한다.
 
   응답은 `List<MyParfaitGroupResponse>`. nullable 필드도 값이 없다고 생략되지 않고 `null`로 내려온다
-  (`jackson.default-property-inclusion: always`, `bootstrap/application.yaml`) — 이제 이 응답에서 널이 될 수
-  있는 필드는 `recentImageUrl` 하나다.
+  (`jackson.default-property-inclusion: always`, `bootstrap/application.yaml`) — 이 응답에서 널이 될 수
+  있는 필드는 `recentImageUrl`과 2026-09-11에 붙은 테두리 세 필드다. `recentImageUrl`이 `null`이면 넷이 함께
+  `null`이고, 값이 있으면 `recentImageBorderType`도 값이 있으며 색·두께만 `NONE`일 때 널일 수 있다.
 
   **`recentImageUploadedAt`의 출처**: 애플리케이션 코드가 만든 값이 아니라, `persistence`
   모듈의 `ParfaitGroupMemberRepository.findMyGroupSummaries`(네이티브 쿼리, `MyParfaitGroupSummaryProjection`)가
@@ -515,11 +542,17 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 - **`groupName` 1~10자**(`GroupName.MAX_LENGTH`, `GroupName.kt`)는 위키 정책 "그룹명 1~10자"와 일치한다.
 - **`groupNickname` 1~15자**(`GroupNickname.MAX_LENGTH`, `GroupNickname.kt`)는 위키 정책 "닉네임 1~15자"와
   일치한다.
-- 두 값 객체가 공유하는 문자 규칙: 정규식 `^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+(?: [가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+)*$` —
-  완성형 한글·**자모 단독**·영문·숫자를 허용하고 단어 사이 단일 스페이스만 허용한다(선행·후행 공백, 연속 공백,
-  그 외 특수문자 불가). 🔁 **2026-08-15에 자모 범위가 추가됐다**(`fix: 그룹/전역 닉네임 자음 모음 단독 입력 허용`,
-  사유는 iOS 클라이언트가 통과시키는 `ㅋㅋ`류가 서버에서만 400이 되던 것). 위키 [[이름-입력-규칙]]은 "한글"의
-  범위를 정하지 않아 여전히 대조 근거가 없다 → [미결](#미결).
+- 두 값 객체(`GroupName`·`GroupNickname`)가 공유하는 문자 규칙: 정규식
+  `^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+(?: [가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+)*$` — 완성형 한글·**자모 단독**·영문·숫자를 허용하고
+  단어 사이 단일 스페이스만 허용한다(선행·후행 공백, 연속 공백, 그 외 특수문자 불가).
+  🔁 **자모 범위는 두 번에 나눠 들어왔다.** 2026-08-15(`e4ff23f`, `[Fix] 닉네임 자모 허용 및 그룹 내 중복 검사
+  제거`)에는 `GroupNickname`·`GlobalNickname`만 바뀌었고(사유는 iOS 클라이언트가 통과시키는 `ㅋㅋ`류가 서버에서만
+  400이 되던 것), `GroupName`은 **2026-09-11**(`21d8bd1`, PR #137 `fix: 그룹명 검증에 한글 자음/모음 단독 입력
+  허용`)에야 같은 범위를 얻었다(사유는 `ㅎㅇ` 같은 그룹명이 400 `INVALID_GROUP_NAME`으로 거부되던 것).
+  ⚠️ **이 문서는 2026-08-15부터 그룹명도 자모를 받는다고 적어 왔는데, 그 서술은 틀렸다.** 그 기간에 앱
+  `CheckNameValidUseCase`(A-005 그룹명·닉네임 공용)는 이미 자모를 통과시켜, 자모가 든 그룹명은 앱을 지나
+  서버에서만 400이 됐다. 이제는 서버 값 객체 셋(`GroupName`·`GroupNickname`·`GlobalNickname`)과 앱이 같은
+  집합이다. 위키 [[이름-입력-규칙]]은 "한글"의 범위를 정하지 않아 여전히 대조 근거가 없다 → [미결](#미결).
 - **초대코드 자릿수 6**은 위키에 대응 정책 문서가 없다(앱 A-004도 코드로만 6을 확정했다) → [미결](#미결).
 - **그룹 내 닉네임 중복 허용**(2026-08-15 서버 변경)도 위키 정책에 근거 항목이 없다 → [미결](#미결).
 - `INVALID_GROUP_MEMBER_LIMIT`의 메시지("1명 이상 12명 이하")가 곧 규칙 본문이라 http 계층 어디에도 별도
@@ -582,6 +615,9 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   `'ㄱ'..'ㅎ'`·`'ㅏ'..'ㅣ'`가 더해져 서버 정규식과 같은 집합이다. 앱이 서버보다 **좁아도 안 된다**는
   기준이 KDoc에 명시됐다(좁으면 서버가 받는 이름을 앱이 먼저 막는다). 정책 문서에는 여전히 자모 항목이
   없다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+  🔁 **그룹명 쪽은 2026-09-11에야 맞았다** — 같은 UseCase가 A-005 그룹명에도 쓰이는데 서버 `GroupName`은
+  그날까지 완성형만 받아, 그 사이에는 **앱이 서버보다 넓었다**(위 [정책 대조 메모](#정책-대조-메모)).
+  앱 코드는 바뀌지 않았고 서버가 따라와 닫혔다 → OQ-P-171.
 - ✅ **초대코드 자릿수가 맞아떨어졌다** — 앱 `InviteCode.LENGTH`·A-004 입력 칸은 처음부터 6이었고 서버가
   이번에 8 → 6으로 내려왔다. 그전까지는 **앱이 보낸 코드가 서버 형식 검증을 통과할 수 없었다**(문서에
   서버 자릿수가 적혀 있지 않아 드러나지 않던 불일치다). 다만 앱은 대문자 정규화를 하지 않는다 —
@@ -753,3 +789,18 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   다시 들어온 사람"에 대한 조항이 없다. 특히 **멤버십 id가 유지되므로 탈퇴 중 `(알수없음)`·`DEFAULT`로
   보였던 그 사람의 과거 토핑이 재참여 후 새 닉네임·새 칩으로 되살아난다** — 그것이 의도인지 확인되지
   않았다 → [open-questions](../synthesis/open-questions.md) OQ-P-398
+
+2026-09-11 서버 delta로 새로 열린 것:
+
+- **목록 썸네일 테두리를 앱이 아직 안 읽는다.** 서버가 테두리 세 필드를 주기 시작해 OQ-P-316 ①("서버가
+  목록 응답에 테두리 필드를 줄지")이 서버 쪽에서 닫혔다. 그러나 `MyParfaitGroupResponse`·`MyParfaitGroupVO`에
+  대응 필드가 없고 `YGToppingGroup`은 테두리 없이 그린다. `ignoreUnknownKeys = true`라 역직렬화는 안 깨져
+  `⚠️불일치`는 아니다 → [open-questions](../synthesis/open-questions.md) OQ-P-316
+  📌 **데이터 계층 수용은 로컬 브랜치에서 끝났다**(2026-09-11, TJYG-Android `feature/sync-backend-api-260911`,
+  로컬 커밋·미푸시·develop 미머지). `MyParfaitGroupResponse`가 세 키를 읽고 `MyParfaitGroupVO.recentImageBorder`
+  (`ToppingBorder`)로 접는다. 접는 규칙은 캔버스·토핑 매퍼와 같은 공용 함수
+  (`data/source/common/mapper/ToppingBorderMapper.kt`의 `toToppingBorder`)다. **렌더는 별도 티켓**이라
+  G-001 화면은 아직 이 값을 쓰지 않는다
+- **테두리도 오늘 캔버스에 묶여 OQ-P-336의 사정을 그대로 물려받는다** — 어제까지 토핑이 있던 그룹은 이미지와
+  테두리가 함께 비어 템플릿 그래픽으로 그려진다. 템플릿·조회 실패 그래픽에 테두리를 두를지는 여전히 정책이
+  비어 있다 → [open-questions](../synthesis/open-questions.md) OQ-P-316 ③ · OQ-P-336

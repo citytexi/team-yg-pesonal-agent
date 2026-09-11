@@ -2197,6 +2197,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 추적한다. [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·
   > [s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md) 유효성 절과
   > [api/member.md](../api/member.md)·[api/parfait-group.md](../api/parfait-group.md)는 갱신했다.
+  >
+  > 🔁 **2026-09-11 정정 — 그룹명은 그날까지 서버가 자모를 안 받았다.** 서버 2026-08-15 커밋(`e4ff23f`)이
+  > 자모를 넣은 것은 `GroupNickname`·`GlobalNickname` 둘뿐이었고, `GroupName`은 2026-09-11 `21d8bd1`
+  > (PR #137)에야 같은 범위를 얻었다. 그런데 계약 문서는 그룹명도 08-15부터 받는다고 적었고, PR #250은
+  > 그룹명·닉네임 공용인 `CheckNameValidUseCase`를 넓혔다. 그래서 **08-15~09-11 사이 A-005에서는 앱이 서버보다
+  > 넓었다** — 자모가 든 그룹명이 앱을 통과해 서버에서만 400 `INVALID_GROUP_NAME`이 났다. 서버가 따라와
+  > 앱 코드 변경 없이 구현 불일치가 완전히 닫혔고, 정책 공백(①②)은 그대로다.
 - **해소 메모**: 서버가 먼저 움직였다. `fix: 그룹/전역 닉네임 자음 모음 단독 입력 허용`이 `GroupNickname`·`GlobalNickname` 정규식에 자모 범위(`ㄱ-ㅎ`·`ㅏ-ㅣ`)를 넣어 **서버는 이제 자모 단독을 받는다**(사유는 iOS 클라이언트가 통과시키던 값이 서버에서만 400이던 것). 따라서 ①의 "허용이면 서버 정규식부터 바꿔야 한다"는 이미 이뤄졌고, 지금은 **앱이 서버보다 좁다** — `CheckNameValidUseCase`가 완성형만 통과시켜 서버가 받는 입력을 앱이 먼저 막는다. 남은 결정은 앱을 서버 집합으로 다시 넓힐지와 위키 [[이름-입력-규칙]]에 자모 허용을 명시할지다. 넓히면 [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·[s102 스펙](../specs/archive/2026-07-22-s102-group-nickname.md) 유효성 절과 [api/member.md](../api/member.md)·[api/parfait-group.md](../api/parfait-group.md) 정규식 서술을 함께 맞춘다.
 
 ### [2026-08-15] 닉네임 편집을 버리는 뒤로가기 동작이 S-002와 S-102로 갈렸다
@@ -5631,7 +5638,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 서버가 목록 응답에 테두리 필드를 줄지. ② 주더라도 `Crop`을 `Fit`으로 바꿔야
   실루엣이 살아나는데 그러면 지금 배치가 달라진다. ③ 템플릿 6종과 조회 실패 그래픽에도 테두리를
   두를지는 정책이 비어 있다. ④ 판정까지 옮길지 — 목록 토핑은 클릭 경로 자체가 아직 없다(OQ-P-099).
-- **상태**: 부분 해소 (**②가 ① 없이 먼저 일어났다** — 2026-08-27 PR #396 / ①③④ 잔존)
+- **상태**: 부분 해소 (**②가 ① 없이 먼저 일어났다** — 2026-08-27 PR #396 / **①은 서버 쪽만 닫혔다** —
+  2026-09-11 서버 `82e6edc` / 앱 소비·③④ 잔존)
 - **해소 메모**: ①이 먼저다. 서버 계약이 바뀌면 [api/parfait.md](../api/parfait.md)와
   [design-system](../architecture/design-system.md)의 `YGToppingGroup` 서술을 함께 고친다.
   > ✅ **②만 떼어서 먼저 갔다(2026-08-27, PR #396)** — `YGToppingGroup`의 `Remote` 갈래가
@@ -5643,6 +5651,20 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > (역할이 "비정사각을 프레임에 가둔다"에서 "넘치는 픽셀을 막는 방어선"으로 바뀌었을 뿐이다).
   > **①③④는 그대로다** — 목록 응답에는 여전히 테두리 필드가 없고, 템플릿·조회 실패 그래픽의
   > 테두리 정책도 비어 있으며, 목록 토핑에는 알파 판정도 클릭 경로도 없다.
+  >
+  > ✅ **①이 서버에서 답을 얻었다(2026-09-11, 서버 `82e6edc` PR #139)** — `GET /api/parfait-groups`
+  > 응답에 `recentImageBorderType`·`recentImageBorderColor`·`recentImageBorderWidth`(모두 널 허용)가
+  > 붙었다. 세 필드는 `recentImageUrl`과 **같은 오늘 캔버스 토핑**을 가리키므로 오늘 캔버스가 비면 함께
+  > `null`이고, 색·두께는 `SOLID`일 때만 값이 보장된다([api/parfait-group.md](../api/parfait-group.md)).
+  > **남은 것은 앱이 읽는 일이다** — `MyParfaitGroupResponse`·`MyParfaitGroupVO`에 필드가 없고
+  > `YGToppingGroup`의 `Remote` 갈래는 테두리 없이 그린다. 읽을 때는 캔버스 매퍼
+  > (`data/source/parfait/mapper/VOMapper.kt`의 `toToppingBorder`)와 같은 규칙으로 `ToppingBorder`에 접고
+  > 두께를 `solidClamped`로 가두는 것이 자연스럽다. ③④는 그대로다.
+  >
+  > 📌 **앱 쪽 절반 중 데이터 계층은 로컬 브랜치에서 끝났다(2026-09-11, TJYG-Android
+  > `feature/sync-backend-api-260911`, 로컬 커밋·미푸시·develop 미머지)** — `MyParfaitGroupVO.recentImageBorder`가
+  > 생겼고, 세 매퍼에 똑같이 있던 접는 규칙이 공용 `ToppingBorderMapper.kt#toToppingBorder` 하나로 모였다.
+  > **`YGToppingGroup` 렌더는 별도 티켓이 맡는다** — 이 항목은 그 티켓이 들어올 때까지 열어 둔다.
 
 ### [2026-08-27] 알파 마스크 캐시가 프로세스 전역인데 비우는 호출부가 0건이다
 
