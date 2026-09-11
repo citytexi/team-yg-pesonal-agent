@@ -797,7 +797,7 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   대응 필드가 없고 `YGToppingGroup`은 테두리 없이 그린다. `ignoreUnknownKeys = true`라 역직렬화는 안 깨져
   `⚠️불일치`는 아니다 → [open-questions](../synthesis/open-questions.md) OQ-P-316
   📌 **데이터 계층 수용은 로컬 브랜치에서 끝났다**(2026-09-11, TJYG-Android `feature/sync-backend-api-260911`,
-  미커밋·develop 미머지). `MyParfaitGroupResponse`가 세 키를 읽고 `MyParfaitGroupVO.recentImageBorder`
+  로컬 커밋·미푸시·develop 미머지). `MyParfaitGroupResponse`가 세 키를 읽고 `MyParfaitGroupVO.recentImageBorder`
   (`ToppingBorder`)로 접는다. 접는 규칙은 캔버스·토핑 매퍼와 같은 공용 함수
   (`data/source/common/mapper/ToppingBorderMapper.kt`의 `toToppingBorder`)다. **렌더는 별도 티켓**이라
   G-001 화면은 아직 이 값을 쓰지 않는다

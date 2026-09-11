@@ -5662,7 +5662,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 두께를 `solidClamped`로 가두는 것이 자연스럽다. ③④는 그대로다.
   >
   > 📌 **앱 쪽 절반 중 데이터 계층은 로컬 브랜치에서 끝났다(2026-09-11, TJYG-Android
-  > `feature/sync-backend-api-260911`, 미커밋·develop 미머지)** — `MyParfaitGroupVO.recentImageBorder`가
+  > `feature/sync-backend-api-260911`, 로컬 커밋·미푸시·develop 미머지)** — `MyParfaitGroupVO.recentImageBorder`가
   > 생겼고, 세 매퍼에 똑같이 있던 접는 규칙이 공용 `ToppingBorderMapper.kt#toToppingBorder` 하나로 모였다.
   > **`YGToppingGroup` 렌더는 별도 티켓이 맡는다** — 이 항목은 그 티켓이 들어올 때까지 열어 둔다.
 
