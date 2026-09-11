@@ -5,8 +5,48 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `c37dc2b4c` (`Merge pull request #490 from mash-up-kr/chore/bump-version-code-11`)
-- **요약**: **선작성 as-built 가 머지 코드와 한 줄도 어긋나지 않았고, 새로 드러난 것은 코드가 아니라 버전 표식이다**
+- **커밋**: `1b21725ba` (`Merge pull request #496 from mash-up-kr/feature/sync-backend-api-260911`)
+- **요약**: **로컬 커밋 단계에서 먼저 적은 문서가 머지 코드와 맞았는데 사본 수를 하나 잘못 셌고, 직전 회차가 적은
+  릴리즈 브랜치는 그 문장이 커밋되기 전에 이미 원격에서 지워져 있었다**
+  (delta 1건, **14파일 · 삽입 151줄 · 삭제 28줄**, 커밋 3개). **머지 트리가 브랜치 팁 `307241337`과 같다**(충돌
+  해소 편집 0건). 유닛 1288 → **1292건**(+4: `ParfaitGroupRemoteDataSourceImplTest`), 계측 **39건** 그대로다.
+  아카이브 이동 **0건**(선작성 스펙·계획이 없다 — 서버 delta 당일 라운드라 계약 문서와 미결에 바로 적었다),
+  미결 **신설 0건**(`oq-next` 402 유지).
+
+  **#496 — 그룹 목록 응답의 테두리 세 필드를 데이터 계층이 받는다.** 같은 날 서버 `82e6edc` 가
+  `GET /api/parfait-groups` 에 더한 세 필드를 `MyParfaitGroupResponse` 가 읽고 `MyParfaitGroupVO.recentImageBorder`
+  (`ToppingBorder`)로 접는다. 캔버스·토핑 **두** 매퍼에 `private` 사본으로 있던 접는 규칙이
+  `data/source/common/mapper/ToppingBorderMapper.kt` 의 `toToppingBorder` 하나로 모였고, 그룹 매퍼가 세 번째
+  호출부가 됐다. 그래서 두께 클램프(`solidClamped`)도 그룹 목록까지 넓어졌다. 문서 저장소 커밋 `09207d4`·`73a0661` 이
+  로컬 커밋 단계에서 이 사실을 [api/parfait-group](api/parfait-group.md) 과 OQ-P-316 에 먼저 적었고, 머지 코드와
+  대조한 결과 **틀린 문장은 하나**다 — OQ-P-316 이 "세 매퍼에 똑같이 있던"이라 적었는데 사본은 둘이었다(커밋
+  `76eef8a40` 제목 그대로다). 나머지는 로컬 표기를 걷는 일과, 사본 둘 또는 입주자 하나를 전제로 적힌 문서 넷
+  ([conventions](api/conventions.md) `borderWidth` 행 "두 `VOMapper`" · [parfait-image](api/parfait-image.md) 매핑 절 ·
+  `source/common/mapper` 를 다룬 [module-structure](architecture/module-structure.md)·[data-layer](architecture/data-layer.md))을
+  고치는 일이었다. `CheckNameValidUseCase` 는 KDoc 한 줄(자모 허용 경위)만 걷혔고 동작은 그대로다 — 그 경위는
+  [api/member](api/member.md) 와 open-questions [2026-08-15] 에 이미 있다. **렌더는 별도 티켓**이라 feature 코드에서
+  `recentImageBorder` 는 프리뷰 인자로만 채워져 있고 `YGToppingGroup` 은 그대로다 → design-system 불변, OQ-P-316 은
+  열린 채 유지. `api/` 도메인 `android_status`·엔드포인트 표 Android 열·README 도메인 표도 불변이다(목록
+  `⚠️불일치` 는 `recentImageUrl` 의 뜻 때문이다).
+
+  **버전 표식 — 원격 `release/*` 브랜치가 0개다.** 78회차가 "원격에 올라왔다"고 적은 `release/version-1.1.3-10` 은
+  그 문서 커밋(2026-09-11 00:28 KST)보다 먼저인 00:19 KST 에 지워져 있었다(GitHub 이벤트 `DeleteEvent`). `-11` 도
+  지금 원격에 없다. 경량 태그 `1.1.3` 은 00:15 KST 에 한 번 지워졌다가 지금 `c37dc2b4c` 를 가리킨다. 그래서
+  **코드 10 을 가리키는 ref 는 0개**다(OQ-P-310). 옛 release 브랜치 여섯도 2026-09-10 12:32~12:34 KST 에 지워져,
+  `feature/debug-mode` 팁은 브랜치로는 자기 자신에만 있고 경량 태그 `0.1.0`·`0.1.1`·`1.0.0` 에 들어 있다(OQ-P-311).
+  ⚠️ **원격 브랜치가 있는지는 `git ls-remote` 로 확인한다** — 원격 추적 브랜치는 `fetch --prune` 없이는 지워진
+  뒤에도 로컬에 남는다.
+
+  **조치**: parfait-group 「미결」 테두리 항목(로컬 표기 → PR #496) · OQ-P-316 상태·✅(사본 수 정정) ·
+  conventions `borderWidth` 행 · parfait-image 매핑 📌 · api/README 📌 · module-structure·data-layer
+  `source/common/mapper` 두 번째 입주자 · OQ-P-310·311 📌 각 1덩이 · doc-baseline 검증일 줄(79회차)·미머지 줄
+  재확인·이력·index 기준선 갱신. 미머지 하나(`feature/debug-mode`) 유지.
+
+  직전 회차 요약(78회차, `c37dc2b4c`): **선작성 as-built 가 머지 코드와 한 줄도 어긋나지 않았고, 새로 드러난 것은
+  코드가 아니라 버전 표식이다**(delta 3건, 8파일 133/3). 유닛 1282 → 1288건, 아카이브 이동 0건, 미결 신설 0건.
+  아래가 그 회차의 상세다. ⚠️ 그 상세 중 원격 `release/version-1.1.3-10`·`-11` 에 대한 문장은 위 79회차 요약이 정정한다.
+
+  **선작성 as-built 가 머지 코드와 한 줄도 어긋나지 않았고, 새로 드러난 것은 코드가 아니라 버전 표식이다**
   (delta 3건, **8파일 · 삽입 133줄 · 삭제 3줄**, 누적 diff). **머지 셋 전부 트리가 브랜치 팁과 같다**(충돌 해소
   편집 0건). 유닛 1282 → **1288건**(+6: `CustomCameraViewModelTest` 3 · `CustomGalleryPickerViewModelTest` 3),
   계측 **39건** 그대로다. 아카이브 이동 **0건**(선작성분이 이미 아카이브된 사후 스펙 둘의 as-built 절이었다),
@@ -2122,7 +2162,10 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-09-11 (78회차)
+- **검증일**: 2026-09-11 (79회차)
+
+  📌 **하루에 두 회차가 돌았다** — 78회차도 2026-09-11 이다. 번호는 요약 안의 「직전 회차 요약(78회차)」
+  포인터와 이 줄 + 1 이 같다.
 
   📌 **이 줄이 또 한 회차치 낡아 있었다**(77회차 `95b7fc4d5`). **같은 종류의 누락이 여섯 번째**다.
   번호는 요약 안의 「직전 회차 요약(76회차)」 포인터에서 77 → 78 로 이었다.
@@ -2164,6 +2207,10 @@
   멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
   적이 있다) **직전 회차의 이 줄 + 1**이다.
 - **미머지 추적 항목**: **하나**(`feature/debug-mode`, OQ-P-311 계보).
+  📌 **79회차 재확인(2026-09-11)** — `origin/develop` 에 `DebugMode*` 심볼이 여전히 0건이다(develop 이
+  350커밋, 브랜치가 6커밋 앞선다). 이번 delta 의 `feature/sync-backend-api-260911` 은 선작성 스펙·계획이 없어
+  이 줄에 오른 적이 없다. ⚠️ **원격 `release/*` 브랜치가 0개가 되어**, 이 브랜치의 커밋을 품은 다른 ref 는
+  경량 태그 `0.1.0`·`0.1.1`·`1.0.0` 셋뿐이다(`git ls-remote` · `merge-base --is-ancestor` 로 확인).
   📌 **78회차 재확인(2026-09-11)** — `origin/develop` 에 `DebugMode*` 심볼이 여전히 0건이다(develop 이
   346커밋, 브랜치가 6커밋 앞선다). 직전 회차의 선작성 문서가 "미머지 브랜치"로 적어 둔
   `bugfix/permission-not-required` 는 이 줄에 오르지 않은 채 같은 날 #489로 들어왔다. 이 줄은 여전히
@@ -2299,6 +2346,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-11 | `1b21725ba` | Merge #496(그룹 목록 응답 테두리 세 필드 수용 + 테두리 변환 공용 매퍼화) | delta 1건, **14파일 151/28**, 커밋 3개, **머지 트리 = 브랜치 팁 `307241337`**(충돌 해소 편집 0건). 유닛 1288 → **1292건**(+4: `ParfaitGroupRemoteDataSourceImplTest`), 계측 **39건** 유지. 아카이브 이동 **0건**(선작성 스펙·계획 없음), 미결 **신설 0건**(`oq-next` 402 유지). 서버 `82e6edc` 의 `recentImageBorderType`·`Color`·`Width` 를 `MyParfaitGroupVO.recentImageBorder` 가 받고, 캔버스·토핑 매퍼의 `private` 사본 둘이 `data/source/common/mapper/ToppingBorderMapper.kt#toToppingBorder` 로 모였다(그룹 매퍼가 세 번째 호출부 → 두께 클램프도 목록까지). **로컬 커밋 단계에 먼저 적은 문서(`09207d4`·`73a0661`)는 머지 코드와 맞았고 틀린 문장은 하나** — OQ-P-316 의 "세 매퍼에 똑같이 있던"(사본은 둘). 조치: parfait-group 「미결」 테두리 항목·OQ-P-316 로컬 표기 → PR #496 · conventions `borderWidth` 행 · parfait-image 매핑 📌 · api/README 📌 · module-structure·data-layer 두 번째 공용 매퍼. `CheckNameValidUseCase` 는 KDoc 한 줄만 걷혀 문서 불변. 렌더는 별도 티켓이라 design-system·OQ-P-316 열림 유지, `api/` `android_status`·엔드포인트 표·README 도메인 표 불변. **원격 `release/*` 0개** — 78회차가 적은 `release/version-1.1.3-10` 은 그 문서 커밋 전(00:19 KST)에 이미 삭제됐고 `-11` 도 없다, 태그 `1.1.3` 은 한 번 지워졌다가 `c37dc2b4c` → 코드 10 ref 0개(OQ-P-310 📌), 옛 여섯은 2026-09-10 삭제 · `feature/debug-mode` 는 태그 `0.1.0`·`0.1.1`·`1.0.0` 에만(OQ-P-311 📌). 검증일 줄 79회차(누락 없음). 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-09-11 | `c37dc2b4c` | Merge #488(버전 1.1.3 코드 10) · #489(카메라·갤러리 진입 시 권한 요청 + CameraX 바인딩 권한 대기) · #490(코드 11) | delta 3건, **8파일 133/3**, **머지 셋 전부 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 1282 → **1288건**(+6: 카메라 3 · 갤러리 3), 계측 **39건** 유지. 아카이브 이동 **0건**, 미결 **신설 0건**(`oq-next` 402 유지). **선작성 as-built 절(문서 PR #406)이 머지 코드와 어긋난 자리 0건** — 조치는 미머지 표기 걷기(c101·c102 스펙, specs/README 두 행, OQ-P-053)와 두 스펙 `verified` 갱신. `:feature:camera:impl` 첫 유닛 테스트 소스셋 → module-structure 📌. **1.1.3 이 코드 10·11 두 벌** — #490 은 이름을 두고 코드만 올린 첫 커밋, `release/version-1.1.3-10` 은 권한 수정 전 트리, 경량 태그 `1.1.3` 은 11 만 가리킨다 → ADR-0003·adr/README 버전 as-built, OQ-P-310·311 📌. 다시 뗀 이유는 PR 본문에 없다. `api/` 불변(원격 연동 코드 0건). 검증일 줄 한 회차치 누락 복구(76 → 78회차). 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-09-10 | `95b7fc4d5` | Merge #487(세그멘테이션 재시도 회복 + 실패 화면 「직접 편집」) | delta 1건, **29파일 2109/458**, 커밋 15개, **머지 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 1229 → **1282건**(+53: 스펙 52 + 「직접 편집」 1), 계측 **39건** 유지. **선작성 스펙 1·계획 1 아카이브 이동**(계획 체크박스 43개 전부 미체크 — 진행의 정본은 `git log`). 미결 **신설 3건**(OQ-P-399~401, `oq-next` 399 → 402), 📌 다섯(OQ-P-150·153·278·282·344). **본문은 맞았다** — 스펙 API 절 선언과 모듈별 테스트 수(133·534·75)가 develop 과 같다(문서 저장소 PR #404 가 브랜치 단계에서 as-built 로 먼저 고쳤다). **어긋난 자리는 문서 둘레였다**: ① 스펙 `related_code` 가 옮기기 전 이름 다섯(develop 0건) ② 마지막 커밋 `3217e62f7` 의 「직접 편집」 갈래(세그멘테이션 Route 가 `TOPPING_EDIT_RESULT_KEY` 를 받는다)가 navigation-flow 에 없음 ③ OQ-P-153 ④·OQ-P-344 ①이 옛 버튼을 우회로로 적음 ④ segmentation-preprocessing 이 512 확대를 "미착수"로만 적음. **새로 드러난 것은 판정 수단이다** — 조건부 세 항목의 철회 조건인 단계 로그가 Kermit `platformLogWriter` 하나라 logcat 밖으로 나가지 않고, 회복 경로 강제 수단도 없다(OQ-P-399). 실기기 확인 0회(회복·1차 회귀, OQ-P-400), 「직접 편집」 이름의 디자인 근거 없음(OQ-P-401). 조치: 아카이브 2 · README 2 · c103-error-use-original 🔁 배너 · navigation-flow · data-layer 링크 · ADR-0012 As-built 절 · segmentation-preprocessing 📌 · open-questions. `api/` 는 원격 연동 코드 0건이라 불변. 원격 `release/*` 브랜치 없음, 태그는 `1.1.2` 까지(로컬 `release/version-1.1.3-10` 은 미푸시라 범위 밖). 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-09-10 | `69bbbe68` | Merge #483(버전 1.1.2 코드 9) | delta 1건, **1파일 2/2**, `.kt` **0건**, **머지 트리 = 브랜치 팁**. 유닛 **1229건**·계측 **39건** 그대로, 아카이브 이동 **0건**, 미결 **신설 0건**(`oq-next` 399 유지). `appVersionCode` 8 → **9** · `appVersionName` 1.1.1 → **1.1.2**(프리뷰 두 값 불변). **이 회차의 발견은 버전이 아니라 계보다** — `origin/release/version-1.1.2-9` 가 `origin/develop` HEAD **그 커밋**이고(양방향 0커밋) 직전 `1.1.1-8` 도 그랬다. **OQ-P-311 ①(검증한 트리 ≠ 배포된 트리)이 최신 계보에서는 성립하지 않는다** — 지금 관행은 develop 에서 릴리즈 브랜치를 떼고 **버전 커밋을 develop 이 PR 로 되받는** 것이라 delta 가 곧 릴리즈 브랜치의 내용이다. ⚠️ 그 관행은 어디에도 규칙으로 안 적혔고 `feature/debug-mode` 는 여전히 release 쪽에만 있다(②). 경량 태그 `1.1.2` 신설 — **경량인 채로 가리키는 곳만 develop 커밋이 됐다**(OQ-P-310 ② 불변: 다음 올림을 강제하는 것이 없다). **버전 축을 지키는 테스트는 0건** — `DeviceInfoTest` 의 `1.1.1` 은 `buildDeviceInfo` 인자로 직접 넣는 픽스처라 카탈로그와 무관하다(그래서 안 깨졌고, 같은 이유로 잘못 오른 값도 못 잡는다). 조치: ADR-0003 📌 · adr/README 0003 행 · OQ-P-311 📌 1덩이 · doc-baseline·index. `api/` 는 원격 연동 코드 0건이라 불변. 미머지 하나(`feature/debug-mode`) 유지 |

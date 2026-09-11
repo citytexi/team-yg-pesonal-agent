@@ -43,6 +43,9 @@
 `recentImageBorderType`·`recentImageBorderColor`·`recentImageBorderWidth`(모두 널 허용)를 더했다.
 세 필드는 `recentImageUrl`과 같은 오늘 캔버스 토핑을 가리킨다. 앱은 아직 안 읽지만 `ignoreUnknownKeys`라
 불일치는 아니고, OQ-P-316 ①이 서버 쪽에서 닫혔다 → [parfait-group.md](parfait-group.md). 신규 OQ 0건.
+📌 **같은 날 앱 데이터 계층이 읽기 시작했다**(PR #496 develop 머지) — `MyParfaitGroupVO.recentImageBorder`로
+접는다. G-001 렌더는 별도 티켓이라 아래 도메인 표의 Android 열은 그대로다(목록의 `⚠️불일치`는
+`recentImageUrl`의 뜻 때문이다).
 
 ⚠️ **2026-09-10 — 엔드포인트도 DTO도 에러 코드도 안 바뀌었는데 권한 경계가 움직였다.**
 `fix: 그룹 탈퇴 후 재참여가 불가능하던 문제 해결`이 멤버십 판정에 `leftAt IS NULL`을 넣었다. 그 결과

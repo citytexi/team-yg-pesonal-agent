@@ -170,6 +170,9 @@ app / app-preview
   결정을 조용히 굳힐 위험도 없다. 막는 것이 없으면 복제를 유지할 이유도 없다.
   `source/*`가 데이터소스 도메인별로만 쪼개져 있어 `source/common/mapper`가 새 슬롯이다 —
   **여러 데이터소스가 공유하는 wire→도메인 변환만** 여기 둔다(플랫폼 헬퍼는 `data/utils` 소관).
+  📌 **두 번째 입주자는 `ToppingBorderMapper.kt`다**(2026-09-11, PR #496 develop 머지) — parfait·parfaitimage
+  매퍼의 `private` 테두리 변환 사본 둘을 `internal fun toToppingBorder` 하나로 모았고, group 매퍼가 그룹 목록
+  테두리를 읽으면서 세 번째 소비처가 됐다.
 
 ## 현재 수치가 필요하면 코드에서 측정
 ```bash

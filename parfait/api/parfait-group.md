@@ -792,15 +792,18 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
 
 2026-09-11 서버 delta로 새로 열린 것:
 
-- **목록 썸네일 테두리를 앱이 아직 안 읽는다.** 서버가 테두리 세 필드를 주기 시작해 OQ-P-316 ①("서버가
-  목록 응답에 테두리 필드를 줄지")이 서버 쪽에서 닫혔다. 그러나 `MyParfaitGroupResponse`·`MyParfaitGroupVO`에
-  대응 필드가 없고 `YGToppingGroup`은 테두리 없이 그린다. `ignoreUnknownKeys = true`라 역직렬화는 안 깨져
-  `⚠️불일치`는 아니다 → [open-questions](../synthesis/open-questions.md) OQ-P-316
-  📌 **데이터 계층 수용은 로컬 브랜치에서 끝났다**(2026-09-11, TJYG-Android `feature/sync-backend-api-260911`,
-  로컬 커밋·미푸시·develop 미머지). `MyParfaitGroupResponse`가 세 키를 읽고 `MyParfaitGroupVO.recentImageBorder`
-  (`ToppingBorder`)로 접는다. 접는 규칙은 캔버스·토핑 매퍼와 같은 공용 함수
-  (`data/source/common/mapper/ToppingBorderMapper.kt`의 `toToppingBorder`)다. **렌더는 별도 티켓**이라
-  G-001 화면은 아직 이 값을 쓰지 않는다
+- **목록 썸네일 테두리를 앱 데이터 계층은 읽고 화면은 아직 안 그린다.** 서버가 테두리 세 필드를 주기 시작해
+  OQ-P-316 ①("서버가 목록 응답에 테두리 필드를 줄지")이 서버 쪽에서 닫혔다. 서버 delta 당일에는 앱에 대응
+  필드가 없었고, `ignoreUnknownKeys = true`라 역직렬화가 안 깨져 `⚠️불일치`로 세지 않았다
+  → [open-questions](../synthesis/open-questions.md) OQ-P-316
+  ✅ **데이터 계층 수용이 develop에 들어왔다**(2026-09-11, PR #496 `1b21725ba`, 머지 트리 = 브랜치 팁).
+  `MyParfaitGroupResponse`가 세 키를 읽고 `MyParfaitGroupVO.recentImageBorder`(`ToppingBorder`, 비널)로 접는다.
+  접는 규칙은 캔버스·토핑 매퍼와 같은 공용 함수(`data/source/common/mapper/ToppingBorderMapper.kt`의
+  `toToppingBorder`)라 **두께도 `solidClamped`로 가둔다** — [conventions.md](conventions.md) "Android 불일치"의
+  `borderWidth` 행이 이 응답까지 넓어졌다. `ParfaitGroupRemoteDataSourceImplTest`가 네 케이스(`SOLID` ·
+  `NONE`인데 색·두께가 남음 · `SOLID`인데 두께 없음 · 이미지 없음)를 잠근다. **렌더는 별도 티켓**이라
+  G-001 화면은 이 값을 쓰지 않는다 — feature 코드에서 `recentImageBorder`는 프리뷰 인자로만 채워져 있고
+  `YGToppingGroup`은 테두리 없이 그린다
 - **테두리도 오늘 캔버스에 묶여 OQ-P-336의 사정을 그대로 물려받는다** — 어제까지 토핑이 있던 그룹은 이미지와
   테두리가 함께 비어 템플릿 그래픽으로 그려진다. 템플릿·조회 실패 그래픽에 테두리를 두를지는 여전히 정책이
   비어 있다 → [open-questions](../synthesis/open-questions.md) OQ-P-316 ③ · OQ-P-336

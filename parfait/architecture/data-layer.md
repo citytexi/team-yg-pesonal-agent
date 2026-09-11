@@ -754,7 +754,9 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
 
   **여러 도메인이 같은 변환을 쓰면 `source.common.mapper`로 올린다**(2026-08-19). 첫 사례는
   `NametagChipTypeMapper.kt`의 `String?.toNametagChipType()`으로, group·parfait 두 매퍼가 각각
-  `private` 사본을 갖고 있던 것을 `internal` 하나로 합쳤다. 기준은 **소비처가 둘 이상**이라는 것뿐이다 —
+  `private` 사본을 갖고 있던 것을 `internal` 하나로 합쳤다. 두 번째는 `ToppingBorderMapper.kt`의
+  `toToppingBorder`(2026-09-11, PR #496)로, parfait·parfaitimage 매퍼의 사본 둘을 합치면서 group 매퍼가
+  그룹 목록 테두리를 읽는 세 번째 소비처로 붙었다. 기준은 **소비처가 둘 이상**이라는 것뿐이다 —
   `:data` 안에서 닫히는 변환이라 feature 쪽 복제를 묶어 두는 모듈 가시성 문제가 여기엔 없다
   ([module-structure](module-structure.md)). 도메인 하나만 쓰는 변환은 그대로 `source.<도메인>.mapper`에
   둔다. 플랫폼 헬퍼(`FileProvider`·로거 따위)는 `data/utils` 소관이라 여기 오지 않는다.
