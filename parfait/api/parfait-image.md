@@ -485,6 +485,9 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 가둔다. **서버가 범위를 검증하지 않는 자리를 앱이 임시로 메운 것**이라, 서버나 정책이 범위를 정하면
 걷을 코드다(위 「미결」·[open-questions](../synthesis/open-questions.md) OQ-P-381). 두
 `RemoteDataSource` 테스트가 범위 밖 값이 잘리는 것을 각각 한 건씩 잠근다.
+📌 **2026-09-11(PR #496)부터 두 매퍼가 사본 대신 공용 함수를 부른다** —
+`data/source/common/mapper/ToppingBorderMapper.kt`의 `toToppingBorder`이고, 그룹 목록 매퍼
+(`data/source/group/`)가 같은 함수의 세 번째 호출부다([parfait-group.md](parfait-group.md) 「미결」).
 
 | 계약 | Android 심볼 |
 |---|---|
