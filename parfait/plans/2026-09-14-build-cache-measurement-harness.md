@@ -561,18 +561,21 @@ git commit -m "feat: 빌드 캐시 측정 러너 뼈대와 선행 조건 검사�
 
 `precheck`는 clean 트리를 전제로 하므로 **커밋 뒤에** 확인한다.
 
+함수를 파일로 뽑아 `source` 한다. heredoc 으로 넘기면 delimiter 를 인용하지 않는 한
+`$1`·`$tree`·`$missing` 이 소싱 전에 바깥 셸에서 먼저 빈 문자열로 치환돼 `precheck` 가 항상
+거짓 실패하고 `return: : numeric argument required` 가 난다.
+
 Run:
 ```bash
 TMPTREE=$(mktemp -d)/tree
 git worktree add --detach "$TMPTREE" HEAD >/dev/null
 cp local.properties "$TMPTREE/local.properties" 2>/dev/null || true
-bash -c '
-  TARGETS=":app:assembleDebug"
-  source /dev/stdin <<SH
-'"$(sed -n '/^precheck()/,/^}/p' tools/build-cache-bench/run.sh)"'
-SH
-  precheck "'"$TMPTREE"'" && echo "precheck: 통과" || echo "precheck: 실패 (위 사유)"
-'
+sed -n '/^precheck()/,/^}/p' tools/build-cache-bench/run.sh > /tmp/precheck-fn.sh
+TARGETS=":app:assembleDebug" bash -c '
+  source /tmp/precheck-fn.sh
+  precheck "$1" && echo "precheck: 통과" || echo "precheck: 실패 (위 사유)"
+' _ "$TMPTREE"
+rm -f /tmp/precheck-fn.sh
 git worktree remove --force "$TMPTREE"; git worktree prune
 ```
 
