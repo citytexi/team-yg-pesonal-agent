@@ -19,7 +19,7 @@ outcome을 CSV로 떨군다. 셸 러너가 시나리오별 사전 상태(빌드 
 
 - **작업 저장소는 `TJYG-Android`다.** 이 계획 문서가 있는 위키 저장소가 아니다. 로컬 절대경로는
   `wiki/personal-private/project-paths.md`에 있고, 리모트는 `mash-up-kr/TEAMYG-Android`다.
-- **브랜치는 `build/remote-build-cache`.** 이미 존재하며 `develop`과 같은 자리에 있다.
+- **브랜치는 `build/build-cache-measurement`.** 이미 존재하며 `develop`과 같은 자리에 있다.
 - **태스크마다 커밋한다.** `git push`와 PR 생성은 사용자 승인 전까지 하지 않는다.
 - **새 도구 의존성을 들이지 않는다.** `bats`·`gradle-profiler`·`jq`·`gawk` 설치를 요구하지 않는다.
   검증은 실제 Gradle 실행과 러너의 dry-run 출력으로 한다.
@@ -895,7 +895,7 @@ git rev-parse --abbrev-ref HEAD
 git worktree list
 ```
 
-Expected: 변경 없음, 브랜치는 `build/remote-build-cache`, worktree 목록에 측정용 트리가 남아
+Expected: 변경 없음, 브랜치는 `build/build-cache-measurement`, worktree 목록에 측정용 트리가 남아
 있지 않다.
 
 - [ ] **Step 6: 중단해도 안전한지 확인한다**
