@@ -271,7 +271,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 INIT="$ROOT/tools/build-cache-bench/cache-report.init.gradle.kts"
-TARGET="${1::-:core:util:jvm:compileKotlin}"
+TARGET="${1:-:core:util:jvm:compileKotlin}"
 
 WORK="$(mktemp -d)"
 CACHE="$WORK/cache"
@@ -301,9 +301,6 @@ echo
 echo "-- not reused (executed despite warm cache) --"
 awk -F, 'NR>1 && $2=="EXECUTED" {print $1}' "$WORK/probe.csv"
 ```
-
-`TARGET` 기본값 표기의 `${1::-...}` 는 오타가 나기 쉽다. 정확히 `${1:-:core:util:jvm:compileKotlin}`
-로 쓴다(기본값이 콜론으로 시작하는 태스크 경로라 콜론이 연달아 보인다).
 
 - [ ] **Step 2: 실행 권한을 주고 돌린다**
 
@@ -566,11 +563,12 @@ measure() {
     local csv="$OUT/tasks/$tag.csv"
     mkdir -p "$OUT/tasks"
 
-    # 회차마다 데몬을 새로 띄워 JIT·파일 해시 축적이 단조 편향을 만들지 않게 한다.
+    prepare_state "$scenario" "$tree"
+
+    # 사전 상태를 만드는 빌드 횟수가 시나리오마다 달라서 데몬 온도가 갈린다.
+    # 상태를 다 만든 뒤에 재기동하고 고정 횟수로 덥혀야 모든 측정이 같은 조건에서 출발한다.
     (cd "$tree" && ./gradlew --stop >/dev/null 2>&1) || true
     gradle_run "$tree" "$OUT/discard.csv" help
-
-    prepare_state "$scenario" "$tree"
 
     local start end
     start=$(date +%s%3N 2>/dev/null || python3 -c 'import time;print(int(time.time()*1000))')
