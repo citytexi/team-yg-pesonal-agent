@@ -1,3 +1,19 @@
+---
+id: build-cache-measurement-harness
+title: 로컬 빌드 캐시 측정 하니스 구현 계획 (7 Task)
+status: done
+type: work-order
+created: 2026-09-14
+updated: 2026-09-16
+platforms: android
+owner: android
+related_adr: ADR-0003
+related_spec: build-cache-measurement-harness, ci-gradle-cache-seeding
+related_code: tools/build-cache-bench/run.sh, tools/build-cache-bench/check-relocatability.sh, tools/build-cache-bench/cache-report.init.gradle.kts, tools/build-cache-bench/report.py, gradle.properties
+archived_reason: develop 머지(PR #499 `f37a76540`, 2026-09-16)
+tags: [plan, parfait, build, ci]
+---
+
 # 로컬 빌드 캐시 측정 하니스 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -13,7 +29,7 @@ outcome을 CSV로 떨군다. 셸 러너가 시나리오별 사전 상태(빌드 
 **Tech Stack:** Gradle 9.5 init script (Kotlin DSL), `BuildEventsListenerRegistry` +
 `OperationCompletionListener`, bash 3.2, `git worktree`.
 
-**Spec:** [`parfait/specs/2026-09-14-build-cache-measurement-harness.md`](../specs/2026-09-14-build-cache-measurement-harness.md)
+**Spec:** [`parfait/specs/2026-09-14-build-cache-measurement-harness.md`](../../specs/archive/2026-09-14-build-cache-measurement-harness.md)
 
 ## Global Constraints
 

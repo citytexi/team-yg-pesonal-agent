@@ -1,13 +1,17 @@
 ---
 id: build-cache-measurement-harness
 title: 로컬 빌드 캐시 측정 하니스 (Local build cache measurement harness)
-status: draft
+status: implemented
 category: build-ci
 platforms: android
-verified: 2026-09-14
+verified: 2026-09-16
 related_code:
   - gradle.properties
   - gradle-cache-seed.yml
+  - tools/build-cache-bench/run.sh
+  - tools/build-cache-bench/check-relocatability.sh
+  - tools/build-cache-bench/report.py
+  - tools/build-cache-bench/cache-report.init.gradle.kts
 related_adr:
 related_spec:
   - ci-gradle-cache-seeding
@@ -19,6 +23,13 @@ tags: [spec, parfait, build, ci, performance]
 
 # Spec: 로컬 빌드 캐시 측정 하니스
 
+> ✅ **구현 완료·develop 머지(2026-09-16, PR #499 `f37a76540` — 머지 트리가 브랜치 팁 `6600f9efa`와 같다, 충돌 해소 편집 0건).**
+> 6파일 · 삽입 1200줄, 커밋 19개. 코드 변경이 `tools/`와 `.gitignore`뿐이라 테스트 수는 그대로다
+> (유닛 1298 · 계측 46, 두 수 모두 같은 라운드의 PR #497이 올린 값이다).
+> **구현이 이 스펙보다 두 자리 넓다** — 게이트 G0를 실행하는 `check-relocatability.sh`가 별도 파일이 됐고,
+> 요약을 브라우저로 보는 `report.html`과 그것을 조립하는 `report.py`가 계획에도 없던 산출물로 붙었다.
+> 아래 「파일 배치와 실행 인터페이스」·「출력물」·「게이트 G0」는 머지본을 기준으로 고쳐 적었다.
+>
 > 상태·날짜·대상·관련은 위 frontmatter가 단일 출처(source of truth). 본문은 설계 내용에 집중.
 
 ## 목표
@@ -33,7 +44,7 @@ tags: [spec, parfait, build, ci, performance]
 - `gradle.properties`의 `org.gradle.caching=true` — 팀원 각자 머신의 로컬 빌드 캐시.
 - `gradle-cache-seed.yml` — `develop` push마다 GitHub Actions 캐시에 Gradle User Home을 굽고,
   PR 워크플로가 읽기 전용으로 소비한다. 경위와 실측은
-  [ci-gradle-cache-seeding](archive/2026-08-10-ci-gradle-cache-seeding.md)에 있다.
+  [ci-gradle-cache-seeding](2026-08-10-ci-gradle-cache-seeding.md)에 있다.
 
 리모트 빌드 캐시가 **추가로** 파는 것은 하나다. **CI가 이미 구운 태스크 출력을 개발자 머신이
 당겨 쓰는 것.** GitHub Actions 캐시는 러너 안에서만 닿기 때문에 지금은 그 경로가 없다.
@@ -51,7 +62,7 @@ tags: [spec, parfait, build, ci, performance]
   체감과 벌어진다.
 - 제외: configuration cache와 `org.gradle.parallel`. 이 저장소는 둘 다 켜 두지 않았고
   (`gradle.properties`에 해당 키가 없다), 측정 축에 섞으면 캐시 효과를 가를 수 없다.
-  빌드 성능 후속 과제로 [open-questions](../synthesis/open-questions.md)에 이미 올라 있다.
+  빌드 성능 후속 과제로 [open-questions](../../synthesis/open-questions.md)에 이미 올라 있다.
   하니스 자체는 configuration cache를 켜도 동작하므로 나중에 다시 만들 필요는 없다.
 
 ## 설계
@@ -122,6 +133,14 @@ tags: [spec, parfait, build, ci, performance]
 전용 캐시 디렉토리를 다른 쪽이 가리키게 한 뒤 `FROM_CACHE`가 잡히는지 확인한다. 적중률이
 낮으면 어느 태스크가 이식 불가인지 `tasks.csv`로 특정한다.
 
+구현은 러너와 별도 스크립트 `check-relocatability.sh`다. seed와 probe 둘 다 worktree이고 각각
+`local.properties`를 복사받으며, probe는 `clean` 뒤에 잰다. 인자로 준 태스크가 probe에서
+`FROM_CACHE`가 아니거나 판정 대상에 `FROM_CACHE`가 한 건도 없으면 종료 코드 1이다.
+**판정에서 빼고 따로 출력하는 것이 둘 있다** — `@DisableCachingByDefault` 태스크는 어떤 캐시로도
+줄지 않아 섞으면 "캐시 불가"가 "이식 불가"로 읽히고, included build(`:build-logic:*`)는 seed가
+`--rerun-tasks`로 담아 둔 것이 probe에서 적중해 게이트를 거짓 통과시킨다(러너의 적중률 집계도
+같은 이유로 뺀다).
+
 **한계를 명시한다.** 이 게이트가 재는 것은 절대경로 이식성뿐이다. 실제 리모트 캐시에서는
 **CI(`ubuntu-latest`)가 만든 항목을 개발자 머신(macOS)이 받는다.** OS와 JDK 벤더가 캐시 키에
 들어가므로 적중하지 않을 수 있는데, 그 확인은 리모트 캐시를 실제로 세워 보기 전에는 불가능하다.
@@ -183,7 +202,7 @@ init script가 `settingsEvaluated` 시점에 `buildCache.local.directory`를 하
 | 루트 `local.properties` | configuration 단계에서 즉시 실패 | `app/build.gradle.kts`가 `rootProject.file("local.properties")`를 무조건 연다. 템플릿은 `local.default.properties` |
 | `sdk.dir` | Android SDK를 못 찾는다 | `local.default.properties` |
 | `kakao.native.app.key` | 빌드는 되지만 placeholder가 잘못 박힌다 | 같은 파일 |
-| debug 키스토어 3종 값과 파일 실존 | `validateSigningDebug`가 `error(...)`로 실패 | `build-logic`의 `AndroidConfig`·`PropertySettingManager` |
+| debug 서명 4종 값(`YG_DEBUG_STORE_FILE`·`YG_DEBUG_STORE_PASSWORD`·`YG_DEBUG_KEY_ALIAS`·`YG_DEBUG_KEY_PASSWORD`)과 키스토어 파일 실존 | `validateSigningDebug`가 `error(...)`로 실패 | `build-logic`의 `AndroidConfig`·`PropertySettingManager`. `YG_DEBUG_STORE_FILE`이 상대경로면 `app/` 기준으로 풀리므로 새 worktree에서는 절대경로가 안전하다 |
 | `app/google-services.json` | `processDebugGoogleServices` 실패 | `app/build.gradle.kts`의 `com.google.gms.google-services` |
 
 `YG_BASE_URL`은 필요 없다. `PropertySettingManager`에 폴백이 있다. `test` 그래프는 서명과
@@ -218,7 +237,9 @@ configuration cache를 켜는 순간 `Listener registration ... is unsupported.`
 ```
 tools/build-cache-bench/
 ├── run.sh                        # 시나리오 러너
+├── check-relocatability.sh       # 게이트 G0 (러너와 별도로 먼저 돌린다)
 ├── cache-report.init.gradle.kts  # 태스크 outcome 수집 + 전용 캐시 디렉토리 전환
+├── report.py                     # CSV → report.html 조립
 ├── README.md                     # 사용법·선행 조건·측정 조건·해석 방법
 └── runs/                         # 측정 결과 (.gitignore 대상)
 ```
@@ -228,23 +249,42 @@ tools/build-cache-bench/
 
 ```
 ./tools/build-cache-bench/run.sh \
-  --tree <측정 전용 클론 또는 worktree 경로> \
-  --pair P1 --scenarios S0,S1,S2,S3,S4 \
-  --targets :app:assembleDebug,test --iterations 3
+  --scenarios S0,S1,S2,S3,S4 \
+  --targets :app:assembleDebug,test \
+  --pair "$(git rev-parse <A>):$(git rev-parse <B>)" \
+  --iterations 3
 ```
 
 `--targets`는 Gradle에 그대로 넘기는 태스크 경로다. `test`는 전 모듈, `:app:assembleDebug`는
 해당 모듈이라는 차이가 인자 표기에 드러나야 한다.
 
+머지본의 인자는 위 넷에 셋을 더한 일곱이다. **`--tree`는 선택이다** — 생략하면 러너가 worktree를
+새로 만들고 저장소 루트의 `local.properties`·`app/google-services.json`을 복사한다. `--cache-dir`는
+전용 캐시 경로(기본 `<out>/cache`), `--out`은 결과 디렉토리(기본 `runs/<타임스탬프>/`), `--dry-run`은
+빌드 없이 실행 계획과 고정된 쌍 SHA만 출력한다. **커밋 쌍은 `--pair <A>:<B>` 한 인자로 받는다** —
+스펙 초판이 쓴 `--pair P1` 같은 쌍 이름은 러너가 모른다. `S3`·`S4`를 안 돌리면 `--pair`는 필요 없다.
+
 ### 출력물
 
-`runs/<timestamp>/` 아래에 넷을 남긴다.
+`--out`(기본 `runs/<타임스탬프>/`) 아래에 여섯을 남긴다.
 
-- `builds.csv` — 빌드 1행.
-- `tasks/<시나리오>-<그래프>-<회차>.csv` — 태스크 1행. 미스 사유 컬럼을 포함한다. 빌드마다 한 파일이다.
-- `cache-size.csv` — 시나리오별 캐시 항목 수와 용량.
+- `builds.csv` — 빌드 1행. 컬럼 `scenario,target,pair,iteration,wall_ms,daemon_pid`.
+- `tasks/<시나리오>-<그래프>-<회차>.csv` — 태스크 1행. 컬럼 `task_path,outcome,duration_ms,execution_reasons`.
+  빌드마다 한 파일이다.
+- `cache-size.csv` — 시나리오별 캐시 항목 수와 용량. 컬럼
+  `scenario,target,iteration,pre_entries,pre_kb,post_entries,post_kb`. **`pre_*`가 측정 빌드가 읽으려는
+  캐시이고 `post_*`에는 그 빌드가 새로 밀어 넣은 항목이 섞인다** — 저장 비용·전송량 추정에는 `pre_*`를 쓴다.
+- `logs/<태그>.log`(측정 빌드)·`logs/<태그>.prepare<N>.log`(사전 상태를 만든 빌드들)·
+  `logs/<태그>.warmup.log`. `<N>`은 그 시나리오 안에서의 순번이다(`S4`는 1=`clean`, 2=B 굽기,
+  3=`clean`, 4=A 굽기).
 - `summary.md` — 사람이 읽는 요약. **핵심 값 `T_local − T_remote`를 커밋 쌍과 대상 그래프별로**
   먼저 싣고, 참고값(`S0`·`S1`·`S2`)과 `S3`에서 미스로 남은 태스크를 사유별로 묶어 잇는다.
+  적중률 표에는 `from_cache` 외에 `up_to_date`·`executed`도 싣는다 — 셋을 다 보지 않으면 "쌍이
+  무신호라 전부 `UP_TO_DATE`"와 "캐시 미스인데 빨랐다"가 똑같이 `0.0%`로 읽힌다.
+- `report.html` — **스펙 초판에 없던 산출물이다.** 같은 내용을 브라우저로 본다. 핵심 값을 맨 위에 두고
+  시나리오별 소요 시간과 태스크 결과 구성을 차트로 그리며, `S3` 미스 태스크의 긴 사유는 접어 둔다.
+  외부 라이브러리를 쓰지 않는 단일 파일이고, 조립(`report.py`)이 실패해도 러너는 죽지 않는다 —
+  CSV와 `summary.md`는 이미 디스크에 있다.
 
 **적중률의 분모는 actionable 태스크로 고정한다.** 그래야 Gradle 요약 줄과 같은 기준이 된다.
 
@@ -277,6 +317,10 @@ tools/build-cache-bench/
 - **측정 1회의 시간 비용이 크다.** 커밋 쌍 2종 × 대상 그래프 2종 × 시나리오 5종 × 3회에
   워밍업까지 더하면 빌드 수가 백 단위로 간다. 기본 구성으로 한 번에 다 돌리는 것은 현실적이지
   않으므로, 러너는 커밋 쌍과 그래프를 하나씩 돌릴 수 있어야 한다.
+- **`S4`가 사전 상태에서 풀빌드를 `S3`보다 2회 더 돈다 — 한 방향 편향이다.** 사전 상태 수립 직후의
+  `--stop`이 균등화하는 것은 **Gradle 데몬뿐**이고, OS 페이지 캐시와 Kotlin 데몬은 그것을 넘겨 남는다.
+  그래서 `S4` 쪽이 더 덥혀진 상태로 측정에 들어가 핵심 값 `S3 − S4`를 **부풀린다.** 회차마다 같은
+  방향이라 중앙값으로 지워지지 않는다(구현 중에 드러나 README 「한계」에도 적었다).
 - **Kotlin 데몬은 통제되지 않는다.** `./gradlew --stop`은 Gradle 데몬만 죽이고 Kotlin 컴파일
   데몬은 살려 둔다. 회차마다 Gradle 데몬을 새로 띄워도 Kotlin 쪽 웜업 곡선은 이어진다.
   Gradle 데몬이 실제로 교체됐는지는 `builds.csv`의 `daemon_pid`로 사후 확인한다.
@@ -293,4 +337,6 @@ tools/build-cache-bench/
   무신호라는 뜻이다.
 - **열린 질문: 도입을 정당화하는 문턱값.** `T_local − T_remote`가 얼마 이상이면 리모트 캐시를
   세울 값어치가 있다고 볼 것인지 합의된 선이 없다. 측정 후에 정하면 결과에 맞춰 기준이
-  움직인다. **측정을 돌리기 전에 정한다.**
+  움직인다. **측정을 돌리기 전에 정한다.** 이 스펙이 아카이브로 가면서 추적은
+  [open-questions](../../synthesis/open-questions.md) OQ-P-402가 잇는다 — 하니스는 머지됐지만
+  **측정은 아직 아무도 돌리지 않았다.**

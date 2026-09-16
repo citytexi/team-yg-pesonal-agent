@@ -1,10 +1,10 @@
 ---
 id: g001-group-list-topping-border
 title: G-001 그룹 목록 최신 토핑에 테두리를 그린다 (Group list topping border)
-status: draft
+status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-09-11
+verified: 2026-09-16
 related_code:
   - YGToppingGroup
   - YGToppingImage.Remote
@@ -31,15 +31,22 @@ tags: [spec, parfait, g001, topping, border]
 
 # Spec: G-001 그룹 목록 최신 토핑 테두리
 
+> ✅ **구현 완료·develop 머지(2026-09-16, PR #497 `a1fc2377f` — 머지 트리가 브랜치 팁 `108b4fa7d`와 같다, 충돌 해소 편집 0건).**
+> 10파일 · 삽입 449줄 · 삭제 29줄, 커밋 5개. 유닛 1292 → **1298건**(+6 `ToppingImageTest`),
+> 계측 39 → **46건**(+7 `ToppingBorderPlateCacheTest`). **머지본과 이 스펙 사이에 어긋난 조항은 없다** —
+> 결정 1~5, API 시그니처, 모디파이어 순서, painter 상태 표가 모두 코드와 같다. 스펙에 이름이 없던 것은
+> `ToppingImage.kt`의 비공개 헬퍼 `drawableBorder()` 하나이고, "판정 기준을 두 곳에 두지 않는다"는
+> 스펙 조항의 실현이다.
+>
 > 티켓 #494, TJYG-Android 브랜치 `feature/#494-group-list-topping-border`.
-> 데이터 계층은 PR #496(`1b21725ba`)으로 이미 develop에 들어와 있다. 이 스펙은 그 값을 **화면에 그리는 일**만 다룬다.
+> 데이터 계층은 PR #496(`1b21725ba`)으로 이미 develop에 들어와 있었다. 이 스펙은 그 값을 **화면에 그리는 일**만 다룬다.
 
 ## 목표
 
-G-001 그룹 목록의 카드는 그룹마다 오늘 캔버스의 최신 토핑([[토핑]] ([link](../../wiki/concepts/토핑.md)))을
+G-001 그룹 목록의 카드는 그룹마다 오늘 캔버스의 최신 토핑([[토핑]] ([link](../../../wiki/concepts/토핑.md)))을
 하나씩 보여 준다. 그 토핑에 테두리가 있으면 캔버스와 같은 모양의 테두리를 목록에서도 그린다.
 지금은 서버가 `GET /api/parfait-groups` 응답에 테두리 필드 셋을 주고 앱의 `MyParfaitGroupVO.recentImageBorder`까지
-받지만, `YGToppingGroup`이 그 값을 받을 자리가 없어 테두리 없이 그린다([open-questions](../synthesis/open-questions.md) OQ-P-316).
+받지만, `YGToppingGroup`이 그 값을 받을 자리가 없어 테두리 없이 그린다([open-questions](../../synthesis/open-questions.md) OQ-P-316).
 
 ## 범위
 
@@ -292,24 +299,23 @@ YGToppingGroup(image = group.toToppingImage(outlines), …)
    테두리 동작이 지금과 같다 — 판 캐시를 네 화면이 함께 쓰기 때문이다.
 6. 목록을 당겨 새로고침한 뒤에도 테두리가 다시 붙는다.
 
-## 머지 후 문서 반영
+## 머지 후 문서 반영 (완료)
 
-develop 머지 뒤 기준선 점검(`sync-tjyg-develop-baseline`)에서 반영한다. 지금 쓰면 아직 없는 코드를 사실로 적게 된다.
+기준선 점검 80회차(2026-09-16, `f37a76540`)에서 아래를 반영했다.
 
-- [design-system.md](../architecture/design-system.md) — `YGToppingGroup` 항목: `Remote`의 `border`, 축소 규칙,
-  "테두리를 그리는 화면" 수(ADR-0025 영향 절이 넷으로 센 목록에 G-001 추가).
-- [ADR-0030](../adr/0030-topping-outline-distance-field.md) — 테두리를 그리는 화면을 넷으로 센 서술, 그리고
-  "위험·방어" 절의 "크기는 열쇠에 안 넣는다"에 **열쇠당 선반**이 붙었다는 후속 기록(결정 5). 결정의 방향을 뒤집지는
-  않으므로 새 ADR은 만들지 않는다.
-- [open-questions](../synthesis/open-questions.md) OQ-P-316 — 렌더 부분 해소, ③④는 잔존.
-- [open-questions](../synthesis/open-questions.md) OQ-P-317 — 판 캐시의 총 장수 상한이 열쇠 수 × 선반 장수로 늘었다는 점,
-  `clear()`에 테스트 호출부가 생겨 ②(테스트 격리)에 첫 대응이 들어왔다는 점.
-- 이 스펙 — `status: implemented`로 바꾸고 `archive/`로 이동.
+- [design-system.md](../../architecture/design-system.md) — `YGToppingGroup` 항목에 `Remote`의 `border`·축소 규칙·
+  painter 경로 전환을 적었고, 테두리 우회를 쓰는 화면 수를 넷에서 **다섯**으로 고쳤다.
+- [ADR-0030](../../adr/0030-topping-outline-distance-field.md) — 화면 수 서술을 고치고, "위험·방어" 절의
+  "크기는 열쇠에 안 넣는다"에 **열쇠당 선반**이 붙었다는 후속 기록을 달았다(결정 5). 결정의 방향을 뒤집지
+  않으므로 새 ADR은 만들지 않았다.
+- [open-questions](../../synthesis/open-questions.md) OQ-P-316 — 렌더가 닫혔고 ③④는 잔존한다.
+- [open-questions](../../synthesis/open-questions.md) OQ-P-317 — 판 캐시의 총 장수 상한이 열쇠 수 × 선반 장수로
+  늘었다는 점, `clear()`에 테스트 호출부가 생겨 ②(테스트 격리)에 첫 대응이 들어왔다는 점을 적었다.
 
 ## 주의 / 열린 질문
 
 - **거리판 캐시를 캔버스와 나눠 쓴다.** `ToppingOutlineCache` 상한은 64칸이다. 한 사용자가 속할 수 있는 그룹 수의
-  상한은 계약 문서([api/parfait-group.md](../api/parfait-group.md))에서 찾지 못했다. 넘어도 깨지지 않고 LRU로 밀려나
+  상한은 계약 문서([api/parfait-group.md](../../api/parfait-group.md))에서 찾지 못했다. 넘어도 깨지지 않고 LRU로 밀려나
   다시 뜰 뿐이다. 캐시 수명 문제는 OQ-P-317이 추적한다.
 - **띠 판 캐시의 총 장수 상한이 세 배가 된다**(결정 5, 열쇠 상한 × 선반 3장). 판 한 장의 크기는 알맹이 + 사방 굵기라
   원래 총량 상한이 없었고, 이번 변경이 그 성질을 바꾸지는 않는다. 목록 판은 캔버스 판보다 작다.
