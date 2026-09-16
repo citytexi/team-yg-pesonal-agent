@@ -465,6 +465,9 @@ git commit -m "feat(bot): split long answers at Discord's 2000-char limit"
   - `store.remove(threadId) -> void`
   - 파일이 없거나 JSON이 깨졌으면 빈 상태로 시작하고 예외를 던지지 않는다.
   - 파일이 놓일 디렉토리가 없으면 만든다.
+  - **프로세스당 인스턴스는 하나다.** 항목 전체를 메모리에 들고 있다가 쓸 때마다 파일을
+    통째로 다시 쓰므로, 같은 파일을 두 인스턴스가 열면 나중에 쓴 쪽이 앞선 쪽의 기록을
+    지운다. 이 전제를 모듈 상단 주석에 영어로 적는다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -557,6 +560,9 @@ Expected: FAIL. `Cannot find module '../src/session-store.js'`
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
+// One store per process. The store keeps every entry in memory and rewrites the
+// whole file on each write, so two stores sharing a file silently drop each
+// other's entries. The bot creates exactly one in src/index.js.
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function readAll(filePath) {
@@ -1706,7 +1712,7 @@ function warnIfRepoDirty(repoRoot) {
 const config = loadConfig(process.env);
 warnIfRepoDirty(config.repoRoot);
 
-const store = createSessionStore({ filePath: config.sessionFile });
+const store = createSessionStore({ filePath: config.sessionFile }); // exactly one per process
 const limiter = createRateLimiter({
   maxConcurrent: config.maxConcurrent,
   perUserPerMin: config.ratePerUserPerMin,
