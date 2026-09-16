@@ -46,6 +46,31 @@ test("개행 없는 긴 한 줄도 한도를 지킨다", () => {
   assert.equal(chunks.join("").replace(/\n/g, "").length, 5000);
 });
 
+test("펜스 안의 아주 긴 한 줄도 한도를 지킨다", () => {
+  const text = "```js\n" + "x".repeat(300) + "\n```";
+  const chunks = splitMessage(text, 80);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 80, `한도 초과 ${chunk.length}: ${chunk.slice(0, 30)}`);
+  }
+});
+
+test("언어 태그가 길어도 한도를 지킨다", () => {
+  const text = "```typescript\n" + "x".repeat(300) + "\n```";
+  const chunks = splitMessage(text, 80);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 80, `한도 초과 ${chunk.length}: ${chunk.slice(0, 30)}`);
+  }
+  assert.ok(chunks[1].startsWith("```typescript"));
+});
+
+test("펜스가 열린 채 끝나면 마지막 조각도 닫는다", () => {
+  const text = "```js\n" + Array.from({ length: 20 }, (_, i) => `const x${i} = ${i};`).join("\n");
+  const chunks = splitMessage(text, 80);
+  for (const chunk of chunks) {
+    assert.equal((chunk.match(/^```/gm) || []).length % 2, 0, `펜스가 홀수인 조각: ${chunk}`);
+  }
+});
+
 test("빈 문자열은 빈 배열이다", () => {
   assert.deepEqual(splitMessage("", 2000), []);
 });

@@ -1,4 +1,9 @@
-const FENCE_RESERVE = 8;
+const CLOSING_FENCE_COST = 4; // "\n```"
+
+function fenceCosts(openFenceLang) {
+  if (openFenceLang === null) return { header: 0, footer: 0 };
+  return { header: ("```" + openFenceLang).length + 1, footer: CLOSING_FENCE_COST };
+}
 
 function hardWrap(line, max) {
   if (line.length <= max) return [line];
@@ -11,7 +16,6 @@ export function splitMessage(text, limit = 2000) {
   if (text.length === 0) return [];
   if (text.length <= limit) return [text];
 
-  const budget = limit - FENCE_RESERVE;
   const chunks = [];
   let current = [];
   let currentLength = 0;
@@ -30,7 +34,11 @@ export function splitMessage(text, limit = 2000) {
   };
 
   for (const rawLine of text.split("\n")) {
-    for (const line of hardWrap(rawLine, budget)) {
+    const { header, footer } = fenceCosts(openFenceLang);
+    const wrapWidth = Math.max(1, limit - header - footer);
+    const budget = limit - footer;
+
+    for (const line of hardWrap(rawLine, wrapWidth)) {
       if (currentLength + line.length + 1 > budget && current.length > 0) flush();
       current.push(line);
       currentLength += line.length + 1;
@@ -40,7 +48,9 @@ export function splitMessage(text, limit = 2000) {
     }
   }
 
-  const tail = current.join("\n");
-  if (tail.trim().length > 0) chunks.push(tail);
+  if (current.length > 0) {
+    const tail = openFenceLang === null ? current.join("\n") : current.join("\n") + "\n```";
+    if (tail.trim().length > 0) chunks.push(tail);
+  }
   return chunks;
 }
