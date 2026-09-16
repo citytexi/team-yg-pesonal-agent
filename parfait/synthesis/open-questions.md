@@ -4,8 +4,8 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-10
-related_spec: topping-edit-empty-subject-guard, upload-image-downscale, push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field
+verified: 2026-09-16
+related_spec: topping-edit-empty-subject-guard, upload-image-downscale, push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field, g001-group-list-topping-border, build-cache-measurement-harness
 related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029, ADR-0030
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
 related_code:
@@ -5654,7 +5654,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   실루엣이 살아나는데 그러면 지금 배치가 달라진다. ③ 템플릿 6종과 조회 실패 그래픽에도 테두리를
   두를지는 정책이 비어 있다. ④ 판정까지 옮길지 — 목록 토핑은 클릭 경로 자체가 아직 없다(OQ-P-099).
 - **상태**: 부분 해소 (**②가 ① 없이 먼저 일어났다** — 2026-08-27 PR #396 / **①은 서버 쪽만 닫혔다** —
-  2026-09-11 서버 `82e6edc` / **앱 데이터 계층이 받는다** — 2026-09-11 PR #496 / 렌더·③④ 잔존)
+  2026-09-11 서버 `82e6edc` / **앱 데이터 계층이 받는다** — 2026-09-11 PR #496 / **렌더가 닫혔다** —
+  2026-09-16 PR #497 / **③④ 잔존**)
 - **해소 메모**: ①이 먼저다. 서버 계약이 바뀌면 [api/parfait.md](../api/parfait.md)와
   [design-system](../architecture/design-system.md)의 `YGToppingGroup` 서술을 함께 고친다.
   > ✅ **②만 떼어서 먼저 갔다(2026-08-27, PR #396)** — `YGToppingGroup`의 `Remote` 갈래가
@@ -5682,6 +5683,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 클램프도 목록까지 따라왔다(OQ-P-381). 🔧 로컬 커밋 단계에 적은 이 자리의 📌는 "세 매퍼에 똑같이 있던"이라
   > 했는데 사본은 둘이었다(커밋 `76eef8a40` 제목이 "두 벌"이다) — 79회차 기준선 점검에서 머지 코드와 대조해 고쳤다.
   > **`YGToppingGroup` 렌더는 별도 티켓이 맡는다** — 이 항목은 그 티켓이 들어올 때까지 열어 둔다.
+  >
+  > ✅ **렌더가 들어왔다(2026-09-16, PR #497 `a1fc2377f`, 티켓 #494)** — `YGToppingImage.Remote`가
+  > `border: YGToppingBorder?`를 싣고 `Remote` 갈래가 `YGToppingCutoutImage`로 그린다. 테두리까지 96dp
+  > 프레임에 넣으려고 **알맹이를 굵기만큼 줄이고**, 거리판은 feature(`GroupListContent`)가
+  > `rememberToppingOutlines`로 불러 넘긴다([design-system](../architecture/design-system.md) ·
+  > [g001-group-list-topping-border 스펙](../specs/archive/2026-09-11-g001-group-list-topping-border.md)).
+  > **③④는 그대로 열려 있다** — 템플릿 6종·조회 실패 그래픽의 테두리 정책은 여전히 비어 있고, 목록
+  > 토핑의 알파 판정·토핑 단위 클릭도 없다(카드 전체가 클릭 범위다). 이 항목은 ③④ 때문에 열어 둔다.
 
 ### [2026-08-27] 알파 마스크 캐시가 프로세스 전역인데 비우는 호출부가 0건이다
 
@@ -5707,6 +5716,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   `core:designsystem` 의 `ToppingBorderPlateCache`(LRU 32칸)가 판을 컴포지션 밖에 남긴다. 항목이
   알맹이 + 사방 굵기라 **굵기에 상한이 없는 한 총량에도 상한이 없고**, 비우는 `clear()` 를 부르는
   곳도 없다. ②(테스트 격리)가 걸리는 표면이 둘로 늘었다.
+  ⚠️ **그 캐시의 총 장수 상한이 세 배가 됐다(2026-09-16, PR #497)** — `ToppingBorderPlateCache` 가 열쇠당
+  판 한 장이 아니라 **크기별로 최대 3장**을 두는 선반이 됐다(G-001 목록과 캔버스가 같은 토핑을 크게 다른
+  크기로 그려 서로의 판을 덮어썼다 — [ADR-0030](../adr/0030-topping-outline-distance-field.md) 「위험·방어」).
+  열쇠 상한 32칸은 그대로라 누수 성질은 바뀌지 않지만, 수명 주체가 없는 채로 총량 상한만 다시 커진다.
+  ✅ **②에 첫 대응이 들어왔다(같은 라운드)** — 계측 테스트 `ToppingBorderPlateCacheTest` 가 `@Before` 에서
+  `clear()` 를 부른다. 프로세스 전역 캐시를 태우는 첫 테스트라 격리를 손으로 세운 것이고, `ToppingOutlineCache`
+  쪽에는 아직 그런 호출부가 없다. ①③과 수명 주체 부재는 그대로다.
 
 ### [2026-08-27] 알파 커널에 확인 없이 오래 도는 루프가 남아 있다
 
@@ -7564,4 +7580,25 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **해소 메모**: 디자인 `C-103-Error` 최신본을 확인한다. 라벨·설명이 맞으면 c103-error-use-original 스펙의 🔁 배너에
   근거를 적고 닫는다. 다르면 문구를 디자인에 맞춘다.
 
-<!-- oq-next: 402 -->
+### [2026-09-16] 리모트 빌드 캐시 도입 문턱값이 없고, 하니스는 머지됐지만 측정이 안 돌았다
+
+- **ID**: OQ-P-402
+- **출처**: PR #499 develop 머지([build-cache-measurement-harness 스펙](../specs/archive/2026-09-14-build-cache-measurement-harness.md)
+  「주의 / 열린 질문」) — 그 스펙이 문턱값과 커밋 쌍 선정을 열린 채로 두고 아카이브로 갔다. 추적 주체가
+  사라지므로 여기로 옮긴다.
+- **항목**: ① `T_local − T_remote`가 얼마 이상이면 리모트 캐시를 세울 값어치가 있다고 볼 것인지 합의된
+  선이 없다. **측정 후에 정하면 결과에 맞춰 기준이 움직이므로 돌리기 전에 정해야 한다.** ② 커밋 쌍
+  `P1`(일상)·`P2`(코어 ABI 변경)을 무엇으로 고정할지 정해지지 않았다 — 러너는 두 SHA가 같거나 트리가
+  같은 쌍만 거부하고, **대상 그래프의 입력이 실제로 바뀌는지는 보지 않는다.** 무신호 쌍을 고르면
+  `S3`·`S4`가 둘 다 `UP_TO_DATE`로 끝나 핵심 값이 0에 수렴하고도 에러 없이 통과한다. ③ 하니스가
+  머지됐을 뿐 **측정을 아직 아무도 돌리지 않았다.** 게이트 G0(`check-relocatability.sh`)도 마찬가지다 —
+  거기서 깨지면 핵심 값이 얼마든 도입 가치는 0이다.
+- **상태**: 미해결 (**동작 영향 0** — `tools/`와 `.gitignore`뿐이라 앱 빌드에 닿지 않는다. 판단 근거가
+  아직 만들어지지 않은 것이 문제다)
+- **해소 메모**: 순서가 있다. ①을 먼저 정하고, G0를 돌려 통과하면 ②로 쌍을 고정한 뒤 측정한다.
+  측정치는 머신마다 달라 커밋하지 않으므로(`runs/`는 `.gitignore`), 판단에 실제로 쓴 수치만 후속 스펙으로
+  옮긴다. `T_remote`가 전송 시간을 0으로 놓는 **낙관적 상한**이고 `S4` 쪽이 사전 빌드를 더 돌아 한 방향으로
+  부풀려진다는 점을 문턱값과 함께 읽어야 한다. 빌드 성능의 다른 두 축(`org.gradle.parallel`·configuration
+  cache)은 [2026-08-11] 항목이 따로 추적한다.
+
+<!-- oq-next: 403 -->

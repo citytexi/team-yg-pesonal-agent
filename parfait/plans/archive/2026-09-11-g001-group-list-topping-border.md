@@ -1,3 +1,19 @@
+---
+id: g001-group-list-topping-border
+title: G-001 그룹 목록 최신 토핑 테두리 구현 계획 (5 Task)
+status: done
+type: work-order
+created: 2026-09-11
+updated: 2026-09-16
+platforms: android
+owner: android
+related_adr: ADR-0025, ADR-0030
+related_spec: g001-group-list-topping-border
+related_code: YGToppingBorder, YGToppingImage.Remote, YGToppingGroup, YGToppingCutoutImage, ToppingBorderPlateCache, ToppingBorderPlate#fitsSubject, ToppingImage.kt#toToppingImage, ToppingImage.kt#borderedImageUrls, GroupListScreen.kt#GroupListContent, YGToppingGroupPreviewScreen
+archived_reason: develop 머지(PR #497 `a1fc2377f`, 2026-09-16)
+tags: [plan, parfait]
+---
+
 # G-001 그룹 목록 최신 토핑 테두리 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -8,7 +24,7 @@
 
 **Tech Stack:** Kotlin, Jetpack Compose, Coil 3.5.0, kotlin.test(JVM 유닛), AndroidJUnit4 + JUnit4 `Assert`(계측 테스트), ktlint
 
-**Spec:** [`parfait/specs/2026-09-11-g001-group-list-topping-border.md`](../specs/2026-09-11-g001-group-list-topping-border.md)
+**Spec:** [`parfait/specs/2026-09-11-g001-group-list-topping-border.md`](../../specs/archive/2026-09-11-g001-group-list-topping-border.md)
 
 ## Global Constraints
 

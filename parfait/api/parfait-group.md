@@ -792,7 +792,7 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
 
 2026-09-11 서버 delta로 새로 열린 것:
 
-- **목록 썸네일 테두리를 앱 데이터 계층은 읽고 화면은 아직 안 그린다.** 서버가 테두리 세 필드를 주기 시작해
+- **목록 썸네일 테두리를 앱이 읽고 그린다.** 서버가 테두리 세 필드를 주기 시작해
   OQ-P-316 ①("서버가 목록 응답에 테두리 필드를 줄지")이 서버 쪽에서 닫혔다. 서버 delta 당일에는 앱에 대응
   필드가 없었고, `ignoreUnknownKeys = true`라 역직렬화가 안 깨져 `⚠️불일치`로 세지 않았다
   → [open-questions](../synthesis/open-questions.md) OQ-P-316
@@ -801,9 +801,12 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   접는 규칙은 캔버스·토핑 매퍼와 같은 공용 함수(`data/source/common/mapper/ToppingBorderMapper.kt`의
   `toToppingBorder`)라 **두께도 `solidClamped`로 가둔다** — [conventions.md](conventions.md) "Android 불일치"의
   `borderWidth` 행이 이 응답까지 넓어졌다. `ParfaitGroupRemoteDataSourceImplTest`가 네 케이스(`SOLID` ·
-  `NONE`인데 색·두께가 남음 · `SOLID`인데 두께 없음 · 이미지 없음)를 잠근다. **렌더는 별도 티켓**이라
-  G-001 화면은 이 값을 쓰지 않는다 — feature 코드에서 `recentImageBorder`는 프리뷰 인자로만 채워져 있고
-  `YGToppingGroup`은 테두리 없이 그린다
+  `NONE`인데 색·두께가 남음 · `SOLID`인데 두께 없음 · 이미지 없음)를 잠근다.
+  ✅ **렌더도 develop에 들어왔다**(2026-09-16, PR #497 `a1fc2377f`, 머지 트리 = 브랜치 팁). `YGToppingImage.Remote`가
+  `border`를 싣고 `YGToppingGroup`이 `YGToppingCutoutImage`로 그린다. **앱이 이 응답을 그릴 때 보는 조건은
+  둘**이다 — `recentImageBorderType`이 `SOLID`이고, 색 문자열이 파싱되는 것. 어느 하나라도 아니면 테두리 없이
+  그린다(`feature/groups/list/impl/util/ToppingImage.kt`). 두께는 이미 데이터 계층이 `solidClamped`로 가둬 두어
+  feature가 다시 가두지 않는다 → [g001-group-list-topping-border 스펙](../specs/archive/2026-09-11-g001-group-list-topping-border.md)
 - **테두리도 오늘 캔버스에 묶여 OQ-P-336의 사정을 그대로 물려받는다** — 어제까지 토핑이 있던 그룹은 이미지와
   테두리가 함께 비어 템플릿 그래픽으로 그려진다. 템플릿·조회 실패 그래픽에 테두리를 두를지는 여전히 정책이
   비어 있다 → [open-questions](../synthesis/open-questions.md) OQ-P-316 ③ · OQ-P-336
