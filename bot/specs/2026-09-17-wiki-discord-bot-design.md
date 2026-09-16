@@ -87,10 +87,15 @@ discord.js로 게이트웨이에 붙어 멘션을 받고, 쓰레드를 열고, �
 ```
 claude -p "<질문>"
   --session-id <uuid>            # 첫 질문. 되물음은 --resume <uuid>
+  --model claude-sonnet-5
   --permission-mode dontAsk
   --disallowed-tools Bash Edit Write NotebookEdit WebFetch
   --output-format json
 ```
+
+**모델은 `claude-sonnet-5`로 고정한다.** 별칭(`sonnet`)이 아니라 전체 이름을 쓴다. 별칭은
+최신 모델을 따라가므로 봇의 답변 성격이 예고 없이 바뀐다. 봇을 띄우는 사람의 기본 모델
+설정에도 영향을 받지 않도록 매 호출에 명시한다.
 
 프로세스의 작업 디렉토리를 저장소 루트로 지정해 실행한다. `--add-dir`은 필요 없다.
 

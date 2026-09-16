@@ -23,8 +23,9 @@
 - 런타임 의존성은 `discord.js`만 허용한다. `dotenv`도 쓰지 않는다(Node의 `--env-file` 사용).
 - 봇은 저장소를 읽기만 한다. 코드 어디에도 쓰기 도구를 허용하는 인자를 넣지 않는다.
 - `claude` 호출 인자는 정확히 다음이며, 임의로 늘리거나 줄이지 않는다.
-  `-p <질문> --permission-mode dontAsk --disallowed-tools Bash Edit Write NotebookEdit WebFetch --output-format json`
+  `-p <질문> --model claude-sonnet-5 --permission-mode dontAsk --disallowed-tools Bash Edit Write NotebookEdit WebFetch --output-format json`
   첫 질문에는 `--session-id <uuid>`, 되물음에는 `--resume <uuid>`를 더한다.
+- 모델은 전체 이름 `claude-sonnet-5`로 고정한다. 별칭 `sonnet`을 쓰지 않는다.
 - **`--restricted`를 쓰지 않는다.** 실측에서 스킬 로드를 막는 것이 확인됐다.
 - `claude` 프로세스의 작업 디렉토리는 저장소 루트다. `--add-dir`은 쓰지 않는다.
 - 비밀값을 커밋하지 않는다. `bot/.env`는 `.gitignore`에 넣고 `bot/.env.example`만 커밋한다.
@@ -849,6 +850,18 @@ test("쓰기 도구를 항상 차단한다", () => {
   assert.deepEqual(blocked, ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch"]);
 });
 
+test("모델을 claude-sonnet-5 로 고정한다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  const at = args.indexOf("--model");
+  assert.ok(at > -1);
+  assert.equal(args[at + 1], "claude-sonnet-5");
+});
+
+test("되물음에서도 모델을 고정한다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1", resume: true });
+  assert.equal(args[args.indexOf("--model") + 1], "claude-sonnet-5");
+});
+
 test("--restricted 를 절대 넣지 않는다", () => {
   const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
   assert.ok(!args.includes("--restricted"));
@@ -900,6 +913,7 @@ Expected: FAIL. `Cannot find module '../src/claude-runner.js'`
 import { spawn as nodeSpawn } from "node:child_process";
 
 const BLOCKED_TOOLS = ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch"];
+const MODEL = "claude-sonnet-5";
 
 export function createClaudeRunner({
   claudeBin,
@@ -916,6 +930,8 @@ export function createClaudeRunner({
       question,
       resume ? "--resume" : "--session-id",
       sessionId,
+      "--model",
+      MODEL,
       "--permission-mode",
       "dontAsk",
       "--disallowed-tools",
@@ -996,7 +1012,7 @@ export function createClaudeRunner({
 - [ ] **Step 5: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 40건 통과
+Expected: PASS. 누적 42건 통과
 
 - [ ] **Step 6: 커밋한다**
 
@@ -1139,7 +1155,7 @@ export function answerMessages(text, { resumeFailed = false } = {}) {
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 50건 통과
+Expected: PASS. 누적 52건 통과
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1430,7 +1446,7 @@ export function createQuestionHandler({ store, limiter, runner, randomUUID, log 
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 58건 통과
+Expected: PASS. 누적 60건 통과
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1631,6 +1647,8 @@ npm test
 - 이 봇은 저장소를 읽기만 한다. `claude` 호출에서 `Bash`·`Edit`·`Write`·`NotebookEdit`·
   `WebFetch`를 차단한다. 이 인자를 고칠 때 `Bash`가 빠지지 않았는지 반드시 확인한다.
 - `--restricted`는 쓰지 않는다. 스킬 로드를 막아 위키 규약이 적용되지 않는다.
+- 모델은 `claude-sonnet-5`로 고정돼 있다. 바꾸려면 `src/claude-runner.js`의 `MODEL` 상수와
+  그 테스트를 함께 고친다.
 - `.env`에는 봇 토큰이 들어간다. 이 저장소는 public이므로 절대 커밋하지 않는다.
 - 봇은 소유자 한 명의 구독 한도를 쓴다. `DAILY_QUOTA`로 상한을 관리한다.
 ````
@@ -1650,7 +1668,7 @@ npm test
 - [ ] **Step 5: 전체 테스트를 돌린다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 58건 통과. Task 8은 새 테스트를 더하지 않는다.
+Expected: PASS. 누적 60건 통과. Task 8은 새 테스트를 더하지 않는다.
 
 - [ ] **Step 6: 기동만 확인한다**
 
@@ -1731,7 +1749,7 @@ git commit -m "fix(bot): address issues found in manual Discord verification"
 | 5.2 `claude-runner` | Task 5 |
 | 5.3 `session-store` | Task 3 |
 | 5.4 `rate-limiter` | Task 4 |
-| 6 호출 규격 | Task 5 (`buildArgs` 테스트가 인자를 고정한다) |
+| 6 호출 규격 · 모델 고정 | Task 5 (`buildArgs` 테스트가 인자와 모델을 고정한다) |
 | 7 데이터 흐름 | Task 7(판단) + Task 8(디스코드) |
 | 8 답변 형식 · 길이 분할 | Task 2 + Task 6 |
 | 9.1 쓰기 차단 | Task 5(`--disallowed-tools`) + Task 8(`warnIfRepoDirty`) |
