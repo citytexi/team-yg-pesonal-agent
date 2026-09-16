@@ -77,6 +77,19 @@ test("release 를 두 번 불러도 자리가 늘지 않는다", () => {
   assert.deepEqual(limiter.acquire("user-3"), { ok: false, reason: "concurrent" });
 });
 
+test("추적 사용자가 많아지면 오래된 기록을 지운다", () => {
+  const { limiter, state } = build({ maxConcurrent: 10000, perUserPerMin: 100, dailyQuota: 100000 });
+  for (let i = 0; i < 1200; i += 1) limiter.acquire(`user-${i}`).release();
+  assert.ok(limiter.used().trackedUsers > 0);
+
+  state.clock += 60001;
+  limiter.acquire("late-user").release();
+  assert.ok(
+    limiter.used().trackedUsers < 1200,
+    `가지치기가 안 됐다: ${limiter.used().trackedUsers}`,
+  );
+});
+
 test("거절된 요청은 어떤 카운터도 올리지 않는다", () => {
   const { limiter } = build({ maxConcurrent: 1, perUserPerMin: 100, dailyQuota: 3 });
   limiter.acquire("user-1");

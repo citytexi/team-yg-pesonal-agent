@@ -1,4 +1,5 @@
 const MINUTE_MS = 60 * 1000;
+const PRUNE_THRESHOLD = 1000;
 
 function localDayKey(timestamp) {
   const date = new Date(timestamp);
@@ -7,15 +8,28 @@ function localDayKey(timestamp) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+// A successful acquire hands back release(). Call it exactly once, from a
+// finally block: a slot that is never released never comes back, and the bot
+// stops answering once every slot leaks.
 export function createRateLimiter({ maxConcurrent, perUserPerMin, dailyQuota, now = () => Date.now() }) {
   let running = 0;
   let dayKey = localDayKey(now());
   let dailyCount = 0;
   const userHits = new Map();
 
+  // Without this the map keeps one entry per user id forever.
+  const pruneUserHits = (at) => {
+    if (userHits.size <= PRUNE_THRESHOLD) return;
+    for (const [id, hits] of userHits) {
+      const last = hits[hits.length - 1];
+      if (last === undefined || at - last >= MINUTE_MS) userHits.delete(id);
+    }
+  };
+
   return {
     acquire(userId) {
       const at = now();
+      pruneUserHits(at);
 
       const today = localDayKey(at);
       if (today !== dayKey) {
@@ -52,7 +66,7 @@ export function createRateLimiter({ maxConcurrent, perUserPerMin, dailyQuota, no
     },
 
     used() {
-      return { daily: dailyCount, running };
+      return { daily: dailyCount, running, trackedUsers: userHits.size };
     },
   };
 }
