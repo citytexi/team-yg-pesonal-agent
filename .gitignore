@@ -26,3 +26,7 @@
 
 # superpowers SDD 작업 공간(스크래치, 추적 제외)
 .superpowers/
+
+bot/.env
+bot/node_modules/
+bot/data/

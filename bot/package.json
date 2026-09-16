@@ -1,0 +1,14 @@
+{
+  "name": "wiki-discord-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test 'test/**/*.test.js'",
+    "start": "node --env-file=.env src/index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3"
+  }
+}
