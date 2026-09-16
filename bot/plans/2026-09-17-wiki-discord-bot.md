@@ -329,6 +329,31 @@ test("개행 없는 긴 한 줄도 한도를 지킨다", () => {
   assert.equal(chunks.join("").replace(/\n/g, "").length, 5000);
 });
 
+test("펜스 안의 아주 긴 한 줄도 한도를 지킨다", () => {
+  const text = "```js\n" + "x".repeat(300) + "\n```";
+  const chunks = splitMessage(text, 80);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 80, `한도 초과 ${chunk.length}: ${chunk.slice(0, 30)}`);
+  }
+});
+
+test("언어 태그가 길어도 한도를 지킨다", () => {
+  const text = "```typescript\n" + "x".repeat(300) + "\n```";
+  const chunks = splitMessage(text, 80);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 80, `한도 초과 ${chunk.length}: ${chunk.slice(0, 30)}`);
+  }
+  assert.ok(chunks[1].startsWith("```typescript"));
+});
+
+test("펜스가 열린 채 끝나면 마지막 조각도 닫는다", () => {
+  const text = "```js\n" + Array.from({ length: 20 }, (_, i) => `const x${i} = ${i};`).join("\n");
+  const chunks = splitMessage(text, 80);
+  for (const chunk of chunks) {
+    assert.equal((chunk.match(/^```/gm) || []).length % 2, 0, `펜스가 홀수인 조각: ${chunk}`);
+  }
+});
+
 test("빈 문자열은 빈 배열이다", () => {
   assert.deepEqual(splitMessage("", 2000), []);
 });
@@ -342,11 +367,20 @@ Expected: FAIL. `Cannot find module '../src/message-split.js'`
 
 - [ ] **Step 3: `bot/src/message-split.js`를 쓴다**
 
-`FENCE_RESERVE`는 닫는 펜스 줄(```` ``` ```` + 개행)이 들어갈 자리를 미리 비워 두기 위한
-값이다. 이 여유가 없으면 펜스를 닫는 순간 조각이 한도를 넘는다.
+펜스 안에서는 조각마다 두 가지 비용이 더 붙는다. 앞에 다시 여는 헤더(```` ```lang ```` + 개행)와
+뒤에 닫는 펜스(개행 + ```` ``` ````)다. 이 비용은 언어 태그 길이에 따라 달라지므로 고정값으로
+잡으면 안 된다. 고정값 8을 쓰면 ```` ```typescript ```` 처럼 태그가 긴 블록에서 조각이 한도를
+넘는다.
+
+그래서 줄을 자를 폭(`wrapWidth`)과 조각을 끊을 기준(`budget`)을 펜스 상태에서 그때그때 계산한다.
 
 ```js
-const FENCE_RESERVE = 8;
+const CLOSING_FENCE_COST = 4; // "\n```"
+
+function fenceCosts(openFenceLang) {
+  if (openFenceLang === null) return { header: 0, footer: 0 };
+  return { header: ("```" + openFenceLang).length + 1, footer: CLOSING_FENCE_COST };
+}
 
 function hardWrap(line, max) {
   if (line.length <= max) return [line];
@@ -359,7 +393,6 @@ export function splitMessage(text, limit = 2000) {
   if (text.length === 0) return [];
   if (text.length <= limit) return [text];
 
-  const budget = limit - FENCE_RESERVE;
   const chunks = [];
   let current = [];
   let currentLength = 0;
@@ -378,7 +411,11 @@ export function splitMessage(text, limit = 2000) {
   };
 
   for (const rawLine of text.split("\n")) {
-    for (const line of hardWrap(rawLine, budget)) {
+    const { header, footer } = fenceCosts(openFenceLang);
+    const wrapWidth = Math.max(1, limit - header - footer);
+    const budget = limit - footer;
+
+    for (const line of hardWrap(rawLine, wrapWidth)) {
       if (currentLength + line.length + 1 > budget && current.length > 0) flush();
       current.push(line);
       currentLength += line.length + 1;
@@ -388,16 +425,21 @@ export function splitMessage(text, limit = 2000) {
     }
   }
 
-  const tail = current.join("\n");
-  if (tail.trim().length > 0) chunks.push(tail);
+  if (current.length > 0) {
+    const tail = openFenceLang === null ? current.join("\n") : current.join("\n") + "\n```";
+    if (tail.trim().length > 0) chunks.push(tail);
+  }
   return chunks;
 }
 ```
 
+마지막 조각도 `flush()`와 같은 규칙으로 닫는다. 앞 조각들만 닫고 마지막만 열어두면 동작이
+일관되지 않고, 디스코드에서 마지막 메시지의 코드블록 서식이 깨진다.
+
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. Task 1의 7건에 더해 7건이 더 통과
+Expected: PASS. Task 1의 7건에 더해 10건이 더 통과
 
 - [ ] **Step 5: 커밋한다**
 
@@ -563,7 +605,7 @@ export function createSessionStore({ filePath, now = () => Date.now(), ttlMs = W
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 21건 통과
+Expected: PASS. 누적 24건 통과
 
 - [ ] **Step 5: 커밋한다**
 
@@ -755,7 +797,7 @@ export function createRateLimiter({ maxConcurrent, perUserPerMin, dailyQuota, no
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 30건 통과
+Expected: PASS. 누적 33건 통과
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1063,7 +1105,7 @@ test("실제 claude 가 sonnet-5 로 답한다", { skip: !live }, async () => {
 - [ ] **Step 6: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 44건 통과. 통합 시험 1건은 skip 으로 표시된다.
+Expected: PASS. 누적 47건 통과. 통합 시험 1건은 skip 으로 표시된다.
 
 통합 시험을 직접 돌려보려면 `RUN_LIVE=1 CLAUDE_BIN=$(which claude) REPO_ROOT=$(cd .. && pwd) npm test`
 를 쓴다. 구독 한도를 먹으므로 필요할 때만 돌린다.
@@ -1209,7 +1251,7 @@ export function answerMessages(text, { resumeFailed = false } = {}) {
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 54건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 57건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1513,7 +1555,7 @@ export function createQuestionHandler({ store, limiter, runner, randomUUID, log 
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 64건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 67건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1747,7 +1789,7 @@ npm test
 - [ ] **Step 5: 전체 테스트를 돌린다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 64건 통과. Task 8은 새 테스트를 더하지 않는다.
+Expected: PASS. 누적 67건 통과. Task 8은 새 테스트를 더하지 않는다.
 
 - [ ] **Step 6: 기동만 확인한다**
 
