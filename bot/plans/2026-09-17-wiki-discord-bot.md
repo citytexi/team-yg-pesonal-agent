@@ -866,6 +866,10 @@ git commit -m "feat(bot): cap concurrent, per-user, and daily usage"
   - `Result`는 `{ ok: true, text: string, sessionId: string }` 또는
     `{ ok: false, reason: "timeout" | "exit" | "parse" | "empty" | "error", detail: string }`이다.
   - `detail`은 파일 로그용이며 디스코드에 그대로 올리지 않는다.
+  - stdout 누적이 `MAX_STDOUT_BYTES`를 넘으면 프로세스를 죽이고 `reason: "exit"`로 끝낸다.
+    새 `reason` 값을 만들지 않는다. 뒤 태스크의 문구 표가 늘어나지 않게 하기 위해서다.
+  - 자식 프로세스의 stdin은 `"ignore"`로 연다. 프롬프트는 인자로 넘기므로 stdin이 필요 없고,
+    파이프로 열어 두면 CLI가 EOF를 기다리며 멈출 여지가 있다.
 
 - [ ] **Step 1: 가짜 `claude`를 만든다**
 
@@ -887,6 +891,9 @@ if (mode === "hang") {
   process.stdout.write(JSON.stringify({ is_error: true, subtype: "error_during_execution", result: "", session_id: "s-err" }));
 } else if (mode === "empty") {
   process.stdout.write(JSON.stringify({ is_error: false, subtype: "success", result: "   ", session_id: "s-empty" }));
+} else if (mode === "flood") {
+  process.stdout.write("x".repeat(3 * 1024 * 1024));
+  setTimeout(() => {}, 60000);
 } else if (mode === "echo-args") {
   process.stdout.write(JSON.stringify({ is_error: false, subtype: "success", result: JSON.stringify(args), session_id: "s-echo" }));
 } else {
@@ -903,6 +910,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { spawn as nodeSpawnForTest } from "node:child_process";
 import { createClaudeRunner } from "../src/claude-runner.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -1000,6 +1008,31 @@ test("공백뿐인 답변은 reason 이 empty 다", async () => {
   assert.equal(result.reason, "empty");
 });
 
+test("stdout 이 상한을 넘으면 프로세스를 죽이고 exit 으로 끝낸다", async () => {
+  const result = await runner("flood", 10000).ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "exit");
+  assert.match(result.detail, /stdout/);
+});
+
+test("자식 프로세스의 stdin 을 열어두지 않는다", async () => {
+  let captured = null;
+  const spy = (bin, args, options) => {
+    captured = options;
+    return nodeSpawnForTest(bin, args, options);
+  };
+  const r = createClaudeRunner({
+    claudeBin: process.execPath,
+    claudeArgsPrefix: [FAKE],
+    repoRoot: here,
+    timeoutMs: 5000,
+    env: { ...process.env, FAKE_MODE: "success" },
+    spawn: spy,
+  });
+  await r.ask({ question: "질문", sessionId: "uuid-1" });
+  assert.deepEqual(captured.stdio, ["ignore", "pipe", "pipe"]);
+});
+
 test("시간이 초과되면 reason 이 timeout 이다", async () => {
   const result = await runner("hang", 300).ask({ question: "질문", sessionId: "uuid-1" });
   assert.equal(result.reason, "timeout");
@@ -1021,6 +1054,9 @@ import { spawn as nodeSpawn } from "node:child_process";
 
 const BLOCKED_TOOLS = ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch"];
 const MODEL = "claude-sonnet-5";
+// A wiki answer is a few kilobytes. Anything past this is a runaway process, and
+// buffering it whole is how the bot runs out of memory.
+const MAX_STDOUT_BYTES = 2 * 1024 * 1024;
 
 export function createClaudeRunner({
   claudeBin,
@@ -1054,6 +1090,9 @@ export function createClaudeRunner({
       const child = spawn(claudeBin, buildArgs({ question, sessionId, resume }), {
         cwd: repoRoot,
         env,
+        // The prompt travels as an argument. An open stdin pipe only invites the
+        // CLI to wait for EOF that never comes.
+        stdio: ["ignore", "pipe", "pipe"],
       });
 
       let stdout = "";
@@ -1074,6 +1113,14 @@ export function createClaudeRunner({
 
       child.stdout.on("data", (chunk) => {
         stdout += chunk;
+        if (stdout.length > MAX_STDOUT_BYTES) {
+          child.kill("SIGKILL");
+          finish({
+            ok: false,
+            reason: "exit",
+            detail: `stdout exceeded ${MAX_STDOUT_BYTES} bytes`,
+          });
+        }
       });
       child.stderr.on("data", (chunk) => {
         stderr += chunk;
@@ -1146,7 +1193,7 @@ test("실제 claude 가 sonnet-5 로 답한다", { skip: !live }, async () => {
 - [ ] **Step 6: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 48건 통과. 통합 시험 1건은 skip 으로 표시된다.
+Expected: PASS. 누적 50건 통과. 통합 시험 1건은 skip 으로 표시된다.
 
 통합 시험을 직접 돌려보려면 `RUN_LIVE=1 CLAUDE_BIN=$(which claude) REPO_ROOT=$(cd .. && pwd) npm test`
 를 쓴다. 구독 한도를 먹으므로 필요할 때만 돌린다.
@@ -1292,7 +1339,7 @@ export function answerMessages(text, { resumeFailed = false } = {}) {
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 58건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 60건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1596,7 +1643,7 @@ export function createQuestionHandler({ store, limiter, runner, randomUUID, log 
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 68건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 70건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1830,7 +1877,7 @@ npm test
 - [ ] **Step 5: 전체 테스트를 돌린다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 68건 통과. Task 8은 새 테스트를 더하지 않는다.
+Expected: PASS. 누적 70건 통과. Task 8은 새 테스트를 더하지 않는다.
 
 - [ ] **Step 6: 기동만 확인한다**
 
