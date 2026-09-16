@@ -52,7 +52,7 @@ Mash-Up 팀원이 디스코드에서 제품 정책을 물으면, 이 저장소�
 
 ## 5. 구조
 
-봇을 세 조각으로 나눈다. 각 조각은 하나의 일만 하고, 나머지를 몰라도 이해되고 시험된다.
+봇을 네 조각으로 나눈다. 각 조각은 하나의 일만 하고, 나머지를 몰라도 이해되고 시험된다.
 
 ### 5.1 `discord-gateway`
 
@@ -72,7 +72,7 @@ discord.js로 게이트웨이에 붙어 멘션을 받고, 쓰레드를 열고, �
 ### 5.3 `session-store`
 
 디스코드 쓰레드 ID와 `claude` 세션 UUID의 대응을 보관한다. 봇이 재시작돼도 쓰레드
-되물음이 이어지도록 JSON 파일 한 장에 쓴다. 세 조각 중 상태를 갖는 유일한 조각이다.
+되물음이 이어지도록 JSON 파일 한 장에 쓴다. 네 조각 중 상태를 갖는 유일한 조각이다.
 
 만료는 7일로 둔다. 그보다 오래된 쓰레드는 새 세션으로 시작한다.
 
@@ -87,17 +87,26 @@ discord.js로 게이트웨이에 붙어 멘션을 받고, 쓰레드를 열고, �
 ```
 claude -p "<질문>"
   --session-id <uuid>            # 첫 질문. 되물음은 --resume <uuid>
-  --restricted                   # Bash·코드 실행 도구·WebFetch 제거
-  --disallowed-tools Edit Write NotebookEdit
   --permission-mode dontAsk
+  --disallowed-tools Bash Edit Write NotebookEdit WebFetch
   --output-format json
-  --add-dir <저장소 루트>
 ```
 
-`--restricted`는 도움말에 "user, project, local 설정 파일을 무시한다"고 적혀 있다.
-설정 파일과 `CLAUDE.md`·스킬은 다른 계층이므로 스킬 로드에는 영향이 없을 것으로 보지만,
-확인된 사실이 아니다. **구현 첫 작업에서 실측으로 검증한다.** 스킬과 `CLAUDE.md`가 로드되지
-않으면 `--restricted`를 빼고 `--disallowed-tools`에 `Bash`를 추가하는 쪽으로 물러선다.
+프로세스의 작업 디렉토리를 저장소 루트로 지정해 실행한다. `--add-dir`은 필요 없다.
+
+**`--restricted`는 쓰지 않는다.** 2026-09-17 실측에서 `--restricted`를 붙이면 `query`·
+`ingest`·`lint` 스킬이 전부 로드되지 않았고, 빼면 전부 로드됐다. 이 봇의 가치는 4절에
+적은 위키 운영 규약을 스킬로 물려받는 데 있으므로 `--restricted`를 포기하고
+`--disallowed-tools`로 개별 차단한다.
+
+`--output-format json`의 출력에서 쓰는 필드는 네 개다.
+
+| 필드 | 용도 |
+|---|---|
+| `result` | 답변 본문 |
+| `session_id` | 되물음에 쓸 세션 ID |
+| `is_error` | 실패 판정 |
+| `subtype` | 성공 시 `success` |
 
 ## 7. 데이터 흐름
 
@@ -144,9 +153,13 @@ submodule이라 그쪽 페이지에서 깨지므로 v1에서 제외한다.
 
 ### 9.1 쓰기 차단
 
-`--restricted`와 `--disallowed-tools`로 도구 자체를 제거한다. 여기에 더해 `claude` 실행
-직후 `git status --porcelain`을 확인해 작업 트리가 더러우면 로그에 경고를 남긴다. 값이
-싸고, 도구 차단이 뚫렸을 때 알아챌 수 있는 유일한 지점이다.
+`--disallowed-tools Bash Edit Write NotebookEdit WebFetch`로 쓰기와 명령 실행 도구를
+제거한다. 여기에 더해 `claude` 실행 직후 `git status --porcelain`을 확인해 작업 트리가
+더러우면 로그에 경고를 남긴다. 값이 싸고, 도구 차단이 뚫렸을 때 알아챌 수 있는 유일한
+지점이다.
+
+`--restricted`를 쓰지 않으므로 도구 차단은 `--disallowed-tools` 한 줄에 전부 걸려 있다.
+이 인자를 고칠 때는 `Bash`가 빠지지 않았는지 반드시 확인한다.
 
 ### 9.2 접근 제한
 
@@ -231,4 +244,11 @@ TDD로 구현한다. 조각마다 시험 방법이 다르다.
 - **상시 머신** — 사용자 맥에서 시작한다. 맥이 잠들면 응답이 멈춘다. Oracle Cloud
   Always Free ARM 인스턴스가 후보지만 리전 용량 문제로 생성이 실패할 수 있다. 머신
   선택은 설정값으로 분리했으므로 코드 변경 없이 옮길 수 있다.
-- **`--restricted`와 스킬 로드의 상호작용** — 6절 참고. 구현 첫 작업에서 실측한다.
+- **답변 품질** — 스킬과 위키 규약을 물려받아도 답이 맞는지는 실사용으로만 안다. 초기
+  운영에서 오답이 나오면 `wiki/CLAUDE.md`의 query 워크플로를 고치는 쪽으로 대응한다.
+  봇 코드에 규칙을 심지 않는다.
+
+해소된 항목:
+
+- **`--restricted`와 스킬 로드의 상호작용** — 2026-09-17 실측으로 해소됐다.
+  `--restricted`는 스킬 로드를 막는다. 6절대로 쓰지 않는다.
