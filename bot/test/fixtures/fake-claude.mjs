@@ -13,6 +13,9 @@ if (mode === "hang") {
   process.stdout.write(JSON.stringify({ is_error: true, subtype: "error_during_execution", result: "", session_id: "s-err" }));
 } else if (mode === "empty") {
   process.stdout.write(JSON.stringify({ is_error: false, subtype: "success", result: "   ", session_id: "s-empty" }));
+} else if (mode === "flood") {
+  process.stdout.write("x".repeat(3 * 1024 * 1024));
+  setTimeout(() => {}, 60000);
 } else if (mode === "echo-args") {
   process.stdout.write(JSON.stringify({ is_error: false, subtype: "success", result: JSON.stringify(args), session_id: "s-echo" }));
 } else {

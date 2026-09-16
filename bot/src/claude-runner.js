@@ -2,6 +2,9 @@ import { spawn as nodeSpawn } from "node:child_process";
 
 const BLOCKED_TOOLS = ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch"];
 const MODEL = "claude-sonnet-5";
+// A wiki answer is a few kilobytes. Anything past this is a runaway process, and
+// buffering it whole is how the bot runs out of memory.
+const MAX_STDOUT_BYTES = 2 * 1024 * 1024;
 
 export function createClaudeRunner({
   claudeBin,
@@ -35,6 +38,9 @@ export function createClaudeRunner({
       const child = spawn(claudeBin, buildArgs({ question, sessionId, resume }), {
         cwd: repoRoot,
         env,
+        // The prompt travels as an argument. An open stdin pipe only invites the
+        // CLI to wait for EOF that never comes.
+        stdio: ["ignore", "pipe", "pipe"],
       });
 
       let stdout = "";
@@ -55,6 +61,14 @@ export function createClaudeRunner({
 
       child.stdout.on("data", (chunk) => {
         stdout += chunk;
+        if (stdout.length > MAX_STDOUT_BYTES) {
+          child.kill("SIGKILL");
+          finish({
+            ok: false,
+            reason: "exit",
+            detail: `stdout exceeded ${MAX_STDOUT_BYTES} bytes`,
+          });
+        }
       });
       child.stderr.on("data", (chunk) => {
         stderr += chunk;

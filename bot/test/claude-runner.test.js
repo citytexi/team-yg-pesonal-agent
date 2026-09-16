@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { spawn as nodeSpawnForTest } from "node:child_process";
 import { createClaudeRunner } from "../src/claude-runner.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -97,6 +98,31 @@ test("is_error 가 true 면 reason 이 error 다", async () => {
 test("공백뿐인 답변은 reason 이 empty 다", async () => {
   const result = await runner("empty").ask({ question: "질문", sessionId: "uuid-1" });
   assert.equal(result.reason, "empty");
+});
+
+test("stdout 이 상한을 넘으면 프로세스를 죽이고 exit 으로 끝낸다", async () => {
+  const result = await runner("flood", 10000).ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "exit");
+  assert.match(result.detail, /stdout/);
+});
+
+test("자식 프로세스의 stdin 을 열어두지 않는다", async () => {
+  let captured = null;
+  const spy = (bin, args, options) => {
+    captured = options;
+    return nodeSpawnForTest(bin, args, options);
+  };
+  const r = createClaudeRunner({
+    claudeBin: process.execPath,
+    claudeArgsPrefix: [FAKE],
+    repoRoot: here,
+    timeoutMs: 5000,
+    env: { ...process.env, FAKE_MODE: "success" },
+    spawn: spy,
+  });
+  await r.ask({ question: "질문", sessionId: "uuid-1" });
+  assert.deepEqual(captured.stdio, ["ignore", "pipe", "pipe"]);
 });
 
 test("시간이 초과되면 reason 이 timeout 이다", async () => {
