@@ -635,6 +635,11 @@ git commit -m "feat(bot): persist thread-to-session mapping with a TTL"
   - 검사 순서는 일일 → 사용자 → 동시 실행이다. 앞선 검사에서 거절되면 뒤 검사는 하지 않는다.
   - 일일 카운터는 `now()`의 현지 날짜(`YYYY-MM-DD`)가 바뀌면 초기화된다.
   - `release()`를 두 번 불러도 동시 실행 수가 음수로 내려가지 않는다.
+  - **`release()`는 반드시 한 번 불러야 한다.** 부르지 않으면 그 동시 실행 자리가 영영
+    돌아오지 않는다. 소비자는 `finally`에서 부른다. 이 계약을 모듈 주석에 영어로 적는다.
+  - `limiter.used()`는 `{ daily, running, trackedUsers }`를 돌려준다. 조회 전용이다.
+  - 사용자 기록은 무한히 쌓이지 않는다. 추적 중인 사용자가 `PRUNE_THRESHOLD`를 넘으면
+    분 창이 지난 항목을 지운다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -720,6 +725,19 @@ test("release 를 두 번 불러도 자리가 늘지 않는다", () => {
   assert.deepEqual(limiter.acquire("user-3"), { ok: false, reason: "concurrent" });
 });
 
+test("추적 사용자가 많아지면 오래된 기록을 지운다", () => {
+  const { limiter, state } = build({ maxConcurrent: 10000, perUserPerMin: 100, dailyQuota: 100000 });
+  for (let i = 0; i < 1200; i += 1) limiter.acquire(`user-${i}`).release();
+  assert.ok(limiter.used().trackedUsers > 0);
+
+  state.clock += 60001;
+  limiter.acquire("late-user").release();
+  assert.ok(
+    limiter.used().trackedUsers < 1200,
+    `가지치기가 안 됐다: ${limiter.used().trackedUsers}`,
+  );
+});
+
 test("거절된 요청은 어떤 카운터도 올리지 않는다", () => {
   const { limiter } = build({ maxConcurrent: 1, perUserPerMin: 100, dailyQuota: 3 });
   limiter.acquire("user-1");
@@ -736,11 +754,15 @@ Expected: FAIL. `Cannot find module '../src/rate-limiter.js'`
 
 - [ ] **Step 3: `bot/src/rate-limiter.js`를 쓴다**
 
-`used()`는 테스트와 로그를 위한 조회용이다. 거절된 요청이 카운터를 올리지 않는지
-확인하는 데 쓴다.
+`used()`는 테스트와 로그를 위한 조회용이다. 거절된 요청이 카운터를 올리지 않는지,
+그리고 사용자 기록이 무한히 쌓이지 않는지 확인하는 데 쓴다.
+
+가지치기는 추적 사용자가 `PRUNE_THRESHOLD`를 넘을 때만 돈다. 매번 전체를 훑으면 호출마다
+O(n)이 되고, 실제로는 길드 인원만큼만 쌓이므로 평소에는 한 번도 돌지 않는다.
 
 ```js
 const MINUTE_MS = 60 * 1000;
+const PRUNE_THRESHOLD = 1000;
 
 function localDayKey(timestamp) {
   const date = new Date(timestamp);
@@ -749,15 +771,28 @@ function localDayKey(timestamp) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+// A successful acquire hands back release(). Call it exactly once, from a
+// finally block: a slot that is never released never comes back, and the bot
+// stops answering once every slot leaks.
 export function createRateLimiter({ maxConcurrent, perUserPerMin, dailyQuota, now = () => Date.now() }) {
   let running = 0;
   let dayKey = localDayKey(now());
   let dailyCount = 0;
   const userHits = new Map();
 
+  // Without this the map keeps one entry per user id forever.
+  const pruneUserHits = (at) => {
+    if (userHits.size <= PRUNE_THRESHOLD) return;
+    for (const [id, hits] of userHits) {
+      const last = hits[hits.length - 1];
+      if (last === undefined || at - last >= MINUTE_MS) userHits.delete(id);
+    }
+  };
+
   return {
     acquire(userId) {
       const at = now();
+      pruneUserHits(at);
 
       const today = localDayKey(at);
       if (today !== dayKey) {
@@ -794,7 +829,7 @@ export function createRateLimiter({ maxConcurrent, perUserPerMin, dailyQuota, no
     },
 
     used() {
-      return { daily: dailyCount, running };
+      return { daily: dailyCount, running, trackedUsers: userHits.size };
     },
   };
 }
@@ -803,7 +838,7 @@ export function createRateLimiter({ maxConcurrent, perUserPerMin, dailyQuota, no
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 33건 통과
+Expected: PASS. 누적 34건 통과
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1111,7 +1146,7 @@ test("실제 claude 가 sonnet-5 로 답한다", { skip: !live }, async () => {
 - [ ] **Step 6: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 47건 통과. 통합 시험 1건은 skip 으로 표시된다.
+Expected: PASS. 누적 48건 통과. 통합 시험 1건은 skip 으로 표시된다.
 
 통합 시험을 직접 돌려보려면 `RUN_LIVE=1 CLAUDE_BIN=$(which claude) REPO_ROOT=$(cd .. && pwd) npm test`
 를 쓴다. 구독 한도를 먹으므로 필요할 때만 돌린다.
@@ -1257,7 +1292,7 @@ export function answerMessages(text, { resumeFailed = false } = {}) {
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 57건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 58건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1561,7 +1596,7 @@ export function createQuestionHandler({ store, limiter, runner, randomUUID, log 
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 67건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 68건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1795,7 +1830,7 @@ npm test
 - [ ] **Step 5: 전체 테스트를 돌린다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 67건 통과. Task 8은 새 테스트를 더하지 않는다.
+Expected: PASS. 누적 68건 통과. Task 8은 새 테스트를 더하지 않는다.
 
 - [ ] **Step 6: 기동만 확인한다**
 
