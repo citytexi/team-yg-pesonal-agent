@@ -1,6 +1,8 @@
 import { splitMessage } from "./message-split.js";
 
 const THREAD_NAME_LIMIT = 80;
+// Discord measures the name in UTF-16 code units, so an emoji costs two.
+const DISCORD_THREAD_NAME_LIMIT = 100;
 const RESUME_NOTICE = "이전 맥락이 끊겨 새로 시작합니다.";
 
 const REJECTIONS = {
@@ -22,7 +24,11 @@ const FALLBACK_FAILURE = "답변에 실패했습니다. 잠시 뒤에 다시 물
 export function threadName(question) {
   const flat = question.replace(/\s+/g, " ").trim();
   if (flat.length === 0) return "위키 질문";
-  return flat.slice(0, THREAD_NAME_LIMIT);
+
+  // Array.from splits on code points, so a surrogate pair never breaks in half.
+  let points = Array.from(flat).slice(0, THREAD_NAME_LIMIT);
+  while (points.join("").length > DISCORD_THREAD_NAME_LIMIT) points.pop();
+  return points.join("");
 }
 
 export function rejectionText(reason) {
@@ -35,5 +41,7 @@ export function failureText(reason) {
 
 export function answerMessages(text, { resumeFailed = false } = {}) {
   const body = resumeFailed ? `${RESUME_NOTICE}\n\n${text}` : text;
-  return splitMessage(body, 2000);
+  const messages = splitMessage(body, 2000);
+  // An empty array would leave the thread silent forever.
+  return messages.length > 0 ? messages : [FAILURES.empty];
 }
