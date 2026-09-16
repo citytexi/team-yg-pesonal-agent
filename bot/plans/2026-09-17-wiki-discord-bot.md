@@ -1220,10 +1220,15 @@ git commit -m "feat(bot): run claude headlessly with write tools disabled"
 - Consumes: `splitMessage` (Task 2)
 - Produces:
   - `threadName(question) -> string` — 80자로 자르고 개행을 공백으로 바꾼다. 빈 질문은 `"위키 질문"`.
+    **코드 포인트 단위로 자른다.** `slice`로 자르면 이모지 같은 서로게이트 쌍이 경계에서
+    쪼개져 깨진 글자가 디스코드로 나간다. 결과는 디스코드 상한인 UTF-16 100 코드 유닛도
+    넘지 않는다.
   - `rejectionText(reason) -> string` — `"daily" | "user" | "concurrent"`에 대응하는 한국어 문구
   - `failureText(reason) -> string` — `"timeout" | "exit" | "parse" | "error" | "empty"`에 대응하는 한국어 문구
   - `answerMessages(text, { resumeFailed }) -> string[]` — 분할된 조각들. `resumeFailed`가
     참이면 첫 조각 앞에 맥락 끊김 안내를 붙인다.
+    **빈 배열을 돌려주지 않는다.** 게이트웨이가 빈 배열을 순회하면 아무 메시지도 나가지
+    않아 쓰레드가 조용히 방치된다. 본문이 비면 실패 안내 한 건을 돌려준다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -1270,6 +1275,30 @@ test("실패 문구에 경로나 스택을 넣지 않는다", () => {
   }
 });
 
+test("이모지 경계에서 글자를 쪼개지 않는다", () => {
+  const name = threadName("가" + "😀".repeat(85));
+  for (let i = 0; i < name.length; i += 1) {
+    const code = name.charCodeAt(i);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = name.charCodeAt(i + 1);
+      assert.ok(next >= 0xdc00 && next <= 0xdfff, `외짝 하이 서로게이트 ${i}`);
+      i += 1;
+    } else {
+      assert.ok(!(code >= 0xdc00 && code <= 0xdfff), `외짝 로우 서로게이트 ${i}`);
+    }
+  }
+});
+
+test("이모지만 있어도 디스코드 상한 100 코드 유닛을 넘지 않는다", () => {
+  assert.ok(threadName("😀".repeat(200)).length <= 100);
+});
+
+test("본문이 비어도 빈 배열을 주지 않는다", () => {
+  const messages = answerMessages("", { resumeFailed: false });
+  assert.equal(messages.length, 1);
+  assert.ok(messages[0].length > 0);
+});
+
 test("맥락이 끊기면 첫 조각에 안내를 붙인다", () => {
   const messages = answerMessages("답변", { resumeFailed: true });
   assert.ok(messages[0].includes("새로 시작"));
@@ -1298,6 +1327,8 @@ Expected: FAIL. `Cannot find module '../src/replies.js'`
 import { splitMessage } from "./message-split.js";
 
 const THREAD_NAME_LIMIT = 80;
+// Discord measures the name in UTF-16 code units, so an emoji costs two.
+const DISCORD_THREAD_NAME_LIMIT = 100;
 const RESUME_NOTICE = "이전 맥락이 끊겨 새로 시작합니다.";
 
 const REJECTIONS = {
@@ -1319,7 +1350,11 @@ const FALLBACK_FAILURE = "답변에 실패했습니다. 잠시 뒤에 다시 물
 export function threadName(question) {
   const flat = question.replace(/\s+/g, " ").trim();
   if (flat.length === 0) return "위키 질문";
-  return flat.slice(0, THREAD_NAME_LIMIT);
+
+  // Array.from splits on code points, so a surrogate pair never breaks in half.
+  let points = Array.from(flat).slice(0, THREAD_NAME_LIMIT);
+  while (points.join("").length > DISCORD_THREAD_NAME_LIMIT) points.pop();
+  return points.join("");
 }
 
 export function rejectionText(reason) {
@@ -1332,14 +1367,16 @@ export function failureText(reason) {
 
 export function answerMessages(text, { resumeFailed = false } = {}) {
   const body = resumeFailed ? `${RESUME_NOTICE}\n\n${text}` : text;
-  return splitMessage(body, 2000);
+  const messages = splitMessage(body, 2000);
+  // An empty array would leave the thread silent forever.
+  return messages.length > 0 ? messages : [FAILURES.empty];
 }
 ```
 
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 60건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 63건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1643,7 +1680,7 @@ export function createQuestionHandler({ store, limiter, runner, randomUUID, log 
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 70건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 73건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1877,7 +1914,7 @@ npm test
 - [ ] **Step 5: 전체 테스트를 돌린다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 70건 통과. Task 8은 새 테스트를 더하지 않는다.
+Expected: PASS. 누적 73건 통과. Task 8은 새 테스트를 더하지 않는다.
 
 - [ ] **Step 6: 기동만 확인한다**
 
