@@ -98,4 +98,4 @@ tags: [api, parfait, spec, auth]
 
 - 로컬 토큰 정리와 서버 로그아웃 호출의 순서·실패 시 정책은 앱 결정 사항이다(서버 계약 밖).
 - 기기 토큰 정리가 **세션 단위**라, 세션 없이 등록된 행(구 access token 사용분)은 로그아웃으로 지워지지
-  않는다. 명세에 이 갈래가 없다 → [open-questions](../../synthesis/open-questions.md).
+  않는다. 명세에 이 갈래가 없다 → [open-questions](../../android/synthesis/open-questions.md).

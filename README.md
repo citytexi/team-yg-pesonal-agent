@@ -9,7 +9,7 @@
 | 경로 | 내용 |
 |------|------|
 | [`wiki/`](wiki/index.md) | LLM이 운영·유지하는 **정책 지식 위키**. 진입 허브부터 읽는다 |
-| [`parfait/`](parfait/index.md) | Parfait(TJYG-Android) **구현 위키** — ADR · architecture · specs · plans. `wiki/`와 형제 디렉토리, 위키 스키마 미적용 |
+| [`parfait/`](parfait/index.md) | **플랫폼별 구현 문서 루트** — Android 전용은 `parfait/android/`(ADR · architecture · specs · plans · synthesis), 플랫폼 공용은 `api/`(서버 계약) · `pm/`(제품 문서). `wiki/`와 형제 디렉토리, 위키 스키마 미적용 |
 | `wiki/personal-private/` | 민감 개인정보. **private submodule**(별도 접근 권한 필요), 이 repo엔 gitlink만 |
 | `raw/` | 위키의 **불변 원본** 소스 (읽기 전용) |
 | [`docs/`](docs/project-context.md) | 프로젝트 컨텍스트·운영 문서 |
@@ -18,7 +18,7 @@
 
 ## 두 종류의 위키
 - **정책 지식 위키** (`wiki/`의 `entities`·`concepts`·`sources`·`synthesis`) — `raw/` 원본을 ingest해 엔티티·개념으로 축적. 방식은 [llm-wiki.md](llm-wiki.md) 참고.
-- **구현(아키텍처) 위키** (`parfait/`) — 코드베이스 결정(ADR)·구현 가이드(architecture)·설계 스펙(specs)·작업 계획(plans). "왜/어떻게/무엇을" 구조. `wiki/`와 분리된 루트 디렉토리(위키 ingest/lint 스키마 미적용).
+- **구현(아키텍처) 위키** (`parfait/`) — 코드베이스 결정(ADR)·구현 가이드(architecture)·설계 스펙(specs)·작업 계획(plans). "왜/어떻게/무엇을" 구조. **플랫폼 축으로 갈린다** — Android 전용은 `parfait/android/`, 서버 계약(`api/`)과 제품 문서(`pm/`)는 플랫폼 공용이라 바로 아래 남는다. `wiki/`와 분리된 루트 디렉토리(위키 ingest/lint 스키마 미적용).
 
 ## 작업 규칙 (요약 — 상세는 [CLAUDE.md](CLAUDE.md))
 - `main` **직접 커밋 금지** — 브랜치 → PR → 머지.

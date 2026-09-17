@@ -40,7 +40,7 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
     바뀐 것은 벽시계에 어느 시간대를 붙이는가뿐이고, 근거는 서버 DB 커넥션 세 환경이
     `serverTimezone=Asia/Seoul`이라는 계약 사실이다. 앱 DTO는 여전히 널 허용이라 서버가 비널로 좁힌 것에
     앱이 물려 있지 않다 → [conventions.md](conventions.md) "Android 불일치"(이제 0건) ·
-    [open-questions](../synthesis/open-questions.md) [2026-08-15].
+    [open-questions](../android/synthesis/open-questions.md) [2026-08-15].
 
 [^todayurl]: ⚠️ **2026-08-31 서버 delta로 새로 벌어졌다.** `recentImageUrl`이 **오늘 캔버스의 토핑**으로
     좁혀졌는데, 앱은 그 필드가 `null`인 것을 여전히 "토핑이 하나도 없는 그룹"으로 읽는다
@@ -49,7 +49,7 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
     그래픽으로 그려지는데, 같은 줄의 경과 시간은 어제 토핑 시각을 가리킨다 — 두 표시가 서로를 반박한다.
     앱 쪽 타입도 JSON 키도 안 바뀌었고 서버가 같은 필드에 담는 **뜻**만 바뀐 부류라 역직렬화·매퍼는
     초록으로 지나간다 → [conventions.md](conventions.md) "Android 불일치" ·
-    [open-questions](../synthesis/open-questions.md) OQ-P-336.
+    [open-questions](../android/synthesis/open-questions.md) OQ-P-336.
 
 요청 DTO(`ParfaitGroupRequest.kt`)에는 Bean Validation 애노테이션이 없다 — auth 도메인과 달리 `@NotBlank`/`@Valid`가
 없다. 필드는 Kotlin non-null 타입이라 요청 바디에 없거나 `null`이면 Jackson이 파싱 단계에서 거부한다(결과적으로
@@ -470,7 +470,7 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 2026-08-18 delta(`[Fix] 그룹/캔버스 API에 Nametag-Chip 노출&배치 작업 시간 수정`)로 **칩 타입의 부여
 주체가 서버가 됐다.** 그전까지 응답에 타입 필드가 없어 앱이 목록 인덱스로 돌려 쓰던 자리다
-([open-questions](../synthesis/open-questions.md) OQ-P-140·OQ-P-210).
+([open-questions](../android/synthesis/open-questions.md) OQ-P-140·OQ-P-210).
 
 - **값 집합**: `NameTagChipType`(`core/parfaitgroup/domain`) — `TYPE1`~`TYPE12` + `DEFAULT`.
   JSON에는 **enum 이름 문자열 그대로** 실린다(`"TYPE7"`). 위키 [[nametag-chip]]의 12종과 개수가 같고,
@@ -561,7 +561,7 @@ base path `/api/parfait-groups`(버전 프리픽스 없음 — [conventions.md](
 
 ## Android 매핑
 
-`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)) —
+`:data`·`:domain`에 API 표면이 구현됐다([spec](../android/specs/archive/2026-08-03-data-api-service-layer.md)) —
 **2026-08-06 PR #197로 develop 머지 완료**다. 이 표면이 딛고 선 공용 인프라(`ApiCaller` 4진입점·
 `ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로 먼저 들어왔고, 아래
 Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
@@ -577,7 +577,7 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 **✅ 2026-08-17 — 남은 셋도 올라왔고, 이 도메인이 `android_status: done`이 됐다**(PR #285·#287).
 S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`·`reportGroup`이 인터페이스에
 올라왔다 — **DataSource 8함수 전량이 Repository를 얻었고 8 엔드포인트 전부 호출부가 있다**
-([spec](../specs/archive/2026-08-17-s101-group-setting-api.md)). "화면이 요구할 때 올린다"는 방침이
+([spec](../android/specs/archive/2026-08-17-s101-group-setting-api.md)). "화면이 요구할 때 올린다"는 방침이
 끝까지 지켜진 도메인이다.
 
 | Repository 함수 | 반환 | 대응 엔드포인트 | UseCase → 화면 |
@@ -595,7 +595,7 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
 > ✅ **2026-08-20 — 읽기 두 갈래가 `Flow` 구독으로 바뀌었다**(PR #307 develop 머지). 엔드포인트·에러
 > 코드는 그대로이고 **같은 응답을 어디에 두는가**만 달라졌다 — 화면이 조회 결과를 자기 State에 넣지
 > 않고 `:data`의 인메모리 캐시를 구독한다. 갱신 함수가 `Result<Unit>`이라 **값을 얻는 두 번째 경로가
-> 애초에 없다**([ADR-0023](../adr/0023-group-in-memory-ssot.md)). 명령 다섯(참여·생성·닉네임 변경·
+> 애초에 없다**([ADR-0023](../android/adr/0023-group-in-memory-ssot.md)). 명령 다섯(참여·생성·닉네임 변경·
 > 나가기·신고)은 성공 시 캐시에 반영되므로 화면이 따로 재조회하지 않는다 — 단 닉네임 변경은 응답에
 > `memberId`가 없어 **캐시의 "내" 항목을 짚지 못해 상세를 한 번 더 부른다**(계약 쪽 개선 여지).
 
@@ -610,11 +610,11 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   ✅ **`GROUP_NICKNAME_ALREADY_USED` 死코드는 걷혔다**(2026-08-15, PR #250) — 상수·
   `GroupNickNameError.ALREADY_USED`·문구·매핑 분기가 함께 제거됐고, 그 코드를 검증하던 두 테스트는
   `INVALID_GROUP_NICKNAME`(400)으로 바뀌어 살았다. **남은 것은 정책 쪽이다** — 같은 그룹에 같은 표시
-  이름이 여럿일 때의 구분 수단이 없다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+  이름이 여럿일 때의 구분 수단이 없다 → [open-questions](../android/synthesis/open-questions.md) [2026-08-15].
 - ✅ **닉네임 허용 문자가 다시 맞았다**(2026-08-15, PR #250) — `CheckNameValidUseCase`에
   `'ㄱ'..'ㅎ'`·`'ㅏ'..'ㅣ'`가 더해져 서버 정규식과 같은 집합이다. 앱이 서버보다 **좁아도 안 된다**는
   기준이 KDoc에 명시됐다(좁으면 서버가 받는 이름을 앱이 먼저 막는다). 정책 문서에는 여전히 자모 항목이
-  없다 → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+  없다 → [open-questions](../android/synthesis/open-questions.md) [2026-08-15].
   🔁 **그룹명 쪽은 2026-09-11에야 맞았다** — 같은 UseCase가 A-005 그룹명에도 쓰이는데 서버 `GroupName`은
   그날까지 완성형만 받아, 그 사이에는 **앱이 서버보다 넓었다**(위 [정책 대조 메모](#정책-대조-메모)).
   앱 코드는 바뀌지 않았고 서버가 따라와 닫혔다 → OQ-P-171.
@@ -626,45 +626,45 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
 - **참여 → 닉네임이 두 요청이다** — ✅ **이탈 문제는 해소됐다**(2026-08-16, PR #261): 둘 다 S-102 확인 모달
   뒤에서 연달아 나가므로 중간 이탈로 "닉네임 없는 참여"가 남지 않는다. 다만 원자적이지는 않다 —
   **POST join이 성공하고 PATCH만 실패하면 참여는 유지되고 닉네임은 서버 초기값**이며 화면에 표시가 없다
-  → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+  → [open-questions](../android/synthesis/open-questions.md) [2026-08-15].
 - ~~**A-005가 보내는 `groupNickname`이 아직 mock**이다~~ → ✅ **닫혔다**(2026-08-20, PR #312) —
   G-001이 `GetMyAccountFlowUseCase`를 구독해 **전역 닉네임**을 넘긴다. 그 값이 그룹 내 닉네임의
   초기값으로 서버에 저장되는 것은 위키 [[S-102-그룹-닉네임-생성-정책-v0.1]]의 "계정 공통 1개 값
-  재사용"과 방향이 같다 → [open-questions](../synthesis/open-questions.md) OQ-P-197.
+  재사용"과 방향이 같다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-197.
   ✅ **참여 갈래도 같아졌다**(2026-09-07, PR #461) — 그때 닫힌 것은 **생성 갈래(A-005)뿐**이었고,
   참여 갈래는 S-102 입력칸이 빈 채로 서서 사용자가 손으로 친 이름이 `PATCH nickname`으로 나갔다.
   이제 A-004가 같은 구독으로 앱 닉네임을 실어 보내 두 갈래가 같은 초기값에서 출발한다. **서버로
   나가는 값의 형태는 그대로다** — 참여는 여전히 `POST join` 뒤 `PATCH nickname` 두 요청이고, 이
   변경은 그 요청에 실릴 문자열의 출발점만 바꾼다. 앱 닉네임을 구하지 못하면 빈 초기값으로 서고
-  두 갈래의 답이 갈린다 → [open-questions](../synthesis/open-questions.md) OQ-P-377.
+  두 갈래의 답이 갈린다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-377.
 - ~~⚠️ `recentImageUploadedAt` 파싱이 이 문서의 직렬화 포맷과 어긋난다~~ → ✅ **닫혔다**(2026-08-20,
   PR #310) — 매퍼가 `LocalDateTime::parse` 뒤 `toInstant(PARFAIT_TIME_ZONE)`로 KST를 부여한다.
   앱이 서버 포맷 변경을 기다리지 않고 읽는 쪽을 고쳤고, 근거는 서버 DB 커넥션 세 환경이
-  `serverTimezone=Asia/Seoul`이라는 계약 사실이다 → [open-questions](../synthesis/open-questions.md) OQ-P-165.
+  `serverTimezone=Asia/Seoul`이라는 계약 사실이다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-165.
 - ⚠️ **`recentImageUploadedAt`이 이제 "그룹 생성 시각"일 수도 있다** — `GroupListScreen`이 이 값으로
   경과 시간을 그리므로, 토핑이 0건인 그룹도 **활동이 있었던 것처럼 보인다.**
   🔁 **2026-08-31 — 앱이 쓰던 판별법이 무효가 됐다.** 그전에는 `recentImageUrl`이 `null`인지를 함께 보면
   됐지만, 그 필드는 이제 **오늘 캔버스에 토핑이 있는지**를 뜻한다. `MyParfaitGroupVO.recentImageUploadedAt`
   KDoc과 `ToppingImage.kt`의 `toToppingImage`가 아직 옛 뜻으로 읽는다. 사정거리는 좁아졌다 — 시각이
   그룹 생성 시각으로 새는 그룹은 이제 **토핑이 한 건도 없는 그룹뿐**이다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-235 · OQ-P-336.
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-235 · OQ-P-336.
 - ✅ **상세 조회 한 화면에 요청이 둘이던 이유가 서버에서 사라졌다**(2026-08-18 서버 delta) — 상세 응답에
   **그룹명이 없어** `GetGroupDetailUseCase`가 `getMyGroups()`를 한 번 더 읽어 붙이던 자리다(그룹 SSoT
   라운드에서 HTTP 호출이 먼저 사라져 인메모리 캐시 `combine`이 됐다). **앱 쪽도 닫혔다(2026-08-20,
   PR #308 develop 머지)** — `combine`과 `GroupDetailVO`가 함께 삭제되고 두 `TODO(서버 응답 확장 대기)`도
   걷혔다. 지금 `GetGroupDetailUseCase`는 상세 캐시 하나를 구독한다
-  → [open-questions](../synthesis/open-questions.md) [2026-08-17].
+  → [open-questions](../android/synthesis/open-questions.md) [2026-08-17].
 - ✅ **`memberLimit` 공백도 닫혔다**(2026-08-18 서버 delta, 앱은 2026-08-20 PR #308 develop 머지) —
   정원이 **그룹 생성 응답에만** 있어 "N명 남음"이 mock 1로 남아 있던 자리다. 상세 응답이 `memberLimit`을
   실으면서 `GroupSettingViewModel`이 TODO에 적어 둔 식(`memberLimit - members.size`, 음수 클램프)으로
-  바뀌었다 → [open-questions](../synthesis/open-questions.md) [2026-08-13].
+  바뀌었다 → [open-questions](../android/synthesis/open-questions.md) [2026-08-13].
 - ✅ **칩 타입이 인덱스 순환을 완전히 대체했다**(2026-08-20, PR #308·#310 develop 머지). 그전까지는
   `GroupSettingViewModel`이 `NAMETAG_CHIP_TYPES[index % 12]`로, `GroupListScreen`이
   `YGGrouptagChipType.entries`를 순환으로 썼다. 지금은 S-101이 `members[].nameTagChip`,
   G-001이 `lastPlacedByNameTagChip`을 읽고 각 모듈 `util/`의 변환이 색으로 옮긴다 —
   **"멤버가 빠지면 남은 사람 색이 밀린다"는 성질이 사라졌다.** 값이 없거나 앱이 모르는 문자열은
-  `NametagChipType.DEFAULT`로 접혀 중립 색이 된다([ADR-0024](../adr/0024-nametag-chip-unknown-fold.md))
-  → [open-questions](../synthesis/open-questions.md) [2026-08-18].
+  `NametagChipType.DEFAULT`로 접혀 중립 색이 된다([ADR-0024](../android/adr/0024-nametag-chip-unknown-fold.md))
+  → [open-questions](../android/synthesis/open-questions.md) [2026-08-18].
 - ✅ **JSON 키 어긋남도 develop에서 닫혔다.** 2026-08-19 서버 delta가 키를 `nameTagChip` 계열로 바꿀 때
   그 필드를 옛 키(`lastPlacedByNametagChip`·`nametagChip`, 둘 다 `String? = null`)로 읽던 코드가 잠시
   있었다 — 기본값이 있어 역직렬화는 안 깨지고 **전부 `null`로 떨어지는**(칩이 조용히 폴백 색으로
@@ -672,17 +672,17 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   develop DTO는 이제 `MyParfaitGroupResponse.lastPlacedByNameTagChip` ·
   `ParfaitGroupMemberResponse.nameTagChip` ·
   `CreateParfaitGroupResponse.lastPlacedByNameTagChip`이다
-  → [server-delta 스펙](../specs/archive/2026-08-19-server-delta-nametag-chip-keys.md) ·
-  [open-questions](../synthesis/open-questions.md) [2026-08-19].
+  → [server-delta 스펙](../android/specs/archive/2026-08-19-server-delta-nametag-chip-keys.md) ·
+  [open-questions](../android/synthesis/open-questions.md) [2026-08-19].
 - ⚠️ **신고 사유가 하드코딩 상수 하나**다(`GROUP_REPORT_REASON`) — 사유 선택 UI가 없는데 서버는
   사유를 필수로 받으므로(빈 값이면 400 `INVALID_GROUP_REPORT_REASON`) 화면이 대신 채운다. 결과적으로
-  **모든 신고가 같은 문자열로 저장된다** → [open-questions](../synthesis/open-questions.md) [2026-08-17].
+  **모든 신고가 같은 문자열로 저장된다** → [open-questions](../android/synthesis/open-questions.md) [2026-08-17].
 - **신고 성공은 탈퇴를 동반한다는 서버 동작을 앱이 그대로 받는다** — 나가기와 신고가 같은 함수
   (`submitDialogAction`)로 모이고 성공하면 둘 다 `replaceAll(NavKeyGroupList)`로 그룹 목록에 간다.
   나간 뒤에는 그 그룹의 상세·닉네임 변경·신고가 전부 403 `GROUP_NOT_JOINED`라 백스택을 남기지 않는다.
 - **에러 코드 분기는 늘지 않았다** — S-101은 `INVALID_GROUP_NICKNAME`만 문구를 갖고
   `GROUP_NOT_FOUND`(404)·`GROUP_NOT_JOINED`(403)는 `UNKNOWN`으로 접힌다. 즉 **이미 나간 그룹을 다시
-  여는 상황과 일시 장애가 같은 문구**다 → [open-questions](../synthesis/open-questions.md) [2026-08-17].
+  여는 상황과 일시 장애가 같은 문구**다 → [open-questions](../android/synthesis/open-questions.md) [2026-08-17].
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|
@@ -717,7 +717,7 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   `kotlin.time.Instant::parse`로 바뀌었고**(VO 타입도 `Instant?`), "오프셋(`Z`)째로 읽는다"는 주석이 붙었다 —
   Asia/Seoul 벽시계 전제를 없애려는 변경이다. **그런데 이 문서의 직렬화 포맷 절이 근거로 삼는 서버
   컨트롤러 테스트의 기대값은 오프셋 없는 `2026-08-01T12:00:00`이라, 그 문자열은 `Instant.parse`가 받지
-  못한다** → [open-questions](../synthesis/open-questions.md) [2026-08-15].
+  못한다** → [open-questions](../android/synthesis/open-questions.md) [2026-08-15].
 
 ## 미결
 
@@ -738,32 +738,32 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
 > `(알수없음)`이면 검증을 건너뛰고 통과시킨다.** 그런데 `of`는 **사용자 입력에도 그대로 쓰인다** —
 > 그룹 생성(`ParfaitGroupService.create`)과 닉네임 변경(`ParfaitGroupMember.changeNickname`) 양쪽이다.
 > 즉 사용자가 `(알수없음)`을 입력하면 괄호 금지 규칙을 우회해 **탈퇴자와 같은 표시 이름**을 가질 수 있다
-> → [open-questions](../synthesis/open-questions.md).
+> → [open-questions](../android/synthesis/open-questions.md).
 
 전역 닉네임을 바꾸는 API는 [member.md](member.md)에 있다.
 
 2026-08-15 서버 delta로 새로 열린 것 셋:
 
 - 같은 그룹 안 닉네임 중복이 허용됐는데 **정책 문서에 근거가 없다** — 서버 커밋 메시지의 "정책상 허용"만
-  근거다. 앱 S-102는 아직 중복 에러 문구를 갖고 있다 → [open-questions](../synthesis/open-questions.md)
+  근거다. 앱 S-102는 아직 중복 에러 문구를 갖고 있다 → [open-questions](../android/synthesis/open-questions.md)
 - 닉네임 허용 문자에 자모가 들어왔는데 위키 [[이름-입력-규칙]]은 "한글"의 범위를 정하지 않는다.
-  앱은 완성형만 통과시켜 **서버보다 좁다** → [open-questions](../synthesis/open-questions.md)
+  앱은 완성형만 통과시켜 **서버보다 좁다** → [open-questions](../android/synthesis/open-questions.md)
 - 초대코드 자릿수 6이 서버·앱 코드 양쪽에만 있고 정책 문서에 없다 →
-  [open-questions](../synthesis/open-questions.md)
+  [open-questions](../android/synthesis/open-questions.md)
 
 2026-08-18 서버 delta로 새로 열린 것:
 
 - **Nametag-Chip 배정 규칙이 서버 코드에만 있다.** 위키 [[nametag-chip]]은 "타입은 유저별 고정"이라고만
   적고 부여 주체·유일성 범위를 정하지 않았는데, 서버가 **그룹별 무작위·활동 멤버 사이 유일**로 구현했다
   (계정 공통이 아니다). `DEFAULT`라는 13번째 값도 정책에 없다 →
-  [open-questions](../synthesis/open-questions.md)
+  [open-questions](../android/synthesis/open-questions.md)
 - **`DEFAULT`를 받는 소비 측 처리가 정해지지 않았다.** 그룹 상세 `members`에는 안 오지만
   **목록·생성의 `lastPlacedByNameTagChip`에는 온다**(마지막 토퍼가 탈퇴한 경우). 앱 `YGColorChipType`은
   12종 + `NametagChipPlus` + `Default`뿐이고 그 `Default`의 색 구분·대비도 미결이다
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
   ✅ **앱 쪽 처리는 정해졌다(2026-08-20, PR #310 develop 머지)** —
   `DEFAULT`는 중립 색(`YGColorChipType.Default`·`YGGrouptagChipType.DEFAULT`)으로 그리고,
-  **앱이 모르는 문자열과 값 없음도 같은 값으로 접는다**([ADR-0024](../adr/0024-nametag-chip-unknown-fold.md)).
+  **앱이 모르는 문자열과 값 없음도 같은 값으로 접는다**([ADR-0024](../android/adr/0024-nametag-chip-unknown-fold.md)).
   그 대가로 "서버가 늘린 새 타입"과 "반납된 자리"가 앱에서 구분되지 않는다.
   **남은 미결은 디자인 몫**이다 — 그 중립 색의 구분·대비가 정해지지 않았고, 갈라지는 순간
   ADR-0024의 재검토 트리거가 걸린다.
@@ -771,16 +771,16 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
 2026-08-19 서버 delta로 새로 열린 것 둘:
 
 - **`recentImageUploadedAt`이 두 뜻을 겸한다** — 토핑이 없으면 그룹 생성 시각으로 대체돼, "마지막 활동"
-  표시가 활동 없는 그룹에도 나온다 → [open-questions](../synthesis/open-questions.md)
+  표시가 활동 없는 그룹에도 나온다 → [open-questions](../android/synthesis/open-questions.md)
 - **같은 필드가 목록과 생성에서 다른 컬럼에서 나온다**(`parfait_group.created_at` vs `updatedAt`)
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 
 2026-08-31 서버 delta로 새로 열린 것:
 
 - **`recentImageUrl`이 오늘 캔버스로 좁혀지면서 "토핑 0건" 판별 수단이 사라졌다** — 앱 두 곳
   (`MyParfaitGroupVO` KDoc · `toToppingImage`)이 아직 옛 뜻으로 읽어, 어제까지 활동한 그룹이 G-001에서
   템플릿 그래픽으로 그려진다. 위키 [[토핑]]의 대체 그래픽 정책은 템플릿을 "첫 토핑 등록 전까지"로 적어
-  **정책과도 갈린다** → [open-questions](../synthesis/open-questions.md) OQ-P-336
+  **정책과도 갈린다** → [open-questions](../android/synthesis/open-questions.md) OQ-P-336
 
 2026-09-10 서버 delta로 새로 열린 것:
 
@@ -788,14 +788,14 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   라는 세 가지를 한꺼번에 정했는데, 위키 [[그룹]]·[[nametag-chip]]·[[닉네임-자동-생성]] 어디에도 "나갔다
   다시 들어온 사람"에 대한 조항이 없다. 특히 **멤버십 id가 유지되므로 탈퇴 중 `(알수없음)`·`DEFAULT`로
   보였던 그 사람의 과거 토핑이 재참여 후 새 닉네임·새 칩으로 되살아난다** — 그것이 의도인지 확인되지
-  않았다 → [open-questions](../synthesis/open-questions.md) OQ-P-398
+  않았다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-398
 
 2026-09-11 서버 delta로 새로 열린 것:
 
 - **목록 썸네일 테두리를 앱이 읽고 그린다.** 서버가 테두리 세 필드를 주기 시작해
   OQ-P-316 ①("서버가 목록 응답에 테두리 필드를 줄지")이 서버 쪽에서 닫혔다. 서버 delta 당일에는 앱에 대응
   필드가 없었고, `ignoreUnknownKeys = true`라 역직렬화가 안 깨져 `⚠️불일치`로 세지 않았다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-316
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-316
   ✅ **데이터 계층 수용이 develop에 들어왔다**(2026-09-11, PR #496 `1b21725ba`, 머지 트리 = 브랜치 팁).
   `MyParfaitGroupResponse`가 세 키를 읽고 `MyParfaitGroupVO.recentImageBorder`(`ToppingBorder`, 비널)로 접는다.
   접는 규칙은 캔버스·토핑 매퍼와 같은 공용 함수(`data/source/common/mapper/ToppingBorderMapper.kt`의
@@ -806,7 +806,7 @@ S-101 그룹 설정이 화면에서 요구하자 `getGroupDetail`·`leaveGroup`�
   `border`를 싣고 `YGToppingGroup`이 `YGToppingCutoutImage`로 그린다. **앱이 이 응답을 그릴 때 보는 조건은
   둘**이다 — `recentImageBorderType`이 `SOLID`이고, 색 문자열이 파싱되는 것. 어느 하나라도 아니면 테두리 없이
   그린다(`feature/groups/list/impl/util/ToppingImage.kt`). 두께는 이미 데이터 계층이 `solidClamped`로 가둬 두어
-  feature가 다시 가두지 않는다 → [g001-group-list-topping-border 스펙](../specs/archive/2026-09-11-g001-group-list-topping-border.md)
+  feature가 다시 가두지 않는다 → [g001-group-list-topping-border 스펙](../android/specs/archive/2026-09-11-g001-group-list-topping-border.md)
 - **테두리도 오늘 캔버스에 묶여 OQ-P-336의 사정을 그대로 물려받는다** — 어제까지 토핑이 있던 그룹은 이미지와
   테두리가 함께 비어 템플릿 그래픽으로 그려진다. 템플릿·조회 실패 그래픽에 테두리를 두를지는 여전히 정책이
-  비어 있다 → [open-questions](../synthesis/open-questions.md) OQ-P-316 ③ · OQ-P-336
+  비어 있다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-316 ③ · OQ-P-336

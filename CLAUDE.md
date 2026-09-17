@@ -3,7 +3,9 @@
 이 저장소는 네 축으로 구성된다(모두 저장소 루트의 형제 디렉토리):
 - **`raw/`** — 정책 원본 소스(불변, 읽기 전용).
 - **`wiki/`** — LLM이 `raw/`를 ingest해 운영·유지하는 **정책 지식 위키**.
-- **`parfait/`** — TJYG-Android **구현 문서**(ADR·architecture·specs·plans). 위키 스키마 미적용.
+- **`parfait/`** — **플랫폼별 구현 문서 루트**. 플랫폼 전용 문서는 `parfait/android/`(ADR·architecture·
+  specs·plans·synthesis·doc-baseline), 플랫폼 공용은 `parfait/api/`(서버 계약)·`parfait/pm/`(제품 문서).
+  위키 스키마 미적용.
 - **`bot/`** — `wiki/`를 근거로 디스코드에서 답하는 **읽기 전용 질의응답 봇**. 위키 스키마 미적용.
 
 ## 프로젝트 컨텍스트 (필수)
@@ -60,12 +62,12 @@
 > **세션 진입점 2종** — 온보딩만 필요하면 `start-default-session`.
 > 요구사항 하나를 다수 에이전트가 나눠 처리하는 파이프라인(분석·설계·스펙리뷰·계획·계획리뷰·
 > TDD 구현 병렬·통합·코드리뷰)을 돌릴 때는 `start-orchestration-session`.
-> 파이프라인 설계 정본은 [`parfait/specs/2026-08-05-orchestration-session-pipeline.md`](parfait/specs/2026-08-05-orchestration-session-pipeline.md).
+> 파이프라인 설계 정본은 [`parfait/android/specs/2026-08-05-orchestration-session-pipeline.md`](parfait/android/specs/2026-08-05-orchestration-session-pipeline.md).
 
 ### A. TJYG-Android 코드 구현 (`.kt`/gradle 편집, 기능·컴포넌트·버그픽스)
 → **superpowers 체인**:
-1. `superpowers:brainstorming` → 설계 스펙 확정 (`parfait/specs/`, 아래 [설계 스펙 위치](#설계-스펙-위치-tjyg-android-구현))
-2. `superpowers:writing-plans` → 구현 계획 (`parfait/plans/`. writing-plans 기본 위치 `docs/superpowers/plans/`를 이 경로로 override)
+1. `superpowers:brainstorming` → 설계 스펙 확정 (`parfait/android/specs/`, 아래 [설계 스펙 위치](#설계-스펙-위치-tjyg-android-구현))
+2. `superpowers:writing-plans` → 구현 계획 (`parfait/android/plans/`. writing-plans 기본 위치 `docs/superpowers/plans/`를 이 경로로 override)
 3. `superpowers:subagent-driven-development` 또는 `superpowers:executing-plans` → TDD로 실행
 - `writing-plans`·`test-driven-development`·`executing-plans`는 **코드 작업 전용**. 제품 문서엔 쓰지 않는다.
 - **스킬 적재적소(필수)**: brainstorming(스펙)·writing-plans(계획) 단계에서, 다룰 주제
@@ -96,20 +98,21 @@
 
 ## 설계 스펙 위치 (TJYG-Android 구현)
 
-`TJYG-Android` 기능·컴포넌트를 만들기 전 확정하는 **설계 스펙은 `parfait/specs/`에 작성한다.**
+`TJYG-Android` 기능·컴포넌트를 만들기 전 확정하는 **설계 스펙은 `parfait/android/specs/`에 작성한다.**
 (브레인스토밍의 기본 위치 `docs/superpowers/specs/`를 이 경로로 override.)
 
-> `parfait/`는 저장소 루트의 별도 디렉토리다(`raw/`·`wiki/`와 형제). TJYG-Android 구현
-> 문서(ADR·architecture·specs·plans) 전용이며, LLM 위키(`wiki/`) 스키마의 적용을 받지 않는다.
+> `parfait/`는 저장소 루트의 별도 디렉토리다(`raw/`·`wiki/`와 형제). **플랫폼 축으로 갈린다** —
+> Android 전용 문서는 `parfait/android/`에, 서버 계약(`api/`)과 제품 문서(`pm/`)는 플랫폼 공용이라
+> `parfait/` 바로 아래 남는다. LLM 위키(`wiki/`) 스키마의 적용을 받지 않는다.
 
-**코드 주석·KDoc 규약은 [`parfait/CLAUDE.md`](parfait/CLAUDE.md)에 있다**(해당 디렉토리 파일을 열면
-자동 로드됨). ⚠️ 그 파일은 **TJYG-Android에서 일하는 서브에이전트에게 자동으로 닿지 않으므로**
+**코드 주석·KDoc 규약은 [`parfait/android/CLAUDE.md`](parfait/android/CLAUDE.md)에 있다**(해당
+디렉토리 파일을 열면 자동 로드됨. 범위 지도는 그 위의 [`parfait/CLAUDE.md`](parfait/CLAUDE.md)에 있다). ⚠️ 그 파일은 **TJYG-Android에서 일하는 서브에이전트에게 자동으로 닿지 않으므로**
 구현·리뷰 디스패치의 전역 제약과 계획의 Global Constraints에 요지를 실어 나른다.
 
 - 파일명 `YYYY-MM-DD-kebab-topic.md`, 구현 완료분은 `specs/archive/`로 이동.
-- 형식·인덱스 등록 규칙은 [`parfait/specs/README.md`](parfait/specs/README.md).
-- 스펙이 새 아키텍처 결정을 유발하면 대응 ADR을 `parfait/adr/`에 함께 만든다.
-- 진입 시 [`parfait/index.md`](parfait/index.md) 허브에서 adr/architecture/specs/plans 라우팅을 본다.
+- 형식·인덱스 등록 규칙은 [`parfait/android/specs/README.md`](parfait/android/specs/README.md).
+- 스펙이 새 아키텍처 결정을 유발하면 대응 ADR을 `parfait/android/adr/`에 함께 만든다.
+- 진입 시 [`parfait/index.md`](parfait/index.md) 허브에서 android/api/pm 라우팅을 본다.
 
 ## Public repo 주의
 

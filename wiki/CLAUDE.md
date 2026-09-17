@@ -47,7 +47,7 @@ wiki/             ← LLM이 생성·관리하는 전체 위키
    - `concepts/`·`entities/`·`sources/`·`overview.md`·`open-questions.md`에서 구현 문서 링크 **금지**.
      (`index.md` 허브 포인터 1개만 예외 — 사람 탐색용)
    - 구현과의 상충·교차 기록은 링크가 아니라 **플랫폼 + 심볼 데이터**로 적는다.
-     ✅ "Android 구현 `YGColorChipType`이 14종" / ❌ `[[parfait/architecture/design-system]]`
+     ✅ "Android 구현 `YGColorChipType`이 14종" / ❌ `[[parfait/android/architecture/design-system]]`
    - 이유: 위키가 특정 플랫폼 문서 트리에 종속되면 다른 플랫폼 저장소에서 재사용할 수 없다.
    - **반대 방향(구현 → 위키)에서는 이중 링크**를 쓴다 — 구현 문서는 Obsidian 밖에서도 열리므로
      `[[개념명]] ([link](상대경로.md))` 병기가 유효하다. 그 규약은 구현 문서 소관.

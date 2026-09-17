@@ -6,7 +6,7 @@ description: TJYG-Android develop 기준 parfait 문서 점검(반복 워크플�
 # sync-tjyg-develop-baseline — develop 기준 parfait 문서 점검
 
 TJYG-Android `develop`에 새로 머지된 것과 parfait 문서의 드리프트를 제거한다.
-**기준선(develop 커밋 해시)의 단일 출처는 `parfait/doc-baseline.md`** — 절차 권위도 그 파일. 이 스킬은 실행 순서만 요약한다.
+**기준선(develop 커밋 해시)의 단일 출처는 `parfait/android/doc-baseline.md`** — 절차 권위도 그 파일. 이 스킬은 실행 순서만 요약한다.
 
 ## 핵심 규율
 - **전체 재감사 금지** — 기준선 이후 **신규 머지 delta만** 본다(낭비·누락 방지). 드리프트는 대개 문서 `verified` 날짜 **이후 머지된 PR**에서 발생.
@@ -15,7 +15,7 @@ TJYG-Android `develop`에 새로 머지된 것과 parfait 문서의 드리프트
 
 ## 단계
 
-1. **기준선 확인** — `parfait/doc-baseline.md` 읽어 현재 기준선 커밋 해시 확보.
+1. **기준선 확인** — `parfait/android/doc-baseline.md` 읽어 현재 기준선 커밋 해시 확보.
 2. **최신화 + delta 나열**:
    - `git -C <T> fetch origin develop`
    - `git -C <T> log --oneline --merges <기준선>..origin/develop` (신규 머지 PR/브랜치)

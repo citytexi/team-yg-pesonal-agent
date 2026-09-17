@@ -36,7 +36,7 @@ TEAMYG-SERVER `main`에 새로 들어온 것과 `parfait/api/` 계약 문서의 
    - 전역 계약이 바뀌었으면 `conventions.md` 갱신.
 4. **드리프트 수정** — 해당 도메인 문서의 표·상세 절을 고치고 frontmatter `server_commit`·`verified` 갱신.
    Android 대응 심볼이 있는데 계약과 어긋나면 Android 열을 `⚠️불일치`로 바꾸고
-   `parfait/synthesis/open-questions.md`에 `### [YYYY-MM-DD] 주제`로 등록한다.
+   `parfait/android/synthesis/open-questions.md`에 `### [YYYY-MM-DD] 주제`로 등록한다.
    **기존 도메인의 엔드포인트가 증감했으면**(신규 도메인이 아니어도) `parfait/api/README.md` 도메인 표의
    해당 행 개수·엔드포인트 나열도 함께 갱신한다 — 신규 도메인일 때만 인덱스를 건드리는 게 아니다.
    **`parfait/api/spec/`에 대응 명세 문서가 있으면 그 `## 코드 대조` 절도 다시 돌린다** — 서버가 바뀌면

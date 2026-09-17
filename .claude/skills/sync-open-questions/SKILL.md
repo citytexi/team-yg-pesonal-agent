@@ -5,7 +5,7 @@ description: open-questions 문서를 이 repo의 GitHub 이슈로 동기화한�
 
 # sync-open-questions — 미결 항목 → GitHub 이슈 동기화
 
-`wiki/synthesis/open-questions.md`(정책)와 `parfait/synthesis/open-questions.md`(구현)의
+`wiki/synthesis/open-questions.md`(정책)와 `parfait/android/synthesis/open-questions.md`(구현)의
 미결 항목을 이 저장소의 GitHub 이슈로 투영한다.
 
 ## 핵심 규율

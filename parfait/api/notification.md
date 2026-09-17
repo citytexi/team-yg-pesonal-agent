@@ -232,7 +232,7 @@ Android 8 이상에서 같은 id의 알림 채널이 앱에 없으면 알림이 
 KDoc은 "권한 거부 이용자는 토큰이 없어 결과에 미포함(정책 E-02)"이라고 적지만, **앱은 권한과 무관하게
 토큰을 등록한다** — PR #450이 등록 호출을 권한 허용 직후에서 세션 축으로 옮긴 이유가 바로
 "토큰이 권한과 무관하게 발급되기 때문"이다(아래 [Android 매핑](#기기-토큰-등록-결선-2026-09-05-pr-450)).
-즉 **권한을 거부한 기기의 토큰도 대상에 든다** → [open-questions](../synthesis/open-questions.md) OQ-P-384.
+즉 **권한을 거부한 기기의 토큰도 대상에 든다** → [open-questions](../android/synthesis/open-questions.md) OQ-P-384.
 
 ### 어떤 페이로드가 가는가
 
@@ -282,7 +282,7 @@ Outbox를 안 쓰는 근거를 커밋 메시지가 적는다 — 묶일 사용�
 ⚠️ **P-03에는 하드컷이 있다.** `DailyReminderSender`가 **배치 시작 시각**이 `EVENING_CUTOFF = 21:00`
 이상이면 발송을 **통째로 건너뛴다**(정책 E-09 "21:00 이후 도착 금지"). 그런데 판정이 시작 시각 한 번뿐이라
 **청킹이 길어져 21:00을 넘겨 나가는 뒤쪽 청크는 막지 못한다**
-→ [open-questions](../synthesis/open-questions.md) OQ-P-385.
+→ [open-questions](../android/synthesis/open-questions.md) OQ-P-385.
 
 ### FCM 에러 코드 분류가 한곳으로 모였다
 
@@ -396,7 +396,7 @@ Outbox를 안 쓰는 근거를 커밋 메시지가 적는다 — 묶일 사용�
 
 ⚠️ **`fcm-test.http`는 이 문서의 페이로드 표를 상수로 복제한다.** 문구·`data` 키·채널 id·TTL·APNs
 헤더가 그 파일에 그대로 적혀 있고, 서버가 값을 바꿀 때 함께 고치는 절차가 없다 — 엔드포인트 커버와
-달리 **이 복제는 세는 축이 없다** → [open-questions](../synthesis/open-questions.md) OQ-P-354.
+달리 **이 복제는 세는 축이 없다** → [open-questions](../android/synthesis/open-questions.md) OQ-P-354.
 
 ⚠️ **둘 다 실행 기록은 0건이다.** `fcm_access_token`(유효기간 1시간)과 Firebase 서비스 계정 키가
 있어야 돌릴 수 있고, 이 회차에 그것을 확보해 쏴 본 적이 없다.
@@ -412,7 +412,7 @@ Outbox를 안 쓰는 근거를 커밋 메시지가 적는다 — 묶일 사용�
 
 🔁 **이 공백은 "아직 안 만든 것"이 아니라 "만들었다가 걷어낸 것"이다.** 앱은 FCM 수신 서비스와
 토큰 조회·알림 권한 요청을 갖고 있었고, **2026-08-22 PR #325가 그것을 걷어냈다**
-([ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)의 철회 정정 — `firebase-messaging` 의존까지 빠졌고
+([ADR-0013](../android/adr/0013-firebase-fcm-crashlytics.md)의 철회 정정 — `firebase-messaging` 의존까지 빠졌고
 Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포인트의 부재였다** — `onNewToken`이
 `TODO("서버에 FCM 토큰 전송")`인 채여서 토큰이 로그로만 갔고, 결선된 적 없는 기능 때문에 첫 실행마다
 알림 권한을 묻는 상태였다.
@@ -426,8 +426,8 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
 ### 푸시 수신·딥링크 (2026-09-05, PR #446·#447)
 
 ✅ **받을 쪽이 생겼다.** `firebase-messaging` 의존과 `app` `push/ParfaitFirebaseMessagingService`가
-돌아왔고, 딥링크 축이 새로 붙었다([ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 되살림 정정 ·
-[navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동").
+돌아왔고, 딥링크 축이 새로 붙었다([ADR-0013](../android/adr/0013-firebase-fcm-crashlytics.md) 되살림 정정 ·
+[navigation-flow](../android/architecture/navigation-flow.md) "푸시 딥링크 이동").
 
 | 계약 | Android |
 |---|---|
@@ -447,7 +447,7 @@ Crashlytics·Analytics만 남았다). **철회 근거가 정확히 이 엔드포
 (`launchMode="singleTop"`) 양쪽을 덮는다. **같은 딥링크가 두 번 발행되는 경로가 둘**이라 막는 수단도
 둘이다 — 구성 변경으로 `onCreate`가 다시 도는 것은 `setIntent(Intent())`가, 알림 인텐트가 태스크의
 base intent로 남아 되살릴 때 다시 오는 것은 `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY` 판정이 막는다.
-자세한 것은 [navigation-flow](../architecture/navigation-flow.md) "푸시 딥링크 이동"에 있다.
+자세한 것은 [navigation-flow](../android/architecture/navigation-flow.md) "푸시 딥링크 이동"에 있다.
 
 📌 **토핑 알림이 이동 말고 하나를 더 한다**(2026-09-10, PR #482 `efa771503`) — `onMessageReceived`가
 알림을 띄운 뒤 같은 `data` 를 다시 읽어, `type=TOPPING`·`route=canvas` 이면
@@ -456,7 +456,7 @@ base intent로 남아 되살릴 때 다시 오는 것은 `FLAG_ACTIVITY_LAUNCHED
 갈라 준다. 계약 쪽 요구는 **늘지 않았다** — 읽는 키는 종전과 같은 `type`·`route`·`groupId` 셋이고
 `date` 는 여전히 안 읽는다(OQ-P-359). ⚠️ **포그라운드에서만 돈다** — `notification` 블록이 실린
 페이로드를 백그라운드·종료 상태에서 받으면 시스템이 알림을 직접 띄우고 이 콜백을 거치지 않는다
-→ [canvas-adaptive-polling 스펙](../specs/archive/2026-09-10-canvas-adaptive-polling.md).
+→ [canvas-adaptive-polling 스펙](../android/specs/archive/2026-09-10-canvas-adaptive-polling.md).
 
 🔁 **여기 있던 두 경고를 걷었다 — 둘 다 낡았다.** ① 권한을 묻는 자리는 PR #450이 붙였다
 (`NotificationPermissionGate`, A-004·A-005 완료 직후 — OQ-P-358은 그때 해소됐다). ② 콜드 스타트에서
@@ -466,8 +466,8 @@ base intent로 남아 되살릴 때 다시 오는 것은 `FLAG_ACTIVITY_LAUNCHED
 ### 기기 토큰 등록 결선 (2026-09-05, PR #450)
 
 ✅ **표면이 실제로 불린다.** 설계 정본은
-[push-notification-permission-and-device-token 스펙](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md),
-계층 배치는 [data-layer](../architecture/data-layer.md) 「기기 토큰 등록」.
+[push-notification-permission-and-device-token 스펙](../android/specs/archive/2026-09-05-push-notification-permission-and-device-token.md),
+계층 배치는 [data-layer](../android/architecture/data-layer.md) 「기기 토큰 등록」.
 
 | 계약 | Android |
 |---|---|
@@ -487,41 +487,41 @@ base intent로 남아 되살릴 때 다시 오는 것은 `FLAG_ACTIVITY_LAUNCHED
 
 ⚠️ **쓰고 있는 FCM API 셋이 deprecated 다**(`getToken()`·`deleteToken()`·`onNewToken()`). 대체는 FID
 기반이고 **서버 Admin SDK 가 9.10.0 이상이어야 `setFid` 가 있다** — 앱만 옮기면 모든 발송이 실패하므로
-등록 토큰 축에 남는다 → [open-questions](../synthesis/open-questions.md) OQ-P-362.
+등록 토큰 축에 남는다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-362.
 
 ## 미결
 
-- ~~2026-08-22에 걷어낸 FCM 축을 되살릴지~~ → **되살렸다**(2026-09-05, PR #446·#447 — [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md)
+- ~~2026-08-22에 걷어낸 FCM 축을 되살릴지~~ → **되살렸다**(2026-09-05, PR #446·#447 — [ADR-0013](../android/adr/0013-firebase-fcm-crashlytics.md)
   되살림 정정). ~~남은 것은 **등록 호출 시점**이다~~ → ✅ **답해졌다**(PR #450, 세션 축 넷) — OQ-P-341 해소
 - ~~앱이 `POST_NOTIFICATIONS` 런타임 허용을 **묻지 않아** Android 13+에서는 표시 단계에서 막힌다~~
   → ✅ **묻는다**(PR #450, A-004·A-005 완료 직후) — OQ-P-358 해소. 다만 **노출 횟수 정책이 없어**
-  허용 전까지 그룹 생성·참여 흐름마다 다시 뜬다 → [open-questions](../synthesis/open-questions.md) OQ-P-370
+  허용 전까지 그룹 생성·참여 흐름마다 다시 뜬다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-370
 - 앱이 `date`를 버리고 항상 최신 캔버스로 열며, 중복 수신이 **알림 두 개**로 쌓인다 — 위
   [이 계약이 앱에 요구하는 것](#이-계약이-앱에-요구하는-것)의 ⚠️ 셋
-  → [open-questions](../synthesis/open-questions.md) OQ-P-359
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-359
 - ~~앱이 서버에 없는 알림 둘(P-02·P-03 리마인드, `route=group`)을 먼저 구현했고~~ → ✅ **서버가 따라붙었고
   `type`·`route` 문자열이 양쪽에서 같다**(2026-09-04). 다만 근거로 인용되는 **"FCM 페이로드 스펙 v1"은
   여전히 어느 저장소에도 없다** — 이제 서버 `ReminderType` KDoc까지 그것을 인용한다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-361
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-361
 - 세션 없는(`session_id` 널) 행을 로그아웃이 못 지우는 구간을 서버가 닫을지, 앱이 재등록으로 덮을지
-  → [open-questions](../synthesis/open-questions.md) OQ-P-342
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-342
 - ~~알림 종류가 토핑 등록 1종뿐이고(커밋 제목의 "3종"과 어긋난다)~~ → ✅ **3종이 됐다**(2026-09-04,
   `[Feat/#128]` — 토핑 등록 · `REMIND_AM` · `REMIND_PM`) — OQ-P-343의 그 갈래는 해소. **남은 것은
   수신 설정이다** — 알림을 끄겠다는 의사를 담는 자리가 서버·앱 어디에도 없다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-343
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-343
 - 리마인드 대상 산출이 **알림 권한을 보지 않는다** — 서버 KDoc의 "권한 거부 이용자는 토큰이 없다"는
   전제가 앱 동작(권한과 무관한 세션 축 등록)과 어긋난다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-384
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-384
 - P-03의 21:00 하드컷이 **배치 시작 시각만** 보므로 뒤쪽 청크의 도착 시각은 보장되지 않는다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-385
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-385
 - 리마인드는 Outbox를 안 써서 **실패 기록이 서버 로그뿐**이다 — 몇 명에게 갔는지 사후에 물을 자리가 없다
 - 문구·`data` 스키마·채널 id·딥링크 목적지가 **서버 코드에만 있고 정책 근거가 없다** — 위키 정책 소스에
-  알림 항목 자체가 없다 → [open-questions](../synthesis/open-questions.md) OQ-P-351
+  알림 항목 자체가 없다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-351
 - 앱이 채널 `parfait_default`를 만들지 않으면 발송이 성공해도 표시되지 않는데, 그 합의를 확인할 수단이
-  양쪽 어디에도 없다 → [open-questions](../synthesis/open-questions.md) OQ-P-352
+  양쪽 어디에도 없다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-352
   (2026-09-04 갱신 — `http/fcm-test.http`가 **불일치를 재현하는 요청**을 갖췄다. 다만 앱에 수신부가
   없어 아직 돌려서 확인할 수 없고, 상수 자체를 대조하는 자동 검사는 여전히 양쪽에 없다)
 - `fcm-test.http`가 서버 발송 페이로드를 앱 저장소에 복제해 두 번째 정본처럼 보인다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-354
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-354
 - TTL 6시간과 최대 6시간짜리 재시도 백오프가 겹쳐, 늦게 재시도된 알림이 만료와 경합한다
-  → [open-questions](../synthesis/open-questions.md) OQ-P-353
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-353

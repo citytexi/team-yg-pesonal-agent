@@ -74,7 +74,7 @@ Access Token이 만료되면 Refresh Token으로 새 토큰을 받는다. **재�
 - **403 정지·탈퇴 회원** — 서버에 **없다.** `AuthErrorCode`에 정지·탈퇴에 해당하는 코드가 없고,
   `ReissueService`에는 회원 상태(정지/탈퇴) 검사 자체가 없다. 회원이 존재하지 않으면
   `MemberQueryPort.existsById` 실패로 **401 `MEMBER_NOT_FOUND`**를 던진다 — 명세가 말한 403이 아니다.
-  → [open-questions](../../synthesis/open-questions.md)
+  → [open-questions](../../android/synthesis/open-questions.md)
 
 ### 코드에만 있음
 
@@ -111,4 +111,4 @@ Access Token이 만료되면 Refresh Token으로 새 토큰을 받는다. **재�
 ## 미결
 
 - 명세의 403 정지·탈퇴 회원이 미구현인지, 회원 상태 개념 자체가 없는 것인지
-  → [open-questions](../../synthesis/open-questions.md)
+  → [open-questions](../../android/synthesis/open-questions.md)
