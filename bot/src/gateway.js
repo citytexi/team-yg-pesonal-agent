@@ -30,7 +30,10 @@ export async function startGateway({ config, handle, client, log = console.log }
       const ownThread = inThread && message.channel.ownerId === client.user.id;
       if (!mentioned && !ownThread) return;
 
-      const question = message.content.replace(/<@!?\d+>/g, "").trim();
+      // Strip only our own mention. A blanket /<@!?\d+>/g also deletes the
+      // people the question is about, and "이 사람이 쓴 정책" loses its referent.
+      const selfMention = new RegExp(`<@!?${client.user.id}>`, "g");
+      const question = message.content.replace(selfMention, " ").replace(/\s+/g, " ").trim();
       if (question.length === 0) return;
 
       const resolveThread = async () => {
