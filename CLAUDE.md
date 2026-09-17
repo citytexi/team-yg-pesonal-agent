@@ -6,7 +6,7 @@
 - **`parfait/`** — **플랫폼별 구현 문서 루트**. 플랫폼 전용 문서는 `parfait/android/`(ADR·architecture·
   specs·plans·synthesis·doc-baseline), 플랫폼 공용은 `parfait/api/`(서버 계약)·`parfait/pm/`(제품 문서).
   위키 스키마 미적용.
-- **`bot/`** — `wiki/`를 근거로 디스코드에서 답하는 **읽기 전용 질의응답 봇**. 위키 스키마 미적용.
+- **`bot/`** — `wiki/`(정책)와 `parfait/`(구현·서버 계약)를 근거로 디스코드에서 답하는 **읽기 전용 질의응답 봇**. 답변 규약은 `ask` 스킬. 위키 스키마 미적용.
 
 ## 프로젝트 컨텍스트 (필수)
 

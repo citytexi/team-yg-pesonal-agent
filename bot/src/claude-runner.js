@@ -14,7 +14,18 @@ const BLOCKED_TOOLS = [
   "WebSearch",
   "Agent",
   "Read(./bot/**)",
+  // Redundant today and kept on purpose. Measured 2026-09-17: a Grep at
+  // bot/ already fails with "Permission to read ... has been denied", because
+  // the path rule above applies when the file is read, whichever tool reads it.
+  // This line states the intent so the answer survives a change in that ruling.
+  "Grep(./bot/**)",
 ];
+
+// The answering rules live in .claude/skills/ask/SKILL.md, not here. This line
+// only makes sure the skill is loaded; when parfait/ is restructured again, the
+// skill file is the single place that changes.
+const SKILL_DIRECTIVE =
+  "이 저장소 문서를 근거로 답하는 질문이다. `ask` 스킬을 로드하고 그 규약대로 답하라.";
 const SECRET_ENV_KEYS = ["DISCORD_TOKEN"];
 const MODEL = "claude-sonnet-5";
 // A wiki answer is a few kilobytes. Anything past this is a runaway process, and
@@ -46,6 +57,8 @@ export function createClaudeRunner({
       MODEL,
       "--permission-mode",
       "dontAsk",
+      "--append-system-prompt",
+      SKILL_DIRECTIVE,
       "--disallowed-tools",
       ...BLOCKED_TOOLS,
       "--output-format",

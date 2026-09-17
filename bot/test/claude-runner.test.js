@@ -45,6 +45,26 @@ test("쓰기·실행·외부 도구를 항상 차단한다", () => {
 test("봇 자신의 디렉토리를 읽지 못하게 막는다", () => {
   const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
   assert.ok(args.includes("Read(./bot/**)"), "bot/ 읽기 차단이 없으면 .env 가 새어 나간다");
+  // 지금은 Read 차단이 Grep 까지 막지만(2026-09-17 실측), 그 판정에 기대지 않는다.
+  assert.ok(args.includes("Grep(./bot/**)"), "bot/ 검색 차단이 빠졌다");
+});
+
+test("ask 스킬 지시를 시스템 프롬프트로 붙인다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  const at = args.indexOf("--append-system-prompt");
+  assert.ok(at > -1, "지시가 없으면 봇이 위키만 보던 예전 동작으로 돌아간다");
+  assert.match(args[at + 1], /ask/);
+});
+
+test("되물음에도 같은 지시가 붙는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1", resume: true });
+  assert.ok(args.includes("--append-system-prompt"));
+});
+
+test("지시가 질문 인자를 밀어내지 않는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(args.at(-2), "--");
+  assert.equal(args.at(-1), "질문");
 });
 
 test("자식 프로세스 환경에 디스코드 토큰을 넘기지 않는다", async () => {
