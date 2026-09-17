@@ -1811,7 +1811,10 @@ export async function startGateway({ config, handle, client, log = console.log }
       const ownThread = inThread && message.channel.ownerId === client.user.id;
       if (!mentioned && !ownThread) return;
 
-      const question = message.content.replace(/<@!?\d+>/g, "").trim();
+      // Strip only our own mention. A blanket /<@!?\d+>/g also deletes the
+      // people the question is about, and "이 사람이 쓴 정책" loses its referent.
+      const selfMention = new RegExp(`<@!?${client.user.id}>`, "g");
+      const question = message.content.replace(selfMention, " ").replace(/\s+/g, " ").trim();
       if (question.length === 0) return;
 
       const resolveThread = async () => {
@@ -1863,6 +1866,10 @@ export async function startGateway({ config, handle, client, log = console.log }
 멘션 판별은 두 갈래다. 멘션이 있으면 어디서든 받는다. 봇이 연 쓰레드 안에서는 멘션 없이도
 받는다. 사람이 연 쓰레드에서 멘션하는 경우도 첫 갈래로 처리되므로 조용히 버려지지 않는다.
 `ownerId`가 캐시에 없어 `undefined`여도 멘션만 하면 동작한다.
+
+질문에서 지우는 것은 봇 자신의 멘션뿐이다. 모든 멘션을 지우면 질문이 가리키던 사람이
+사라진다. `@봇 <@다른유저> 이 사람이 쓴 정책 뭐야?`가 `이 사람이 쓴 정책 뭐야?`가 되어
+누구를 묻는지 알 수 없게 된다.
 
 - [ ] **Step 2: `bot/src/index.js`를 쓴다**
 
