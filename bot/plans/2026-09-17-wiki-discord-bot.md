@@ -329,6 +329,30 @@ test("개행 없는 긴 한 줄도 한도를 지킨다", () => {
   assert.equal(chunks.join("").replace(/\n/g, "").length, 5000);
 });
 
+test("펜스를 여는 줄이 조각 경계에 걸려도 한도를 지킨다", () => {
+  const text = "a".repeat(1992) + "\n```js\n" + "b".repeat(50) + "\n```";
+  for (const chunk of splitMessage(text, 2000)) {
+    assert.ok(chunk.length <= 2000, `한도 초과 ${chunk.length}`);
+  }
+});
+
+test("긴 한 줄 안의 이모지를 쪼개지 않는다", () => {
+  const chunks = splitMessage("😀".repeat(3000), 2000);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 2000);
+    for (let i = 0; i < chunk.length; i += 1) {
+      const code = chunk.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff) {
+        const next = chunk.charCodeAt(i + 1);
+        assert.ok(next >= 0xdc00 && next <= 0xdfff, `외짝 서로게이트 ${i}`);
+        i += 1;
+      } else {
+        assert.ok(!(code >= 0xdc00 && code <= 0xdfff), `외짝 서로게이트 ${i}`);
+      }
+    }
+  }
+});
+
 test("펜스 안의 아주 긴 한 줄도 한도를 지킨다", () => {
   const text = "```js\n" + "x".repeat(300) + "\n```";
   const chunks = splitMessage(text, 80);
@@ -382,10 +406,20 @@ function fenceCosts(openFenceLang) {
   return { header: ("```" + openFenceLang).length + 1, footer: CLOSING_FENCE_COST };
 }
 
+// Iterating the string yields code points, so a surrogate pair never breaks in
+// half the way line.slice(i, i + max) breaks it.
 function hardWrap(line, max) {
   if (line.length <= max) return [line];
   const parts = [];
-  for (let i = 0; i < line.length; i += max) parts.push(line.slice(i, i + max));
+  let current = "";
+  for (const character of line) {
+    if (current.length + character.length > max) {
+      parts.push(current);
+      current = "";
+    }
+    current += character;
+  }
+  if (current.length > 0) parts.push(current);
   return parts;
 }
 
@@ -412,8 +446,12 @@ export function splitMessage(text, limit = 2000) {
 
   for (const rawLine of text.split("\n")) {
     const { header, footer } = fenceCosts(openFenceLang);
-    const wrapWidth = Math.max(1, limit - header - footer);
-    const budget = limit - footer;
+    // A line that opens a fence lands in the current chunk and forces a closing
+    // fence onto it, so reserve that cost before deciding where the chunk ends.
+    const opensFence = openFenceLang === null && /^```(\S*)/.test(rawLine);
+    const reserved = opensFence ? CLOSING_FENCE_COST : footer;
+    const wrapWidth = Math.max(1, limit - header - reserved);
+    const budget = limit - reserved;
 
     for (const line of hardWrap(rawLine, wrapWidth)) {
       if (currentLength + line.length + 1 > budget && current.length > 0) flush();
@@ -439,7 +477,7 @@ export function splitMessage(text, limit = 2000) {
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. Task 1의 7건에 더해 10건이 더 통과
+Expected: PASS. Task 1의 7건에 더해 12건이 더 통과
 
 - [ ] **Step 5: 커밋한다**
 
@@ -529,6 +567,14 @@ test("remove 는 값을 지운다", () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+test("updatedAt 이 없는 항목은 버린다", () => {
+  const { dir, path } = tempFile();
+  writeFileSync(path, JSON.stringify({ "thread-1": { sessionId: "uuid-1" } }));
+  const store = createSessionStore({ filePath: path });
+  assert.equal(store.get("thread-1"), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
 test("깨진 JSON 파일이면 빈 상태로 시작한다", () => {
   const { dir, path } = tempFile();
   writeFileSync(path, "{ not json");
@@ -587,6 +633,13 @@ export function createSessionStore({ filePath, now = () => Date.now(), ttlMs = W
     get(threadId) {
       const entry = entries[threadId];
       if (!entry || typeof entry.sessionId !== "string") return null;
+      // A missing timestamp makes every comparison NaN, which reads as "never
+      // expired" and pins the entry in the file forever.
+      if (typeof entry.updatedAt !== "number") {
+        delete entries[threadId];
+        persist();
+        return null;
+      }
       if (now() - entry.updatedAt > ttlMs) {
         delete entries[threadId];
         persist();
@@ -611,7 +664,7 @@ export function createSessionStore({ filePath, now = () => Date.now(), ttlMs = W
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 24건 통과
+Expected: PASS. 누적 27건 통과
 
 - [ ] **Step 5: 커밋한다**
 
@@ -838,7 +891,7 @@ export function createRateLimiter({ maxConcurrent, perUserPerMin, dailyQuota, no
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 34건 통과
+Expected: PASS. 누적 37건 통과
 
 - [ ] **Step 5: 커밋한다**
 
@@ -940,12 +993,38 @@ test("되물음 인자에 --resume 이 들어간다", () => {
   assert.ok(!args.includes("--session-id"));
 });
 
-test("쓰기 도구를 항상 차단한다", () => {
+test("쓰기·실행·외부 도구를 항상 차단한다", () => {
   const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
   const at = args.indexOf("--disallowed-tools");
   assert.ok(at > -1);
-  const blocked = args.slice(at + 1, at + 6);
-  assert.deepEqual(blocked, ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch"]);
+  const blocked = args.slice(at + 1, args.indexOf("--output-format"));
+  for (const tool of ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch", "Agent"]) {
+    assert.ok(blocked.includes(tool), `${tool} 이 차단 목록에 없다`);
+  }
+});
+
+test("봇 자신의 디렉토리를 읽지 못하게 막는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  assert.ok(args.includes("Read(./bot/**)"), "bot/ 읽기 차단이 없으면 .env 가 새어 나간다");
+});
+
+test("자식 프로세스 환경에 디스코드 토큰을 넘기지 않는다", async () => {
+  let captured = null;
+  const spy = (bin, args, options) => {
+    captured = options;
+    return nodeSpawnForTest(bin, args, options);
+  };
+  const r = createClaudeRunner({
+    claudeBin: process.execPath,
+    claudeArgsPrefix: [FAKE],
+    repoRoot: here,
+    timeoutMs: 5000,
+    env: { ...process.env, FAKE_MODE: "success", DISCORD_TOKEN: "super-secret" },
+    spawn: spy,
+  });
+  await r.ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(captured.env.DISCORD_TOKEN, undefined);
+  assert.equal(captured.env.FAKE_MODE, "success");
 });
 
 test("모델을 claude-sonnet-5 로 고정한다", () => {
@@ -1052,11 +1131,32 @@ Expected: FAIL. `Cannot find module '../src/claude-runner.js'`
 ```js
 import { spawn as nodeSpawn } from "node:child_process";
 
-const BLOCKED_TOOLS = ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch"];
+// Read is NOT harmless here. The working directory is the repo root, and the
+// bot's own secrets live under bot/. Anyone in the channel could otherwise ask
+// the bot to read bot/.env back to them.
+// WebSearch and Agent stay out too: --allowed-tools is not a whitelist, so a
+// tool that is merely unlisted still runs under --permission-mode dontAsk.
+const BLOCKED_TOOLS = [
+  "Bash",
+  "Edit",
+  "Write",
+  "NotebookEdit",
+  "WebFetch",
+  "WebSearch",
+  "Agent",
+  "Read(./bot/**)",
+];
+const SECRET_ENV_KEYS = ["DISCORD_TOKEN"];
 const MODEL = "claude-sonnet-5";
 // A wiki answer is a few kilobytes. Anything past this is a runaway process, and
 // buffering it whole is how the bot runs out of memory.
 const MAX_STDOUT_BYTES = 2 * 1024 * 1024;
+
+function withoutSecrets(source) {
+  const copy = { ...source };
+  for (const key of SECRET_ENV_KEYS) delete copy[key];
+  return copy;
+}
 
 export function createClaudeRunner({
   claudeBin,
@@ -1066,6 +1166,7 @@ export function createClaudeRunner({
   env = process.env,
   spawn = nodeSpawn,
 }) {
+  const childEnv = withoutSecrets(env);
   function buildArgs({ question, sessionId, resume = false }) {
     return [
       ...claudeArgsPrefix,
@@ -1089,7 +1190,7 @@ export function createClaudeRunner({
     return new Promise((resolve) => {
       const child = spawn(claudeBin, buildArgs({ question, sessionId, resume }), {
         cwd: repoRoot,
-        env,
+        env: childEnv,
         // The prompt travels as an argument. An open stdin pipe only invites the
         // CLI to wait for EOF that never comes.
         stdio: ["ignore", "pipe", "pipe"],
@@ -1193,7 +1294,7 @@ test("실제 claude 가 sonnet-5 로 답한다", { skip: !live }, async () => {
 - [ ] **Step 6: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 50건 통과. 통합 시험 1건은 skip 으로 표시된다.
+Expected: PASS. 누적 55건 통과. 통합 시험 1건은 skip 으로 표시된다.
 
 통합 시험을 직접 돌려보려면 `RUN_LIVE=1 CLAUDE_BIN=$(which claude) REPO_ROOT=$(cd .. && pwd) npm test`
 를 쓴다. 구독 한도를 먹으므로 필요할 때만 돌린다.
@@ -1255,6 +1356,12 @@ test("거절 사유마다 다른 문구를 쓴다", () => {
   const texts = ["daily", "user", "concurrent"].map(rejectionText);
   assert.equal(new Set(texts).size, 3);
   for (const text of texts) assert.ok(text.length > 0);
+});
+
+test("모르는 거절 사유에는 거절 문구가 나간다", () => {
+  const text = rejectionText("unknown-reason");
+  assert.ok(text.length > 0);
+  assert.notEqual(text, failureText("unknown-reason"), "거절인데 실패 문구가 나가면 안 된다");
 });
 
 test("실패 사유마다 문구가 있다", () => {
@@ -1330,6 +1437,7 @@ const THREAD_NAME_LIMIT = 80;
 // Discord measures the name in UTF-16 code units, so an emoji costs two.
 const DISCORD_THREAD_NAME_LIMIT = 100;
 const RESUME_NOTICE = "이전 맥락이 끊겨 새로 시작합니다.";
+export const THINKING = "찾는 중입니다. 30초에서 2분 걸립니다.";
 
 const REJECTIONS = {
   daily: "오늘 질문 한도를 다 썼습니다. 내일 다시 물어봐 주세요.",
@@ -1346,6 +1454,7 @@ const FAILURES = {
 };
 
 const FALLBACK_FAILURE = "답변에 실패했습니다. 잠시 뒤에 다시 물어봐 주세요.";
+const FALLBACK_REJECTION = "지금은 질문을 받을 수 없습니다. 잠시 뒤에 다시 물어봐 주세요.";
 
 export function threadName(question) {
   const flat = question.replace(/\s+/g, " ").trim();
@@ -1358,7 +1467,7 @@ export function threadName(question) {
 }
 
 export function rejectionText(reason) {
-  return REJECTIONS[reason] ?? FALLBACK_FAILURE;
+  return REJECTIONS[reason] ?? FALLBACK_REJECTION;
 }
 
 export function failureText(reason) {
@@ -1376,7 +1485,7 @@ export function answerMessages(text, { resumeFailed = false } = {}) {
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 63건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 69건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1747,7 +1856,7 @@ export function createQuestionHandler({ store, limiter, runner, randomUUID, log 
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 76건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 82건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1780,9 +1889,10 @@ git commit -m "feat(bot): orchestrate admission, ask, retry, and reply"
 
 ```js
 import { Client, GatewayIntentBits, Events, ChannelType } from "discord.js";
-import { threadName } from "./replies.js";
+import { threadName, THINKING } from "./replies.js";
 
-const THINKING = "찾는 중입니다. 30초에서 2분 걸립니다.";
+// Every user-facing string lives in replies.js. Nothing in this file writes one.
+const SILENT = { allowedMentions: { parse: [] } };
 
 function isAllowedChannel(message, config) {
   const parentId = message.channel.isThread() ? message.channel.parentId : message.channel.id;
@@ -1826,18 +1936,20 @@ export async function startGateway({ config, handle, client, log = console.log }
             });
 
         await thread.sendTyping();
-        const placeholder = await thread.send(THINKING);
+        const placeholder = await thread.send({ content: THINKING, ...SILENT });
         let first = true;
 
         return {
           threadId: thread.id,
+          // Answers quote the wiki, which can contain <@id> shaped text. Without
+          // allowedMentions that text pings real people.
           postMessages: async (messages) => {
             for (const text of messages) {
               if (first) {
-                await placeholder.edit(text);
+                await placeholder.edit({ content: text, ...SILENT });
                 first = false;
               } else {
-                await thread.send(text);
+                await thread.send({ content: text, ...SILENT });
               }
             }
           },
@@ -1848,7 +1960,7 @@ export async function startGateway({ config, handle, client, log = console.log }
         userId: message.author.id,
         question,
         resolveThread,
-        replyDirect: (text) => message.reply(text),
+        replyDirect: (text) => message.reply({ content: text, ...SILENT }),
       });
     } catch (error) {
       log("gateway error", error?.message ?? error);
@@ -1953,8 +2065,12 @@ cp .env.example .env
 ## 실행
 
 ```bash
+cd bot
 npm start
 ```
+
+`npm start` 는 `--env-file=.env` 를 상대경로로 읽으므로 반드시 `bot/` 안에서 돌린다.
+Node 22 이상이 필요하다.
 
 ## 테스트
 
@@ -1970,6 +2086,11 @@ npm test
 - 모델은 `claude-sonnet-5`로 고정돼 있다. 바꾸려면 `src/claude-runner.js`의 `MODEL` 상수와
   그 테스트를 함께 고친다.
 - `.env`에는 봇 토큰이 들어간다. 이 저장소는 public이므로 절대 커밋하지 않는다.
+- `claude` 는 저장소 루트에서 돌기 때문에 `bot/` 아래 파일을 읽을 수 있다. 그래서
+  `--disallowed-tools` 에 `Read(./bot/**)` 가 들어 있다. **이 규칙을 빼면 팀원이 봇에게
+  `.env` 를 읽어 달라고 해서 토큰을 가져갈 수 있다.**
+- `--allowed-tools` 는 화이트리스트가 아니다. 목록에 없는 도구도 `--permission-mode dontAsk`
+  아래에서 그대로 돈다(실측 확인). 그래서 `WebSearch` 와 `Agent` 도 명시적으로 차단한다.
 - 봇은 소유자 한 명의 구독 한도를 쓴다. `DAILY_QUOTA`로 상한을 관리한다.
 ````
 
@@ -1988,7 +2109,7 @@ npm test
 - [ ] **Step 5: 전체 테스트를 돌린다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 76건 통과. Task 8은 새 테스트를 더하지 않는다.
+Expected: PASS. 누적 82건 통과. Task 8은 새 테스트를 더하지 않는다.
 
 - [ ] **Step 6: 기동만 확인한다**
 

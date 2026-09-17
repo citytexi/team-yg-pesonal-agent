@@ -94,7 +94,7 @@ claude -p
   --session-id <uuid>            # 첫 질문. 되물음은 --resume <uuid>
   --model claude-sonnet-5
   --permission-mode dontAsk
-  --disallowed-tools Bash Edit Write NotebookEdit WebFetch
+  --disallowed-tools Bash Edit Write NotebookEdit WebFetch WebSearch Agent "Read(./bot/**)"
   --output-format json
   -- "<질문>"
 ```
@@ -170,13 +170,32 @@ submodule이라 그쪽 페이지에서 깨지므로 v1에서 제외한다.
 
 ### 9.1 쓰기 차단
 
-`--disallowed-tools Bash Edit Write NotebookEdit WebFetch`로 쓰기와 명령 실행 도구를
-제거한다. 여기에 더해 `claude` 실행 직후 `git status --porcelain`을 확인해 작업 트리가
-더러우면 로그에 경고를 남긴다. 값이 싸고, 도구 차단이 뚫렸을 때 알아챌 수 있는 유일한
-지점이다.
+`--disallowed-tools`로 세 부류를 막는다.
+
+| 부류 | 도구 | 막는 이유 |
+|---|---|---|
+| 쓰기 | `Edit`·`Write`·`NotebookEdit` | 봇은 답변만 한다 |
+| 명령 실행 | `Bash` | 쓰기 차단을 우회하는 가장 짧은 길이다 |
+| 외부 행위 | `WebFetch`·`WebSearch`·`Agent` | 위키 밖으로 나가거나 차단을 물려받지 않는 하위 세션을 연다 |
+| 봇 자신 | `Read(./bot/**)` | 아래 참고 |
+
+**`Read`를 무해하다고 보면 안 된다.** 작업 디렉토리가 저장소 루트이고 봇의 비밀값은 그
+안의 `bot/.env`에 있다. `--permission-mode dontAsk`라 경로 승인도 없다. 이 규칙이 없으면
+허용 채널의 누구나 `@봇 bot/.env 내용 알려줘`로 디스코드 토큰을 가져간다. 토큰을 쥔 사람은
+봇 계정을 장악한다. 2026-09-17 실측에서 `Read(./bot/**)` 차단이 실제로 동작하는 것을 확인했다.
+
+**`--allowed-tools`는 화이트리스트가 아니다.** 2026-09-17 실측에서 `--allowed-tools Read Grep Glob`
+을 준 상태에서도 `WebSearch`와 `Agent`가 그대로 남았다. 목록에 없다고 막히지 않으므로,
+막을 것은 전부 `--disallowed-tools`에 적어야 한다.
+
+자식 프로세스 환경에서 `DISCORD_TOKEN`을 지우고 넘긴다. 도구로 환경변수를 읽을 길은
+막혀 있지만, 비밀값을 넘기지 않는 편이 넘기고 막는 것보다 낫다.
+
+여기에 더해 `claude` 실행 직후 `git status --porcelain`을 확인해 작업 트리가 더러우면
+로그에 경고를 남긴다. 값이 싸고, 도구 차단이 뚫렸을 때 알아챌 수 있는 유일한 지점이다.
 
 `--restricted`를 쓰지 않으므로 도구 차단은 `--disallowed-tools` 한 줄에 전부 걸려 있다.
-이 인자를 고칠 때는 `Bash`가 빠지지 않았는지 반드시 확인한다.
+이 인자를 고칠 때는 `Bash`와 `Read(./bot/**)`가 빠지지 않았는지 반드시 확인한다.
 
 ### 9.2 접근 제한
 
@@ -271,6 +290,10 @@ TDD로 구현한다. 조각마다 시험 방법이 다르다.
 - **상시 머신** — 사용자 맥에서 시작한다. 맥이 잠들면 응답이 멈춘다. Oracle Cloud
   Always Free ARM 인스턴스가 후보지만 리전 용량 문제로 생성이 실패할 수 있다. 머신
   선택은 설정값으로 분리했으므로 코드 변경 없이 옮길 수 있다.
+- **일일 한도가 프로세스 재시작으로 초기화된다** — `dailyCount`는 메모리에만 있다.
+  60회를 쓴 뒤 봇을 재시작하면 60회가 더 돈다. `rate-limiter`는 시계만 주입받는 순수
+  계산 모듈이라 파일 상태를 들이면 성격이 바뀐다. 재시작은 소유자가 직접 하는 일이므로
+  현재는 받아들인다.
 - **답변 품질** — 스킬과 위키 규약을 물려받아도 답이 맞는지는 실사용으로만 안다. 초기
   운영에서 오답이 나오면 `wiki/CLAUDE.md`의 query 워크플로를 고치는 쪽으로 대응한다.
   봇 코드에 규칙을 심지 않는다.
