@@ -53,6 +53,14 @@ test("remove 는 값을 지운다", () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+test("updatedAt 이 없는 항목은 버린다", () => {
+  const { dir, path } = tempFile();
+  writeFileSync(path, JSON.stringify({ "thread-1": { sessionId: "uuid-1" } }));
+  const store = createSessionStore({ filePath: path });
+  assert.equal(store.get("thread-1"), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
 test("깨진 JSON 파일이면 빈 상태로 시작한다", () => {
   const { dir, path } = tempFile();
   writeFileSync(path, "{ not json");

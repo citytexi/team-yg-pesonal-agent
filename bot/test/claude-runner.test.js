@@ -32,12 +32,38 @@ test("되물음 인자에 --resume 이 들어간다", () => {
   assert.ok(!args.includes("--session-id"));
 });
 
-test("쓰기 도구를 항상 차단한다", () => {
+test("쓰기·실행·외부 도구를 항상 차단한다", () => {
   const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
   const at = args.indexOf("--disallowed-tools");
   assert.ok(at > -1);
-  const blocked = args.slice(at + 1, at + 6);
-  assert.deepEqual(blocked, ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch"]);
+  const blocked = args.slice(at + 1, args.indexOf("--output-format"));
+  for (const tool of ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch", "Agent"]) {
+    assert.ok(blocked.includes(tool), `${tool} 이 차단 목록에 없다`);
+  }
+});
+
+test("봇 자신의 디렉토리를 읽지 못하게 막는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  assert.ok(args.includes("Read(./bot/**)"), "bot/ 읽기 차단이 없으면 .env 가 새어 나간다");
+});
+
+test("자식 프로세스 환경에 디스코드 토큰을 넘기지 않는다", async () => {
+  let captured = null;
+  const spy = (bin, args, options) => {
+    captured = options;
+    return nodeSpawnForTest(bin, args, options);
+  };
+  const r = createClaudeRunner({
+    claudeBin: process.execPath,
+    claudeArgsPrefix: [FAKE],
+    repoRoot: here,
+    timeoutMs: 5000,
+    env: { ...process.env, FAKE_MODE: "success", DISCORD_TOKEN: "super-secret" },
+    spawn: spy,
+  });
+  await r.ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(captured.env.DISCORD_TOKEN, undefined);
+  assert.equal(captured.env.FAKE_MODE, "success");
 });
 
 test("모델을 claude-sonnet-5 로 고정한다", () => {

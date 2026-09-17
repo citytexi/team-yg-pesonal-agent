@@ -4,6 +4,7 @@ const THREAD_NAME_LIMIT = 80;
 // Discord measures the name in UTF-16 code units, so an emoji costs two.
 const DISCORD_THREAD_NAME_LIMIT = 100;
 const RESUME_NOTICE = "이전 맥락이 끊겨 새로 시작합니다.";
+export const THINKING = "찾는 중입니다. 30초에서 2분 걸립니다.";
 
 const REJECTIONS = {
   daily: "오늘 질문 한도를 다 썼습니다. 내일 다시 물어봐 주세요.",
@@ -20,6 +21,7 @@ const FAILURES = {
 };
 
 const FALLBACK_FAILURE = "답변에 실패했습니다. 잠시 뒤에 다시 물어봐 주세요.";
+const FALLBACK_REJECTION = "지금은 질문을 받을 수 없습니다. 잠시 뒤에 다시 물어봐 주세요.";
 
 export function threadName(question) {
   const flat = question.replace(/\s+/g, " ").trim();
@@ -32,7 +34,7 @@ export function threadName(question) {
 }
 
 export function rejectionText(reason) {
-  return REJECTIONS[reason] ?? FALLBACK_FAILURE;
+  return REJECTIONS[reason] ?? FALLBACK_REJECTION;
 }
 
 export function failureText(reason) {

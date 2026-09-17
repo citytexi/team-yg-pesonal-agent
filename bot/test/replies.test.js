@@ -20,6 +20,12 @@ test("거절 사유마다 다른 문구를 쓴다", () => {
   for (const text of texts) assert.ok(text.length > 0);
 });
 
+test("모르는 거절 사유에는 거절 문구가 나간다", () => {
+  const text = rejectionText("unknown-reason");
+  assert.ok(text.length > 0);
+  assert.notEqual(text, failureText("unknown-reason"), "거절인데 실패 문구가 나가면 안 된다");
+});
+
 test("실패 사유마다 문구가 있다", () => {
   for (const reason of ["timeout", "exit", "parse", "error", "empty"]) {
     assert.ok(failureText(reason).length > 0);

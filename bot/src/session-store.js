@@ -28,6 +28,13 @@ export function createSessionStore({ filePath, now = () => Date.now(), ttlMs = W
     get(threadId) {
       const entry = entries[threadId];
       if (!entry || typeof entry.sessionId !== "string") return null;
+      // A missing timestamp makes every comparison NaN, which reads as "never
+      // expired" and pins the entry in the file forever.
+      if (typeof entry.updatedAt !== "number") {
+        delete entries[threadId];
+        persist();
+        return null;
+      }
       if (now() - entry.updatedAt > ttlMs) {
         delete entries[threadId];
         persist();

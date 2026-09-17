@@ -1,7 +1,8 @@
 import { Client, GatewayIntentBits, Events, ChannelType } from "discord.js";
-import { threadName } from "./replies.js";
+import { threadName, THINKING } from "./replies.js";
 
-const THINKING = "찾는 중입니다. 30초에서 2분 걸립니다.";
+// Every user-facing string lives in replies.js. Nothing in this file writes one.
+const SILENT = { allowedMentions: { parse: [] } };
 
 function isAllowedChannel(message, config) {
   const parentId = message.channel.isThread() ? message.channel.parentId : message.channel.id;
@@ -45,18 +46,20 @@ export async function startGateway({ config, handle, client, log = console.log }
             });
 
         await thread.sendTyping();
-        const placeholder = await thread.send(THINKING);
+        const placeholder = await thread.send({ content: THINKING, ...SILENT });
         let first = true;
 
         return {
           threadId: thread.id,
+          // Answers quote the wiki, which can contain <@id> shaped text. Without
+          // allowedMentions that text pings real people.
           postMessages: async (messages) => {
             for (const text of messages) {
               if (first) {
-                await placeholder.edit(text);
+                await placeholder.edit({ content: text, ...SILENT });
                 first = false;
               } else {
-                await thread.send(text);
+                await thread.send({ content: text, ...SILENT });
               }
             }
           },
@@ -67,7 +70,7 @@ export async function startGateway({ config, handle, client, log = console.log }
         userId: message.author.id,
         question,
         resolveThread,
-        replyDirect: (text) => message.reply(text),
+        replyDirect: (text) => message.reply({ content: text, ...SILENT }),
       });
     } catch (error) {
       log("gateway error", error?.message ?? error);

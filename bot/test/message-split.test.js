@@ -46,6 +46,30 @@ test("개행 없는 긴 한 줄도 한도를 지킨다", () => {
   assert.equal(chunks.join("").replace(/\n/g, "").length, 5000);
 });
 
+test("펜스를 여는 줄이 조각 경계에 걸려도 한도를 지킨다", () => {
+  const text = "a".repeat(1992) + "\n```js\n" + "b".repeat(50) + "\n```";
+  for (const chunk of splitMessage(text, 2000)) {
+    assert.ok(chunk.length <= 2000, `한도 초과 ${chunk.length}`);
+  }
+});
+
+test("긴 한 줄 안의 이모지를 쪼개지 않는다", () => {
+  const chunks = splitMessage("😀".repeat(3000), 2000);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 2000);
+    for (let i = 0; i < chunk.length; i += 1) {
+      const code = chunk.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff) {
+        const next = chunk.charCodeAt(i + 1);
+        assert.ok(next >= 0xdc00 && next <= 0xdfff, `외짝 서로게이트 ${i}`);
+        i += 1;
+      } else {
+        assert.ok(!(code >= 0xdc00 && code <= 0xdfff), `외짝 서로게이트 ${i}`);
+      }
+    }
+  }
+});
+
 test("펜스 안의 아주 긴 한 줄도 한도를 지킨다", () => {
   const text = "```js\n" + "x".repeat(300) + "\n```";
   const chunks = splitMessage(text, 80);

@@ -1,10 +1,31 @@
 import { spawn as nodeSpawn } from "node:child_process";
 
-const BLOCKED_TOOLS = ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch"];
+// Read is NOT harmless here. The working directory is the repo root, and the
+// bot's own secrets live under bot/. Anyone in the channel could otherwise ask
+// the bot to read bot/.env back to them.
+// WebSearch and Agent stay out too: --allowed-tools is not a whitelist, so a
+// tool that is merely unlisted still runs under --permission-mode dontAsk.
+const BLOCKED_TOOLS = [
+  "Bash",
+  "Edit",
+  "Write",
+  "NotebookEdit",
+  "WebFetch",
+  "WebSearch",
+  "Agent",
+  "Read(./bot/**)",
+];
+const SECRET_ENV_KEYS = ["DISCORD_TOKEN"];
 const MODEL = "claude-sonnet-5";
 // A wiki answer is a few kilobytes. Anything past this is a runaway process, and
 // buffering it whole is how the bot runs out of memory.
 const MAX_STDOUT_BYTES = 2 * 1024 * 1024;
+
+function withoutSecrets(source) {
+  const copy = { ...source };
+  for (const key of SECRET_ENV_KEYS) delete copy[key];
+  return copy;
+}
 
 export function createClaudeRunner({
   claudeBin,
@@ -14,6 +35,7 @@ export function createClaudeRunner({
   env = process.env,
   spawn = nodeSpawn,
 }) {
+  const childEnv = withoutSecrets(env);
   function buildArgs({ question, sessionId, resume = false }) {
     return [
       ...claudeArgsPrefix,
@@ -37,7 +59,7 @@ export function createClaudeRunner({
     return new Promise((resolve) => {
       const child = spawn(claudeBin, buildArgs({ question, sessionId, resume }), {
         cwd: repoRoot,
-        env,
+        env: childEnv,
         // The prompt travels as an argument. An open stdin pipe only invites the
         // CLI to wait for EOF that never comes.
         stdio: ["ignore", "pipe", "pipe"],
