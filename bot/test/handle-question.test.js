@@ -2,13 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createQuestionHandler } from "../src/handle-question.js";
 
-function harness({ askResults, existingSession = null, acquire } = {}) {
+function harness({
+  askResults,
+  existingSession = null,
+  acquire,
+  throwOnThread = false,
+  throwOnPost = false,
+} = {}) {
   const posted = [];
   const direct = [];
   const calls = [];
   const sessions = new Map();
   let threadOpens = 0;
   let released = 0;
+  let storeBroken = false;
 
   if (existingSession) sessions.set("thread-1", existingSession);
 
@@ -16,7 +23,10 @@ function harness({ askResults, existingSession = null, acquire } = {}) {
   const handle = createQuestionHandler({
     store: {
       get: (id) => sessions.get(id) ?? null,
-      set: (id, value) => sessions.set(id, value),
+      set: (id, value) => {
+        if (storeBroken) throw new Error("disk full");
+        sessions.set(id, value);
+      },
       remove: (id) => sessions.delete(id),
     },
     limiter: {
@@ -45,9 +55,13 @@ function harness({ askResults, existingSession = null, acquire } = {}) {
       question: "질문",
       resolveThread: async () => {
         threadOpens += 1;
+        if (throwOnThread) throw new Error("discord is down");
         return {
           threadId: "thread-1",
-          postMessages: async (messages) => posted.push(...messages),
+          postMessages: async (messages) => {
+            if (throwOnPost) throw new Error("discord is down");
+            posted.push(...messages);
+          },
         };
       },
       replyDirect: async (text) => direct.push(text),
@@ -61,6 +75,9 @@ function harness({ askResults, existingSession = null, acquire } = {}) {
     sessions,
     threadOpens: () => threadOpens,
     released: () => released,
+    breakStore: () => {
+      storeBroken = true;
+    },
   };
 }
 
@@ -161,6 +178,35 @@ test("시간 초과면 세션을 지우고 재시도하지 않는다", async () 
   assert.deepEqual(outcome, { status: "failed", reason: "timeout" });
   assert.equal(h.sessions.has("thread-1"), false);
   assert.equal(h.calls.length, 1);
+});
+
+test("세션 저장이 실패해도 답은 전달된다", async () => {
+  const h = harness({ askResults: [{ ok: true, text: "답변", sessionId: "s-1" }] });
+  h.breakStore();
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "answered" });
+  assert.deepEqual(h.posted, ["답변"], "저장이 실패해도 답은 나가야 한다");
+});
+
+test("쓰레드를 못 열면 delivery 로 끝내고 자리를 반납한다", async () => {
+  const h = harness({ askResults: [], throwOnThread: true });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "delivery" });
+  assert.equal(h.released(), 1);
+  assert.equal(h.calls.length, 0);
+});
+
+test("답을 못 보내면 delivery 로 끝내고 자리를 반납한다", async () => {
+  const h = harness({
+    askResults: [{ ok: true, text: "답변", sessionId: "s-1" }],
+    throwOnPost: true,
+  });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "delivery" });
+  assert.equal(h.released(), 1);
 });
 
 test("한도에 걸리면 쓰레드를 열지 않고 답글로 거절한다", async () => {

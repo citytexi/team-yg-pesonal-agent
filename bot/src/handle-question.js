@@ -40,9 +40,20 @@ export function createQuestionHandler({ store, limiter, runner, randomUUID, log 
         return { status: "failed", reason: result.reason };
       }
 
-      store.set(threadId, result.sessionId);
+      // Deliver first. A failed write costs the next follow-up its context; a
+      // failed delivery costs the answer itself.
       await postMessages(answerMessages(result.text, { resumeFailed }));
+      try {
+        store.set(threadId, result.sessionId);
+      } catch (error) {
+        log("could not persist session", { threadId, detail: error?.message });
+      }
       return { status: "answered" };
+    } catch (error) {
+      // Opening the thread or posting to it failed, so there is nowhere to
+      // report this. Log it and let the caller move on.
+      log("could not deliver", { userId, detail: error?.message });
+      return { status: "failed", reason: "delivery" };
     } finally {
       slot.release();
     }
