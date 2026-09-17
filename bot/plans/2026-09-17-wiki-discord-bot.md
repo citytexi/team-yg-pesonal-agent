@@ -1411,7 +1411,11 @@ git commit -m "feat(bot): build user-facing Korean reply text"
   - `replyDirect(text: string) -> Promise<void>` — 쓰레드 밖, 원 메시지에 답글을 단다.
     거절 문구에만 쓴다.
   - `Outcome`은 `{ status: "answered" }`, `{ status: "rejected", reason }`,
-    `{ status: "failed", reason }` 중 하나다.
+    `{ status: "failed", reason }` 중 하나다. **항상 이 셋 중 하나로 resolve 한다.**
+    `resolveThread`나 `postMessages`가 던지면 잡아서 `{ status: "failed", reason: "delivery" }`로
+    끝낸다. 이 경로에서는 팀원에게 아무것도 보내지 않는다. 보내는 일 자체가 실패했기 때문이다.
+  - 답을 먼저 보내고 세션을 나중에 저장한다. `store.set`이 던져도 답은 이미 나갔으므로
+    로그만 남기고 `answered`로 끝낸다.
   - 되물음에서 `exit`로 실패하면 세션을 지우고 새 UUID로 한 번만 다시 시도한다.
     재시도도 실패하면 `failed`로 끝낸다.
   - `parse`·`error`·`empty`로는 재시도하지 않는다. 세션이 멀쩡한데 지우면 구독 한도를
@@ -1427,13 +1431,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createQuestionHandler } from "../src/handle-question.js";
 
-function harness({ askResults, existingSession = null, acquire } = {}) {
+function harness({
+  askResults,
+  existingSession = null,
+  acquire,
+  throwOnThread = false,
+  throwOnPost = false,
+} = {}) {
   const posted = [];
   const direct = [];
   const calls = [];
   const sessions = new Map();
   let threadOpens = 0;
   let released = 0;
+  let storeBroken = false;
 
   if (existingSession) sessions.set("thread-1", existingSession);
 
@@ -1441,7 +1452,10 @@ function harness({ askResults, existingSession = null, acquire } = {}) {
   const handle = createQuestionHandler({
     store: {
       get: (id) => sessions.get(id) ?? null,
-      set: (id, value) => sessions.set(id, value),
+      set: (id, value) => {
+        if (storeBroken) throw new Error("disk full");
+        sessions.set(id, value);
+      },
       remove: (id) => sessions.delete(id),
     },
     limiter: {
@@ -1470,9 +1484,13 @@ function harness({ askResults, existingSession = null, acquire } = {}) {
       question: "질문",
       resolveThread: async () => {
         threadOpens += 1;
+        if (throwOnThread) throw new Error("discord is down");
         return {
           threadId: "thread-1",
-          postMessages: async (messages) => posted.push(...messages),
+          postMessages: async (messages) => {
+            if (throwOnPost) throw new Error("discord is down");
+            posted.push(...messages);
+          },
         };
       },
       replyDirect: async (text) => direct.push(text),
@@ -1486,6 +1504,9 @@ function harness({ askResults, existingSession = null, acquire } = {}) {
     sessions,
     threadOpens: () => threadOpens,
     released: () => released,
+    breakStore: () => {
+      storeBroken = true;
+    },
   };
 }
 
@@ -1588,6 +1609,35 @@ test("시간 초과면 세션을 지우고 재시도하지 않는다", async () 
   assert.equal(h.calls.length, 1);
 });
 
+test("세션 저장이 실패해도 답은 전달된다", async () => {
+  const h = harness({ askResults: [{ ok: true, text: "답변", sessionId: "s-1" }] });
+  h.breakStore();
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "answered" });
+  assert.deepEqual(h.posted, ["답변"], "저장이 실패해도 답은 나가야 한다");
+});
+
+test("쓰레드를 못 열면 delivery 로 끝내고 자리를 반납한다", async () => {
+  const h = harness({ askResults: [], throwOnThread: true });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "delivery" });
+  assert.equal(h.released(), 1);
+  assert.equal(h.calls.length, 0);
+});
+
+test("답을 못 보내면 delivery 로 끝내고 자리를 반납한다", async () => {
+  const h = harness({
+    askResults: [{ ok: true, text: "답변", sessionId: "s-1" }],
+    throwOnPost: true,
+  });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "delivery" });
+  assert.equal(h.released(), 1);
+});
+
 test("한도에 걸리면 쓰레드를 열지 않고 답글로 거절한다", async () => {
   const h = harness({
     askResults: [],
@@ -1664,9 +1714,20 @@ export function createQuestionHandler({ store, limiter, runner, randomUUID, log 
         return { status: "failed", reason: result.reason };
       }
 
-      store.set(threadId, result.sessionId);
+      // Deliver first. A failed write costs the next follow-up its context; a
+      // failed delivery costs the answer itself.
       await postMessages(answerMessages(result.text, { resumeFailed }));
+      try {
+        store.set(threadId, result.sessionId);
+      } catch (error) {
+        log("could not persist session", { threadId, detail: error?.message });
+      }
       return { status: "answered" };
+    } catch (error) {
+      // Opening the thread or posting to it failed, so there is nowhere to
+      // report this. Log it and let the caller move on.
+      log("could not deliver", { userId, detail: error?.message });
+      return { status: "failed", reason: "delivery" };
     } finally {
       slot.release();
     }
@@ -1677,10 +1738,16 @@ export function createQuestionHandler({ store, limiter, runner, randomUUID, log 
 `slot.release()`는 `finally`에 있으므로 거절 경로를 제외한 모든 경로에서 정확히 한 번
 불린다. 거절 경로는 자리를 잡은 적이 없어 반납할 것도 없다.
 
+저장보다 전달이 먼저다. 저장이 실패하면 다음 되물음이 맥락을 잃을 뿐이지만, 전달이
+막히면 답 자체가 사라진다. 팀원은 "찾는 중입니다"만 보고 끝난다.
+
+`delivery`는 `failureText`에 없는 사유다. 일부러 그렇다. 이 경로는 디스코드에 글을 쓰는
+일이 이미 실패한 상태이므로 문구를 만들 이유가 없다.
+
 - [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 73건 통과(통합 1건 skip 제외)
+Expected: PASS. 누적 76건 통과(통합 1건 skip 제외)
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1914,7 +1981,7 @@ npm test
 - [ ] **Step 5: 전체 테스트를 돌린다**
 
 Run: `cd bot && npm test`
-Expected: PASS. 누적 73건 통과. Task 8은 새 테스트를 더하지 않는다.
+Expected: PASS. 누적 76건 통과. Task 8은 새 테스트를 더하지 않는다.
 
 - [ ] **Step 6: 기동만 확인한다**
 
