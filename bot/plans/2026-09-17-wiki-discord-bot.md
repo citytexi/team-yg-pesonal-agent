@@ -2081,7 +2081,8 @@ npm test
 ## 주의
 
 - 이 봇은 저장소를 읽기만 한다. `claude` 호출에서 `Bash`·`Edit`·`Write`·`NotebookEdit`·
-  `WebFetch`를 차단한다. 이 인자를 고칠 때 `Bash`가 빠지지 않았는지 반드시 확인한다.
+  `WebFetch`·`WebSearch`·`Agent`·`Read(./bot/**)` 여덟을 차단한다. 이 인자를 고칠 때
+  `Bash`와 `Read(./bot/**)`가 빠지지 않았는지 반드시 확인한다.
 - `--restricted`는 쓰지 않는다. 스킬 로드를 막아 위키 규약이 적용되지 않는다.
 - 모델은 `claude-sonnet-5`로 고정돼 있다. 바꾸려면 `src/claude-runner.js`의 `MODEL` 상수와
   그 테스트를 함께 고친다.
