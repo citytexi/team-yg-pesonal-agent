@@ -1,0 +1,2219 @@
+# 위키 질의응답 디스코드 봇 구현 계획
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** 디스코드에서 멘션으로 질문을 받아, 구독 기반 `claude` CLI를 헤드리스로 돌려
+이 저장소의 `wiki/`를 근거로 답하는 읽기 전용 봇을 만든다.
+
+**Architecture:** 봇은 네 조각이다. `discord-gateway`가 디스코드 규격만 다루고,
+`claude-runner`가 프로세스를 띄우며, `session-store`가 쓰레드와 세션 UUID의 대응을
+파일에 보관하고, `rate-limiter`가 사용량을 센다. 위키를 읽는 규칙은 봇에 구현하지 않고
+`claude`가 저장소 루트에서 실행될 때 자동으로 걸리는 `wiki/CLAUDE.md` 스키마와 `query`
+스킬에 맡긴다.
+
+**Tech Stack:** Node.js(ESM, 순수 JavaScript), `discord.js` v14, Node 내장 테스트 러너
+(`node --test`). 빌드 단계 없음. 외부 런타임 의존성은 `discord.js` 하나뿐이다.
+
+**Spec:** `bot/specs/2026-09-17-wiki-discord-bot-design.md`
+
+## Global Constraints
+
+- 언어는 순수 JavaScript(ESM)다. TypeScript·트랜스파일·번들러를 도입하지 않는다.
+- 테스트는 Node 내장 러너만 쓴다. `jest`·`vitest`·`mocha`를 추가하지 않는다.
+- 런타임 의존성은 `discord.js`만 허용한다. `dotenv`도 쓰지 않는다(Node의 `--env-file` 사용).
+- 봇은 저장소를 읽기만 한다. 코드 어디에도 쓰기 도구를 허용하는 인자를 넣지 않는다.
+- `claude` 호출 인자는 정확히 다음이며, 임의로 늘리거나 줄이지 않는다.
+  `-p --model claude-sonnet-5 --permission-mode dontAsk --disallowed-tools Bash Edit Write NotebookEdit WebFetch --output-format json -- <질문>`
+  첫 질문에는 `--session-id <uuid>`, 되물음에는 `--resume <uuid>`를 더한다.
+- **질문은 반드시 `--` 뒤 마지막 인자다.** `-p`는 불리언 플래그이고 질문은 위치 인자라,
+  하이픈으로 시작하는 질문이 옵션으로 파싱돼 비정상 종료한다(실측 확인).
+- 모델은 전체 이름 `claude-sonnet-5`로 고정한다. 별칭 `sonnet`을 쓰지 않는다.
+- **`--restricted`를 쓰지 않는다.** 실측에서 스킬 로드를 막는 것이 확인됐다.
+- `claude` 프로세스의 작업 디렉토리는 저장소 루트다. `--add-dir`은 쓰지 않는다.
+- 비밀값을 커밋하지 않는다. `bot/.env`는 `.gitignore`에 넣고 `bot/.env.example`만 커밋한다.
+  이 저장소는 public이다.
+- 사용자에게 보이는 문구는 한국어로 쓴다. 코드 식별자·주석·커밋 메시지는 영어로 쓴다.
+- 오류 문구에 로컬 절대경로나 스택을 넣지 않는다.
+- 사용량 한도 기본값: 동시 실행 2, 사용자당 분당 2, 하루 60, 시간 초과 300000ms.
+- 모든 시간 의존 모듈은 `now` 함수를 주입받는다. `Date.now()`를 모듈 안에서 직접 부르지 않는다.
+
+## 파일 구조
+
+| 경로 | 책임 |
+|---|---|
+| `bot/package.json` | 의존성·스크립트. ESM 선언 |
+| `bot/.env.example` | 설정 키 목록과 설명 |
+| `bot/README.md` | 실행·설정 방법 |
+| `bot/src/config.js` | 환경변수를 읽어 검증된 설정 객체를 만든다 |
+| `bot/src/message-split.js` | 긴 답변을 디스코드 2000자 단위로 나눈다 |
+| `bot/src/session-store.js` | 쓰레드 ID ↔ 세션 UUID 대응을 파일에 보관한다 |
+| `bot/src/rate-limiter.js` | 동시 실행·분당·일일 한도를 센다 |
+| `bot/src/claude-runner.js` | `claude` 프로세스를 띄우고 답변 텍스트를 돌려준다 |
+| `bot/src/gateway.js` | 디스코드 이벤트를 받아 위 조각들을 엮는다 |
+| `bot/src/index.js` | 설정을 읽고 조각들을 조립해 기동한다 |
+| `bot/test/*.test.js` | 위 모듈별 테스트 |
+| `bot/test/fixtures/fake-claude.mjs` | `claude`를 대신하는 가짜 실행 파일 |
+
+Task 1이 `bot/package.json`부터 `bot/src/config.js`까지를 함께 만든다. 스캐폴딩만 있는
+커밋은 시험할 것이 없어 리뷰 가치가 없기 때문이다.
+
+---
+
+### Task 1: 프로젝트 뼈대와 설정 로더
+
+**Files:**
+- Create: `bot/package.json`
+- Create: `bot/.env.example`
+- Create: `bot/src/config.js`
+- Modify: `.gitignore` (저장소 루트. 없으면 생성)
+- Test: `bot/test/config.test.js`
+
+**Interfaces:**
+- Consumes: 없음
+- Produces: `loadConfig(env)` — 평범한 객체 `env`를 받아 다음 모양의 설정을 돌려준다.
+  누락·형식 오류가 있으면 `Error`를 던진다.
+  ```
+  {
+    discordToken: string,
+    guildId: string,
+    allowedChannelIds: string[],
+    repoRoot: string,
+    claudeBin: string,
+    maxConcurrent: number,
+    ratePerUserPerMin: number,
+    dailyQuota: number,
+    timeoutMs: number,
+    sessionFile: string,
+  }
+  ```
+
+- [ ] **Step 1: `bot/package.json`을 만든다**
+
+```json
+{
+  "name": "wiki-discord-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test 'test/**/*.test.js'",
+    "start": "node --env-file=.env src/index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3"
+  }
+}
+```
+
+- [ ] **Step 2: `bot/.env.example`을 만든다**
+
+```
+# 디스코드 개발자 포털에서 발급한 봇 토큰
+DISCORD_TOKEN=
+# 응답할 길드(서버) ID
+GUILD_ID=
+# 응답할 채널 ID. 쉼표로 구분
+ALLOWED_CHANNEL_IDS=
+# claude 를 실행할 저장소 루트 절대경로
+REPO_ROOT=
+# claude 실행 파일 절대경로. `which claude` 로 확인
+CLAUDE_BIN=/opt/homebrew/bin/claude
+# 세션 대응표를 저장할 파일 경로
+SESSION_FILE=./data/sessions.json
+# 동시에 띄울 claude 프로세스 수
+MAX_CONCURRENT=2
+# 사용자 한 명의 분당 질문 수
+RATE_PER_USER_PER_MIN=2
+# 하루 총 질문 수
+DAILY_QUOTA=60
+# claude 프로세스 시간 초과(밀리초)
+TIMEOUT_MS=300000
+```
+
+- [ ] **Step 3: 저장소 루트 `.gitignore`에 항목을 더한다**
+
+파일이 이미 있으면 아래 세 줄을 끝에 덧붙인다. 없으면 이 내용으로 새로 만든다.
+
+```
+bot/.env
+bot/node_modules/
+bot/data/
+```
+
+- [ ] **Step 4: 실패하는 테스트를 쓴다**
+
+`bot/test/config.test.js`:
+
+```js
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { loadConfig } from "../src/config.js";
+
+const base = {
+  DISCORD_TOKEN: "token",
+  GUILD_ID: "111",
+  ALLOWED_CHANNEL_IDS: "222,333",
+  REPO_ROOT: "/repo",
+  CLAUDE_BIN: "/bin/claude",
+};
+
+test("필수 키가 모두 있으면 설정을 만든다", () => {
+  const config = loadConfig(base);
+  assert.equal(config.discordToken, "token");
+  assert.equal(config.guildId, "111");
+  assert.deepEqual(config.allowedChannelIds, ["222", "333"]);
+  assert.equal(config.repoRoot, "/repo");
+});
+
+test("기본값을 채운다", () => {
+  const config = loadConfig(base);
+  assert.equal(config.maxConcurrent, 2);
+  assert.equal(config.ratePerUserPerMin, 2);
+  assert.equal(config.dailyQuota, 60);
+  assert.equal(config.timeoutMs, 300000);
+  assert.equal(config.sessionFile, "./data/sessions.json");
+});
+
+test("숫자 설정을 덮어쓸 수 있다", () => {
+  const config = loadConfig({ ...base, DAILY_QUOTA: "10", TIMEOUT_MS: "1000" });
+  assert.equal(config.dailyQuota, 10);
+  assert.equal(config.timeoutMs, 1000);
+});
+
+test("채널 목록의 공백을 없애고 빈 항목을 버린다", () => {
+  const config = loadConfig({ ...base, ALLOWED_CHANNEL_IDS: " 222 , ,333 " });
+  assert.deepEqual(config.allowedChannelIds, ["222", "333"]);
+});
+
+test("필수 키가 없으면 그 이름을 담아 던진다", () => {
+  const { DISCORD_TOKEN, ...missing } = base;
+  assert.throws(() => loadConfig(missing), /DISCORD_TOKEN/);
+});
+
+test("채널 목록이 비면 던진다", () => {
+  assert.throws(() => loadConfig({ ...base, ALLOWED_CHANNEL_IDS: "" }), /ALLOWED_CHANNEL_IDS/);
+});
+
+test("숫자가 아닌 값을 주면 그 키를 담아 던진다", () => {
+  assert.throws(() => loadConfig({ ...base, DAILY_QUOTA: "many" }), /DAILY_QUOTA/);
+});
+```
+
+- [ ] **Step 5: 테스트가 실패하는 것을 확인한다**
+
+Run: `cd bot && npm install && npm test`
+Expected: FAIL. `Cannot find module '../src/config.js'`
+
+테스트 스크립트는 `node --test 'test/**/*.test.js'`다. `node --test test/` 는 Node 22+ 에서
+디렉토리 경로를 스크립트로 해석해 `MODULE_NOT_FOUND` 로 죽고, 인자 없는 `node --test` 는
+`test/fixtures/` 안의 가짜 실행 파일까지 테스트로 세어 누계가 어긋난다(실측 확인).
+
+- [ ] **Step 6: `bot/src/config.js`를 쓴다**
+
+```js
+const REQUIRED = ["DISCORD_TOKEN", "GUILD_ID", "ALLOWED_CHANNEL_IDS", "REPO_ROOT", "CLAUDE_BIN"];
+
+function readNumber(env, key, fallback) {
+  const raw = env[key];
+  if (raw === undefined || raw === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) throw new Error(`${key} must be a number, got: ${raw}`);
+  return value;
+}
+
+export function loadConfig(env) {
+  for (const key of REQUIRED) {
+    if (!env[key]) throw new Error(`Missing required setting: ${key}`);
+  }
+
+  const allowedChannelIds = env.ALLOWED_CHANNEL_IDS.split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+  if (allowedChannelIds.length === 0) {
+    throw new Error("ALLOWED_CHANNEL_IDS must list at least one channel id");
+  }
+
+  return {
+    discordToken: env.DISCORD_TOKEN,
+    guildId: env.GUILD_ID,
+    allowedChannelIds,
+    repoRoot: env.REPO_ROOT,
+    claudeBin: env.CLAUDE_BIN,
+    sessionFile: env.SESSION_FILE || "./data/sessions.json",
+    maxConcurrent: readNumber(env, "MAX_CONCURRENT", 2),
+    ratePerUserPerMin: readNumber(env, "RATE_PER_USER_PER_MIN", 2),
+    dailyQuota: readNumber(env, "DAILY_QUOTA", 60),
+    timeoutMs: readNumber(env, "TIMEOUT_MS", 300000),
+  };
+}
+```
+
+- [ ] **Step 7: 테스트가 통과하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: PASS. 7건 통과
+
+- [ ] **Step 8: 커밋한다**
+
+```bash
+git add bot/package.json bot/package-lock.json bot/.env.example bot/src/config.js bot/test/config.test.js .gitignore
+git commit -m "feat(bot): add project scaffolding and config loader"
+```
+
+---
+
+### Task 2: 메시지 분할
+
+**Files:**
+- Create: `bot/src/message-split.js`
+- Test: `bot/test/message-split.test.js`
+
+**Interfaces:**
+- Consumes: 없음
+- Produces: `splitMessage(text, limit = 2000) -> string[]`
+  - 입력이 `limit` 이하면 원문 한 개를 담은 배열을 돌려준다.
+  - 어떤 조각도 `limit`을 넘지 않는다.
+  - 코드 펜스(```` ``` ````) 안에서 잘릴 때 앞 조각을 닫고 뒤 조각에서 같은 언어로 다시 연다.
+
+- [ ] **Step 1: 실패하는 테스트를 쓴다**
+
+`bot/test/message-split.test.js`:
+
+```js
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { splitMessage } from "../src/message-split.js";
+
+test("한도 이하는 그대로 한 조각이다", () => {
+  assert.deepEqual(splitMessage("짧은 답변", 2000), ["짧은 답변"]);
+});
+
+test("정확히 한도 길이는 나누지 않는다", () => {
+  const text = "가".repeat(2000);
+  assert.deepEqual(splitMessage(text, 2000), [text]);
+});
+
+test("한도를 넘으면 나눈다", () => {
+  const text = ("가".repeat(99) + "\n").repeat(30);
+  const chunks = splitMessage(text, 2000);
+  assert.ok(chunks.length > 1);
+  for (const chunk of chunks) assert.ok(chunk.length <= 2000);
+});
+
+test("줄 경계에서 나눈다", () => {
+  const lines = Array.from({ length: 10 }, (_, i) => `line${i}`.padEnd(30, "-"));
+  const chunks = splitMessage(lines.join("\n"), 100);
+  for (const chunk of chunks) {
+    for (const line of chunk.split("\n")) {
+      assert.ok(/^line\d-+$/.test(line), `잘린 줄: ${line}`);
+    }
+  }
+});
+
+test("코드 펜스가 걸치면 닫고 다시 연다", () => {
+  const body = Array.from({ length: 10 }, (_, i) => `const x${i} = ${i};`).join("\n");
+  const text = "설명\n\n```js\n" + body + "\n```";
+  const chunks = splitMessage(text, 80);
+  assert.ok(chunks.length > 1);
+  for (const chunk of chunks) {
+    const fences = (chunk.match(/^```/gm) || []).length;
+    assert.equal(fences % 2, 0, `펜스가 홀수인 조각: ${chunk}`);
+  }
+  assert.ok(chunks[1].startsWith("```js"), "뒤 조각이 같은 언어로 다시 열려야 한다");
+});
+
+test("개행 없는 긴 한 줄도 한도를 지킨다", () => {
+  const chunks = splitMessage("a".repeat(5000), 2000);
+  for (const chunk of chunks) assert.ok(chunk.length <= 2000);
+  assert.equal(chunks.join("").replace(/\n/g, "").length, 5000);
+});
+
+test("펜스를 여는 줄이 조각 경계에 걸려도 한도를 지킨다", () => {
+  const text = "a".repeat(1992) + "\n```js\n" + "b".repeat(50) + "\n```";
+  for (const chunk of splitMessage(text, 2000)) {
+    assert.ok(chunk.length <= 2000, `한도 초과 ${chunk.length}`);
+  }
+});
+
+test("긴 한 줄 안의 이모지를 쪼개지 않는다", () => {
+  const chunks = splitMessage("😀".repeat(3000), 2000);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 2000);
+    for (let i = 0; i < chunk.length; i += 1) {
+      const code = chunk.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff) {
+        const next = chunk.charCodeAt(i + 1);
+        assert.ok(next >= 0xdc00 && next <= 0xdfff, `외짝 서로게이트 ${i}`);
+        i += 1;
+      } else {
+        assert.ok(!(code >= 0xdc00 && code <= 0xdfff), `외짝 서로게이트 ${i}`);
+      }
+    }
+  }
+});
+
+test("펜스 안의 아주 긴 한 줄도 한도를 지킨다", () => {
+  const text = "```js\n" + "x".repeat(300) + "\n```";
+  const chunks = splitMessage(text, 80);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 80, `한도 초과 ${chunk.length}: ${chunk.slice(0, 30)}`);
+  }
+});
+
+test("언어 태그가 길어도 한도를 지킨다", () => {
+  const text = "```typescript\n" + "x".repeat(300) + "\n```";
+  const chunks = splitMessage(text, 80);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 80, `한도 초과 ${chunk.length}: ${chunk.slice(0, 30)}`);
+  }
+  assert.ok(chunks[1].startsWith("```typescript"));
+});
+
+test("펜스가 열린 채 끝나면 마지막 조각도 닫는다", () => {
+  const text = "```js\n" + Array.from({ length: 20 }, (_, i) => `const x${i} = ${i};`).join("\n");
+  const chunks = splitMessage(text, 80);
+  for (const chunk of chunks) {
+    assert.equal((chunk.match(/^```/gm) || []).length % 2, 0, `펜스가 홀수인 조각: ${chunk}`);
+  }
+});
+
+test("빈 문자열은 빈 배열이다", () => {
+  assert.deepEqual(splitMessage("", 2000), []);
+});
+```
+
+- [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
+
+Run: `cd bot && npm test -- --test-name-pattern="조각|나눈|펜스|한도|빈 문자열"`
+또는 전체 실행: `cd bot && npm test`
+Expected: FAIL. `Cannot find module '../src/message-split.js'`
+
+- [ ] **Step 3: `bot/src/message-split.js`를 쓴다**
+
+펜스 안에서는 조각마다 두 가지 비용이 더 붙는다. 앞에 다시 여는 헤더(```` ```lang ```` + 개행)와
+뒤에 닫는 펜스(개행 + ```` ``` ````)다. 이 비용은 언어 태그 길이에 따라 달라지므로 고정값으로
+잡으면 안 된다. 고정값 8을 쓰면 ```` ```typescript ```` 처럼 태그가 긴 블록에서 조각이 한도를
+넘는다.
+
+그래서 줄을 자를 폭(`wrapWidth`)과 조각을 끊을 기준(`budget`)을 펜스 상태에서 그때그때 계산한다.
+
+```js
+const CLOSING_FENCE_COST = 4; // "\n```"
+
+function fenceCosts(openFenceLang) {
+  if (openFenceLang === null) return { header: 0, footer: 0 };
+  return { header: ("```" + openFenceLang).length + 1, footer: CLOSING_FENCE_COST };
+}
+
+// Iterating the string yields code points, so a surrogate pair never breaks in
+// half the way line.slice(i, i + max) breaks it.
+function hardWrap(line, max) {
+  if (line.length <= max) return [line];
+  const parts = [];
+  let current = "";
+  for (const character of line) {
+    if (current.length + character.length > max) {
+      parts.push(current);
+      current = "";
+    }
+    current += character;
+  }
+  if (current.length > 0) parts.push(current);
+  return parts;
+}
+
+export function splitMessage(text, limit = 2000) {
+  if (text.length === 0) return [];
+  if (text.length <= limit) return [text];
+
+  const chunks = [];
+  let current = [];
+  let currentLength = 0;
+  let openFenceLang = null;
+
+  const startChunk = () => {
+    current = openFenceLang === null ? [] : ["```" + openFenceLang];
+    currentLength = current.length === 0 ? 0 : current[0].length + 1;
+  };
+
+  const flush = () => {
+    if (current.length === 0) return;
+    const body = openFenceLang === null ? current.join("\n") : current.join("\n") + "\n```";
+    if (body.trim().length > 0) chunks.push(body);
+    startChunk();
+  };
+
+  for (const rawLine of text.split("\n")) {
+    const { header, footer } = fenceCosts(openFenceLang);
+    // A line that opens a fence lands in the current chunk and forces a closing
+    // fence onto it, so reserve that cost before deciding where the chunk ends.
+    const opensFence = openFenceLang === null && /^```(\S*)/.test(rawLine);
+    const reserved = opensFence ? CLOSING_FENCE_COST : footer;
+    const wrapWidth = Math.max(1, limit - header - reserved);
+    const budget = limit - reserved;
+
+    for (const line of hardWrap(rawLine, wrapWidth)) {
+      if (currentLength + line.length + 1 > budget && current.length > 0) flush();
+      current.push(line);
+      currentLength += line.length + 1;
+
+      const fence = line.match(/^```(\S*)/);
+      if (fence) openFenceLang = openFenceLang === null ? fence[1] : null;
+    }
+  }
+
+  if (current.length > 0) {
+    const tail = openFenceLang === null ? current.join("\n") : current.join("\n") + "\n```";
+    if (tail.trim().length > 0) chunks.push(tail);
+  }
+  return chunks;
+}
+```
+
+마지막 조각도 `flush()`와 같은 규칙으로 닫는다. 앞 조각들만 닫고 마지막만 열어두면 동작이
+일관되지 않고, 디스코드에서 마지막 메시지의 코드블록 서식이 깨진다.
+
+- [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: PASS. Task 1의 7건에 더해 12건이 더 통과
+
+- [ ] **Step 5: 커밋한다**
+
+```bash
+git add bot/src/message-split.js bot/test/message-split.test.js
+git commit -m "feat(bot): split long answers at Discord's 2000-char limit"
+```
+
+---
+
+### Task 3: 세션 보관소
+
+**Files:**
+- Create: `bot/src/session-store.js`
+- Test: `bot/test/session-store.test.js`
+
+**Interfaces:**
+- Consumes: 없음
+- Produces: `createSessionStore({ filePath, now, ttlMs }) -> store`
+  - `now`의 기본값은 `() => Date.now()`, `ttlMs`의 기본값은 7일(`604800000`)이다.
+  - `store.get(threadId) -> string | null` — 만료됐거나 없으면 `null`
+  - `store.set(threadId, sessionId) -> void` — 즉시 파일에 쓴다
+  - `store.remove(threadId) -> void`
+  - 파일이 없거나 JSON이 깨졌으면 빈 상태로 시작하고 예외를 던지지 않는다.
+  - 파일이 놓일 디렉토리가 없으면 만든다.
+  - **프로세스당 인스턴스는 하나다.** 항목 전체를 메모리에 들고 있다가 쓸 때마다 파일을
+    통째로 다시 쓰므로, 같은 파일을 두 인스턴스가 열면 나중에 쓴 쪽이 앞선 쪽의 기록을
+    지운다. 이 전제를 모듈 상단 주석에 영어로 적는다.
+
+- [ ] **Step 1: 실패하는 테스트를 쓴다**
+
+`bot/test/session-store.test.js`:
+
+```js
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createSessionStore } from "../src/session-store.js";
+
+function tempFile(name = "sessions.json") {
+  const dir = mkdtempSync(join(tmpdir(), "session-store-"));
+  return { dir, path: join(dir, name) };
+}
+
+test("없는 쓰레드는 null 이다", () => {
+  const { dir, path } = tempFile();
+  const store = createSessionStore({ filePath: path });
+  assert.equal(store.get("thread-1"), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("저장한 값을 돌려준다", () => {
+  const { dir, path } = tempFile();
+  const store = createSessionStore({ filePath: path });
+  store.set("thread-1", "uuid-1");
+  assert.equal(store.get("thread-1"), "uuid-1");
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("새 인스턴스에서도 값이 남는다", () => {
+  const { dir, path } = tempFile();
+  createSessionStore({ filePath: path }).set("thread-1", "uuid-1");
+  assert.equal(createSessionStore({ filePath: path }).get("thread-1"), "uuid-1");
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("ttl 이 지나면 null 이다", () => {
+  const { dir, path } = tempFile();
+  let clock = 1000;
+  const store = createSessionStore({ filePath: path, now: () => clock, ttlMs: 500 });
+  store.set("thread-1", "uuid-1");
+  clock = 1499;
+  assert.equal(store.get("thread-1"), "uuid-1");
+  clock = 1501;
+  assert.equal(store.get("thread-1"), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("remove 는 값을 지운다", () => {
+  const { dir, path } = tempFile();
+  const store = createSessionStore({ filePath: path });
+  store.set("thread-1", "uuid-1");
+  store.remove("thread-1");
+  assert.equal(store.get("thread-1"), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("updatedAt 이 없는 항목은 버린다", () => {
+  const { dir, path } = tempFile();
+  writeFileSync(path, JSON.stringify({ "thread-1": { sessionId: "uuid-1" } }));
+  const store = createSessionStore({ filePath: path });
+  assert.equal(store.get("thread-1"), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("깨진 JSON 파일이면 빈 상태로 시작한다", () => {
+  const { dir, path } = tempFile();
+  writeFileSync(path, "{ not json");
+  const store = createSessionStore({ filePath: path });
+  assert.equal(store.get("thread-1"), null);
+  store.set("thread-1", "uuid-1");
+  assert.equal(store.get("thread-1"), "uuid-1");
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("디렉토리가 없으면 만든다", () => {
+  const { dir, path } = tempFile();
+  const nested = join(dir, "a", "b", "sessions.json");
+  const store = createSessionStore({ filePath: nested });
+  store.set("thread-1", "uuid-1");
+  assert.equal(createSessionStore({ filePath: nested }).get("thread-1"), "uuid-1");
+  rmSync(dir, { recursive: true, force: true });
+});
+```
+
+- [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: FAIL. `Cannot find module '../src/session-store.js'`
+
+- [ ] **Step 3: `bot/src/session-store.js`를 쓴다**
+
+```js
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+
+// One store per process. The store keeps every entry in memory and rewrites the
+// whole file on each write, so two stores sharing a file silently drop each
+// other's entries. The bot creates exactly one in src/index.js.
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function readAll(filePath) {
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, "utf8"));
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+export function createSessionStore({ filePath, now = () => Date.now(), ttlMs = WEEK_MS }) {
+  let entries = readAll(filePath);
+
+  const persist = () => {
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, JSON.stringify(entries, null, 2), "utf8");
+  };
+
+  return {
+    get(threadId) {
+      const entry = entries[threadId];
+      if (!entry || typeof entry.sessionId !== "string") return null;
+      // A missing timestamp makes every comparison NaN, which reads as "never
+      // expired" and pins the entry in the file forever.
+      if (typeof entry.updatedAt !== "number") {
+        delete entries[threadId];
+        persist();
+        return null;
+      }
+      if (now() - entry.updatedAt > ttlMs) {
+        delete entries[threadId];
+        persist();
+        return null;
+      }
+      return entry.sessionId;
+    },
+
+    set(threadId, sessionId) {
+      entries[threadId] = { sessionId, updatedAt: now() };
+      persist();
+    },
+
+    remove(threadId) {
+      delete entries[threadId];
+      persist();
+    },
+  };
+}
+```
+
+- [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: PASS. 누적 27건 통과
+
+- [ ] **Step 5: 커밋한다**
+
+```bash
+git add bot/src/session-store.js bot/test/session-store.test.js
+git commit -m "feat(bot): persist thread-to-session mapping with a TTL"
+```
+
+---
+
+### Task 4: 사용량 제한
+
+**Files:**
+- Create: `bot/src/rate-limiter.js`
+- Test: `bot/test/rate-limiter.test.js`
+
+**Interfaces:**
+- Consumes: 없음
+- Produces: `createRateLimiter({ maxConcurrent, perUserPerMin, dailyQuota, now }) -> limiter`
+  - `limiter.acquire(userId) -> { ok: true, release: () => void } | { ok: false, reason: "daily" | "user" | "concurrent" }`
+  - 검사 순서는 일일 → 사용자 → 동시 실행이다. 앞선 검사에서 거절되면 뒤 검사는 하지 않는다.
+  - 일일 카운터는 `now()`의 현지 날짜(`YYYY-MM-DD`)가 바뀌면 초기화된다.
+  - `release()`를 두 번 불러도 동시 실행 수가 음수로 내려가지 않는다.
+  - **`release()`는 반드시 한 번 불러야 한다.** 부르지 않으면 그 동시 실행 자리가 영영
+    돌아오지 않는다. 소비자는 `finally`에서 부른다. 이 계약을 모듈 주석에 영어로 적는다.
+  - `limiter.used()`는 `{ daily, running, trackedUsers }`를 돌려준다. 조회 전용이다.
+  - 사용자 기록은 무한히 쌓이지 않는다. 추적 중인 사용자가 `PRUNE_THRESHOLD`를 넘으면
+    분 창이 지난 항목을 지운다.
+
+- [ ] **Step 1: 실패하는 테스트를 쓴다**
+
+`bot/test/rate-limiter.test.js`:
+
+```js
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { createRateLimiter } from "../src/rate-limiter.js";
+
+const DAY = 24 * 60 * 60 * 1000;
+
+function build(overrides = {}) {
+  const state = { clock: Date.parse("2026-09-17T09:00:00Z") };
+  const limiter = createRateLimiter({
+    maxConcurrent: 2,
+    perUserPerMin: 2,
+    dailyQuota: 60,
+    now: () => state.clock,
+    ...overrides,
+  });
+  return { limiter, state };
+}
+
+test("첫 요청은 허용된다", () => {
+  const { limiter } = build();
+  const result = limiter.acquire("user-1");
+  assert.equal(result.ok, true);
+});
+
+test("사용자 분당 한도를 넘으면 reason 이 user 다", () => {
+  const { limiter } = build();
+  limiter.acquire("user-1").release();
+  limiter.acquire("user-1").release();
+  assert.deepEqual(limiter.acquire("user-1"), { ok: false, reason: "user" });
+});
+
+test("분당 한도는 다른 사용자에게 옮지 않는다", () => {
+  const { limiter } = build();
+  limiter.acquire("user-1").release();
+  limiter.acquire("user-1").release();
+  assert.equal(limiter.acquire("user-2").ok, true);
+});
+
+test("1분이 지나면 사용자 한도가 풀린다", () => {
+  const { limiter, state } = build();
+  limiter.acquire("user-1").release();
+  limiter.acquire("user-1").release();
+  state.clock += 60001;
+  assert.equal(limiter.acquire("user-1").ok, true);
+});
+
+test("동시 실행 한도를 넘으면 reason 이 concurrent 다", () => {
+  const { limiter } = build({ perUserPerMin: 100 });
+  const first = limiter.acquire("user-1");
+  limiter.acquire("user-2");
+  assert.deepEqual(limiter.acquire("user-3"), { ok: false, reason: "concurrent" });
+  first.release();
+  assert.equal(limiter.acquire("user-3").ok, true);
+});
+
+test("일일 한도를 넘으면 reason 이 daily 다", () => {
+  const { limiter, state } = build({ dailyQuota: 2, perUserPerMin: 100 });
+  limiter.acquire("user-1").release();
+  limiter.acquire("user-1").release();
+  assert.deepEqual(limiter.acquire("user-1"), { ok: false, reason: "daily" });
+  state.clock += DAY;
+  assert.equal(limiter.acquire("user-1").ok, true);
+});
+
+test("일일 한도는 사용자 한도보다 먼저 판정된다", () => {
+  const { limiter } = build({ dailyQuota: 1, perUserPerMin: 1 });
+  limiter.acquire("user-1").release();
+  assert.deepEqual(limiter.acquire("user-1"), { ok: false, reason: "daily" });
+});
+
+test("release 를 두 번 불러도 자리가 늘지 않는다", () => {
+  const { limiter } = build({ maxConcurrent: 1, perUserPerMin: 100 });
+  const first = limiter.acquire("user-1");
+  first.release();
+  first.release();
+  assert.equal(limiter.acquire("user-2").ok, true);
+  assert.deepEqual(limiter.acquire("user-3"), { ok: false, reason: "concurrent" });
+});
+
+test("추적 사용자가 많아지면 오래된 기록을 지운다", () => {
+  const { limiter, state } = build({ maxConcurrent: 10000, perUserPerMin: 100, dailyQuota: 100000 });
+  for (let i = 0; i < 1200; i += 1) limiter.acquire(`user-${i}`).release();
+  assert.ok(limiter.used().trackedUsers > 0);
+
+  state.clock += 60001;
+  limiter.acquire("late-user").release();
+  assert.ok(
+    limiter.used().trackedUsers < 1200,
+    `가지치기가 안 됐다: ${limiter.used().trackedUsers}`,
+  );
+});
+
+test("거절된 요청은 어떤 카운터도 올리지 않는다", () => {
+  const { limiter } = build({ maxConcurrent: 1, perUserPerMin: 100, dailyQuota: 3 });
+  limiter.acquire("user-1");
+  assert.equal(limiter.acquire("user-2").ok, false);
+  assert.equal(limiter.acquire("user-2").ok, false);
+  assert.equal(limiter.used().daily, 1);
+});
+```
+
+- [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: FAIL. `Cannot find module '../src/rate-limiter.js'`
+
+- [ ] **Step 3: `bot/src/rate-limiter.js`를 쓴다**
+
+`used()`는 테스트와 로그를 위한 조회용이다. 거절된 요청이 카운터를 올리지 않는지,
+그리고 사용자 기록이 무한히 쌓이지 않는지 확인하는 데 쓴다.
+
+가지치기는 추적 사용자가 `PRUNE_THRESHOLD`를 넘을 때만 돈다. 매번 전체를 훑으면 호출마다
+O(n)이 되고, 실제로는 길드 인원만큼만 쌓이므로 평소에는 한 번도 돌지 않는다.
+
+```js
+const MINUTE_MS = 60 * 1000;
+const PRUNE_THRESHOLD = 1000;
+
+function localDayKey(timestamp) {
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+// A successful acquire hands back release(). Call it exactly once, from a
+// finally block: a slot that is never released never comes back, and the bot
+// stops answering once every slot leaks.
+export function createRateLimiter({ maxConcurrent, perUserPerMin, dailyQuota, now = () => Date.now() }) {
+  let running = 0;
+  let dayKey = localDayKey(now());
+  let dailyCount = 0;
+  const userHits = new Map();
+
+  // Without this the map keeps one entry per user id forever.
+  const pruneUserHits = (at) => {
+    if (userHits.size <= PRUNE_THRESHOLD) return;
+    for (const [id, hits] of userHits) {
+      const last = hits[hits.length - 1];
+      if (last === undefined || at - last >= MINUTE_MS) userHits.delete(id);
+    }
+  };
+
+  return {
+    acquire(userId) {
+      const at = now();
+      pruneUserHits(at);
+
+      const today = localDayKey(at);
+      if (today !== dayKey) {
+        dayKey = today;
+        dailyCount = 0;
+      }
+      if (dailyCount >= dailyQuota) return { ok: false, reason: "daily" };
+
+      const hits = (userHits.get(userId) || []).filter((hit) => at - hit < MINUTE_MS);
+      if (hits.length >= perUserPerMin) {
+        userHits.set(userId, hits);
+        return { ok: false, reason: "user" };
+      }
+
+      if (running >= maxConcurrent) {
+        userHits.set(userId, hits);
+        return { ok: false, reason: "concurrent" };
+      }
+
+      hits.push(at);
+      userHits.set(userId, hits);
+      dailyCount += 1;
+      running += 1;
+
+      let released = false;
+      return {
+        ok: true,
+        release() {
+          if (released) return;
+          released = true;
+          running -= 1;
+        },
+      };
+    },
+
+    used() {
+      return { daily: dailyCount, running, trackedUsers: userHits.size };
+    },
+  };
+}
+```
+
+- [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: PASS. 누적 37건 통과
+
+- [ ] **Step 5: 커밋한다**
+
+```bash
+git add bot/src/rate-limiter.js bot/test/rate-limiter.test.js
+git commit -m "feat(bot): cap concurrent, per-user, and daily usage"
+```
+
+---
+
+### Task 5: claude 실행기
+
+**Files:**
+- Create: `bot/src/claude-runner.js`
+- Create: `bot/test/fixtures/fake-claude.mjs`
+- Test: `bot/test/claude-runner.test.js`
+
+**Interfaces:**
+- Consumes: 없음
+- Produces: `createClaudeRunner({ claudeBin, repoRoot, timeoutMs, claudeArgsPrefix, env, spawn }) -> runner`
+  - `spawn`의 기본값은 `node:child_process`의 `spawn`, `claudeArgsPrefix`의 기본값은 `[]`,
+    `env`의 기본값은 `process.env`다. 앞의 둘은 시험에서 가짜 실행 파일을 끼우기 위한 자리다.
+  - `runner.buildArgs({ question, sessionId, resume }) -> string[]`
+  - `runner.ask({ question, sessionId, resume }) -> Promise<Result>`
+  - `Result`는 `{ ok: true, text: string, sessionId: string }` 또는
+    `{ ok: false, reason: "timeout" | "exit" | "parse" | "empty" | "error", detail: string }`이다.
+  - `detail`은 파일 로그용이며 디스코드에 그대로 올리지 않는다.
+  - stdout 누적이 `MAX_STDOUT_BYTES`를 넘으면 프로세스를 죽이고 `reason: "exit"`로 끝낸다.
+    새 `reason` 값을 만들지 않는다. 뒤 태스크의 문구 표가 늘어나지 않게 하기 위해서다.
+  - 자식 프로세스의 stdin은 `"ignore"`로 연다. 프롬프트는 인자로 넘기므로 stdin이 필요 없고,
+    파이프로 열어 두면 CLI가 EOF를 기다리며 멈출 여지가 있다.
+
+- [ ] **Step 1: 가짜 `claude`를 만든다**
+
+`bot/test/fixtures/fake-claude.mjs`. 환경변수 `FAKE_MODE`로 동작을 고른다.
+
+```js
+#!/usr/bin/env node
+const mode = process.env.FAKE_MODE || "success";
+const args = process.argv.slice(2);
+
+if (mode === "hang") {
+  setTimeout(() => {}, 60000);
+} else if (mode === "exit") {
+  process.stderr.write("boom\n");
+  process.exit(2);
+} else if (mode === "garbage") {
+  process.stdout.write("not json at all");
+} else if (mode === "error-flag") {
+  process.stdout.write(JSON.stringify({ is_error: true, subtype: "error_during_execution", result: "", session_id: "s-err" }));
+} else if (mode === "empty") {
+  process.stdout.write(JSON.stringify({ is_error: false, subtype: "success", result: "   ", session_id: "s-empty" }));
+} else if (mode === "flood") {
+  process.stdout.write("x".repeat(3 * 1024 * 1024));
+  setTimeout(() => {}, 60000);
+} else if (mode === "echo-args") {
+  process.stdout.write(JSON.stringify({ is_error: false, subtype: "success", result: JSON.stringify(args), session_id: "s-echo" }));
+} else {
+  process.stdout.write(JSON.stringify({ is_error: false, subtype: "success", result: "답변 본문", session_id: "s-ok" }));
+}
+```
+
+- [ ] **Step 2: 실패하는 테스트를 쓴다**
+
+`bot/test/claude-runner.test.js`:
+
+```js
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { spawn as nodeSpawnForTest } from "node:child_process";
+import { createClaudeRunner } from "../src/claude-runner.js";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const FAKE = join(here, "fixtures", "fake-claude.mjs");
+
+function runner(mode, timeoutMs = 5000) {
+  return createClaudeRunner({
+    claudeBin: process.execPath,
+    claudeArgsPrefix: [FAKE],
+    repoRoot: here,
+    timeoutMs,
+    env: { ...process.env, FAKE_MODE: mode },
+  });
+}
+
+test("첫 질문 인자에 --session-id 가 들어간다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  assert.ok(args.includes("--session-id"));
+  assert.equal(args[args.indexOf("--session-id") + 1], "uuid-1");
+  assert.ok(!args.includes("--resume"));
+});
+
+test("되물음 인자에 --resume 이 들어간다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1", resume: true });
+  assert.ok(args.includes("--resume"));
+  assert.equal(args[args.indexOf("--resume") + 1], "uuid-1");
+  assert.ok(!args.includes("--session-id"));
+});
+
+test("쓰기·실행·외부 도구를 항상 차단한다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  const at = args.indexOf("--disallowed-tools");
+  assert.ok(at > -1);
+  const blocked = args.slice(at + 1, args.indexOf("--output-format"));
+  for (const tool of ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch", "Agent"]) {
+    assert.ok(blocked.includes(tool), `${tool} 이 차단 목록에 없다`);
+  }
+});
+
+test("봇 자신의 디렉토리를 읽지 못하게 막는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  assert.ok(args.includes("Read(./bot/**)"), "bot/ 읽기 차단이 없으면 .env 가 새어 나간다");
+});
+
+test("자식 프로세스 환경에 디스코드 토큰을 넘기지 않는다", async () => {
+  let captured = null;
+  const spy = (bin, args, options) => {
+    captured = options;
+    return nodeSpawnForTest(bin, args, options);
+  };
+  const r = createClaudeRunner({
+    claudeBin: process.execPath,
+    claudeArgsPrefix: [FAKE],
+    repoRoot: here,
+    timeoutMs: 5000,
+    env: { ...process.env, FAKE_MODE: "success", DISCORD_TOKEN: "super-secret" },
+    spawn: spy,
+  });
+  await r.ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(captured.env.DISCORD_TOKEN, undefined);
+  assert.equal(captured.env.FAKE_MODE, "success");
+});
+
+test("모델을 claude-sonnet-5 로 고정한다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  const at = args.indexOf("--model");
+  assert.ok(at > -1);
+  assert.equal(args[at + 1], "claude-sonnet-5");
+});
+
+test("되물음에서도 모델을 고정한다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1", resume: true });
+  assert.equal(args[args.indexOf("--model") + 1], "claude-sonnet-5");
+});
+
+test("--restricted 를 절대 넣지 않는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  assert.ok(!args.includes("--restricted"));
+});
+
+test("질문을 -- 뒤 마지막 인자로 넘긴다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(args.at(-2), "--");
+  assert.equal(args.at(-1), "질문");
+});
+
+test("하이픈으로 시작하는 질문도 옵션으로 새지 않는다", async () => {
+  const question = "--restricted 옵션은 뭐야?";
+  const args = runner("echo-args").buildArgs({ question, sessionId: "uuid-1" });
+  assert.equal(args.at(-1), question);
+  assert.equal(args.indexOf(question), args.length - 1, "질문이 인자 목록에 한 번만, 맨 끝에 있어야 한다");
+
+  const result = await runner("echo-args").ask({ question, sessionId: "uuid-1" });
+  assert.equal(result.ok, true);
+  assert.equal(JSON.parse(result.text).at(-1), question);
+});
+
+test("성공하면 본문과 세션 ID를 돌려준다", async () => {
+  const result = await runner("success").ask({ question: "질문", sessionId: "uuid-1" });
+  assert.deepEqual(result, { ok: true, text: "답변 본문", sessionId: "s-ok" });
+});
+
+test("비정상 종료는 reason 이 exit 다", async () => {
+  const result = await runner("exit").ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "exit");
+});
+
+test("JSON 이 아니면 reason 이 parse 다", async () => {
+  const result = await runner("garbage").ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(result.reason, "parse");
+});
+
+test("is_error 가 true 면 reason 이 error 다", async () => {
+  const result = await runner("error-flag").ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(result.reason, "error");
+});
+
+test("공백뿐인 답변은 reason 이 empty 다", async () => {
+  const result = await runner("empty").ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(result.reason, "empty");
+});
+
+test("stdout 이 상한을 넘으면 프로세스를 죽이고 exit 으로 끝낸다", async () => {
+  const result = await runner("flood", 10000).ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "exit");
+  assert.match(result.detail, /stdout/);
+});
+
+test("자식 프로세스의 stdin 을 열어두지 않는다", async () => {
+  let captured = null;
+  const spy = (bin, args, options) => {
+    captured = options;
+    return nodeSpawnForTest(bin, args, options);
+  };
+  const r = createClaudeRunner({
+    claudeBin: process.execPath,
+    claudeArgsPrefix: [FAKE],
+    repoRoot: here,
+    timeoutMs: 5000,
+    env: { ...process.env, FAKE_MODE: "success" },
+    spawn: spy,
+  });
+  await r.ask({ question: "질문", sessionId: "uuid-1" });
+  assert.deepEqual(captured.stdio, ["ignore", "pipe", "pipe"]);
+});
+
+test("시간이 초과되면 reason 이 timeout 이다", async () => {
+  const result = await runner("hang", 300).ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(result.reason, "timeout");
+});
+```
+
+- [ ] **Step 3: 테스트가 실패하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: FAIL. `Cannot find module '../src/claude-runner.js'`
+
+- [ ] **Step 4: `bot/src/claude-runner.js`를 쓴다**
+
+`claudeArgsPrefix`는 시험에서 `node fake-claude.mjs` 형태로 부르기 위한 자리다.
+실제 운영에서는 비어 있다.
+
+```js
+import { spawn as nodeSpawn } from "node:child_process";
+
+// Read is NOT harmless here. The working directory is the repo root, and the
+// bot's own secrets live under bot/. Anyone in the channel could otherwise ask
+// the bot to read bot/.env back to them.
+// WebSearch and Agent stay out too: --allowed-tools is not a whitelist, so a
+// tool that is merely unlisted still runs under --permission-mode dontAsk.
+const BLOCKED_TOOLS = [
+  "Bash",
+  "Edit",
+  "Write",
+  "NotebookEdit",
+  "WebFetch",
+  "WebSearch",
+  "Agent",
+  "Read(./bot/**)",
+];
+const SECRET_ENV_KEYS = ["DISCORD_TOKEN"];
+const MODEL = "claude-sonnet-5";
+// A wiki answer is a few kilobytes. Anything past this is a runaway process, and
+// buffering it whole is how the bot runs out of memory.
+const MAX_STDOUT_BYTES = 2 * 1024 * 1024;
+
+function withoutSecrets(source) {
+  const copy = { ...source };
+  for (const key of SECRET_ENV_KEYS) delete copy[key];
+  return copy;
+}
+
+export function createClaudeRunner({
+  claudeBin,
+  repoRoot,
+  timeoutMs,
+  claudeArgsPrefix = [],
+  env = process.env,
+  spawn = nodeSpawn,
+}) {
+  const childEnv = withoutSecrets(env);
+  function buildArgs({ question, sessionId, resume = false }) {
+    return [
+      ...claudeArgsPrefix,
+      "-p",
+      resume ? "--resume" : "--session-id",
+      sessionId,
+      "--model",
+      MODEL,
+      "--permission-mode",
+      "dontAsk",
+      "--disallowed-tools",
+      ...BLOCKED_TOOLS,
+      "--output-format",
+      "json",
+      "--",
+      question,
+    ];
+  }
+
+  function ask({ question, sessionId, resume = false }) {
+    return new Promise((resolve) => {
+      const child = spawn(claudeBin, buildArgs({ question, sessionId, resume }), {
+        cwd: repoRoot,
+        env: childEnv,
+        // The prompt travels as an argument. An open stdin pipe only invites the
+        // CLI to wait for EOF that never comes.
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(result);
+      };
+
+      const timer = setTimeout(() => {
+        child.kill("SIGKILL");
+        finish({ ok: false, reason: "timeout", detail: `exceeded ${timeoutMs}ms` });
+      }, timeoutMs);
+
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk;
+        if (stdout.length > MAX_STDOUT_BYTES) {
+          child.kill("SIGKILL");
+          finish({
+            ok: false,
+            reason: "exit",
+            detail: `stdout exceeded ${MAX_STDOUT_BYTES} bytes`,
+          });
+        }
+      });
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk;
+      });
+
+      child.on("error", (error) => {
+        finish({ ok: false, reason: "exit", detail: error.message });
+      });
+
+      child.on("close", (code) => {
+        if (code !== 0) {
+          finish({ ok: false, reason: "exit", detail: `code ${code}: ${stderr.slice(0, 500)}` });
+          return;
+        }
+
+        let payload;
+        try {
+          payload = JSON.parse(stdout);
+        } catch {
+          finish({ ok: false, reason: "parse", detail: stdout.slice(0, 500) });
+          return;
+        }
+
+        if (payload.is_error) {
+          finish({ ok: false, reason: "error", detail: String(payload.subtype ?? "unknown") });
+          return;
+        }
+
+        const text = typeof payload.result === "string" ? payload.result.trim() : "";
+        if (text.length === 0) {
+          finish({ ok: false, reason: "empty", detail: "result was blank" });
+          return;
+        }
+
+        finish({ ok: true, text, sessionId: payload.session_id });
+      });
+    });
+  }
+
+  return { buildArgs, ask };
+}
+```
+
+- [ ] **Step 5: 기본 실행에서 제외되는 통합 시험을 더한다**
+
+`bot/test/claude-live.test.js`. 실제 `claude`를 부르므로 `RUN_LIVE=1` 일 때만 돈다.
+
+```js
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { createClaudeRunner } from "../src/claude-runner.js";
+
+const live = process.env.RUN_LIVE === "1";
+
+test("실제 claude 가 sonnet-5 로 답한다", { skip: !live }, async () => {
+  const runner = createClaudeRunner({
+    claudeBin: process.env.CLAUDE_BIN || "claude",
+    repoRoot: process.env.REPO_ROOT || process.cwd(),
+    timeoutMs: 300000,
+  });
+  const result = await runner.ask({
+    question: "도구 쓰지 말고 숫자 1만 출력해라",
+    sessionId: crypto.randomUUID(),
+  });
+  assert.equal(result.ok, true, `실패 사유: ${result.reason ?? ""}`);
+  assert.ok(result.text.includes("1"));
+});
+```
+
+- [ ] **Step 6: 테스트가 통과하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: PASS. 누적 55건 통과. 통합 시험 1건은 skip 으로 표시된다.
+
+통합 시험을 직접 돌려보려면 `RUN_LIVE=1 CLAUDE_BIN=$(which claude) REPO_ROOT=$(cd .. && pwd) npm test`
+를 쓴다. 구독 한도를 먹으므로 필요할 때만 돌린다.
+
+- [ ] **Step 7: 커밋한다**
+
+```bash
+git add bot/src/claude-runner.js bot/test/claude-runner.test.js bot/test/claude-live.test.js bot/test/fixtures/fake-claude.mjs
+git commit -m "feat(bot): run claude headlessly with write tools disabled"
+```
+
+---
+
+### Task 6: 응답 조립
+
+디스코드 API를 건드리지 않는 순수 부분을 먼저 떼어낸다. 게이트웨이를 얇게 유지하기
+위해서다.
+
+**Files:**
+- Create: `bot/src/replies.js`
+- Test: `bot/test/replies.test.js`
+
+**Interfaces:**
+- Consumes: `splitMessage` (Task 2)
+- Produces:
+  - `threadName(question) -> string` — 80자로 자르고 개행을 공백으로 바꾼다. 빈 질문은 `"위키 질문"`.
+    **코드 포인트 단위로 자른다.** `slice`로 자르면 이모지 같은 서로게이트 쌍이 경계에서
+    쪼개져 깨진 글자가 디스코드로 나간다. 결과는 디스코드 상한인 UTF-16 100 코드 유닛도
+    넘지 않는다.
+  - `rejectionText(reason) -> string` — `"daily" | "user" | "concurrent"`에 대응하는 한국어 문구
+  - `failureText(reason) -> string` — `"timeout" | "exit" | "parse" | "error" | "empty"`에 대응하는 한국어 문구
+  - `answerMessages(text, { resumeFailed }) -> string[]` — 분할된 조각들. `resumeFailed`가
+    참이면 첫 조각 앞에 맥락 끊김 안내를 붙인다.
+    **빈 배열을 돌려주지 않는다.** 게이트웨이가 빈 배열을 순회하면 아무 메시지도 나가지
+    않아 쓰레드가 조용히 방치된다. 본문이 비면 실패 안내 한 건을 돌려준다.
+
+- [ ] **Step 1: 실패하는 테스트를 쓴다**
+
+`bot/test/replies.test.js`:
+
+```js
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { threadName, rejectionText, failureText, answerMessages } from "../src/replies.js";
+
+test("쓰레드 이름은 80자를 넘지 않는다", () => {
+  assert.ok(threadName("가".repeat(200)).length <= 80);
+});
+
+test("쓰레드 이름의 개행을 공백으로 바꾼다", () => {
+  assert.equal(threadName("첫 줄\n둘째 줄"), "첫 줄 둘째 줄");
+});
+
+test("빈 질문에도 이름이 있다", () => {
+  assert.equal(threadName("   "), "위키 질문");
+});
+
+test("거절 사유마다 다른 문구를 쓴다", () => {
+  const texts = ["daily", "user", "concurrent"].map(rejectionText);
+  assert.equal(new Set(texts).size, 3);
+  for (const text of texts) assert.ok(text.length > 0);
+});
+
+test("모르는 거절 사유에는 거절 문구가 나간다", () => {
+  const text = rejectionText("unknown-reason");
+  assert.ok(text.length > 0);
+  assert.notEqual(text, failureText("unknown-reason"), "거절인데 실패 문구가 나가면 안 된다");
+});
+
+test("실패 사유마다 문구가 있다", () => {
+  for (const reason of ["timeout", "exit", "parse", "error", "empty"]) {
+    assert.ok(failureText(reason).length > 0);
+  }
+});
+
+test("모르는 사유에도 문구를 준다", () => {
+  assert.ok(failureText("unknown-reason").length > 0);
+});
+
+test("실패 문구에 경로나 스택을 넣지 않는다", () => {
+  for (const reason of ["timeout", "exit", "parse", "error", "empty"]) {
+    const text = failureText(reason);
+    assert.ok(!text.includes("/"), `경로처럼 보이는 문구: ${text}`);
+    assert.ok(!text.includes("Error:"), `스택처럼 보이는 문구: ${text}`);
+  }
+});
+
+test("이모지 경계에서 글자를 쪼개지 않는다", () => {
+  const name = threadName("가" + "😀".repeat(85));
+  for (let i = 0; i < name.length; i += 1) {
+    const code = name.charCodeAt(i);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = name.charCodeAt(i + 1);
+      assert.ok(next >= 0xdc00 && next <= 0xdfff, `외짝 하이 서로게이트 ${i}`);
+      i += 1;
+    } else {
+      assert.ok(!(code >= 0xdc00 && code <= 0xdfff), `외짝 로우 서로게이트 ${i}`);
+    }
+  }
+});
+
+test("이모지만 있어도 디스코드 상한 100 코드 유닛을 넘지 않는다", () => {
+  assert.ok(threadName("😀".repeat(200)).length <= 100);
+});
+
+test("본문이 비어도 빈 배열을 주지 않는다", () => {
+  const messages = answerMessages("", { resumeFailed: false });
+  assert.equal(messages.length, 1);
+  assert.ok(messages[0].length > 0);
+});
+
+test("맥락이 끊기면 첫 조각에 안내를 붙인다", () => {
+  const messages = answerMessages("답변", { resumeFailed: true });
+  assert.ok(messages[0].includes("새로 시작"));
+  assert.ok(messages[0].includes("답변"));
+});
+
+test("정상 답변에는 안내를 붙이지 않는다", () => {
+  assert.deepEqual(answerMessages("답변", { resumeFailed: false }), ["답변"]);
+});
+
+test("긴 답변을 나눈다", () => {
+  const messages = answerMessages(("가".repeat(99) + "\n").repeat(40), { resumeFailed: false });
+  assert.ok(messages.length > 1);
+  for (const message of messages) assert.ok(message.length <= 2000);
+});
+```
+
+- [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: FAIL. `Cannot find module '../src/replies.js'`
+
+- [ ] **Step 3: `bot/src/replies.js`를 쓴다**
+
+```js
+import { splitMessage } from "./message-split.js";
+
+const THREAD_NAME_LIMIT = 80;
+// Discord measures the name in UTF-16 code units, so an emoji costs two.
+const DISCORD_THREAD_NAME_LIMIT = 100;
+const RESUME_NOTICE = "이전 맥락이 끊겨 새로 시작합니다.";
+export const THINKING = "찾는 중입니다. 30초에서 2분 걸립니다.";
+
+const REJECTIONS = {
+  daily: "오늘 질문 한도를 다 썼습니다. 내일 다시 물어봐 주세요.",
+  user: "질문이 너무 빠릅니다. 잠시 뒤에 다시 물어봐 주세요.",
+  concurrent: "지금 처리 중인 질문이 많습니다. 잠시 뒤에 다시 물어봐 주세요.",
+};
+
+const FAILURES = {
+  timeout: "시간이 초과됐습니다. 질문을 좁혀서 다시 물어봐 주세요.",
+  exit: "답변을 만들지 못했습니다. 잠시 뒤에 다시 물어봐 주세요.",
+  parse: "답변을 읽지 못했습니다. 잠시 뒤에 다시 물어봐 주세요.",
+  error: "답변 도중 문제가 생겼습니다. 잠시 뒤에 다시 물어봐 주세요.",
+  empty: "답변이 비어 있었습니다. 질문을 바꿔서 다시 물어봐 주세요.",
+};
+
+const FALLBACK_FAILURE = "답변에 실패했습니다. 잠시 뒤에 다시 물어봐 주세요.";
+const FALLBACK_REJECTION = "지금은 질문을 받을 수 없습니다. 잠시 뒤에 다시 물어봐 주세요.";
+
+export function threadName(question) {
+  const flat = question.replace(/\s+/g, " ").trim();
+  if (flat.length === 0) return "위키 질문";
+
+  // Array.from splits on code points, so a surrogate pair never breaks in half.
+  let points = Array.from(flat).slice(0, THREAD_NAME_LIMIT);
+  while (points.join("").length > DISCORD_THREAD_NAME_LIMIT) points.pop();
+  return points.join("");
+}
+
+export function rejectionText(reason) {
+  return REJECTIONS[reason] ?? FALLBACK_REJECTION;
+}
+
+export function failureText(reason) {
+  return FAILURES[reason] ?? FALLBACK_FAILURE;
+}
+
+export function answerMessages(text, { resumeFailed = false } = {}) {
+  const body = resumeFailed ? `${RESUME_NOTICE}\n\n${text}` : text;
+  const messages = splitMessage(body, 2000);
+  // An empty array would leave the thread silent forever.
+  return messages.length > 0 ? messages : [FAILURES.empty];
+}
+```
+
+- [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: PASS. 누적 69건 통과(통합 1건 skip 제외)
+
+- [ ] **Step 5: 커밋한다**
+
+```bash
+git add bot/src/replies.js bot/test/replies.test.js
+git commit -m "feat(bot): build user-facing Korean reply text"
+```
+
+---
+
+### Task 7: 질문 처리 흐름
+
+디스코드 클라이언트를 모르는 순수 흐름이다. 쓰레드를 여는 일과 글을 올리는 일은 주입받은
+콜백에 맡긴다. 이렇게 하면 흐름 전체를 discord.js 없이 시험할 수 있고, 게이트웨이에 판단이
+쌓이지 않는다.
+
+한도 판정이 쓰레드를 여는 것보다 먼저다. 쓰레드를 먼저 만들고 거절하면 한도에 걸린 팀원이
+반복할 때마다 빈 쓰레드가 쌓인다.
+
+**Files:**
+- Create: `bot/src/handle-question.js`
+- Test: `bot/test/handle-question.test.js`
+
+**Interfaces:**
+- Consumes: `createSessionStore` (Task 3), `createRateLimiter` (Task 4),
+  `createClaudeRunner` (Task 5), `rejectionText`·`failureText`·`answerMessages` (Task 6)
+- Produces: `createQuestionHandler({ store, limiter, runner, randomUUID, log }) -> handle`
+  - `handle({ userId, question, resolveThread, replyDirect }) -> Promise<Outcome>`
+  - `resolveThread() -> Promise<{ threadId, postMessages }>` — 쓰레드를 만들거나 찾아서
+    돌려준다. 한도를 통과한 뒤에만 불린다.
+  - `postMessages(messages: string[]) -> Promise<void>`
+  - `replyDirect(text: string) -> Promise<void>` — 쓰레드 밖, 원 메시지에 답글을 단다.
+    거절 문구에만 쓴다.
+  - `Outcome`은 `{ status: "answered" }`, `{ status: "rejected", reason }`,
+    `{ status: "failed", reason }` 중 하나다. **항상 이 셋 중 하나로 resolve 한다.**
+    `resolveThread`나 `postMessages`가 던지면 잡아서 `{ status: "failed", reason: "delivery" }`로
+    끝낸다. 이 경로에서는 팀원에게 아무것도 보내지 않는다. 보내는 일 자체가 실패했기 때문이다.
+  - 답을 먼저 보내고 세션을 나중에 저장한다. `store.set`이 던져도 답은 이미 나갔으므로
+    로그만 남기고 `answered`로 끝낸다.
+  - 되물음에서 `exit`로 실패하면 세션을 지우고 새 UUID로 한 번만 다시 시도한다.
+    재시도도 실패하면 `failed`로 끝낸다.
+  - `parse`·`error`·`empty`로는 재시도하지 않는다. 세션이 멀쩡한데 지우면 구독 한도를
+    한 번 더 먹고, 끊기지 않은 맥락을 끊겼다고 잘못 안내한다.
+  - 시간 초과(`timeout`)면 세션을 지우고 재시도하지 않는다.
+
+- [ ] **Step 1: 실패하는 테스트를 쓴다**
+
+`bot/test/handle-question.test.js`:
+
+```js
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { createQuestionHandler } from "../src/handle-question.js";
+
+function harness({
+  askResults,
+  existingSession = null,
+  acquire,
+  throwOnThread = false,
+  throwOnPost = false,
+} = {}) {
+  const posted = [];
+  const direct = [];
+  const calls = [];
+  const sessions = new Map();
+  let threadOpens = 0;
+  let released = 0;
+  let storeBroken = false;
+
+  if (existingSession) sessions.set("thread-1", existingSession);
+
+  let uuidCounter = 0;
+  const handle = createQuestionHandler({
+    store: {
+      get: (id) => sessions.get(id) ?? null,
+      set: (id, value) => {
+        if (storeBroken) throw new Error("disk full");
+        sessions.set(id, value);
+      },
+      remove: (id) => sessions.delete(id),
+    },
+    limiter: {
+      acquire:
+        acquire ??
+        (() => ({
+          ok: true,
+          release() {
+            released += 1;
+          },
+        })),
+    },
+    runner: {
+      ask(args) {
+        calls.push(args);
+        return Promise.resolve(askResults[calls.length - 1]);
+      },
+    },
+    randomUUID: () => `new-uuid-${++uuidCounter}`,
+    log: () => {},
+  });
+
+  const run = () =>
+    handle({
+      userId: "user-1",
+      question: "질문",
+      resolveThread: async () => {
+        threadOpens += 1;
+        if (throwOnThread) throw new Error("discord is down");
+        return {
+          threadId: "thread-1",
+          postMessages: async (messages) => {
+            if (throwOnPost) throw new Error("discord is down");
+            posted.push(...messages);
+          },
+        };
+      },
+      replyDirect: async (text) => direct.push(text),
+    });
+
+  return {
+    run,
+    posted,
+    direct,
+    calls,
+    sessions,
+    threadOpens: () => threadOpens,
+    released: () => released,
+    breakStore: () => {
+      storeBroken = true;
+    },
+  };
+}
+
+test("첫 질문은 새 세션으로 묻고 답을 올린다", async () => {
+  const h = harness({ askResults: [{ ok: true, text: "답변", sessionId: "s-1" }] });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "answered" });
+  assert.equal(h.calls[0].resume, false);
+  assert.equal(h.calls[0].sessionId, "new-uuid-1");
+  assert.deepEqual(h.posted, ["답변"]);
+  assert.equal(h.sessions.get("thread-1"), "s-1");
+});
+
+test("세션이 있으면 resume 으로 묻는다", async () => {
+  const h = harness({
+    askResults: [{ ok: true, text: "답변", sessionId: "s-1" }],
+    existingSession: "s-1",
+  });
+  await h.run();
+
+  assert.equal(h.calls[0].resume, true);
+  assert.equal(h.calls[0].sessionId, "s-1");
+});
+
+test("resume 이 exit 로 실패하면 새 세션으로 한 번 다시 묻는다", async () => {
+  const h = harness({
+    askResults: [
+      { ok: false, reason: "exit", detail: "no such session" },
+      { ok: true, text: "답변", sessionId: "s-2" },
+    ],
+    existingSession: "s-1",
+  });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "answered" });
+  assert.equal(h.calls.length, 2);
+  assert.equal(h.calls[1].resume, false);
+  assert.ok(h.posted[0].includes("새로 시작"));
+  assert.equal(h.sessions.get("thread-1"), "s-2");
+});
+
+test("재시도도 실패하면 실패로 끝낸다", async () => {
+  const h = harness({
+    askResults: [
+      { ok: false, reason: "exit", detail: "x" },
+      { ok: false, reason: "exit", detail: "y" },
+    ],
+    existingSession: "s-1",
+  });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "exit" });
+  assert.equal(h.calls.length, 2);
+  assert.equal(h.posted.length, 1);
+});
+
+test("첫 질문 실패는 재시도하지 않는다", async () => {
+  const h = harness({ askResults: [{ ok: false, reason: "exit", detail: "x" }] });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "exit" });
+  assert.equal(h.calls.length, 1);
+});
+
+test("되물음이 empty 면 재시도하지 않고 세션을 지킨다", async () => {
+  const h = harness({
+    askResults: [{ ok: false, reason: "empty", detail: "blank" }],
+    existingSession: "s-1",
+  });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "empty" });
+  assert.equal(h.calls.length, 1, "empty 는 재시도 대상이 아니다");
+  assert.equal(h.sessions.get("thread-1"), "s-1", "멀쩡한 세션을 지우면 안 된다");
+  assert.ok(!h.posted[0].includes("새로 시작"));
+});
+
+test("되물음이 parse 로 실패해도 재시도하지 않는다", async () => {
+  const h = harness({
+    askResults: [{ ok: false, reason: "parse", detail: "junk" }],
+    existingSession: "s-1",
+  });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "parse" });
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.sessions.get("thread-1"), "s-1");
+});
+
+test("시간 초과면 세션을 지우고 재시도하지 않는다", async () => {
+  const h = harness({
+    askResults: [{ ok: false, reason: "timeout", detail: "x" }],
+    existingSession: "s-1",
+  });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "timeout" });
+  assert.equal(h.sessions.has("thread-1"), false);
+  assert.equal(h.calls.length, 1);
+});
+
+test("세션 저장이 실패해도 답은 전달된다", async () => {
+  const h = harness({ askResults: [{ ok: true, text: "답변", sessionId: "s-1" }] });
+  h.breakStore();
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "answered" });
+  assert.deepEqual(h.posted, ["답변"], "저장이 실패해도 답은 나가야 한다");
+});
+
+test("쓰레드를 못 열면 delivery 로 끝내고 자리를 반납한다", async () => {
+  const h = harness({ askResults: [], throwOnThread: true });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "delivery" });
+  assert.equal(h.released(), 1);
+  assert.equal(h.calls.length, 0);
+});
+
+test("답을 못 보내면 delivery 로 끝내고 자리를 반납한다", async () => {
+  const h = harness({
+    askResults: [{ ok: true, text: "답변", sessionId: "s-1" }],
+    throwOnPost: true,
+  });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "failed", reason: "delivery" });
+  assert.equal(h.released(), 1);
+});
+
+test("한도에 걸리면 쓰레드를 열지 않고 답글로 거절한다", async () => {
+  const h = harness({
+    askResults: [],
+    acquire: () => ({ ok: false, reason: "daily" }),
+  });
+  const outcome = await h.run();
+
+  assert.deepEqual(outcome, { status: "rejected", reason: "daily" });
+  assert.equal(h.threadOpens(), 0, "거절이면 쓰레드를 만들지 않는다");
+  assert.equal(h.calls.length, 0, "거절이면 claude 를 띄우지 않는다");
+  assert.equal(h.posted.length, 0);
+  assert.equal(h.direct.length, 1);
+  assert.ok(h.direct[0].includes("한도"));
+});
+
+test("답이 나오든 실패하든 자리를 반납한다", async () => {
+  const ok = harness({ askResults: [{ ok: true, text: "답변", sessionId: "s-1" }] });
+  await ok.run();
+  assert.equal(ok.released(), 1);
+
+  const bad = harness({ askResults: [{ ok: false, reason: "exit", detail: "x" }] });
+  await bad.run();
+  assert.equal(bad.released(), 1);
+});
+```
+
+- [ ] **Step 2: 테스트가 실패하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: FAIL. `Cannot find module '../src/handle-question.js'`
+
+- [ ] **Step 3: `bot/src/handle-question.js`를 쓴다**
+
+```js
+import { rejectionText, failureText, answerMessages } from "./replies.js";
+
+const RETRYABLE_ON_RESUME = "exit";
+
+export function createQuestionHandler({ store, limiter, runner, randomUUID, log }) {
+  return async function handle({ userId, question, resolveThread, replyDirect }) {
+    const slot = limiter.acquire(userId);
+    if (!slot.ok) {
+      await replyDirect(rejectionText(slot.reason));
+      return { status: "rejected", reason: slot.reason };
+    }
+
+    try {
+      const { threadId, postMessages } = await resolveThread();
+
+      const existing = store.get(threadId);
+      const resume = existing !== null;
+      const sessionId = existing ?? randomUUID();
+
+      let result = await runner.ask({ question, sessionId, resume });
+      let resumeFailed = false;
+
+      if (!result.ok && result.reason === "timeout") {
+        store.remove(threadId);
+        log("claude timed out", { threadId, detail: result.detail });
+        await postMessages([failureText(result.reason)]);
+        return { status: "failed", reason: result.reason };
+      }
+
+      if (!result.ok && resume && result.reason === RETRYABLE_ON_RESUME) {
+        log("resume failed, starting a new session", { threadId, detail: result.detail });
+        store.remove(threadId);
+        resumeFailed = true;
+        result = await runner.ask({ question, sessionId: randomUUID(), resume: false });
+      }
+
+      if (!result.ok) {
+        log("claude failed", { threadId, reason: result.reason, detail: result.detail });
+        await postMessages([failureText(result.reason)]);
+        return { status: "failed", reason: result.reason };
+      }
+
+      // Deliver first. A failed write costs the next follow-up its context; a
+      // failed delivery costs the answer itself.
+      await postMessages(answerMessages(result.text, { resumeFailed }));
+      try {
+        store.set(threadId, result.sessionId);
+      } catch (error) {
+        log("could not persist session", { threadId, detail: error?.message });
+      }
+      return { status: "answered" };
+    } catch (error) {
+      // Opening the thread or posting to it failed, so there is nowhere to
+      // report this. Log it and let the caller move on.
+      log("could not deliver", { userId, detail: error?.message });
+      return { status: "failed", reason: "delivery" };
+    } finally {
+      slot.release();
+    }
+  };
+}
+```
+
+`slot.release()`는 `finally`에 있으므로 거절 경로를 제외한 모든 경로에서 정확히 한 번
+불린다. 거절 경로는 자리를 잡은 적이 없어 반납할 것도 없다.
+
+저장보다 전달이 먼저다. 저장이 실패하면 다음 되물음이 맥락을 잃을 뿐이지만, 전달이
+막히면 답 자체가 사라진다. 팀원은 "찾는 중입니다"만 보고 끝난다.
+
+`delivery`는 `failureText`에 없는 사유다. 일부러 그렇다. 이 경로는 디스코드에 글을 쓰는
+일이 이미 실패한 상태이므로 문구를 만들 이유가 없다.
+
+- [ ] **Step 4: 테스트가 통과하는 것을 확인한다**
+
+Run: `cd bot && npm test`
+Expected: PASS. 누적 82건 통과(통합 1건 skip 제외)
+
+- [ ] **Step 5: 커밋한다**
+
+```bash
+git add bot/src/handle-question.js bot/test/handle-question.test.js
+git commit -m "feat(bot): orchestrate admission, ask, retry, and reply"
+```
+
+---
+
+### Task 8: 디스코드 게이트웨이와 기동
+
+여기서만 `discord.js`를 만진다. 판단 로직은 앞 태스크들에 있으므로 이 파일은 얇다.
+자동 시험 대상이 아니며, 실제 디스코드 서버에서 수동으로 확인한다.
+
+**Files:**
+- Create: `bot/src/gateway.js`
+- Create: `bot/src/index.js`
+- Create: `bot/README.md`
+- Modify: `CLAUDE.md` (저장소 루트)
+
+**Interfaces:**
+- Consumes: `createQuestionHandler` (Task 7), `loadConfig` (Task 1),
+  `createSessionStore` (Task 3), `createRateLimiter` (Task 4), `createClaudeRunner` (Task 5),
+  `threadName` (Task 6)
+- Produces: `createClient() -> Client`, `startGateway({ config, handle, client, log }) -> Promise<void>`
+  - `log`의 기본값은 `console.log`다.
+
+- [ ] **Step 1: `bot/src/gateway.js`를 쓴다**
+
+```js
+import { Client, GatewayIntentBits, Events, ChannelType } from "discord.js";
+import { threadName, THINKING } from "./replies.js";
+
+// Every user-facing string lives in replies.js. Nothing in this file writes one.
+const SILENT = { allowedMentions: { parse: [] } };
+
+function isAllowedChannel(message, config) {
+  const parentId = message.channel.isThread() ? message.channel.parentId : message.channel.id;
+  return config.allowedChannelIds.includes(parentId);
+}
+
+export function createClient() {
+  return new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+  });
+}
+
+export async function startGateway({ config, handle, client, log = console.log }) {
+  client.on(Events.MessageCreate, async (message) => {
+    try {
+      if (message.author.bot) return;
+      if (message.guildId !== config.guildId) return;
+      if (!isAllowedChannel(message, config)) return;
+
+      const inThread = message.channel.isThread();
+      const mentioned = message.mentions.users.has(client.user.id);
+      const ownThread = inThread && message.channel.ownerId === client.user.id;
+      if (!mentioned && !ownThread) return;
+
+      // Strip only our own mention. A blanket /<@!?\d+>/g also deletes the
+      // people the question is about, and "이 사람이 쓴 정책" loses its referent.
+      const selfMention = new RegExp(`<@!?${client.user.id}>`, "g");
+      const question = message.content.replace(selfMention, " ").replace(/\s+/g, " ").trim();
+      if (question.length === 0) return;
+
+      const resolveThread = async () => {
+        const thread = inThread
+          ? message.channel
+          : await message.startThread({
+              name: threadName(question),
+              type: ChannelType.PublicThread,
+            });
+
+        await thread.sendTyping();
+        const placeholder = await thread.send({ content: THINKING, ...SILENT });
+        let first = true;
+
+        return {
+          threadId: thread.id,
+          // Answers quote the wiki, which can contain <@id> shaped text. Without
+          // allowedMentions that text pings real people.
+          postMessages: async (messages) => {
+            for (const text of messages) {
+              if (first) {
+                await placeholder.edit({ content: text, ...SILENT });
+                first = false;
+              } else {
+                await thread.send({ content: text, ...SILENT });
+              }
+            }
+          },
+        };
+      };
+
+      await handle({
+        userId: message.author.id,
+        question,
+        resolveThread,
+        replyDirect: (text) => message.reply({ content: text, ...SILENT }),
+      });
+    } catch (error) {
+      log("gateway error", error?.message ?? error);
+    }
+  });
+
+  client.once(Events.ClientReady, (ready) => {
+    log(`logged in as ${ready.user.tag}`);
+  });
+
+  await client.login(config.discordToken);
+}
+```
+
+멘션 판별은 두 갈래다. 멘션이 있으면 어디서든 받는다. 봇이 연 쓰레드 안에서는 멘션 없이도
+받는다. 사람이 연 쓰레드에서 멘션하는 경우도 첫 갈래로 처리되므로 조용히 버려지지 않는다.
+`ownerId`가 캐시에 없어 `undefined`여도 멘션만 하면 동작한다.
+
+질문에서 지우는 것은 봇 자신의 멘션뿐이다. 모든 멘션을 지우면 질문이 가리키던 사람이
+사라진다. `@봇 <@다른유저> 이 사람이 쓴 정책 뭐야?`가 `이 사람이 쓴 정책 뭐야?`가 되어
+누구를 묻는지 알 수 없게 된다.
+
+- [ ] **Step 2: `bot/src/index.js`를 쓴다**
+
+`git status --porcelain`으로 작업 트리를 확인하는 자리를 여기에 둔다. 답변마다 확인하면
+느리므로, 기동할 때 한 번 찍고 이후에는 답변이 끝날 때마다 확인한다.
+
+```js
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { loadConfig } from "./config.js";
+import { createSessionStore } from "./session-store.js";
+import { createRateLimiter } from "./rate-limiter.js";
+import { createClaudeRunner } from "./claude-runner.js";
+import { createQuestionHandler } from "./handle-question.js";
+import { createClient, startGateway } from "./gateway.js";
+
+const log = (...args) => console.log(new Date().toISOString(), ...args);
+
+function warnIfRepoDirty(repoRoot) {
+  try {
+    const output = execFileSync("git", ["status", "--porcelain"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+    if (output.trim().length > 0) {
+      log("WARNING: repo working tree is dirty; the bot must never write", output.slice(0, 500));
+    }
+  } catch (error) {
+    log("could not check repo state", error?.message ?? error);
+  }
+}
+
+const config = loadConfig(process.env);
+warnIfRepoDirty(config.repoRoot);
+
+const store = createSessionStore({ filePath: config.sessionFile }); // exactly one per process
+const limiter = createRateLimiter({
+  maxConcurrent: config.maxConcurrent,
+  perUserPerMin: config.ratePerUserPerMin,
+  dailyQuota: config.dailyQuota,
+});
+const runner = createClaudeRunner({
+  claudeBin: config.claudeBin,
+  repoRoot: config.repoRoot,
+  timeoutMs: config.timeoutMs,
+});
+
+const answer = createQuestionHandler({ store, limiter, runner, randomUUID, log });
+const handle = async (args) => {
+  const outcome = await answer(args);
+  warnIfRepoDirty(config.repoRoot);
+  return outcome;
+};
+
+await startGateway({ config, handle, client: createClient(), log });
+```
+
+- [ ] **Step 3: `bot/README.md`를 쓴다**
+
+````markdown
+# 위키 질의응답 디스코드 봇
+
+이 저장소의 `wiki/`를 근거로 디스코드에서 질문에 답하는 읽기 전용 봇이다.
+설계는 [`specs/2026-09-17-wiki-discord-bot-design.md`](specs/2026-09-17-wiki-discord-bot-design.md)에 있다.
+
+## 준비
+
+1. 디스코드 개발자 포털에서 애플리케이션과 봇을 만든다.
+2. Bot 설정에서 **Message Content Intent**를 켠다. 이게 없으면 멘션 본문을 못 읽는다.
+3. OAuth2 URL 생성기에서 `bot` 스코프와 다음 권한을 골라 서버에 초대한다.
+   View Channels, Send Messages, Send Messages in Threads, Create Public Threads,
+   Read Message History.
+4. `.env.example`을 `.env`로 복사하고 값을 채운다.
+
+```bash
+cd bot
+npm install
+cp .env.example .env
+```
+
+## 실행
+
+```bash
+cd bot
+npm start
+```
+
+`npm start` 는 `--env-file=.env` 를 상대경로로 읽으므로 반드시 `bot/` 안에서 돌린다.
+Node 22 이상이 필요하다.
+
+## 테스트
+
+```bash
+npm test
+```
+
+## 주의
+
+- 이 봇은 저장소를 읽기만 한다. `claude` 호출에서 `Bash`·`Edit`·`Write`·`NotebookEdit`·
+  `WebFetch`·`WebSearch`·`Agent`·`Read(./bot/**)` 여덟을 차단한다. 이 인자를 고칠 때
+  `Bash`와 `Read(./bot/**)`가 빠지지 않았는지 반드시 확인한다.
+- `--restricted`는 쓰지 않는다. 스킬 로드를 막아 위키 규약이 적용되지 않는다.
+- 모델은 `claude-sonnet-5`로 고정돼 있다. 바꾸려면 `src/claude-runner.js`의 `MODEL` 상수와
+  그 테스트를 함께 고친다.
+- `.env`에는 봇 토큰이 들어간다. 이 저장소는 public이므로 절대 커밋하지 않는다.
+- `claude` 는 저장소 루트에서 돌기 때문에 `bot/` 아래 파일을 읽을 수 있다. 그래서
+  `--disallowed-tools` 에 `Read(./bot/**)` 가 들어 있다. **이 규칙을 빼면 팀원이 봇에게
+  `.env` 를 읽어 달라고 해서 토큰을 가져갈 수 있다.**
+- `--allowed-tools` 는 화이트리스트가 아니다. 목록에 없는 도구도 `--permission-mode dontAsk`
+  아래에서 그대로 돈다(실측 확인). 그래서 `WebSearch` 와 `Agent` 도 명시적으로 차단한다.
+- 봇은 소유자 한 명의 구독 한도를 쓴다. `DAILY_QUOTA`로 상한을 관리한다.
+````
+
+- [ ] **Step 4: 루트 `CLAUDE.md`에 네 번째 축을 더한다**
+
+파일 앞부분의 세 축 목록을 다음으로 바꾼다.
+
+```markdown
+이 저장소는 네 축으로 구성된다(모두 저장소 루트의 형제 디렉토리):
+- **`raw/`** — 정책 원본 소스(불변, 읽기 전용).
+- **`wiki/`** — LLM이 `raw/`를 ingest해 운영·유지하는 **정책 지식 위키**.
+- **`parfait/`** — TJYG-Android **구현 문서**(ADR·architecture·specs·plans). 위키 스키마 미적용.
+- **`bot/`** — `wiki/`를 근거로 디스코드에서 답하는 **읽기 전용 질의응답 봇**. 위키 스키마 미적용.
+```
+
+- [ ] **Step 5: 전체 테스트를 돌린다**
+
+Run: `cd bot && npm test`
+Expected: PASS. 누적 82건 통과. Task 8은 새 테스트를 더하지 않는다.
+
+- [ ] **Step 6: 기동만 확인한다**
+
+`.env`에 임시로 잘못된 토큰을 넣고 돌려, 설정 검증을 지나 로그인 단계까지 가는지 본다.
+
+Run: `cd bot && npm start`
+Expected: 설정 오류 없이 진행하다가 디스코드 로그인에서 실패한다. `Missing required setting`
+같은 메시지가 뜨면 `.env`가 덜 채워진 것이다.
+
+- [ ] **Step 7: 커밋한다**
+
+```bash
+git add bot/src/gateway.js bot/src/index.js bot/README.md CLAUDE.md
+git commit -m "feat(bot): wire Discord gateway and process entry point"
+```
+
+---
+
+### Task 9: 실제 디스코드에서 수동 확인
+
+자동 시험이 닿지 않는 층을 사람이 확인한다. 이 태스크는 코드를 바꾸지 않는다.
+발견한 문제는 고쳐서 이 태스크 안에서 커밋한다.
+
+**Files:**
+- Modify: 확인 중 문제가 드러난 파일
+
+- [ ] **Step 1: 실제 토큰으로 봇을 띄운다**
+
+Run: `cd bot && npm start`
+Expected: `logged in as <봇이름>` 로그가 뜬다.
+
+- [ ] **Step 2: 허용 채널에서 멘션한다**
+
+`@봇 G-001 토핑 인셋이 얼마야?`라고 보낸다.
+Expected: 쓰레드가 열리고 "찾는 중입니다" 메시지가 뜬 뒤, 답변으로 바뀐다.
+답변 끝에 근거 페이지 이름이 붙는지 본다.
+
+- [ ] **Step 3: 같은 쓰레드에서 되물음한다**
+
+멘션 없이 `그럼 저개수일 때는?`이라고 보낸다.
+Expected: 앞 질문의 맥락을 이어받아 답한다.
+
+- [ ] **Step 4: 허용하지 않은 채널에서 멘션한다**
+
+Expected: 아무 반응이 없다.
+
+- [ ] **Step 4-1: 사람이 만든 쓰레드에서 멘션한다**
+
+아무 메시지에 직접 쓰레드를 만들고 그 안에서 `@봇 질문`이라고 보낸다.
+Expected: 그 쓰레드 안에서 답한다. 무반응이면 `ownerId` 판별이 잘못된 것이다.
+
+- [ ] **Step 4-2: 하이픈으로 시작하는 질문을 던진다**
+
+`@봇 --restricted 옵션이 뭐야?`라고 보낸다.
+Expected: 정상적으로 답한다. "답변을 만들지 못했습니다"가 나오면 `--` 구분자가 빠진 것이다.
+
+- [ ] **Step 5: 분당 한도를 넘겨 본다**
+
+같은 사용자가 연달아 세 번 묻는다.
+Expected: 세 번째는 쓰레드가 열리지 않고, 원 메시지에 "질문이 너무 빠릅니다" 답글이 달린다.
+
+- [ ] **Step 6: 긴 답변을 유도한다**
+
+`위키 전체 구조를 길게 설명해줘`라고 묻는다.
+Expected: 2000자를 넘으면 여러 메시지로 나뉘고, 코드블록이 깨지지 않는다.
+
+- [ ] **Step 7: 작업 트리가 깨끗한지 확인한다**
+
+Run: `git status --porcelain`
+Expected: 비어 있다. 봇 로그에 dirty 경고가 없어야 한다.
+
+- [ ] **Step 8: 확인 중 고친 것이 있으면 커밋한다**
+
+```bash
+git add -A bot/
+git commit -m "fix(bot): address issues found in manual Discord verification"
+```
+
+---
+
+## 자체 점검 결과
+
+스펙 대조에서 확인한 사항이다.
+
+| 스펙 절 | 구현 태스크 |
+|---|---|
+| 5.1 `discord-gateway` | Task 8 |
+| 5.2 `claude-runner` | Task 5 |
+| 5.3 `session-store` | Task 3 |
+| 5.4 `rate-limiter` | Task 4 |
+| 6 호출 규격 · 모델 고정 | Task 5 (`buildArgs` 테스트가 인자와 모델을 고정한다) |
+| 7 데이터 흐름 | Task 7(판단) + Task 8(디스코드) |
+| 8 답변 형식 · 길이 분할 | Task 2 + Task 6 |
+| 9.1 쓰기 차단 | Task 5(`--disallowed-tools`) + Task 8(`warnIfRepoDirty`) |
+| 9.2 접근 제한 | Task 8(`isAllowedChannel`, `guildId` 확인) |
+| 9.3 사용량 제한(즉시 거절·쓰레드 전 판정) | Task 4 + Task 7 |
+| 10 오류 처리 | Task 6(문구) + Task 7(분기) |
+| 11 테스트 전략 | Task 2~7이 자동, Task 5의 통합 1건은 기본 skip, Task 9가 수동 |
+| 12 설정 | Task 1 |
+
+스펙 8절의 근거 표기 형식은 봇 코드가 아니라 `claude`의 답변에 달려 있다. 코드로 강제할
+수 없으므로 Task 9 Step 2에서 눈으로 확인한다. 형식이 나오지 않으면 스펙 13절이 적은
+대로 `wiki/CLAUDE.md`의 query 워크플로를 고친다.
+
+스펙 10절은 봇 재시작 시 유실을 인정하고 알림도 하지 않는다. 계획도 같다. 이 항목에
+대응하는 코드가 없는 것이 맞다.
