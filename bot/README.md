@@ -1,7 +1,10 @@
-# 위키 질의응답 디스코드 봇
+# 저장소 문서 질의응답 디스코드 봇
 
-이 저장소의 `wiki/`를 근거로 디스코드에서 질문에 답하는 읽기 전용 봇이다.
-설계는 [`specs/2026-09-17-wiki-discord-bot-design.md`](specs/2026-09-17-wiki-discord-bot-design.md)에 있다.
+이 저장소의 문서를 근거로 디스코드에서 질문에 답하는 읽기 전용 봇이다. 근거는 `wiki/`(정책)와
+`parfait/`(구현·서버 계약) 둘이다. 설계는
+[`specs/2026-09-17-wiki-discord-bot-design.md`](specs/2026-09-17-wiki-discord-bot-design.md)에 있고,
+**답하는 규약은 `.claude/skills/ask/SKILL.md`에 있다** — 봇 코드에는 그 스킬을 로드하라는 한 줄만
+들어 있으므로, 답변 방식을 바꿀 때는 스킬 파일을 고친다.
 
 ## 준비
 
@@ -37,8 +40,12 @@ npm test
 ## 주의
 
 - 이 봇은 저장소를 읽기만 한다. `claude` 호출에서 `Bash`·`Edit`·`Write`·`NotebookEdit`·
-  `WebFetch`·`WebSearch`·`Agent`·`Read(./bot/**)` 여덟을 차단한다. 이 인자를 고칠 때
-  `Bash`와 `Read(./bot/**)`가 빠지지 않았는지 반드시 확인한다.
+  `WebFetch`·`WebSearch`·`Agent`·`Read(./bot/**)`·`Grep(./bot/**)` 아홉을 차단한다. 이 인자를
+  고칠 때 `Bash`와 `Read(./bot/**)`가 빠지지 않았는지 반드시 확인한다.
+- `Grep(./bot/**)`은 지금은 중복이다. 경로 규칙이 도구 이름이 아니라 읽는 대상에 걸려서
+  `Read(./bot/**)`만으로도 `bot/` 아래 `Grep` 이 거부된다(2026-09-17 실측). `parfait/` 확장으로
+  `Grep` 이 봇의 주 탐색 도구가 됐기 때문에 의도를 표면에 남겨 둔 것이고, 빼도 당장은 동작이
+  같지만 그 판정이 바뀌면 드러나지 않게 뚫린다.
 - `--restricted`는 쓰지 않는다. 스킬 로드를 막아 위키 규약이 적용되지 않는다.
 - 모델은 `claude-sonnet-5`로 고정돼 있다. 바꾸려면 `src/claude-runner.js`의 `MODEL` 상수와
   그 테스트를 함께 고친다.
