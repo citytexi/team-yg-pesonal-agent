@@ -4,7 +4,7 @@ title: 세그멘테이션 입력 전처리 구현 계획 (14 Task, 4단계 스�
 status: in-progress
 type: work-order
 created: 2026-08-23
-updated: 2026-08-27
+updated: 2026-09-17
 platforms: android
 owner: android
 related_adr: ADR-0012, ADR-0011, ADR-0014
@@ -889,7 +889,8 @@ override suspend fun decodeImage(uri: String): BitmapWrapper {
 private fun Bitmap.upscaledForSegmentation(): Bitmap {
     val target = computeUpscaleTarget(width, height) ?: return this
 
-    val scaled = Bitmap.createScaledBitmap(this, target.width, target.height, true)
+    // androidx.core.graphics.scale - filter 기본값이 true 라 인자를 다시 주지 않는다
+    val scaled = scale(target.width, target.height)
 
     // 목표 치수는 언제나 원본보다 커서 새 인스턴스가 나온다. 원본을 여기서 닫는다
     recycle()
@@ -897,6 +898,13 @@ private fun Bitmap.upscaledForSegmentation(): Bitmap {
     return scaled
 }
 ```
+
+> **2026-09-17 정정** — 초판은 `Bitmap.createScaledBitmap(this, ..., true)` 를 적었다. PR #504(develop
+> `924cb5802`)가 대체 가능한 호출부를 모두 `androidx.core.graphics` 확장으로 옮겼으므로
+> (`UploadImagePreprocessorImpl`·`SegmentationRecoveryNormalizer`·`ImageSegmentationRepositoryImpl`),
+> 이 Task 를 초판대로 쓰면 그 라운드가 걷어낸 관용구를 되살린다. `scale` 은 내부에서
+> `createScaledBitmap` 을 그대로 부르므로 identity 반환 조건(`plans/README.md` 가 적은
+> `!isMutable`)과 회수 규칙은 달라지지 않는다.
 
 - [ ] **Step 3: 전체 검사와 커밋**
 

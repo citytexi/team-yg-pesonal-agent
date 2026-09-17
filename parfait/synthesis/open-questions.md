@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-16
+verified: 2026-09-17
 related_spec: topping-edit-empty-subject-guard, upload-image-downscale, push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field, g001-group-list-topping-border, build-cache-measurement-harness
 related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029, ADR-0030
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -2533,6 +2533,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   호환 라이브러리를 쓸지 아니면 12 미만을 그대로 둘지. ③ 아이콘 에셋이 `app`·`app-preview` 두 곳에
   **복제**돼 있는데(파일 내용 동일) 공유할지 — 지금은 한쪽만 고치면 조용히 갈린다.
 - **상태**: 미해결 (렌더 확인 0건)
+  > 📌 **고아 드로어블이 정리됐다(2026-09-17, PR #504)** — 위 출처가 `app/` 경로로 적은
+  > `splash_icon.xml`·`splash_icon_background.xml` 은 실제로는 **`core/ui/src/main/res/drawable/`** 에
+  > 있었고, 청소 라운드가 "쓰지 않는 리소스"로 둘 다 지웠다. 테마 속성이 빠진 뒤 아무도 참조하지
+  > 않는 상태였다는 것이 이로써 확인됐다. **항목 ①②③은 그대로다** — 콜드 스타트 첫 프레임을
+  > 실기기에서 본 기록이 여전히 없고, `core-splashscreen` 도입 여부도 정해지지 않았으며,
+  > 아이콘 에셋의 `app`·`app-preview` 복제도 남아 있다(같은 라운드가 두 모듈의 `colors.xml` 에서
+  > 템플릿 색 일곱을 지웠지만 아이콘 에셋은 건드리지 않았다).
 - **해소 메모**: ①은 OQ-P-146 실기기 항목과 같은 회차에 본다.
   parfait에 앱 리소스·테마 인벤토리 문서가 없어 반영처는 결정 시 함께 정한다.
 
@@ -3934,6 +3941,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **그 라운드가 머지된 뒤에도 그대로다(2026-08-20, PR #309)** — develop에서 `NavKeyCanvasMove`·
   > `CanvasMoveRoute`·`CanvasMoveScreen`과 엔트리 등록이 확인되고 `goTo` 호출부는 여전히 0건이다.
   > **이 잔해를 지울 라운드가 정해지지 않았다는 것만 남았다.**
+  > ⚠️ **전용 청소 라운드가 지나갔는데도 그대로다(2026-09-17, PR #504)** — 이 델타는 목적 자체가
+  > 정리였고(`Delete : unused resource`·`Reafctor : Redundant constructs exclude unused symbol`),
+  > 쓰지 않는 드로어블 둘과 템플릿 색 일곱, 안 쓰는 import 여럿을 실제로 걷었다. 그런데
+  > `NavKeyCanvasMove` 계열 셋과 엔트리 등록은 **한 줄도 건드리지 않았다** — develop에서 `goTo`
+  > 호출부는 여전히 0건이다. **"지울 라운드가 정해지지 않았다"는 위 문장이 청소 라운드가 와도
+  > 참이었다**는 것이 이번에 드러났다. 자동 검사가 못 잡는 종류이기 때문이다: 엔트리 등록이 참조라
+  > 미사용 심볼로 보이지 않는다. 지우려면 사람이 따로 결정해야 한다.
 - **해소 메모**: 지우면 [navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지" 목록과
   토핑 생성 플로우 절의 도달 불가 표기를 함께 걷는다. ②와 묶어 도달 불가 화면 셋을 한 라운드에
   정리하는 쪽이 남았다.
@@ -7601,4 +7615,25 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   부풀려진다는 점을 문턱값과 함께 읽어야 한다. 빌드 성능의 다른 두 축(`org.gradle.parallel`·configuration
   cache)은 [2026-08-11] 항목이 따로 추적한다.
 
-<!-- oq-next: 403 -->
+### [2026-09-17] `Navigator` 만 명시적 backing field 로 옮겨 상태 노출 관용구가 두 갈래가 됐다
+
+- **ID**: OQ-P-403
+- **출처**: `core/navigation/.../Navigator.kt`(PR #504 develop 머지) × `core/ui/.../BaseViewModel.kt`.
+  청소 라운드가 `Navigator` 의 `private val _backStack` + `val backStack: List<NavKey> get() = _backStack`
+  쌍을 **Kotlin 명시적 backing field** 한 줄(`val backStack: List<NavKey>` 아래 `field: SnapshotStateList<NavKey> = ...`)로
+  바꿨다. develop 전체에서 이 형태를 쓰는 곳은 **`Navigator` 하나뿐**이고, 같은 일을 하는
+  `private val _x` + 공개 접근자 쌍은 넷이 남아 있다 — `BaseViewModel`(`_state`/`state`,
+  MVI 베이스라 모든 ViewModel 이 상속한다) · `BaseViewModel._effect` · `GroupLocalDataSourceImpl._myGroups` ·
+  `CanvasPoller._refreshFailures`. Kotlin 은 `2.4.10` 이고 `build-logic`·`gradle.properties` 어디에도
+  이 기능을 켜는 컴파일러 인자가 없다(추가 설정 없이 컴파일된다).
+- **항목**: ① 두 관용구 중 무엇을 프로젝트 관용구로 삼을지. ② 삼는다면 `BaseViewModel` 까지 옮길지 —
+  `state` 는 `_state.asStateFlow()` 라 `field` 로 옮기면 래퍼 호출이 사라지고 공개 타입만 `StateFlow<S>` 로
+  남는다. 베이스 클래스라 한 번 바꾸면 모든 ViewModel 의 상태 노출 형태가 같이 정해진다.
+  ③ 옮기지 않기로 하면 `Navigator` 를 되돌릴지, 예외로 둘지.
+- **상태**: 미해결 (**동작 영향 0** — 공개 시그니처도 Compose 의 스냅샷 읽기도 그대로다. 관용구가
+  둘로 갈린 것만 문제다)
+- **해소 메모**: 정하면 [state-management](../architecture/state-management.md) 에 관용구를 한 줄 박고,
+  그 문서가 지금 `BaseViewModel` 의 상태 노출 형태를 **적지 않는다**는 공백도 함께 닫는다. ②를
+  고르면 ADR 을 새로 열 것 없이 그 문서 갱신으로 충분하다 — 결정이 모듈 경계나 의존 방향을 바꾸지 않는다.
+
+<!-- oq-next: 404 -->
