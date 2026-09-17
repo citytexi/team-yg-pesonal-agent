@@ -76,7 +76,7 @@ DTO·에러 코드·`SecurityConfig`·envelope)은 한 글자도 안 바뀌었�
 ✅ **기기 FCM 토큰 등록에 표면이 생겼다**(PR #437 `7019a550`) — **서버 표면이 먼저 열린 첫 도메인**이었는데
 결국 여기서도 앱이 하루 만에 따라붙었다. 다만 **표면뿐이고 부를 수단이 없다** — FCM 토큰을 얻는 심볼이
 develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대로 미결이다
-→ [open-questions](../synthesis/open-questions.md) OQ-P-341.
+→ [open-questions](../android/synthesis/open-questions.md) OQ-P-341.
 ⚠️ **2026-09-04부터 그 공백의 값이 달라졌다** — 서버가 **실제로 푸시를 보내고 있고 받을 앱이 없다.**
 등록된 토큰이 0건이라 발송은 전부 취소되지만, 앱이 등록을 시작하는 순간 문구·`data` 키·채널 id가
 곧바로 구속력을 갖는다 → [notification.md](notification.md).
@@ -102,18 +102,18 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > ✅ **2026-08-15 — `auth.md`가 `done`이 됐다**(PR #260). `reissue`는 `TokenAuthenticator`가, `logout`은
 > `AuthRepository.logout()` → `LogoutUseCase` → S-001 앱 설정이 소비한다. 애플을 뺀 4 엔드포인트 전부가
 > 호출부를 가지므로 **소비처를 얻은 엔드포인트는 10건**이 됐다
-> ([스펙](../specs/archive/2026-08-15-session-token-refresh-infra.md)).
+> ([스펙](../android/specs/archive/2026-08-15-session-token-refresh-infra.md)).
 >
 > ✅ **2026-08-16 — `member.md`에 첫 소비처가 생겼다**(PR #263). `GET /api/v1/users/me`와
 > `PATCH /api/v1/users/me/nickname`이 `MemberRepository` → UseCase 3종 → S-001·S-002·스플래시
 > 부트스트랩까지 이어졌다. **소비처를 얻은 엔드포인트는 12건**이고, 표면만 있고 소비처가 0인 도메인은
 > **셋**(parfait·image·parfait-image)으로 줄었다. `member.md`는 **탈퇴만 미소비**라 `partial` 그대로다
-> ([스펙](../specs/archive/2026-08-15-user-info-ssot.md)).
+> ([스펙](../android/specs/archive/2026-08-15-user-info-ssot.md)).
 >
 > ⚠️ **2026-08-16 — `parfait.md`에 표면을 우회하는 소비자가 생겼다**(PR #259). C-201 캘린더의 UseCase
 > 둘이 파르페 조회 두 엔드포인트를 KDoc으로 가리키면서 remote DataSource를 안 쓰고 mock을 만든다.
 > `android_status`는 `partial` 그대로다(소비처가 계약을 타지 않는다) → [parfait.md](parfait.md) Android 매핑.
-> **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../synthesis/open-questions.md).
+> **실서버 요청 검증은 아직 0건**(실기기 미수행) → [open-questions](../android/synthesis/open-questions.md).
 >
 > `image.md`(2026-08-10 신설) · `member.md`·`parfait-image.md`(2026-08-11 신설)도 **2026-08-12 PR #230
 > 머지로 표면을 얻어** `android_status: partial`이 됐다 — 앞의 넷과 같은 뜻이다(표면은 있고 소비처는 없다).
@@ -123,7 +123,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 >
 > ✅ **2026-08-15(PR #250) — 표면 공백이 다시 0이 됐다.** 서버 delta가 벌린 신규 5건(파르페 오늘·과거,
 > 토핑 테두리·삭제, 회원 탈퇴)이 Service·remote DataSource·domain VO까지 한 라운드에 들어왔다
-> ([spec](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)).
+> ([spec](../android/specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)).
 > `parfait`·`member`·`parfait-image` 세 도메인의 Android 열이 전부 `구현됨`이 됐고, `android_status`는
 > 셋 다 `partial` 그대로다 — **소비처가 0건**이기 때문이다(`done`은 화면까지 이어졌을 때 쓴다).
 >
@@ -139,7 +139,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > Android 열 값은 바뀌지 않는다.
 > ✅ **뒤의 둘은 같은 날 PR #250이 앱에 반영했다** — `CheckNameValidUseCase`가 자모 범위를 얻어 집합이
 > 다시 같아졌고, `ALREADY_USED` 계열(상수·enum·문구·분기)은 걷혔다. **남은 것은 정책 문서 공백**이다
-> → [open-questions](../synthesis/open-questions.md).
+> → [open-questions](../android/synthesis/open-questions.md).
 >
 > 🔁 **2026-08-16 서버 delta(`22717fe`) — 파르페 상세 조회·배경 변경 2건이 들어와 공백이 다시 벌어졌다**
 > (26 → 28, 표면 25/27). **가장 큰 의미는 배경 쓰기 경로다** — C-301 배경 편집이 고른 값을 버리던 이유의
@@ -159,21 +159,21 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > 줄었다. `android_status`는 **`partial` 그대로**다. 같은 도메인의 **표면 우회 소비자(캘린더 mock
 > UseCase 둘)는 그대로**라, 이제 한 화면 안에서 캔버스 조회는 계약을 타고 달력 조회는 안 탄다
 > → [parfait.md](parfait.md) Android 매핑 ·
-> [스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
+> [스펙](../android/specs/archive/2026-08-17-c001-canvas-today-detail.md).
 >
 > ✅ **2026-08-17 — 표면 우회 소비자가 사라졌다**(PR #279). C-201 캘린더의 UseCase 둘이 mock을 버리고
 > `ParfaitRepository`를 타면서 **연도 조회까지 소비처를 얻었다** — 이 도메인에서 미소비로 남은 것은
 > **배경 변경 하나**다. **소비처를 얻은 엔드포인트는 16건**이고 `android_status`는 `partial` 그대로다.
 > 2026-08-16에 열렸던 "소비자가 표면을 우회한다"는 상태가 **하루 만에 닫혔다**
 > → [parfait.md](parfait.md) Android 매핑 ·
-> [스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md).
+> [스펙](../android/specs/archive/2026-08-17-c201-canvas-calendar-server.md).
 >
 > ✅ **2026-08-17 — `parfait-group.md`가 `done`이 됐다**(PR #285·#287). S-101 그룹 설정이 상세 조회·
 > 나가기·신고를 소비해 **8 엔드포인트 전부 호출부를 얻었다**(닉네임 변경은 S-102와 공용). Repository에
 > 남겨 뒀던 세 갈래가 "화면이 요구할 때 올린다"는 방침대로 이때 올라왔다. **소비처를 얻은 엔드포인트는
 > 19건**이다. `done`은 소비 여부만 뜻한다 — 목록의 `recentImageUploadedAt` 파싱 불일치는 **그대로**다
 > ([conventions.md](conventions.md) "Android 불일치") → [parfait-group.md](parfait-group.md) Android 매핑 ·
-> [스펙](../specs/archive/2026-08-17-s101-group-setting-api.md).
+> [스펙](../android/specs/archive/2026-08-17-s101-group-setting-api.md).
 >
 > 🔁 **2026-08-18 서버 delta(`08df1bf`) — 엔드포인트 증감 0인데 응답이 넓어지고 "오늘"이 바뀌었다.**
 > ① **Nametag-Chip 부여 주체가 서버가 됐다** — 그룹 참여·생성 시 그룹 안에서 겹치지 않는 타입을 뽑고
@@ -208,7 +208,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > 이고, 표면만 있고 소비처가 0인 도메인은 여전히 **둘**(image·parfait-image)이다. 이 도메인에 남는
 > 물음은 소비 여부가 아니라 **성공 뒤 정리 경로**다 — 탈퇴 직후의 로그아웃 요청이 죽은 토큰으로 나가
 > 재발급·강제 로그아웃까지 깨운다 → [member.md](member.md) Android 매핑 ·
-> [open-questions](../synthesis/open-questions.md) OQ-P-242.
+> [open-questions](../android/synthesis/open-questions.md) OQ-P-242.
 
 > 🔁 **2026-08-20 서버 delta(`efbf98f`) — 엔드포인트도 필드도 안 늘고 실패 경로만 늘었다.**
 > 쓰기 다섯 경로(배경 변경 + 토핑 배치·수정·테두리·삭제)가 대상 캔버스의 `status`를 읽어 `ACTIVE`가
@@ -220,14 +220,14 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > ⚠️ **앱은 이 코드를 모른다** — `ServerErrorCode`에 상수가 없고, 다섯 경로 전부 소비처가 0건이라
 > 지금은 도달하지 않는다. 대신 **"서버가 마감 캔버스를 막지 않는다"고 단정한 앱 주석 일곱 곳이
 > 거짓이 됐다**(요청·응답 형태는 그대로여서 `⚠️불일치`는 아니다)
-> → [open-questions](../synthesis/open-questions.md).
+> → [open-questions](../android/synthesis/open-questions.md).
 >
 > ✅ **2026-08-20 — 계약 delta 없이 Android 쪽만 크게 움직였다**(PR #307·#308·#310 develop 머지).
 > 서버 기준선은 `57529ec` 그대로이고 **엔드포인트·화이트리스트·envelope 모두 불변**이다. 바뀐 것은
 > 앱이 그 계약을 얼마나 읽는가다 — ① **"Android 불일치"가 2건에서 0건이 됐다**(`recentImageUploadedAt`
 > 파싱 · 하루 경계 03시), ② 2026-08-18~19 delta가 더한 필드 대부분이 화면까지 닿았다
 > (`groupName`·`memberLimit`·칩 세 자리 중 둘), ③ 그룹 목록·상세 **읽기가 `Flow` 구독으로 바뀌었다**
-> (엔드포인트는 그대로, 응답을 두는 자리만 `:data` 캐시로 이동 — [ADR-0023](../adr/0023-group-in-memory-ssot.md)).
+> (엔드포인트는 그대로, 응답을 두는 자리만 `:data` 캐시로 이동 — [ADR-0023](../android/adr/0023-group-in-memory-ssot.md)).
 > **`android_status`는 어느 도메인도 바뀌지 않았다** — 소비처 셈이 그대로이기 때문이다
 > (`parfait-group` `done` · `parfait`·`parfait-image` `partial`). 남은 미소비 필드는 둘이고 성격이 다르다:
 > `placedBy.nameTagChip`은 **읽는 화면이 없어 DTO에서 멈춰 세운 것**, 그룹 생성 응답 3필드는
@@ -243,7 +243,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > (presigned URL은 쿼리 스트링이 곧 자격증명이다) → [image.md](image.md).
 > `placedBy.nameTagChip`은 **읽는 화면이 생긴 뒤에도 여전히 DTO에서 멈춰 있다** — C-202 Spotlight
 > (PR #298)가 그 필드 대신 `groupMembers` 조인으로 색을 정해서다
-> → [open-questions](../synthesis/open-questions.md) OQ-P-251.
+> → [open-questions](../android/synthesis/open-questions.md) OQ-P-251.
 >
 > ✅ **2026-08-26 — 캔버스 응답이 소유 판정을 싣는다**(서버 PR #115, 엔드포인트 증감 0). 오늘·상세
 > 두 조회의 `images[].placedBy`에 `ownerType`(`ME`·`OTHER`)이 붙어 **"이 토핑이 내 것인가"가 계약
@@ -262,7 +262,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > 사용자 조작에 걸린 것도 이번이 처음**이다 — S3 PUT은 발급 응답이 준 URL로 나가므로 엔드포인트
 > 셈(27/27)에는 들어가지 않는다.
 > ⚠️ **실서버 요청 검증은 여전히 0건**(실기기 미수행)이고, 실패하면 서버에 흔적이 남는다(고아
-> `PENDING` 이미지·S3 객체) → [open-questions](../synthesis/open-questions.md) OQ-P-146.
+> `PENDING` 이미지·S3 객체) → [open-questions](../android/synthesis/open-questions.md) OQ-P-146.
 > 발급 응답 본문에 실려 오던 presigned URL은 `@NoBodyLog` + `SelectiveLoggingInterceptor`로 로그에서
 > 뺐다(그 URL은 쿼리 스트링이 곧 자격증명이다) → [image.md](image.md).
 >
@@ -273,7 +273,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > **두 번째 값**을 실었다 — 배경 이미지가 `BACKGROUND`로 올라간다(그전까지는 `NUKKI` 하나뿐).
 > ⚠️ 앱이 서버에 쓰는 두 번째 경로인데 **실기기·실서버 확인은 여전히 0회**이고, 마감된 캔버스가
 > 돌려주는 409는 화면에서 일반 오류로 접힌다
-> → [open-questions](../synthesis/open-questions.md) OQ-P-146·OQ-P-261.
+> → [open-questions](../android/synthesis/open-questions.md) OQ-P-146·OQ-P-261.
 >
 > ✅ **2026-08-23 — 앱이 서버 데이터를 지우는 첫 경로가 생겼다**(PR #335 develop 머지, 계약 delta
 > 없음). C-301 편집 탭의 삭제 확인 모달이 **토핑 삭제 DELETE**를 부르면서 `parfait-image.md`의
@@ -281,7 +281,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > 도메인은 여전히 **둘**이다(`parfait-group.md`·`parfait-image.md`). ⚠️ **실패가 화면에 닿지
 > 않는다** — 403·409·404가 전부 로그 한 줄로 접혀, 같은 화면의 배경 저장과 처분이 갈렸다
 > → [parfait-image.md](parfait-image.md) Android 매핑 ·
-> [open-questions](../synthesis/open-questions.md) OQ-P-270.
+> [open-questions](../android/synthesis/open-questions.md) OQ-P-270.
 >
 > ✅ **2026-08-23 — 편집 결과가 서버에 남기 시작했다**(PR #336 develop 머지, 계약 delta 없음).
 > C-301 편집 탭의 **확인 버튼**이 바뀐 토핑만 골라 **위치 PATCH**를 부르면서 `parfait-image.md`의
@@ -291,7 +291,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > ⚠️ **실패 처분이 같은 버튼 안에서 갈렸다** — 배경 실패는 토스트 + 화면 잔류, 토핑 실패는 로그
 > 한 줄 + 화면 이동이라 **사용자가 성공했다고 믿는다**
 > → [parfait-image.md](parfait-image.md) Android 매핑 ·
-> [open-questions](../synthesis/open-questions.md) OQ-P-275.
+> [open-questions](../android/synthesis/open-questions.md) OQ-P-275.
 
 > ⚠️ **2026-08-25 — 계약은 그대로인데 붙는 주소가 바뀐다**(서버 #112·#113 `main` 머지, 계약 파일
 > 변경 0건). 앞단 리버스 프록시가 TLS를 종단해 서버가 **HTTPS 도메인**을 얻었고, 검증 뒤 **평문
@@ -299,7 +299,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > **모든 도메인이 같은 전제 위에 있다** — 차단되는 순간 기존 `YG_BASE_URL`로 빌드된 앱은 전부
 > 연결에 실패한다. 그 시점은 1회성 인프라 조작이라 서버 커밋에서 읽을 수 없다
 > → [conventions.md](conventions.md) "전송" ·
-> [open-questions](../synthesis/open-questions.md) OQ-P-302·OQ-P-076.
+> [open-questions](../android/synthesis/open-questions.md) OQ-P-302·OQ-P-076.
 
 > ✅ **2026-08-27 — 마지막 미소비 엔드포인트가 닫혔다**(PR #369 develop 머지, 계약 delta 없음).
 > C-301 편집 탭의 확인 버튼이 **테두리 PATCH**까지 부르면서 `parfait-image.md`가 **`done`**이 됐다
@@ -308,7 +308,7 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > 모양 차이는 `CanvasBGEditViewModel.toToppingBorder`가 접는데, **마지막 겹**을 보내는 그 규칙이
 > 같은 화면의 **첫 겹**을 그리는 렌더링과 어긋난다
 > → [parfait-image.md](parfait-image.md) Android 매핑 ·
-> [open-questions](../synthesis/open-questions.md) OQ-P-324.
+> [open-questions](../android/synthesis/open-questions.md) OQ-P-324.
 > ⚠️ **실서버 확인은 여전히 0회**이고, 테두리 저장 실패도 앞선 두 갈래와 같이 로그 한 줄로 접힌다
 > (OQ-P-146·OQ-P-275).
 
@@ -327,9 +327,9 @@ develop에 0건이라(2026-08-22 PR #325가 걷어냈다) 되살릴지가 그대
 > ⚠️ **앱에는 대응 심볼이 하나도 없는데, 그 이유가 이번엔 다르다** — 앱은 FCM 수신 서비스와 토큰 조회를
 > 갖고 있다가 **2026-08-22 PR #325로 걷어냈고**, 걷어낸 근거가 정확히 **"보낼 서버가 없다"**였다
 > (`onNewToken`이 `TODO`인 채여서 결선된 적 없는 기능 때문에 첫 실행마다 알림 권한을 물었다 —
-> [ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 철회 정정). **이번 delta가 그 전제를 뒤집는다.**
+> [ADR-0013](../android/adr/0013-firebase-fcm-crashlytics.md) 철회 정정). **이번 delta가 그 전제를 뒤집는다.**
 > 다만 서버도 **발송 인프라·알림 트리거를 범위 밖으로 명시**해 무엇을 언제 보내는지는 여전히 계약에
-> 없다 → [open-questions](../synthesis/open-questions.md).
+> 없다 → [open-questions](../android/synthesis/open-questions.md).
 > 🔁 **이 마지막 줄은 다음 회차(`aa9cc9b`)에 뒤집혔다** — 아래 2026-09-04 문단을 본다.
 > ⚠️ **`sessionId`가 널인 채 등록된 행은 로그아웃이 못 지운다**(삭제 조건이 `memberId` + `sessionId`다).
 > 클레임 과도기를 위해 컬럼을 널 허용으로 둔 대가다 → [notification.md](notification.md).
@@ -403,7 +403,7 @@ TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요�
 > 보강으로 **25/25**가 됐다 — `parfait.http`에 오늘·과거 조회, `parfait-image.http`에 테두리 수정·삭제,
 > `users.http`에 탈퇴가 붙었고 `http-client.env.json`·`_reset.http`에 `parfait_id`가 등재됐다.
 > **손으로 메우는 방식이 서버 delta마다 무너졌다 복구되는 것이 네 번째**다 — 갱신 경로가 둘이라는 구조는
-> 그대로다 → [open-questions](../synthesis/open-questions.md).
+> 그대로다 → [open-questions](../android/synthesis/open-questions.md).
 >
 > 📌 **2026-08-16 서버 delta로 다시 25/27이 됐다** — `parfait.http`에 상세 조회·배경 변경 요청이 없다.
 > **다섯 번째 왕복**이다.
@@ -435,23 +435,23 @@ TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요�
 > 아니라 **손으로 채우는 값**이라 `_reset.http`의 비우기 목록에는 넣지 않는다). ⚠️ **이번에도 사람이
 > 손으로 메웠고**, 앞선 여섯 번과 달리 **요청 모음이 앱 코드보다 앞서 나갔다** — 등록 엔드포인트를
 > 부를 수단(FCM 토큰 취득)이 develop에 여전히 0건이므로 이 파일은 앱 없이 손으로만 돌릴 수 있다
-> → [open-questions](../synthesis/open-questions.md) OQ-P-108 · OQ-P-341.
+> → [open-questions](../android/synthesis/open-questions.md) OQ-P-108 · OQ-P-341.
 >
 > ⚠️ **같은 PR이 서버 계약의 복제면을 하나 더 늘렸다.** `fcm-test.http`가 서버 발송 페이로드
 > (문구·`data` 키 4종·채널 id·TTL·APNs 헤더)를 **상수로 옮겨 적었다.** 엔드포인트 커버와 달리
 > **이 복제는 세는 축이 없어** 서버가 값을 바꿔도 아무 셈에도 안 잡힌다
-> → [open-questions](../synthesis/open-questions.md) OQ-P-354.
+> → [open-questions](../android/synthesis/open-questions.md) OQ-P-354.
 >
 > ⚠️ **이번엔 왕복이 반만 닫혔다(2026-08-16, PR #266)** — 같은 두 엔드포인트에 **`:data` 표면은 붙었는데
 > `http/`는 그대로 25/27이다. 앞선 네 번은 표면과 요청 모음이 한 라운드에서 함께 메워졌다** — 두 표면이
 > 갈린 첫 사례다. 배경 변경은 손으로 쏴 볼 값이 특히 많다(HEX 형식·조건부 필수·업로드 확인 상태)
-> → [open-questions](../synthesis/open-questions.md).
+> → [open-questions](../android/synthesis/open-questions.md).
 >
 > ⚠️ **파괴적 요청이 두 파일의 마지막에 있다** — `users.http`의 탈퇴, `parfait-image.http`의 토핑 삭제.
 > 파일을 위에서부터 통째로 돌리면 계정·데이터가 지워진다(`http/README.md`가 이 경고를 담는다).
 >
 > ⚠️ **`http/auth.http`가 아직 `newUser`로 분기한다.** 앱 DTO와 `http/README.md`는 `isNewUser`로
-> 정정됐는데(PR #241·#230) 이 파일만 남았다 → [open-questions](../synthesis/open-questions.md).
+> 정정됐는데(PR #241·#230) 이 파일만 남았다 → [open-questions](../android/synthesis/open-questions.md).
 
 - 로그인 응답에서 토큰을 자동 추출해 다음 요청이 그대로 쓴다 — 스웨거에서 복붙할 필요가 없다
 - 각 요청 주석에 이 문서들의 함정을 옮겨 뒀다(`reissue`에 `Authorization`을 붙이면 재발급이 막히는 건은
@@ -460,6 +460,6 @@ TJYG-Android 저장소의 **`http/` 디렉토리**에 IntelliJ HTTP Client 요�
 - 런타임 global 변수가 env 파일보다 **우선**한다 — 토큰을 손으로 넣을 때는 `_reset.http`로 먼저 비운다
 
 > 이 모음과 `api/`의 도메인 문서는 **같은 서버 코드를 근거로 하는 두 표면**이다. 서버가 바뀌면 양쪽이
-> 같이 갱신돼야 하고, 한쪽만 고치면 조용히 갈린다 → [open-questions](../synthesis/open-questions.md).
+> 같이 갱신돼야 하고, 한쪽만 고치면 조용히 갈린다 → [open-questions](../android/synthesis/open-questions.md).
 
 문서와 서버가 어긋나는 것 같으면 여기서 먼저 쏴 보는 게 빠르다.

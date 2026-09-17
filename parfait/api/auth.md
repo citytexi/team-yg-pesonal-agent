@@ -29,7 +29,7 @@ tags: [api, parfait, server-contract, auth]
 와이어 계약 테스트(`KakaoLoginResponseSerializationTest`)를 붙였다. 되돌리면 그 테스트가
 `MissingFieldException`으로 깨진다. 같은 라운드가 Repository·UseCase·화면까지 결선했다
 (PR #241 `80895eb1`, 2026-08-15 develop 머지)
-→ [a002-kakao-login-api 스펙](../specs/archive/2026-08-13-a002-kakao-login-api.md).
+→ [a002-kakao-login-api 스펙](../android/specs/archive/2026-08-13-a002-kakao-login-api.md).
 **단 실서버 응답으로는 아직 확인하지 못했다** — 아래 [판별자 키](#판별자-키는-isnewuser다).
 
 [^reissue]: **2026-08-15 결선(PR #260)** — 호출부는 화면이 아니라 `TokenAuthenticator`다. 401을 가로채
@@ -43,7 +43,7 @@ tags: [api, parfait, server-contract, auth]
 
 [^apple]: **Android는 애플 로그인을 쓰지 않기로 결정했다**(2026-08-11). 서버에는 있으나 앱 대응
 심볼을 만들지 않으며 `http/auth.http`에도 요청을 넣지 않는다 — `미구현`(아직 없음)이 아니라
-닫힌 결정이다. 근거는 [member·parfait-image 서비스 레이어 스펙](../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md)
+닫힌 결정이다. 근거는 [member·parfait-image 서비스 레이어 스펙](../android/specs/archive/2026-08-11-member-parfait-image-api-service-layer.md)
 "범위". iOS가 붙을 때 이 계약은 그대로 유효하다.
 
 ⚠️ **`logout`만 화이트리스트 밖이라는 비대칭.** `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`
@@ -298,7 +298,7 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
 - **명세 델타** — 팀 명세([spec/auth-reissue.md](spec/auth-reissue.md))가 **403 정지·탈퇴 회원**을
   열거하나 서버에 없다. `AuthErrorCode`에 정지·탈퇴 코드가 없고 `ReissueService`에 회원 상태 검사도 없다 —
   회원 부재는 **401 `MEMBER_NOT_FOUND`**로 나간다(HTTP 코드·code 문자열 둘 다 다르다)
-  → [open-questions](../synthesis/open-questions.md). 또한 명세의 "인증: Refresh Token" 표기는 HTTP 인증
+  → [open-questions](../android/synthesis/open-questions.md). 또한 명세의 "인증: Refresh Token" 표기는 HTTP 인증
   헤더를 뜻하지 않는다 — 이 경로는 화이트리스트라 **헤더 없이 호출할 수 있다.** 단 `JwtAuthFilter`는
   `shouldNotFilter` 오버라이드가 없어 화이트리스트 경로에서도 실행되므로, `Authorization` 헤더를
   붙이면 필터가 검증을 시도한다 — **만료 토큰을 붙이면 401 `EXPIRED_TOKEN`이 난다.** 검증 자체는
@@ -397,23 +397,23 @@ MockMvc 본문 단언은 실제 직렬화 결과다.
 
 ## Android 매핑
 
-`:data`·`:domain`에 API 표면이 구현됐다([spec](../specs/archive/2026-08-03-data-api-service-layer.md)) —
+`:data`·`:domain`에 API 표면이 구현됐다([spec](../android/specs/archive/2026-08-03-data-api-service-layer.md)) —
 **2026-08-06 PR #197로 develop 머지 완료**다. 이 표면이 딛고 선 공용 인프라(`ApiCaller` 4진입점·
 `ApiResponse` envelope·`@NoAuth`·`TokenStoreTokenProvider`)는 PR #190으로 먼저 들어왔고, 아래
 Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 **2026-08-15 — `kakao` 하나가 develop에 결선됐다**(PR #241 `80895eb1`).
 `AuthRepository`/`AuthRepositoryImpl`(`loginWithKakao`·`saveSession`)와 `LoginWithKakaoUseCase`가
-생겼고 A-002 화면까지 이어졌다 → [a002-kakao-login-api 스펙](../specs/archive/2026-08-13-a002-kakao-login-api.md).
+생겼고 A-002 화면까지 이어졌다 → [a002-kakao-login-api 스펙](../android/specs/archive/2026-08-13-a002-kakao-login-api.md).
 같은 PR이 `ServerErrorCode.Auth`(`INVALID_ID_TOKEN`·`KAKAO_JWKS_FETCH_FAILED`·
 `KAKAO_SERVER_UNAVAILABLE`)를 `:domain`에 두어 아래 에러 코드 표의 세 값이 앱 코드에 실체로 있다.
 **2026-08-15 — `signup`도 화면까지 결선됐다**(PR #242). `AuthRepository.signUp(registrationToken, agreements)` +
 `SignUpUseCase`가 붙어 온보딩 약관 동의 화면이 호출하고, 성공 응답(`AuthSessionVO`)을 **UseCase가 그 자리에서
-저장**한다(`saveSession`) → [intro-term-agree 스펙](../specs/archive/2026-07-22-intro-term-agree.md).
+저장**한다(`saveSession`) → [intro-term-agree 스펙](../android/specs/archive/2026-07-22-intro-term-agree.md).
 `agreements[]`는 화면에 노출한 약관 **전체**(미동의는 `agreed = false`)이고 그 목록 출처는 [policy.md](policy.md)다.
 필수 약관 미동의는 요청 전에 도메인이 막는다(`SignUpException.RequiredPolicyNotAgreed`) — 서버
 `REQUIRED_TERMS_NOT_AGREED` 400은 화면 가드가 뚫렸을 때만 도달한다.
 **2026-08-15 — `reissue`·`logout`도 결선돼 애플을 뺀 4 엔드포인트 전부가 호출부를 얻었다**(PR #260
-`9cfbd117`, [스펙](../specs/archive/2026-08-15-session-token-refresh-infra.md)).
+`9cfbd117`, [스펙](../android/specs/archive/2026-08-15-session-token-refresh-infra.md)).
 - **`reissue`의 호출부는 화면이 아니다** — `TokenAuthenticator`(OkHttp `Authenticator`)가 401을 가로채
   부른다. 이 엔드포인트만 **자격증명을 안 붙이는 전용 표면**(`@UnauthenticatedClient` `OkHttpClient`·
   `Retrofit`·`AuthService`)을 타는데, 인증기가 자기 자신을 재진입하지 않게 하려는 것과 재발급이
@@ -430,7 +430,7 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 것이 무엇인지가 바뀌었다**(2026-08-25, PR #358): 평문 HTTP를 뚫으려고 넣었던 `usesCleartextTraffic`이
 `network_security_config.xml`로 대체돼 **디버그 빌드는 평문이 열려 있고 릴리즈 빌드만 HTTPS를 강제**한다.
 서버도 HTTPS 도메인을 얻었으므로(→ [conventions](conventions.md) "전송") 남은 전제는 앱
-`YG_BASE_URL`뿐이다 → [open-questions](../synthesis/open-questions.md) OQ-P-076·OQ-P-302.
+`YG_BASE_URL`뿐이다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-076·OQ-P-302.
 
 **애플 로그인은 Android가 쓰지 않기로 했다**(2026-08-11 결정, 위 각주). 대응 심볼 0건이 공백이 아니라
 결론이므로 이 표에서 "앞으로 채울 자리"로 세지 않는다.
@@ -454,7 +454,7 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
   ⚠️ **`KakaoLoginResponse`가 판별자 프로퍼티 `isNewUser`에 `@SerialName("newUser")`를 붙였다** — 실제
   응답 키는 `isNewUser`라 **키를 못 찾고 `MissingFieldException`으로 로그인이 실패한다**. 이전 판본의
   잘못된 계약 기술을 그대로 따른 결과다 → 위 [판별자 키](#판별자-키는-isnewuser다),
-  [open-questions](../synthesis/open-questions.md).
+  [open-questions](../android/synthesis/open-questions.md).
 - **VO**: `KakaoLoginVO`(sealed — `ExistingMember`/`NewUser`)·`AuthSessionVO`(signup·reissue가 공유)·
   `TermsAgreement` — `domain/model/auth/KakaoLoginVO.kt`·`AuthSessionVO.kt`·`TermsAgreement.kt`. 토큰은
   `AccessToken`·`RefreshToken`·`RegistrationToken` value class 각각 동명 파일(`domain/model/auth/
@@ -465,7 +465,7 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
   `ApiException.Unknown`이 된다(호출부 크래시 아님).
 - **이름 충돌 주의**: `domain/model/auth/KakaoLoginVO`(서버 응답)와 `domain/model/KakaoLoginResult`
   (카카오 **SDK** 로그인 결과)는 다른 것이다. 스펙이 예고한 상호 참조 KDoc은 두 파일 어디에도 없다
-  → [open-questions](../synthesis/open-questions.md).
+  → [open-questions](../android/synthesis/open-questions.md).
 
 ## 미결
 
@@ -474,10 +474,10 @@ Service·DataSource·DTO·VO가 이번에 그 위에 올라갔다.
 - 위 판별자 키를 **실서버 응답으로는 여전히 확인하지 못했다.** 근거는 서버 코드·컨트롤러 테스트·팀 명세
   3축이고 OpenAPI 스키마만 반대다. A-002 로그인이 결선됐으므로 **실기기 검증에서 로그로 실물 응답을
   찍어 확정한다** — `MissingFieldException`이 나면 서버가 `newUser`를 쓰는 것이고 이 문서가 틀린 것이다
-  → [open-questions](../synthesis/open-questions.md)
-- 애플 로그인은 서버만 있고 앱 대응 심볼이 0건이다 → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
+- 애플 로그인은 서버만 있고 앱 대응 심볼이 0건이다 → [open-questions](../android/synthesis/open-questions.md)
 - `authorizationCode` 제거로 **애플 연동 해제(revoke) 수단이 서버에 없어졌다** — 탈퇴 API가 같은 delta에
-  들어왔는데 애플 쪽은 끊지 못한다([member.md](member.md)) → [open-questions](../synthesis/open-questions.md)
+  들어왔는데 애플 쪽은 끊지 못한다([member.md](member.md)) → [open-questions](../android/synthesis/open-questions.md)
 
 그 외 5 엔드포인트의 요청·응답·에러 계약은 core·http·external 서버 코드와 컨트롤러/서비스 테스트로
 확인했다.

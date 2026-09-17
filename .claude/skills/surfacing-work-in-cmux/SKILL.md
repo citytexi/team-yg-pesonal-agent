@@ -26,8 +26,8 @@ superpowers가 **순서와 게이트**를 정한다. cmux는 그 진행을 **보
 
 | 단계 | 행동 |
 |---|---|
-| `brainstorming` 스펙 확정 | 파일 저장 후 `cmux open parfait/specs/<f>.md --workspace "$CMUX_WORKSPACE_ID" --pane pane:<helper> --no-focus` |
-| `writing-plans` 계획 확정 | 같음(`parfait/plans/`) + `cmux set-status plan "0/<N>" --workspace "$CMUX_WORKSPACE_ID"` |
+| `brainstorming` 스펙 확정 | 파일 저장 후 `cmux open parfait/android/specs/<f>.md --workspace "$CMUX_WORKSPACE_ID" --pane pane:<helper> --no-focus` |
+| `writing-plans` 계획 확정 | 같음(`parfait/android/plans/`) + `cmux set-status plan "0/<N>" --workspace "$CMUX_WORKSPACE_ID"` |
 | `executing-plans` phase 전환 | `cmux set-progress <done/total> --label "Phase <n>: <제목>"` + `cmux log --level info -- "<phase> done"` |
 | `test-driven-development` 루프 | 테스트를 helper surface에 `cmux send`, 결과는 `cmux read-screen`. 실패 출력이 사용자 화면에 남는다 |
 | `verification-before-completion` | 이미 만든 아티팩트를 `cmux open ... --no-focus`. 아티팩트 **경로는 cmux와 무관하게 정한다** |
@@ -67,7 +67,7 @@ workspace나 다른 앱을 보고 있을 수 있다.
 |---|---|
 | cmux 없는 터미널에서 "표시 못 함" 보고 | 게이트가 `plain`이면 조용히 넘어가야 함 |
 | 아티팩트를 `/cmux-assets`에 저장 | non-cmux 사용자에게 파일 없음 |
-| 사이드바 진행률을 진행상황 정본으로 취급 | 정본은 `parfait/plans/*.md` 체크박스. 사이드바는 투영 |
+| 사이드바 진행률을 진행상황 정본으로 취급 | 정본은 `parfait/android/plans/*.md` 체크박스. 사이드바는 투영 |
 | `cmux send`로 테스트 돌리고 결과 확인 없이 통과 선언 | `read-screen`으로 실제 출력 확인 후 판단 |
 | cmux 호출 실패 → 작업 중단 | best-effort. 계속 진행 |
 

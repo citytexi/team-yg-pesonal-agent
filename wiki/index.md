@@ -85,10 +85,10 @@ updated: 2026-09-03
 > 링크하지 않는다(아래 허브 포인터 1개만 예외). 구현과의 상충은 링크가 아니라
 > **플랫폼 + 심볼 데이터**로 적는다(예: "Android `YGColorChipType` 14종"). iOS 등 다른 플랫폼이
 > 붙어도 위키는 그대로 재사용된다.
-- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 28건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션·Firebase FCM·로깅 추상화·feature/common 공유 레이어·i18n 결과 매핑·토큰 재발급·계정/그룹 SSoT·토핑 테두리 서버 필드화·화면 세로 고정·시스템바 라이트 고정 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, 디자인시스템 컴포넌트 다수). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서. **repo 루트 `parfait/`로 분리**(2026-07-13), 링크는 repo-root Obsidian vault 기준 resolve.
+- [[parfait/index|Parfait wiki]] — TJYG-Android 구현 허브. ADR 28건(1건 superseded, 비트맵 추상화·ML Kit 세그멘테이션·Firebase FCM·로깅 추상화·feature/common 공유 레이어·i18n 결과 매핑·토큰 재발급·계정/그룹 SSoT·토핑 테두리 서버 필드화·화면 세로 고정·시스템바 라이트 고정 포함) + architecture 5건(모듈 구조·데이터·상태관리·내비게이션·디자인시스템) + specs(구현 전 설계, 디자인시스템 컴포넌트 다수). 제품 기획([[협업-캔버스-앱]])의 실제 구현 문서. **repo 루트 `parfait/`로 분리**(2026-07-13), 링크는 repo-root Obsidian vault 기준 resolve. **플랫폼 축으로 다시 갈렸다**(2026-09-17) — Android 전용 문서는 `parfait/android/`, 서버 계약·제품 문서는 플랫폼 공용이라 `parfait/` 바로 아래 남는다.
 
 ## Synthesis (분석·결과)
-- [[open-questions]] — 정책·기획 미해결 모순 및 열린 질문 추적 (구현 미결은 [[parfait/synthesis/open-questions|parfait open-questions]]로 분리)
+- [[open-questions]] — 정책·기획 미해결 모순 및 열린 질문 추적 (구현 미결은 [[parfait/android/synthesis/open-questions|parfait open-questions]]로 분리)
 - [[lint-2026-07-31]] — 위키 상태 점검 보고서(2026-07-31, 위키 변경 0건 기간·기계 검사 0건, nametag 타입 쟁점 축소 반영)
 - [[lint-2026-07-29]] — 위키 상태 점검 보고서(2026-07-29, 당일 ingest 6건 후, 기계 검사 0건·stale 7건 수정·미결 15건)
 - [[lint-2026-07-27]] — 위키 상태 점검 보고서(2026-07-27, G-001 간격정책 v0.3 ingest 후, 차단 이슈 0건·stale 4건 수정)

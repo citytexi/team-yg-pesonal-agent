@@ -25,7 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # (계열, repo 루트 기준 문서 경로)
 DOCS = [
     ("W", "wiki/synthesis/open-questions.md"),
-    ("P", "parfait/synthesis/open-questions.md"),
+    ("P", "parfait/android/synthesis/open-questions.md"),
 ]
 
 HEADING_RE = re.compile(r"^### \[(\d{4}-\d{2}-\d{2})\]\s+(.+?)\s*$", re.M)

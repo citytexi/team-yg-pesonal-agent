@@ -214,7 +214,7 @@ PR #250(탈퇴), 소비처는 2026-08-16 PR #263(조회·닉네임 변경) + 202
 DataSource가 `ApiCaller.safeApiCallNoContent`로 호출한다 — `logout`에 이어 **두 번째 소비처**다.
 같은 delta의 토핑 삭제(200 + `data: null`)가 `safeApiCallWithoutData`로 갈린 것과 짝이다
 ([parfait-image.md](parfait-image.md)). 설계 근거는
-[specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md).
+[specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../android/specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md).
 
 ✅ **탈퇴에도 소비처가 생겼다(2026-08-19, PR #306).** S-001 앱 설정의 탈퇴 확인 팝업이
 `WithdrawUseCase`를 부른다. **이 UseCase의 판단은 순서다** — 서버가 받아 준 뒤에야 기기를 정리하고,
@@ -223,17 +223,17 @@ DataSource가 `ApiCaller.safeApiCallNoContent`로 호출한다 — `logout`에 �
 지우는 일 자체는 `LogoutUseCase`에 위임한다 — "무엇을 지우는가"가 거기 한 곳이다.
 
 회원이 없어도 204라 **멱등이고 도메인 에러가 없어서**, 앱은 "이미 탈퇴됨"을 성공과 구분하지 않는다
-(구분할 필요가 아직 서지 않았다 → [open-questions](../synthesis/open-questions.md) OQ-P-162 ③).
+(구분할 필요가 아직 서지 않았다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-162 ③).
 실패는 401 계열과 네트워크·서버 장애뿐이라 화면이 문구 하나로 받는다.
 
 ⚠️ **성공 뒤에 죽은 토큰으로 요청이 한 번 더 나간다** — 위임받은 `LogoutUseCase`가 서버 로그아웃을
 부르는데 그 계정은 방금 지워졌다. 서버는 401 `MEMBER_NOT_FOUND`를 주고, 그 401이 `TokenAuthenticator`의
 재발급을 깨우며, refresh token은 탈퇴가 이미 지웠으므로 재발급도 거절돼 `ForcedLogout`까지 발행된다
-→ [open-questions](../synthesis/open-questions.md) OQ-P-242.
+→ [open-questions](../android/synthesis/open-questions.md) OQ-P-242.
 
 wire DTO는 `service/model/{request,response}/member/`, 변환은 `source/member/mapper/VOMapper.kt`,
 domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider`)다. 설계 근거는
-[specs/archive/2026-08-11-member-parfait-image-api-service-layer](../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md).
+[specs/archive/2026-08-11-member-parfait-image-api-service-layer](../android/specs/archive/2026-08-11-member-parfait-image-api-service-layer.md).
 
 세 가지가 이 도메인 특유의 결정이다.
 
@@ -248,8 +248,8 @@ domain은 `domain/model/member/`(`MyAccountVO`·`GlobalNickname`·`LoginProvider
 ✅ **소비처가 붙었다(2026-08-16, PR #263).** 두 엔드포인트가 **로컬 SSoT를 사이에 두고** 소비된다 —
 화면은 조회 API를 직접 부르지 않고 `MemberRepository.myAccount: Flow<MyAccountVO?>`를 구독하며,
 서버 조회는 **로그인·가입 직후 / 앱 진입(스플래시 부트스트랩) / 닉네임 변경 성공** 세 시점뿐이다
-([ADR-0022](../adr/0022-user-info-local-ssot.md) ·
-[스펙](../specs/archive/2026-08-15-user-info-ssot.md)).
+([ADR-0022](../android/adr/0022-user-info-local-ssot.md) ·
+[스펙](../android/specs/archive/2026-08-15-user-info-ssot.md)).
 
 | 계약 | 앱 쪽 경로 |
 |---|---|
@@ -280,15 +280,15 @@ S-002는 둘을 표시용 갈래(`GlobalNicknameError.INVALID`·`ACCOUNT_GONE`)�
 ## 미결
 
 - 영속 `LoginProvider.GOOGLE`이 core enum에 없어 해당 회원 조회가 500이 된다 — 구글 로그인을 뺄지
-  core enum에 넣을지 → [open-questions](../synthesis/open-questions.md)
+  core enum에 넣을지 → [open-questions](../android/synthesis/open-questions.md)
 - 전역 닉네임을 바꿔도 기존 그룹의 `groupNickname`이 그대로인 것이 의도인지(앱은 두 값을 다른 화면에
-  보여줘야 한다) → [open-questions](../synthesis/open-questions.md)
+  보여줘야 한다) → [open-questions](../android/synthesis/open-questions.md)
 - 탈퇴 응답만 envelope 없는 204다 — 서버가 맞출지, 클라이언트가 예외 분기를 둘지
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - 탈퇴 회원이 남긴 토핑의 `placedBy`가 `(알수없음)`으로 캔버스에 계속 보인다 — 표시 정책이 없다
-  → [open-questions](../synthesis/open-questions.md)
-- 애플 계정 탈퇴 시 애플 연동 해제(revoke)를 하지 않는다 → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
+- 애플 계정 탈퇴 시 애플 연동 해제(revoke)를 하지 않는다 → [open-questions](../android/synthesis/open-questions.md)
 - ✅ **자모 단독 허용 불일치는 해소됐다**(2026-08-15, PR #250) — `CheckNameValidUseCase`의 허용 문자에
   `'ㄱ'..'ㅎ'`·`'ㅏ'..'ㅣ'`가 더해져 앱과 서버 집합이 다시 같다. **다만 정책 근거는 여전히 서버 커밋
   메시지뿐이고** 위키 [[이름-입력-규칙]]은 "한글"의 범위를 정하지 않는다
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)

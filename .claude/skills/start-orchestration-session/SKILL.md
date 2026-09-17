@@ -8,7 +8,7 @@ description: 요구사항 하나를 Orca orchestration + git worktree로 분석�
 요구사항 하나를 받아 분석 → 설계 → 스펙 리뷰 → 계획 → 계획 리뷰 → TDD 구현(모듈 병렬)
 → 통합 → 코드 리뷰 → 최종 반환까지 자동으로 돈다.
 
-설계 정본은 [`parfait/specs/2026-08-05-orchestration-session-pipeline.md`](../../../parfait/specs/2026-08-05-orchestration-session-pipeline.md).
+설계 정본은 [`parfait/android/specs/2026-08-05-orchestration-session-pipeline.md`](../../../parfait/android/specs/2026-08-05-orchestration-session-pipeline.md).
 이 문서와 스펙이 어긋나면 스펙이 정답이다.
 
 ## 이 스킬을 쓰지 않는 경우
@@ -22,9 +22,9 @@ description: 요구사항 하나를 Orca orchestration + git worktree로 분석�
 | 표기 | 뜻 |
 |---|---|
 | 코디네이터 | `feature/xxxxx-master` worktree에서 도는 이 세션. 사람과 소통하는 유일한 지점 |
-| W1 analyst | 요구분석 + 설계. `parfait/specs/`에 스펙 작성 |
+| W1 analyst | 요구분석 + 설계. `parfait/android/specs/`에 스펙 작성 |
 | W2 spec-reviewer | 스펙 독립 검수 |
-| W3 planner | 파일 선택 + 모듈 분할 + 테스트 명세. `parfait/plans/`에 계획 작성 |
+| W3 planner | 파일 선택 + 모듈 분할 + 테스트 명세. `parfait/android/plans/`에 계획 작성 |
 | W4 plan-reviewer | 계획 독립 검수 |
 | wt-domain / wt-data / wt-feature | Gradle 모듈별 구현 자식 worktree |
 | wt-integrate | 병합·전체 테스트·코드 리뷰 자식 worktree |
@@ -178,9 +178,9 @@ orca worktree set --worktree current \
 
 | 워커 | 실행 위치 | 모델(균형 프로필) | 산출물 |
 |---|---|---|---|
-| W1 analyst | `terminal create --worktree current` → 그 handle | Opus 5 | `parfait/specs/YYYY-MM-DD-<topic>.md` |
+| W1 analyst | `terminal create --worktree current` → 그 handle | Opus 5 | `parfait/android/specs/YYYY-MM-DD-<topic>.md` |
 | W2 spec-reviewer | `terminal create --worktree current` → 그 handle | Opus 5 | findings(파일 없음) |
-| W3 planner | `terminal create --worktree current` → 그 handle | Opus 5 | `parfait/plans/YYYY-MM-DD-<topic>.md` |
+| W3 planner | `terminal create --worktree current` → 그 handle | Opus 5 | `parfait/android/plans/YYYY-MM-DD-<topic>.md` |
 | W4 plan-reviewer | `terminal create --worktree current` → 그 handle | Opus 5 | findings(파일 없음) |
 
 네 워커는 순차 실행한다. 병렬 이득이 없고, 뒤 워커가 앞 산출물을 입력으로 받는다.
@@ -263,9 +263,9 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 [읽어라]
 - 코드 대상: <TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
   §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>
-- 규약: <team-yg>/CLAUDE.md, <team-yg>/parfait/index.md, <team-yg>/parfait/specs/README.md
-- 형식: <team-yg>/parfait/specs/template.md
-- 기존 결정: <team-yg>/parfait/adr/, <team-yg>/parfait/architecture/
+- 규약: <team-yg>/CLAUDE.md, <team-yg>/parfait/index.md, <team-yg>/parfait/android/specs/README.md
+- 형식: <team-yg>/parfait/android/specs/template.md
+- 기존 결정: <team-yg>/parfait/android/adr/, <team-yg>/parfait/android/architecture/
 - 정책 SoT: <team-yg>/wiki/index.md에서 관련 페이지만
 
 [해라]
@@ -273,9 +273,9 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 2. 주제와 관련된 벤더 스킬을 먼저 찾는다:
    python3 <team-yg>/parfait/script/search.py "<주제>"
    상위 후보 중 관련 스킬을 네이티브 Skill로 로드한 뒤 설계를 확정한다.
-3. 설계 스펙을 <team-yg>/parfait/specs/YYYY-MM-DD-<kebab-topic>.md에 쓴다.
+3. 설계 스펙을 <team-yg>/parfait/android/specs/YYYY-MM-DD-<kebab-topic>.md에 쓴다.
    형식은 template.md, frontmatter 필수. 라인번호·hex·변동수치는 적지 않는다.
-4. parfait/specs/README.md 인덱스에 한 줄 등록한다.
+4. parfait/android/specs/README.md 인덱스에 한 줄 등록한다.
 
 [금지]
 - TJYG-Android 코드 수정. 이 단계는 읽기만 한다.
@@ -313,14 +313,14 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 [입력]
 - 요구사항 원문: 아래
 - 검수 대상: <스펙 절대경로>
-- 대조 대상: <team-yg>/parfait/adr/, <team-yg>/parfait/architecture/, <team-yg>/wiki/
+- 대조 대상: <team-yg>/parfait/android/adr/, <team-yg>/parfait/android/architecture/, <team-yg>/wiki/
 
 [반려 사유 — 하나라도 해당하면 반려]
 1. 요구사항 원문의 항목 중 스펙에 담기지 않은 것
 2. placeholder·TBD·"추후 결정"
 3. 내부 모순 (아키텍처 서술 vs 기능 서술)
 4. 두 가지로 읽히는 요구사항
-5. parfait/adr/ 또는 parfait/architecture/의 기존 결정과 상충
+5. parfait/android/adr/ 또는 parfait/android/architecture/의 기존 결정과 상충
 
 [에스컬레이션 — 반려하지 말고 escalation]
 - wiki/ 정책과 스펙이 상충. 기획 자체의 미결일 수 있어 에이전트가 판정하지 않는다.
@@ -392,7 +392,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 - 확정 스펙: <스펙 절대경로>
 - 코드 대상: <TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
   §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>
-- 형식: <team-yg>/parfait/plans/template.md, 규약: parfait/plans/README.md
+- 형식: <team-yg>/parfait/android/plans/template.md, 규약: parfait/android/plans/README.md
 
 [해라]
 1. superpowers:writing-plans 스킬을 로드한다.
@@ -408,8 +408,8 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
      · opus — Compose UI·recomposition, 코루틴 동시성, 기존 코드 대수술, 파일 6개 이상
      · sonnet — 시그니처까지 특정된 신규 파일, DTO·매퍼·Repository 같은 정형 작업
    - 의존 관계(기본형: domain → data, domain → feature)
-5. 계획을 <team-yg>/parfait/plans/YYYY-MM-DD-<kebab-topic>.md에 쓰고
-   parfait/plans/README.md 인덱스에 한 줄 등록한다.
+5. 계획을 <team-yg>/parfait/android/plans/YYYY-MM-DD-<kebab-topic>.md에 쓰고
+   parfait/android/plans/README.md 인덱스에 한 줄 등록한다.
 
 [판단]
 - 파일이 한 모듈 안에서 많이 겹쳐 병렬 이득이 없으면 **단일 워커로 결정**해도 된다.
@@ -734,7 +734,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 - 모듈 간 인터페이스 불일치 (모듈별 리뷰로는 안 보이는 것 — 여기가 핵심)
 - 테스트가 실제로 명세한 동작을 검증하는가 (통과만 하는 빈 테스트가 아닌가)
 - 계획의 담당 파일 화이트리스트를 벗어난 변경
-- repo 관례 이탈 (parfait/architecture/ 참조)
+- repo 관례 이탈 (parfait/android/architecture/ 참조)
 
 [금지]
 - 파일 수정. findings만 반환한다.

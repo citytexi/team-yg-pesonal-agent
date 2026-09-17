@@ -67,7 +67,7 @@ placedBy에 ownerType(ME/OTHER) 필드 추가`, PR #115). 오늘·상세 두 캔
     03시로 옮겨 어긋남이 사라졌고, 경계 값은 `DayWindow.DAY_BOUNDARY_HOUR` 하나만 쓴다 —
     **다만 시간대는 공유하지 않는다**(`parfaitToday()`는 고정 KST, `DayWindow.current()`는 기기 시간대).
     → 아래 [하루 경계](#하루-경계) · [conventions.md](conventions.md) "Android 불일치"(이제 0건) ·
-    [open-questions](../synthesis/open-questions.md) [2026-08-18].
+    [open-questions](../android/synthesis/open-questions.md) [2026-08-18].
 
 경로 주의: 그룹을 `groups`로 부르는 유일한 경로다(다른 그룹 API는 `parfait-groups`) —
 [conventions.md](conventions.md)의 URL 규약 절 참고.
@@ -189,7 +189,7 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   `GroupName`으로 감싸 나른다. 오늘·상세 두 조회가 같은 매퍼를 타므로 두 경로 모두 값을 얻는다.
   다만 **그룹명의 정본은 그룹 목록 캐시로 두었다** — 아래 [Android 매핑](#android-매핑).
   ⚠️ **404 `GROUP_NOT_FOUND`는 여전히 앱이 구별하지 않는다**(앱 코드에 그 상수가 없다)
-  → [open-questions](../synthesis/open-questions.md) OQ-P-383 ④.
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-383 ④.
 
   ✅ **`nameTagChip`이 두 목록 모두에 있다**(`placedBy` 2026-08-18 · `groupMembers` 2026-08-19). 값 집합·배정
   규칙은 [parfait-group.md](parfait-group.md) "Nametag-Chip 배정 규칙"이 정본이고, JSON에는 enum 이름
@@ -224,7 +224,7 @@ C-001 캔버스 메인이 그릴 **오늘의 캔버스 전체**를 한 번에 �
   [PATCH .../background](#patch-apiv1groupsgroupidparfaitsparfaitidbackground). 이전 판본이 "쓰기 경로가
   서버 어디에도 없어 항상 `null`"이라고 적던 자리다. **C-301 배경 편집 화면**(develop, PR #231)이 고른
   배경을 버리던 이유 중 서버 절반이 닫혔고, **앱 표면도 다음 날 붙었다**(PR #266) — 남은 것은
-  Repository·UseCase·화면이다 → [open-questions](../synthesis/open-questions.md).
+  Repository·UseCase·화면이다 → [open-questions](../android/synthesis/open-questions.md).
 
   **`groupMembers`는 탈퇴하지 않은 멤버만**이다(`findAllByGroupIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc` —
   참여 순). ⚠️ **그런데 `placedBy` 조회에는 그 필터가 없다**(`findAllByIdIn`). 탈퇴한 멤버가 남긴 토핑은
@@ -566,7 +566,7 @@ URL**이라 앱이 방금 저장한 배경의 주소를 아는 길이 이 응답
 거절하는데(위 [도메인 에러 코드 전수](#도메인-에러-코드-전수)) 화면 사유 enum은 `NETWORK`·
 `UNSUPPORTED_IMAGE`·`UNKNOWN` 셋뿐이라 **"잠시 후 다시 시도해 주세요"로 접힌다**. 같은 상수를 C-106
 배치는 되감기 판정에 쓰므로 **한 코드에 두 처분이 생겼다**
-→ [open-questions](../synthesis/open-questions.md) OQ-P-261.
+→ [open-questions](../android/synthesis/open-questions.md) OQ-P-261.
 
 ⚠️ **배경 이미지가 참조 카운트를 올리지 않는 문제에 첫 실사례가 생겼다** — 이 경로가 업로드하는
 이미지는 `ImageType.BACKGROUND`이고, 서버는 배경 설정 시 `reference_count`를 올리지 않는다(OQ-P-190).
@@ -576,7 +576,7 @@ URL**이라 앱이 방금 저장한 배경의 주소를 아는 길이 이 응답
 상태를 보지 않아 마감된 캔버스도 편집된다 · 막는 것은 화면 책임"이라는 서술이
 `ParfaitService`·`ParfaitRemoteDataSource`(둘)·`ParfaitRepository`·`CanvasStatus`·`CanvasMainViewModel`·
 `CanvasMainScreen` 일곱 자리에 흩어져 있었고, 전부 **409를 사실로 적는 문장으로 바뀌었다**.
-지우지 않고 고친 것은 [parfait/CLAUDE.md](../CLAUDE.md) "기준 2와 3이 겹칠 때는 남긴다"를 따른
+지우지 않고 고친 것은 [parfait/CLAUDE.md](../android/CLAUDE.md) "기준 2와 3이 겹칠 때는 남긴다"를 따른
 것이다 — `CanvasStatus`·`CanvasMainScreen`처럼 오해를 미리 막는 성격이 섞인 자리이고, 새 문장은
 단정 대신 근거 문서(`api/parfait.md`)를 가리킨다. **화면 방어는 그대로 남는다** — 지난 캔버스의
 편집 진입을 치우는 것은 실패를 보여 주기 전에 길을 없애는 일이라 서버 가드와 목적이 다르다.
@@ -589,7 +589,7 @@ URL**이라 앱이 방금 저장한 배경의 주소를 아는 길이 이 응답
 ⚠️ 그 KDoc이 경고하는 함정이 하나 있다: 다섯 경로 전부 **권한 검사가 마감 검사보다 앞이라**
 마감된 캔버스라도 남의 토핑·비멤버면 409가 아니라 403이 먼저 온다.
 이 부류(다른 컴포넌트의 현재 상태를 단정한 주석)를 문서 감사 말고 잡을 수단이 없다는 것은 그대로다
-→ [open-questions](../synthesis/open-questions.md) [2026-08-20] OQ-P-244 ③.
+→ [open-questions](../android/synthesis/open-questions.md) [2026-08-20] OQ-P-244 ③.
 
 **계약의 두 성질이 소비 방식을 갈랐다.**
 ① `today`는 **부작용이 있다**(행 생성). 그럼에도 쓰는 이유는 토핑을 얹으려면 `parfaitId`가 있어야 하고,
@@ -609,7 +609,7 @@ URL**이라 앱이 방금 저장한 배경의 주소를 아는 길이 이 응답
 `positionX`·`positionY`는 **Canvas-Area 대비 0~1 정규화 중심점**, `scale` 1.0은 **긴 변이 그 너비의 40%**
 (위키 C-106 초기 크기), `borderWidth` 1.0은 **화면 기준 1dp**(토핑 배율과 무관), `borderColor`는
 `#RRGGBB` 6자리(알파 8자리도 읽는다). 서버가 같은 값을 다른 뜻으로 쓰거나 iOS가 달리 해석해도
-**계약으로는 드러나지 않는다** → [open-questions](../synthesis/open-questions.md).
+**계약으로는 드러나지 않는다** → [open-questions](../android/synthesis/open-questions.md).
 
 ⚠️ **`today` 응답의 `date`를 앱이 검증한다.** 자정을 걸친 요청이 어제 캔버스를 받을 수 있어, 오늘을
 **응답 뒤에** 읽어 비교하고 어긋나면 딱 한 번 다시 부른다. 그 "오늘"은 기기 시간대가 아니라
@@ -623,7 +623,7 @@ GET이 두 배로 돌고, 표시도 어긋났다(`CanvasMainUiState.today`는 �
 D−1). **정책상 옳은 쪽이 서버였으므로 앱을 옮겼다**(위키 [[캔버스-마감-스케줄]]의 03시). 고친 것은
 `parfaitToday()` 한 함수이고 **재시도 조건·달력 활성 조건·`syncToday()`가 그 값을 읽으므로 저절로
 따라왔다** → [conventions.md](conventions.md) "Android 불일치"(이제 0건) ·
-[open-questions](../synthesis/open-questions.md) [2026-08-18].
+[open-questions](../android/synthesis/open-questions.md) [2026-08-18].
 
 ✅ **칩 필드 하나는 결선됐고 하나는 여전히 아무도 안 읽는다**(2026-08-20, PR #308·#310 develop 머지).
 캔버스 상단 멤버 칩은 `groupMembers[].nameTagChip`을 `CanvasMemberVO.nametagChip`으로 올려 그린다 —
@@ -636,10 +636,10 @@ D−1). **정책상 옳은 쪽이 서버였으므로 앱을 옮겼다**(위키 [
 닉네임 색을 `groupMembers`에서 같은 `groupMemberId`로 찾아 정하고, 못 찾으면 `Default`다. **탈퇴
 멤버에서도 서버가 `placedBy.nameTagChip = DEFAULT`를 주므로 두 경로의 결과가 우연히 같다** — 그래서
 이 필드를 안 읽는 것이 지금은 증상을 만들지 않는다. 서버가 두 목록의 배정 규칙을 갈라 놓는 순간
-조용히 틀린 색이 된다 → [open-questions](../synthesis/open-questions.md) OQ-P-251.
+조용히 틀린 색이 된다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-251.
 닉네임 쪽은 반대로 **서버 문자열이 그대로 화면 문장이 된다** — 탈퇴 멤버 토핑은
 `(알수없음)님이 …에 쌓았어요`로 뜬다. 응답 필드를 안 읽는 것뿐이라 `⚠️불일치`는
-아니다(앱 JSON은 `ignoreUnknownKeys = true`) → [open-questions](../synthesis/open-questions.md) [2026-08-18].
+아니다(앱 JSON은 `ignoreUnknownKeys = true`) → [open-questions](../android/synthesis/open-questions.md) [2026-08-18].
 
 ✅ **본인 판정의 재료가 서버에서 왔다**(2026-08-26 서버 delta). 그전까지 앱에는 "내 토핑"을 가려낼
 근거가 없었다 — `CanvasMainViewModel#handleOnClickTopping`의 `CanvasToppingVO.isMine()`이 **상수
@@ -658,15 +658,15 @@ D−1). **정책상 옳은 쪽이 서버였으므로 앱을 옮겼다**(위키 [
 상태로 열린다. ⚠️ **새 C-305 화면이 생긴 것이 아니다** — 정책이 말하는 편집 진입을 **기존 C-301
 편집 화면의 토핑 탭**이 받는다. 그래서 갈 곳이 있는 것은 **오늘 캔버스뿐이고**, 지난 캔버스를 보는
 중이면 `isViewingToday` 가드에 걸려 탭이 여전히 아무 일도 안 한다
-→ [open-questions](../synthesis/open-questions.md) OQ-P-250.
+→ [open-questions](../android/synthesis/open-questions.md) OQ-P-250.
 
 ✅ **키 어긋남도 develop에서 닫혔다** — 2026-08-19 서버 delta가 응답 키를 `nameTagChip` 계열로 바꾼 뒤
 그 필드를 옛 키로 읽던 브랜치가 잠시 있었으나(기본값이 있어 예외 없이 **조용히 `null`**이 되는 부류),
 PR #310이 세 DTO의 키를 맞추고 반납 값 이름도 `RELEASED` → `DEFAULT`로 따라간 상태로 머지됐다.
 **재발 방지 수단은 여전히 없다** — 이 부류를 잡은 것은 두 번 다 계약 문서 감사였고, 앱 테스트는 자기
 DTO를 자기가 만들어 넣어 `@SerialName` 문자열을 검증하지 않는다
-→ [server-delta 스펙](../specs/archive/2026-08-19-server-delta-nametag-chip-keys.md) ·
-[open-questions](../synthesis/open-questions.md) [2026-08-19].
+→ [server-delta 스펙](../android/specs/archive/2026-08-19-server-delta-nametag-chip-keys.md) ·
+[open-questions](../android/synthesis/open-questions.md) [2026-08-19].
 
 ⚠️ **과거 목록은 이제 연 단위로 부른다**(2026-08-17, PR #279) — 1월 1일 ~ 12월 31일을 한 번에 받아
 화면이 연도별로 캐시한다. 근거는 계약이다 — **페이지네이션도 범위 상한도 없어**(→ [미결](#미결))
@@ -687,8 +687,8 @@ DTO를 자기가 만들어 넣어 `@SerialName` 문자열을 검증하지 않는
 mock을 만든다**. 즉 이 도메인은 "표면은 있는데 소비처가 없다"가 아니라 **소비처가 표면을 우회한
 상태**다. 계약 대조 관점에서 두 가지가 미검증으로 남는다 — 응답 매핑(`ParfaitHistory`가 서버 응답의
 어느 필드에 대응하는지 코드에 없다)과 `groupId` 전달(화면 `NavKeyCanvasMain`가 `data object`라
-그룹 식별자를 들고 있지 않아 UseCase 인자에서 아예 뺐다) → [c201 스펙](../specs/archive/2026-08-16-c201-canvas-calendar.md) ·
-[open-questions](../synthesis/open-questions.md).
+그룹 식별자를 들고 있지 않아 UseCase 인자에서 아예 뺐다) → [c201 스펙](../android/specs/archive/2026-08-16-c201-canvas-calendar.md) ·
+[open-questions](../android/synthesis/open-questions.md).
 📌 **막고 있던 이유는 사라졌는데 상태는 그대로다**(2026-08-17, PR #268) — Repository가 생겼고
 `NavKeyCanvasMain`가 `groupId`를 들고 다니지만 **두 UseCase는 여전히 mock**이다. 이제 같은
 ViewModel 안에서 **캔버스 조회는 계약을 타고 달력 조회는 안 탄다.**
@@ -696,7 +696,7 @@ ViewModel 안에서 **캔버스 조회는 계약을 타고 달력 조회는 안 
 미검증으로 남았던 둘도 닫혔다: 응답 매핑은 `ParfaitHistory`를 **삭제**하고 계약 VO `PastCanvasVO`를
 그대로 쓰는 것으로(그래서 "달력이 점을 찍는 기준"이 응답 필드 `imageCount` → VO `toppingCount`가
 됐다), `groupId`는 NavKey 인자를 타고 두 UseCase 시그니처에 들어왔다
-→ [c201-canvas-calendar-server 스펙](../specs/archive/2026-08-17-c201-canvas-calendar-server.md).
+→ [c201-canvas-calendar-server 스펙](../android/specs/archive/2026-08-17-c201-canvas-calendar-server.md).
 
 | 엔드포인트 | Service 함수 | DataSource 함수 |
 |---|---|---|
@@ -722,12 +722,12 @@ DTO가 함께 새로 생겼다. **DI 등록 줄은 한 줄도 늘지 않았다**
   잘못된 조합을 막는 일은 domain `CanvasBackgroundEdit`가 한다(DTO에 sealed를 넣지 않는 규약).
   ⚠️ **중첩 응답은 상위 응답 파일 안에 함께 둔다** — `:data`의 "선언당 파일 하나" 규약의 명시적 예외이고
   근거는 "서버가 한 파일에 담은 것을 앱도 한 파일에 담아야 계약 문서와 눈으로 대조된다"이다
-  ([data-layer](../architecture/data-layer.md)). `PlacedByResponse`라는 이름이
+  ([data-layer](../android/architecture/data-layer.md)). `PlacedByResponse`라는 이름이
   `response/parfait`·`response/parfaitimage` **두 패키지에 각각 존재**하는 것도 같은 이유였다(서버가 그랬다).
   🔁 **2026-08-19에 그 근거가 사라졌다** — 서버가 토핑 배치 쪽을 `PlaceParfaitImagePlacedByResponse`로
   개명해 이름 충돌을 없앴다(springdoc이 두 스키마를 같은 것으로 취급해 `nameTagChip` 추가가 스웨거에
   안 보이던 문제 때문이다, [parfait-image.md](parfait-image.md)). 앱은 두 이름을 그대로 두고 있어
-  **더는 서버의 거울이 아니다** → [open-questions](../synthesis/open-questions.md) [2026-08-19].
+  **더는 서버의 거울이 아니다** → [open-questions](../android/synthesis/open-questions.md) [2026-08-19].
 - **domain VO**: `domain/model/canvas/`에 일곱(`CanvasVO`·`PastCanvasVO`·`CanvasStatus`·
   `CanvasBackground`·`CanvasBackgroundEdit`·`CanvasMemberVO`·`CanvasToppingVO`). 이름은 제품 언어라 서버
   `parfait`가 `Canvas`, 응답 필드 `imageCount`가 `toppingCount`다 — 다만 **id 타입은 서버 언어 유지**
@@ -735,7 +735,7 @@ DTO가 함께 새로 생겼다. **DI 등록 줄은 한 줄도 늘지 않았다**
   ⚠️ **`TodayCanvasVO`는 `CanvasVO`로 개명됐다**(2026-08-16, PR #266) — 상세 조회가 같은 응답 클래스를
   쓰면서 한 타입이 오늘과 특정 날짜 양쪽을 담게 됐기 때문이다. 그 대가로 **"이 조회가 캔버스 행을
   만든다"는 경고의 소유가 타입에서 함수로 옮겨졌다** — 오늘 조회만 만들고 상세 조회는 만들지 않으므로
-  VO KDoc이 그 성질을 대표할 수 없다 → [open-questions](../synthesis/open-questions.md).
+  VO KDoc이 그 성질을 대표할 수 없다 → [open-questions](../android/synthesis/open-questions.md).
 - **Mapper**: `source/parfait/mapper/VOMapper.kt`(이 도메인 첫 매퍼 — 연도 조회뿐이던 시절엔 없었다).
   계약의 "널이 세 가지를 뜻한다"를 여기서 가른다 — `images` `null`은 **빈 목록으로 접고**,
   `background`(미설정)·`lastClosedDate`(마감 이력 없음)의 `null`은 **그대로 둔다**.
@@ -758,8 +758,8 @@ DTO가 함께 새로 생겼다. **DI 등록 줄은 한 줄도 늘지 않았다**
 - **범위 파라미터는 `null` 그대로 보낸다** — `from`·`to`가 `null`이면 Retrofit이 쿼리를 URL에서 빼므로
   서버 기본값(오늘 − 30일 ~ 오늘)이 산다. 문자열 변환(`LocalDate.toString()`)은 DataSource가 한다.
 
-설계 근거는 [specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)와
-신규 둘의 사후 스펙 [specs/archive/2026-08-16-canvas-detail-background-api-service-layer](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md).
+설계 근거는 [specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../android/specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md)와
+신규 둘의 사후 스펙 [specs/archive/2026-08-16-canvas-detail-background-api-service-layer](../android/specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md).
 DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조건부 필수 두 갈래를 `coVerify` 인자 비교로**
 잠근다(매퍼 단독 테스트를 만들지 않는 규약 그대로).
 
@@ -767,7 +767,7 @@ DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조
 자리가 이 엔드포인트로 닫혔고([parfait-image.md](parfait-image.md) 참고) **2026-08-17 화면까지 이어졌다.**
 ⚠️ **부작용 있는 GET을 억제하는 코드 수단은 여전히 없다** — 경고가 Service·DataSource·Repository KDoc에만
 있고, 실제 억제는 화면의 `launch(key = LOAD_TODAY_CANVAS_KEY)` **하나**에 걸려 있다(다른 소비자가 생기면
-같은 규율을 스스로 지켜야 한다) → [open-questions](../synthesis/open-questions.md).
+같은 규율을 스스로 지켜야 한다) → [open-questions](../android/synthesis/open-questions.md).
 
 ✅ **쓰기도 배치(POST) 하나는 붙었다**(2026-08-22 develop 머지, PR #334) — `CanvasToppingPlaceViewModel` → `AddToppingUseCase` → `ToppingRepository.place`가
 화면에서 새 토핑을 얹는다. **좌표 수정(위치 PATCH)·테두리 PATCH·DELETE는 여전히 소비처 0건**이라
@@ -792,16 +792,16 @@ DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조
 "토핑 1개 이상 = True, 0개 = False"로 규정하고 그 판정이 정본과 일치한다. 서버 `EMPTY`는
 "0건으로 마감된 날"이라 뜻이 좁아, 옮기면 진행 중인 오늘의 빈 캔버스에 점이 찍힌다. 두 값이
 같지 않다는 것을 `PastCanvasVO.isEmpty` KDoc이 담는다. **읽는 화면은 아직 0건이다**
-→ [open-questions](../synthesis/open-questions.md) OQ-P-333.
+→ [open-questions](../android/synthesis/open-questions.md) OQ-P-333.
 
 ✅ **`groupName`을 하루 만에 읽기 시작했다**(2026-09-08, PR #469 develop 머지). `GetTodayParfaitResponse`
 (`:data`)·`CanvasVO`(`:domain`)에 자리가 서고 `toCanvasVO`가 `GroupName`으로 감싼다. 오늘·상세 두 조회가
 같은 매퍼를 타므로 값은 두 경로 모두에 실린다.
 
 **정본을 캔버스로 옮기지 않은 것이 이 결선의 결정이다.** C-001 상단 바의 그룹명은 여전히 그룹 목록
-캐시가 정본이고(`loadCanvasMainInfo`, [ADR-0023](../adr/0023-group-in-memory-ssot.md)), 캔버스가 준
+캐시가 정본이고(`loadCanvasMainInfo`, [ADR-0023](../android/adr/0023-group-in-memory-ssot.md)), 캔버스가 준
 이름은 **그 캐시가 아직 비어 있을 때만** 상태를 채운다(`groupName.ifEmpty { … }`). 캔버스 SSoT
-([ADR-0029](../adr/0029-canvas-today-ssot-polling.md))가 그룹의 값을 자기 캐시의 정본으로 삼으면 같은
+([ADR-0029](../android/adr/0029-canvas-today-ssot-polling.md))가 그룹의 값을 자기 캐시의 정본으로 삼으면 같은
 값의 출처가 둘이 되기 때문이다. 그래서 **서버가 없애 주려던 왕복(목록 조회)은 실제로는 남아 있고**,
 이 필드가 실제로 값을 내는 자리는 **목록 캐시가 빈 진입** — 푸시 딥링크·프로세스 재시작 복귀다.
 
@@ -813,40 +813,40 @@ DataSource 테스트는 29 케이스이고, 배경 변경 요청 바디의 **조
 ## 미결
 
 - 과거 목록 원소의 `status`를 VO까지 받았으나 읽는 화면이 0건이다(달력 점은 개수 축을 그대로 쓴다)
-  → [open-questions](../synthesis/open-questions.md) OQ-P-333
+  → [open-questions](../android/synthesis/open-questions.md) OQ-P-333
 - **경로 세그먼트 `year`(단수) vs 응답 필드 `years`(복수) 불일치.** 서버 코드로는 의도된 설계인지 실수인지
-  확인할 수 없다 — 근거 자료(PR 설명·이슈) 조사는 이번 범위 밖. → [open-questions](../synthesis/open-questions.md)
+  확인할 수 없다 — 근거 자료(PR 설명·이슈) 조사는 이번 범위 밖. → [open-questions](../android/synthesis/open-questions.md)
 - `GET .../today`가 조회인데 캔버스 행을 만든다(부작용 있는 GET), 그리고 오늘 날짜가 이미 마감돼 있으면
-  마감된 캔버스를 "오늘"로 돌려준다 → [open-questions](../synthesis/open-questions.md)
+  마감된 캔버스를 "오늘"로 돌려준다 → [open-questions](../android/synthesis/open-questions.md)
 - 과거 목록의 `thumbnailUrl`이 항상 `null`이고 페이지네이션·범위 상한이 없다
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - 테스트 전용 회전 엔드포인트가 인증 없이 전 그룹 캔버스를 마감한다(프로덕션 제거 TODO)
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - `images[].placedBy`가 탈퇴 멤버를 걸러내지 않아 `groupMembers`에 없는 `groupMemberId`와 `(알수없음)`
   닉네임이 섞인다 — **2026-08-20부터 이 값을 실제로 읽는 화면이 생겼다**(C-202 Spotlight 토스트)
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - 배경 이미지가 `reference_count`를 올리지 않아 같은 이미지의 토핑을 지우면 배경이 깨질 수 있다
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - 배경 이미지를 요청은 `imageId`로 받고 응답·조회는 URL로만 내려줘 앱이 현재 배경의 이미지 id를 되짚을
-  수단이 없다 → [open-questions](../synthesis/open-questions.md)
+  수단이 없다 → [open-questions](../android/synthesis/open-questions.md)
 - 상세 조회가 상태를 거르지 않아 "이전 파르페 상세"라는 이름과 달리 오늘의 `ACTIVE` 캔버스도 조회된다.
   같은 캔버스를 `today`와 상세 두 경로로 얻을 수 있고 **한쪽만 부작용이 있다**
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - **테스트 전용 회전이 오늘 캔버스를 강제로 마감한다**(2026-08-18) — 호출 뒤 `today`가 `CLOSED` 캔버스를
-  돌려주는 상태를 아무나 만들 수 있다 → [open-questions](../synthesis/open-questions.md)
+  돌려주는 상태를 아무나 만들 수 있다 → [open-questions](../android/synthesis/open-questions.md)
 
 ✅ **2026-08-19 해소 2건** — ① 하루 경계가 서버 안에서 갈려 있던 것(과거 목록 `to` 기본값만 자정)이
 `ParfaitDay.current()`로 통일됐다. ② `nameTagChip`이 `placedBy`에만 있고 `groupMembers`에는 없어
 캔버스 상단 멤버 칩을 계약으로 정할 수 없던 것이 닫혔다. **남은 것은 앱이 03시 경계와 칩 필드를
-따라오는 일**이었고 그것도 2026-08-20에 닫혔다 → [open-questions](../synthesis/open-questions.md).
+따라오는 일**이었고 그것도 2026-08-20에 닫혔다 → [open-questions](../android/synthesis/open-questions.md).
 
 ✅ **2026-08-20 해소 1건** — 배경 변경이 마감 상태를 보지 않던 것을 서버가 409 `PARFAIT_ALREADY_CLOSED`로
 막았다(OQ-P-189). 앱이 "막는 것은 화면 책임"이라고 적어 둔 자리 일곱 곳이 그 순간 거짓이 됐고,
 **같은 날 PR #318이 그 일곱을 전부 고쳤다**(경로가 아니라 서술의 문제라 `⚠️불일치`였던 적은 없다)
-→ [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).
+→ [Android 매핑](#android-매핑) · [open-questions](../android/synthesis/open-questions.md).
 
 ✅ **2026-08-26 해소 1건** — 앱이 "내 토핑"을 가려낼 재료가 계약에 없던 것을 서버가
 `placedBy.ownerType`으로 닫았다(OQ-P-250 ①). 예고했던 남은 둘 중 **앱이 그 값을 읽는 일은 같은 날
 닫혔고**(PR #376), **목적지는 하루 뒤에 생겼다**(2026-08-27 PR #400 — 새 화면이 아니라 C-301 편집
 화면의 토핑 탭이 받는다) → [Android 매핑](#android-매핑) ·
-[open-questions](../synthesis/open-questions.md).
+[open-questions](../android/synthesis/open-questions.md).

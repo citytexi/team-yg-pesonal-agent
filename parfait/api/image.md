@@ -175,7 +175,7 @@ wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlReques
 `ConfirmImageUploadResponse`), 변환은 `source/image/mapper/VOMapper.kt`, domain은
 `domain/model/image/`(`ImageType`·`ImageStatus`·`ImageUploadUrlVO`·`ConfirmedImageVO`)와
 `domain/model/id/ImageId`다. 설계 근거는
-[specs/archive/2026-08-10-image-api-service-layer](../specs/archive/2026-08-10-image-api-service-layer.md).
+[specs/archive/2026-08-10-image-api-service-layer](../android/specs/archive/2026-08-10-image-api-service-layer.md).
 
 계약 대조에서 갈린 곳은 없다 — 함수명 규칙 2/2, `@NoAuth` 미부착(화이트리스트 밖), 전 프로퍼티 `@SerialName`,
 `imageType`이 스키마 `required` 밖인데도 비널, `expiresIn` 초 → `Duration`, `status` 미지값 → `UNKNOWN` 폴백.
@@ -184,14 +184,14 @@ wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlReques
 **`data/source/image/local/RecentImageLocalDataSource`와 `data/source/file/local/FileRecentImageLocalDataSource`는
 여전히 이 API와 무관하다** — 기기 갤러리 조회용 로컬 소스다. 같은 폴더에 성격이 다른 둘이 공존하게 됐고,
 `domain` 쪽은 `image`라는 이름이 이미 기기 이미지 뜻으로 선점돼 있다
-→ [open-questions](../synthesis/open-questions.md).
+→ [open-questions](../android/synthesis/open-questions.md).
 
 ✅ **`android_status`가 `done`이 됐다**(2026-08-22 develop 머지, PR #334). 두 엔드포인트는
 `ImageUploadRepositoryImpl`(발급 → PUT → confirm)을 거쳐 `AddToppingUseCase`에 닿고,
 `CanvasToppingPlaceViewModel`이 C-106 확인 버튼에서 그 UseCase를 부른다 — **2/2 전부 화면까지
 이어졌다.** `done`은 이 저장소에서 **소비 여부만 뜻한다**([README](README.md) 규약) —
 ⚠️ **실서버 요청 검증은 여전히 0건**(실기기 미수행)이고 그 추적은
-[open-questions](../synthesis/open-questions.md) OQ-P-146이 쥔다.
+[open-questions](../android/synthesis/open-questions.md) OQ-P-146이 쥔다.
 
 ✅ **3단계가 처음으로 이어졌다**(2026-08-20 develop 머지, PR #322).
 `data/source/image/remote/PresignedUploadDataSource`가 S3 PUT을 수행하고,
@@ -208,8 +208,8 @@ wire DTO는 `service/model/{request,response}/image/`(`IssueImageUploadUrlReques
   서명 불일치를 구조적으로 불가능하게 만든다.
 - **`expiresIn` 만료를 판정하지 않는다** — 만료는 실패 후 발급부터 전량 재시도로만 풀린다.
 
-설계 근거는 [specs/2026-08-20-c106-topping-place-api](../specs/archive/2026-08-20-c106-topping-place-api.md),
-선행 결정의 판정은 [open-questions](../synthesis/open-questions.md) `OQ-P-030`·`OQ-P-110`(둘 다 해소).
+설계 근거는 [specs/2026-08-20-c106-topping-place-api](../android/specs/archive/2026-08-20-c106-topping-place-api.md),
+선행 결정의 판정은 [open-questions](../android/synthesis/open-questions.md) `OQ-P-030`·`OQ-P-110`(둘 다 해소).
 
 ✅ **소비자가 붙으면서 살아날 뻔한 결함 둘을 PR5가 미리 닫았다**(2026-08-22 develop 머지,
 PR #334) — 메인 클라이언트가 발급 **응답 본문**을
@@ -240,10 +240,10 @@ PR #329). C-301 배경 편집이 고른 사진을 `ImageType.BACKGROUND`로 올�
 `UploadImageFormat.ofBytes`를 업로드 경로 밖에서 처음 쓰는 자리이고, 여기가 `.jpg`로 못박고 있던
 동안에는 갤러리에서 고른 PNG가 그 이름으로 앉아 나중에 배경으로 고를 때
 `ImageFileLocalDataSourceImpl#formatOf`의 **확장자 우선** 판정이 `image/jpeg`를 실었다.
-⚠️ **이미 `.jpg`로 앉은 파일은 그대로 남는다** → [open-questions](../synthesis/open-questions.md) OQ-P-283.
+⚠️ **이미 `.jpg`로 앉은 파일은 그대로 남는다** → [open-questions](../android/synthesis/open-questions.md) OQ-P-283.
 
 ⚠️ **캐시가 쌓이기만 한다** — 복사본은 `cacheDir/upload`에 UUID 이름으로 남고 지우는 코드가 없다
-(세그멘테이션 캐시와 달리 정리 경로가 아직 없다) → [open-questions](../synthesis/open-questions.md) OQ-P-262.
+(세그멘테이션 캐시와 달리 정리 경로가 아직 없다) → [open-questions](../android/synthesis/open-questions.md) OQ-P-262.
 📌 **같은 디렉토리에 수명 정책이 있는 파일이 생겼다**(2026-09-09, PR #473) — 아래 전처리가 만드는
 축소본은 업로드가 끝나면 `finally`에서 지운다. 복사본만 남는다.
 
@@ -260,19 +260,19 @@ PR #329). C-301 배경 편집이 고른 사진을 `ImageType.BACKGROUND`로 올�
 - **`contentType`이 원본 확장자를 따라가지 않는 갈래가 생겼다.** `ImageType.BACKGROUND`는 출력 포맷을
   **JPEG로 고정**하므로 PNG 배경은 `image/jpeg`로 발급·PUT된다(투명 영역은 흰색 합성). `NUKKI`는 알파가
   필요해 입력 포맷을 그대로 따른다. 서버가 받는 형식이 `image/png`·`image/jpeg` 둘뿐이라는 계약은
-  양쪽 갈래 모두 지킨다 → [spec](../specs/archive/2026-09-08-upload-image-downscale.md).
+  양쪽 갈래 모두 지킨다 → [spec](../android/specs/archive/2026-09-08-upload-image-downscale.md).
 
 `http/images.http`가 두 요청 + S3 PUT을 덮는다(요청 모음 20/20 회복).
 
 ## 미결
 
 - `fileName`이 `@NotBlank` 필수인데 서버가 쓰지 않는다 — 계약에서 뺄지, 아니면 S3 키·메타에 반영할지
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - confirm에 소유자 검증이 없어 임의 회원이 남의 `imageId`를 확정할 수 있다
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - 확정되지 않은 `PENDING` 이미지·업로드되지 않은 S3 키를 정리하는 경로가 여전히 없다. 2026-08-15에
   스케줄러가 서버에 처음 들어왔지만(캔버스 회전, [parfait.md](parfait.md)) **이미지 정리는 그 대상이
-  아니다** → [open-questions](../synthesis/open-questions.md)
+  아니다** → [open-questions](../android/synthesis/open-questions.md)
 - `referenceCount`가 0이 되면 S3 객체만 지워지고 `COMPLETED` 메타 행은 남는다 — 그 `imageId` 재배치가
-  깨진 이미지를 만든다 → [open-questions](../synthesis/open-questions.md)
+  깨진 이미지를 만든다 → [open-questions](../android/synthesis/open-questions.md)
 - confirm 재시도 시의 409를 앱이 성공으로 볼지 → 위 open-questions 항목에 함께 적는다

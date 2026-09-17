@@ -10,7 +10,7 @@ TJYG-Android **제품 기획·전략 문서** 저장소. `deanpeters/Product-Man
 ## 코드 vs 문서 경계
 
 - **코드 구현**(`.kt`/gradle) = superpowers 체인(brainstorming → writing-plans → 실행).
-  설계 스펙은 [`../specs/`](../specs/README.md), 계획은 [`../plans/`](../plans/README.md).
+  설계 스펙은 [`../specs/`](../android/specs/README.md), 계획은 [`../plans/`](../android/plans/README.md).
 - **제품 문서** = PM-Skills → 여기(`parfait/pm/`).
 - 공통 진입은 둘 다 `superpowers:brainstorming`.
 

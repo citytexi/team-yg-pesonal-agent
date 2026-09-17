@@ -471,7 +471,7 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 `borderLayers`의 **마지막 겹**만 `ToppingBorder.Solid`로 보내고, 비면 `None`을 보낸다. 되읽는 방향
 (`toBorderLayers`)은 반대로 한 겹짜리 목록으로 편다. 같은 화면이 **그릴 때는 첫 겹**을 쓰고 있어
 겹이 둘 이상이면 보이는 테두리와 저장되는 테두리가 갈린다
-→ [open-questions](../synthesis/open-questions.md) OQ-P-324.
+→ [open-questions](../android/synthesis/open-questions.md) OQ-P-324.
 
 ⚠️ **변형과 테두리가 확인 버튼 안에서 독립적으로 판정되고 독립적으로 나간다** —
 `updateDirtyToppings`가 dirty 토핑을 `hasTransformChange`·`hasBorderChange` 둘로 갈라, 변형이 바뀐
@@ -483,7 +483,7 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 `VOMapper`(`data/source/parfait/`·`data/source/parfaitimage/`)가 `ToppingBorder.Solid` 를 직접 만들지
 않고 `ToppingBorder.solidClamped` 를 지나, 서버가 준 `borderWidth` 를 `WIDTH_RANGE_DP`(2.0..30.0)로
 가둔다. **서버가 범위를 검증하지 않는 자리를 앱이 임시로 메운 것**이라, 서버나 정책이 범위를 정하면
-걷을 코드다(위 「미결」·[open-questions](../synthesis/open-questions.md) OQ-P-381). 두
+걷을 코드다(위 「미결」·[open-questions](../android/synthesis/open-questions.md) OQ-P-381). 두
 `RemoteDataSource` 테스트가 범위 밖 값이 잘리는 것을 각각 한 건씩 잠근다.
 📌 **2026-09-11(PR #496)부터 두 매퍼가 사본 대신 공용 함수를 부른다** —
 `data/source/common/mapper/ToppingBorderMapper.kt`의 `toToppingBorder`이고, 그룹 목록 매퍼
@@ -506,13 +506,13 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 `safeApiCallWithoutData`, 회원 탈퇴는 204·본문 없음이라 `safeApiCallNoContent`다
 ([member.md](member.md)). 死코드로 지적돼 있던 `safeApiCallWithoutData`가 **첫 프로덕션 소비처**를
 얻었다. 설계 근거는
-[specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md).
+[specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer](../android/specs/archive/2026-08-15-parfait-canvas-topping-member-api-service-layer.md).
 
 **이름이 계층마다 갈린다.** `data`는 서버 언어(`ParfaitImageService`·`PlaceParfaitImageRequest`),
 `domain`은 제품 언어(`PlacedToppingVO`·`ToppingTransform`·`ToppingBorder`·`UpdatedToppingVO`) —
 제품 어디에도 "parfait image"라는 말이 없고 위키·기획은 전부 "토핑"이다. `source/parfaitimage/mapper/VOMapper.kt`가
 그 번역 지점이다. 설계 근거는
-[specs/archive/2026-08-11-member-parfait-image-api-service-layer](../specs/archive/2026-08-11-member-parfait-image-api-service-layer.md).
+[specs/archive/2026-08-11-member-parfait-image-api-service-layer](../android/specs/archive/2026-08-11-member-parfait-image-api-service-layer.md).
 
 계약의 얽힌 제약 하나를 타입이 강제한다 — **`borderType = SOLID`면 색·두께가 필수**(아니면 400
 `INVALID_BORDER`)라는 규칙을 `sealed interface ToppingBorder { None | Solid(color, width) }`로 모델링해
@@ -532,7 +532,7 @@ nullable 5파라미터다. PATCH 요청 DTO의 5필드가 전부 `= null` 기본
 바꿨다 — **거울 규약을 복원한 것**이고, 이름이 길어진 대가로 같은 이름 두 개를 두 패키지에 두던
 모양이 사라졌다(캔버스 응답 쪽은 `PlacedByResponse` 그대로). 두 DTO를 "통일해야 하나" 오해하지
 않도록 양쪽 KDoc에 서로를 가리키는 한 줄이 붙어 있다
-→ [open-questions](../synthesis/open-questions.md) [2026-08-19].
+→ [open-questions](../android/synthesis/open-questions.md) [2026-08-19].
 
 **POST·위치 PATCH 응답 VO에는 여전히 테두리 필드가 없다** — 두 응답이 테두리를 돌려주지 않아서다.
 대신 **되읽을 두 자리가 실제로 생겼다**: 테두리 PATCH 응답(`UpdatedToppingBorderVO` —
@@ -544,12 +544,12 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 409 `PARFAIT_ALREADY_CLOSED`를 낼 수 있게 되자 앱이 **`ServerErrorCode.Parfait`** 를 신설해 그 코드를
 들었다. 소비처가 0건인데 상수를 먼저 둔 것은 "쓰지 않는 상수는 계약이 바뀌어도 아무도 고치지 않아
 거짓말이 된다"는 그 파일의 규약에 대한 **명시적 예외**였고, 근거는 **처분이 이미 정해졌다**는 것이다
-(→ [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md): 이 코드는 다른 넷과
+(→ [c106-topping-place-api 스펙](../android/specs/archive/2026-08-20-c106-topping-place-api.md): 이 코드는 다른 넷과
 함께 토스트 후 화면에 남는다). 상수 KDoc이 결정과 함정을 함께 적어 소비처가 붙을 때
 같은 판단을 다시 하지 않게 한다 — 특히 **네 경로 전부 소유권 검사가 마감 검사보다 앞이라** 남의
 토핑을 마감된 캔버스에서 고치려 하면 409가 아니라 403 `PARFAIT_IMAGE_NOT_OWNED`가 먼저 온다.
 같은 PR이 `CanvasStatus` KDoc의 "서버가 그것을 강제하지 않는다"도 뒤집었다
-→ [parfait.md](parfait.md) Android 매핑 · [open-questions](../synthesis/open-questions.md) [2026-08-20].
+→ [parfait.md](parfait.md) Android 매핑 · [open-questions](../android/synthesis/open-questions.md) [2026-08-20].
 
 ✅ **위 예외 사유가 소멸했다**(2026-08-21 브랜치 작업 → 2026-08-22 develop 머지, PR #334) — `CanvasToppingPlaceViewModel`이 영구 실패 판정에
 쓰는 코드에 소비처가 생겼다. 처음 셋(`PARFAIT_ALREADY_CLOSED`·`GROUP_NOT_JOINED`·`PARFAIT_NOT_FOUND`)에
@@ -563,7 +563,7 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 "쓰지 않는 상수를 먼저 둔 명시적 예외"는 이제 필요 없다 — 상수 KDoc의 결정·함정 서술은 남지만,
 더는 예외가 아니라 보통의 소비되는 상수다. 다만 `PARFAIT_ALREADY_CLOSED` KDoc의 "화면 이동은
 그대로 진행하고"는 낡았다 — 최종 리뷰가 되감기 자체를 걷어 이제 알린 뒤 화면에 남는다(아래 인접
-절·[스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) 참고).
+절·[스펙](../android/specs/archive/2026-08-20-c106-topping-place-api.md) 참고).
 
 **화면 소비처는 배치(POST) 하나뿐이다.** 나머지 셋(위치 PATCH · 테두리 PATCH · DELETE)은 여전히
 화면 로컬 상태로만 동작한다(소비 화면은 C-301 라운드). 다만 **"다시 그릴 수 없다"는 사유도, 앱 표면
@@ -585,8 +585,8 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 화면에 남는다**(최종 브랜치 리뷰로 뒤집힌 결정, 성공은 여전히 되감는다). **배치(POST)의 화면
 소비처는 이것 하나다.** `android_status`는 `partial` 그대로다 — 나머지 셋(위치·테두리·삭제)의
 소비 화면이 C-301 라운드다. 실기기 확인은 아직 없다
-→ [c106-topping-place-api 스펙](../specs/archive/2026-08-20-c106-topping-place-api.md) ·
-[open-questions](../synthesis/open-questions.md).
+→ [c106-topping-place-api 스펙](../android/specs/archive/2026-08-20-c106-topping-place-api.md) ·
+[open-questions](../android/synthesis/open-questions.md).
 
 ✅ **삭제가 화면까지 이어졌다**(2026-08-23 develop 머지, PR #335) — `ToppingRepository.delete` ·
 `DeleteToppingUseCase`가 신설되고 C-301 편집 탭의 삭제 확인 모달이 그것을 부른다. **앱이 서버의
@@ -596,7 +596,7 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 토스트를 내고 로딩만 내린다 — 이 절 초판이 "실패가 화면에 닿지 않는다"고 적은 것은 틀렸다.
 **dirty 집합과는 무관하다** — 삭제는 dirty 축을 안 쓴다(그 축이 붙잡는 것은 이동·크기·각도·테두리뿐이다),
 그래서 위치 PATCH가 실패 id를 `dirtyToppingIds`에 남겨 재시도하는 것과는 처분이 다르다
-→ [open-questions](../synthesis/open-questions.md) OQ-P-270.
+→ [open-questions](../android/synthesis/open-questions.md) OQ-P-270.
 `android_status`는 여전히 `partial`이다 — 위치·테두리 PATCH의 소비 화면이 없다.
 
 ✅ **위치 PATCH도 화면까지 이어졌다**(2026-08-23 develop 머지, PR #336) — `ToppingRepository.update` ·
@@ -613,14 +613,14 @@ POST 응답에 없는 값을 지어내거나 nullable로 "모른다"와 "없다"
 ✅ **정정 — 실패는 화면에 닿는다.** `CanvasBGEditViewModel.handleOnClickConfirm`이 실패한 토핑
 id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `CanvasBGEditError.TOPPING_SAVE_UNKNOWN`
 토스트를 내며 화면을 닫지 않는다 — 이 절 초판이 "실패가 화면에 닿지 않고 확인은 그대로 성공한다"고
-적은 것은 틀렸다 → [open-questions](../synthesis/open-questions.md) OQ-P-275.
+적은 것은 틀렸다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-275.
 ✅ **정정 — 둘 다 토스트를 낸다, 다만 완전히 같지는 않다.** 배경 실패는 `failToSave`가
 `toCanvasBGEditError`로 원인별 코드(`NETWORK`·`UNSUPPORTED_IMAGE`·`BACKGROUND_SAVE_UNKNOWN`)를
 가른다. 토핑 변형 실패는 원인을 안 가리고 항상 `TOPPING_SAVE_UNKNOWN` 하나로 접힌다. **같은
 확인에서 배경과 토핑이 함께 실패하면 배경 쪽 토스트만 뜬다** — `handleOnClickConfirm`의 `when`이
 `savedBackground == null`을 토핑 실패 분기(`failedToppingIds.isNotEmpty()`)보다 먼저 매칭해서다.
 다만 `dirtyToppingIds`는 그 분기 이전에 이미 갱신돼 있어, 토스트만 안 뜰 뿐 다음 확인의 재시도
-대상에서는 안 빠진다 → [open-questions](../synthesis/open-questions.md) OQ-P-261.
+대상에서는 안 빠진다 → [open-questions](../android/synthesis/open-questions.md) OQ-P-261.
 ⚠️ **범위 검증 없는 두 축이 그대로 요청 값이 된다** — 아래 [미결](#미결)의 `scale`·`rotation`
 서버 검증 부재가 이 라운드부터 실제로 닿는다. 앱 쪽 상한도 없다(OQ-P-271).
 `android_status`는 여전히 `partial`이다 — 테두리 PATCH의 소비 화면이 없다.
@@ -632,7 +632,7 @@ id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `C
 **변형을 보낸 토핑 전부**가 `dirtyToppingIds`에 남아 다음 확인에서 다시 나간다(재시도 입도가 토핑
 단위에서 요청 단위로 거칠어졌다). **테두리는 이 일괄 계약에 필드가 없어 여전히 토핑마다 나간다** —
 확인 한 번이 변형 일괄 1회 + 테두리 병렬 N회로 갈린다. `positionZ`는 여전히 안 보낸다
-→ [open-questions](../synthesis/open-questions.md) OQ-P-334.
+→ [open-questions](../android/synthesis/open-questions.md) OQ-P-334.
 
 `http/parfait-image.http`가 **다섯 중 넷**을 덮는다(2026-08-15 시점 전량, 2026-08-31 delta로 다시 벌어졌다) —
 일괄 PATCH 요청이 없다. **선행이 넷**이 됐다 —
@@ -642,7 +642,7 @@ id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `C
 ## 미결
 
 - 좌표·`scale`·`rotation`·`borderWidth`에 서버 검증이 없다 — 범위를 서버가 강제할지, 앱 책임으로 둘지
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
   > ⚠️ **`borderWidth` 는 Android 가 매핑에서 임시로 가둔다**(2026-09-08, PR #464 develop
   > 머지) — `ToppingBorder.solidClamped`
   > 가 받은 값을 `WIDTH_RANGE_DP`(2.0..30.0)에 넣는다. 상한을 내리기 전에 50 으로 저장된 행이
@@ -653,15 +653,15 @@ id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `C
   > ⚠️ **그 값이 하루 만에 요청 값이 됐다**(2026-08-23, PR #336) — 확인 버튼이 `scale`·`rotation`을
   > 그대로 위치 PATCH에 싣는다. 무한히 커진 배율과 누적된 각도가 검증 없이 저장된다.
 - 같은 `imageId` 재-POST가 남의 배치를 옮기고 소유자를 가져간다(POST에 소유자 검사 없음)
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - 삭제가 S3 객체를 지우면서 `image_meta` 행은 `COMPLETED`로 남긴다 — 그 `imageId`로 다시 배치하면 깨진
-  이미지가 걸린다 → [open-questions](../synthesis/open-questions.md)
+  이미지가 걸린다 → [open-questions](../android/synthesis/open-questions.md)
 - 삭제의 S3 호출이 트랜잭션 안에 있어 커밋 실패 시 DB와 S3가 갈린다
-  → [open-questions](../synthesis/open-questions.md)
+  → [open-questions](../android/synthesis/open-questions.md)
 - 일괄 PATCH에 `items` 개수 상한이 없고, 실패해도 **어느 항목이 걸렸는지 응답에 없다**(코드만 오고
-  `parfaitImageId`는 안 온다) → [open-questions](../synthesis/open-questions.md) OQ-P-334
+  `parfaitImageId`는 안 온다) → [open-questions](../android/synthesis/open-questions.md) OQ-P-334
 - 같은 수정을 단건과 일괄이 **다른 검사 순서**로 처리해 마감된 캔버스의 남의 토핑에 서로 다른 코드를
-  낸다(403 vs 409) → [open-questions](../synthesis/open-questions.md) OQ-P-334
+  낸다(403 vs 409) → [open-questions](../android/synthesis/open-questions.md) OQ-P-334
 
 ✅ **2026-08-15 해소** — ① 배치 **삭제** 엔드포인트 신설, ② 배치 후 **테두리 변경 경로** 신설,
 ③ 배치 **목록 조회** 부재는 [parfait.md](parfait.md) `GET .../parfaits/today`가 대신 닫았다.
@@ -671,4 +671,4 @@ id를 `dirtyToppingIds`에 남겨 다음 확인이 그것만 재시도하고, `C
 서버가 답했고, "앱이 그 코드를 어떻게 보여줄지"도 같은 날 정해졌다(토스트 후 캔버스로 되감기, 상수
 신설까지 PR #318). **이 처분은 2026-08-21 PR5 최종 리뷰로 뒤집혔다** — 되감기가 안내(토스트)를
 같은 프레임에 폐기하는 것이 드러나 알린 뒤 화면에 남는 것으로 바뀌었다(위 [Android
-매핑](#android-매핑) 절 참고) → [Android 매핑](#android-매핑) · [open-questions](../synthesis/open-questions.md).
+매핑](#android-매핑) 절 참고) → [Android 매핑](#android-매핑) · [open-questions](../android/synthesis/open-questions.md).

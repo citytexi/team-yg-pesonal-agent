@@ -3,7 +3,7 @@
 > 세션 시작·작업 전 **이 파일부터** 읽어라. 여기서 "무엇을 찾으면 어디를 보라"로 라우팅한 뒤, 필요한 문서만 펼친다 (전체를 읽지 말 것).
 
 ## 지금 상태 (1줄)
-Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록(#222로 실패 화면·pull-to-refresh·A-005 이동까지)·C-101 카메라 플로우·C-001 캔버스 메인(#199 — 반응형 배치·Dot Grid 배경·토핑 추가 메뉴, ~~진입 경로 0건~~ → **#268로 G-001에서 진입**)까지 들어왔고 전부 **데이터·후속 화면 미결선** 상태다. **토핑 생성 경로는 이어졌다**(#221) — C-101-confirm "다음"이 C-103 누끼 추출로 결선되고 확인(C-103)·수동 편집(C-104)·테두리 편집(C-105)이 한 라운드에 들어와 캔버스 배치(C-106) 직전까지 닿는다. **C-106 화면도 들어왔고**(#290) 그 확인 버튼이 **서버까지 이어졌다** — 스택 PR 여섯 중 1·2가 #322로, 3~6이 #334로 들어와 **토핑이 실제로 올라간다**([스펙](specs/archive/2026-08-20-c106-topping-place-api.md)). 확인을 누르면 발급 → **S3 PUT** → confirm → 배치 네 단계가 돌고, 테두리는 굽지 않고 서버 필드로 가며(ADR-0025), 흐름 상태는 DataStore 초안 한 벌이 나른다(ADR-0026). 배치에 성공한 알맹이는 갤러리 "최근"에 남아 다시 쓰인다. **캔버스 토핑에 첫 상호작용이 생겼다**(#298) — 타인 토핑을 탭하면 Spotlight + 작성자 토스트다. **캔버스가 밖으로 나가고 안의 것이 지워지기 시작했다**(#324·#335) — "갤러리에 저장"이 `GraphicsLayer` 캡처 → `MediaStore` 쓰기로 실물화됐고(#413·#414로 그 진입점이 지난 캔버스 메뉴에서 **날짜바 아이콘**이 되어 오늘 캔버스에서도 저장하고, #445로 저장 전에 **무엇이 저장될지 보여 주는 미리보기 화면**을 거친다)([스펙](specs/archive/2026-08-23-c001-canvas-gallery-save.md)), C-301 편집 탭의 삭제 확인 모달이 **앱이 서버 데이터를 지우는 첫 경로**가 됐다. ⚠️ 삭제만 즉시 영구인데 실패는 로그 한 줄이다(OQ-P-270). ~~다만 네 화면의 닫기가 전부 빈 람다라 **플로우를 나갈 출구가 없다**.~~ → ✅ **출구가 생겼다**(#309) — 닫기가 `Navigator.popUpTo<T>()`로 캔버스까지 되감고, 배경 편집에서 들어온 경로만 부른 화면으로 돌아간다. **캔버스 편집 갈래도 열렸다**(#231) — C-001 편집 버튼이 C-301 배경 편집으로 이어지고 카메라·갤러리·확인 세 화면을 토핑 생성 플로우와 공유하지만(NavKey `returnResultOnly` 인자로 분기), ~~고른 배경이 저장·반영되지 않는다~~
+Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data/domain/feature)·컨벤션 플러그인·Hilt·자체 MVI 기반. 원격 네트워크 기초 구조(컨벤션 플러그인·NetworkModule·ApiResponse/safeApiCall·remote 예시)가 **develop 머지**됨(#174), 실제 API 연동은 후속(ADR-0017). 화면은 G-001 목록(#222로 실패 화면·pull-to-refresh·A-005 이동까지)·C-101 카메라 플로우·C-001 캔버스 메인(#199 — 반응형 배치·Dot Grid 배경·토핑 추가 메뉴, ~~진입 경로 0건~~ → **#268로 G-001에서 진입**)까지 들어왔고 전부 **데이터·후속 화면 미결선** 상태다. **토핑 생성 경로는 이어졌다**(#221) — C-101-confirm "다음"이 C-103 누끼 추출로 결선되고 확인(C-103)·수동 편집(C-104)·테두리 편집(C-105)이 한 라운드에 들어와 캔버스 배치(C-106) 직전까지 닿는다. **C-106 화면도 들어왔고**(#290) 그 확인 버튼이 **서버까지 이어졌다** — 스택 PR 여섯 중 1·2가 #322로, 3~6이 #334로 들어와 **토핑이 실제로 올라간다**([스펙](android/specs/archive/2026-08-20-c106-topping-place-api.md)). 확인을 누르면 발급 → **S3 PUT** → confirm → 배치 네 단계가 돌고, 테두리는 굽지 않고 서버 필드로 가며(ADR-0025), 흐름 상태는 DataStore 초안 한 벌이 나른다(ADR-0026). 배치에 성공한 알맹이는 갤러리 "최근"에 남아 다시 쓰인다. **캔버스 토핑에 첫 상호작용이 생겼다**(#298) — 타인 토핑을 탭하면 Spotlight + 작성자 토스트다. **캔버스가 밖으로 나가고 안의 것이 지워지기 시작했다**(#324·#335) — "갤러리에 저장"이 `GraphicsLayer` 캡처 → `MediaStore` 쓰기로 실물화됐고(#413·#414로 그 진입점이 지난 캔버스 메뉴에서 **날짜바 아이콘**이 되어 오늘 캔버스에서도 저장하고, #445로 저장 전에 **무엇이 저장될지 보여 주는 미리보기 화면**을 거친다)([스펙](android/specs/archive/2026-08-23-c001-canvas-gallery-save.md)), C-301 편집 탭의 삭제 확인 모달이 **앱이 서버 데이터를 지우는 첫 경로**가 됐다. ⚠️ 삭제만 즉시 영구인데 실패는 로그 한 줄이다(OQ-P-270). ~~다만 네 화면의 닫기가 전부 빈 람다라 **플로우를 나갈 출구가 없다**.~~ → ✅ **출구가 생겼다**(#309) — 닫기가 `Navigator.popUpTo<T>()`로 캔버스까지 되감고, 배경 편집에서 들어온 경로만 부른 화면으로 돌아간다. **캔버스 편집 갈래도 열렸다**(#231) — C-001 편집 버튼이 C-301 배경 편집으로 이어지고 카메라·갤러리·확인 세 화면을 토핑 생성 플로우와 공유하지만(NavKey `returnResultOnly` 인자로 분기), ~~고른 배경이 저장·반영되지 않는다~~
 → ✅ **#329로 저장된다**(색은 HEX, 사진은 업로드 후 `imageId`로 PATCH하고 돌아간 캔버스가 재조회로 그린다)(~~C-001 진입 경로 0건이라 이 갈래 전체가 도달 불가~~ → #268로 진입이 열려 함께 도달 가능해졌다). 앱 진입 체인은 Splash→Login→TermAgree→GroupList로 이어졌고(#220), 그 첫 화면 A-002 로그인이 온보딩 일러스트 3장으로 실물화됐고(#218) **인증까지 결선됐다**(#241). 그룹 생성(A-005)·참여(A-004→S-102) 두 갈래도 확인 모달을 거쳐 닫혔고(#224), **#411로 종착지가 목록에서 C-001 캔버스가 되어 위키 정본과 맞았다**(`replaceAll(목록)` + `goTo(캔버스)`, 환영 배너 1회). 디자인시스템은 Figma 바 3종(Top Bar Canvas·List-Date·Floating Bar)과 배경 블러(Haze, ADR-0018)까지 머지됐다(#188).
 서버 계약은 `api/`에 스냅샷돼 있다(도메인 8건·**엔드포인트 30개 + 테스트 전용 1**, 서버 `82e6edc`).
 **2026-09-08 — 엔드포인트는 그대로인데 계약이 둘 늘었다**: 서버→앱 푸시가 **1종 → 3종**(데일리 리마인드
@@ -23,14 +23,14 @@ Android 단일 플랫폼, Jetpack Compose + Navigation3. 다중 모듈(core/data
 구속력을 갖는다. 특히 **채널 id를 안 맞추면 서버는 성공인데 사용자는 아무것도 못 본다**
 (OQ-P-341·343·351·352·353 → [api/notification.md](api/notification.md)).
 ✅ **2026-09-05 — 받을 앱이 생겼다**(#446 딥링크 · #447 FCM 수신부). 2026-08-22에 걷어낸 FCM 축이
-돌아왔고 채널 id는 서버가 못 박은 `parfait_default`를 앱이 따랐다([ADR-0013](adr/0013-firebase-fcm-crashlytics.md)
+돌아왔고 채널 id는 서버가 못 박은 `parfait_default`를 앱이 따랐다([ADR-0013](android/adr/0013-firebase-fcm-crashlytics.md)
 되살림 정정). 딥링크는 세션 종료 이동 구조를 그대로 복제했다(`PushDeepLinkEventBus` + `MainRoute` 단일
-수집 → [navigation-flow](architecture/navigation-flow.md) "푸시 딥링크 이동").
+수집 → [navigation-flow](android/architecture/navigation-flow.md) "푸시 딥링크 이동").
 ✅ **같은 날 #450이 가운데 한 줄을 이었다 — 푸시 축이 닫혔다.** 등록을 **세션 축 넷**(로그인·가입·앱
 진입의 성공 분기 + `onNewToken`)에서 부르고, 알림 권한은 **A-004·A-005 완료 직후** 묻는다. 핵심 결정은
 **등록과 권한이 별개 축**이라는 것이다 — 토큰은 권한과 무관하게 발급되므로 등록을 권한에 매달면
 재로그인·기기교체·재설치 사용자가 등록 경로에 닿지 못한다(OQ-P-341·358 해소,
-[스펙](specs/archive/2026-09-05-push-notification-permission-and-device-token.md)).
+[스펙](android/specs/archive/2026-09-05-push-notification-permission-and-device-token.md)).
 **API 33 미만은 허용으로 본다** — 그 아래에서 `checkSelfPermission`이 항상 거부를 답하는데 알림은
 기본으로 켜져 있어, 판정이 사실과 정반대인 채 **그 기기군의 포그라운드 알림을 통째로 버리고 있었다.**
 ⚠️ **남은 것은 계약 두 건과 실행 확인이다** — `api/conventions.md` "Android 불일치" 3건 중 둘이 푸시
@@ -79,7 +79,7 @@ C-001 캔버스는 **다 모일 때까지 아무것도 안 낸다**(`rememberBat
 `GetTodayParfaitUseCase`가 사라졌다. `:data`의 `CanvasLocalDataSource`(인메모리 둘째)가 값을 들고
 `CanvasPoller`(그룹별 참조 계수 + 5초 루프)가 서버 재조회를 소유하며, 수명은 `:core:ui`에 새로 선
 `BaseViewModel.launchWhileSubscribed`(구독 수 기반)에 매단다 — **화면은 폴러의 존재를 모른다**
-([ADR-0029](adr/0029-canvas-today-ssot-polling.md), [스펙](specs/archive/2026-08-27-canvas-today-ssot-polling.md)).
+([ADR-0029](android/adr/0029-canvas-today-ssot-polling.md), [스펙](android/specs/archive/2026-08-27-canvas-today-ssot-polling.md)).
 서버 계약은 한 줄도 안 바뀌었고 바뀐 것은 **누가 언제 부르는가**다. 겸해 배경 편집의 배경 탭에서도
 토핑이 반투명·비상호작용으로 그려진다. **#408**은 최근 목록 정원을 종류별로 갈라(원본·알맹이 각자)
 OQ-P-258을 닫고, 최근 줄에 무엇을 싣는지를 `returnResultOnly`에서 신설 `RecentImagePick`으로 옮겼다.
@@ -178,7 +178,7 @@ A-002 카카오 로그인(#241)에 이어 온보딩 약관이 목록 조회·회
 그룹 생성(#243)·참여 미리보기/참여/닉네임 변경(#244)·목록 조회(#248)가 붙어 **mock UseCase 3종,
 mock 그룹 4건, `TERM_CONTENT_LIST`가 전부 삭제**됐다. 선반영이던 `ParfaitGroupRepository` 5메서드와
 `ServerErrorCode` 12종도 이 라운드에서 모두 소비된다. 그 아래는 MVI 공통 에러 인프라
-(`AppError`·`Channel` 이펙트·`launch(key, onError)`)다([ADR-0020](adr/0020-mvi-error-effect-infrastructure.md)).
+(`AppError`·`Channel` 이펙트·`launch(key, onError)`)다([ADR-0020](android/adr/0020-mvi-error-effect-infrastructure.md)).
 ~~남은 mock은 G-001의 `nickName` 하나인데, 그 값이 그룹 생성 요청으로 서버에 나간다.~~ → ✅ **닫혔다**
 (2026-08-20 #312) — G-001이 계정 SSoT를 구독해 **전역 닉네임**을 A-005로 넘긴다. ~~남은 화면 mock은
 C-301 편집 탭(`CanvasBGEditViewModel`) 하나다.~~ → ✅ **그것도 닫혔다**(2026-08-22 #329) — 편집 탭이
@@ -187,9 +187,9 @@ C-301 편집 탭(`CanvasBGEditViewModel`) 하나다.~~ → ✅ **그것도 닫�
 파르페(#268)가 Repository를 얻어 이미지·토핑 둘만 남았다.**
 ~~⚠️ 그룹 목록은 코드 대조만으로 실패가 예상된다 — 업로드 시각을 오프셋 필수 파서로 읽는데 서버는
 오프셋을 안 싣는다~~ → **매퍼가 `LocalDateTime` + 고정 KST로 읽어 닫혔다**(2026-08-20 PR #310,
-[OQ-P-165](synthesis/open-questions.md)). 다만 **어느 경로도 실서버 요청을 해 본 적이 없다**
-([OQ-P-146](synthesis/open-questions.md)) — 계약 정합이 0건이 됐어도 그것을 확인한 것은 코드 대조뿐이다.
-**2026-08-15 — 만료를 다루는 주체가 생겼다**(#260, [ADR-0021](adr/0021-token-refresh-forced-logout.md)).
+[OQ-P-165](android/synthesis/open-questions.md)). 다만 **어느 경로도 실서버 요청을 해 본 적이 없다**
+([OQ-P-146](android/synthesis/open-questions.md)) — 계약 정합이 0건이 됐어도 그것을 확인한 것은 코드 대조뿐이다.
+**2026-08-15 — 만료를 다루는 주체가 생겼다**(#260, [ADR-0021](android/adr/0021-token-refresh-forced-logout.md)).
 `TokenAuthenticator`가 401을 가로채 재발급하고 원요청을 잇는다(화면은 못 본다). 재발급이 **서버에
 거절당할 때만** 세션을 버리고 `SessionEvent.ForcedLogout`을 앱 루트 한 곳이 받아 로그인으로 보낸다 —
 네트워크 실패·5xx는 토큰을 유지한다. 재발급은 자격증명을 안 붙이는 전용 클라이언트로 나간다(디스패처
@@ -197,7 +197,7 @@ C-301 편집 탭(`CanvasBGEditViewModel`) 하나다.~~ → ✅ **그것도 닫�
 `Navigator.clearBackStack()`을 제거하고 `replaceAll()`로 합쳤다.
 **2026-08-16 — C-201 캘린더가 붙었다**(#259). C-001의 날짜 버튼이 `YGCanvas.calendarContent` 슬롯을
 처음 채워 연·월 드롭다운 + 날짜 그리드가 열린다. 다만 **두 조회 UseCase가 mock**이고(표면은 있는데
-우회한다) 고른 날짜가 캔버스·라벨을 바꾸지 않는다([c201 스펙](specs/archive/2026-08-16-c201-canvas-calendar.md)).
+우회한다) 고른 날짜가 캔버스·라벨을 바꾸지 않는다([c201 스펙](android/specs/archive/2026-08-16-c201-canvas-calendar.md)).
 런처 아이콘도 교체됐다(#262 — 적응형 3종 + monochrome, 스플래시 테마 속성 제거).
 **2026-08-17 — 캔버스가 서버를 본다**(#268). `ParfaitRepository`(파르페 도메인 첫 Repository, 오늘·목록·상세
 셋만) → UseCase 둘 → C-001이 **배경·토핑·멤버를 실데이터로** 그리고, 날짜 선택이 그날 캔버스를 불러온다.
@@ -206,7 +206,7 @@ C-301 편집 탭(`CanvasBGEditViewModel`) 하나다.~~ → ✅ **그것도 닫�
 ⚠️ **화면에서는 여전히 읽기만이다** — 그 둘을 부르는 화면이 아직 없어 토핑을 새로 얹지 못하고,
 조회 실패는 로그만이라 빈 캔버스와 구분되지 않는다. ~~C-301 편집 탭은 여전히 mock이다~~
 → ✅ **#329로 그 탭도 서버 캔버스를 그린다**(2026-08-22)
-([c001-canvas-today-detail 스펙](specs/archive/2026-08-17-c001-canvas-today-detail.md)).
+([c001-canvas-today-detail 스펙](android/specs/archive/2026-08-17-c001-canvas-today-detail.md)).
 **2026-08-17 — 클릭이 한 유틸로 모였다**(#284, PR #292 develop 머지). 프로덕션 Foundation
 `Modifier.clickable` **28곳을 전량 `clickableYGNoRipple`로 이관**했다(남은 `clickable`은 `androidTest`
 픽스처 2건뿐). 컴포넌트 대부분이 `collectIsPressedAsState()`로 눌림을 직접 그려
@@ -215,7 +215,7 @@ C-301 편집 탭(`CanvasBGEditViewModel`) 하나다.~~ → ✅ **그것도 닫�
 `clickableYGNoRipple`에 `interactionSource` 파라미터가 붙었고, 300ms 스로틀이 화면 클릭 전반에
 적용됐다(게이트는 Modifier 노드마다 하나라 같은 요소 연타만 막는다). 미결 3건 해소(`YGDateButton`
 규약 이탈·`clickableYGNoRipple` 사용처 0·갤러리 그리드 셀), 신규 1건(리플이 유일한 피드백이던 6곳)
-→ [design-system](architecture/design-system.md) clickable 절.
+→ [design-system](android/architecture/design-system.md) clickable 절.
 **2026-08-17 — C-001 화면 이름이 역할을 따라갔다**(#278, PR #291 develop 머지). 화면 계열이
 `CanvasImageAdd*` → **`CanvasMain*`**로 개명됐다(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/
 `UiState`/`Intent`/`Effect`, `strings.xml` 키 `canvas_main_*`). 머지본 대조 결과 **이름 치환 외 변경 0건**
@@ -227,7 +227,7 @@ C-301 편집 탭(`CanvasBGEditViewModel`) 하나다.~~ → ✅ **그것도 닫�
 상태가 `todayCanvas`/`viewedCanvas`로 갈려 편집 대상이 언제나 오늘이고, 지난 캔버스에서는 메뉴가
 **갤러리에 저장·오늘의 파르페 가기**로 바뀐다(저장은 아직 로그 한 줄). ⚠️ 상세 조회에 붙은
 `launch(key)` 가드가 **직전 라운드의 "마지막 선택이 이긴다"를 뒤집어**, 연속 선택 시 머리말과 그림이
-어긋난 채 남는다([c201-canvas-calendar-server 스펙](specs/archive/2026-08-17-c201-canvas-calendar-server.md)).
+어긋난 채 남는다([c201-canvas-calendar-server 스펙](android/specs/archive/2026-08-17-c201-canvas-calendar-server.md)).
 **2026-08-17 — 그룹 설정이 mock을 다 버렸고 나가는 문도 열렸다**(#285·#287). 상세 조회로 화면이
 채워지고 닉네임 변경·나가기·신고가 실제 요청을 보낸다. `ParfaitGroupRepository`가 **8/8**이 되며
 parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부). **진입도 이때 열렸다** —
@@ -237,7 +237,7 @@ parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부).
 (백스택이 전부 떠난 그룹 것이라 되돌아가면 403). ⚠️ 남은 것은 계약 공백과 임시 상수다 —
 `remainingCount` mock 1(정원이 생성 응답에만 있다)·컬러칩 인덱스 순환·**신고 사유 하드코딩 하나**,
 그리고 403/404가 일시 장애와 같은 문구다. ~~회원 탈퇴는 그대로 stub~~ → **#306으로 닫혔다**
-([s101-group-setting-api 스펙](specs/archive/2026-08-17-s101-group-setting-api.md)).
+([s101-group-setting-api 스펙](android/specs/archive/2026-08-17-s101-group-setting-api.md)).
 **2026-08-17 — 화면이 앞에 설 때마다 다시 묻는다**(#288, PR #297 develop 머지). G-001 목록·C-001 캔버스에
 `Enter` 인텐트가 생기고 Route의 `LifecycleResumeEffect`가 그것을 보낸다 — `init` 조회는 ViewModel 수명에
 걸린 것이라 백스택 아래에서 살아남아 낡았고, **생성·참여 후 목록이 갱신되지 않던 문제가 닫혔다**
@@ -247,7 +247,7 @@ parfait-group이 **`android_status: done`**(8 엔드포인트 전부 호출부).
 **V1 잔여 6파일**. C-001은 오늘을 볼 때만 오늘 캔버스·올해 달력 기록을 다시 받고, 화면을 열어 둔 채
 자정을 넘긴 경우는 `syncToday()`가 맡는다. ⚠️ 관용구일 뿐 규약이 아니고(OQ-P-221) C-001 조회 실패는
 여전히 로그뿐인데 **실패할 기회만 늘었다**
-([screen-resume-refetch 스펙](specs/archive/2026-08-17-screen-resume-refetch.md)).
+([screen-resume-refetch 스펙](android/specs/archive/2026-08-17-screen-resume-refetch.md)).
 **2026-08-19 — 되돌릴 수 없는 문 셋이 다 열렸다**(#306). S-001 앱 설정의 회원 탈퇴가 마지막 stub이었고
 `WithdrawUseCase`로 결선되며 **member 도메인이 `android_status: done`**(3 엔드포인트 전부 호출부)이 됐다.
 UseCase가 얹는 규칙은 **순서**다 — 서버가 받아 준 뒤에만 기기를 정리하고, 거절당하면 아무것도 지우지
@@ -266,7 +266,7 @@ UseCase가 얹는 규칙은 **순서**다 — 서버가 받아 준 뒤에만 기
 `ServerErrorCode.Parfait.PARFAIT_ALREADY_CLOSED`가 **소비처 0건인 채로** 신설됐다 — 처분이 이미
 정해진 코드는 미리 둔다는 예외를 그 파일에 함께 적었다. ⚠️ 다섯 경로 모두 **권한 검사가 마감 검사보다
 앞**이라 마감된 캔버스라도 남의 토핑·비멤버면 403이 먼저 온다(상수 KDoc의 경고).
-**2026-08-20 — 캔버스 토핑에 첫 상호작용이 생겼다**(#298, [c202 스펙](specs/archive/2026-08-20-c202-canvas-spotlight.md)).
+**2026-08-20 — 캔버스 토핑에 첫 상호작용이 생겼다**(#298, [c202 스펙](android/specs/archive/2026-08-20-c202-canvas-spotlight.md)).
 토핑을 탭하면 그 하나만 남기고 나머지를 `Black50`으로 덮고 작성자 토스트를 1회 띄운다(C-202).
 `YGCanvas`에 다섯 번째 슬롯 `overlayContent`가 뚫려 **토스트가 스캐폴드가 아니라 캔버스 프레임
 상단에 선다** — 그 결정이 이 화면의 다른 토스트 자리까지 정했다(OQ-P-167). `YGToastType.Record`는
@@ -289,55 +289,66 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
 ## 무엇을 찾는가 → 어디를 보라
 | 알고 싶은 것 | 권위 문서 |
 |---|---|
-| 모듈 구조·의존 방향 | [ADR-0001](adr/0001-layered-multi-module.md) + [module-structure](architecture/module-structure.md) |
-| feature :api/:impl 분리 이유 | [ADR-0002](adr/0002-feature-api-impl-split.md) |
-| 빌드 세팅(컨벤션 플러그인·버전 카탈로그) | [ADR-0003](adr/0003-convention-plugins-version-catalog.md) |
-| DI·Hilt·스코프 | [ADR-0004](adr/0004-hilt-ksp-di.md) + [data-layer](architecture/data-layer.md) |
-| 화면 상태관리(MVI)·신규 화면 추가 | [ADR-0005](adr/0005-custom-mvi-baseviewmodel.md) + [state-management](architecture/state-management.md) |
-| 공통 에러 처리·이펙트 전달·중복 실행 방어 | [ADR-0020](adr/0020-mvi-error-effect-infrastructure.md) + [mvi-error-infrastructure 스펙](specs/archive/2026-08-13-mvi-error-infrastructure.md) |
-| 화면 컨테이너·공통 로딩 오버레이·실패 토스트 배선 | [design-system](architecture/design-system.md) "화면 컨테이너" + [ygscaffold-v2 스펙](specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md) |
-| 내비게이션·신규 목적지 등록 | [ADR-0006](adr/0006-navigation3-custom-navigator.md) + [navigation-flow](architecture/navigation-flow.md) |
-| UI·Compose·디자인 토큰·테마·컴포넌트 작성 | [ADR-0010](adr/0010-custom-compositionlocal-theme.md) + [design-system](architecture/design-system.md) (전신 [ADR-0007](adr/0007-compose-material3-design-tokens.md), superseded) |
-| 로컬 영속화(DataStore) | [ADR-0008](adr/0008-datastore-local-persistence.md) + [data-layer](architecture/data-layer.md) |
-| UseCase 패턴 | [ADR-0009](adr/0009-usecase-injectable-invoke.md) |
-| 신규 데이터(Repo/DataSource) 추가 | [data-layer](architecture/data-layer.md) 체크리스트 |
-| 원격 네트워크(Retrofit·OkHttp)·인증 헤더·응답 계약 | [ADR-0017](adr/0017-remote-network-datasource.md) + [data-layer](architecture/data-layer.md) |
+| 모듈 구조·의존 방향 | [ADR-0001](android/adr/0001-layered-multi-module.md) + [module-structure](android/architecture/module-structure.md) |
+| feature :api/:impl 분리 이유 | [ADR-0002](android/adr/0002-feature-api-impl-split.md) |
+| 빌드 세팅(컨벤션 플러그인·버전 카탈로그) | [ADR-0003](android/adr/0003-convention-plugins-version-catalog.md) |
+| DI·Hilt·스코프 | [ADR-0004](android/adr/0004-hilt-ksp-di.md) + [data-layer](android/architecture/data-layer.md) |
+| 화면 상태관리(MVI)·신규 화면 추가 | [ADR-0005](android/adr/0005-custom-mvi-baseviewmodel.md) + [state-management](android/architecture/state-management.md) |
+| 공통 에러 처리·이펙트 전달·중복 실행 방어 | [ADR-0020](android/adr/0020-mvi-error-effect-infrastructure.md) + [mvi-error-infrastructure 스펙](android/specs/archive/2026-08-13-mvi-error-infrastructure.md) |
+| 화면 컨테이너·공통 로딩 오버레이·실패 토스트 배선 | [design-system](android/architecture/design-system.md) "화면 컨테이너" + [ygscaffold-v2 스펙](android/specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md) |
+| 내비게이션·신규 목적지 등록 | [ADR-0006](android/adr/0006-navigation3-custom-navigator.md) + [navigation-flow](android/architecture/navigation-flow.md) |
+| UI·Compose·디자인 토큰·테마·컴포넌트 작성 | [ADR-0010](android/adr/0010-custom-compositionlocal-theme.md) + [design-system](android/architecture/design-system.md) (전신 [ADR-0007](android/adr/0007-compose-material3-design-tokens.md), superseded) |
+| 로컬 영속화(DataStore) | [ADR-0008](android/adr/0008-datastore-local-persistence.md) + [data-layer](android/architecture/data-layer.md) |
+| UseCase 패턴 | [ADR-0009](android/adr/0009-usecase-injectable-invoke.md) |
+| 신규 데이터(Repo/DataSource) 추가 | [data-layer](android/architecture/data-layer.md) 체크리스트 |
+| 원격 네트워크(Retrofit·OkHttp)·인증 헤더·응답 계약 | [ADR-0017](android/adr/0017-remote-network-datasource.md) + [data-layer](android/architecture/data-layer.md) |
 | 서버 API 계약·엔드포인트·요청/응답 필드 | [api/README.md](api/README.md) + [api/conventions.md](api/conventions.md) |
-| 도메인에서 비트맵 다루기(크로스모듈 추상) | [ADR-0011](adr/0011-cross-module-bitmap-abstraction.md) + [module-structure](architecture/module-structure.md) |
-| 이미지 세그멘테이션(누끼)·ML Kit | [ADR-0012](adr/0012-mlkit-subject-segmentation.md) + [data-layer](architecture/data-layer.md) |
-| 이미지 업로드(presigned 발급·S3 PUT·확인) | [api/image.md](api/image.md) + [c106-topping-place-api 스펙](specs/archive/2026-08-20-c106-topping-place-api.md) "업로드 전송" |
-| 토핑 테두리를 굽지 않고 서버 필드로 | [ADR-0025](adr/0025-topping-border-as-server-field.md) |
-| 토핑 만들기 흐름 상태(초안 SSOT) | [ADR-0026](adr/0026-topping-draft-datastore-ssot.md) |
-| 화면 방향(세로 고정)·대화면 예외 | [ADR-0027](adr/0027-portrait-orientation-lock.md) |
-| 시스템바 아이콘 색·다크모드 미지원 | [ADR-0028](adr/0028-system-bar-light-fixed.md) |
-| Crashlytics·Analytics·Firebase 설정 + **푸시(FCM)** (2026-08-22 철회 → **2026-09-05 되살림**(#446·#447)에 이어 **#450이 기기 토큰 등록과 알림 권한 안내까지 채웠다** — 등록은 세션 축 넷, 권한은 A-004·A-005 완료 직후, API 33 미만은 허용. OQ-P-341·358 해소. ⚠️ 쓰고 있는 FCM API 셋이 deprecated이나 서버가 선행 조건이라 등록 토큰 축에 남는다 — OQ-P-362) | [ADR-0013](adr/0013-firebase-fcm-crashlytics.md) |
-| 로깅·Logger 추상화(Kermit) | [ADR-0014](adr/0014-logging-abstraction-kermit.md) |
-| 유효성 결과·에러 문자열 다국어 매핑(domain 의미↔표시 분리) | [ADR-0016](adr/0016-domain-result-presentation-string-mapping.md) + [state-management](architecture/state-management.md) |
-| 구현 직전 기능·컴포넌트 설계 스펙 | [specs/README.md](specs/README.md) |
-| 작업 계획·진행 중/완료 작업 | [plans/README.md](plans/README.md) |
+| 도메인에서 비트맵 다루기(크로스모듈 추상) | [ADR-0011](android/adr/0011-cross-module-bitmap-abstraction.md) + [module-structure](android/architecture/module-structure.md) |
+| 이미지 세그멘테이션(누끼)·ML Kit | [ADR-0012](android/adr/0012-mlkit-subject-segmentation.md) + [data-layer](android/architecture/data-layer.md) |
+| 이미지 업로드(presigned 발급·S3 PUT·확인) | [api/image.md](api/image.md) + [c106-topping-place-api 스펙](android/specs/archive/2026-08-20-c106-topping-place-api.md) "업로드 전송" |
+| 토핑 테두리를 굽지 않고 서버 필드로 | [ADR-0025](android/adr/0025-topping-border-as-server-field.md) |
+| 토핑 만들기 흐름 상태(초안 SSOT) | [ADR-0026](android/adr/0026-topping-draft-datastore-ssot.md) |
+| 화면 방향(세로 고정)·대화면 예외 | [ADR-0027](android/adr/0027-portrait-orientation-lock.md) |
+| 시스템바 아이콘 색·다크모드 미지원 | [ADR-0028](android/adr/0028-system-bar-light-fixed.md) |
+| Crashlytics·Analytics·Firebase 설정 + **푸시(FCM)** (2026-08-22 철회 → **2026-09-05 되살림**(#446·#447)에 이어 **#450이 기기 토큰 등록과 알림 권한 안내까지 채웠다** — 등록은 세션 축 넷, 권한은 A-004·A-005 완료 직후, API 33 미만은 허용. OQ-P-341·358 해소. ⚠️ 쓰고 있는 FCM API 셋이 deprecated이나 서버가 선행 조건이라 등록 토큰 축에 남는다 — OQ-P-362) | [ADR-0013](android/adr/0013-firebase-fcm-crashlytics.md) |
+| 로깅·Logger 추상화(Kermit) | [ADR-0014](android/adr/0014-logging-abstraction-kermit.md) |
+| 유효성 결과·에러 문자열 다국어 매핑(domain 의미↔표시 분리) | [ADR-0016](android/adr/0016-domain-result-presentation-string-mapping.md) + [state-management](android/architecture/state-management.md) |
+| 구현 직전 기능·컴포넌트 설계 스펙 | [specs/README.md](android/specs/README.md) |
+| 작업 계획·진행 중/완료 작업 | [plans/README.md](android/plans/README.md) |
 | 제품 문서(PRD·positioning·roadmap 등, PM-Skills 산출물) | [pm/README.md](pm/README.md) |
-| 구현 미결·열린 결정·코드/문서 정합 이슈 | [open-questions.md](synthesis/open-questions.md) |
+| 구현 미결·열린 결정·코드/문서 정합 이슈 | [open-questions.md](android/synthesis/open-questions.md) |
 
 ## 문서 지도
-- **[`adr/`](adr/README.md)** — "왜"(결정·대안·트레이드오프). 인덱스: [adr/README.md](adr/README.md)
-- **[`architecture/`](architecture/README.md)** — "어떻게/어디"(상시 구현 가이드). 인덱스: [architecture/README.md](architecture/README.md)
-- **[`api/`](api/README.md)** — 서버(`mash-up-kr/TEAMYG-SERVER`) API 계약 스냅샷 + Android 적용 상태.
+
+`parfait/`는 **플랫폼 축으로 갈린다** — [`android/`](android/)는 Android 전용이고 나머지는 플랫폼
+공용이다. 어느 쪽에 새 문서를 둘지는 [CLAUDE.md](CLAUDE.md)가 기준을 적는다.
+
+### `android/` — TJYG-Android 전용
+- **[`android/adr/`](android/adr/README.md)** — "왜"(결정·대안·트레이드오프). 인덱스: [adr/README.md](android/adr/README.md)
+- **[`android/architecture/`](android/architecture/README.md)** — "어떻게/어디"(상시 구현 가이드). 인덱스: [architecture/README.md](android/architecture/README.md)
+- **[`android/specs/`](android/specs/README.md)** — "무엇을 만드나"(구현 직전 확정 설계, `YYYY-MM-DD-kebab-topic.md`). 완료분은 `specs/archive/`. 인덱스: [specs/README.md](android/specs/README.md)
+- **[`android/plans/`](android/plans/README.md)** — 작업 계획(`YYYY-MM-DD-kebab-topic.md`). 완료분은 `plans/archive/`
+- **[`android/synthesis/`](android/synthesis/)** — 분석·점검 산출물(open-questions·lint). wiki `synthesis/`와 동형.
+  - **[`synthesis/open-questions.md`](android/synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
+  - **[`synthesis/lint-2026-07-22-parfait.md`](android/synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
+  - **[`synthesis/lint-2026-07-06-parfait.md`](android/synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
+- **[`android/CLAUDE.md`](android/CLAUDE.md)** — 코드 주석·KDoc 규약. `android/` 아래 파일을 열면 자동 로드된다.
+- **[`doc-baseline.md`](android/doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `924cb5802`(2026-09-17 검증, #504까지 — **한 줄도 동작을 바꾸지 않은 청소 라운드가, 예전부터 알던 잔해는 그대로 둔 채 상태 노출 관용구만 두 갈래로 갈랐다**. delta 1건, **56파일 179/208 — 순감 29줄**, 머지 트리 = 브랜치 팁. 유닛 **1298**·계측 **46** 둘 다 유지 — `.kt` 40개 가까이를 만지고도 테스트 수가 안 움직인 첫 라운드다. 아카이브 이동 **0건**, 미결 신설 1건(OQ-P-403, `oq-next` 404), 마커 2건. Bitmap 호출이 `androidx.core.graphics` 확장으로, `delay(Long)` 이 `delay(Duration)` 으로 옮겼고 **빠뜨린 자리는 0건**(남은 `Bitmap.createBitmap` 일곱은 ktx 대응이 없는 오버로드다). ⚠️ **청소가 목적인 라운드가 왔는데도 OQ-P-239 의 `NavKeyCanvasMove` 잔해는 그대로다** — 엔트리 등록이 참조라 미사용 심볼로 안 잡히니 사람이 따로 결정해야 지워진다. `Navigator` 만 Kotlin 명시적 backing field 로 갈아타 `BaseViewModel._state` 쪽 옛 관용구와 갈렸고 정한 문서가 없어 OQ-P-403 을 열었다. 미구현 Task 10 스니펫의 `Bitmap.createScaledBitmap` 을 `scale` 로 고쳐 걷어낸 관용구가 되살아나는 것을 막았다. `api/` 다섯 표면·architecture·ADR 전부 불변. 미머지 하나(`feature/debug-mode`) 유지. 직전 회차(`f37a76540`, #499까지) 요약은 doc-baseline 본문에 있다).
+
+### 플랫폼 공용
+- **[`api/`](api/README.md)** — 서버(`mash-up-kr/TEAMYG-SERVER`) API 계약 스냅샷 + 플랫폼별 적용 상태.
   정본은 서버 코드이고 이 디렉토리는 미러다. 추적 브랜치는 서버 **`main`**(TJYG-Android의 `develop`과 다름).
+  계약 절은 플랫폼과 무관하고 Android가 그것을 어떻게 받는지는 같은 문서의 「Android 매핑」 절에 적는다.
   기준선·갱신 절차는 [api/server-baseline.md](api/server-baseline.md), 반복 워크플로는 스킬 `sync-teamyg-server-api`.
-- **[`specs/`](specs/README.md)** — "무엇을 만드나"(구현 직전 확정 설계, `YYYY-MM-DD-kebab-topic.md`). 완료분은 `specs/archive/`. 인덱스: [specs/README.md](specs/README.md)
-- **[`plans/`](plans/README.md)** — 작업 계획(`YYYY-MM-DD-kebab-topic.md`). 완료분은 `plans/archive/`
 - **[`pm/`](pm/README.md)** — 제품 문서(PRD·positioning·roadmap·user story·discovery 등, PM-Skills 산출물, `YYYY-MM-DD-kebab-topic.md`). 코드 작업은 superpowers 체인, 문서 작업은 PM-Skills — 라우팅은 루트 CLAUDE.md.
 - **[`blog/`](blog/README.md)** — 외부 공개용 기술 블로그 원고(`YYYY-MM-DD-kebab-topic.md`). 발행 전 `korean-humanizer` 검증. 인덱스: [blog/README.md](blog/README.md)
 - **[`script/`](script/README.md)** — 파이썬 툴링 홈(스킬 호출 로직·유틸, stdlib 전용). 템플릿: `_script-template.py`·`SKILL.template.md`.
-- **[`synthesis/`](synthesis/)** — 분석·점검 산출물(open-questions·lint). wiki `synthesis/`와 동형.
-  - **[`synthesis/open-questions.md`](synthesis/open-questions.md)** — 구현 미결·열린 결정·코드/문서 정합 이슈 추적. 정책·기획 미결은 위키 [[open-questions]].
-  - **[`synthesis/lint-2026-07-22-parfait.md`](synthesis/lint-2026-07-22-parfait.md)** — 문서 내부 정합(링크·상태표·규율·민감데이터) 점검 보고서(2026-07-22, wikilink 3건 수정).
-  - **[`synthesis/lint-2026-07-06-parfait.md`](synthesis/lint-2026-07-06-parfait.md)** — 문서 vs 실제 코드 정합성 점검 보고서(2026-07-06, 조치 완료 이력).
-- **[`doc-baseline.md`](doc-baseline.md)** — 문서를 마지막으로 검증한 `develop` 커밋 해시(SoT) + "develop 기준 문서 점검" 절차. 현재 기준선 `924cb5802`(2026-09-17 검증, #504까지 — **한 줄도 동작을 바꾸지 않은 청소 라운드가, 예전부터 알던 잔해는 그대로 둔 채 상태 노출 관용구만 두 갈래로 갈랐다**. delta 1건, **56파일 179/208 — 순감 29줄**, 머지 트리 = 브랜치 팁. 유닛 **1298**·계측 **46** 둘 다 유지 — `.kt` 40개 가까이를 만지고도 테스트 수가 안 움직인 첫 라운드다. 아카이브 이동 **0건**, 미결 신설 1건(OQ-P-403, `oq-next` 404), 마커 2건. Bitmap 호출이 `androidx.core.graphics` 확장으로, `delay(Long)` 이 `delay(Duration)` 으로 옮겼고 **빠뜨린 자리는 0건**(남은 `Bitmap.createBitmap` 일곱은 ktx 대응이 없는 오버로드다). ⚠️ **청소가 목적인 라운드가 왔는데도 OQ-P-239 의 `NavKeyCanvasMove` 잔해는 그대로다** — 엔트리 등록이 참조라 미사용 심볼로 안 잡히니 사람이 따로 결정해야 지워진다. `Navigator` 만 Kotlin 명시적 backing field 로 갈아타 `BaseViewModel._state` 쪽 옛 관용구와 갈렸고 정한 문서가 없어 OQ-P-403 을 열었다. 미구현 Task 10 스니펫의 `Bitmap.createScaledBitmap` 을 `scale` 로 고쳐 걷어낸 관용구가 되살아나는 것을 막았다. `api/` 다섯 표면·architecture·ADR 전부 불변. 미머지 하나(`feature/debug-mode`) 유지. 직전 회차(`f37a76540`, #499까지) 요약은 doc-baseline 본문에 있다).
+  링크 깊이 검사는 `python3 parfait/script/check_links.py parfait`.
+- **[`CLAUDE.md`](CLAUDE.md)** — parfait 범위 지도(어디에 무엇을 두는지). 루트 `CLAUDE.md`가 상위 정본.
 
 ## 규율 (상세는 각 문서)
 - **SoT 우선순위**(모순 시): 코드 > wiki > CLAUDE.md
-- **라인번호·변동수치 금지** — 근거·규칙은 [adr/README.md](adr/README.md)
-- **코드 주석·KDoc** — [CLAUDE.md](CLAUDE.md). 코드가 이미 말하는 것은 안 쓰고, 고정 틀을 쓰지 않으며, **다른 곳의 현재 상태는 낡으니 단정하지 않는다**. 아키텍처 결정은 코드가 아니라 `architecture/`·`adr/`에.
-- 새 아키텍처 결정 = 새 ADR([adr/template.md](adr/template.md)), 코드와 같은 커밋. 구조 변경 시 같은 PR에서 wiki 갱신(drift 금지).
-- 새 기능·컴포넌트 = 구현 전 [specs/](specs/README.md)에 설계 스펙 확정([specs/template.md](specs/template.md)) 후 코드 작성.
+- **라인번호·변동수치 금지** — 근거·규칙은 [adr/README.md](android/adr/README.md)
+- **코드 주석·KDoc** — [android/CLAUDE.md](android/CLAUDE.md). 코드가 이미 말하는 것은 안 쓰고, 고정 틀을 쓰지 않으며, **다른 곳의 현재 상태는 낡으니 단정하지 않는다**. 아키텍처 결정은 코드가 아니라 `architecture/`·`adr/`에.
+- 새 아키텍처 결정 = 새 ADR([adr/template.md](android/adr/template.md)), 코드와 같은 커밋. 구조 변경 시 같은 PR에서 wiki 갱신(drift 금지).
+- 새 기능·컴포넌트 = 구현 전 [specs/](android/specs/README.md)에 설계 스펙 확정([specs/template.md](android/specs/template.md)) 후 코드 작성.

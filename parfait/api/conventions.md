@@ -134,7 +134,7 @@ refresh token과 **같은 세션 식별자**를 담고, `validateAccessToken`의
 
 ⚠️ **화이트리스트에 테스트 전용 경로가 들어왔다(2026-08-15).** `/api/v1/test/parfait-canvas/rotate`는
 **인증 없이 전체 그룹의 캔버스를 즉시 마감·재생성**한다([parfait.md](parfait.md)). 서버 코드가 컨트롤러와
-이 등록 양쪽에 "프로덕션 오픈 전 함께 제거" TODO를 달아 두었다 → [open-questions](../synthesis/open-questions.md).
+이 등록 양쪽에 "프로덕션 오픈 전 함께 제거" TODO를 달아 두었다 → [open-questions](../android/synthesis/open-questions.md).
 
 `[Feat/#45] 토큰 재발급(refresh) / 로그아웃 API 구현 (#63)`(`6f5bffc`)이 기존 `/api/v1/auth/**` 와일드카드를
 위 auth 경로 개별 등록으로 좁혔다. **`/api/v1/auth/logout`은 화이트리스트에 없어 인증 대상**이다 — 인증 도메인
@@ -145,7 +145,7 @@ refresh token과 **같은 세션 식별자**를 담고, `validateAccessToken`의
 
 **2026-08-10 image 도메인 2건이 들어왔지만 화이트리스트는 그대로다** — `/api/v1/images`와
 `/api/v1/images/{imageId}/confirm`은 **인증 대상**이다(상세는 [image.md](image.md)). 단 confirm은
-토큰 유효성만 보고 **이미지 소유자를 대조하지 않는다** → [open-questions](../synthesis/open-questions.md).
+토큰 유효성만 보고 **이미지 소유자를 대조하지 않는다** → [open-questions](../android/synthesis/open-questions.md).
 
 **2026-08-15 delta의 신규 5건**(파르페 오늘·과거 목록 · 토핑 테두리 수정·삭제 · 회원 탈퇴)**도 전부
 화이트리스트 밖이라 인증 대상**이다. 위 테스트 전용 회전 1건만 예외다.
@@ -179,7 +179,7 @@ refresh token과 **같은 세션 식별자**를 담고, `validateAccessToken`의
 | `/api/<도메인>` (버전 없음) | `/api/parfait-groups` |
 
 버전 프리픽스 유무가 갈리고, **그룹을 가리키는 경로가 `groups`와 `parfait-groups` 둘**이다.
-서버에 URL 규약 문서가 없어 관측 사실로만 적는다 → [open-questions](../synthesis/open-questions.md).
+서버에 URL 규약 문서가 없어 관측 사실로만 적는다 → [open-questions](../android/synthesis/open-questions.md).
 
 **URL 세그먼트와 서버 도메인 이름이 갈리는 사례가 늘었다** — `users`↔`member`,
 그룹 하위 `images`↔`parfaitimage`. 도메인 파일명 규약은 경로 기준이지만([README.md](README.md))
@@ -236,7 +236,7 @@ getter 이름이 아니라 **Kotlin 주 생성자 파라미터명**으로 프로
 - ⚠️ **그 차단이 앱을 끊는다.** 지금까지 앱이 붙던 주소는 평문 포트고, 닫히는 순간 **기존
   `YG_BASE_URL`로 빌드된 앱은 전부 연결에 실패한다.** 앱이 새 HTTPS 주소로 옮겨야 하는데 그
   시점을 서버 커밋만 봐서는 알 수 없다(1회성 인프라 절차라 코드에 남지 않는다) →
-  [open-questions](../synthesis/open-questions.md) OQ-P-302.
+  [open-questions](../android/synthesis/open-questions.md) OQ-P-302.
 
 **Android 쪽 서술을 함께 정정한다.** 이 절은 앱에 `usesCleartextTraffic`도 `networkSecurityConfig`도
 **없다**고 적어 왔으나, `app/src/main/AndroidManifest.xml`에 `android:usesCleartextTraffic="true"`가
@@ -323,7 +323,7 @@ Flyway 마이그레이션이 운영 히스토리에는 V4까지만 기록돼 있
 `ddl-auto`가 이미 만들어 둔 컬럼을 다시 ADD 하다 죽는다. **사람이 1회성으로 baseline SQL을 실행**해야
 한다(서버 `docs/operations/flyway-cutover.md`). 그 절차가 언제 돌았는지 앱 쪽에서 알 방법이 없어
 **"이 문서의 서술이 운영에서 언제부터 참인가"는 확정되지 않는다** →
-[open-questions](../synthesis/open-questions.md).
+[open-questions](../android/synthesis/open-questions.md).
 
 ## OpenAPI
 
@@ -380,7 +380,7 @@ Flyway 마이그레이션이 운영 히스토리에는 V4까지만 기록돼 있
 ✅ **앱은 이것을 도메인 타입으로 표현했다**(2026-08-16, PR #266) — wire DTO는 평면·널 허용 그대로 두고
 (서버의 거울), `:domain`의 sealed `CanvasBackgroundEdit`(`Color(hex)` / `Image(imageId)`)이 잘못된 조합을
 **컴파일에서** 막는다. 펴는 일은 매퍼(`toRequest()`)가 한다. 조건부 필수 계약을 만나는 다른 엔드포인트가
-생기면 같은 형태를 따른다 → [data-layer](../architecture/data-layer.md).
+생기면 같은 형태를 따른다 → [data-layer](../android/architecture/data-layer.md).
 
 빠진 필드도 **누락하면 400이다** — jackson-module-kotlin이 비널 파라미터 부재에서 실패하고
 `GlobalExceptionHandler`의 bad-request 핸들러가 `INVALID_REQUEST`로 바꾼다.
@@ -391,7 +391,7 @@ Flyway 마이그레이션이 운영 히스토리에는 V4까지만 기록돼 있
 
 ## Android 불일치
 
-TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../adr/0017-remote-network-datasource.md))와 위 계약의 간극.
+TJYG-Android `:data`의 원격 네트워크 구조([ADR-0017](../android/adr/0017-remote-network-datasource.md))와 위 계약의 간극.
 
 ⚠️ **2026-09-08 기준 4건.** 하나는 2026-08-31 서버 delta(`02e11be`)가 그룹 목록 `recentImageUrl`의 뜻을
 좁히면서 벌어진 것이고, **둘은 2026-09-05에 앱이 푸시 수신부를 붙이며 새로 생겼다**(PR #446·#447).
@@ -467,7 +467,7 @@ DTO를 자기가 만들어 넣어 `@SerialName` 문자열도 날짜 포맷도 �
 
 > ⚠️ **다만 `http/auth.http`는 아직 `newUser`를 가르친다** — 정정이 앱 DTO와 `http/README.md`에는
 > 닿았고 요청 모음 파일 하나에 안 닿았다. 계약 표에 남길 불일치는 아니지만 그 파일로 실서버 응답을
-> 확인하려는 사람이 조용히 잘못된 분기를 탄다 → [open-questions](../synthesis/open-questions.md).
+> 확인하려는 사람이 조용히 잘못된 분기를 탄다 → [open-questions](../android/synthesis/open-questions.md).
 
 **아래는 그보다 앞선 회차의 해소 기록이다.**
 
@@ -475,7 +475,7 @@ DTO를 자기가 만들어 넣어 `@SerialName` 문자열도 날짜 포맷도 �
 부재 / `isSuccess`가 `code == "SUCCESS"` 단일 비교 / `TokenProvider`가 항상 null)은
 `network-envelope-token-storage` 라운드가 **PR #190으로 develop에 머지되며 전부 해소**됐다 —
 envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `TokenStoreTokenProvider`
-([ADR-0019](../adr/0019-encrypted-token-storage.md)). 대응 [open-questions](../synthesis/open-questions.md)
+([ADR-0019](../android/adr/0019-encrypted-token-storage.md)). 대응 [open-questions](../android/synthesis/open-questions.md)
 항목도 해소 처리했다.
 
 > **다만 "일치"가 "검증됨"은 아니다.** 14 엔드포인트 Service·DataSource는 2026-08-06 PR #197로,
@@ -483,7 +483,7 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 > #243·#244·#248)가 카카오 로그인·약관 조회·회원가입·그룹 목록/생성/참여/닉네임 변경 **8 엔드포인트를
 > 화면까지** 이었다. 같은 날 **PR #250**이 남은 5 엔드포인트의 표면까지 채웠다. 그럼에도 **실서버 요청
 > 검증은 여전히 0건**이다(실기기 미수행) — 위에서 닫은 시각 파싱 불일치도 처음부터 끝까지 **코드·계약
-> 대조로만** 드러나고 사라졌다 → [open-questions](../synthesis/open-questions.md).
+> 대조로만** 드러나고 사라졌다 → [open-questions](../android/synthesis/open-questions.md).
 
 **2026-08-18·2026-08-19 delta 둘 다 엔드포인트를 늘리지 않았다**(28 + 테스트 전용 1 유지) — 바뀐 것은
 응답 필드·JSON 키·"오늘"의 정의·전역 405다. 아래 표면 셈은 그대로 유효하다.
@@ -491,17 +491,17 @@ envelope 5필드 정합, 성공 판정은 `success` 필드, `TokenProvider`는 `
 **2026-08-16 기준 서버 엔드포인트는 28개(+테스트 전용 1)고 Android 표면은 27개다.** 분모에서 빠지는 것은
 애플 로그인 1건(`해당 없음`)과 테스트 전용 회전 1건이라 **27/27, 공백 0**이다. 서버 delta가 벌린 공백 2
 (파르페 상세 조회·배경 변경)를 **같은 날 PR #266이 닫았다**
-([spec](../specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md)) — 직전 라운드의 공백 5는
+([spec](../android/specs/archive/2026-08-16-canvas-detail-background-api-service-layer.md)) — 직전 라운드의 공백 5는
 PR #250이 닫았다. **벌어졌다 닫히는 왕복이 다섯 번째**이고, 이번에는 `:data` 표면만 닫히고 `http/` 요청
 모음은 25/27로 남아 **두 표면이 처음으로 갈렸다**. 소비처는 두 도메인 전부 0건이다
-→ [open-questions](../synthesis/open-questions.md).
+→ [open-questions](../android/synthesis/open-questions.md).
 
 📌 **2026-08-31 delta로 공백이 다시 하나 벌어졌다 — 29 + 테스트 전용 1이 됐고 표면 셈은 27/28이다.**
 신설된 **토핑 일괄 수정 PATCH**([parfait-image.md](parfait-image.md))에 `:data` 표면이 없고 `http/`
 요청 모음도 25/28로 함께 벌어졌다 — 두 표면이 갈리지 않고 같이 뒤처진 것은 2026-08-16 이후 처음이다.
 같은 delta가 과거 캔버스 목록 응답에 붙인 `status`는 앱 DTO가 받지 않으나 **`⚠️불일치`가 아니다**
 (`ignoreUnknownKeys = true`, 읽는 화면 0건) → [parfait.md](parfait.md) ·
-[open-questions](../synthesis/open-questions.md) OQ-P-333 · OQ-P-334.
+[open-questions](../android/synthesis/open-questions.md) OQ-P-333 · OQ-P-334.
 
 ✅ **2026-08-31 두 번째 라운드 — 두 공백 다 앱이 메웠다**(브랜치 `feature/#427-sync-backend-api-260831`,
 **2026-09-01 develop 머지 — PR #428 `e870fb87`**).
@@ -512,6 +512,6 @@ PR #250이 닫았다. **벌어졌다 닫히는 왕복이 다섯 번째**이고, 
 결정 — 실서버 요청 계획이 없다). 과거 캔버스 목록의 `status`도 앱 DTO·`PastCanvasVO`까지 올라왔다
 (OQ-P-333 부분 해소 — 달력 점 기준은 개수 그대로 두기로 했다, [parfait.md](parfait.md)). 남는
 것은 OQ-P-334의 잔존 항목(실패 항목 미식별·검사 순서 차이·`items` 상한 없음)과 단건 PATCH 표면
-소멸을 다루는 신규 미결이다 → [open-questions](../synthesis/open-questions.md).
+소멸을 다루는 신규 미결이다 → [open-questions](../android/synthesis/open-questions.md).
 
 새 간극이 발견되면 이 절에 표를 다시 세운다.

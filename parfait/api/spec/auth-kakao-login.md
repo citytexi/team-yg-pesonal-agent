@@ -106,7 +106,7 @@ tags: [api, parfait, spec, auth]
 - **`nonce` 생성 책임이 앱에 있다는 사실.** 서버 코드는 `nonce`를 받아 대조할 뿐이라
   "누가 만드는가"를 코드에서 읽을 수 없다. **Android 구현에 직접 영향**([아래](#android-구현-시-주의)).
 - **429 요청 한도 초과** — 서버에 대응 코드가 없다. `AuthErrorCode` 14종에 없고, rate limit 구현 흔적도
-  코드에서 발견되지 않는다. **명세에만 존재하는 미구현 항목** → [open-questions](../../synthesis/open-questions.md)
+  코드에서 발견되지 않는다. **명세에만 존재하는 미구현 항목** → [open-questions](../../android/synthesis/open-questions.md)
 - 토큰 수명을 **사람이 읽는 단위**로 표기(1시간·2주·10분). 코드에는 초 단위 숫자만 있다.
 
 ### 코드에만 있음
@@ -131,7 +131,7 @@ tags: [api, parfait, spec, auth]
 [../conventions.md](../conventions.md) "직렬화 규약"·[../auth.md](../auth.md) "판별자 키".
 
 ⚠️ 다만 **Android가 이미 틀린 쪽을 따라 구현했다** — `KakaoLoginResponse.isNewUser`에
-`@SerialName("newUser")`가 붙어 있어 정정이 필요하다 → [open-questions](../../synthesis/open-questions.md).
+`@SerialName("newUser")`가 붙어 있어 정정이 필요하다 → [open-questions](../../android/synthesis/open-questions.md).
 
 ### 표기 차이 (실질 불일치 아님)
 
@@ -152,4 +152,4 @@ tags: [api, parfait, spec, auth]
 
 ## 미결
 
-- 429 요청 한도 초과가 서버 미구현 상태인 것이 의도인지 → [open-questions](../../synthesis/open-questions.md)
+- 429 요청 한도 초과가 서버 미구현 상태인 것이 의도인지 → [open-questions](../../android/synthesis/open-questions.md)

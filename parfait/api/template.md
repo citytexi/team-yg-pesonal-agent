@@ -48,4 +48,4 @@ tags: [api, parfait, server-contract, <도메인>]
 
 ## 미결
 
-- <항목> → [open-questions](../synthesis/open-questions.md)
+- <항목> → [open-questions](../android/synthesis/open-questions.md)

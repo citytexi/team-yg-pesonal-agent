@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         **정본은 문서다.** 이 이슈는 `wiki/synthesis/open-questions.md` 또는
-        `parfait/synthesis/open-questions.md`에 옮겨져야 최종 추적된다.
+        `parfait/android/synthesis/open-questions.md`에 옮겨져야 최종 추적된다.
         `sync-open-questions` 스킬이 다음 실행에서 이 이슈를 "문서에 없는 항목"으로 보고한다.
   - type: dropdown
     id: series
