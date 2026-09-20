@@ -4,7 +4,7 @@ title: Design System — 테마·토큰·컴포넌트 작성 가이드
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-05
+verified: 2026-09-21
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c202-canvas-spotlight, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0007, ADR-0010, ADR-0018, ADR-0025
 related_architecture:
@@ -28,7 +28,7 @@ core/designsystem/.../theme/
     YGColorGrayScale, YGColorTransparency   서브 홀더
     YGSemanticColorDefaults    원자→시맨틱 매핑 (YGLightColorScheme / YGDarkColorScheme)
     KakaoDesignGuideColors     외부 가이드 색 참조(A-002 카카오 버튼)
-    AppleDesignGuideColors     외부 가이드 색 참조 (#218 신설, **사용처 0** — 애플 로그인 철회 잔여물)
+                               (`AppleDesignGuideColors`는 #218 신설 후 사용처 0으로 남았다가 #514에서 삭제됐다)
   typography/             ← YGTypography(title/body/caption) + YGFontFamily(SUIT) + *Defaults
   shapes/                 ← YGShapes(radius: YGShapeRadius) + YGShapesDefaults
   layout/                 ← YGLayout(gap: YGLayoutGap, padding: YGLayoutPadding) + YGLayoutDefaults
@@ -54,7 +54,7 @@ component/etc/
   YGHorizontalDashedDivider.kt  ← 점선 수평 구분선 (Canvas+drawLine+dashPathEffect) (#159 develop 머지)
 screen/                   ← 화면 루트 컨테이너 (아래 "화면 컨테이너")
   YGScreen.kt             Surface 래퍼 + YGScreenScope 리시버 (화면 최외곽)
-  YGScaffold.kt           Material3 Scaffold 래퍼 (구판, @Deprecated(WARNING) #267)
+  YGScaffold.kt           Material3 Scaffold 래퍼 (구판, @Deprecated(WARNING) #267 — **호출부 0건**, #513·#514 이후)
   YGScaffoldV2.kt         Scaffold + 로딩 오버레이 + 토스트 호스트 3층 (Route 소유, #267 develop 머지 · 덮개가 `loadingOverlay` 슬롯이 됨 #440)
 image/                    ← ParfaitImageLoader.kt: newParfaitImageLoader(전역 Coil 로더 팩토리) + rememberReloadableImageRequest (#440 develop 머지)
   YGScreenScope.kt        YGScreenScope + OnBack(@Composable, BackHandler 래핑)
@@ -154,7 +154,11 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > - **재시도 동선이 필요한 실패는 V2가 다루지 않는다.** 그건 화면이 자기 UI로 표현한다
 >   (`GroupListErrorScreen` 같은 전면 에러, 입력 자리 인라인 등).
 >
-> 이관은 화면별로 진행 중이다 — **develop 기준 17화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
+> ✅ **이관이 끝났다(2026-09-20, PR #513·#514)** — develop에 `YGScaffold`(V1) 호출부가 **0건**이고
+> 스캐폴드를 쥔 Route는 **23파일**이다(`GroupListRoute`만 호출 둘 — 본문 + 그룹 추가 오버레이).
+> 아래 문단은 그 과정의 역사다.
+>
+> 이관은 화면별로 진행했다 — **한때 develop 기준 17화면 이관(A-002 로그인 · S-003 앱 설정 · S-002 계정
 > 정보 · S-101 그룹 설정(#285) · G-001 그룹 목록(#297) · 스플래시(#305) · 약관 웹뷰(#296) ·
 > C-106 토핑 배치(#290) · 카메라 3 · 갤러리 2 · 세그멘테이션 3(#309) · 온보딩 약관 동의(#315)),
 > V1 잔여 2파일**(PR #267 · #285 · #290 · #296 · #297 · #305 · #309 · #315).
@@ -294,6 +298,17 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 > 같은 값 500 을 쓰지만 그리는 자리가 달라(`isRefreshing`) **상수가 둘로 갈렸다**
 > ([open-questions](../synthesis/open-questions.md) OQ-P-394). 계측 7 → **9건**
 > → [canvas-feedback-fixes 스펙](../specs/archive/2026-09-10-canvas-feedback-fixes.md).
+>
+> ✅ **마지막 한 화면이 옮겨 V1 호출이 0이 됐다(2026-09-20, PR #513·#514)** — A-004 초대 코드가
+> `feature/groups/enter/impl` EntryBuilder의 `YGScaffold(contentWindowInsets = WindowInsets(0.dp))`를
+> 벗고 Route가 `YGScaffoldV2`를 쥔다(#513). 인셋 관용구는 그대로 옮겨 왔다 —
+> `statusBarsPadding()` + `navigationBarsAndImePadding()`을 Screen `modifier`가 계속 직접 문다.
+> **옮기면서 `isLoading = uiState.isSubmitting`이 붙어 코드 제출 중 공통 로딩 덮개가 처음 떴다**
+> (전에는 다음 버튼 비활성만 있었다). 이것도 "채울 것이 생기는 시점"이 아니라 **이관이 채울 것을
+> 데려온** 방향이다. 같은 날 #514가 캔버스 EntryBuilder에 남아 있던 구 형태 엔트리 셋
+> (캔버스 편집·이미지 선택·`NavKeyCanvasMove`)을 **화면째 삭제**해 나머지 잔여도 사라졌다.
+> ⚠️ **V1 파일은 아직 지우지 않았다** — `@Deprecated(WARNING)` 그대로이고 `ERROR` 승급·삭제 시점은
+> OQ-P-204 ②다. 호출부 0이라는 조건은 이제 충족됐다.
 
 - **역할 분리 (구 컨벤션 — `YGScaffold` 시절)**:
   - **`YGScaffold` = nav 레벨(EntryBuilder)** — `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(...) } }`. Material3 `Scaffold` 얇은 래퍼(기본 배경 흰색, `contentWindowInsets` 노출). TopBar/BottomBar/inset이 필요한 엔트리 컨테이너. → [navigation-flow](navigation-flow.md) 체크리스트.
@@ -488,7 +503,7 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
     - 방향을 이렇게 잡은 이유: 컴포넌트 대부분이 `collectIsPressedAsState()`로 눌림을 직접 그려 Material 리플이 필요 없는데, 호출 지점마다 `indication = null`을 손으로 적거나 안 적어 기본 리플이 도는 상태가 섞여 있었다 — 어느 쪽이 의도인지 코드로 구분되지 않았다. **무리플을 기본에 두고 리플이 필요한 지점을 찾아 `clickableYG`로 올리는 편이 반대보다 빠르다.**
     - `clickableYGNoRipple`에 `interactionSource: MutableInteractionSource? = null`이 첫 파라미터로 추가됐다(다른 네 변형과 같은 자리). 없으면 hoisted `interactionSource`를 넘기던 컴포넌트 9종의 눌림 표현이 끊긴다.
     - **300ms 스로틀이 함께 딸려온다.** 게이트는 `remember`라 **Modifier 노드마다 하나**여서 다른 요소로 옮겨 누르는 것은 막지 않고 같은 요소 연타만 막는다. 이관 지점은 전부 단일 선택이거나 멱등이고, 셔터·재시도·`goTo` 유발 클릭은 오히려 중복 실행이 막힌다.
-    - **리플이 유일한 피드백이었다가 사라진 곳은 `clickableYG`(Dim) 승격 후보다** — `NotionWebView` 재시도, `TermAgreeScreen` 재시도·약관 링크 caret, `InviteCodePasteBar`, `GalleryImageGridComponent` 셀, `CanvasImageSelectScreen` 이미지 → [open-questions](../synthesis/open-questions.md) [2026-08-17].
+    - **리플이 유일한 피드백이었다가 사라진 곳은 `clickableYG`(Dim) 승격 후보다** — `NotionWebView` 재시도, `TermAgreeScreen` 재시도·약관 링크 caret, `InviteCodePasteBar`, `GalleryImageGridComponent` 셀 → [open-questions](../synthesis/open-questions.md) [2026-08-17]. (여섯째였던 `CanvasImageSelectScreen` 이미지는 #514에서 화면이 삭제돼 후보에서 빠졌다.)
 - **튜토리얼 4종**(#449 develop 머지, 2026-09-05, `ygtutorial/`): 화면 첫 진입에서 한 번 도는 안내를
   `YGTutorialOverlay`(화면을 덮는 한 장) + `YGTutorialBox`(설명 카드) + `YGTutorialProgress`(몇 번째 장인가)
   + `YGTutorialBoxPlacement`(카드가 위·아래 중 어디에 붙는가)로 나눠 담는다. **강조할 자리만 뚫은

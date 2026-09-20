@@ -4,7 +4,7 @@ title: C-101 커스텀 카메라 · C-101-confirm 사진 확인 화면 (Custom C
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-09-11
+verified: 2026-09-21
 related_code: PictureConfirmResult, CameraFeedLayer, CameraPermissionRequestComponent, CustomCameraRoute, CameraPreviewViewComponent, CameraPreviewHandle, CameraControlComponent, CameraCrop, CustomCameraViewModel, CustomCameraScreen, PictureConfirmScreen, NavKeyPictureConfirm, PictureConfirmSource, GalleryPermissionRequestComponent, DateTextFormat
 related_adr: ADR-0018, ADR-0006
 related_spec: designsystem-button-missing-components, g001-group-list, c102-custom-gallery-picker, c103-segmentation-topping-edit, c301-canvas-background-edit
@@ -286,6 +286,12 @@ Scaffold가 이미 주는 인셋을 컴포넌트가 한 번 더 물어 이중 �
   딤 뒤에는 "설정에서 카메라 권한을 허용해 주세요"가 보인다.
 - 최초 거부와 영구 거부를 다른 화면으로 나누지 않았다(OQ-P-053 ②). `permanentlyDenied`·`onClickGrantPermission`은
   여전히 받기만 하고 쓰이지 않는다(OQ-P-053 ③ 잔존).
+  > ✅ **그 둘이 시그니처에서 빠졌다(2026-09-20, PR #514)** — `CameraPermissionRequestComponent`의
+  > `permanentlyDenied`·`onClickGrantPermission` 파라미터와 `CustomCameraIntent.OnRequestPermission`
+  > 인텐트·핸들러가 삭제됐다(OQ-P-053 ③ 해소). 영구 거부 갈래 프리뷰도 함께 사라져 이 컴포넌트
+  > 프리뷰는 하나다. **`CustomCameraState.permanentlyDenied` 필드는 남는다** — VM이 계속 계산해
+  > 들고 있고 화면만 읽지 않는다. 같은 라운드가 줌 쪽 파라미터(`zoomRatio`·`zoomRange`·
+  > `onClickZoomLevel`)와 `OnClickZoomLevel` 인텐트도 함께 걷었다(OQ-P-052).
 
 ### CameraX 바인딩이 권한을 기다린다 (`98286f73e`)
 

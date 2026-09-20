@@ -4,8 +4,8 @@ title: C-102 커스텀 갤러리 선택 화면 (Custom Gallery Picker)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-09-11
-related_code: CustomGalleryPickerScreen, CustomGalleryPickerViewModel, CustomGalleryPickerRoute, GalleryImageGridComponent, GalleryPermissionRequestComponent, GalleryPartialAccessBanner, GalleryPermissionManager, GalleryRepository, GalleryMediaProvider, LoadFilterYGGalleryImageGroupsUseCase, LoadAllGalleryImageGroupsUseCase, GetRecentCacheImagesUseCase, GalleryImageGroup, DayWindow, DateTextFormat, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, PictureConfirmSource
+verified: 2026-09-21
+related_code: CustomGalleryPickerScreen, CustomGalleryPickerViewModel, CustomGalleryPickerRoute, GalleryImageGridComponent, GalleryPermissionRequestComponent, GalleryPartialAccessBanner, GalleryPermissionManager, GalleryRepository, GalleryMediaProvider, LoadFilterYGGalleryImageGroupsUseCase, GetRecentCacheImagesUseCase, GalleryImageGroup, DayWindow, DateTextFormat, NavKeyCustomGalleryPicker, NavKeyPictureConfirm, PictureConfirmSource
 related_adr: ADR-0002, ADR-0006, ADR-0016
 related_spec: c101-camera-picture-confirm, c301-canvas-background-edit
 related_architecture: navigation-flow, module-structure, data-layer
@@ -255,6 +255,11 @@ tags: [spec, parfait, gallery, c102]
 - PARTIAL은 권한이 있는 갈래라 요청하지 않는다. 사진 재선택은 종전대로 하단 버튼의 `OnRequestManageMedia`가 맡는다.
 - 다이얼로그 뒤에 설정 이동 화면이 보이는 것, 최초 거부와 영구 거부를 나누지 않은 것, `onClickGrantPermission`이
   쓰이지 않고 남은 것은 카메라와 같다(OQ-P-053 ③ 잔존).
+  > ✅ **그 파라미터가 빠졌다(2026-09-20, PR #514)** — `GalleryPermissionRequestComponent`의
+  > `onClickGrantPermission`과 `CustomGalleryPickerIntent.OnRequestPermission` 인텐트·핸들러가
+  > 삭제됐다(OQ-P-053 ③ 해소). **launcher 경로는 그대로 돈다** — `RequestPermission` 이펙트를
+  > 쏘는 자리가 진입 시 1회 자동 요청(`requestPermissionOnce`)과 `OnRequestManageMedia` 둘이라,
+  > 사라진 것은 아무도 부르지 않던 세 번째 발신처뿐이다.
 - 허용하면 launcher 콜백이 FULL 또는 PARTIAL을 넘기고 VM이 그 자리에서 목록을 로드한다. 카메라처럼 lifecycle
   재시작을 기다리는 바인딩이 없으므로 같은 결함은 코드상 생기지 않는다.
 
