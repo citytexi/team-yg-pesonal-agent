@@ -4,8 +4,8 @@ title: A-002 로그인 화면 (온보딩 페이저 + 카카오 로그인)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-08-11
-related_code: LoginRoute, LoginScreen, LoginViewModel, OnboardingPager, OnboardingPage, OnboardingPagesPreviewParameterProvider, KakaoSignInButton, KakaoLoginHelper, NavKeyLogin, KakaoDesignGuideColors, AppleDesignGuideColors
+verified: 2026-09-21
+related_code: LoginRoute, LoginScreen, LoginViewModel, OnboardingPager, OnboardingPage, OnboardingPagesPreviewParameterProvider, KakaoSignInButton, KakaoLoginHelper, NavKeyLogin, KakaoDesignGuideColors
 related_adr: ADR-0002, ADR-0005, ADR-0006, ADR-0010
 related_spec: intro-term-agree, g001-group-list
 related_architecture: navigation-flow, module-structure, design-system
@@ -75,6 +75,9 @@ tags: [spec, parfait, login, a002]
    (`feature/login/impl`)·`strings.xml`의 애플 라벨/접근성 2건이 **사용처 0으로 develop에 남았다.**
    Android가 애플 로그인을 쓰지 않기로 한 결정(2026-08-11, OQ-P-117 ②)과 정면으로 어긋나는
    잔여물이다 → [open-questions](../../synthesis/open-questions.md) [2026-08-11].
+   📌 **셋 중 하나만 걷혔다(2026-09-20, PR #514)** — `AppleDesignGuideColors.kt` 가 삭제됐다.
+   `icon_logo_apple.xml` 과 `strings.xml` 의 애플 라벨·접근성 2건은 그대로 남는다(OQ-P-123).
+   **코틀린 심볼만 가고 리소스는 남는 것이 두 번째**다 — 자동 검사가 소스 심볼 쪽만 잡는다.
 2. **치수 리터럴 4종** — 상단 `45.dp`, 페이저 좌/우 `35.dp`/`34.dp`, 일러스트↔설명·페이저↔버튼
    간격 `30.dp` 두 곳. 코드 주석이 **"30.dp가 gap 없음"**이라고 공백을 자인한다(`YGLayoutGap`·
    `YGLayoutPadding` 스케일에 해당 값이 없다). 좌우도 값이 1 차이로 갈려 토큰화 대상이 아니다
@@ -120,6 +123,6 @@ feature/login/impl/
   res/drawable/icon_logo_kakao.xml, icon_logo_apple.xml(사용처 0)
   res/values/strings.xml                 신설
 core/designsystem/
-  theme/colors/AppleDesignGuideColors.kt 신설(사용처 0)
+  theme/colors/AppleDesignGuideColors.kt 신설(사용처 0 → #514에서 삭제)
   res/drawable*/image_onboarding_1~3.png 신설
 ```

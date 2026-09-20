@@ -4,7 +4,7 @@ title: A-004 그룹 참여 초대코드 입력 화면 (GroupInviteCode)
 status: implemented
 category: ui-spec
 platforms: android
-verified: 2026-09-07
+verified: 2026-09-21
 related_code:
   - NavKeyGroupInviteCode
   - GroupInviteCodeRoute.kt#GroupInviteCodeRoute
@@ -264,7 +264,13 @@ sealed interface GroupInviteCodeSideEffect : UiSideEffect {
   문구(`group_enter_confirm_*`)는 `strings.xml`에 그대로 남아 이제 S-102가 쓴다
   → [s102 스펙](2026-07-22-s102-group-nickname.md).
 - 정적 라벨은 `feature/groups/enter/impl` `res/values/strings.xml`(S-102·A-005와 파일 공용).
-- 엔트리는 `YGScaffold(contentWindowInsets = WindowInsets(0.dp))` + `statusBarsPadding()`·`navigationBarsAndImePadding()`(S-102·A-005 엔트리와 같은 형태). #224 시점에는 Route가 `Modifier.imePadding()`을 한 번 더 걸어 인셋이 이중이었고, **#237이 Route 쪽을 걷어내 entry 단독으로 정리했다**.
+- ~~엔트리는 `YGScaffold(contentWindowInsets = WindowInsets(0.dp))` + `statusBarsPadding()`·`navigationBarsAndImePadding()`~~(S-102·A-005 엔트리와 같은 형태였다). #224 시점에는 Route가 `Modifier.imePadding()`을 한 번 더 걸어 인셋이 이중이었고, **#237이 Route 쪽을 걷어내 entry 단독으로 정리했다**.
+  🔁 **#513(2026-09-20)에서 스캐폴드가 Route로 내려왔다** — 엔트리는 `GroupInviteCodeRoute`를 부르기만 하고,
+  Route가 `YGScaffoldV2(contentWindowInsets = WindowInsets(0.dp), isLoading = uiState.isSubmitting)`를 쥔다.
+  `statusBarsPadding()`·`navigationBarsAndImePadding()`은 Screen `modifier`로 옮겨 그대로 붙는다
+  (`background(YGAtomicColors.Gray.White)`도 함께 내려왔다). **이 화면이 V1의 마지막 호출부였다** —
+  S-102·A-005는 #393·#394에 먼저 옮겼고, 이로써 develop의 `YGScaffold` 호출이 0건이 됐다(OQ-P-204 ①).
+  겸해 미리보기 조회 중 **공통 로딩 덮개**가 처음 뜬다(그전에는 다음 버튼 비활성만 있었다).
 
 ## 파일 구성
 

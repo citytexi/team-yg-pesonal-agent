@@ -4,7 +4,7 @@ title: 내비게이션 흐름 (Navigation3 + Navigator)
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-07
+verified: 2026-09-21
 related_spec: c103-multi-subject-selection, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, a005-group-create, a004-group-invite-code, s102-group-nickname, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, intro-term-agree, a002-login-onboarding, c001-canvas-main, a002-kakao-login-api, c301-canvas-background-edit, session-token-refresh-infra, c201-canvas-calendar, user-info-ssot, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api, canvas-save-preview-capture-holder
 related_adr: ADR-0002, ADR-0006, ADR-0013, ADR-0021, ADR-0022
 related_architecture:
@@ -42,8 +42,8 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
     `PictureConfirmRoute`(`returnResultOnly = true`)의 확인·닫기 → `popUpTo<NavKeyCanvasBGEdit>()`,
     `CanvasToppingPlaceRoute`의 배치 완료 → `popUpTo<NavKeyCanvasMain>()`
     ([segmentation-pipeline-hardening 스펙](../specs/archive/2026-08-18-segmentation-pipeline-hardening.md)).
-- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasEdit`·`NavKeyCanvasMain`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove`(#290 이후 도달 불가)·`NavKeyCanvasBGEdit`(#231)·`NavKeyCanvasToppingPlace`(#290)·`NavKeyCanvasImageSave`(#445), `NavKeyAppSetting` 등. 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
-- **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`ImageAdd`·`BGEdit`·`Edit`·`ImageSelect`·`Move`·`ImageSave`(#445)) entry를 한 함수에서 등록.
+- **NavKey**(각 feature `:api`, `@Serializable`) — 목적지 식별. 예: `NavKeyLogin`, `NavKeySegmentation`, `NavKeyCameraCustom`. groups·app 계열은 목적지가 많다: `NavKeyGroupList`·`NavKeyGroupSetting`·`NavKeyGroupInviteCode`, canvas의 `NavKeyCanvasMain`·`NavKeyCanvasBGEdit`(#231)·`NavKeyCanvasToppingPlace`(#290)·`NavKeyCanvasImageSave`(#445), `NavKeyAppSetting` 등(`NavKeyCanvasEdit`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove` 셋은 도달 불가로 남아 있다가 #514에서 삭제됐다). 전체 목록은 `feature/*/api`에서 확인(모듈 목록은 [module-structure](module-structure.md)).
+- **엔트리 빌더**(각 feature `:impl`) — `entry<NavKeyXxx> { ... }`를 등록하는 함수(예: `featureLoginEntryBuilder()`). Hilt 멀티바인딩 `Set<EntryProviderScope<NavKey>.(Navigator) -> Unit>`로 주입. **빌더 하나가 여러 entry를 등록할 수 있다** — 예: `featureCanvasEntryBuilder()`는 canvas NavKey(`Main`·`BGEdit`·`ImageSave`(#445)·`ToppingPlace`) entry를 한 함수에서 등록(`Edit`·`ImageSelect`·`Move` 셋은 #514에서 삭제).
 - **NavTransition**(`core:navigation`, #326 신설) — 화면 전환 한 벌(`push`·`pop`·`predictivePop`)을
   묶은 값. `metadata`로 NavEntry에 실어 화면별로 앱 기본을 덮는다 → 아래 [화면 전환](#화면-전환-2026-08-22-pr-326).
 - **MainRoute**(`app`) — 주입된 빌더 집합을 `entryProvider { }` DSL로 순회 등록. NavEntry 데코레이터 적용:
@@ -84,13 +84,22 @@ Navigation3 위에 자체 Navigator·엔트리 빌더를 얹는다. 결정 근�
 - **앱 기본은 `NavDisplay` 인자로 직접 물린다** — `NavTransition.Default`의 세 함수를
   `transitionSpec`·`popTransitionSpec`·`predictivePopTransitionSpec`에 넘긴다. ⚠️ **같은 세 줄이
   `app`의 `MainRoute`와 `app-preview`의 `RootRoute` 두 곳에 있다** → OQ-P-259.
-- **예외는 지금 한 화면이다** — `NavKeyCanvasEdit` 엔트리만 `NavTransition.Fade.metadata`를 단다.
-  그 화면과 `NavKeyCanvasImageSelect`가 **사진 하나를 공유 요소로 잇고**(`LocalSharedTransitionScope`,
-  두 Screen이 `sharedElement`), 화면 전체가 옆으로 밀리면 정작 봐야 할 사진의 이동이 묻히기 때문이다.
-  ⚠️ **그 짝은 지금 도달 불가**라 이 예외가 실제로 도는 것을 볼 수 없다(OQ-P-129 ②) → OQ-P-260.
+  📌 **두 루트가 얇아졌다(2026-09-20, PR #514)** — 둘 다 `NavDisplay`를 감싸던
+  `SharedTransitionLayout` + `CompositionLocalProvider` 껍질을 벗고 `NavDisplay`를 바로 부르며,
+  `modifier`가 껍질 대신 `NavDisplay`로 내려갔다. **복제 자체는 그대로다** — 데코레이터 셋과 전환
+  세 줄은 여전히 두 파일에 나란히 있다.
+- 🔁 **예외가 없어졌다(2026-09-20, PR #514)** — 유일한 예외는 `NavKeyCanvasEdit` 엔트리의
+  `NavTransition.Fade.metadata`였다. 그 화면과 `NavKeyCanvasImageSelect`가 **사진 하나를 공유 요소로
+  이었고**(`LocalSharedTransitionScope`, 두 Screen이 `sharedElement`), 화면 전체가 옆으로 밀리면 정작
+  봐야 할 사진의 이동이 묻히기 때문이었다. 도달 불가 화면 셋이 삭제되면서 그 예외도 함께 걷혔고,
+  **`LocalSharedTransitionScope`와 두 루트의 `SharedTransitionLayout` 껍질도 사라졌다**(공유 요소를
+  쓰는 화면이 하나도 남지 않았다). 지금 develop에 `NavTransition.Fade`를 다는 엔트리는 **0건**이고
+  모든 화면이 `Default`를 쓴다 → OQ-P-260 ③ 해소. ⚠️ 그래서 **`Fade` 프리셋 자체가 사용처 0으로
+  남았다** — `NavTransitionTest`가 슬롯만 잠그므로 컴파일도 테스트도 이것을 잡지 못한다 → OQ-P-404.
 - **`Fade`를 고르는 기준**(브랜치 KDoc에 있다가 최종 커밋에서 지워져 여기로 옮긴다 —
   [parfait/CLAUDE.md](../CLAUDE.md) 최소 보존선): **방향을 말할 수 없는 전환**에 쓴다. 앞뒤 관계가
   없는 경계(스플래시 → 첫 화면)이거나, 공유 요소가 자리를 옮기는 전환이다.
+  ⚠️ 기준은 남았지만 **그 기준에 해당하는 화면이 지금 하나도 없다**(위 🔁).
 - **`NavTransitionTest`가 잠그는 것은 슬롯이 다 찼는지 하나다** — 프리셋마다 세 키가 모두 있고,
   `copy()`로 한 슬롯만 갈아도 나머지 둘이 그대로 실려 나가는지. 하나라도 비면 **그 방향만 라이브러리
   기본으로 튀어** 앞뒤가 안 맞는다. 전환의 모양 자체는 단언 대상이 아니다(실기기 몫).
@@ -426,8 +435,10 @@ NavKeyGalleryPicker ┘        (goToAndPopCurrent — 확인 화면은 걷힌다
 > "초안의 알맹이는 진입 인자에서 벗어나지 않는다"는 전제가 깨졌고, 그대로 두면 프로세스 사망 복원이
 > 진입 인자로 편집 결과와 테두리를 덮어쓴다.
 >
-> ⚠️ **`NavKeyCanvasMove`·`CanvasMoveRoute`·`CanvasMoveScreen`은 호출자를 잃은 채 남았다** — 엔트리도
-> 등록돼 있어 컴파일은 되지만 도달할 수 없다 → OQ-P-239.
+> ✅ **호출자를 잃고 남았던 잔해가 지워졌다(2026-09-20, PR #514)** — `NavKeyCanvasMove`·
+> `CanvasMoveRoute`·`CanvasMoveScreen`과 엔트리 등록이 삭제됐다. 같은 라운드가
+> `NavKeyCanvasEdit`·`NavKeyCanvasImageSelect` 계열도 함께 걷어 **도달 불가 캔버스 화면은 0개**가
+> 됐다 → OQ-P-239 해소.
 
 ## 캔버스 배경 편집 플로우 (2026-08-15, PR #231)
 
@@ -591,10 +602,11 @@ C-001 캔버스 메인
    > [ygscaffold-v2 스펙](../specs/archive/2026-08-16-ygscaffold-v2-common-loading-error.md).
 
    (구 형태) `entry<NavKeyXxx> { YGScaffold { innerPadding -> XxxRoute(modifier = Modifier.padding(innerPadding)) } }`. 화면 최외곽 컨테이너 `YGScreen`과의 역할 분리는 그대로 → [design-system](design-system.md) "화면 컨테이너".
-   **develop에는 두 형태가 공존한다** — 신형이 **17화면**이고, 구 형태는 EntryBuilder **2파일**
-   (`feature/groups/enter/impl` 3곳 · `feature/groups/canvas/impl` 5곳, 2026-08-20 PR #315 기준)만
-   남았다. 수치의 정본은 [design-system](design-system.md) "화면 컨테이너"이고, 잔여 이관·V1 삭제
-   시점은 → [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204.
+   ✅ **공존이 끝났다(2026-09-20, PR #513·#514)** — 구 형태 호출이 **0건**이다. A-004 초대 코드가
+   Route의 `YGScaffoldV2`로 옮겼고(#513), 캔버스 EntryBuilder에 남아 있던 구 형태 엔트리 셋은 도달
+   불가 화면과 함께 삭제됐다(#514). `YGScaffold`(V1) 파일 자체는 `@Deprecated(WARNING)`으로 남아
+   있다. 수치의 정본은 [design-system](design-system.md) "화면 컨테이너"이고, V1 삭제 시점은
+   → [open-questions](../synthesis/open-questions.md) [2026-08-17] OQ-P-204 ②.
 3. 빌더를 Hilt 모듈(`NavigationModule`, ActivityRetainedComponent)의 `Set<...>` 멀티바인딩에 `@IntoSet`으로 제공.
    > 📌 **화면 ID 매핑도 함께 더한다**(2026-09-09, PR #478) — `:app`의 `NavKey.toAnalyticsScreenOrNull()`이
    > `NavKey`를 기획 화면 ID(`C-001`·`G-001` 등)로 바꿔 `screen_view` 로 보낸다. ⚠️ **컴파일러가 누락을
@@ -692,13 +704,15 @@ C-001 캔버스 메인
 ## 인자 있는 목적지 (`data class NavKey`)
 
 목적지가 값을 받으면 `data object`가 아니라 `@Serializable data class NavKeyXxx(val …)`로 정의한다
-(`NavKeySegmentation`·`NavKeyCanvasEdit`·`NavKeyCanvasMove`·`NavKeyGroupCreate`·
+(`NavKeySegmentation`·`NavKeyGroupCreate`·
 `NavKeyPictureConfirm`·`NavKeyTermAgree`·`NavKeyGroupNickName`·
 `NavKeyCameraCustom`·`NavKeyCustomGalleryPicker`(뒤 둘은 #231에서 `data object` → `data class` 승격)·
 `NavKeyCanvasMain`(#268 승격 — `groupId`, **#411에서 `welcomeGroupName`·`welcomeInviteCode` 추가**)·`NavKeyGroupSetting`(#285 승격 — `groupId`)·
 `NavKeyWebView`(#296 신설 — `title`·`url`)·`NavKeyCanvasToppingPlace`(#290 신설 — `imageUri`, **#334에서 인자를 잃고 `data object`로 되돌아갔다**)·
 `NavKeyCanvasBGEdit`(#329 승격 — `groupId`·`parfaitId`, **#400에서 `initialToppingId` 추가**)·
 `NavKeyCanvasImageSave`(#445 신설 — `imagePath`·`date`)).
+**#514에서 이 목록이 둘 줄었다** — `NavKeyCanvasEdit(imageUri)`·`NavKeyCanvasMove(imageUri)`가
+도달 불가 잔해로 삭제됐다(OQ-P-239 해소).
 **목적지 둘이 인자 하나로 합쳐진 첫 사례가 #296이다** — `NavKeyServiceTerms`·`NavKeyPrivacyPolicy`
 두 `data object`가 삭제되고 `NavKeyWebView(title, url)` 하나가 됐다. 두 화면은 상단바 제목과 여는
 주소만 달랐고 그 둘이 이제 서버 응답 값이라(`GET /api/v1/policies`의 `title`·`url`,

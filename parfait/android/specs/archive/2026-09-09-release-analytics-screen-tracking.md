@@ -4,7 +4,7 @@ title: 화면 진입 계측과 기기·앱 사용자 속성 (Firebase Analytics)
 status: implemented
 category: behavior-spec
 platforms: android
-verified: 2026-09-10
+verified: 2026-09-21
 related_code:
   - MainRoute.kt#MainRoute
   - MainActivity.kt#MainActivity
@@ -331,6 +331,11 @@ Turbine·MockK·`kotlinx-coroutines-test`는 이미 유닛 테스트 번들에 �
 - ⚠️ 도달할 수 없는 화면 다섯(`NavKeyCanvasEdit`·`NavKeyCanvasImageSelect`·
   `NavKeyCanvasMove`·`NavKeyCameraSystem`·`NavKeySystemGalleryPicker`)에도 ID 를 줬다.
   이벤트가 나가지 않아 지표에 0건으로 남는다.
+  > 📌 **다섯이 둘로 줄었다(2026-09-20, PR #514)** — 캔버스 쪽 셋이 화면째 삭제되면서
+  > `toAnalyticsScreenOrNull()`의 `C-001-edit`·`C-001-image-select`·`C-001-move` arm 과
+  > `NavKeyAnalyticsScreenTest` 의 기대값도 함께 빠졌다(OQ-P-239). 위 매핑 표의 그 세 행은
+  > 더 이상 코드에 없다. **`NavKeyCameraSystem`·`NavKeySystemGalleryPicker` 둘은 그대로**라
+  > 0건으로 남는 ID 도 둘이다.
 - ⚠️ 매핑 누락은 컴파일러가 잡지 못한다. `NavKey`는 sealed 가 아니어서 `when`이 빠짐없음을
   강제하지 못하고, 새 화면을 추가하며 매핑을 잊으면 런타임 경고 한 줄로만 드러난다.
 - ⚠️ 패키지 이름이 겹쳐 읽는 사람이 헷갈릴 수 있다. `core:util:jvm`의

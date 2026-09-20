@@ -5,8 +5,87 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `924cb5802` (`Merge pull request #504 from mash-up-kr/refactor/#502-code-clean-1`)
-- **요약**: **한 줄도 동작을 바꾸지 않은 청소 라운드가, 예전부터 알던 잔해는 그대로 둔 채 상태 노출
+- **커밋**: `e10ead2ca` (`Merge pull request #513 from mash-up-kr/refactor/group-invite-code-scaffold-v2`)
+- **요약**: **직전 회차가 「사람이 따로 결정해야 지워진다」고 적은 잔해를 바로 다음 라운드가 지웠고,
+  그 김에 한 달 넘게 끌던 스캐폴드 이관도 끝났다** (delta 2건, **40파일 · 삽입 124줄 · 삭제 695줄 —
+  순감 571줄**, 커밋 7개). **머지 둘 다 트리가 브랜치 팁과 같다**(충돌 해소 편집 0건).
+  유닛 **1298건**·계측 **46건** 둘 다 그대로다 — 청소 라운드가 두 번 연속 테스트 수를 안 움직였다.
+  아카이브 이동 **0건**(선작성 스펙·계획이 없다 — 둘 다 청소·이관 티켓이다), 미결 **해소 2건**
+  (OQ-P-053·OQ-P-239), **부분 해소 7건**(OQ-P-052·089·101·123·156·204·260), 마커만 **3건**
+  (OQ-P-129·215·259), **신설 1건**(OQ-P-404, `oq-next` 405).
+
+  **#514 — 청소 2차의 알맹이는 셋이다.** ① **도달 불가 캔버스 화면 셋이 삭제됐다** —
+  `NavKeyCanvasEdit`·`NavKeyCanvasImageSelect`·`NavKeyCanvasMove` 와 각 Route·Screen, 엔트리 등록까지.
+  커밋 제목이 `refactor: remove the three unreachable canvas entries` 다. 딸려 걷힌 것 셋:
+  `NavTransition.Fade.metadata` 예외 · `LocalSharedTransitionScope` 와 **두 루트(`MainRoute`·
+  `RootRoute`)의 `SharedTransitionLayout` 껍질** · `toAnalyticsScreenOrNull()` 의 화면 ID 셋
+  (`C-001-edit`·`C-001-image-select`·`C-001-move`)과 그 테스트 기대값.
+  ② **사용처 0 심볼 다섯 묶음이 걷혔다** — `animateToppingPlacement`·`ToppingLayoutDefaults`(OQ-P-101 ①) ·
+  `AppleDesignGuideColors`(OQ-P-123 ②) · `LoadAllGalleryImageGroupsUseCase` 와
+  `GalleryRepository.loadAllGalleryImages`(OQ-P-089 ②) · `BitmapUtils` 의 `mapViewToBitmap`·
+  `mapBitmapToViewFloat` 와 `BitmapViewMapping.fitCenter(IntSize)` 오버로드(OQ-P-156 ③) · `String.sha256`.
+  ③ **받기만 하던 파라미터·인텐트가 시그니처에서 빠졌다** — 권한 두 컴포넌트의
+  `onClickGrantPermission`·`permanentlyDenied` 와 두 VM 의 `OnRequestPermission`(OQ-P-053 ③ 해소,
+  항목 전체가 닫혔다) · `CameraControlComponent` 의 `zoomRatio`·`zoomRange`·`onClickZoomLevel` 과
+  `OnClickZoomLevel`(OQ-P-052 ② 절반). 그 밖에 카메라 화면 프리뷰 셋이 `PreviewParameterProvider`
+  하나로 합쳐지고, `businessFailure<T>`·`mapOf<NavKey, String>` 의 불필요한 타입 인자, 초대코드
+  자리표시자의 이스케이프(`"%1\$s"` → `$$"%1$s"` 멀티달러 보간)가 정리됐다. `.kotlin/` 이 gitignore 에 붙었다.
+  **원격 연동 코드는 계약에 닿지 않는다** — `ParfaitRemoteDataSourceImplTest` 의 타입 인자 정리뿐이라
+  `api/` 다섯 표면은 전부 불변이다.
+
+  **#513 — 마지막 V1 호출부가 옮겼다.** A-004 초대 코드가 EntryBuilder 의 `YGScaffold` 를 벗고
+  Route 에서 `YGScaffoldV2` 를 쥔다. 인셋 관용구는 그대로 옮겨 왔고(`contentWindowInsets =
+  WindowInsets(0.dp)` 는 스캐폴드가, `statusBarsPadding()` + `navigationBarsAndImePadding()` 은 Screen
+  `modifier` 가 문다), **옮기면서 `isLoading = uiState.isSubmitting` 이 붙어 미리보기 조회 중 공통
+  로딩 덮개가 처음 뜬다**(그전에는 다음 버튼 비활성만 있었다). develop 의 `YGScaffold` 호출은 이제
+  **0건**이고 스캐폴드를 쥔 Route 는 **23파일**이다(`GroupListRoute` 만 호출 둘 — 본문 + 그룹 추가 오버레이).
+
+  **드러난 것 하나 — 미결에 적어 둔 것이 다음 라운드의 작업 목록이 됐다.** 직전 회차(81)는 OQ-P-239 에
+  ⚠️ 를 달며 "청소 라운드가 와도 이 문장이 참이었다 · 지우려면 사람이 따로 결정해야 한다"고 적었다.
+  **같은 이슈(#502)의 2차 라운드가 바로 그것을 지웠다.** 문서 → 코드 방향이 실제로 도는 것을 본
+  드문 사례이고, 그래서 이 저장소의 미결 목록은 기록이기만 한 것이 아니다. 다만 **인과를 단정할
+  근거는 없다** — PR 본문에 이 문서를 가리키는 말은 없다.
+
+  **드러난 것 둘 — 삭제가 결정을 대신했다.** OQ-P-101 ①·OQ-P-123 ②·OQ-P-215·OQ-P-260 ③ 은 전부
+  "정하면 닫힌다"였는데, 판정 없이 대상이 사라져 닫혔다. **그 대가가 하나 남는다** — G-001 정책
+  대조표의 "그룹 나가기 시 뒤 토핑이 당겨지며 좌/우·타입 변경" 행은 이동 프리미티브가 결선 없이
+  삭제돼 **불일치로 굳었다**(이제 순간이동한다). 사용처 0 심볼의 존폐를 미루면 **닫히는 방식을
+  고를 수 없다**는 것이 이번 사례다.
+
+  **드러난 것 셋 — 지운 자리가 새 사용처 0을 만들었다.** `NavTransition.Fade` 는 유일한 소비처를
+  잃고 프리셋만 남았다. `NavTransitionTest` 가 잠그는 것이 "프리셋마다 세 키가 다 있는가" 하나라
+  **아무도 안 써도 테스트는 통과한다** → OQ-P-404 신설. 청소가 만든 잔해라 다음 청소 라운드의
+  후보이기도 하다.
+
+  **조치**: [navigation-flow](architecture/navigation-flow.md) NavKey·엔트리 빌더 목록 · 「화면 전환」
+  예외 문단 🔁 · OQ-P-259 📌 · 토핑 생성 플로우 도달 불가 ⚠️ → ✅ · 「인자 있는 목적지」 목록 ·
+  체크리스트 2번 공존 종료 · `verified` · [design-system](architecture/design-system.md) 색 트리 ·
+  `screen/` 인벤토리 · 「화면 컨테이너」 이관 완료 ✅ 둘 · clickableYG 후보 목록 · `verified` ·
+  [open-questions](synthesis/open-questions.md) OQ-P-052·053·089·101·123·129·156·204·215·239·259·260
+  갱신 + **OQ-P-404 신설** + `verified` · [specs/README](specs/README.md) a004 7라운드 · c106 ✅ ·
+  segmentation-pipeline-hardening ✅ · [c101](specs/archive/2026-08-01-c101-camera-picture-confirm.md)·
+  [c102](specs/archive/2026-08-04-c102-custom-gallery-picker.md) 권한 as-built ✅ ·
+  [a004](specs/archive/2026-08-12-a004-group-invite-code.md) 엔트리 절 🔁 ·
+  [g001](specs/archive/2026-08-01-g001-group-list.md) 심볼 인벤토리·토핑 배치 절·정책 대조표 ·
+  [release-analytics](specs/archive/2026-09-09-release-analytics-screen-tracking.md) 도달 불가 ID 📌 ·
+  doc-baseline 기준선·검증일·이력 · index 기준선 줄. 아카이브 이동 0건, ADR 불변,
+  **`api/` 다섯 표면 전부 불변**(`verified` 는 서버 계약 대조일이라 건드리지 않았다).
+  미머지 하나(`feature/debug-mode`) 유지.
+
+  ⚠️ **원격 브랜치가 둘에서 일곱으로 늘었다**(`git ls-remote`) — `chore/bump-version-1.1.4-12` 와
+  `feature/ai/llm-wiki`·`feature/ai/llm-wiki-document`·`feature/ai/set-up` 넷이 새로 올라왔다.
+  **전부 parfait 문서가 걸리지 않아 미머지 추적 줄에는 오르지 않는다.** 다만 앞의 하나는
+  develop 의 `11`/`1.1.3` 보다 앞선 버전 표식이라 [ADR-0003](adr/0003-convention-plugins-version-catalog.md)
+  as-built 가 다음 회차에 따라갈 후보다.
+
+  직전 회차 요약(81회차, `924cb5802`): **한 줄도 동작을 바꾸지 않은 청소 라운드가, 예전부터 알던
+  잔해는 그대로 둔 채 상태 노출 관용구만 두 갈래로 갈랐다**(delta 1건, 56파일 179/208 — 순감 29줄).
+  ktx Bitmap 확장 전환·`delay(Duration)`·Compose 규약 정리가 알맹이였고, 유닛 1298·계측 46이 그대로라
+  순수 정리임이 드러났다. 미결 신설 1건(OQ-P-403 — `Navigator` 만 Kotlin 명시적 backing field 로 갔다).
+  ⚠️ 그 회차가 "청소 라운드가 와도 안 지워졌다"고 적은 OQ-P-239 는 **이번 회차에 지워졌다**(위 참고).
+  아래가 그 회차의 상세다.
+
+  **한 줄도 동작을 바꾸지 않은 청소 라운드가, 예전부터 알던 잔해는 그대로 둔 채 상태 노출
   관용구만 두 갈래로 갈랐다** (delta 1건, **56파일 · 삽입 179줄 · 삭제 208줄 — 순감 29줄**, 커밋 12개).
   **머지 트리가 브랜치 팁과 같다**(`924cb5802` 의 트리 = 두 번째 부모의 트리, 충돌 해소 편집 0건).
   유닛 **1298건**·계측 **46건** 둘 다 그대로다 — `.kt` 를 40개 가까이 만지고도 테스트 수가 안 움직인
@@ -2198,7 +2277,12 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-09-16 (80회차)
+- **검증일**: 2026-09-21 (82회차)
+
+  📌 **이 줄이 또 한 회차치 낡아 있었다**(81회차 `924cb5802`). **같은 종류의 누락이 일곱 번째**다 —
+  그 회차의 이력 표 비고는 "검증일 줄 81회차"라고 적었는데 이 줄은 `2026-09-16 (80회차)` 에
+  멈춰 있었다. **비고에 적는 것과 이 줄을 고치는 것은 다른 일이다.** 번호는 요약 안의
+  「직전 회차 요약(81회차)」 포인터와 이 줄 + 1 이 같다.
 
   📌 **닷새 만의 회차다** — 79·78회차가 둘 다 2026-09-11 이었다. 번호는 요약 안의 「직전 회차 요약(78회차)」
   포인터와 이 줄 + 1 이 같다.
@@ -2243,6 +2327,11 @@
   멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
   적이 있다) **직전 회차의 이 줄 + 1**이다.
 - **미머지 추적 항목**: **하나**(`feature/debug-mode`, OQ-P-311 계보).
+  📌 **82회차 재확인(2026-09-21)** — `origin/develop` 에 `DebugMode*` 심볼이 여전히 0건이다.
+  ⚠️ **원격 브랜치가 둘에서 일곱으로 늘었다** — `chore/bump-version-1.1.4-12` 와
+  `feature/ai/llm-wiki`·`feature/ai/llm-wiki-document`·`feature/ai/set-up` 넷이 새로 올라왔다.
+  **넷 다 parfait 문서가 걸리지 않아 이 줄에 오르지 않는다** — 이 줄은 여전히 **parfait 문서가
+  걸린 브랜치 중 회차를 넘겨 남는 것**만 센다. `origin/release/*` 는 계속 0개다.
   📌 **79회차 재확인(2026-09-11)** — `origin/develop` 에 `DebugMode*` 심볼이 여전히 0건이다(develop 이
   350커밋, 브랜치가 6커밋 앞선다). 이번 delta 의 `feature/sync-backend-api-260911` 은 선작성 스펙·계획이 없어
   이 줄에 오른 적이 없다. ⚠️ **원격 `release/*` 브랜치가 0개가 되어**, 이 브랜치의 커밋을 품은 다른 ref 는
@@ -2382,6 +2471,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-21 | `e10ead2ca` | Merge #514(이슈 #502 코드 정리 2차 — 도달 불가 캔버스 화면 셋 삭제 · 사용처 0 심볼 청소 · 안 쓰는 파라미터 제거) · #513(A-004 초대 코드 `YGScaffoldV2` 이관) | delta 2건, **40파일 124/695 — 순감 571줄**, 커밋 7개, **머지 둘 다 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 **1298건**·계측 **46건** 둘 다 유지(청소 라운드 두 번 연속). 아카이브 이동 **0건**(선작성 스펙·계획 없음), 미결 **해소 2건**(OQ-P-053·**OQ-P-239**) · **부분 해소 7건**(052·089·101·123·156·204·260) · 마커 **3건**(129·215·259) · **신설 1건**(OQ-P-404, `oq-next` 404 → 405). **① 직전 회차가 "사람이 따로 결정해야 지워진다"고 적은 잔해를 다음 라운드가 지웠다** — `NavKeyCanvasMove` 계열에 더해 `NavKeyCanvasEdit`·`NavKeyCanvasImageSelect` 계열까지. 딸려 `NavTransition.Fade` 예외·`LocalSharedTransitionScope`·두 루트의 `SharedTransitionLayout`·analytics ID 셋이 걷혔다. **② 삭제가 결정을 대신했다** — OQ-P-101 ①·123 ②·215·260 ③ 이 판정 없이 닫혔고, 대가로 G-001 정책 대조표의 토핑 당김 행이 **불일치로 굳었다**. **③ 지운 자리가 새 사용처 0을 만들었다** — `NavTransition.Fade` 프리셋(OQ-P-404 신설). **④ `YGScaffold`(V1) 호출 0건** — #513 이 마지막 호출부(A-004)를 옮겨 OQ-P-204 ① 이 닫혔다(V2 Route 23파일). `api/` 다섯 표면 전부 불변(원격 연동 코드는 테스트 타입 인자 정리뿐). ADR 불변. 검증일 줄 82회차(81회차치 누락 복구, 일곱 번째). 미머지 하나(`feature/debug-mode`) 유지 — ⚠️ 원격 브랜치는 둘에서 일곱으로 늘었으나 넷 다 parfait 문서 밖이다 |
 | 2026-09-17 | `924cb5802` | Merge #504(이슈 #502 코드 정리 1차 — ktx Bitmap 확장 · `delay(Duration)` · Compose 규약 · 미사용 리소스 삭제) | delta 1건, **56파일 179/208 — 순감 29줄**, 커밋 12개, **머지 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 **1298건**·계측 **46건** 둘 다 유지 — `.kt` 를 40개 가까이 만지고도 테스트 수가 안 움직인 첫 라운드이고 그것이 순수 정리의 증거다. 아카이브 이동 **0건**(청소 티켓이라 선작성 스펙·계획이 없다), 미결 **신설 1건**(OQ-P-403, `oq-next` 403 → 404), 마커 **2건**. **① ktx 전환에 빠뜨린 자리 0건** — 남은 `Bitmap.createBitmap` 일곱은 전부 ktx 대응이 없는 오버로드(행렬·`IntArray`·부분 비트맵)다. **② 청소 라운드가 와도 잔해는 안 지워졌다** — OQ-P-239 의 `NavKeyCanvasMove` 계열 셋은 엔트리 등록이 참조라 미사용 심볼로 안 잡힌다(⚠️ 추가). **③ `Navigator` 만 Kotlin 명시적 backing field 로 갈아타** 상태 노출 관용구가 두 갈래가 됐다 — `BaseViewModel._state` 등 옛 쌍 넷이 남았고 정한 문서가 없다(OQ-P-403 신설, Kotlin `2.4.10`·컴파일러 인자 없음). **④ 되살아날 뻔한 것을 막았다** — 미구현 Task 10 스니펫이 `Bitmap.createScaledBitmap` 을 적고 있어 `scale` 로 정정. 고아 드로어블 `splash_icon*.xml` 삭제 확인 → OQ-P-187 📌(출처의 `app/` 경로를 `core/ui/` 로 정정, 항목 ①②③ 잔존). `api/` 다섯 표면 전부 불변(원격 연동 코드 0건, `TokenAuthenticatorTest` 만 테스트 정리). architecture·ADR 불변. 검증일 줄 81회차. 미머지 하나(`feature/debug-mode`, `ed8e1ec8a`) 유지 |
 | 2026-09-16 | `f37a76540` | Merge #497(G-001 목록 토핑 테두리 렌더 + 띠 판 캐시 선반화) · #499(로컬 빌드 캐시 측정 하니스) | delta 2건, **16파일 1649/29**, 커밋 24개, **머지 둘 다 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 1292 → **1298건**, 계측 39 → **46건**. 아카이브 이동 **4건**(스펙 2 · 계획 2), 미결 **신설 1건**(OQ-P-402 — 리모트 캐시 도입 문턱값·커밋 쌍·미실행 측정). #497은 선작성 스펙과 **어긋난 조항 0건**, #499는 구현이 스펙보다 두 자리 넓어(`check-relocatability.sh`·`report.py`/`report.html`) 스펙 본문을 머지본 기준으로 고쳤다 |
 | 2026-09-11 | `1b21725ba` | Merge #496(그룹 목록 응답 테두리 세 필드 수용 + 테두리 변환 공용 매퍼화) | delta 1건, **14파일 151/28**, 커밋 3개, **머지 트리 = 브랜치 팁 `307241337`**(충돌 해소 편집 0건). 유닛 1288 → **1292건**(+4: `ParfaitGroupRemoteDataSourceImplTest`), 계측 **39건** 유지. 아카이브 이동 **0건**(선작성 스펙·계획 없음), 미결 **신설 0건**(`oq-next` 402 유지). 서버 `82e6edc` 의 `recentImageBorderType`·`Color`·`Width` 를 `MyParfaitGroupVO.recentImageBorder` 가 받고, 캔버스·토핑 매퍼의 `private` 사본 둘이 `data/source/common/mapper/ToppingBorderMapper.kt#toToppingBorder` 로 모였다(그룹 매퍼가 세 번째 호출부 → 두께 클램프도 목록까지). **로컬 커밋 단계에 먼저 적은 문서(`09207d4`·`73a0661`)는 머지 코드와 맞았고 틀린 문장은 하나** — OQ-P-316 의 "세 매퍼에 똑같이 있던"(사본은 둘). 조치: parfait-group 「미결」 테두리 항목·OQ-P-316 로컬 표기 → PR #496 · conventions `borderWidth` 행 · parfait-image 매핑 📌 · api/README 📌 · module-structure·data-layer 두 번째 공용 매퍼. `CheckNameValidUseCase` 는 KDoc 한 줄만 걷혀 문서 불변. 렌더는 별도 티켓이라 design-system·OQ-P-316 열림 유지, `api/` `android_status`·엔드포인트 표·README 도메인 표 불변. **원격 `release/*` 0개** — 78회차가 적은 `release/version-1.1.3-10` 은 그 문서 커밋 전(00:19 KST)에 이미 삭제됐고 `-11` 도 없다, 태그 `1.1.3` 은 한 번 지워졌다가 `c37dc2b4c` → 코드 10 ref 0개(OQ-P-310 📌), 옛 여섯은 2026-09-10 삭제 · `feature/debug-mode` 는 태그 `0.1.0`·`0.1.1`·`1.0.0` 에만(OQ-P-311 📌). 검증일 줄 79회차(누락 없음). 미머지 하나(`feature/debug-mode`) 유지 |

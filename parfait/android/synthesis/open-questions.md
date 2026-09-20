@@ -4,7 +4,7 @@ title: Open Questions — 구현 미결·열린 결정
 category: meta
 status: living
 platforms: android
-verified: 2026-09-17
+verified: 2026-09-21
 related_spec: topping-edit-empty-subject-guard, upload-image-downscale, push-notification-permission-and-device-token, canvas-today-ssot-polling, topping-alpha-hit-test, segmentation-mask-postprocessing, segmentation-alpha-refinement, alpha-kernel-suspend-cancellation, segmentation-preprocessing, c001-canvas-gallery-save, c301-topping-edit-tab, c106-topping-place-api, c106-topping-place, user-info-ssot, app-setting-s001, s004-terms-privacy-webview, canvas-detail-background-api-service-layer, c201-canvas-calendar, c201-canvas-calendar-server, c001-canvas-today-detail, session-token-refresh-infra, c301-canvas-background-edit, c103-segmentation-topping-edit, intro-term-agree, designsystem-bar-listdate-components, designsystem-text-component-sync, a005-group-create, s002-account-info, data-network-setup, network-envelope-token-storage, designsystem-grouptag-topping-components, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, g001-group-list, c101-camera-picture-confirm, c102-custom-gallery-picker, parfait-api-contract-docs, data-api-service-layer, unit-test-infrastructure, ci-gradle-cache-seeding, a002-login-onboarding, c001-canvas-main, image-api-service-layer, member-parfait-image-api-service-layer, a004-group-invite-code, s102-group-nickname, mvi-error-infrastructure, a002-kakao-login-api, ygscaffold-v2-common-loading-error, s101-group-setting-api, screen-resume-refetch, canvas-save-preview-capture-holder, topping-border-distance-field, g001-group-list-topping-border, build-cache-measurement-harness
 related_adr: ADR-0004, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0025, ADR-0026, ADR-0029, ADR-0030
 related_architecture: design-system, data-layer, navigation-flow, module-structure, state-management
@@ -517,18 +517,32 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-052
 - **출처**: `feature/camera/impl`의 `component/CameraZoomIndicatorComponent.kt`·`component/controls/ZoomLevelRow.kt`(참조 0건) + `CameraControlComponent`(`zoomRatio`·`zoomRange`·`onClickZoomLevel`을 받기만 하고 렌더에 안 씀) + `CustomCameraViewModel`(`OnZoomRangeReady`·`OnClickZoomLevel` 인텐트의 발신처 없음, `zoomRatio`는 `LaunchedEffect`로 카메라에 계속 반영). PR #182가 컨트롤 행을 셔터·플래시·전환 3종으로 재구성하면서 줌 UI만 빠졌다.
 - **항목**: ① 줌을 다시 노출할지(Figma 대응 확인 필요 — [2026-07-30 카메라 항목](#2026-07-30-카메라-컨트롤-임시-구현체-잔존--셔터-구현이-두-곳에-공존) ③에서 넘어온 질문), ② 안 쓸 거면 컴포넌트 2개와 상태·인텐트를 걷어낼지.
-- **상태**: 미해결 (코드 수정 대상)
+- **상태**: 부분 해소 (②의 절반 — 파라미터·인텐트는 걷혔고 컴포넌트 2개는 잔존, 2026-09-20 PR #514 / ① 잔존)
+  > 📌 **파라미터와 인텐트만 걷혔다(2026-09-20, PR #514)** — `CameraControlComponent`가 받기만 하던
+  > `zoomRatio`·`zoomRange`·`onClickZoomLevel`이 시그니처에서 빠지고, `CustomCameraIntent.OnClickZoomLevel`과
+  > 그 핸들러도 사라졌다. **남은 것 셋**: `CameraZoomIndicatorComponent`·`ZoomLevelRow` 두 컴포넌트가
+  > 여전히 참조 0건이고, `CustomCameraState.zoomRatio`·`zoomRange`와 `OnZoomRangeReady` 인텐트는
+  > **살아 있다** — 死코드가 아니다. `CustomCameraRoute`가 `state.zoomRatio`를
+  > `CameraPreviewComponent`에 넘겨 `cameraControl.setZoomRatio`로 계속 반영하기 때문이고, 값이
+  > 초기값 1f에서 움직일 경로만 없다. 즉 ②는 **사용자가 줌을 바꿀 수단이 없다**는 쪽만 남았고,
+  > 그 결정은 ①에 달렸다.
 - **해소 메모**: 정하면 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md) 범위 표를 갱신한다.
 
 ### [2026-08-01] 카메라·갤러리 권한 요청 경로가 UI에 없음
 - **ID**: OQ-P-053
 - **출처**: `feature/camera/impl/.../component/CameraPermissionRequestComponent.kt`·`feature/gallery/impl/.../component/GalleryPermissionRequestComponent.kt`(PR #182 develop 머지) — 두 컴포넌트 모두 `onClickGrantPermission`·`permanentlyDenied`를 파라미터로 받지만 본문에서 쓰지 않고 "설정으로 이동" 버튼 하나만 그린다. Route의 `permissionLauncher`와 VM의 `OnRequestPermission`은 살아 있으나 **발신처가 없어** 시스템 권한 다이얼로그가 뜨는 경로가 없다(갤러리는 부분 접근 배너의 `onClickManageMedia`만 launcher를 탄다).
 - **항목**: ① 최초 진입 시 자동 요청 또는 "권한 허용" 버튼을 둘지, ② 최초 거부와 영구 거부 화면을 나눌지(`permanentlyDenied` 분기 부활), ③ 안 쓸 파라미터면 시그니처에서 뺄지.
-- **상태**: 부분 해소 (①② 결정·구현, 2026-09-11 PR #489 develop 머지 / ③ 잔존)
+- **상태**: 해소됨 (①② 2026-09-11 PR #489, ③ 2026-09-20 PR #514)
   > 📌 **갤러리 쪽 launcher 경로만 실물이 됐다(2026-08-04, PR #191)** — 死코드였던 부분 접근 배너 대신 화면 하단 "사진 재선택" `YGButton`이 PARTIAL일 때 노출돼 `OnRequestManageMedia` → `RequestPermission` → launcher를 탄다. 즉 **부분 접근 상태에서만** 시스템 다이얼로그가 뜨고, 미허용(DENIED/PERMANENTLY_DENIED) 상태의 `onClickGrantPermission`은 여전히 권한 화면에서 호출되지 않는다.
   > 📌 **두 컴포넌트를 다시 짜고도 그대로다(2026-08-25, PR #350)** — 인셋 수정 라운드가 카메라·갤러리 권한 화면의 레이아웃을 통째로 고쳐 놓으면서 `onClickGrantPermission`·`permanentlyDenied`는 손대지 않았다. 두 파라미터는 여전히 받기만 하고 본문에서 쓰이지 않는다. **화면을 여는 사람이 이 자리를 지나갔는데도 안 열렸다**는 뜻이라, 이 항목은 "잊혀서 남아 있는 것"이 아니라 **결정이 없어서 남아 있는 것**이다.
   > 📌 **①② 결정·구현(2026-09-10 결정, 2026-09-11 PR #489 develop 머지 `be537ea93` — 브랜치 `bugfix/permission-not-required`)** ① **진입 시 자동 요청**으로 정했다. 두 VM이 첫 권한 없음 확인에서 `RequestPermission`을 한 번 발행하고(`requestPermissionOnce`), 다이얼로그가 닫혀 재개 확인이 다시 와도 재요청하지 않는다. 물을 수 없는 상태면 시스템이 다이얼로그 없이 거부로 답하므로 설정 이동 화면이 남는다. 갤러리 PARTIAL은 묻지 않는다. ② **거부 화면을 나누지 않는다.** 다이얼로그가 떠 있는 동안에도 뒤에는 설정 이동 화면을 그대로 둔다(작업자 결정). ③ 카메라 컴포넌트의 `onClickGrantPermission`·`permanentlyDenied`와 갤러리 컴포넌트의 `onClickGrantPermission`은 여전히 쓰이지 않는다(갤러리 컴포넌트에는 `permanentlyDenied` 파라미터가 처음부터 없고 `isDeniedPermission`을 받는다). 같은 브랜치가 카메라에서 권한 전에 CameraX를 바인딩해 허용 뒤에도 프리뷰가 뜨지 않던 결함을 함께 고쳤다(`98286f73e`, 권한 다이얼로그는 Activity를 pause만 시켜 CameraX가 다시 열지 않았다) → [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md)·[c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 「권한 요청 as-built 갱신」.
-- **해소 메모**: ③만 남았다. 쓰이지 않는 파라미터를 시그니처에서 뺄지 정하면 닫힌다. 위 📌와 두 스펙, [specs/README](../specs/README.md) c101·c102 행의 미머지 표기는 78회차 기준선 점검(2026-09-11, develop `c37dc2b4c`)에서 걷었다.
+  > ✅ **③이 닫혔다(2026-09-20, PR #514)** — 쓰이지 않던 파라미터를 시그니처에서 뺐다.
+  > `CameraPermissionRequestComponent`에서 `permanentlyDenied`·`onClickGrantPermission`이,
+  > `GalleryPermissionRequestComponent`에서 `onClickGrantPermission`이 빠졌고, 두 ViewModel의
+  > `OnRequestPermission` 인텐트와 핸들러도 함께 사라졌다(갤러리는 `RequestPermission` **이펙트**를
+  > 쏘는 다른 경로 — 진입 시 1회 자동 요청·`OnRequestManageMedia` — 가 살아 있어 launcher는 그대로
+  > 돈다). 카메라 권한 화면 프리뷰도 영구 거부 갈래가 사라져 하나로 줄었다.
+- **해소 메모**: 위 📌와 두 스펙, [specs/README](../specs/README.md) c101·c102 행의 미머지 표기는 78회차 기준선 점검(2026-09-11, develop `c37dc2b4c`)에서 걷었다.
 
 ### [2026-08-01] 갤러리 빈 상태 그래픽이 상시 노출되고 문구가 리터럴
 - **ID**: OQ-P-054
@@ -892,8 +906,14 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-089
 - **출처**: `feature/gallery/impl/.../component/GalleryPartialAccessBanner.kt`(참조 0건 — 하단 "사진 재선택" `YGButton`으로 대체됐으나 파일이 남았고, 배경·문구가 `Color` 리터럴 + 코틀린 리터럴이라 문자열 리소스 규약에도 어긋난다) · `domain/.../usecase/gallery/LoadAllGalleryImageGroupsUseCase.kt`(참조 0건 — 화면이 03시 창 필터본 `LoadFilterYGGalleryImageGroupsUseCase`만 쓴다). 둘 다 PR #191 이후 상태.
 - **항목**: ① 배너를 지울지(대체 완료) 다른 접근 수준 안내로 되살릴지, ② 전체 조회 UseCase가 앞으로 쓰일 화면이 있는지(있으면 유지, 없으면 Repository의 `loadAllGalleryImages`까지 함께 정리).
-- **상태**: 미해결 (코드 수정 대상)
-- **해소 메모**: 정리 시 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 파일 구성·주의 절과 [data-layer](../architecture/data-layer.md) 레이어 배치의 `GalleryRepository` 서술을 맞춘다.
+- **상태**: 부분 해소 (② 해소 — 정리 쪽으로 닫힘, 2026-09-20 PR #514 / ① 잔존)
+  > ✅ **②가 "없다"로 닫혔다(2026-09-20, PR #514)** — `LoadAllGalleryImageGroupsUseCase`가 삭제되고
+  > `GalleryRepository.loadAllGalleryImages`와 `GalleryRepositoryImpl`의 구현까지 함께 걷혔다.
+  > 해소 메모가 "없으면 Repository까지 함께 정리"라고 적어 둔 그대로다. 갤러리 화면은 03시 창
+  > 필터본 `loadFilterYGGalleryImages` 하나만 쓴다.
+  > ⚠️ **①은 그대로다** — `GalleryPartialAccessBanner.kt`가 참조 0건으로 남아 있다. 같은 청소
+  > 라운드가 바로 옆 死코드는 지우면서 이 파일은 건드리지 않았다.
+- **해소 메모**: ①만 남았다. 정리 시 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 파일 구성·주의 절과 [data-layer](../architecture/data-layer.md) 레이어 배치의 `GalleryRepository` 서술을 맞춘다.
 
 ### [2026-08-04] 가이드 토스트 문구가 카메라·갤러리 두 모듈에 중복 정의
 - **ID**: OQ-P-090
@@ -1042,8 +1062,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-101
 - **출처**: `feature/groups/list/impl/route/component/ToppingLayout.kt#animateToppingPlacement`·`ToppingLayoutDefaults`(PR #194 develop 머지) — 목록 중간 삽입·삭제로 자리가 밀릴 때 순간이동 대신 애니메이션시키는 `Modifier` 확장인데 호출부가 없다. KDoc이 "호출부에서 각 항목을 안정적인 key로 감싸야 항목 이동으로 인식된다"고 전제를 다는데 `ToppingLayout` 호출부는 `fastForEachIndexed`로 key 없이 그린다. 같은 파일의 `ToppingLayout`·`ToppingLayoutDefaults`가 feature `impl` 내부 전용인데도 `public`이라(같은 폴더 `GroupListParfaitLayout`은 `internal`) 가시성도 갈린다.
 - **항목**: ① 조회 결선 라운드에서 실제로 붙일지, 아니면 걷어낼지(사용처 0 공개 API를 남긴 선례가 이미 있다 — [2026-08-03 `clickableYGNoRipple` 항목](#2026-08-03-clickableygnoripple-사용처-0--존치-여부). **그 선례는 2026-08-17 #284로 존치 쪽으로 닫혔다** — 사용처 0이던 API가 표준 유틸이 됐다), ② feature `impl` 내부 심볼의 기본 가시성을 `internal`로 못박을지.
-- **상태**: 미해결
-- **해소 메모**: 결정 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "토핑 배치" 절을 정리한다.
+- **상태**: 부분 해소 (① 걷어내는 쪽으로 닫힘, 2026-09-20 PR #514 / ② 잔존)
+  > ✅ **①이 걷어내는 쪽으로 닫혔다(2026-09-20, PR #514)** — `animateToppingPlacement`와
+  > `ToppingLayoutDefaults`가 `ToppingLayout.kt`에서 삭제됐다. `clickableYGNoRipple` 선례와 반대
+  > 결말이고, 갈린 이유도 그 선례가 적어 둔 그대로다 — 저쪽은 소비처가 실제로 생겼고 이쪽은
+  > 붙일 라운드가 끝내 오지 않았다. 목록 항목을 안정적인 key로 감싸는 호출부 변경도 함께 필요했는데
+  > 그 전제가 채워진 적이 없다.
+  > ⚠️ **②는 그대로다** — 같은 파일에 남은 `ToppingLayout`이 여전히 `public`이고, 같은 폴더
+  > `GroupListParfaitLayout`은 `internal`이다. 이 라운드가 가시성은 손대지 않았다.
+- **해소 메모**: ②만 남았다. 결정 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) "토핑 배치" 절을 정리한다.
 
 ### [2026-08-09] 테스트 기반 구조에 검증되지 않은 표면 3건
 
@@ -1351,7 +1378,15 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-123
 - **출처**: PR #218 develop 머지 — 브랜치가 애플 로그인 버튼을 넣었다가 같은 브랜치에서 지웠는데(`chore: 애플 로그인 관련 코드 삭제`) 부속물이 남았다. `core:designsystem` `theme/colors/AppleDesignGuideColors.kt`(신규 파일), `feature/login/impl` `res/drawable/icon_logo_apple.xml`, `feature/login/impl` `strings.xml`의 애플 버튼 라벨·`contentDescription` 2건. develop 전수 검색에서 **참조가 0건**이다. 바로 전날 **Android는 애플 로그인을 쓰지 않기로 확정**했으므로([2026-08-11] 서버 delta 항목의 ② 해소) 이 심볼들은 앞으로도 소비처가 생기지 않는다.
 - **항목**: ① 지금 걷어낼지, 아니면 "언젠가 붙을 수도"로 두고 死코드 목록에 올려둘지 — 사용처 0 공개 심볼을 남긴 선례가 이미 둘 있다(`clickableYGNoRipple` [2026-08-03] — **2026-08-17 #284로 존치 쪽 결말**, `animateToppingPlacement` [2026-08-07] — 미결). 다만 선례가 존치로 닫혔다고 이쪽까지 존치가 되는 건 아니다: 저쪽은 소비처가 실제로 생겼고 애플 로그인은 **Android가 안 쓰기로 확정**돼 소비처가 생길 길이 없다. ② 걷어낸다면 `AppleDesignGuideColors`는 `core:designsystem` 소관이라 로그인 PR과 별개 정리 대상이다. ③ 브랜치 안에서 되돌린 기능의 부속 리소스를 리뷰가 못 잡는다는 신호 — 체크 지점을 어디에 둘지(R8은 리소스 축소를 하지만 소스 심볼은 남는다).
-- **상태**: 미해결 (기능 영향 0 — 정리 시점 문제)
+- **상태**: 부분 해소 (①② 중 `AppleDesignGuideColors`만 정리, 2026-09-20 PR #514 / drawable·문자열·③ 잔존)
+  > ✅ **②가 실행됐다(2026-09-20, PR #514)** — `core:designsystem`의 `AppleDesignGuideColors.kt`가
+  > 삭제됐다. ①이 묻던 "지금 걷어낼지"에 **걷어내는 쪽**으로 답한 셈이고, 선례 둘 중
+  > `animateToppingPlacement`(같은 라운드에 삭제)와 같은 결말이다.
+  > ⚠️ **소스 심볼만 갔고 리소스는 남았다** — `feature/login/impl`의 `icon_logo_apple.xml`,
+  > `core:designsystem`의 `ic_social_apple.xml`, `feature/login/impl` `strings.xml`의 애플 버튼
+  > 라벨·`contentDescription` 2건, `core:ui` `strings.xml`의 `login_provider_apple`이 그대로다.
+  > ③(브랜치 안에서 되돌린 기능의 부속 리소스를 무엇이 잡는가)이 여전히 열려 있다는 증거이기도 하다 —
+  > 이번에도 걷힌 것은 코틀린 심볼뿐이다.
   > 📌 **③의 괄호가 이제야 참이 됐다(2026-08-26, PR #372)** — "R8은 리소스 축소를 하지만"이라고
   > 적었으나 그때 릴리즈는 `isMinifyEnabled = true`만 켜져 있었고 `isShrinkResources`는 기본값
   > `false`였다. 즉 **리소스는 축소된 적이 없었다.** 이번에 그 스위치가 켜져 미사용 drawable·
@@ -1446,6 +1481,10 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 바뀌어(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/`UiState`/`Intent`/`Effect`,
   > `strings.xml` 키 `canvas_main_*`) 이름이 C-001 캔버스 메인이라는 실제 역할과 맞는다. **남은 것은
   > `OnClickCanvas`/`NavigateToCanvas`가 갤러리로 가는 이름 불일치**이고, ②의 상단 메뉴도 그대로다.
+  > 📌 **②가 겨누던 두 목적지가 목적지째 사라졌다(2026-09-20, PR #514)** — 출처 문단이 "entry는
+  > 등록돼 있는데 이 화면에서 가지 않는다"고 적던 `NavKeyCanvasEdit`·`NavKeyCanvasImageSelect`가
+  > 화면·Route·엔트리 등록까지 삭제됐다(OQ-P-239). **②에 남은 상단 메뉴 하나는 그대로**이고,
+  > 이제 그 목적지는 새로 만들어야 한다 — 골라 쓸 수 있던 미결선 엔트리가 없어졌다. ③도 그대로다.
 
 ### [2026-08-12] C-001이 mock을 ViewModel 로직에 박고 `isEmpty`를 상수로 넘긴다
 
@@ -1876,7 +1915,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **ID**: OQ-P-156
 - **출처**: `feature/segmentation/impl` `viewmodel/SegmentationViewModel.kt#SegmentationState.originBitmap` · `viewmodel/ToppingEditViewModel.kt#ToppingEditState`(`originBitmap`·`segmentationBitmap`) · `screen/BitmapUtils.kt#mapViewToBitmap`·`#mapBitmapToViewFloat`(둘 다 참조 0건)(PR #221 develop 머지) — ViewModel이 `(wrapper as? AndroidBitmap)?.getRawData()`로 `BitmapWrapper` 추상을 벗겨 `android.graphics.Bitmap`을 상태에 직접 담는다. [ADR-0011](../adr/0011-cross-module-bitmap-abstraction.md)이 규정하는 것은 domain 경계뿐이라 규약 위반은 아니지만 다운캐스트가 data 레이어 밖으로 나온 첫 사례이고, **원본 해상도 비트맵이 상태 수명 동안 상주**한다(`ToppingEditState`는 2장). 스냅샷 상태에 담긴 비트맵이라 Compose stability 관점에서도 unstable 파라미터다.
 - **항목**: ① 비트맵을 상태가 아니라 `remember`/`produceState`로 화면이 들지, ② `BitmapWrapper`에 필요한 연산을 정의해 다운캐스트를 data로 되돌릴지([2026-07-12] BitmapWrapper stub 항목과 같은 결정), ③ 死코드 2건(`mapViewToBitmap`·`mapBitmapToViewFloat`)을 걷어낼지 — 좌표 변환 4종 중 2종만 쓰인다.
-- **상태**: 미해결 (③은 즉시 처리 가능)
+- **상태**: 부분 해소 (③ 해소, 2026-09-20 PR #514 / ①② 잔존)
+  > ✅ **③이 닫혔다(2026-09-20, PR #514)** — `BitmapUtils.kt`의 `mapViewToBitmap`·`mapBitmapToViewFloat`
+  > 둘이 삭제됐다. 함께 `BitmapViewMapping.fitCenter`의 `IntSize` 오버로드도 참조 0건이라 걷혀,
+  > 좌표 변환은 `Size`를 받는 `fitCenter`와 `mapViewToBitmapFloat` 둘만 남았다.
+  > ⚠️ **①②는 그대로다** — ViewModel이 여전히 `(wrapper as? AndroidBitmap)?.getRawData()`로 추상을
+  > 벗겨 raw `Bitmap`을 UiState에 담는다.
 - **해소 메모**: ②가 정해지면 [ADR-0011](../adr/0011-cross-module-bitmap-abstraction.md) As-built 절과 [module-structure](../architecture/module-structure.md) 규칙 서술을 함께 손본다. ①은 실기기에서 큰 사진으로 OOM 여부를 본 뒤 판단한다.
 
 ### [2026-08-15] 그룹 Repository 경계와 에러 코드 9종이 소비처 없이 먼저 머지됐다
@@ -2978,7 +3022,8 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: ① 잔여 8파일을 화면별 API 결선 라운드에 붙일지, 이관만 하는 라운드를 따로 돌릴지.
   ② `ERROR` 승급·V1 파일 삭제 시점. ③ 공존 기간 동안 새로 생기는 화면이 규약(Route 소유)을 지키는지
   기계로 확인할 수단이 없다 — 지금은 리뷰가 유일한 관문이다.
-- **상태**: 미해결 (**8파일 → 7파일 → 6파일 → 3파일 → 2파일 → 1파일 1호출**, 이관 화면은 8개 → 20개)
+- **상태**: 부분 해소 (① 해소 — 이관 완료, 2026-09-20 PR #513·#514 / ②③ 잔존.
+  **8파일 → 7 → 6 → 3 → 2 → 1파일 1호출 → 0**)
 - **해소 메모**: 이관이 끝나면 [design-system](../architecture/design-system.md) "화면 컨테이너"의
   V1 항목과 [navigation-flow](../architecture/navigation-flow.md) 체크리스트 2번의 "(구 형태)" 서술을
   함께 지운다. OQ-P-167(실패 표현 갈래)과는 별개 축이다 — 이관해도 실패 표현이 통일되지는 않는다.
@@ -3046,6 +3091,17 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > ⚠️ **한 모듈 안에서 두 관용구가 나란히 놓였다** — 같은 EntryBuilder에서 A-004는 엔트리가
   > 스캐폴드를 씌우고, 형제 둘은 Route가 쥔다. A-005 쪽 엔트리에는 그 이유를 적은 주석이 붙었다
   > (로딩·토스트가 화면 상태를 봐야 한다).
+  > ✅ **①이 닫혔다 — V1 호출이 0이 됐다(2026-09-20, PR #513·#514)** — 마지막 하나였던 A-004
+  > 초대 코드가 Route에서 `YGScaffoldV2`를 쥔다(#513). 이관 전용 라운드였고, **옮기면서 채울 것도
+  > 같이 왔다** — `isLoading = uiState.isSubmitting`이 붙어 코드 제출 중 공통 덮개가 처음 뜬다
+  > (전에는 다음 버튼 비활성만 있었다). 인셋 관용구는 그대로 옮겨 왔다: `contentWindowInsets =
+  > WindowInsets(0.dp)`를 스캐폴드가 받고 `statusBarsPadding()` + `navigationBarsAndImePadding()`은
+  > Screen `modifier`가 계속 직접 문다. 위 ⚠️가 적은 "한 모듈 두 관용구"도 이로써 사라졌다.
+  > 같은 날 #514가 캔버스 EntryBuilder의 구 형태 엔트리 셋을 **화면째 삭제**해(OQ-P-239) 잔여가
+  > 완전히 비었다 — 마지막 잔여가 이관이 아니라 **삭제**로 걷힌 셈이다.
+  > **②(`ERROR` 승급·V1 파일 삭제)는 그대로 미결**이고, 스펙이 정한 승급 기준("각 화면이 Route에서
+  > 스캐폴드를 소유하고 로딩·실패를 배선함")은 이제 충족됐다. ③(기계 확인 수단)도 그대로 없다 —
+  > 다만 호출부가 0이 된 지금은 `@Deprecated(ERROR)` 승급 자체가 그 수단이 된다.
 
 ### [2026-08-17] 공통 로딩 오버레이가 임시 구현이고, 적용 기준도 사례에서 귀납한 것뿐이다
 
@@ -3300,6 +3356,9 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   약관 링크 caret, `InviteCodePasteBar`, `GalleryImageGridComponent` 셀,
   `CanvasImageSelectScreen` 이미지. 뒤 둘은 탭 즉시 `goTo`로 전진해 화면이 바뀌므로 손실이 가볍고,
   앞 넷은 제자리에 남아 "눌렸는지" 단서가 없다.
+  > 📌 **후보가 다섯으로 줄었다(2026-09-20, PR #514)** — `CanvasImageSelectScreen`이 도달 불가
+  > 화면으로 삭제됐다(OQ-P-239). 손실이 가볍다고 적었던 둘 중 하나가 판정 없이 사라진 것이라
+  > 결정 대상에서 빠진다.
 - **항목**: ① 여섯을 `clickableYG`(Dim 리플)로 올릴지, 텍스트 링크류는 색 변화 같은 다른 표현으로 갈지.
   ② 승격 판정 기준을 규약으로 적을지 — "자체 눌림/선택 표현이 없고 제자리에 남는 클릭은 리플을 준다"
   같은 문장이 있어야 다음 화면에서 같은 판단을 반복하지 않는다.
@@ -3932,7 +3991,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   이유로 되돌렸는데**, 그 이유가 #290 머지로 사라졌다.
 - **항목**: ① 셋을 지울지 — 지우면 도달 불가 화면 목록에서 하나가 빠진다. ② 같은 부류
   (`NavKeyCameraSystem`·`NavKeySystemGalleryPicker`)와 묶어 한 번에 정리할지.
-- **상태**: 미해결
+- **상태**: 해소됨 (① 지우는 쪽으로 실행, 2026-09-20 PR #514. ②는 별개로 남는다)
   > 📌 **2026-08-20 — `refactor/segmentation-develop`이 되살리지 않기로 했다.** 그 브랜치가 두 번째
   > 리베이스에서 같이 처리할 후보였으나(아래 해소 메모의 옛 권고), **이 잔해는 그 라운드가 만든 것이
   > 아니라 #290이 남긴 것**이라 리뷰 대상 diff를 넓힐 값이 없다고 판단했다
@@ -3948,9 +4007,19 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 호출부는 여전히 0건이다. **"지울 라운드가 정해지지 않았다"는 위 문장이 청소 라운드가 와도
   > 참이었다**는 것이 이번에 드러났다. 자동 검사가 못 잡는 종류이기 때문이다: 엔트리 등록이 참조라
   > 미사용 심볼로 보이지 않는다. 지우려면 사람이 따로 결정해야 한다.
-- **해소 메모**: 지우면 [navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지" 목록과
-  토핑 생성 플로우 절의 도달 불가 표기를 함께 걷는다. ②와 묶어 도달 불가 화면 셋을 한 라운드에
-  정리하는 쪽이 남았다.
+  > ✅ **그 다음 청소 라운드가 사람 손으로 지웠다(2026-09-20, PR #514)** — `NavKeyCanvasMove`·
+  > `CanvasMoveRoute`·`CanvasMoveScreen`과 엔트리 등록이 삭제됐다. **같은 커밋이 범위를 넓혀
+  > `NavKeyCanvasEdit`·`NavKeyCanvasImageSelect` 계열도 함께 걷었다**(`CanvasEditRoute`/`Screen`·
+  > `CanvasImageSelectRoute`/`Screen`·엔트리 둘). 커밋 제목이 `refactor: remove the three unreachable
+  > canvas entries`라 **바로 위 ⚠️가 적은 "사람이 따로 결정해야 한다"가 그대로 실행된 모양**이다.
+  > 딸려 걷힌 것 셋: ① `NavTransition.Fade.metadata` 예외(OQ-P-260 ③), ② `LocalSharedTransitionScope`와
+  > 두 루트의 `SharedTransitionLayout` 껍질, ③ `NavKeyAnalyticsScreen`의 화면 ID 셋
+  > (`C-001-edit`·`C-001-image-select`·`C-001-move`)과 그 테스트 기대값.
+  > ⚠️ **②(`NavKeyCameraSystem`·`NavKeySystemGalleryPicker`)는 그대로다** — 이 라운드가 캔버스 셋만
+  > 보고 그 둘은 건드리지 않았다. 도달 불가 화면이 0이 된 것은 **캔버스 쪽만**이다.
+- **해소 메모**: [navigation-flow](../architecture/navigation-flow.md) "인자 있는 목적지" 목록과 토핑
+  생성 플로우 절의 도달 불가 표기는 이 회차(2026-09-21) 점검에서 걷었다. ②는 별개 항목으로 남는다 —
+  같은 부류 둘의 존폐는 아직 아무도 결정하지 않았다.
 
 ### [2026-08-19] 배치 화면이 보여 주는 캔버스가 실제 캔버스가 아니다
 
@@ -4453,6 +4522,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   두 루트가 함께 쓰는 컴포저블이 후보다. ② 아니면 app-preview는 본 앱 전환을 따를 이유가 없다고 보고
   복제를 의도로 확정할지(그렇다면 두 파일에 그 뜻을 적어야 한다).
 - **상태**: 미해결
+  > 📌 **복제가 줄지 않고 얇아지기만 했다(2026-09-20, PR #514)** — 두 파일 모두 `NavDisplay`를 감싸던
+  > `SharedTransitionLayout` + `CompositionLocalProvider(LocalSharedTransitionScope …)` 껍질을 벗고
+  > `NavDisplay`를 바로 부른다(`modifier`가 껍질 대신 `NavDisplay`로 내려갔다). 공유 요소를 쓰는
+  > 화면이 하나도 안 남아서다. **복제된 줄 수는 줄었지만 복제 자체는 그대로다** — 데코레이터 셋과
+  > 전환 세 줄은 여전히 두 파일에 나란히 있고, 이번에도 **같은 편집을 양쪽에 두 번** 했다. ①②는
+  > 그대로 열려 있다.
 - **해소 메모**: 같은 부류가 이미 하나 있다 — 데코레이터 세 개(`SaveableStateHolder`·`ViewModelStore`·
   `ResultEventBus`)도 두 루트에 나란히 복제돼 있다. 즉 이 항목은 전환만의 문제가 아니라 **두 루트가
   `NavDisplay` 설정을 통째로 복제하는 형태**를 어떻게 둘지의 문제다 →
@@ -4472,8 +4547,13 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   둘 다 그려진다 — 체감 비용도 미측정이다.
 - **항목**: ① 실기기 확인 항목으로 옮길지(쌓기·뒤로·가장자리 제스처 좌우 각 1회). ② `Fade` 예외의
   값은 그 짝이 도달 가능해질 때까지 판정을 미룰 수밖에 없는데, 그때 이 예외가 아직 맞는지 다시 볼지.
-- **상태**: 미해결 (**실기기 확인 대기** — 이번 라운드의 산출물이 전부 눈으로만 판정되는 것들이다)
-- **해소 메모**: ③은 OQ-P-129 ②가 닫히면 함께 판정된다. ①·②는 실기기 이월 목록에 붙는다 —
+- **상태**: 부분 해소 (③ 소멸 — 예외가 화면째 삭제, 2026-09-20 PR #514 / ①②④ 잔존)
+  > ✅ **③이 판정 없이 사라졌다(2026-09-20, PR #514)** — `NavKeyCanvasEdit`과 그 짝
+  > `NavKeyCanvasImageSelect`가 삭제되면서 `NavTransition.Fade.metadata`를 다는 엔트리도 사라졌다.
+  > 지금 develop의 모든 화면이 `Default`를 쓴다. **②는 답 없이 소멸했다** — "그 짝이 도달
+  > 가능해질 때 다시 본다"던 조건이 성립할 수 없게 됐다.
+  > ⚠️ 그래서 **`Fade` 프리셋 자체가 사용처 0으로 남았다** → OQ-P-404. ①④(실기기 미확인)는 그대로다.
+- **해소 메모**: ①·④는 실기기 이월 목록에 붙는다 —
   [doc-baseline](../doc-baseline.md) 「현재 기준선」의 실기기 항목과 같은 줄에서 관리한다.
 
 ### [2026-08-22] 마감된 캔버스의 409를 배경 저장이 일반 오류로 접는다 — 같은 코드에 두 처분이 생겼다
@@ -7636,4 +7716,24 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   그 문서가 지금 `BaseViewModel` 의 상태 노출 형태를 **적지 않는다**는 공백도 함께 닫는다. ②를
   고르면 ADR 을 새로 열 것 없이 그 문서 갱신으로 충분하다 — 결정이 모듈 경계나 의존 방향을 바꾸지 않는다.
 
-<!-- oq-next: 404 -->
+### [2026-09-21] 도달 불가 화면을 지우자 `NavTransition.Fade` 프리셋이 사용처 0으로 남았다
+
+- **ID**: OQ-P-404
+- **출처**: `core/navigation/.../NavTransition.kt#Fade`(PR #514 develop 머지) — 유일한 소비처였던
+  `NavKeyCanvasEdit` 엔트리(`metadata = NavTransition.Fade.metadata`)가 화면째 삭제되면서
+  (OQ-P-239) 프리셋을 다는 엔트리가 **0건**이 됐다. develop 전체에서 `NavTransition.` 을 부르는
+  자리는 `MainRoute`·`RootRoute` 의 `Default` 여섯 줄뿐이다. **`NavTransitionTest` 는 이것을
+  잡지 못한다** — 잠그는 것이 "프리셋마다 세 키가 다 있는가" 하나라, 프리셋을 아무도 안 써도
+  테스트는 그대로 통과한다. 컴파일도 `object` 상수라 경고를 내지 않는다.
+- **항목**: ① 남길지 — 남긴다면 근거는 "다음 공유 요소 전환에서 쓴다"인데, 그 화면이 언제 올지
+  정해진 바 없다. ② 걷어낼지 — 걷으면 `NavTransitionTest` 의 `Fade` 케이스와
+  [navigation-flow](../architecture/navigation-flow.md) 「`Fade` 를 고르는 기준」 문단도 함께 간다.
+  ③ 기준 문단만 남기고 프리셋을 지울지 — 판단 근거는 문서에 남기고 코드만 비우는 형태다.
+- **상태**: 미해결 (**동작 영향 0** — 아무도 안 쓰므로 무엇을 골라도 화면은 안 바뀐다)
+- **해소 메모**: 같은 부류가 셋 있다 — `clickableYGNoRipple`(존치로 닫힘, 소비처가 실제로 생겼다) ·
+  `animateToppingPlacement`(삭제로 닫힘) · `AppleDesignGuideColors`(삭제로 닫힘). 앞의 둘이 갈린
+  기준은 "소비처가 생길 길이 있는가"였고, `Fade` 는 그 판정이 **공유 요소를 쓰는 화면을 다시
+  만들 계획이 있는가**에 달렸다. 정하면 [navigation-flow](../architecture/navigation-flow.md)
+  「화면 전환」 절의 🔁 문단을 함께 정리한다.
+
+<!-- oq-next: 405 -->
