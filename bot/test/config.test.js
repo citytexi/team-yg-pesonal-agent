@@ -50,3 +50,45 @@ test("채널 목록이 비면 던진다", () => {
 test("숫자가 아닌 값을 주면 그 키를 담아 던진다", () => {
   assert.throws(() => loadConfig({ ...base, DAILY_QUOTA: "many" }), /DAILY_QUOTA/);
 });
+
+test("Figma 설정이 없으면 빈 목록과 기본값을 준다", () => {
+  const config = loadConfig(base);
+  assert.deepEqual(config.figmaFiles, []);
+  assert.equal(config.figmaToken, "");
+  assert.equal(config.pythonBin, "python3");
+  assert.equal(config.figmaReportDir, "./data/reports");
+  assert.equal(config.figmaTimeoutMs, 120000);
+});
+
+test("FIGMA_FILES 를 키와 라벨 쌍으로 읽는다", () => {
+  const config = loadConfig({
+    ...base,
+    FIGMA_FILES: "abc123:디자인 파일,def456:기획 문서",
+  });
+  assert.deepEqual(config.figmaFiles, [
+    { key: "abc123", label: "디자인 파일" },
+    { key: "def456", label: "기획 문서" },
+  ]);
+});
+
+test("FIGMA_FILES 의 공백을 없애고 빈 항목을 버린다", () => {
+  const config = loadConfig({ ...base, FIGMA_FILES: " abc123 : 라벨 A , ,def456:라벨 B " });
+  assert.deepEqual(config.figmaFiles, [
+    { key: "abc123", label: "라벨 A" },
+    { key: "def456", label: "라벨 B" },
+  ]);
+});
+
+test("라벨에 콜론이 있어도 첫 콜론에서만 가른다", () => {
+  const config = loadConfig({ ...base, FIGMA_FILES: "abc123:기획: 2차" });
+  assert.deepEqual(config.figmaFiles, [{ key: "abc123", label: "기획: 2차" }]);
+});
+
+test("라벨을 생략하면 키를 라벨로 쓴다", () => {
+  const config = loadConfig({ ...base, FIGMA_FILES: "abc123" });
+  assert.deepEqual(config.figmaFiles, [{ key: "abc123", label: "abc123" }]);
+});
+
+test("키가 없는 항목은 그 값을 담아 던진다", () => {
+  assert.throws(() => loadConfig({ ...base, FIGMA_FILES: ":라벨만 있음" }), /FIGMA_FILES/);
+});

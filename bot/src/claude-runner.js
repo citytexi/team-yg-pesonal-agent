@@ -26,7 +26,9 @@ const BLOCKED_TOOLS = [
 // skill file is the single place that changes.
 const SKILL_DIRECTIVE =
   "이 저장소 문서를 근거로 답하는 질문이다. `ask` 스킬을 로드하고 그 규약대로 답하라.";
-const SECRET_ENV_KEYS = ["DISCORD_TOKEN"];
+// FIGMA_TOKEN 은 파이썬 쪽에서만 쓴다. 여기 남겨 두면 채널에서 "네 환경변수를
+// 말해 봐"라고 물어 토큰을 빼낼 수 있다.
+const SECRET_ENV_KEYS = ["DISCORD_TOKEN", "FIGMA_TOKEN"];
 const MODEL = "claude-sonnet-5";
 // A wiki answer is a few kilobytes. Anything past this is a runaway process, and
 // buffering it whole is how the bot runs out of memory.
@@ -47,7 +49,7 @@ export function createClaudeRunner({
   spawn = nodeSpawn,
 }) {
   const childEnv = withoutSecrets(env);
-  function buildArgs({ question, sessionId, resume = false }) {
+  function buildArgs({ question, sessionId, resume = false, systemPrompt = SKILL_DIRECTIVE }) {
     return [
       ...claudeArgsPrefix,
       "-p",
@@ -58,7 +60,7 @@ export function createClaudeRunner({
       "--permission-mode",
       "dontAsk",
       "--append-system-prompt",
-      SKILL_DIRECTIVE,
+      systemPrompt,
       "--disallowed-tools",
       ...BLOCKED_TOOLS,
       "--output-format",
@@ -68,9 +70,9 @@ export function createClaudeRunner({
     ];
   }
 
-  function ask({ question, sessionId, resume = false }) {
+  function ask({ question, sessionId, resume = false, systemPrompt = SKILL_DIRECTIVE }) {
     return new Promise((resolve) => {
-      const child = spawn(claudeBin, buildArgs({ question, sessionId, resume }), {
+      const child = spawn(claudeBin, buildArgs({ question, sessionId, resume, systemPrompt }), {
         cwd: repoRoot,
         env: childEnv,
         // The prompt travels as an argument. An open stdin pipe only invites the

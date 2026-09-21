@@ -175,3 +175,36 @@ test("시간이 초과되면 reason 이 timeout 이다", async () => {
   const result = await runner("hang", 300).ask({ question: "질문", sessionId: "uuid-1" });
   assert.equal(result.reason, "timeout");
 });
+
+test("자식 프로세스 환경에 Figma 토큰을 넘기지 않는다", async () => {
+  let captured = null;
+  const spy = (bin, args, options) => {
+    captured = options;
+    return nodeSpawnForTest(bin, args, options);
+  };
+  const r = createClaudeRunner({
+    claudeBin: process.execPath,
+    claudeArgsPrefix: [FAKE],
+    repoRoot: here,
+    timeoutMs: 5000,
+    env: { ...process.env, FAKE_MODE: "success", FIGMA_TOKEN: "figd_secret" },
+    spawn: spy,
+  });
+  await r.ask({ question: "질문", sessionId: "uuid-1" });
+  assert.equal(captured.env.FIGMA_TOKEN, undefined, "토큰이 남으면 답변에 실려 나갈 수 있다");
+});
+
+test("시스템 프롬프트를 바꿔 넘길 수 있다", () => {
+  const args = runner("success").buildArgs({
+    question: "질문",
+    sessionId: "uuid-1",
+    systemPrompt: "개발 필요 항목만 요약하라",
+  });
+  const at = args.indexOf("--append-system-prompt");
+  assert.equal(args[at + 1], "개발 필요 항목만 요약하라");
+});
+
+test("시스템 프롬프트를 주지 않으면 ask 스킬 지시가 남는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  assert.match(args[args.indexOf("--append-system-prompt") + 1], /ask/);
+});
