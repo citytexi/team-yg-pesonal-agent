@@ -1,5 +1,6 @@
 import { Client, GatewayIntentBits, Events, ChannelType } from "discord.js";
-import { threadName, THINKING } from "./replies.js";
+import { threadName, THINKING, figmaThreadName, FIGMA_RUNNING } from "./replies.js";
+import { parseCommand } from "./command.js";
 
 // Every user-facing string lives in replies.js. Nothing in this file writes one.
 const SILENT = { allowedMentions: { parse: [] } };
@@ -19,7 +20,7 @@ export function createClient() {
   });
 }
 
-export async function startGateway({ config, handle, client, log = console.log }) {
+export async function startGateway({ config, handle, handleFigma, client, log = console.log }) {
   client.on(Events.MessageCreate, async (message) => {
     try {
       if (message.author.bot) return;
@@ -34,19 +35,21 @@ export async function startGateway({ config, handle, client, log = console.log }
       // Strip only our own mention. A blanket /<@!?\d+>/g also deletes the
       // people the question is about, and "이 사람이 쓴 정책" loses its referent.
       const selfMention = new RegExp(`<@!?${client.user.id}>`, "g");
-      const question = message.content.replace(selfMention, " ").replace(/\s+/g, " ").trim();
-      if (question.length === 0) return;
+      const body = message.content.replace(selfMention, " ").replace(/\s+/g, " ").trim();
+      if (body.length === 0) return;
 
-      const resolveThread = async () => {
+      const command = parseCommand(body);
+
+      const resolveThreadAs = ({ name, waiting }) => async () => {
         const thread = inThread
           ? message.channel
           : await message.startThread({
-              name: threadName(question),
+              name,
               type: ChannelType.PublicThread,
             });
 
         await thread.sendTyping();
-        const placeholder = await thread.send({ content: THINKING, ...SILENT });
+        const placeholder = await thread.send({ content: waiting, ...SILENT });
         let first = true;
 
         return {
@@ -66,11 +69,25 @@ export async function startGateway({ config, handle, client, log = console.log }
         };
       };
 
+      const replyDirect = (text) => message.reply({ content: text, ...SILENT });
+
+      if (command.kind === "figma") {
+        await handleFigma({
+          userId: message.author.id,
+          resolveThread: resolveThreadAs({ name: figmaThreadName(), waiting: FIGMA_RUNNING }),
+          replyDirect,
+        });
+        return;
+      }
+
       await handle({
         userId: message.author.id,
-        question,
-        resolveThread,
-        replyDirect: (text) => message.reply({ content: text, ...SILENT }),
+        question: command.question,
+        resolveThread: resolveThreadAs({
+          name: threadName(command.question),
+          waiting: THINKING,
+        }),
+        replyDirect,
       });
     } catch (error) {
       log("gateway error", error?.message ?? error);
