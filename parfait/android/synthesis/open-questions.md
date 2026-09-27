@@ -697,6 +697,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **as-built 범위 확대(2026-08-04, PR #190 머지본)** — `read()`의 `runCatching`이 복호화뿐 아니라 **DataStore 읽기까지** 감싼다. 즉 일시적 저장소 I/O 실패도 같은 경로로 떨어져 토큰이 삭제된다 — 재현해야 할 경우의 수가 하나 늘었다.
   > 📌 **2026-08-09 갱신(PR #219)** — "코드베이스에 `test`/`androidTest`가 없다"는 전제는 해소됐다. `parfait-test-unit`·`parfait-test-android` 배선과 `src/androidTest/` 소스셋이 들어왔다([spec](../specs/archive/2026-08-06-unit-test-infrastructure.md)). 그래도 **재현 수단 없음은 그대로다.** Android Keystore는 여전히 JVM 유닛 테스트에서 동작하지 않고(Robolectric 제외), 계측 테스트는 CI에서 `assembleDebugAndroidTest` 컴파일까지만 검증해 실행되지 않는다. 막고 있는 것이 둘로 명확해졌다 — CI에 기기·에뮬레이터가 없다는 점, 그리고 키 무효화 자체가 기기 복원·잠금 자격증명 변경이라 프로그램으로 유발할 수 없다는 점.
 - **해소 메모**: 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md) "키 유실 시 정책"과 [specs/archive/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "검증" 절에 결과를 반영한다.
+  > 📌 **이름만 바뀌었다(2026-09-27, PR #534)** — `EncryptedTokenStore` → `TokenLocalDataSourceImpl`, `TokenStore` → `TokenLocalDataSource`, `TokenStoreTokenProvider` → `TokenProviderImpl`. 동작·검증 상태 불변.
 
 ### [2026-08-02] 인터셉터 `runBlocking`이 코드리뷰를 통과할지 미확정
 - **ID**: OQ-P-071
@@ -714,6 +715,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 📌 **로그인 화면이 다음 단계로 이어져도 상태 불변(2026-08-09, PR #220)** — 카카오 토큰은 `LoginState`에만 담기고 저장 호출은 여전히 0건이다 → [2026-08-10] 온보딩 체인 항목.
   > 📌 **저장 호출부는 생겼는데 검증은 그대로다(2026-08-16, PR #263)** — 로그인 결선(#241) 이후 저장이 실제로 일어나고, 같은 프록시(`EncryptedPreferences`)로 **계정 정보까지 암호화 저장**돼 확인 대상이 둘이 됐다(DataStore 파일에 닉네임·`memberId` 평문이 없는지 포함). 그런데 자동로그인 라운드의 **수동 확인 7항목이 미수행**이라 저장 → 종료 → 재시작 왕복은 여전히 사람이 본 적이 없다.
 - **해소 메모**: 로그인 연동 라운드에서 확인 후 [ADR-0019](../adr/0019-encrypted-token-storage.md)와 [specs/archive/2026-08-02-network-envelope-token-storage.md](../specs/archive/2026-08-02-network-envelope-token-storage.md) "검증" 절을 갱신한다.
+  > 📌 **이름만 바뀌었다(2026-09-27, PR #534)** — `EncryptedTokenStore` → `TokenLocalDataSourceImpl`, `TokenStore` → `TokenLocalDataSource`, `TokenStoreTokenProvider` → `TokenProviderImpl`. 동작·검증 상태 불변.
 
 ### [2026-08-02] debug 빌드 `Level.BODY` 로깅이 `reissue`/`logout` 요청 바디의 refresh token을 평문 노출
 - **ID**: OQ-P-073
@@ -1803,6 +1805,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
 - **항목**: `core:util:jvm`의 `runSuspendCatching`으로 교체한다. 같은 부류였던 `EncryptedTokenStore.read`·`AddRecentImageUseCase`는 **PR #241로 develop에 고쳐져 들어갔고**(2026-08-15) 이 건만 남았다 — 카메라 화면이 그 브랜치 범위 밖이라 미뤘다.
 - **상태**: 미해결 (교체 대상 확정, 라운드만 대기)
 - **해소 메모**: 고칠 때 취소가 실패로 오지 않는 회귀 테스트를 함께 붙인다(`EncryptedTokenStoreTest`의 취소 케이스가 본보기다).
+  > 📌 2026-09-27(PR #534) — 본보기 테스트의 이름이 `TokenLocalDataSourceImplTest`로 바뀌었다(취소 케이스 그대로). `CustomCameraRoute` 쪽은 이번 delta가 건드리지 않았다.
 
 ### [2026-08-15] 누끼 캔버스 Safe Margin +20%가 미이행 — 원본 전체 크기가 끝까지 실려 간다
 
@@ -3913,6 +3916,12 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > **②는 그대로다** — 칩 필드를 DTO까지만 받고 `PlacedToppingVO`에는 안 올렸다(읽는 화면 0건).
   > ③(이름만 바뀐 서버 변경을 어느 계층까지 따라가는가)도 답이 안 적혔다 — 이번 사례가 "wire DTO는
   > 따라간다"의 두 번째 선례가 됐을 뿐이다.
+  > 📌 **파일 배치의 근거 문장이 사라졌다(2026-09-27, PR #534)** — ①이 "거울을 유지한다"를 고르며 기댄
+  > `data-layer`의 "중첩 응답 DTO는 상위 응답 파일에 함께 둔다(서버가 한 파일에 담은 것을 앱도 한 파일에)"
+  > 예외가 저장소 규칙 `.claude/rules/one-type-per-file.md`로 **폐지됐다**. `PlacedByResponse`·
+  > `PlaceParfaitImagePlacedByResponse`가 각자 파일이 됐고, 이름(거울)은 그대로다. 즉 **이름은 서버를
+  > 따르고 파일 배치는 서버를 안 따른다** — ③의 "어느 계층까지 따라가는가"에 파일 배치라는 축이 하나 더
+  > 붙었다. ②는 그대로다(배치자 VO가 `ToppingPlacerVO.kt`로 분리됐을 뿐 칩은 여전히 안 읽는다).
 
 <!--
 항목 추가 형식:
@@ -6079,6 +6088,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   터진다)
 - **해소 메모**: ①의 실측이 먼저다. 정하면 반영처는
   [architecture/data-layer](../architecture/data-layer.md) "원격(raw HTTP)" 절이다.
+  > 📌 2026-09-27(PR #534) — 대상 이름이 `ImageDownloadRemoteDataSourceImpl`(옛 `RemoteImageDownloadDataSourceImpl`)로, 이웃은 `PresignedUploadRemoteDataSource`로 바뀌었다. `bytes()`로 통째 읽는 동작은 그대로다.
 
 ### [2026-08-28] 안내 토스트를 기다리는 시간이 토스트 정책과 별개 상수로 굳었다
 
@@ -7021,6 +7031,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   > 아니라 **출시 경로에 있다.** 판단(등록 토큰 축에 남는다)과 선행 조건(서버 Admin SDK 9.10.0)은
   > 그대로이고, 바뀐 것은 **어긋났을 때의 대가**다: 전에는 브랜치 하나가 못 나가는 것이었고 지금은
   > 발송이 전부 실패하는 것이다. 서버 delta 회차에 `FcmNotificationSender` 와 Admin SDK 판을 함께 본다.
+  > 📌 2026-09-27(PR #534) — 위에서 "남는다"고 적은 `DeviceTokenRegistrar`는 `NotificationRepository.registerCurrentDeviceToken()`으로 합쳐졌다. 전환 비용 판단은 그대로다(pull 모델·세션 트리거 넷 유지, 바뀌는 자리는 `FirebaseDeviceTokenProvider`·`onNewToken`·매니페스트 플래그). `DeviceTokenProvider`의 패키지만 `:domain` `provider/`로 옮겨졌다.
 
 ### [2026-09-05] 튜토리얼이 실제 화면 대신 목업 스크린샷을 덮는다 — 어긋날 길과 정책 근거
 
@@ -7762,5 +7773,35 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   아니라 위키다」 문단과 [`doc-baseline`](../doc-baseline.md)의 근거 서술이 같은 대상을 가리키도록
   고친다. ②는 사람에게 물어야 답이 나온다 — 두 개념 분해 중 어느 것이 쓰기 편한지는 이 문서가
   판정할 수 없다. ③은 iOS 문서가 실제로 생기기 전에 정하는 편이 싸다.
+  > 📌 **두 벌이 각자 한 걸음씩 더 갔다(2026-09-27, 기준선 `594f8047e`)** — TJYG-Android PR #524가 저쪽
+  > `wiki/`에 기능정의서 v7을 ingest했다(`pages/sources/…-v7.md` 신설, 개념 여덟 중 일곱 갱신, `open-questions`
+  > 대폭 수정). 이쪽도 같은 원본을 자체 PR #419로 ingest했다. **같은 원본의 ingest가 두 번 따로 돌았다**는
+  > 사실이 ②(한쪽이 갱신돼도 다른 쪽은 모른다)의 첫 실례다. 같은 기준선에서 parfait 문서도 같은 길을
+  > 밟기 시작했다 → OQ-P-411.
 
-<!-- oq-next: 406 -->
+
+### [2026-09-27] parfait 문서가 TJYG-Android `docs/`로 복사되며 정본 선언이 저쪽으로 넘어갔다
+
+- **ID**: OQ-P-411
+- **출처**: TJYG-Android PR #528(`feature/#525-ai-docs-set-up`, develop 머지) — 이 디렉토리(`parfait/`)의
+  spec·plan·ADR·architecture·`api/`·open-questions·스크립트를 저쪽 `docs/`로 **복사**했다(268파일, 삭제 0).
+  이관 설계(`docs/superpowers/specs/2026-09-22-parfait-docs-migration-design.md`)의 결정 표는 "원본 저장소는
+  불변 · 양쪽 유지(미러) · 자동 동기화 없음"이고, 저쪽 `docs/index.md` 머리말은 기준 커밋을 이 저장소의
+  `de9f5f5`로 적은 뒤 **"이후의 정본은 이쪽이다"**라고 선언한다. 이관 뒤 저쪽만 움직인 것이 벌써 있다 —
+  미결 OQ-P-406~410 신설(`oq-next` 411), `status.md`·`log.md` 신설, `doc-baseline.md`를 「현재 기준선」
+  필드 + 판정 규칙으로 재구성, 스펙·계획 경로를 `docs/superpowers/{specs,plans}`로 이동.
+  같은 날 머지된 PR #534는 **어느 쪽 문서도 고치지 않았다** — 코드 KDoc이 `docs/api/notification.md`처럼
+  저쪽 경로를 가리키게 바뀌었을 뿐이다. 이 회차(2026-09-27)는 사용자 지시로 **이쪽만** 갱신했다.
+- **항목**: ① **어느 쪽을 정본으로 둘 것인가** — 저쪽 문서는 스스로를 정본이라 하고, 이쪽의
+  `bot/`·`ask` 스킬·`sync-*` 스킬·루트 `CLAUDE.md` 라우팅은 여전히 이쪽 `parfait/`를 근거로 쓴다.
+  ② **미결 번호가 이미 갈라졌다** — OQ-P-406~410은 저쪽에만 있고, 이쪽은 충돌을 피하려고 이 항목을
+  411로 매기고 406~410을 비워 둔다. 계속 두 벌을 운영하면 번호 대역을 나누거나 한쪽을 동결해야 한다.
+  ③ **이 회차의 #534 드리프트 수정(data-layer·ADR 여섯·`api/` 셋·미결 📌)이 저쪽에는 없다** — 저쪽
+  사본도 #534 전에 복사된 것이라 같은 옛 이름을 들고 있다.
+- **상태**: 미해결 (**구현 영향 0** — 문서 정본의 문제다. OQ-P-405와 같은 모양이다)
+- **해소 메모**: ①이 정해지면 루트 `CLAUDE.md`「프로젝트 컨텍스트」·[`parfait/CLAUDE.md`](../../CLAUDE.md)·
+  [`doc-baseline`](../doc-baseline.md) 머리말과 `sync-tjyg-develop-baseline`·`sync-teamyg-server-api`·`ask`
+  스킬이 가리키는 경로를 함께 고친다. 저쪽을 정본으로 하면 이쪽은 동결 배너를 달고, ③의 수정분을 저쪽에
+  옮긴다.
+
+<!-- oq-next: 412 -->

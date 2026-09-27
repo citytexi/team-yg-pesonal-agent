@@ -34,6 +34,13 @@ tags: [adr, parfait, security, network, data, auth]
 
 ## 결정
 
+> 📌 **이름 변경(2026-09-27, PR #534)** — 이 ADR이 적은 토큰 저장 체인의 이름이 저장소
+> `.claude/rules/source-package.md` 규칙(`source/<도메인>/local`에는 `LocalDataSource`로 끝나는 타입만)에
+> 맞춰 바뀌었다. `TokenStore` → **`TokenLocalDataSource`**, `EncryptedTokenStore` → **`TokenLocalDataSourceImpl`**,
+> `TokenStoreTokenProvider` → **`TokenProviderImpl`**, 바인딩 `bindTokenStore` → `bindTokenLocalDataSource`.
+> **동작은 바뀌지 않았다.** 아래 본문은 결정 당시 이름으로 남긴다. 현재 배선은
+> [data-layer](../architecture/data-layer.md) 「토큰·계정 정보 저장 경로」.
+
 **Android Keystore에 AES/GCM 키를 만들어 토큰 문자열을 암호화하고, `IV + 암호문`을 Base64 인코딩한
 문자열 하나로 Preferences DataStore에 저장한다.**
 

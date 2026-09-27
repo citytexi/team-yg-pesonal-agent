@@ -22,6 +22,9 @@ tags: [adr, parfait]
 
 - `DataStoreModule`이 `DataStore<Preferences>` 싱글톤과 JSON 파서(`ignoreUnknownKeys`, `coerceInputValues`, `encodeDefaults`) 제공.
 - `RecentImageEditor` 인터페이스가 DataStore 접근을 추상화.
+  > 📌 **2026-09-27(PR #534) 삭제** — 문자열 단일 키 편집기를 걷고 `RecentImageLocalDataSource.update(transform)`이
+  > 엔티티 목록을 받아 고친 목록을 돌려주는 형태로 바꿨다. 인코딩·디코딩은 데이터 소스 구현 안에 있다.
+  > DataStore(Preferences)라는 결정은 그대로다.
 - 이미지 자체는 파일 시스템(내부 저장소), 메타데이터는 DataStore로 이원 관리. `RecentImageRepositoryImpl`이 `RecentImageLocalDataSource`(DataStore)와 `FileRecentImageLocalDataSource`(파일)를 조합, 파일 last-modified 기반으로 캐시 축출.
 
 ## 대안

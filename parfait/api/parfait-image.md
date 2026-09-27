@@ -480,7 +480,7 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 있는 것을 앱이 축 단위로 미러링한 결과다. **응답 `UpdatedToppingBorderVO`는 여전히 아무도 읽지 않는다**(실패만 로그로 접는다).
 
 ⚠️ **읽는 방향에 앱 클램프가 하나 생겼다**(2026-09-08, PR #464) — 응답을 도메인으로 옮기는 두
-`VOMapper`(`data/source/parfait/`·`data/source/parfaitimage/`)가 `ToppingBorder.Solid` 를 직접 만들지
+`VOMapper`(`data/source/parfait/`·`data/source/topping/` — 후자는 PR #534 전 `data/source/parfaitimage/`)가 `ToppingBorder.Solid` 를 직접 만들지
 않고 `ToppingBorder.solidClamped` 를 지나, 서버가 준 `borderWidth` 를 `WIDTH_RANGE_DP`(2.0..30.0)로
 가둔다. **서버가 범위를 검증하지 않는 자리를 앱이 임시로 메운 것**이라, 서버나 정책이 범위를 정하면
 걷을 코드다(위 「미결」·[open-questions](../android/synthesis/open-questions.md) OQ-P-381). 두
@@ -510,8 +510,10 @@ URL이 메서드로 갈려 배치 확정과 일괄 수정을 나눠 맡는다.
 
 **이름이 계층마다 갈린다.** `data`는 서버 언어(`ParfaitImageService`·`PlaceParfaitImageRequest`),
 `domain`은 제품 언어(`PlacedToppingVO`·`ToppingTransform`·`ToppingBorder`·`UpdatedToppingVO`) —
-제품 어디에도 "parfait image"라는 말이 없고 위키·기획은 전부 "토핑"이다. `source/parfaitimage/mapper/VOMapper.kt`가
-그 번역 지점이다. 설계 근거는
+제품 어디에도 "parfait image"라는 말이 없고 위키·기획은 전부 "토핑"이다. `source/topping/mapper/VOMapper.kt`가
+그 번역 지점이다. 📌 PR #534(2026-09-27)가 `source/parfaitimage/`와 `source/toppingdraft/`를 `source/topping/`으로
+합치면서 **패키지 이름은 제품 언어로 넘어갔다.** 다만 클래스 이름 `ParfaitImageRemoteDataSource`(`Impl`)는 서버 언어로
+남아, 지금은 경계가 "`service/` 대 `source/`"가 아니라 **패키지 대 클래스 이름** 사이에 걸쳐 있다. 설계 근거는
 [specs/archive/2026-08-11-member-parfait-image-api-service-layer](../android/specs/archive/2026-08-11-member-parfait-image-api-service-layer.md).
 
 계약의 얽힌 제약 하나를 타입이 강제한다 — **`borderType = SOLID`면 색·두께가 필수**(아니면 400
