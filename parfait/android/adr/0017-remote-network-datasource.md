@@ -26,6 +26,15 @@ tags: [adr, parfait, network, data]
 
 ## 결정
 
+> 📌 **이름 변경(2026-09-27, PR #534)** — 이 ADR의 인증 절이 가리키는 토큰 공급자·저장소의 이름이 저장소
+> `.claude/rules/source-package.md` 규칙(`source/<도메인>/local`에는 `LocalDataSource`로 끝나는 타입만)에
+> 맞춰 바뀌었다. `TokenStore` → **`TokenLocalDataSource`**, `EncryptedTokenStore` → **`TokenLocalDataSourceImpl`**,
+> `TokenStoreTokenProvider` → **`TokenProviderImpl`**, 바인딩 `bindTokenStore` → `bindTokenLocalDataSource`.
+> **동작은 바뀌지 않았다.** 아래 본문은 결정 당시 이름으로 남긴다. 현재 배선은
+> [data-layer](../architecture/data-layer.md) 「토큰·계정 정보 저장 경로」.
+> 같은 라운드에 `Authorization` 헤더 이름이 `NetworkConstValue.AUTHORIZATION_HEADER`로, Bearer 부착이
+> `bearerAuth(token)`(`RequestBearerAuth.kt`) 한 곳으로 모였다(`AuthInterceptor`·`TokenAuthenticator`·로깅 가림 공용).
+
 network 관심사를 전용 컨벤션 플러그인으로 응집하고, 공통 응답 envelope·인증 자리·remote
 DataSource 배치 관례를 확립한다.
 

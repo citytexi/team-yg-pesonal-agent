@@ -31,6 +31,10 @@ tags: [adr, parfait]
     > **`:app`이 Hilt 모듈을 갖는 첫 자리**이고, 같은 축의 다른 바인딩(`DeviceTokenRegistrarModule`)은
     > 규칙대로 `:data` `di/`에 있다 — 즉 갈린 기준은 도메인이 아니라 **SDK 의존이 어느 모듈에 갇혀
     > 있는가**다. 다른 Firebase 표면이 늘면 같은 이유로 `:app` 모듈이 더 생긴다.
+    > 📌 **2026-09-27(PR #534)** — `DeviceTokenRegistrarModule`은 삭제됐다. 등록기가
+    > `NotificationRepositoryImpl`로 합쳐져 바인딩이 `RepositoryModule`의 Repository 바인딩 하나로 줄었다.
+    > `:app`의 `DeviceTokenModule` 예외는 그대로이고, 인터페이스 `DeviceTokenProvider`의 자리만
+    > `:domain` `notification/`에서 `provider/`로 옮겨졌다.
 
 Repository·DataSource 인터페이스↔구현 바인딩은 `@Binds`로.
 

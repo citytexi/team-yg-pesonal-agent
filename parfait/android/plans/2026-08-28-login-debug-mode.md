@@ -102,7 +102,7 @@ package com.teamyg.parfait.data.source.debug.local
 
 import app.cash.turbine.test
 import com.teamyg.parfait.data.datastore.FakePreferencesDataStore
-import com.teamyg.parfait.data.source.toppingdraft.local.ToppingDraftLocalDataSourceImpl
+import com.teamyg.parfait.data.source.topping.local.ToppingDraftLocalDataSourceImpl // PR #534에서 source.toppingdraft → source.topping
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest

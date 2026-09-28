@@ -5,8 +5,59 @@
 
 ## 현재 기준선
 - **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
-- **커밋**: `143cda87b` (`Merge pull request #511 from mash-up-kr/feature/ai/llm-wiki-document`)
-- **요약**: **Android 소스가 한 줄도 안 움직인 첫 라운드이고, 들어온 것은 이 저장소 밖에서
+- **커밋**: `594f8047e` (`Merge pull request #534 from mash-up-kr/refactor/data-layer-code-style-4`)
+- **요약**: **data 계층의 이름·패키지가 규칙 셋에 맞춰 대거 바뀌었고, 같은 라운드에 parfait 문서가
+  저쪽 저장소로 복사되며 정본 선언이 넘어갔다** (delta 6건 — #527·#524·#535·#528·#537·#534, 전부
+  **머지 트리 = 브랜치 팁**, 충돌 해소 편집 0건). 전체 머지 목록과 첫 부모 선의 차이는
+  `b9df75f2d`(#537 브랜치로 develop을 되받은 머지) 하나뿐이라 스택 PR 문제는 없다.
+  유닛 1298 → **1294건**(−4: `DeviceTokenRegistrarImplTest`·`RegisterCurrentDeviceTokenUseCaseTest` 삭제,
+  `NotificationRepositoryImplTest` 보강, 코드를 되읽는 매핑 테스트 정리), 계측 **46건** 유지.
+  아카이브 이동 **0건**(선작성 스펙·계획 없음), 미결 **신설 1건**(OQ-P-411 — 번호는 406~410을 건너뛰었다,
+  아래), 📌 **7건**(OQ-P-070·072·149·236·327·362·405), `oq-next` 406 → **412**.
+
+  **#534 — data 리팩터(191파일 1332/1481, 커밋 32개).** 저장소에 Claude 규칙 셋이 생겼고
+  (`.claude/rules/one-type-per-file.md`·`repository-package.md`·`source-package.md`) 코드가 거기에 맞춰 움직였다.
+  ① **이름**: `TokenStore`/`EncryptedTokenStore`/`TokenStoreTokenProvider` → `TokenLocalDataSource`/`Impl`·
+  `TokenProviderImpl`, `PresignedUploadDataSource` → `PresignedUploadRemoteDataSource`,
+  `RemoteImageDownloadDataSource` → `ImageDownloadRemoteDataSource`. ② **패키지**: `source.parfaitimage`·
+  `source.toppingdraft` → `source.topping`, `CanvasPoller`·`CanvasPollInterval` → `data.poller`,
+  `model.local` → `model.entity` + `model.mapper.entity`, `model.error.AppErrorMapper` → `model.mapper.exception`,
+  `DeviceTokenProvider` → `:domain` `provider/`. ③ **합침·삭제**: `DeviceTokenRegistrar`(+`Impl`·`Module`)와
+  `RegisterDeviceTokenUseCase`가 `NotificationRepository.registerCurrentDeviceToken()`(non-suspend) 하나로,
+  `RecentImageEditor`가 `RecentImageLocalDataSource.update(transform)`으로. ④ **파일당 top-level 타입 하나** —
+  data-layer가 적어 온 "중첩 응답 DTO는 상위 응답 파일에" 예외가 **폐지**됐다(`GetTodayParfaitResponse.kt`
+  에서 넷, `PastParfaitsResponse.kt`·`PlaceParfaitImageResponse.kt`·`UpdateParfaitImagesRequest.kt`에서 하나씩,
+  도메인 `ToppingPlacerVO`·`RecentImageKind` 분리). ⑤ **동작이 바뀐 자리는 둘** — 기기 토큰 등록 재시도 간격이
+  3초·6초에서 **3초 고정**(`b1fabbb0f`), `ModuleInstallGateway.install`이 콜백 대신 `Deferred<ModuleInstallSignal>`
+  반환. `Authorization` 헤더 상수·Bearer 부착이 `NetworkConstValue`·`bearerAuth`로 모였다.
+
+  **#528 — parfait 문서가 TJYG-Android `docs/`로 복사됐다**(268파일, 삭제 0). 이관 설계는 "원본 불변 ·
+  양쪽 유지 · 자동 동기화 없음"이고 저쪽 `docs/index.md`는 **"이후의 정본은 이쪽이다"**라고 선언한다.
+  저쪽은 이미 OQ-P-406~410을 쓰고 `status.md`·`log.md`를 새로 세웠다. **이 회차는 사용자 지시로 이쪽만
+  갱신했다** — 번호 충돌을 피하려고 새 미결을 411부터 매겼고, 정본 문제는 OQ-P-411로 올렸다. 저쪽 사본도
+  #534 전에 복사돼 같은 옛 이름을 들고 있다.
+
+  **나머지 넷**: #527 갤러리 저장 실패 토스트 문구의 마침표 제거(`YGToastPolicy`·`strings.xml` —
+  활성 문서에 그 문자열이 없어 드리프트 0), #535 「개인정보처리방침」 띄어쓰기 통일(아카이브 문서에만
+  옛 표기, 손대지 않음), #524 저쪽 `wiki/`에 기능정의서 v7 ingest(OQ-P-405 📌 — 같은 원본을 두 저장소가
+  따로 ingest한 첫 실례), #537 CI `auto-assign.yml`(문서 밖).
+
+  **드러난 것 — 규칙이 문서를 앞질렀다.** 이번 드리프트는 전부 저장소 안의 `.claude/rules/`가 만든
+  것이고, 그 규칙은 **parfait 문서가 근거를 대며 적어 둔 예외를 한 줄로 뒤집었다**(중첩 DTO 예외 →
+  OQ-P-236 📌). 코드 쪽 규칙 파일이 생기면 그 규칙과 parfait의 규약 문단을 같은 회차에 대조해야 한다.
+
+  **조치**: data-layer(이름·패키지·DI 표·Repository 표·기기 토큰 등록·토큰 저장 경로·선언당 파일 규약·
+  원격 테스트 목록, `related_code`) · module-structure(domain·data 행) · ADR 여섯(0004·0008·0013·0017·0019·
+  0021 — 본문은 결정 당시 이름으로 두고 📌만) · `api/` 셋(notification 「Android 매핑」·image·parfait-image,
+  `android_status`·엔드포인트 표·README 도메인 표·conventions 「Android 불일치」는 불변, `verified` 불변) ·
+  활성 스펙 1(segmentation-preprocessing)·미머지 계획 1(login-debug-mode 스니펫 import) · 미결 📌 7 + 신설 1.
+  아카이브 문서와 README 아카이브 행은 역사 기록이라 옛 이름 그대로 둔다. 미머지 하나(`feature/debug-mode`) 유지.
+
+  직전 회차 요약(83회차, `143cda87b`): **Android 소스가 한 줄도 안 움직인 첫 라운드이고, 들어온 것은
+  이 저장소 밖에서 운영하던 정책 위키의 분기본이다**(#511, 158파일 27237/0). 미결 신설 1건(OQ-P-405).
+  아래가 그 회차의 상세다.
+
+  **Android 소스가 한 줄도 안 움직인 첫 라운드이고, 들어온 것은 이 저장소 밖에서
   운영하던 정책 위키의 분기본이다** (delta 1건, **158파일 · 삽입 27237줄 · 삭제 0줄**, 커밋 67개).
   **머지 트리가 브랜치 팁과 같다**(충돌 해소 편집 0건). 전체 머지 목록과 첫 부모 선이 둘 다 하나라
   스택 PR 문제는 이번에 없다. **`.kt`·`.kts`·`gradle`·`xml`·`toml` 변경이 0건**이므로 유닛 **1298건**·
@@ -2333,7 +2384,10 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-09-21 (83회차)
+- **검증일**: 2026-09-27 (84회차)
+
+  📌 83회차(`143cda87b`)에서 엿새 만이다. 번호는 요약 안의 「직전 회차 요약(83회차)」 포인터와 이 줄 + 1이 같다.
+
 
   📌 **같은 날 두 번째 회차다** — 82회차(`e10ead2ca`)와 날짜가 같고, 그 회차가 「원격 브랜치가 일곱으로 늘었다」며 이름만 적어 둔 `feature/ai/llm-wiki-document`가 몇 시간 뒤 develop에 들어왔다. 번호는 요약 안의 「직전 회차 요약(82회차)」 포인터와 이 줄 + 1이 같다.
 
@@ -2385,6 +2439,7 @@
   멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
   적이 있다) **직전 회차의 이 줄 + 1**이다.
 - **미머지 추적 항목**: **하나**(`feature/debug-mode`, OQ-P-311 계보).
+  📌 **84회차 재확인(2026-09-27)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이다. 원격 브랜치는 `develop`·`main`·`feature/ai/set-up`·`feature/app-link-deeplink`·`feature/debug-mode` 다섯이고(`chore/bump-version-1.1.4-12`가 지워지고 `feature/app-link-deeplink`가 새로 올라왔다), 이 중 parfait 문서가 걸린 것은 이 줄의 하나뿐이다. 이 브랜치의 계획 스니펫 import 경로를 #534에 맞춰 고쳤다. `origin/release/*`는 계속 0개, 태그는 `1.1.3`까지이고 develop 버전도 `1.1.3`(코드 11)이다.
   📌 **83회차 재확인(2026-09-21)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이다.
   **원격 브랜치는 일곱에서 다섯으로 줄었다** — `feature/ai/llm-wiki`와 `feature/ai/llm-wiki-document` 둘이 머지 뒤 지워졌다. 남은 다섯 중 parfait 문서가 걸린 것은 이 줄의 하나뿐이다. `origin/release/*`는 계속 0개이고, 경량 태그 `1.1.0`~`1.1.3` 넷은 전부 `origin/develop`의 조상이다(develop 밖에 남은 태그는 `1.0.0` 하나).
   📌 **82회차 재확인(2026-09-21)** — `origin/develop` 에 `DebugMode*` 심볼이 여전히 0건이다.
@@ -2531,6 +2586,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-09-27 | `594f8047e` | Merge #527(실패 토스트 마침표) · #524(TJYG 위키 기능정의서 v7) · #535(개인정보처리방침 문구) · #528(parfait 문서를 TJYG-Android `docs/`로 복사) · #537(CI auto-assign) · #534(data 코드 스타일 리팩터 4) | delta 6건, 전부 **머지 트리 = 브랜치 팁**. 유닛 1298 → **1294건**, 계측 **46건** 유지. 아카이브 이동 **0건**, 미결 **신설 1건**(OQ-P-411, `oq-next` 406 → 412 — 406~410은 저쪽 사본이 먼저 썼다) · 📌 **7건**. **#534**: `.claude/rules/` 셋에 맞춘 개명·패키지 이동(토큰 저장 체인·raw HTTP 두 데이터 소스·`source.topping`·`data.poller`·`model.entity`/`model.mapper`·`domain/provider`), `DeviceTokenRegistrar` → `NotificationRepository.registerCurrentDeviceToken()` 흡수, `RecentImageEditor` 삭제, **중첩 응답 DTO 예외 폐지**. 동작 변경은 토큰 등록 재시도 **3초 고정**과 `ModuleInstallGateway`의 `Deferred` 반환 둘. **#528**: 저쪽 `docs/`가 스스로를 정본이라 선언 — 이 회차는 사용자 지시로 이쪽만 갱신(OQ-P-411). 조치: data-layer · module-structure · ADR 여섯 📌 · `api/` 셋(Android 매핑만, `verified` 불변) · 활성 스펙 1 · 미머지 계획 1 · 미결. 검증일 줄 84회차. 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-09-21 | `143cda87b` | Merge #511(LLM 위키 체계를 TJYG-Android 저장소로 이식 — `wiki/` 스크립트·테스트·`raw/`·`pages/`·graphify 산출물, 루트 `CLAUDE.md` 「위키」 절) | delta 1건, **158파일 27237/0 — 삭제 0줄**, 커밋 67개, **머지 트리 = 브랜치 팁**(충돌 해소 편집 0건). **`.kt`·`.kts`·gradle·xml·toml 변경 0건 — Android 소스가 한 줄도 안 움직인 첫 라운드**라 유닛 **1298건**·계측 **46건**은 셈할 것도 없이 유지. 아카이브 이동 **0건**, **parfait 문서 드리프트 0건**(spec·plan·architecture·ADR·`api/` 다섯 표면 전부 불변), 미결 **신설 1건**(OQ-P-405, `oq-next` 405 → 406). **① 같은 정책 위키가 두 벌이 됐다** — 이 저장소의 `wiki/`와 새로 들어온 TJYG-Android `wiki/`가 같은 원본을 각각 ingest했다. 소스 39건은 파일명까지 같고(NFC/NFD 차이뿐) **개념 층이 갈라졌다**(이쪽 concepts 19건 한글 세분 / 저쪽 8건 영문 묶음, synthesis도 `open-questions`+lint 아홉 대 `spec-version-history` 하나). **어느 쪽이 정본인지 정한 문서가 없다**(OQ-P-405). **② 이식 설계가 스스로 적은 전제가 안 지켜졌다** — 「콘텐츠는 옮기지 않는다, 빈 스캐폴드로 시작해 새로 ingest한다」고 결정 표에 못 박았는데 머지된 트리에는 같은 원본 39건이 그대로 있다. **③ 코드 0건 라운드에도 감사할 것이 남는다** — `--stat`에 `.kt`가 없으면 심볼 대조는 통과하지만, 이번 delta가 바꾼 것은 **문서가 서 있는 땅**이다. Gradle·CI 미변경. 검증일 줄 83회차(같은 날 두 번째 회차). 미머지 하나(`feature/debug-mode`) 유지 — 원격 브랜치는 일곱에서 다섯으로 줄었다 |
 | 2026-09-21 | `e10ead2ca` | Merge #514(이슈 #502 코드 정리 2차 — 도달 불가 캔버스 화면 셋 삭제 · 사용처 0 심볼 청소 · 안 쓰는 파라미터 제거) · #513(A-004 초대 코드 `YGScaffoldV2` 이관) | delta 2건, **40파일 124/695 — 순감 571줄**, 커밋 7개, **머지 둘 다 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 **1298건**·계측 **46건** 둘 다 유지(청소 라운드 두 번 연속). 아카이브 이동 **0건**(선작성 스펙·계획 없음), 미결 **해소 2건**(OQ-P-053·**OQ-P-239**) · **부분 해소 7건**(052·089·101·123·156·204·260) · 마커 **3건**(129·215·259) · **신설 1건**(OQ-P-404, `oq-next` 404 → 405). **① 직전 회차가 "사람이 따로 결정해야 지워진다"고 적은 잔해를 다음 라운드가 지웠다** — `NavKeyCanvasMove` 계열에 더해 `NavKeyCanvasEdit`·`NavKeyCanvasImageSelect` 계열까지. 딸려 `NavTransition.Fade` 예외·`LocalSharedTransitionScope`·두 루트의 `SharedTransitionLayout`·analytics ID 셋이 걷혔다. **② 삭제가 결정을 대신했다** — OQ-P-101 ①·123 ②·215·260 ③ 이 판정 없이 닫혔고, 대가로 G-001 정책 대조표의 토핑 당김 행이 **불일치로 굳었다**. **③ 지운 자리가 새 사용처 0을 만들었다** — `NavTransition.Fade` 프리셋(OQ-P-404 신설). **④ `YGScaffold`(V1) 호출 0건** — #513 이 마지막 호출부(A-004)를 옮겨 OQ-P-204 ① 이 닫혔다(V2 Route 23파일). `api/` 다섯 표면 전부 불변(원격 연동 코드는 테스트 타입 인자 정리뿐). ADR 불변. 검증일 줄 82회차(81회차치 누락 복구, 일곱 번째). 미머지 하나(`feature/debug-mode`) 유지 — ⚠️ 원격 브랜치는 둘에서 일곱으로 늘었으나 넷 다 parfait 문서 밖이다 |
 | 2026-09-17 | `924cb5802` | Merge #504(이슈 #502 코드 정리 1차 — ktx Bitmap 확장 · `delay(Duration)` · Compose 규약 · 미사용 리소스 삭제) | delta 1건, **56파일 179/208 — 순감 29줄**, 커밋 12개, **머지 트리 = 브랜치 팁**(충돌 해소 편집 0건). 유닛 **1298건**·계측 **46건** 둘 다 유지 — `.kt` 를 40개 가까이 만지고도 테스트 수가 안 움직인 첫 라운드이고 그것이 순수 정리의 증거다. 아카이브 이동 **0건**(청소 티켓이라 선작성 스펙·계획이 없다), 미결 **신설 1건**(OQ-P-403, `oq-next` 403 → 404), 마커 **2건**. **① ktx 전환에 빠뜨린 자리 0건** — 남은 `Bitmap.createBitmap` 일곱은 전부 ktx 대응이 없는 오버로드(행렬·`IntArray`·부분 비트맵)다. **② 청소 라운드가 와도 잔해는 안 지워졌다** — OQ-P-239 의 `NavKeyCanvasMove` 계열 셋은 엔트리 등록이 참조라 미사용 심볼로 안 잡힌다(⚠️ 추가). **③ `Navigator` 만 Kotlin 명시적 backing field 로 갈아타** 상태 노출 관용구가 두 갈래가 됐다 — `BaseViewModel._state` 등 옛 쌍 넷이 남았고 정한 문서가 없다(OQ-P-403 신설, Kotlin `2.4.10`·컴파일러 인자 없음). **④ 되살아날 뻔한 것을 막았다** — 미구현 Task 10 스니펫이 `Bitmap.createScaledBitmap` 을 적고 있어 `scale` 로 정정. 고아 드로어블 `splash_icon*.xml` 삭제 확인 → OQ-P-187 📌(출처의 `app/` 경로를 `core/ui/` 로 정정, 항목 ①②③ 잔존). `api/` 다섯 표면 전부 불변(원격 연동 코드 0건, `TokenAuthenticatorTest` 만 테스트 정리). architecture·ADR 불변. 검증일 줄 81회차. 미머지 하나(`feature/debug-mode`, `ed8e1ec8a`) 유지 |
