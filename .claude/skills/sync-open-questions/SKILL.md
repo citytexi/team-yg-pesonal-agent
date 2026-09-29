@@ -42,11 +42,11 @@ description: open-questions 문서를 이 repo의 GitHub 이슈로 동기화한�
 
 ## 언제
 - 문서에 미결 항목을 추가·수정·해소한 뒤
-- `ingest`·`lint`·`sync-tjyg-develop-baseline`·`sync-teamyg-server-api`가 open-questions를 건드린 뒤
+- `ingest`·`lint`·`sync-teamyg-develop-baseline`·`sync-teamyg-server-api`가 open-questions를 건드린 뒤
 - 이슈 목록이 문서와 어긋나 보일 때
 
 ## 주의
-- 이슈 생성 대상은 **이 저장소 하나**다. TJYG-Android에 만들지 않는다.
+- 이슈 생성 대상은 **이 저장소 하나**다. TEAMYG-Android에 만들지 않는다.
 - 라벨은 `apply`가 `--force`로 만든다(멱등). 손으로 만들 필요 없다.
 - 이슈 템플릿으로 손수 만든 이슈는 `oq-id` 마커가 없어 `unmanaged`로 잡힌다.
   문서로 옮길지는 사람이 정한다 — 스킬이 자동으로 옮기지 않는다.

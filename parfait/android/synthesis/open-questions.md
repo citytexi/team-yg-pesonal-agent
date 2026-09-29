@@ -13,7 +13,7 @@ tags: [meta, parfait]
 ---
 # Open Questions — 구현 미결·열린 결정
 
-TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 정합 이슈를 추적한다.
+TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 정합 이슈를 추적한다.
 정책 기획 쪽 미결은 위키 [[open-questions]]에 있다. 여기는 **코드·ADR·architecture 소관**만 둔다.
 해소된 항목은 상태를 "해소됨"으로 바꾸고 관련 ADR/architecture 문서에 반영한다.
 
@@ -5600,7 +5600,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   정해야 한다.
 - **상태**: 미해결 (**문서 신뢰도에 직접 걸리는 자리다** — 코드가 아니라 감사 범위의 문제)
 - **해소 메모**: ②가 정해지면 [doc-baseline](../doc-baseline.md) "현재 기준선" 절에 감사 대상 브랜치를
-  명시하고, `sync-tjyg-develop-baseline` 스킬 문서의 범위 문장도 함께 고친다. **이번 라운드는
+  명시하고, `sync-teamyg-develop-baseline` 스킬 문서의 범위 문장도 함께 고친다. **이번 라운드는
   release 브랜치를 감사하지 않았다** — 기준선 규율이 develop만 보도록 돼 있어서다.
   > 📌 **다섯째가 develop으로도 들어왔다(2026-08-26, PR #371)** — 이 문서에 이름조차 없던
   > `feature/toast-position-fix`가 develop에 머지돼 **두 계보 모두에 있다.** 그래서 갈라진 폭은
@@ -7598,7 +7598,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   주석을 건드릴 계기가 없다. 같은 일이 직전 회차에도 있었다(OQ-P-389).
 - **상태**: 미해결 (경로 문자열 정정, 동작 영향 없음)
 - **해소 메모**: 둘 중 하나다 — ① 코드 주석이 파일 경로 대신 스펙 `id` 를 가리키게 바꾼다(이동에
-  견딘다) ② `sync-tjyg-develop-baseline` 이 아카이브 이동 시 그 스펙을 가리키는 코드 주석을 함께
+  견딘다) ② `sync-teamyg-develop-baseline` 이 아카이브 이동 시 그 스펙을 가리키는 코드 주석을 함께
   세는 단계를 갖는다. ①이 반복을 끝낸다.
 
 ### [2026-09-10] 로그아웃이 지난 캔버스 알럿 기록을 지우지 않는다
@@ -7800,7 +7800,7 @@ TJYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문서 
   사본도 #534 전에 복사된 것이라 같은 옛 이름을 들고 있다.
 - **상태**: 미해결 (**구현 영향 0** — 문서 정본의 문제다. OQ-P-405와 같은 모양이다)
 - **해소 메모**: ①이 정해지면 루트 `CLAUDE.md`「프로젝트 컨텍스트」·[`parfait/CLAUDE.md`](../../CLAUDE.md)·
-  [`doc-baseline`](../doc-baseline.md) 머리말과 `sync-tjyg-develop-baseline`·`sync-teamyg-server-api`·`ask`
+  [`doc-baseline`](../doc-baseline.md) 머리말과 `sync-teamyg-develop-baseline`·`sync-teamyg-server-api`·`ask`
   스킬이 가리키는 경로를 함께 고친다. 저쪽을 정본으로 하면 이쪽은 동결 배너를 달고, ③의 수정분을 저쪽에
   옮긴다.
 

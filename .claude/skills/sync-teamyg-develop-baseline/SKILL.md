@@ -1,16 +1,16 @@
 ---
-name: sync-tjyg-develop-baseline
-description: TJYG-Android develop 기준 parfait 문서 점검(반복 워크플로). 사용자가 "/sync-tjyg-develop-baseline", "develop 기준 문서 점검", "develop 문서 점검", "parfait 문서 드리프트 점검", "TJYG develop delta 감사", "develop 이전 해시부터 지금까지 diff 확인해 문서 갱신"이라고 할 때 사용. 기준선 이후 신규 머지 delta만 감사해 spec/plan/architecture/adr/open-questions 드리프트 제거.
+name: sync-teamyg-develop-baseline
+description: TEAMYG-Android develop 기준 parfait 문서 점검(반복 워크플로). 사용자가 "/sync-teamyg-develop-baseline", "/sync-tjyg-develop-baseline"(구 이름), "develop 기준 문서 점검", "develop 문서 점검", "parfait 문서 드리프트 점검", "TEAMYG develop delta 감사", "TJYG develop delta 감사", "develop 이전 해시부터 지금까지 diff 확인해 문서 갱신"이라고 할 때 사용. 기준선 이후 신규 머지 delta만 감사해 spec/plan/architecture/adr/open-questions 드리프트 제거.
 ---
 
-# sync-tjyg-develop-baseline — develop 기준 parfait 문서 점검
+# sync-teamyg-develop-baseline — develop 기준 parfait 문서 점검
 
-TJYG-Android `develop`에 새로 머지된 것과 parfait 문서의 드리프트를 제거한다.
+TEAMYG-Android `develop`에 새로 머지된 것과 parfait 문서의 드리프트를 제거한다.
 **기준선(develop 커밋 해시)의 단일 출처는 `parfait/android/doc-baseline.md`** — 절차 권위도 그 파일. 이 스킬은 실행 순서만 요약한다.
 
 ## 핵심 규율
 - **전체 재감사 금지** — 기준선 이후 **신규 머지 delta만** 본다(낭비·누락 방지). 드리프트는 대개 문서 `verified` 날짜 **이후 머지된 PR**에서 발생.
-- 로컬 절대경로는 개인정보 → `wiki/personal-private/project-paths.md`의 `TJYG-Android` 경로(아래 `<T>`).
+- 로컬 절대경로는 개인정보 → `wiki/personal-private/project-paths.md`의 `TEAMYG-Android` 경로(아래 `<T>`).
 - 커밋/push/PR은 **CLAUDE.md 규율** — 사용자 확인 후. main 직접 금지, 브랜치→PR→머지.
 
 ## 단계
@@ -45,7 +45,7 @@ develop delta에 원격 연동 코드(Service·Response·RemoteDataSource·`ApiR
   (`open-questions.md` 해소 메모가 "여기서 제거한다"고 지시하는 대상이 이 표다)
 - `parfait/api/README.md` 도메인 표의 Android 열
 
-**frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — `sync-teamyg-server-api`만 갱신하고, `sync-tjyg-develop-baseline`의 Android 델타 갱신은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
+**frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — `sync-teamyg-server-api`만 갱신하고, `sync-teamyg-develop-baseline`의 Android 델타 갱신은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
 
 ## 주의
 - `<기준선>..origin/develop` 범위 밖(기준선 이전)은 건드리지 않는다.

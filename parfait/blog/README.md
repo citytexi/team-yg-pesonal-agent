@@ -1,6 +1,6 @@
 # blog/ — 기술 블로그 원고
 
-이 repo와 TJYG-Android 작업을 소재로 쓴 외부 공개용 블로그 원고를 둔다.
+이 repo와 TEAMYG-Android 작업을 소재로 쓴 외부 공개용 블로그 원고를 둔다.
 발행처는 [citytexi.tistory.com](https://citytexi.tistory.com).
 
 ## 규약

@@ -4,7 +4,7 @@
 > 사용자가 "develop 기준 문서 점검"을 요청하면, 아래 기준선부터 현재 `origin/develop`까지의 **delta(신규 머지)만** 감사하고, 끝나면 기준선을 갱신한다.
 
 ## 현재 기준선
-- **repo**: `TJYG-Android` (`mash-up-kr/TEAMYG-Android`) `develop`
+- **repo**: `TEAMYG-Android` (`mash-up-kr/TEAMYG-Android`, 구 `TJYG-Android`) `develop`
 - **커밋**: `594f8047e` (`Merge pull request #534 from mash-up-kr/refactor/data-layer-code-style-4`)
 - **요약**: **data 계층의 이름·패키지가 규칙 셋에 맞춰 대거 바뀌었고, 같은 라운드에 parfait 문서가
   저쪽 저장소로 복사되며 정본 선언이 넘어갔다** (delta 6건 — #527·#524·#535·#528·#537·#534, 전부
@@ -2569,17 +2569,17 @@
   그대로 살아 있어야** 다음 사람이 판정을 이어받는다.
 
 ## 점검 절차 (다음 요청 시)
-로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TJYG-Android>`).
+로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TEAMYG-Android>`).
 
-1. **최신화**: `git -C <TJYG-Android> fetch origin develop`
-2. **신규 머지 나열**: `git -C <TJYG-Android> log --oneline --merges <기준선>..origin/develop`
+1. **최신화**: `git -C <TEAMYG-Android> fetch origin develop`
+2. **신규 머지 나열**: `git -C <TEAMYG-Android> log --oneline --merges <기준선>..origin/develop`
    - 각 머지 PR/브랜치가 어떤 컴포넌트·모듈을 건드렸는지 확인:
-     `git -C <TJYG-Android> show --stat <merge-hash>`
+     `git -C <TEAMYG-Android> show --stat <merge-hash>`
 3. **문서 대조**: 변경된 심볼(컴포넌트/토큰/시그니처)이 parfait 문서와 어긋나는지 검사.
    - 관련 spec/plan `status`·`related_code`, `architecture/*` 인벤토리, `synthesis/open-questions.md` "미머지" 항목.
    - 드리프트 발견 → 문서 수정. 구현 완료분(develop 머지) spec→`implemented`·`specs/archive/`, plan→`done`·`plans/archive/`.
 4. **기준선 갱신**: 위 "현재 기준선"을 새 `origin/develop` HEAD로 교체하고 아래 이력에 한 줄 추가.
-5. **미머지 항목 재확인**: `git -C <TJYG-Android> ls-tree -r --name-only origin/develop | grep <심볼>` 로 존재 여부 확정.
+5. **미머지 항목 재확인**: `git -C <TEAMYG-Android> ls-tree -r --name-only origin/develop | grep <심볼>` 로 존재 여부 확정.
 
 > 드리프트는 대개 **문서 검증일 이후 머지된 PR**에서 발생(예: #140 fix/ygbutton). merge 날짜와 문서 `verified` 날짜를 비교하면 후보를 빨리 좁힐 수 있다.
 
