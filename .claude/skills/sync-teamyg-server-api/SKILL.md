@@ -12,7 +12,7 @@ TEAMYG-SERVER `main`에 새로 들어온 것과 `parfait/api/` 계약 문서의 
 ## 핵심 규율
 - **전체 재감사 금지** — 기준선 이후 **신규 커밋 delta만** 본다.
 - **브랜치는 `main`.** 서버 기본 브랜치가 main이고 기능 PR이 거기로 머지된다. `develop`은 뒤처진다.
-  (TJYG-Android는 `develop` 추적 — 헷갈리지 말 것.)
+  (TEAMYG-Android는 `develop` 추적 — 헷갈리지 말 것.)
 - **워킹트리를 믿지 않는다.** 파일 조회는 항상 `git -C <S> show origin/main:<path>`.
 - 로컬 절대경로는 개인정보 → `wiki/personal-private/project-paths.md`의 `TEAMYG-SERVER` 경로(아래 `<S>`).
 - **서버 저장소는 read-only.** 커밋·브랜치·수정 일절 금지(fetch만 한다).
@@ -49,11 +49,11 @@ TEAMYG-SERVER `main`에 새로 들어온 것과 `parfait/api/` 계약 문서의 
 
 ## 경계 — 이 스킬이 하지 않는 것
 - **Android 쪽 변화**(구현이 진행돼 `android_status`·Android 매핑 절이 바뀌는 경우)는
-  `sync-tjyg-develop-baseline`이 잡는다. 나눔은 이렇다:
+  `sync-teamyg-develop-baseline`이 잡는다. 나눔은 이렇다:
   - **서버 delta → 계약 절**(엔드포인트·필드·에러코드) = 이 스킬
-  - **Android delta → `android_status`·Android 매핑 절** = `sync-tjyg-develop-baseline`
-- TJYG-Android 코드 수정은 이 스킬의 일이 아니다.
-- **frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — `sync-teamyg-server-api`만 갱신하고, `sync-tjyg-develop-baseline`의 Android 델타 갱신은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
+  - **Android delta → `android_status`·Android 매핑 절** = `sync-teamyg-develop-baseline`
+- TEAMYG-Android 코드 수정은 이 스킬의 일이 아니다.
+- **frontmatter `verified` 필드는 서버 계약 대조일로 고정한다** — `sync-teamyg-server-api`만 갱신하고, `sync-teamyg-develop-baseline`의 Android 델타 갱신은 이 필드를 건드리지 않는다(두 스킬 문서에 동일 문구).
 
 ## 주의
 - 파르페 규율: 라인번호·변동수치·색 hex는 문서에 안 적는다. 근거는 파일명 + 심볼명.

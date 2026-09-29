@@ -1,6 +1,6 @@
 # parfait/pm — 제품 문서 (PM-Skills 산출물)
 
-TJYG-Android **제품 기획·전략 문서** 저장소. `deanpeters/Product-Manager-Skills`
+TEAMYG-Android **제품 기획·전략 문서** 저장소. `deanpeters/Product-Manager-Skills`
 플러그인(PM-Skills)으로 생성한 산출물이 여기 들어간다.
 
 - 대상: PRD·positioning·roadmap·user story·discovery·prioritization 등.

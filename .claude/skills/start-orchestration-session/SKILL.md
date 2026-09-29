@@ -47,9 +47,9 @@ orca worktree list --json
 |---|---|
 | 런타임 | `result.runtime.state == "ready"` |
 | orchestration | `result.runtime.capabilities`에 `orchestration.contract.v1` 포함 |
-| TJYG-Android 등록 | `repo list`에 `TJYG-Android` 존재 |
-| master worktree | `worktree list`에 `feature/…-master` 브랜치의 TJYG-Android worktree 존재 |
-| 시작 정책 | TJYG-Android `hookSettings.setupAgentStartupPolicy` 값을 기록해 둔다 |
+| TEAMYG-Android 등록 | `repo list`에 `TEAMYG-Android` 존재 |
+| master worktree | `worktree list`에 `feature/…-master` 브랜치의 TEAMYG-Android worktree 존재 |
+| 시작 정책 | TEAMYG-Android `hookSettings.setupAgentStartupPolicy` 값을 기록해 둔다 |
 
 로컬 절대경로는 `wiki/personal-private/project-paths.md`에서 읽는다.
 이 문서에 직접 적지 않는다(public repo).
@@ -57,7 +57,7 @@ orca worktree list --json
 `feature/…-master` worktree가 없으면 만들고 시작한다.
 
 ```bash
-orca worktree create --name <xxxxx>-master --repo name:TJYG-Android --base-branch develop --json
+orca worktree create --name <xxxxx>-master --repo name:TEAMYG-Android --base-branch develop --json
 ```
 
 **`--name`과 브랜치 이름의 관계** — `--name`에 준 `<xxxxx>-master`는 Orca worktree의 표시
@@ -87,13 +87,13 @@ worktree(§4·§5)도 마찬가지다 — 브랜치 이름은 integrator의 merg
 
 ### cross-repo 쓰기 권한 확인
 
-문서 워커(W1~W4)는 TJYG-Android worktree에서 돌면서 산출물은 team-yg repo의 `parfait/`
+문서 워커(W1~W4)는 TEAMYG-Android worktree에서 돌면서 산출물은 team-yg repo의 `parfait/`
 아래에 쓴다. cwd 밖 절대경로 쓰기가 권한 프롬프트에 걸리면 워커는 사람이 없는 자리에서
 멈춰 버린다. 파이프라인을 시작하기 전에 한 번 확인한다.
 
 ```bash
 # 두 경로는 wiki/personal-private/project-paths.md에서 읽어 채운다(public repo라 직접 적지 않는다)
-TJYG="<TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가 §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>"
+TJYG="<TEAMYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가 §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>"
 TEAMYG="<team-yg-pesonal-agent 절대경로 — 같은 문서 참조>"
 
 cd "$TJYG" && printf 'probe\n' > "$TEAMYG/.orch-write-probe" \
@@ -103,8 +103,8 @@ rm -f "$TEAMYG/.orch-write-probe"
 
 `OK`가 나오면 §3의 배치를 그대로 쓴다. 막히면 **문서 워커만 team-yg worktree에서 띄운다** —
 §3 표의 "실행 위치"를 team-yg repo의 worktree selector로 바꾸고, 그 경우 워커가
-TJYG-Android 코드를 읽을 때는 절대경로로 읽는다는 문장을 task spec에 함께 넣는다.
-구현 워커(§4)는 TJYG-Android 안에서만 쓰므로 영향이 없다.
+TEAMYG-Android 코드를 읽을 때는 절대경로로 읽는다는 문장을 task spec에 함께 넣는다.
+구현 워커(§4)는 TEAMYG-Android 안에서만 쓰므로 영향이 없다.
 
 ## 1. 요구사항 수집
 
@@ -173,7 +173,7 @@ orca worktree set --worktree current \
 
 ## 3. 문서 단계 (W1 → W2 → G1 → W3 → W4 → G2)
 
-문서 단계는 TJYG-Android 코드를 건드리지 않는다. 산출물은 team-yg repo의 `parfait/` 아래에
+문서 단계는 TEAMYG-Android 코드를 건드리지 않는다. 산출물은 team-yg repo의 `parfait/` 아래에
 절대경로로 쓴다. 그래서 worktree를 새로 파지 않고 터미널만 띄운다.
 
 | 워커 | 실행 위치 | 모델(균형 프로필) | 산출물 |
@@ -261,7 +261,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 [역할] 요구사항 분석 + 설계. 산출물은 설계 스펙 문서 하나다.
 
 [읽어라]
-- 코드 대상: <TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
+- 코드 대상: <TEAMYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
   §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>
 - 규약: <team-yg>/CLAUDE.md, <team-yg>/parfait/index.md, <team-yg>/parfait/android/specs/README.md
 - 형식: <team-yg>/parfait/android/specs/template.md
@@ -278,7 +278,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 4. parfait/android/specs/README.md 인덱스에 한 줄 등록한다.
 
 [금지]
-- TJYG-Android 코드 수정. 이 단계는 읽기만 한다.
+- TEAMYG-Android 코드 수정. 이 단계는 읽기만 한다.
 - placeholder("TBD", "추후 결정", 빈 섹션). 결정할 수 없으면 열린 질문 절에 근거와 함께 적는다.
 - wiki/ 파일 수정.
 
@@ -390,7 +390,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 
 [읽어라]
 - 확정 스펙: <스펙 절대경로>
-- 코드 대상: <TJYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
+- 코드 대상: <TEAMYG-Android 절대경로 — wiki/personal-private/project-paths.md 참조. 코디네이터가
   §0에서 이 문서를 읽어 실제 경로로 채워 넣은 뒤 워커에게 전달한다>
 - 형식: <team-yg>/parfait/android/plans/template.md, 규약: parfait/android/plans/README.md
 
@@ -416,7 +416,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
   그 판단과 근거를 계획서에 적는다.
 
 [금지]
-- TJYG-Android 코드 수정.
+- TEAMYG-Android 코드 수정.
 - placeholder. "적절히 처리", "테스트 추가" 같은 서술.
 
 [보고]
@@ -442,7 +442,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 [입력]
 - 확정 스펙: <스펙 절대경로>
 - 검수 대상: <계획 절대경로>
-- 대조 대상: TJYG-Android의 실제 Gradle 모듈 구조(settings.gradle.kts, 각 모듈 build.gradle.kts)
+- 대조 대상: TEAMYG-Android의 실제 Gradle 모듈 구조(settings.gradle.kts, 각 모듈 build.gradle.kts)
 
 [반려 사유 — 하나라도 해당하면 반려]
 1. 스펙 항목 중 계획에 잡히지 않은 것
@@ -459,7 +459,7 @@ orca orchestration task-create --spec "$(cat <<'SPEC'
 [금지]
 - 파일 수정. 너는 findings만 반환한다.
 - 스타일 지적(문장 다듬기, 표 정렬). 위 6개 사유에만 집중한다.
-- TJYG-Android 코드 수정. 이 단계는 읽기만 한다.
+- TEAMYG-Android 코드 수정. 이 단계는 읽기만 한다.
 
 [보고]
 통과: worker_done --outcome succeeded, body 첫 줄에 "PASS"
@@ -533,7 +533,7 @@ worktree와 터미널을 먼저 만들고 그 터미널에 task를 붙인다.
 
 ```bash
 # 1) 자식 worktree 생성
-orca worktree create --name wt-<module> --repo name:TJYG-Android \
+orca worktree create --name wt-<module> --repo name:TEAMYG-Android \
   --base-branch <feature/xxxxx-master> --json
 
 # 2) 모델을 지정해 에이전트 터미널 생성
@@ -563,7 +563,7 @@ orca orchestration worker-start --task <task_id> --terminal <handle> --json
 
 ```bash
 orca orchestration worker-start --task <task_id> --worktree new-child --name wt-<module> \
-  --repo name:TJYG-Android --base-branch <feature/xxxxx-master> --agent claude --setup run --json
+  --repo name:TEAMYG-Android --base-branch <feature/xxxxx-master> --agent claude --setup run --json
 ```
 
 `--repo`와 `--base-branch`를 빼면 안 된다. 빼면 자식 worktree가 repo 기본 base(`develop`)에서
@@ -675,7 +675,7 @@ Delivery 안의 메시지를 **전부 처리한 뒤** ack한다.
 모듈 워커가 전부 `worker_done`을 보내고 증거 검사를 통과하면 통합 worktree를 만든다.
 
 ```bash
-orca worktree create --name wt-integrate --repo name:TJYG-Android \
+orca worktree create --name wt-integrate --repo name:TEAMYG-Android \
   --base-branch <feature/xxxxx-master> --json
 orca terminal create --worktree name:wt-integrate --command "claude --model <opus|sonnet>" --json
 orca orchestration worker-start --task <integrate_task_id> --terminal <handle> --json
@@ -803,7 +803,7 @@ G1·G2와 같이 **코디네이터가 사용자에게 직접 보고하고 답을
 
 ### 커밋 정책
 
-기본 규칙은 "TJYG-Android는 구현이 끝나도 커밋하지 않는다"이다.
+기본 규칙은 "TEAMYG-Android는 구현이 끝나도 커밋하지 않는다"이다.
 이 파이프라인에 한해 **자식 worktree 브랜치의 커밋은 병합 수단으로 허용**한다.
 master 브랜치는 커밋하지 않고, push와 PR은 사용자 승인을 받는다.
 

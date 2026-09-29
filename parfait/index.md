@@ -323,7 +323,7 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
 `parfait/`는 **플랫폼 축으로 갈린다** — [`android/`](android/)는 Android 전용이고 나머지는 플랫폼
 공용이다. 어느 쪽에 새 문서를 둘지는 [CLAUDE.md](CLAUDE.md)가 기준을 적는다.
 
-### `android/` — TJYG-Android 전용
+### `android/` — TEAMYG-Android 전용
 - **[`android/adr/`](android/adr/README.md)** — "왜"(결정·대안·트레이드오프). 인덱스: [adr/README.md](android/adr/README.md)
 - **[`android/architecture/`](android/architecture/README.md)** — "어떻게/어디"(상시 구현 가이드). 인덱스: [architecture/README.md](android/architecture/README.md)
 - **[`android/specs/`](android/specs/README.md)** — "무엇을 만드나"(구현 직전 확정 설계, `YYYY-MM-DD-kebab-topic.md`). 완료분은 `specs/archive/`. 인덱스: [specs/README.md](android/specs/README.md)
@@ -337,7 +337,7 @@ raw OkHttp를 쓰는 유일한 자리**)·`ImageUploadRepository`·`ToppingRepos
 
 ### 플랫폼 공용
 - **[`api/`](api/README.md)** — 서버(`mash-up-kr/TEAMYG-SERVER`) API 계약 스냅샷 + 플랫폼별 적용 상태.
-  정본은 서버 코드이고 이 디렉토리는 미러다. 추적 브랜치는 서버 **`main`**(TJYG-Android의 `develop`과 다름).
+  정본은 서버 코드이고 이 디렉토리는 미러다. 추적 브랜치는 서버 **`main`**(TEAMYG-Android의 `develop`과 다름).
   계약 절은 플랫폼과 무관하고 Android가 그것을 어떻게 받는지는 같은 문서의 「Android 매핑」 절에 적는다.
   기준선·갱신 절차는 [api/server-baseline.md](api/server-baseline.md), 반복 워크플로는 스킬 `sync-teamyg-server-api`.
 - **[`pm/`](pm/README.md)** — 제품 문서(PRD·positioning·roadmap·user story·discovery 등, PM-Skills 산출물, `YYYY-MM-DD-kebab-topic.md`). 코드 작업은 superpowers 체인, 문서 작업은 PM-Skills — 라우팅은 루트 CLAUDE.md.

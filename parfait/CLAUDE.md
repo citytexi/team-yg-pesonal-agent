@@ -9,7 +9,7 @@
 
 | 경로 | 범위 | 내용 |
 |---|---|---|
-| [`android/`](android/) | **Android 전용** | `adr`·`architecture`·`specs`·`plans`·`synthesis`·`doc-baseline.md`. TJYG-Android(`mash-up-kr/TEAMYG-Android`) 구현 문서 |
+| [`android/`](android/) | **Android 전용** | `adr`·`architecture`·`specs`·`plans`·`synthesis`·`doc-baseline.md`. TEAMYG-Android(`mash-up-kr/TEAMYG-Android`) 구현 문서 |
 | [`api/`](api/) | **플랫폼 공용** | TEAMYG-SERVER 계약. 계약 절은 서버가 정본이고 플랫폼별 매핑은 그 안의 절로 붙는다 |
 | [`pm/`](pm/) | **플랫폼 공용** | PRD·포지셔닝·로드맵 등 제품 문서 |
 | [`blog/`](blog/) | 공용 | 이 저장소의 작업 방식을 적은 글 |
@@ -38,7 +38,7 @@
 [`android/CLAUDE.md`](android/CLAUDE.md)에 있다. Kotlin 코드에 적용되는 규약이라 Android
 범위이고, `android/` 아래 파일을 열면 자동으로 얹힌다.
 
-⚠️ 그 파일은 **TJYG-Android에서 일하는 서브에이전트에게 자동으로 닿지 않는다.** 구현·리뷰
+⚠️ 그 파일은 **TEAMYG-Android에서 일하는 서브에이전트에게 자동으로 닿지 않는다.** 구현·리뷰
 디스패치의 전역 제약과 계획의 Global Constraints에 요지를 실어 날라야 한다.
 
 ## 링크 검사
