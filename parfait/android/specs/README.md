@@ -16,6 +16,13 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 ## 아카이브
 
+> 🔁 **2026-10-02 회차(85) 메모** — ① PR #564가 재시도 회복과 `C-103-Error`를 삭제했다. 아래
+> `segmentation-retry-recovery`·`c103-error-use-original` 행과 `SegmentationErrorScreen`을 적은 행들은 **당시 기록**이고
+> 현재 코드에는 그 심볼이 없다. ② PR #553이 드래그 핸들(`ToppingHandleComponents.kt`·`Modifier.dragBy`)을 삭제했다 —
+> 그것을 적은 행들도 당시 기록이다. ③ **두 PR의 선작성 스펙은 이 디렉토리에 없다** — TEAMYG-Android
+> `docs/superpowers/specs/`에만 있다(`2026-09-28-topping-pinch-gesture-design.md`, `archive/2026-09-30-c101-loading-design.md`).
+> 이쪽은 as-built를 architecture 문서와 미결에만 반영했다(OQ-P-411).
+
 > 📌 **C-001 화면 심볼 리네임(2026-08-17, #278)** — 아래 요약과 아카이브 스펙 본문의 `CanvasImageAdd*`는
 > **당시 이름**이다. 현재 코드는 **`CanvasMain*`**(`NavKeyCanvasMain`·`CanvasMainRoute`/`Screen`/`ViewModel`/
 > `UiState`/`Intent`/`Effect`, `strings.xml` 키 `canvas_main_*`). 이름만 바뀌고 시그니처·동작은 불변이라

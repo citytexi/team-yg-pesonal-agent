@@ -35,6 +35,9 @@ tags: [spec, parfait]
 > 미착수다. 후보 0건 뒤 재시도 사다리만 검출 입력을 짧은 변 512·긴 변 2048로 맞추고, 후보 픽셀은 원본에서
 > 오려내므로 OQ-P-282의 크기 전파가 없다. 이 스펙이 예약한 `SegmentationInputNormalizer.kt` 이름은 쓰지 않았다
 > (`SegmentationRecoveryNormalizer.kt`) → [segmentation-retry-recovery](archive/2026-09-10-segmentation-retry-recovery.md).
+>
+> 🔁 **그 확대는 다시 사라졌다**(2026-10-02, PR #564). 재시도 사다리가 통째로 삭제돼 `SegmentationRecoveryNormalizer.kt`도
+> 없고, 검출 입력을 확대하는 코드는 현재 어디에도 없다. 이 스펙의 512 확대 항목은 처음 상태(미착수)로 돌아갔다.
 
 누끼의 **정확도**를 올린다. 대상을 더 잘 얻는 것이 목표이고 지연·메모리는 목표가 아니다.
 세그멘테이션이 보는 픽셀이 만들어지는 자리를 손봐서, 모델에게 원본에 가장 가까운 입력을 준다.

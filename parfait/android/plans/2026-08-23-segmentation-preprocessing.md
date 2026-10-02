@@ -901,7 +901,8 @@ private fun Bitmap.upscaledForSegmentation(): Bitmap {
 
 > **2026-09-17 정정** — 초판은 `Bitmap.createScaledBitmap(this, ..., true)` 를 적었다. PR #504(develop
 > `924cb5802`)가 대체 가능한 호출부를 모두 `androidx.core.graphics` 확장으로 옮겼으므로
-> (`UploadImagePreprocessorImpl`·`SegmentationRecoveryNormalizer`·`ImageSegmentationRepositoryImpl`),
+> (`UploadImagePreprocessorImpl`·`SegmentationRecoveryNormalizer`·`ImageSegmentationRepositoryImpl` — 가운데 것은
+> PR #564로 삭제됐다),
 > 이 Task 를 초판대로 쓰면 그 라운드가 걷어낸 관용구를 되살린다. `scale` 은 내부에서
 > `createScaledBitmap` 을 그대로 부르므로 identity 반환 조건(`plans/README.md` 가 적은
 > `!isMutable`)과 회수 규칙은 달라지지 않는다.
