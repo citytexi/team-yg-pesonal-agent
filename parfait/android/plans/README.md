@@ -12,6 +12,11 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 ## 아카이브
 
+> 🔁 **2026-10-04 회차(86) 메모** — PR #572·#576·#580의 구현 계획은 이 디렉토리에 없고 TEAMYG-Android
+> `docs/superpowers/plans/`에만 있다(`archive/2026-10-02-c105-arrange-add-flow.md`·`archive/2026-10-02-c105-arrange-edit-flow.md`·
+> `archive/2026-10-03-topping-edit-entry-navigation.md`·`archive/2026-10-03-topping-edit-ui.md`·`2026-10-03-g001-empty-animation.md`).
+> 아래 행들이 적은 `SegmentationConfirm*`·`NavKeySegmentationConfirm`은 당시 기록이다(OQ-P-411).
+
 > 🔁 **2026-10-02 회차(85) 메모** — PR #553(토핑 핀치 제스처)과 PR #564(C-101-Loading)의 구현 계획은 이 디렉토리에
 > 없고 TEAMYG-Android `docs/superpowers/plans/`에만 있다. PR #564가 재시도 회복을 삭제했으므로 아래
 > `segmentation-retry-recovery` 행은 당시 기록이다(OQ-P-411).
