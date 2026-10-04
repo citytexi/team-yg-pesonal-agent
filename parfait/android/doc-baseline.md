@@ -5,8 +5,62 @@
 
 ## 현재 기준선
 - **repo**: `TEAMYG-Android` (`mash-up-kr/TEAMYG-Android`, 구 `TJYG-Android`) `develop`
-- **커밋**: `a1817d357` (`Merge pull request #568 from mash-up-kr/feature/#561-gallery-image-load-info-ui`)
-- **요약**: **토핑을 만드는 흐름의 두 축이 한꺼번에 갈렸다 — 조작은 드래그 핸들에서 두 손가락 제스처로,
+- **커밋**: `4c40ddfee` (`Merge pull request #580 from mash-up-kr/feature/#579-group-list-empty-animation`)
+- **요약**: **토핑 테두리를 정하는 자리가 편집 화면에서 배치 화면으로 옮겨 갔고, 이미 놓인 토핑을 고치는
+  화면이 C-301에서 떨어져 나왔다. 누끼 확인 화면은 통째로 사라졌다** (delta 5건 — #573·#572·#576·#584·#580,
+  전부 **머지 트리 = 브랜치 팁**, 충돌 해소 편집 0건). 첫 부모 선의 머지는 넷이다 — #573(스펙·계획 문서)은
+  #572 브랜치로 먼저 들어간 뒤 #572와 함께 develop에 닿았다. 168파일 10974/5200. 유닛 1253 → **1314건**(+61),
+  계측 61 → **91건**(+30). 아카이브 이동 **0건**(이쪽에 선작성 스펙·계획이 없다), 미결 **해소 8건**
+  (OQ-P-201·276·277·324·337·338·379·380) · **부분 해소 1건**(082) ·
+  **신설 14건**(OQ-P-413~418·420~427, `oq-next` 413 → **428**. 419는 저쪽에서 신설된 라운드에 닫혀 본문이 없는 결번이다) · ADR **신설 1건**(0034).
+
+  **#572 — 배치 화면 테두리 패널과 배치 수정 화면(115파일 9055/3595, 커밋 44개).** 새 토핑의 테두리는
+  C-106 배치 화면의 `ToppingBorderPanel`이 정하고 `CanvasToppingPlaceUiState.border`(`ToppingBorderStyle?`)에만
+  있다가 확정 때 `AddToppingUseCase`로 간다. `ToppingDraft`에는 테두리 필드가 없다(ADR-0034). 이미 놓인
+  토핑은 신설된 `NavKeyCanvasToppingArrange`(`CanvasToppingArrangeRoute`·`Screen`·`ViewModel`)가 맡아 이동·크기·
+  회전·테두리·삭제를 한 화면에서 고친다. 그 결과 `CanvasBGEditViewModel`의 토핑 편집 탭이 걷혔고 C-301은
+  배경만 다룬다. 세그멘테이션 쪽에서는 `ToppingBorderEditScreen`·`ToppingBorderLayer`·`ToppingBorderPreviewLayout`·
+  `ToppingBorderOutline`·`SegmentationQuitDialog`가 삭제됐고, `BorderColorChipRow`는 canvas 모듈로,
+  `BrushWidthSlider`는 디자인시스템 `YGSlider`로 옮겨 갔다. 그만두기 팝업은 디자인시스템 `YGModalQuit.kt`
+  (`YGModalQuitAdd`·`YGModalQuitEdit`)로 모였다. canvas 모듈 계측 테스트 다섯 파일이 신설됐다.
+
+  **#576 — 누끼 편집 진입 단축(43파일 680/1471, 커밋 26개).** `NavKeySegmentationConfirm`과 확인 화면 Route·
+  Screen·ViewModel이 삭제됐다. 후보 선택은 파일만 저장한 뒤 `goTo(NavKeyToppingEdit)`로 가고, 편집 화면의
+  「다음」이 `RecordToppingDraftUseCase`로 초안을 기록한 뒤 `goTo(NavKeyCanvasToppingPlace)`를 한다.
+  `ToppingEditCompletion`·`TOPPING_EDIT_RESULT_KEY`·`borderLayers`·`borderOnly`가 사라지고
+  `NavKeyToppingEdit.isDetectionFailed`가 생겼다. `ToppingEditResult`는 `:impl`로 내려갔다. 갤러리 "최근"의
+  누끼는 `EnsureDraftSubjectRecordedUseCase`로 초안을 맞춘 뒤 편집 화면을 거치지 않고 배치 화면으로 간다.
+
+  **#580 — G-001 빈 상태 인트로(49파일 1403/309, 커밋 12개).** `GroupListEmptyIntroPhase`·`Timeline`·`State`와
+  더미 그룹(`GroupListEmptyDummyGroup`·`GroupListEmptyDummyGroups`, 디자인시스템 `img_topping_dummy_*` 셋)이
+  신설됐다. `YGTopBarEmpty`가 날짜 대신 `title`·`count`를 받고 `core:util:jvm`의 `model/DateFormat`이 삭제됐다
+  (`DateTextFormat`만 남는다). 툴팁은 `GroupListTopBar`의 `TooltipBox`에서 걷혔다.
+
+  **#584 — C-301 배경 변경 화면(5파일 30/19).** 하단 `YGFloatingBarEdit`가 상단 `YGFloatingBarTitle` + 하단
+  「저장하기」 `YGButton`으로 바뀌었다. `YGFloatingBarEdit`의 프로덕션 사용처가 없어졌다(OQ-P-081).
+
+  **#573 — 문서만(5파일 797/0).** 저쪽 `docs/superpowers/`의 스펙 하나·계획 둘이다. `.kt` 0건.
+
+  **방법이 바뀌었다 — 저쪽 `docs/`의 delta를 3-way 병합으로 옮겼다.** 저쪽은 이번에도 architecture·ADR·`api/`·
+  미결을 코드와 같은 PR에 실었다. 이 회차는 저쪽의 `a1817d357`판을 공통 조상, `4c40ddfee`판을 저쪽, 이쪽
+  현재판을 이쪽으로 두고 `git merge-file`로 합쳤다. 병합 전에 저쪽 미결 번호 411 이상을 하나씩 뒤로 밀고
+  (OQ-P-411 📌) 링크 경로를 이쪽 구조에 맞췄다. 충돌 11건은 삭제된 흐름을 적은 자리라 저쪽의 현재 상태
+  서술을 택했고(design-system 2·navigation-flow 2·module-structure 1·미결 3), 표의 행 셋(data-layer·
+  module-structure·ADR 인덱스)은 이쪽 행에 저쪽 변경만 얹었다. 그 과정에서 그 자리의 🔁 이력 서술 일부가
+  현재 상태 서술로 바뀌었다. 새로 들어온 줄의 심볼 250개를 `origin/develop`에서 전수 조회했고, 없는 것은
+  전부 역사 서술 속 옛 이름이었다. 저쪽이 스스로 놓친 한 곳(ADR-0026의 "소비자가 `SegmentationConfirmRoute`
+  하나다")은 이쪽에서 고쳤다.
+
+  **조치**: navigation-flow · design-system · state-management · module-structure · data-layer · ADR-0025·0026·
+  0030·0032 본문 · ADR-0034 신설(번호는 저쪽과 맞췄고 이쪽에 0033은 없다) · ADR 인덱스 · `api/parfait.md`·
+  `api/parfait-image.md`·`api/README.md`(Android 매핑만, `verified` 불변) · specs/plans README 메모 · 미결.
+  저쪽에만 있는 스펙·계획을 가리키던 링크 11건은 평문 경로로 바꿨다. 미머지 하나(`feature/debug-mode`) 유지.
+
+  직전 회차 요약(85회차, `a1817d357`): **조작은 드래그 핸들에서 두 손가락 제스처로, 누끼 실패는 전용 화면에서
+  편집 화면 직행으로 바뀌었다**(#544·#539·#555·#550·#553·#560·#564·#568). 미결 신설 1건(OQ-P-412). 아래가 그
+  회차의 상세다.
+
+  **토핑을 만드는 흐름의 두 축이 한꺼번에 갈렸다 — 조작은 드래그 핸들에서 두 손가락 제스처로,
   누끼 실패는 전용 화면에서 편집 화면 직행으로. 그리고 두 라운드 모두 선작성 문서가 이 저장소가 아니라
   저쪽 `docs/`에 실려 들어왔다** (delta 8건 — #544·#539·#555·#550·#553·#560·#564·#568, 전부
   **머지 트리 = 브랜치 팁**, 충돌 해소 편집 0건). 전체 머지 목록과 첫 부모 선의 차이는 `c8ef5aa24`
@@ -2651,6 +2705,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-10-04 | `4c40ddfee` | Merge #573(스펙·계획 문서) · #572(배치 화면 테두리 패널·배치 수정 화면) · #576(누끼 편집 진입 단축) · #584(C-301 배경 변경 화면) · #580(G-001 빈 상태 인트로) | delta 5건, **168파일 10974/5200**, 전부 **머지 트리 = 브랜치 팁**. 유닛 1253 → **1314건**, 계측 61 → **91건**. 아카이브 이동 **0건**, 미결 **해소 8건**(OQ-P-201·276·277·324·337·338·379·380) · **부분 해소 1건**(OQ-P-082) · **신설 14건**(OQ-P-413~418·420~427, 419 결번, `oq-next` 413 → 428) · ADR-0034 신설. **#572**: 테두리가 배치 화면 `ToppingBorderPanel`로, 이미 놓인 토핑은 `NavKeyCanvasToppingArrange`로, C-301은 배경만. `ToppingBorderEditScreen`·`ToppingBorderLayer` 삭제. **#576**: `NavKeySegmentationConfirm`·확인 화면 삭제, 편집 화면 「다음」이 초안을 기록하고 배치 화면으로 직행, `ToppingEditCompletion`·`TOPPING_EDIT_RESULT_KEY` 삭제. **#580**: `GroupListEmptyIntro*`·더미 그룹 신설, `YGTopBarEmpty`가 `title`·`count`로, `model/DateFormat` 삭제. **#584**: C-301이 상단 제목 바 + 하단 「저장하기」. ⚠️ **방법 변경 — 저쪽 `docs/` delta를 `git merge-file` 3-way 병합으로 옮겼다**(저쪽 미결 번호 411 이상은 +1, 충돌 11건은 저쪽 현재 상태 서술 채택, 새 심볼 250개 전수 조회). 조치: architecture 다섯 · ADR-0025·0026·0030·0032·0034·인덱스 · `api/` 셋(Android 매핑만, `verified` 불변) · specs/plans README 메모 · 미결. 검증일 줄 86회차. 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-10-03 | `a1817d357` | Merge #544(Claude 리뷰 워크플로) · #539(저쪽 점검 스킬·`docs/` 정비) · #555(리뷰 모델) · #550(설정 약관 줄을 응답 `title`로) · #553(토핑 핀치 제스처) · #560(캔버스 메뉴 색) · #564(C-101-Loading) · #568(갤러리 03시 안내) | delta 8건, 전부 **머지 트리 = 브랜치 팁**. 유닛 1294 → **1253건**, 계측 46 → **61건**. 아카이브 이동 **0건**, 미결 **해소 2건**(OQ-P-399·401) · **부분 해소 3건**(231·325·400) · **신설 1건**(OQ-P-412, `oq-next` 412 → 413) · 📌 **11건**. **#564**: `SegmentationLoadingScreen` 부활, `SegmentationErrorScreen`·재시도 회복 전체 삭제, 실패는 `NavKeyToppingEdit(completion = RecordAndConfirm)` 직행, `goToSingleClearTop`, 그만두기 팝업. **#553**: 드래그 핸들·`Modifier.dragBy` 삭제 → `toppingTransformInput`, `TOPPING_MIN_SCALE` 공유·배치 화면 상한 삭제, canvas 모듈 첫 `androidTest`. **#550**: 설정 약관 줄이 `state.policies` 순회 + `termsId` 식별. ⚠️ **#553·#564의 스펙·계획은 저쪽 `docs/superpowers/`에만 있고, 저쪽이 다른 주제에 OQ-P-411을 매겨 번호가 충돌했다**(OQ-P-411 ⚠️). 조치: navigation-flow · design-system · module-structure · data-layer · ADR-0012 🔁 · `api/policy.md`(Android 매핑만, `verified` 불변) · 활성 스펙 1·계획 1 · specs/plans README 메모 · 미결. 검증일 줄 85회차. 미머지 하나(`feature/debug-mode`) 유지 — 원격 브랜치는 다섯에서 열셋으로 늘었으나 여덟 다 이쪽 문서 밖이다 |
 | 2026-09-27 | `594f8047e` | Merge #527(실패 토스트 마침표) · #524(TJYG 위키 기능정의서 v7) · #535(개인정보처리방침 문구) · #528(parfait 문서를 TJYG-Android `docs/`로 복사) · #537(CI auto-assign) · #534(data 코드 스타일 리팩터 4) | delta 6건, 전부 **머지 트리 = 브랜치 팁**. 유닛 1298 → **1294건**, 계측 **46건** 유지. 아카이브 이동 **0건**, 미결 **신설 1건**(OQ-P-411, `oq-next` 406 → 412 — 406~410은 저쪽 사본이 먼저 썼다) · 📌 **7건**. **#534**: `.claude/rules/` 셋에 맞춘 개명·패키지 이동(토큰 저장 체인·raw HTTP 두 데이터 소스·`source.topping`·`data.poller`·`model.entity`/`model.mapper`·`domain/provider`), `DeviceTokenRegistrar` → `NotificationRepository.registerCurrentDeviceToken()` 흡수, `RecentImageEditor` 삭제, **중첩 응답 DTO 예외 폐지**. 동작 변경은 토큰 등록 재시도 **3초 고정**과 `ModuleInstallGateway`의 `Deferred` 반환 둘. **#528**: 저쪽 `docs/`가 스스로를 정본이라 선언 — 이 회차는 사용자 지시로 이쪽만 갱신(OQ-P-411). 조치: data-layer · module-structure · ADR 여섯 📌 · `api/` 셋(Android 매핑만, `verified` 불변) · 활성 스펙 1 · 미머지 계획 1 · 미결. 검증일 줄 84회차. 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-09-21 | `143cda87b` | Merge #511(LLM 위키 체계를 TJYG-Android 저장소로 이식 — `wiki/` 스크립트·테스트·`raw/`·`pages/`·graphify 산출물, 루트 `CLAUDE.md` 「위키」 절) | delta 1건, **158파일 27237/0 — 삭제 0줄**, 커밋 67개, **머지 트리 = 브랜치 팁**(충돌 해소 편집 0건). **`.kt`·`.kts`·gradle·xml·toml 변경 0건 — Android 소스가 한 줄도 안 움직인 첫 라운드**라 유닛 **1298건**·계측 **46건**은 셈할 것도 없이 유지. 아카이브 이동 **0건**, **parfait 문서 드리프트 0건**(spec·plan·architecture·ADR·`api/` 다섯 표면 전부 불변), 미결 **신설 1건**(OQ-P-405, `oq-next` 405 → 406). **① 같은 정책 위키가 두 벌이 됐다** — 이 저장소의 `wiki/`와 새로 들어온 TJYG-Android `wiki/`가 같은 원본을 각각 ingest했다. 소스 39건은 파일명까지 같고(NFC/NFD 차이뿐) **개념 층이 갈라졌다**(이쪽 concepts 19건 한글 세분 / 저쪽 8건 영문 묶음, synthesis도 `open-questions`+lint 아홉 대 `spec-version-history` 하나). **어느 쪽이 정본인지 정한 문서가 없다**(OQ-P-405). **② 이식 설계가 스스로 적은 전제가 안 지켜졌다** — 「콘텐츠는 옮기지 않는다, 빈 스캐폴드로 시작해 새로 ingest한다」고 결정 표에 못 박았는데 머지된 트리에는 같은 원본 39건이 그대로 있다. **③ 코드 0건 라운드에도 감사할 것이 남는다** — `--stat`에 `.kt`가 없으면 심볼 대조는 통과하지만, 이번 delta가 바꾼 것은 **문서가 서 있는 땅**이다. Gradle·CI 미변경. 검증일 줄 83회차(같은 날 두 번째 회차). 미머지 하나(`feature/debug-mode`) 유지 — 원격 브랜치는 일곱에서 다섯으로 줄었다 |

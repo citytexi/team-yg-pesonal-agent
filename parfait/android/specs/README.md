@@ -16,6 +16,13 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 ## 아카이브
 
+> 🔁 **2026-10-04 회차(86) 메모** — ① PR #572·#576이 누끼 확인 화면(`SegmentationConfirm*`)과 테두리 편집 화면
+> (`ToppingBorderEditScreen`·`ToppingBorderLayer`·`borderOnly`)을 삭제하고 C-301의 토핑 편집 탭을 배치 수정 화면
+> (`NavKeyCanvasToppingArrange`)으로 떼어 냈다. 그 심볼을 적은 아래 행들은 **당시 기록**이다. ② PR #580이
+> `model/DateFormat`을 삭제하고 `YGTopBarEmpty`의 인자를 `title`·`count`로 바꿨다. ③ **네 PR의 선작성 스펙은 이
+> 디렉토리에 없다** — TEAMYG-Android `docs/superpowers/specs/`에만 있다(`archive/2026-10-02-c105-arrange-border-merge-design.md`,
+> `archive/2026-10-03-topping-edit-entry-flow-design.md`, `2026-10-03-g001-empty-animation-design.md`).
+
 > 🔁 **2026-10-02 회차(85) 메모** — ① PR #564가 재시도 회복과 `C-103-Error`를 삭제했다. 아래
 > `segmentation-retry-recovery`·`c103-error-use-original` 행과 `SegmentationErrorScreen`을 적은 행들은 **당시 기록**이고
 > 현재 코드에는 그 심볼이 없다. ② PR #553이 드래그 핸들(`ToppingHandleComponents.kt`·`Modifier.dragBy`)을 삭제했다 —
