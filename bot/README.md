@@ -143,7 +143,7 @@ npm test
   `Grep` 이 봇의 주 탐색 도구가 됐기 때문에 의도를 표면에 남겨 둔 것이고, 빼도 당장은 동작이
   같지만 그 판정이 바뀌면 드러나지 않게 뚫린다.
 - `--restricted`는 쓰지 않는다. 스킬 로드를 막아 위키 규약이 적용되지 않는다.
-- 모델은 `claude-sonnet-5`로 고정돼 있다. 바꾸려면 `src/claude-runner.js`의 `MODEL` 상수와
+- 모델은 `claude-sonnet-5-5`로 고정돼 있다. 바꾸려면 `src/claude-runner.js`의 `MODEL` 상수와
   그 테스트를 함께 고친다.
 - `.env`에는 디스코드 봇 토큰과 Figma 토큰이 들어간다. 이 저장소는 public이므로 절대
   커밋하지 않는다. 두 토큰 모두 `claude-runner.js`의 `SECRET_ENV_KEYS`에 올라 있어 `claude`

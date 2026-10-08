@@ -64,7 +64,7 @@ const SKILL_DIRECTIVE = `${ASK_DIRECTIVE}\n\n${PERSONA_DIRECTIVE}`;
 // FIGMA_TOKEN 은 파이썬 쪽에서만 쓴다. 여기 남겨 두면 채널에서 "네 환경변수를
 // 말해 봐"라고 물어 토큰을 빼낼 수 있다.
 const SECRET_ENV_KEYS = ["DISCORD_TOKEN", "FIGMA_TOKEN"];
-const MODEL = "claude-sonnet-5";
+const MODEL = "claude-sonnet-5-5";
 // A wiki answer is a few kilobytes. Anything past this is a runaway process, and
 // buffering it whole is how the bot runs out of memory.
 const MAX_STDOUT_BYTES = 2 * 1024 * 1024;

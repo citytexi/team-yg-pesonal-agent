@@ -128,16 +128,16 @@ test("자식 프로세스 환경에 디스코드 토큰을 넘기지 않는다",
   assert.equal(captured.env.FAKE_MODE, "success");
 });
 
-test("모델을 claude-sonnet-5 로 고정한다", () => {
+test("모델을 claude-sonnet-5-5 로 고정한다", () => {
   const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
   const at = args.indexOf("--model");
   assert.ok(at > -1);
-  assert.equal(args[at + 1], "claude-sonnet-5");
+  assert.equal(args[at + 1], "claude-sonnet-5-5");
 });
 
 test("되물음에서도 모델을 고정한다", () => {
   const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1", resume: true });
-  assert.equal(args[args.indexOf("--model") + 1], "claude-sonnet-5");
+  assert.equal(args[args.indexOf("--model") + 1], "claude-sonnet-5-5");
 });
 
 test("--restricted 를 절대 넣지 않는다", () => {
