@@ -49,6 +49,18 @@ test("봇 자신의 디렉토리를 읽지 못하게 막는다", () => {
   assert.ok(args.includes("Grep(./bot/**)"), "bot/ 검색 차단이 빠졌다");
 });
 
+test("서브모듈의 문서·규칙 경로를 읽지 못하게 막는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  const blocked = args.slice(args.indexOf("--disallowed-tools") + 1, args.indexOf("--output-format"));
+  const paths = ["wiki/**", "docs/**", ".claude/**", ".github/**", "CLAUDE.md"];
+  for (const path of paths) {
+    for (const tool of ["Read", "Grep"]) {
+      const rule = `${tool}(./TEAMYG-Android/${path})`;
+      assert.ok(blocked.includes(rule), `${rule} 이 차단 목록에 없다`);
+    }
+  }
+});
+
 test("ask 스킬 지시를 시스템 프롬프트로 붙인다", () => {
   const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
   const at = args.indexOf("--append-system-prompt");

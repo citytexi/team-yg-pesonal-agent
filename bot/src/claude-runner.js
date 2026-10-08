@@ -19,6 +19,21 @@ const BLOCKED_TOOLS = [
   // the path rule above applies when the file is read, whichever tool reads it.
   // This line states the intent so the answer survives a change in that ruling.
   "Grep(./bot/**)",
+  // TEAMYG-Android/ is the code repo pinned as a submodule so the bot can read
+  // code. Its wiki/ and docs/ are copies that overlap this repo's wiki/ and
+  // parfait/, and .claude/, .github/ and CLAUDE.md are that repo's own agent
+  // instructions. None of them is evidence here. The Grep twins are kept for
+  // the same reason as Grep(./bot/**) above.
+  "Read(./TEAMYG-Android/wiki/**)",
+  "Grep(./TEAMYG-Android/wiki/**)",
+  "Read(./TEAMYG-Android/docs/**)",
+  "Grep(./TEAMYG-Android/docs/**)",
+  "Read(./TEAMYG-Android/.claude/**)",
+  "Grep(./TEAMYG-Android/.claude/**)",
+  "Read(./TEAMYG-Android/.github/**)",
+  "Grep(./TEAMYG-Android/.github/**)",
+  "Read(./TEAMYG-Android/CLAUDE.md)",
+  "Grep(./TEAMYG-Android/CLAUDE.md)",
 ];
 
 // The answering rules live in .claude/skills/ask/SKILL.md, not here. This line
