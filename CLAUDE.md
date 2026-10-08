@@ -1,12 +1,14 @@
 # CLAUDE.md
 
-이 저장소는 네 축으로 구성된다(모두 저장소 루트의 형제 디렉토리):
+이 저장소는 다섯 축으로 구성된다(모두 저장소 루트의 형제 디렉토리):
 - **`raw/`** — 정책 원본 소스(불변, 읽기 전용).
 - **`wiki/`** — LLM이 `raw/`를 ingest해 운영·유지하는 **정책 지식 위키**.
 - **`parfait/`** — **플랫폼별 구현 문서 루트**. 플랫폼 전용 문서는 `parfait/android/`(ADR·architecture·
   specs·plans·synthesis·doc-baseline), 플랫폼 공용은 `parfait/api/`(서버 계약)·`parfait/pm/`(제품 문서).
   위키 스키마 미적용.
-- **`bot/`** — `wiki/`(정책)와 `parfait/`(구현·서버 계약)를 근거로 디스코드에서 답하는 **읽기 전용 질의응답 봇**. 답변 규약은 `ask` 스킬. 위키 스키마 미적용.
+- **`bot/`** — `wiki/`(정책)·`parfait/`(구현·서버 계약)·`TEAMYG-Android/`(기준선 코드)를 근거로 디스코드에서 답하는 **읽기 전용 질의응답 봇**. 답변 규약은 `ask` 스킬. 위키 스키마 미적용.
+- **`TEAMYG-Android/`** — 코드 저장소의 **읽기 전용 서브모듈**. `parfait/android/doc-baseline.md`의 기준선 커밋에
+  고정돼 있고, 로컬 체크아웃이 없는 봇·원격 세션이 코드를 읽는 용도다. **로컬에서는 초기화하지 않는다.**
 
 ## 프로젝트 컨텍스트 (필수)
 
@@ -14,6 +16,21 @@
 (remote `mash-up-kr/TEAMYG-Android`. 저장소·로컬 디렉토리명 모두 구 `TJYG-Android`에서 바뀌었고,
 과거 기록에 남은 `TJYG-Android`는 같은 저장소를 가리킨다)다. 여기서 지시를 받아 그 프로젝트를 작업한다.
 로컬 절대경로는 개인정보라 private submodule의 `wiki/personal-private/project-paths.md`에 있다.
+
+### 서브모듈 사본
+
+저장소 루트의 `TEAMYG-Android/`는 같은 코드 저장소를 기준선 커밋에 고정한 **읽기 전용 서브모듈**이다.
+위 "코드 작업 대상"과 다른 것이다.
+
+- **코드 작업 대상은 계속 `project-paths.md`의 기존 체크아웃이다.** 서브모듈은 작업 대상이 아니다.
+- 서브모듈 안에서 커밋·브랜치 생성·파일 수정을 하지 않는다.
+- 서브모듈 안의 `wiki/`·`docs/`·`.claude/`·`.github/`·`CLAUDE.md`는 읽지 않는다. 정책은 이 저장소
+  `wiki/`, 구현 문서는 `parfait/`만 근거로 쓴다.
+- 서브모듈 명령은 경로를 명시한다(`git submodule update --init wiki/personal-private`). **경로 없는
+  `git submodule update`는 `--init`이 없어도 쓰지 않고, `--recurse-submodules`도 쓰지 않는다.**
+- 클론마다 한 번 `git config submodule.TEAMYG-Android.active false`를 실행한다. 추적되지 않는 로컬
+  설정이고, 이 값이 있으면 경로 없는 `git submodule update`가 이 서브모듈을 건너뛴다.
+
 자세한 내용은 [docs/project-context.md](docs/project-context.md).
 
 ## 언어
@@ -120,7 +137,11 @@
 이 public repo에 커밋하지 않는다. 민감 콘텐츠는 `wiki/personal-private/`에 둔다 —
 이 경로는 **private repo(`team-yg-pesonal-agent-privacy-data`)의 git submodule**이라
 내용은 private에만 저장되고, public repo에는 gitlink(commit SHA)만 남는다.
-서브모듈 내용 수정 시 절차:
+
+`TEAMYG-Android` 서브모듈은 이 절차의 대상이 아니다. 읽기 전용이고, gitlink는
+`sync-teamyg-develop-baseline`만 올린다.
+
+`wiki/personal-private` 서브모듈 내용 수정 시 절차:
 
 1. **서브모듈에서 브랜치 작업**: 부모(public) repo의 현재 브랜치와 **동일한 이름**의 브랜치를
    서브모듈에서 만들고(`git checkout -b <부모-현재-브랜치>`) commit + push 한다.
