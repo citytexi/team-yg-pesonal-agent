@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, Events, ChannelType } from "discord.js";
 import { threadName, THINKING, figmaThreadName, FIGMA_RUNNING } from "./replies.js";
 import { parseCommand } from "./command.js";
+import { mentionsBot, stripBotMention } from "./mention.js";
 
 // Every user-facing string lives in replies.js. Nothing in this file writes one.
 const SILENT = { allowedMentions: { parse: [] } };
@@ -27,15 +28,12 @@ export async function startGateway({ config, handle, handleFigma, client, log = 
       if (message.guildId !== config.guildId) return;
       if (!isAllowedChannel(message, config)) return;
 
-      const inThread = message.channel.isThread();
-      const mentioned = message.mentions.users.has(client.user.id);
-      const ownThread = inThread && message.channel.ownerId === client.user.id;
-      if (!mentioned && !ownThread) return;
+      // Mention only, in our own thread too. Answering every message there made
+      // the bot reply to a whole conversation it was not part of.
+      if (!mentionsBot(message.content, client.user.id)) return;
 
-      // Strip only our own mention. A blanket /<@!?\d+>/g also deletes the
-      // people the question is about, and "이 사람이 쓴 정책" loses its referent.
-      const selfMention = new RegExp(`<@!?${client.user.id}>`, "g");
-      const body = message.content.replace(selfMention, " ").replace(/\s+/g, " ").trim();
+      const inThread = message.channel.isThread();
+      const body = stripBotMention(message.content, client.user.id);
       if (body.length === 0) return;
 
       const command = parseCommand(body);
