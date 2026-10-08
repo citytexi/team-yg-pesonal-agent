@@ -8,7 +8,7 @@ verified: 2026-09-21
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c202-canvas-spotlight, segmentation-pipeline-hardening, designsystem-ygscreen-scaffold, designsystem-button-component-sync, designsystem-button-missing-components, designsystem-canvas-components, designsystem-grouptag-topping-components, designsystem-bar-listdate-components, c101-camera-picture-confirm, a002-login-onboarding, c001-canvas-main, ygmodalpopup, a004-group-invite-code, c301-canvas-background-edit, c201-canvas-calendar, session-token-refresh-infra, c301-topping-edit-tab, ygscaffold-v2-common-loading-error, s101-group-setting-api
 related_adr: ADR-0007, ADR-0010, ADR-0018, ADR-0025
 related_architecture:
-related_code: core:designsystem, YGTheme, ParfaitImageLoader.kt#newParfaitImageLoader, YGDimOverlay.kt#YGDimOverlay, YGSkeleton.kt#YGSkeleton, YGLoadingLottie.kt#YGLoadingArt
+related_code: core:designsystem, YGTheme, ReloadableImageRequest.kt#rememberReloadableImageRequest, YGDimOverlay.kt#YGDimOverlay, YGSkeleton.kt#YGSkeleton, YGLoadingLottie.kt#YGLoadingArt
 tags: [architecture, parfait]
 ---
 # Design System — 테마·토큰·컴포넌트 작성 가이드
@@ -45,7 +45,6 @@ component/
   yglistdate/             ← YGListDate (C-201 날짜 셀 = YGDateButton + YGChipColorIndicator) (#188 develop 머지)
   ygfloatingbar/          ← YGFloatingBar* 5변형 + private 컨테이너·버튼 2종 (4변형 #188 · Title #406, 둘 다 develop 머지)
   ygtopbar/               ← YGTopBar* 4변형 + YGTopBarDefaults(배경 블러 반경 #188, 상단 인셋 #194)
-  ygtutorial/             ← YGTutorialOverlay + YGTutorialBox + YGTutorialProgress + YGTutorialBoxPlacement (화면 첫 진입 튜토리얼, #449 develop 머지)
 border/
   DashedBorder.kt         ← dashedBorder() Modifier (점선 사각형 테두리, drawBehind+dashPathEffect) (#159 develop 머지)
 shape/
@@ -56,10 +55,10 @@ screen/                   ← 화면 루트 컨테이너 (아래 "화면 컨테�
   YGScreen.kt             Surface 래퍼 + YGScreenScope 리시버 (화면 최외곽)
   YGScaffold.kt           Material3 Scaffold 래퍼 (구판, @Deprecated(WARNING) #267 — **호출부 0건**, #513·#514 이후)
   YGScaffoldV2.kt         Scaffold + 로딩 오버레이 + 토스트 호스트 3층 (Route 소유, #267 develop 머지 · 덮개가 `loadingOverlay` 슬롯이 됨 #440)
-image/                    ← ParfaitImageLoader.kt: newParfaitImageLoader(전역 Coil 로더 팩토리) + rememberReloadableImageRequest (#440 develop 머지)
+image/                    ← ReloadableImageRequest.kt: rememberReloadableImageRequest (전역 Coil 로더 팩토리 newParfaitImageLoader는 core:ui `image/`)
   YGScreenScope.kt        YGScreenScope + OnBack(@Composable, BackHandler 래핑)
 res/font/                 ← suit_regular/medium/semi_bold/bold.ttf (SUIT **수정본**, #366 — 아래 참고)
-res/values/strings.xml    ← 모듈 최초의 문자열(#267) — 로딩 오버레이 접근성 contentDescription 1건 + 튜토리얼 카드의 진행 표시·버튼 라벨 3건(#449)
+res/values/strings.xml    ← 모듈 최초의 문자열(#267) — 로딩 오버레이 접근성 contentDescription 1건
 res/raw/                  ← 로딩 로띠 3종(밝은 바탕용·어두운 바탕용 #305, 캔버스 토핑용 `loading_topping` #440) — 모듈 최초의 raw 리소스
 res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-002 온보딩 일러스트 `image_onboarding_*` 추가, #264로 `ic_edit`·`ic_scale` 추가)
 (모듈 루트)
@@ -330,7 +329,6 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 | `YGChipButton`(+`YGChipButtonColors`·`YGChipButtonColorsDefaults`) | `component/ygchipbutton/` | [ygchipbutton](../specs/archive/2026-07-16-ygchipbutton.md) |
 | `YGInviteCard`(+`YGInviteCardStatus`) | `component/card/` | [yginvitecard](../specs/archive/2026-07-14-yginvitecard.md) |
 | `YGModalPopup` | `component/modal/` | [ygmodalpopup](../specs/archive/2026-07-15-ygmodalpopup.md) |
-| `YGModalQuitAdd` / `YGModalQuitEdit` / `YGModalQuitBackground` — 그만두기 팝업. 제목과 계속 버튼 문구만 변형마다 다르다 | `component/modal/` | — |
 | `YGSlider` | `component/ygslider/` | c105-arrange-border-merge(저쪽 저장소 `docs/superpowers/specs/archive/2026-10-02-c105-arrange-border-merge-design.md`) |
 | `YGNametagChip`(+`YGNametagChipStyle`·`YGColorChipType`·`YGNametagChipPreviewData`) / `YGUserChip`(+`YGUserNameStyle`) / `YGChipColorIndicator` | `component/ygcolorchip/` | [ygcolorchip](../specs/archive/2026-07-18-ygcolorchip.md) |
 | `YGDate` / `YGLabel` | `component/ygtext/` | [ygtext-date-label](../specs/archive/2026-07-18-ygtext-date-label.md) |
@@ -358,7 +356,6 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
 | `YGGrouptagChip`(+`YGGrouptagChipType`) | `component/yggrouptagchip/` | [designsystem-grouptag-topping-components](../specs/archive/2026-07-31-designsystem-grouptag-topping-components.md) |
 | `YGToppingGroup`(+`YGToppingGroupType`·`YGToppingImage`·`YGToppingTemplate`) | `component/ygtoppinggroup/` | [designsystem-grouptag-topping-components](../specs/archive/2026-07-31-designsystem-grouptag-topping-components.md) |
 | `YGToppingCutoutImage` — 위 `YGToppingImage`와 **다른 물건**(아래 항목), #334 develop 머지 | `component/ygtoppingcutout/` | [ADR-0025](../adr/0025-topping-border-as-server-field.md) · [c106-topping-place-api](../specs/archive/2026-08-20-c106-topping-place-api.md) |
-| `YGTutorialOverlay` / `YGTutorialBox`(+`YGTutorialProgress`·`YGTutorialBoxPlacement`), #449 develop 머지 | `component/ygtutorial/` | (선작성 스펙 없음 — 아래 항목) |
 | `YGScreen` / `YGScaffold`(+`YGScreenScope`·`OnBack`) | `screen/` | [designsystem-ygscreen-scaffold](../specs/archive/2026-07-20-designsystem-ygscreen-scaffold.md) (위 "화면 컨테이너") |
 
 - **`YGIconButton` = 공통 아이콘 버튼**: 정사각 컨테이너 + 중앙 아이콘 + enabled/pressed tint, 크기 프리셋 enum(`YGIconButtonSize` — `SIZE_48` 아이콘 크기는 #183에서 교정). `YGTextField`의 clear 아이콘은 이미 인라인 `Box`+`Image`에서 `YGIconButton(size = YGIconButtonSize.SIZE_44)`로 치환됨(`YGTextFieldImpl.kt`). `YGListItem` trailing caret도 `YGIconButton`으로 치환(#136 develop 머지 #148).
@@ -434,7 +431,7 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
   ⚠️ **띠 판은 알맹이 상자 밖으로 `borderWidth`만큼 나간다 — 이것이 계약이다.** 부르는 쪽이 클리핑 레이어나 `alpha < 1`을 씌우면 오프스크린 버퍼가 상자 밖을 잘라 띠가 그만큼 잘리므로, 그런 자리는 상자를 굵기만큼 키우고 안쪽으로 덜어내야 한다. `EditableToppingImage`(`component/EditableToppingLayer.kt`)가 `outlineInset`으로 상자를 키우고 안쪽으로 덜어내는 이 우회를 쓰고 있고, 이번 변경으로 그 우회가 **네 화면 공통 규칙으로 승격**된다. 🔁 **다섯이 됐다**(#497 develop 머지, 2026-09-16) — G-001 목록 카드가 다섯 번째이고, 상자를 키우는 대신 **알맹이를 줄이는** 반대 방향을 골랐다(96dp 프레임과 지그재그 배치를 고정하려고).
   ✅ **실기기 확인을 마쳤다(2026-09-07)** — 육안 확인 6항목이 모두 통과했고 `ALPHA_8` 비트맵에 `ColorFilter.tint`가 하드웨어 가속 캔버스에서 의도대로 먹었다. `ARGB_8888` 폴백은 쓰지 않으므로 색은 캐시 열쇠에 안 들어간다. 다만 그 확인이 깜빡임 하나를 새로 드러냈다 — **띠 판이 컴포저블 `remember` 수명이라 화면 전환·Spotlight 전환마다 사라지고, 다시 만드는 동안 테두리가 없었다.** `ToppingBorderPlateCache.kt`(같은 패키지, LRU 32칸)가 판을 컴포지션 밖에 남겨 그 자리를 없앤다(수정 뒤 실기기 재확인 완료). 열쇠는 **거리판 인스턴스 + 굵기px + 알맹이 비율**이고 표시 크기는 안 들어간다. 다만 굵기가 판에 구워져 있어 크기가 다른 판을 늘려 그리면 화면상 굵기가 그 배율만큼 틀어지므로, **1.25배 넘게 어긋난 판은 안 그리고 새 판을 기다린다.** 자세한 내용은 [topping-border-distance-field 스펙](../specs/archive/2026-09-07-topping-border-distance-field.md) 「띠 비트맵을 언제 다시 만드는가」. 🔁 **열쇠당 판이 한 장에서 선반(크기별 최대 3장)이 됐다**(#497 develop 머지, 2026-09-16) — 목록 토핑과 캔버스 토핑은 같은 URL이라 거리판 인스턴스도 굵기도 같아 **열쇠가 겹치는데** 긴 변은 1.25배를 넘게 어긋난다. 한 장만 두면 한쪽이 만든 판이 다른 쪽 판을 덮어써 카드를 눌러 캔버스로 들어갈 때마다 테두리가 깜빡였다. 열쇠에 크기를 넣는 대신 선반을 둔 것은 "핀치 한 번에 항목이 쏟아진다"는 [ADR-0030](../adr/0030-topping-outline-distance-field.md)의 근거를 **열쇠당 장수 상한**으로 대신 막을 수 있고, 크기를 모르는 첫 컴포지션에서도 판을 꺼낼 수 있어서다. `get`에 `subjectLongSide`(선택)가 붙었고, `put`은 `fitsSubject`로 비슷한 크기 판을 걷어 낸 뒤 맨 앞에 넣는다. 그리기 단계도 바뀌었다 — 상태의 판이 지금 크기에 안 맞으면 **캐시에서 맞는 판을 한 번 더 찾고**, 거기에도 없을 때만 새 판을 기다린다. 열쇠 상한 32칸은 그대로라 **총 장수 상한이 세 배**가 된다(OQ-P-317).
 - **이미지 로딩**: Coil 3. `coil-compose`에 더해 **`coil-network-okhttp`가 `build-logic` `ComposeConfig`에 추가됨(#186)** — 그전까지 네트워크 페처가 없어 원격 URL이 아예 로드되지 않았다(로컬 MediaStore URI만 쓰던 탓에 드러나지 않았다). `YGToppingGroup.Remote`·`YGCanvasBackground.Image`가 이 의존에 걸린다. **로더 설정은 #440부터
-`image/ParfaitImageLoader.kt`가 한 곳에서 쥔다**(아래 "이미지 로더").
+`core:ui`의 `image/ParfaitImageLoader.kt`가 한 곳에서 쥔다**(아래 "이미지 로더").
 - **`YGModalPopup`**: Compose `Dialog` 위 중앙 팝업. 아이콘+제목+본문 + 2버튼(`YGButton.Medium.Secondary` 좌/`Primary` 우, `weight(1f)` 균등). 버튼 confirm/cancel 의미 미규정(타입만 노출), 단일 `isEnabledButton`. 프리뷰 `@YGPreview`/`PreviewBox`. **첫 실화면 소비처(#224 develop 머지, 2026-08-12)** — 그때까지 `:app-preview` 갤러리에서만 그려지던 컴포넌트를 A-005 그룹 생성·A-004 초대코드 두 화면이 확인 모달로 쓴다(🔁 **#261, 2026-08-16 — A-004의 호출이 S-102 그룹 닉네임으로 옮겨갔다.** 문구·좌우 배치는 그대로라 소비처 수도 좌우 진영도 변함없다). 표시 여부는 규약대로 호출자가 쥔다(각 UiState `isConfirmPopupVisible`). 두 화면이 **취소=좌 Secondary / 실행=우 Primary**로 배치했는데, Danger Zone 팝업 스펙은 피그마 근거로 **파괴적 액션=좌 Secondary / 취소=우 Primary**라 좌우 의미가 갈린다. **두 배치가 develop에 공존 확정(#225 머지, 2026-08-13)** — 확인 팝업 3종(서비스 탈퇴·그룹 나가기·그룹 신고)이 반대 배치로 들어와 호출자가 6곳이 됐고 정확히 반으로 갈렸다. 네 인자가 전부 같은 타입이고 `Dialog`가 프리뷰에 안 떠서 뒤바꿈을 잡는 자동 검증이 0건이다. **7번째 소비처(#231 머지, 2026-08-15)** — C-301 배경 편집의 그만두기 확인이 파괴적 액션=좌 Secondary(`그만두기`) / 취소=우 Primary(`계속 편집하기`) 배치를 골라 그쪽이 하나 앞선다. 또 A-005가 `isEnabledButton = isCreating.not()`을 쓰면서 "요청 중엔 확인만 비활성" 불가라는 단일 플래그 제약을 develop 코드가 처음 만났다 → [open-questions](../synthesis/open-questions.md) [2026-08-12] · [a005 스펙](../specs/archive/2026-07-29-a005-group-create.md)·[a004 스펙](../specs/archive/2026-08-12-a004-group-invite-code.md). ✅ **그 제약을 만난 유일한 호출자가 사라졌다**(#393·#394 develop 머지, 2026-08-27) — A-005 그룹 생성과 S-102 그룹 참여가 둘 다 **요청 직전에 팝업을 닫는** 쪽으로 옮겼다. 그래서 A-005의 `isEnabledButton` 전달이 없어지고 진행 중 dismiss 가드(`isCreating`·`isEntering` 중 닫기 차단)도 함께 걷혔다 — 팝업이 이미 닫혀 있어 막을 것이 없다. 진행은 `YGScaffoldV2` 로딩 오버레이가, 실패는 토스트가 말한다. **Danger Zone 3종이 PR #287에서 고른 관용구와 같아졌고**(OQ-P-141 ②의 "순서는 뒤집지 않았다"), 이로써 `isEnabledButton`을 명시적으로 주는 호출자는 develop에 **0곳**이다 — [ygmodalpopup 스펙](../specs/archive/2026-07-15-ygmodalpopup.md)의 "개별 비활성 불가" 미결은 소비처가 사라진 채로 남는다.
 - **`YGInviteCard`**(+`YGInviteCardStatus` enum): 그룹 초대 코드 카드. Active/Invalid 상태로 border·subText·코드박스 배경·복사 버튼 활성 분기. 복사 버튼은 `YGButton.SmallSquare` 재사용. **각짐 sync(#159)** — 테두리 `shape`·`.clip`·`InviteCodeBox` clip 모두 `radius.none`. 프리뷰 `@YGPreview`/`PreviewBox`.
 - **`YGTextField` / `YGTextFormField`**(`component/textfield/`): 단일 폼 + errorDescription 확장. **각짐/배경 sync(#159)** — 공통 `commonShape` = `radius.none`(각짐), 배경 = `grayScale.white`(불투명, 구 `transparency.white75`에서 변경). clear 아이콘은 `YGIconButton` 재사용. 🔁 **S-101 라운드 확장 2건(#223 develop 머지, 2026-08-13)** — ① `YGTextFormField`·`YGTextFieldImpl`에 `keyboardOptions`·`keyboardActions`를 기본값(`KeyboardOptions.Default`·`KeyboardActions.Default`)과 함께 노출해 `BasicTextField`로 전달한다(키보드 엔터로 확정을 받으려면 통로가 필요했다. 기존 호출부는 전부 named argument라 무영향). ② `YGTextFieldImpl`에 `defaultMinSize(minHeight = SizeTokens.Size48.getDp())`를 체인 맨 앞에 걸어 **최소 높이 48 고정** — `showClear`일 때 상하 패딩이 `padding5`→`padding1`로 줄고 44dp 아이콘 버튼이 들어오는 구조라 클리어 버튼 등장·소멸마다 행 높이가 재계산돼 필드가 들썩였다.
@@ -487,11 +484,13 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
   `YGSkeleton`은 같은 라운드의 다른 축이다 — 덮개가 아니라 **한 이미지의 자리**를 시머 회색면으로
   채우고, 크기를 스스로 정하지 않으므로 자리를 아는 곳에서만 쓴다(현재 소비처는 `YGCanvas` 배경 하나).
   흐르는 값은 `drawBehind` 안에서 읽어 프레임마다 재구성이 돌지 않게 한다.
-- **이미지 로더 (#440 develop 머지, 2026-09-04)**: `image/ParfaitImageLoader.kt`가 전역 Coil 로더를
-  만드는 **유일한 자리**다(`newParfaitImageLoader` — 크로스페이드 on). `app`·`app-preview` 두
+- **이미지 로더 (#440 develop 머지, 2026-09-04)**: `core:ui`의 `image/ParfaitImageLoader.kt`가 전역 Coil 로더를
+  만드는 **유일한 자리**다(`newParfaitImageLoader` — 크로스페이드 on. 컴포넌트가 아니라 앱 전역 설정이라
+  디자인시스템이 아닌 `core:ui`에 있다). `app`·`app-preview` 두
   `BaseApplication`이 `SingletonImageLoader.Factory`를 구현해 같은 함수를 물어 주므로, 두 앱의 이미지
-  동작이 갈리지 않는다. 같은 파일의 `rememberReloadableImageRequest(url, reloadKey)`는 **다시 시도의
-  전제**다 — `reloadKey`가 0보다 크면 메모리·디스크 캐시를 끄고 다시 받아 온다(같은 url로 다시 그리기만
+  동작이 갈리지 않는다. 디자인시스템 `image/ReloadableImageRequest.kt`의
+  `rememberReloadableImageRequest(url, reloadKey)`는 **다시 시도의 전제**다(`YGCanvas`가 직접 쓰므로
+  `core:ui`로 못 간다) — `reloadKey`가 0보다 크면 메모리·디스크 캐시를 끄고 다시 받아 온다(같은 url로 다시 그리기만
   하면 실패한 요청과 디스크에 앉은 깨진 바이트가 그대로 재사용돼 몇 번을 눌러도 같은 실패다).
 - **배경 블러 의존 `dev.chrisbanes.haze`**(#188): `gradle/libs.versions.toml` + `build-logic` `ComposeConfig`에 배선돼 Compose 모듈 전역에 깔린다(`coil-compose`와 같은 자리). 소스가 `Modifier.hazeSource(state)`, 소비 표면이 `Modifier.hazeEffect(state)`이고 **`HazeState`는 호출 화면이 소유**한다. `RenderEffect` 기반이라 **API 31 미만에서는 블러 없이 틴트만** 남는다(`minSdk` 26). 자체 `GraphicsLayer` 구현이 기각된 경위와 실측은 [ADR-0018](../adr/0018-backdrop-blur-haze.md) — 프로젝트에 블러 관용구가 둘(배경=Haze / 자기 자식=C-101 자체 구현) 존재한다 → [open-questions](../synthesis/open-questions.md).
 - **`YGDangerZone`**: 상/하 2슬롯 + 사이 구분선 컨테이너, `IntrinsicSize.Max`. **점선 재설계(#159 develop 머지)** — 반투명 채움 → `dashedBorder()`(gray-100 점선 테두리) + 세로 패딩, 구분선은 solid `YGHorizontalDivider` → `YGHorizontalDashedDivider`(gray-100 점선). modifier 체이닝 `dashedBorder().padding()` 순서 규칙(테두리 최외곽 → 안쪽 패딩). 슬롯에 대개 `YGActionItem` 주입(로그아웃/탈퇴 묶음). 상세 [ygdangerzone-dashed](../specs/archive/2026-07-19-ygdangerzone-dashed.md).
@@ -503,29 +502,6 @@ res/drawable*/            ← ic_* 아이콘 + 밀도별 PNG 세트(#218로 A-00
     - `clickableYGNoRipple`에 `interactionSource: MutableInteractionSource? = null`이 첫 파라미터로 추가됐다(다른 네 변형과 같은 자리). 없으면 hoisted `interactionSource`를 넘기던 컴포넌트 9종의 눌림 표현이 끊긴다.
     - **300ms 스로틀이 함께 딸려온다.** 게이트는 `remember`라 **Modifier 노드마다 하나**여서 다른 요소로 옮겨 누르는 것은 막지 않고 같은 요소 연타만 막는다. 이관 지점은 전부 단일 선택이거나 멱등이고, 셔터·재시도·`goTo` 유발 클릭은 오히려 중복 실행이 막힌다.
     - **리플이 유일한 피드백이었다가 사라진 곳은 `clickableYG`(Dim) 승격 후보다** — `NotionWebView` 재시도, `TermAgreeScreen` 재시도·약관 링크 caret, `InviteCodePasteBar`, `GalleryImageGridComponent` 셀 → [open-questions](../synthesis/open-questions.md) [2026-08-17]. (여섯째였던 `CanvasImageSelectScreen` 이미지는 #514에서 화면이 삭제돼 후보에서 빠졌다.)
-- **튜토리얼 컴포넌트**(#449 develop 머지, 2026-09-05, `ygtutorial/`): 화면 첫 진입에서 한 번 도는 안내를
-  `YGTutorialOverlay`(화면을 덮는 한 장) + `YGTutorialBox`(설명 카드) + `YGTutorialProgress`(몇 번째 장인가)
-  + `YGTutorialBoxPlacement`(카드가 위·아래 중 어디에 붙는가)로 나눠 담는다. **강조할 자리만 뚫은
-  오버레이가 아니다** — `imageResource`가 딤까지 구워진 **알파 없는 풀스크린 목업**이고 그 한 장이 실제
-  화면을 통째로 덮는다. 그래서 목업은 시스템바를 뺀 자리에만 그리고(`windowInsetsPadding(systemBars)`)
-  딤 자체는 인셋을 받지 않아 화면 끝까지 이어진다. 딤은 `clickableYGNoRipple`로 **클릭을 삼킨다** —
-  안내가 떠 있는 동안 아래 화면이 눌리면 사용자가 무엇을 건드렸는지 모른 채 다른 화면에 가 있게 된다.
-  - **버튼 라벨을 호출부가 정하지 않는다** — 마지막 장의 버튼은 "다음"이 아니라 "시작하기"인데, 그
-    판단이 `YGTutorialProgress.isLast` 하나로 끝나므로 진행 표시(`2/3`)와 라벨이 **같은 사실 하나**에서
-    나온다. 화면마다 다시 쓰면 `3/3`인데 "다음"인 조합이 언제든 만들어진다. `progress`를 넘기지 않으면
-    한 장짜리라는 뜻이고, 라벨은 "시작하기"가 되며 **진행 표시가 비운 윗줄로 제목이 올라온다**(칩만
-    남겨 두면 카드가 위아래로 벌어진다). 문자열 3건은 이 컴포넌트가 모듈 `res/`에 갖는다.
-  - **겹치는 자리는 스캐폴드 밖이다** — 소비 화면 둘이 모두 `Box` 안에서 `YGScaffoldV2`와 **형제**로
-    놓는다. 안에 넣으면 컨텐츠 인셋을 받아 딤이 상태바 밑에서 끊기고 시스템바만 안 덮인 화면이 된다.
-    카드만 인셋을 받아 글자가 시스템바를 피한다.
-  - **첫 소비처가 둘이다**(같은 PR) — C-001 캔버스(3장, `CanvasTutorialStep` enum이 순서·목업·문구·
-    카드 위치를 든다), 갤러리 업로드(1장). **여러 장짜리를 감싸는 자리는 디자인시스템이
-    아니라 feature 로컬**이다(`canvas/impl`의 `CanvasTutorialOverlay`) — 한 장짜리인 갤러리는 화면이
-    `YGTutorialOverlay`를 직접 부른다. `boxPlacement`를 고르는 기준은 취향이 아니라 **그 장이 강조하는
-    UI가 어디 있는가**이고, 카드는 그 반대편에 붙는다(달력을 여는 장만 `Bottom`이다).
-  - ⚠️ **목업 이미지가 실제 화면과 어긋날 길이 열려 있다** — 안내가 가리키는 버튼이 옮겨 가거나 문구가
-    바뀌어도 PNG는 따라오지 않고, 통짜 스크린샷이라 기기 폭·글자 크기·테마에 맞춰 다시 그려지지도
-    않는다(`ContentScale.Crop`으로 잘린다). 정책 근거도 없다 → [open-questions](../synthesis/open-questions.md) OQ-P-363.
 
 > **과도기 — 컨벤션 분기(정리 대상)**
 > - **`YGStrokeButton.borderWidth`**(#259): `Dp.Hairline`이면 테두리를 **안 그린다**(`Modifier.border`는 `Dp.Hairline`을 1px 선으로 그리므로 `then`으로 직접 걸러낸다). 배경·높이·눌림 색만 재사용하고 테두리는 감싸는 쪽이 한 번만 긋는 사용법이고, C-201 캘린더 드롭다운이 그 첫 소비처다 — 버튼마다 두르고 겹쳐 지우는 방식은 겹침이 빠지는 순간 두께가 두 배가 된다.

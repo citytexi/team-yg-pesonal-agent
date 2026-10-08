@@ -314,7 +314,7 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 ### [2026-07-29] `core:ui` 공용 UI 컴포넌트의 프리뷰·규약 범위 미정
 - **ID**: OQ-P-027
 - **출처**: `core/ui/VerticalGridLayout.kt`(PR #179 develop 머지) — 프리뷰가 `@Preview` + **public** 함수 + `Random` 색이고, `core:designsystem`의 `@YGPreview`+`PreviewBox`(private) 규약을 따르지 않는다. `core:ui`는 그동안 MVI 베이스만 있어 규약 대상이 아니었으나 공용 Compose 레이아웃이 들어오면서 경계가 모호해졌다.
-- **항목**: ① 공용 UI 컴포넌트를 `core:ui`에 둘지 `core:designsystem`으로 옮길지, ② `core:ui`에도 프리뷰 규약(`@YGPreview`+`PreviewBox`, 프리뷰 함수 private)을 적용할지 — `core:ui`가 `core:designsystem`에 의존하는지부터 확인 필요.
+- **항목**: ① 공용 UI 컴포넌트를 `core:ui`에 둘지 `core:designsystem`으로 옮길지, ② `core:ui`에도 프리뷰 규약(`@YGPreview`+`PreviewBox`, 프리뷰 함수 private)을 적용할지 — `core:ui`는 `core:designsystem`을 `implementation`으로 보므로 규약을 쓰는 데 막히는 것은 없다(`component/modal/YGModalQuit.kt`는 이미 따른다).
 - **상태**: 미해결
 - **해소 메모**: 방침 확정 시 [module-structure](../architecture/module-structure.md) `core:ui` 행과 [design-system](../architecture/design-system.md) 프리뷰 규약 범위를 함께 갱신. [2026-07-23 프리뷰 관용구 부분 회귀](#2026-07-23-프리뷰-관용구-부분-회귀--신규-컴포넌트가-ygpreview-표준-이탈)와 함께 관리.
 
@@ -373,13 +373,12 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 - **상태**: 해소됨 (**PR #182 develop 머지, 2026-08-01** — ①②는 치환으로 닫힘, ③ 줌은 컨트롤 자체가 화면에서 빠져 [2026-08-01 줌 死코드 항목](#2026-08-01-카메라-줌-ui가-死코드로-남음)으로 넘어갔다)
 - **해소 메모**: `component/controls/ShutterButton.kt`·`FlipCameraButton.kt`가 삭제되고 `CameraControlComponent`가 `YGCameraShutter` + `YGCircleButton`(플래시·전환) 조합으로 바뀌었다. 취소는 맨 `TextButton` 대신 상단 `YGCircleButton`(`ic_close`)이다. flip 아이콘은 `ic_reverse`·`YGCircleButtonType.Default`로 구현했다(Figma `Type=Small` 여부는 대조하지 않았고, 화면이 정본이 된 상태). [design-system](../architecture/design-system.md) 인벤토리에 화면 적용 줄 추가, 상세는 [c101 스펙](../specs/archive/2026-08-01-c101-camera-picture-confirm.md).
 
-### [2026-07-30] Button-Edit-Action이 정수 토큰 재조립으로 2dp 커짐 + Small 테두리 소수 잔존
+### [2026-07-30] Button-Circle Small 테두리가 Figma 소수 두께를 1dp로 정규화한 채다
 - **ID**: OQ-P-034
-- **출처**: [미구현 컴포넌트 스펙](../specs/archive/2026-07-30-designsystem-button-missing-components.md) "치수 도출 원칙" — Figma `Button-Edit-Action`은 아이콘 프레임이 22이고 `SizeTokens`에 대응 스케일이 없다. 스펙은 `Size22`를 만들지 않고 `Size24`로 옮기기로 정했고, 그 결과 내부 원과 바깥 프레임이 각각 2dp 커진다. 또 `Button-Circle` `Type=Small`의 테두리는 재조회 후에도 소수(0.636)로 남아 1dp로 정규화한다.
-  > ✅ **부분 해소(2026-07-30 재조회)** — `Button-Circle` `Type=Small`이 Figma에서 **정수 치수로 정리**됐다(내부 원 28 명시·아이콘 18·글리프 12·바깥 폭 44 명시, 구조도 "패딩 도출"에서 "지름 고정 + 중앙 아이콘"으로 바뀜). `SizeTokens.Size18` 추가를 합의해 Circle 3변형의 치수 오차는 없어졌다. 남은 것은 Edit-Action 2dp와 Small 테두리 두께다.
-- **항목**: ① Edit-Action의 2dp 차이를 디자이너가 수용하는지, 아니면 Figma를 정수 치수(아이콘 24 또는 원 40)로 정리해줄 수 있는지, ② 수용도 정리도 안 되면 `Size22`를 스케일에 넣을지 해당 컴포넌트만 리터럴 dp를 허용할지, ③ Small 테두리 0.636을 1로 정리해줄 수 있는지.
-- **상태**: 미해결 (의도된 절충 — 구현 완료, 정수 토큰으로 반영. PR #183 develop 머지, 2026-08-01)
-- **해소 메모**: `YGEditActionButton`이 내부 `padding3` + 아이콘 `SizeTokens.Size24`, 바깥 `padding1` 래핑으로 구현됐다(2026-07-30). 확인 후 값이 바뀌면 해당 컴포넌트 치수와 스펙 "치수 도출 원칙" 표를 함께 고친다.
+- **출처**: [미구현 컴포넌트 스펙](../specs/archive/2026-07-30-designsystem-button-missing-components.md) "치수 도출 원칙" — `Button-Circle` `Type=Small`의 테두리는 Figma에서 소수(0.636)이고 `YGCircleButton`은 1dp로 그린다. 같은 항목이 묻던 `Button-Edit-Action` 치수는 닫혔다 — `YGEditActionButton`이 아이콘을 파일 상수 `ICON_SIZE`(22dp)로 그려 내부 원 38·바깥 42가 Figma와 같다. `SizeTokens`에 `Size22`는 만들지 않았다.
+- **항목**: ① Small 테두리 0.636을 디자이너가 1로 정리해줄 수 있는지.
+- **상태**: 미해결 (의도된 절충 — 1dp로 구현)
+- **해소 메모**: Figma가 정리되면 이 항목을 지운다. 값이 바뀌면 `YGCircleButton`과 스펙 "치수 도출 원칙" 표를 함께 고친다.
 
 ### [2026-07-30] Camera-Shutter에 바인딩된 Transparency.Black5의 용도 불명
 - **ID**: OQ-P-035
@@ -894,13 +893,13 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 
 ### [2026-08-04] 갤러리 死코드 2건 — 부분 접근 배너·전체 조회 UseCase
 - **ID**: OQ-P-089
-- **출처**: `feature/gallery/impl/.../component/GalleryPartialAccessBanner.kt`(참조 0건 — 하단 "사진 재선택" `YGButton`으로 대체됐으나 파일이 남았고, 배경·문구가 `Color` 리터럴 + 코틀린 리터럴이라 문자열 리소스 규약에도 어긋난다) · `domain/.../usecase/gallery/LoadAllGalleryImageGroupsUseCase.kt`(참조 0건 — 화면이 03시 창 필터본 `LoadFilterYGGalleryImageGroupsUseCase`만 쓴다). 둘 다 PR #191 이후 상태.
+- **출처**: `feature/gallery/impl/.../component/GalleryPartialAccessBanner.kt`(참조 0건 — 하단 "사진 재선택" `YGButton`으로 대체됐으나 파일이 남았고, 배경·문구가 `Color` 리터럴 + 코틀린 리터럴이라 문자열 리소스 규약에도 어긋난다) · `domain/.../usecase/gallery/LoadAllGalleryImageGroupsUseCase.kt`(참조 0건 — 화면이 `LoadGalleryImageGroupsUseCase`(당시 이름 `LoadFilterYGGalleryImageGroupsUseCase`)만 쓴다). 둘 다 PR #191 이후 상태.
 - **항목**: ① 배너를 지울지(대체 완료) 다른 접근 수준 안내로 되살릴지, ② 전체 조회 UseCase가 앞으로 쓰일 화면이 있는지(있으면 유지, 없으면 Repository의 `loadAllGalleryImages`까지 함께 정리).
 - **상태**: 부분 해소 (② 해소 — 정리 쪽으로 닫힘, 2026-09-20 PR #514 / ① 잔존)
   > ✅ **②가 "없다"로 닫혔다(2026-09-20, PR #514)** — `LoadAllGalleryImageGroupsUseCase`가 삭제되고
   > `GalleryRepository.loadAllGalleryImages`와 `GalleryRepositoryImpl`의 구현까지 함께 걷혔다.
-  > 해소 메모가 "없으면 Repository까지 함께 정리"라고 적어 둔 그대로다. 갤러리 화면은 03시 창
-  > 필터본 `loadFilterYGGalleryImages` 하나만 쓴다.
+  > 해소 메모가 "없으면 Repository까지 함께 정리"라고 적어 둔 그대로다. 갤러리 화면은
+  > `loadGalleryImages` 하나만 쓴다(#599에서 03시 창 제한을 걷고 이름의 `Filter`도 뗐다).
   > ⚠️ **①은 그대로다** — `GalleryPartialAccessBanner.kt`가 참조 0건으로 남아 있다. 같은 청소
   > 라운드가 바로 옆 死코드는 지우면서 이 파일은 건드리지 않았다.
 - **해소 메모**: ①만 남았다. 정리 시 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 파일 구성·주의 절과 [data-layer](../architecture/data-layer.md) 레이어 배치의 `GalleryRepository` 서술을 맞춘다.
@@ -1065,31 +1064,9 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 ### [2026-08-09] 테스트 기반 구조에 검증되지 않은 표면 3건
 
 - **ID**: OQ-P-102
-- **출처**: PR #219 develop 머지([unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)). 유닛 테스트는 배선·통과했지만 세 표면이 실제로 동작하는지는 증명되지 않았다. ① `MainDispatcherRule`은 사용처가 0건이다 — 배선(`@get:Rule` + `runTest(rule.dispatcher)` 컴파일·통과)까지만 확인했고 `Dispatchers.setMain` 적용·복원과 스케줄러 공유가 무엇을 막아주는지는 미검증이다. 이번 범위(`domain`·`data`·`core:util:*`)에 ViewModel이 없어서다. ② 계측 테스트 2건(`YGThemeSmokeTest`·`ContextExtensionTest`)은 CI에서 `assembleDebugAndroidTest` 컴파일까지만 검증돼 런타임 오류가 드러나지 않는다(**2026-08-25 기준 파일 5개·`@Test` 14건으로 늘었고 조건은 그대로다** — 아래 참고). ③ `core:util:android`는 `parfait-test-unit`이 적용됐지만 unit 테스트가 0개다(내용물이 Compose Modifier·Context/Bitmap 확장이라 대상 없음).
+- **출처**: PR #219 develop 머지([unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md)). 유닛 테스트는 배선·통과했지만 세 표면이 실제로 동작하는지는 증명되지 않았다. ① `MainDispatcherRule`은 사용처가 0건이다 — 배선(`@get:Rule` + `runTest(rule.dispatcher)` 컴파일·통과)까지만 확인했고 `Dispatchers.setMain` 적용·복원과 스케줄러 공유가 무엇을 막아주는지는 미검증이다. 이번 범위(`domain`·`data`·`core:util:*`)에 ViewModel이 없어서다. ② 계측 테스트는 CI에서 컴파일까지만 검증돼 단언이 한 번도 실행되지 않는다. 대상은 `parfait.test.android`를 적용한 모듈 전부이고(루트 `build.gradle.kts`의 `assembleAllDebugAndroidTest` — `core:ui`·`core:designsystem`·`core:util:android`·`feature:groups:canvas:impl`), 규모는 파일 19개·`@Test` 91건이다. 잠그려는 규칙 가운데 덮개 아래 접근성 차단·드러나기 전 클릭 차단·재시도 시 캐시 우회·`centeredAt` 배치는 눈으로는 확인이 안 되는 종류다. ③ `core:util:android`는 `parfait-test-unit`이 적용됐지만 unit 테스트가 0개다(내용물이 Compose Modifier·Context/Bitmap 확장이라 대상 없음).
 - **항목**: ① 첫 ViewModel 테스트를 쓸 때 룰 자체를 검증하는 테스트를 함께 추가할지 — 계측 소스셋에서 코루틴을 다루려면 `bundles.test-android`에 `kotlinx-coroutines-test`를 넣어야 하고(현재 없고 `:core:testing`도 계측에 미배선), `runTest`를 인자 없이 부르면 스케줄러가 갈려 `advanceUntilIdle()`이 Main 큐를 비우지 못한다. ② CI에 기기·에뮬레이터를 붙일 시점. ③ Android 비의존 로직이 `core:util:android`에 생기는 시점에 채운다.
 - **상태**: 미해결 (셋 다 트리거 대기 — ViewModel 등장 / CI 기기 도입 / 대상 로직 추가)
-  > 📌 **②의 규모가 일곱 배가 됐는데 실행은 여전히 0회다(2026-08-25, PR #351)** — `YGCanvasTest`
-  > 2건이 붙어 계측 소스셋이 **파일 5개·`@Test` 14건**이 됐다(`YGThemeSmokeTest`·`ContextExtensionTest`
-  > ·`YGLoadingOverlayTest`·`YGScaffoldV2Test`·`YGCanvasTest`). CI `test.yml`은 그대로
-  > `:core:util:android:assembleDebugAndroidTest`·`:core:designsystem:assembleDebugAndroidTest`
-  > 두 줄이라 **컴파일만 되고 단언은 한 번도 실행되지 않는다.** 이번에 들어온 둘은 `YGCanvas`의
-  > 새 규칙(배경 미설정일 때만 빈 안내판)을 잠그려고 쓴 것이라, 잠갔다고 적기 어려운 상태가
-  > 새 규칙 하나를 더 덮는다. ②(CI 기기 도입)의 값어치가 라운드마다 커진다.
-  > 📌 **②의 규모가 또 두 배가 됐다(2026-09-04, PR #440 develop 머지)** — 계측이 파일 6·`@Test` 17건에서
-  > **파일 11·`@Test` 35건**이 됐다(디자인시스템에 `YGLoadingLottieTest`·`ParfaitImageLoaderTest` 신설 +
-  > `YGCanvasTest` 2 → 8 · `YGScaffoldV2Test` 5 → 7 · `YGLoadingOverlayTest` 2 → 3, `core:ui`에
-  > `reveal/` 계측 3파일 6건 신설). **`core:ui`가 계측 소스셋을 처음 갖게 됐고**
-  > (`parfait.test.android`·`parfait.test.compose`), CI `test.yml`은 여전히 두 모듈의
-  > `assembleDebugAndroidTest` 두 줄이라 **새 모듈의 계측은 컴파일조차 안 된다.** 이번에 들어온 것들이
-  > 잠그려는 규칙(덮개 아래 접근성 차단·드러나기 전 클릭 차단·재시도 시 캐시 우회)은 전부 **눈으로는
-  > 확인이 안 되는 종류**라 ②의 값어치가 또 커졌다.
-  > 📌 **처음으로 계측이 "컴파일은 되는" 자리에 들어왔다(2026-09-08, PR #465 develop 머지)** —
-  > 계측이 파일 11·`@Test` 35건에서 **파일 12·`@Test` 37건**이 됐다(`core:util:android` 에
-  > `ModifierCenteredAtTest` 2건 신설, 이 모듈에 `parfait.test.compose` 가 붙었다). 이 모듈은
-  > CI `test.yml` 의 `assembleDebugAndroidTest` 두 줄 중 하나라 **컴파일은 된다** — 그래도 단언은
-  > 여전히 실행되지 않는다. 이번에 들어온 계약(부모보다 큰 자식을 `centeredAt` 으로 놓으면 중심이
-  > 맞고 `offset` 으로 놓으면 넘친 양의 절반만큼 밀린다)은 **눈으로 보기 전에는 드러나지 않는
-  > 배치 규칙**이라 ②의 값어치가 또 커졌다.
   > 📌 **①이 한 라운드 더 버텼다(2026-08-12, PR #230)** — `data` 유닛 테스트가 3건 늘었는데(`ImageRemoteDataSourceImplTest`·`MemberRemoteDataSourceImplTest`·`ParfaitImageRemoteDataSourceImplTest`) **`MainDispatcherRule` 사용처는 여전히 0건**이다. 셋 다 `runTest`만 쓰고 `Dispatchers.Main`을 건드리지 않는다 — 원인은 그대로 "테스트 대상에 ViewModel이 없다"이고 그 조건은 소비처 결선 라운드까지 안 바뀐다.
 - **해소 메모**: 해소 시 [unit-test-infrastructure 스펙](../specs/archive/2026-08-06-unit-test-infrastructure.md) "주의 / 열린 질문" 절의 대응 항목을 지운다.
 
@@ -1274,13 +1251,13 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   > 디자인이 정본이라는 것이 확인됐고, 새로고침 문구(`group_list_refreshing`)는 여전히 Figma에만 있다.
 - **해소 메모**: 확정 시 [g001-group-list 스펙](../specs/archive/2026-08-01-g001-group-list.md) 정책 대조 표의 로딩 행을 갱신하고, 문구 정책이 수집되면 위키 쪽 미결과 함께 닫는다.
 
-### [2026-08-11] CI 빌드 성능 후속 2축 — `org.gradle.parallel` 재도입과 configuration cache
+### [2026-08-11] CI 빌드 성능 후속 — configuration cache
 
 - **ID**: OQ-P-114
-- **출처**: PR #227 develop 머지([ci-gradle-cache-seeding 스펙](../specs/archive/2026-08-10-ci-gradle-cache-seeding.md)) — 캐시 시딩은 들어갔고 효과도 확인됐다(PR `unit-test` 6m16s → 2m45s). 초안에 있던 `org.gradle.parallel`·힙 상향·`kotlin.daemon.jvmargs`는 **의도적으로 되돌렸고**, configuration cache는 처음부터 범위 밖이었다. 둘 다 "안 하기로" 한 것이 아니라 **별건으로 미룬 것**이다.
-- **항목**: ① `parallel` 재도입 여부 — 다시 켠다면 검증을 `test` 그래프 하나로 끝내지 말고 `assembleRelease`·`lint`까지 돌려야 한다(미선언 모듈 간 의존은 태스크 그래프마다 다르게 나타나고 릴리스 간헐 실패는 "플래키"로 오진되기 쉽다). 힙과 `kotlin.daemon.jvmargs`가 함께 가야 한다 — 적지 않으면 Kotlin 데몬이 Gradle 데몬 `-Xmx`를 상속해 조용히 2배 예약이 된다. ② configuration cache를 CI에서 살릴지 — `setup-gradle`의 `cache-encryption-key` 입력 + repo secret 생성이 필요하고 Crashlytics·google-services 플러그인 호환을 따로 검증해야 한다. 지금 상태로는 매 런 새 러너인 CI에서 이득이 0이다.
-- **상태**: 미해결 (효과 측정이 끝난 뒤 별건으로 — 캐시 변경과 섞으면 원인을 못 가른다)
-- **해소 메모**: 착수 시 [ci-gradle-cache-seeding 스펙](../specs/archive/2026-08-10-ci-gradle-cache-seeding.md) "검토했다가 뺀 것"·"범위" 절을 근거로 삼고, 결과를 새 스펙으로 분리한다.
+- **출처**: [ci-gradle-cache-seeding 스펙](../specs/archive/2026-08-10-ci-gradle-cache-seeding.md) "범위" 절이 configuration cache를 처음부터 뺐다.
+- **항목**: configuration cache를 CI에서 살릴지 — `setup-gradle`의 `cache-encryption-key` 입력 + repo secret 생성이 필요하고 Crashlytics·google-services 플러그인 호환을 따로 검증해야 한다. 지금 상태로는 매 런 새 러너인 CI에서 이득이 0이다. PR `unit-test` 런에서 데몬 기동부터 첫 태스크까지가 12초 안팎이라 얻을 수 있는 상한도 그 정도다.
+- **상태**: 미해결 (별건으로)
+- **해소 메모**: 착수 시 [ci-gradle-cache-seeding 스펙](../specs/archive/2026-08-10-ci-gradle-cache-seeding.md) "범위" 절을 근거로 삼고, 결과를 새 스펙으로 분리한다.
 
 ### [2026-08-11] GitHub Actions Node 20 deprecation 경고
 
@@ -1416,7 +1393,7 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 ### [2026-08-12] 캔버스 날짜가 03시 경계를 안 쓴다 — 같은 저장소에 `DayWindow`가 있는데도
 
 - **ID**: OQ-P-127
-- **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasMainViewModel.kt#loadCanvasMainInfo`(PR #199 develop 머지) — 캔버스 날짜 라벨을 `Clock.System.todayIn(TimeZone.currentSystemDefault())`로 만든다. 위키 [[캔버스-마감-스케줄]]은 하루 경계가 **03:00 KST 고정**이고(서버 기준 KST), `domain`의 `DayWindow.current(timeZone, clock)`가 그 경계를 이미 구현해 C-102 갤러리가 쓰고 있다. 지금 구현은 경계가 00:00이고 시간대도 기기 설정을 따른다 — 00:00~02:59 사이에는 화면이 **캔버스의 실제 날짜보다 하루 뒤 날짜**를 보여준다.
+- **출처**: `feature/groups/canvas/impl` `viewmodel/CanvasMainViewModel.kt#loadCanvasMainInfo`(PR #199 develop 머지) — 캔버스 날짜 라벨을 `Clock.System.todayIn(TimeZone.currentSystemDefault())`로 만든다. 위키 [[캔버스-마감-스케줄]]은 하루 경계가 **03:00 KST 고정**이고(서버 기준 KST), `domain`의 `DayWindow.current(timeZone, clock)`가 그 경계를 이미 구현해 있다(갤러리는 #599에서 이 경계를 걷어 냈고 지금은 최근 이미지 축출만 쓴다). 지금 구현은 경계가 00:00이고 시간대도 기기 설정을 따른다 — 00:00~02:59 사이에는 화면이 **캔버스의 실제 날짜보다 하루 뒤 날짜**를 보여준다.
 - **항목**: ① 화면 날짜를 `DayWindow` 기준으로 옮길지(경계·시간대 둘 다), ② 시간대를 KST로 고정할지 기기 시간대를 인정할지 — 서버가 KST로 캔버스를 마감하므로 해외 사용자는 어느 쪽이든 정책 결정이 필요하다. ③ 날짜가 화면에서 계산되는 구조 자체를 유지할지(서버가 캔버스 날짜를 내려주면 표시만 남는다).
 - **상태**: 미해결 (그룹·캔버스 데이터 미결선이라 지금은 표시만 틀린다)
   > ⚠️ **범위가 커졌다(2026-08-16, PR #259)** — 같은 `today` 값이 이제 **캘린더의 미래 날짜 잠금과 오늘
@@ -1428,7 +1405,7 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   > (`PARFAIT_TIME_ZONE`·`parfaitToday()`). 정한 이유가 표시 정합이 아니라 **동작**이라는 점이 중요하다:
   > 캔버스 행이 KST 날짜를 키로 저장돼, 기기 시간대로 오늘을 세면 오늘 조회의 자정 경계 재시도가
   > 하루 한 번이 아니라 **로드마다** 돌고 달력이 지금 보는 날을 미래로 보고 잠근다. **경계 00:00은
-  > 그대로**라 ①(`DayWindow` 03:00으로 옮길지)은 열려 있고, `DayWindow`는 여전히 C-102 갤러리만 쓴다.
+  > 그대로**라 ①(`DayWindow` 03:00으로 옮길지)은 열려 있고, `DayWindow.current()`는 이제 최근 이미지 축출(`GetRecentCacheImagesUseCase`)만 쓴다(갤러리는 #599에서 걷어 냈다).
   > **`today` 이중 계산은 해소됐다** — 로드 함수가 날짜를 만들지 않게 되어 UiState 기본값 한 자리다
   > → [c001-canvas-today-detail 스펙](../specs/archive/2026-08-17-c001-canvas-today-detail.md).
   > ⚠️ **경계 00:00을 읽는 자리가 늘었다(2026-08-17, PR #297)** — 재진입마다 도는 `syncToday()`가
@@ -2319,7 +2296,7 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   한 화면이 배치와 테두리를 함께 고치고, 테두리 전용 화면은 없다.
 - **항목**: ① 편집 진입을 위키 v7의 허브(배경 탭 + 토핑 탭) 쪽으로 맞출지, 구현의 두 화면 구조를 정책에
   올릴지(정책 소관). ② 배경 편집 화면의 분석 화면 id를 v7에 없는 `C-301`로 계속 보낼지 — id 전반은
-  OQ-P-416가 쥔다. ③ 편집 버튼이 배경만 연다는 것을 사용자에게 어떻게 알릴지 — 튜토리얼 문구는 OQ-P-418.
+  OQ-P-416가 쥔다. ③ 편집 버튼이 배경만 연다는 것을 사용자에게 어떻게 알릴지.
 - **상태**: 미해결 (구현의 화면 구조는 피그마 수정 플로우를 따랐고 위키에는 그 원본이 없다. 위키는 이 저장소가 고치지 않는다)
 - **해소 메모**: 기획이 화면 구조를 위키에 반영하면 그쪽 id에 맞춰 `toAnalyticsScreenOrNull`과 `status.md` 머리말을 고친다.
 
@@ -4132,17 +4109,17 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 
 - **ID**: OQ-P-243
 - **출처**: `domain/model/DayWindow.kt`의 `DAY_BOUNDARY_HOUR` × `domain/model/ParfaitDay.kt`의
-  `parfaitToday()` × `GetRecentCacheImagesUseCase`·`GalleryRepositoryImpl` — PR #308이 앱의 하루 경계를
+  `parfaitToday()` × `GetRecentCacheImagesUseCase` — PR #308이 앱의 하루 경계를
   03시로 옮길 때 **경계 값을 두 곳에 적지 않으려고** 기존 `DayWindow.DAY_BOUNDARY_HOUR`를 재사용했다.
   그 자체는 옳은 판단이지만, 지금 그 상수는 **성격이 다른 두 하루**를 정한다 — `parfaitToday()`의 하루는
   **서버 마감 배치 시각의 거울**(고정 KST, 계약이 값을 내려주지 않아 앱이 복제한 것)이고,
-  `DayWindow.current()`의 하루는 **기기 기준 최근 사진 윈도우**(기기 시간대)다. KDoc은 "시각만 공유하고
+  `DayWindow.current()`의 하루는 **기기 기준 최근 이미지 축출 윈도우**(기기 시간대)다. KDoc은 "시각만 공유하고
   시간대는 공유하지 않는다"까지 적었으나, **서버가 배치 시각을 바꿀 때 무엇을 해야 하는지**는 적히지
-  않았다. 그 경우 상수를 고치면 갤러리 윈도우가 함께 움직이고, 갈라 두면 "두 곳에 적으면 한쪽만
+  않았다. 그 경우 상수를 고치면 최근 이미지 윈도우가 함께 움직이고, 갈라 두면 "두 곳에 적으면 한쪽만
   고쳐진다"던 원래 문제로 돌아간다.
-- **항목**: ① 서버 배치 시각이 바뀔 때 상수를 갈라 각자 갖게 할지, 아니면 갤러리 윈도우도 같이 움직이는
+- **항목**: ① 서버 배치 시각이 바뀔 때 상수를 갈라 각자 갖게 할지, 아니면 최근 이미지 윈도우도 같이 움직이는
   것이 의도라고 못박을지. ② 계약에 하루 경계를 내려주는 필드를 서버에 요청할지 — 있으면 복제가 사라져
-  이 결합 자체가 없어진다. ③ 갤러리 윈도우의 경계가 03시여야 하는 근거가 정책에 있는지(파르페 마감과
+  이 결합 자체가 없어진다. ③ 최근 이미지 윈도우의 경계가 03시여야 하는 근거가 정책에 있는지(파르페 마감과
   같은 값을 쓰는 것이 우연인지 의도인지 어디에도 안 적혀 있다).
 - **상태**: 미해결 (지금은 두 값이 같아야 맞는 상태라 발화하지 않는다)
 - **해소 메모**: 정하면 [api/parfait.md](../../api/parfait.md) "하루 경계"와
@@ -4778,7 +4755,7 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   나머지는 확정 버튼을 눌러야 저장된다. 화면은 그 차이를 말하지 않는다. 삭제가 성공하면 곧바로 화면을
   떠나므로, 그때까지 다른 토핑에 해 둔 미저장 변경은 묻지 않고 버려진다 — 삭제 전에 저장할지, 물을지,
   화면에 남을지 정한 적이 없다. 번호는 다른 문서가 가리키는 ②를 그대로 둔다.
-- **상태**: 미해결 (정한 적 없음)
+- **상태**: 해소됨 (2026-10-08, PR #595 develop 머지 — 삭제가 즉시 나가지 않는다. 삭제 버튼은 대상을 `pendingDeleteToppingIds`에 모으기만 하고, 확정 버튼이 이동·크기·회전·테두리 저장 뒤에 `deletePendingToppings`로 함께 보낸다. 삭제 확인 모달과 `handleOnDeleteToppingDialogConfirm`은 없다) — 직전 서술: 미해결 (정한 적 없음)
 - **해소 메모**: 마감된 캔버스 409의 처분은 OQ-P-261이 쥔다.
   지금 동작은 `CanvasToppingArrangeViewModelTest`의 `deleteConfirm_success_discardsOtherDirtyToppings`가 고정한다.
   정하면 `deleteConfirm_success_*` 계열을 함께 고친다.
@@ -6073,11 +6050,11 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 
 - **ID**: OQ-P-331
 - **출처**: `CustomGalleryPickerScreen#GalleryContent`(PR #406) — 사진이 있으면
-  `YGFloatingBarTitle`("오늘 찍은 사진"), `isEmpty` 면 제목 없는 `YGFloatingBarClose` 다.
+  `YGFloatingBarTitle`("사진 선택"), `isEmpty` 면 제목 없는 `YGFloatingBarClose` 다.
   Figma 는 `Floating Bar` 에 `Status=Title` 을 추가했을 뿐 **어느 상태에 무엇을 쓰는지**를 주지 않았고,
   스펙이 이 갈래의 출처로 적은 것은 작업자 지시 한 줄이다. 권한 미허용 갈래도 제목이 없다.
 - **항목**: ① 빈 상태에 제목이 없어야 하는가 — 같은 화면이 상태에 따라 머리글을 잃는 것이라
-  스크린리더에는 화면 이름이 사라지는 것과 같다. ② 문구 "오늘 찍은 사진"이 화면 이름인지 목록
+  스크린리더에는 화면 이름이 사라지는 것과 같다. ② 문구 "사진 선택"이 화면 이름인지 목록
   머리글인지 — 위키에 C-102 문구 정책이 없다(빈 상태 안내문은 있고 제목은 없다).
 - **상태**: 미해결 (**동작 영향 0** — 육안 대조도 아직 없다. 이 라운드 검증은 기계 검사뿐이었다)
 - **해소 메모**: 정해지면 [c102 스펙](../specs/archive/2026-08-04-c102-custom-gallery-picker.md) 상단바
@@ -6961,7 +6938,7 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   기기에서는 잘린다. ③ **정책 근거가 없다** — 위키에 튜토리얼 조항 자체가 없고, 노출 조건(설치 후
   화면별 첫 진입 1회)·문구·장 수·카드 위치가 전부 코드에만 있다. ④ 에셋이 큰 편인데(업로드
   튜토리얼 한 장이 이 저장소 최대 크기 드로어블이다) 밀도별 세트가 아니라 xxhdpi 하나다.
-- **상태**: 미해결 (**동작은 의도대로** — 어긋남과 근거 부재의 문제다)
+- **상태**: 해소됨 (2026-10-08, PR #587 develop 머지 — 튜토리얼 기능이 통째로 제거됐다. `YGTutorialOverlay`·`CanvasTutorialStep`과 목업 PNG 넷(`img_canvas_tutorial_1~3`·`img_upload_tutorial`)이 삭제됐다) — 직전 서술: 미해결 (**동작은 의도대로** — 어긋남과 근거 부재의 문제다)
 - **해소 메모**: ③은 위키 판단이 선행이다 — 정책으로 확정되면 위키에 조항을 만들고 여기는 구현
   소관만 남긴다. ①②는 [design-system](../architecture/design-system.md) 「튜토리얼 컴포넌트」 항목에
   대응 규칙을 적는다(뚫는 방식으로 바꿀지, 목업을 유지하고 갱신 책임을 명시할지).
@@ -7036,39 +7013,35 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   튜토리얼을 다시 보고, 안 지우면 **다른 계정이 앞사람의 "봤다"를 물려받는다.** 둘 다 근거가 없다.
   ② 지운다면 자리가 어디인가 — 계정 정보를 지우는 자리와 같은 곳인지, 설정이 계정에 매이는 것이
   맞는지(지금 이 저장소는 계정 축이 아니라 **기기 축**이다). ③ 쓰이지 않는 계약을 남겨 둘지.
-- **상태**: 미해결 (**동작 영향 있음** — 계정 전환 시 튜토리얼이 안 뜬다)
+- **상태**: 해소됨 (2026-10-08, PR #587 develop 머지 — 튜토리얼 기능이 통째로 제거됐다. 튜토리얼 확인 기록만 담던 `UserConfigRepository`·`UserConfigLocalDataSource` 체인이 계약째 삭제돼 부를 자리를 정할 대상이 없다) — 직전 서술: 미해결 (**동작 영향 있음** — 계정 전환 시 튜토리얼이 안 뜬다)
 - **해소 메모**: 정하면 [data-layer](../architecture/data-layer.md) DataStore 항목에 소유 축(계정 vs 기기)을
   적는다. 계정 축이면 [ADR-0022](../adr/0022-user-info-local-ssot.md)의 정리 경로에 합류시킨다.
 
-### [2026-09-05] 평문·암호화 DataStore 프록시가 서로의 복제다
+### [2026-09-05] 평문 키와 암호문 키가 한 `DataStore<Preferences>`에 섞여 있다
 
 - **ID**: OQ-P-367
-- **출처**: `DataStorePreferences`(PR #449) · `EncryptedPreferences`(PR #263) — `observe`·`read`·
-  `write`(단건·다건)·`remove`·`decodeOrDiscard`가 **KDoc까지 같고**, 다른 것은 쓰기의
-  `cryptoManager.encrypt`와 읽기의 `decrypt` 두 줄뿐이다.
-- **항목**: ① 한쪽이 다른 쪽을 감싸거나 공통 부분을 뽑을지 — 지금은 폐기 규칙(못 읽는 저장분을 버린다)
-  같은 미묘한 결정이 **두 벌로 존재**해서, 한쪽만 고치면 조용히 갈린다. ② `DataStorePreferences.read`는
-  **호출부가 0건**이다(쓰는 곳이 `observe`·`write`·`remove`만 쓴다) — 대칭을 위해 남길지.
-  ③ 평문·암호문이 **같은 `DataStore<Preferences>` 하나**를 공유하므로 키가 섞인다 — 지금은 문제가
-  없지만 어느 키가 어느 형태인지는 코드로만 안다.
-- **상태**: 미해결 (**동작 영향 0** — 복제와 미사용 표면의 문제다)
-- **해소 메모**: ①을 정하면 [data-layer](../architecture/data-layer.md) 「평문 DataStore 프록시」 항목에
-  적고, 뽑아낸다면 [ADR-0019](../adr/0019-encrypted-token-storage.md)의 결정 범위를 건드리는지 함께 본다.
+- **출처**: `DataStoreModule`이 `parfait_preferences` 하나만 제공한다. `ToppingDraftLocalDataSourceImpl`·
+  `PastCanvasAlertLocalDataSourceImpl`·`RecentImageLocalDataSourceImpl`은 그 인스턴스에 평문으로 직접 쓰고,
+  `TokenLocalDataSourceImpl`·`UserInfoLocalDataSourceImpl`은 `EncryptedPreferences`(→ `DataStorePreferences`)를
+  거쳐 암호문으로 쓴다.
+- **항목**: 어느 키가 어느 형태인지는 코드로만 안다 — 파일을 나눌지, 키 이름 규칙으로 가를지.
+- **상태**: 미해결 (**동작 영향 0**)
+- **해소 메모**: 정하면 [data-layer](../architecture/data-layer.md) 「평문 DataStore 프록시」 항목에 적는다.
 
 ### [2026-09-05] `launchWhileSubscribed`를 고르는 기준과 실제 쓰임이 갈렸다
 
 - **ID**: OQ-P-368
-- **출처**: `CanvasMainViewModel#observeCanvasTutorial`·`CustomGalleryPickerViewModel#observeTutorial`
-  (PR #449) — 둘 다 `launchWhileSubscribed`로 튜토리얼 노출 여부를 구독한다.
-  [state-management](../architecture/state-management.md)가 적어 둔 선택 기준은 **"이 구독이 서버를 계속
-  부르는가"**([ADR-0029](../adr/0029-canvas-today-ssot-polling.md))인데, 이 구독은 DataStore 한 키를 읽는다.
-- **항목**: ① 기준을 넓힐지(로컬 구독에도 기본으로 쓴다), 아니면 이 둘을 `launch`로 되돌릴지 —
-  지금은 문서의 기준과 코드의 관행이 어긋난 채 `CanvasBGEditViewModel`·`CanvasToppingPlaceViewModel`·`CanvasToppingArrangeViewModel`도 같은 도우미를 쓴다. ② 딸려 오는 비용이
-  하나 있다 — 이 구독은 화면이 `state`를 보는 동안에만 열려서 **ViewModel 테스트가 `backgroundScope`에서
-  `state`를 수집해야** 하고, `CustomGalleryPickerViewModelTest`가 `shownViewModel()` 헬퍼로 그 준비를 적는다.
+- **출처**: `CanvasMainViewModel#observeDayBoundary`·`#observeTodayCanvasRefreshFailure` — 둘 다
+  `launchWhileSubscribed`로 여는데 source가 서버를 부르지 않는다(앞은 시계 타이머, 뒤는 폴러 실패 신호
+  구독). [state-management](../architecture/state-management.md)가 적어 둔 선택 기준은 **"이 구독이 서버를
+  계속 부르는가"**([ADR-0029](../adr/0029-canvas-today-ssot-polling.md))다.
+- **항목**: ① 기준을 "폴링 구독과 수명을 맞춰야 하는 구독"까지 넓혀 적을지, 이 둘을 `launch`로 돌릴지.
+  ② `backgroundScope`에서 `state`를 수집하는 테스트 준비가 캔버스 ViewModel 테스트 넷
+  (`CanvasMainViewModelTest`·`CanvasBGEditViewModelTest`·`CanvasToppingPlaceViewModelTest`·
+  `CanvasToppingArrangeViewModelTest`)에 따로 있다 — `core:testing`으로 올릴지.
 - **상태**: 미해결 (**동작은 의도대로** — 기준 문서와 관행의 어긋남이다)
 - **해소 메모**: 정하면 [state-management](../architecture/state-management.md) 해당 절의 기준 문장을
-  고친다. ②는 테스트 헬퍼를 `core:testing`으로 올릴지와 같은 자리에서 본다.
+  고친다.
 
 ### [2026-09-05] 같은 튜토리얼 상태가 화면마다 두 형태다 — 한쪽은 리소스를 State에 싣는다
 
@@ -7084,7 +7057,7 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   네 번째 화면이 붙을 때 어느 쪽을 따를지 정해진 것이 없다. ③ 완료를 남기는 시점도 갈린다 —
   캔버스는 **마지막 장을 닫을 때만** 남기고(중간에 접으면 다음 진입에서 처음부터 다시 본다),
   한 장짜리인 갤러리는 누르는 즉시 남긴다. 앞의 것은 의도가 KDoc에 적혀 있으나 규칙으로 올라간 적은 없다.
-- **상태**: 미해결 (**동작은 의도대로** — 형태 분기와 규약 이탈이다)
+- **상태**: 해소됨 (2026-10-08, PR #587 develop 머지 — 튜토리얼 기능이 통째로 제거됐다. `CanvasMainUiState.tutorialStep`·`CustomGalleryPickerState.isTutorialVisible`과 `CanvasTutorialStep`이 삭제됐다) — 직전 서술: 미해결 (**동작은 의도대로** — 형태 분기와 규약 이탈이다)
 - **해소 메모**: ①②를 정하면 [state-management](../architecture/state-management.md) 「UI State가 담는 것」에
   적고, ③은 [design-system](../architecture/design-system.md) 「튜토리얼 컴포넌트」에 노출·완료 규칙으로 적는다.
 
@@ -7095,14 +7068,14 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   "지금 권한이 없다" 하나이므로, 허용하기 전까지 **그룹 생성·참여 흐름을 탈 때마다 다시 뜬다.**
   스펙이 이 사실을 적고 미결로 남겼다
   ([결정 4](../specs/archive/2026-09-05-push-notification-permission-and-device-token.md)).
-- **항목**: ① 최초 1회로 줄일지 — 줄이려면 "안내를 보여줬다"를 로컬에 영속해야 하고, 자리는 이미 있다
-  (`UserConfigRepository`, PR #449). ② 반대로 매번 뜨는 것이 의도인지 — 그룹을 새로 만들 때마다 묻는
+- **항목**: ① 최초 1회로 줄일지 — 줄이려면 "안내를 보여줬다"를 로컬에 영속해야 하는데, 그 자리가 지금은 없다
+  (기기 축 설정 저장소를 새로 둬야 한다). ② 반대로 매번 뜨는 것이 의도인지 — 그룹을 새로 만들 때마다 묻는
   것은 맥락이 달라졌다고 볼 수도 있다. **정책 근거가 없다** — 위키에 알림 권한 조항 자체가 없다.
   ③ **안내를 지나친 뒤를 알리지 않는다**(OQ-P-358 ②에서 옮겨 온 항목) — 거부한 사용자는 알림이 왜
   안 오는지 앱 어디서도 알 수 없고, 표시 실패는 로그에도 안 남는다.
 - **상태**: 미해결 (**동작은 의도대로** — 근거 부재와 반복 노출이다)
-- **해소 메모**: ①②는 위키 판단이 선행이다. 1회로 정하면 `TutorialKind`와 같은 자리
-  (`UserConfigVO`)에 항목을 더하는 것이 가장 싸고, 그때 [data-layer](../architecture/data-layer.md)
+- **해소 메모**: ①②는 위키 판단이 선행이다. 1회로 정하면 `PastCanvasAlertLocalDataSource`처럼
+  평문 키 하나를 둔 로컬 저장소를 새로 두면 되고, 그때 [data-layer](../architecture/data-layer.md)
   DataStore 항목과 위 스펙 결정 4를 함께 고친다.
 
 ### [2026-09-05] 이전 세션에서 이미 두 번 거부한 사용자는 설정으로 보내지 못한다
@@ -7615,8 +7588,8 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 - **해소 메모**: 순서가 있다. ①을 먼저 정하고, G0를 돌려 통과하면 ②로 쌍을 고정한 뒤 측정한다.
   측정치는 머신마다 달라 커밋하지 않으므로(`runs/`는 `.gitignore`), 판단에 실제로 쓴 수치만 후속 스펙으로
   옮긴다. `T_remote`가 전송 시간을 0으로 놓는 **낙관적 상한**이고 `S4` 쪽이 사전 빌드를 더 돌아 한 방향으로
-  부풀려진다는 점을 문턱값과 함께 읽어야 한다. 빌드 성능의 다른 두 축(`org.gradle.parallel`·configuration
-  cache)은 [2026-08-11] 항목이 따로 추적한다.
+  부풀려진다는 점을 문턱값과 함께 읽어야 한다. 빌드 성능의 다른 축(configuration cache)은
+  [2026-08-11] 항목(OQ-P-114)이 따로 추적한다.
 
 ### [2026-09-17] `Navigator` 만 명시적 backing field 로 옮겨 상태 노출 관용구가 두 갈래가 됐다
 
@@ -7735,8 +7708,8 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   `C-103-Error` 분기를 적는다. 구현에서는 그 화면이 삭제됐고, 로딩이 별도 전면 화면(`C-101-Loading`,
   `SegmentationLoadingScreen`)이 됐다. 저쪽 저장소 사본은 같은 주제를 OQ-P-411로 적는다(번호 충돌은 OQ-P-411 ②).
 - **항목**: ① 구현에는 `C-103-Error`가 없다 — 후보 0건·실패는 전부 C-104 편집 화면으로 간다. ② 재시도
-  버튼과 재시도 회복이 없다. ③ 로딩 화면의 닫기와 시스템 뒤로가기에 그만두기 팝업이 붙었는데, 위키에 이
-  팝업 조항이 없다. ④ `C-101-Loading`이라는 화면 ID 자체가 위키 [[화면-ID-체계]]에 없다.
+  버튼과 재시도 회복이 없다. ③ 로딩 화면의 닫기에 그만두기 팝업이 붙었는데, 위키에 이 팝업 조항이 없다(시스템 뒤로가기는
+  PR #595부터 묻지 않고 이전 화면으로 돌아간다). ④ `C-101-Loading`이라는 화면 ID 자체가 위키 [[화면-ID-체계]]에 없다.
 - **상태**: 미해결 (정책 원본 미수집 — 디자인이 먼저 바뀌었고 위키에는 근거 소스가 들어오지 않았다)
 - **해소 메모**: 기획 쪽 원본(기능정의서 후속판 또는 C-101-Loading 정책서)이 `raw/`에 들어오면 ingest로 위키를
   갱신하고 이 항목을 닫는다. 위키 [[open-questions]]에 대응 항목이 서면 링크를 붙인다.
@@ -7755,7 +7728,8 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   낮춰 흉내 낸 화면으로만 다루고, 그런 실기기에서 패널과 토핑이 어떻게 보이는지는 확인하지 않았다.
   ② 캔버스 폭 이상으로 키운 토핑은 가운데로 옮겨도 패널에 가린다 — 크기를 줄이는 규칙이 정책에 없어
   그대로 둔다. ③ 열린 패널의 화살표 터치 영역(44dp 정사각)이 슬라이더 터치 띠의 오른쪽 위 귀퉁이와
-  겹친다(기본 글꼴 배율에서 가로 30dp·세로 8dp, 트랙과 손잡이는 겹치지 않는다). 그 자리에서 슬라이더를
+  겹친다(기본 글꼴 배율에서 가로 30dp·세로 8dp, 트랙과 손잡이는 겹치지 않는다 — 다만 `YGSlider` 높이가
+  32dp라 손잡이 위 가장자리가 겹친 띠의 아래 가장자리와 여백 없이 맞닿는다). 그 자리에서 슬라이더를
   잡으려다 패널이 닫히는 일이 실제로 생기는지 확인되지 않았다. ④ 이 화면을 피그마(`5453:10418`,
   `5461:9261`)와 실기기에서 대조한 기록이 없다.
 - **상태**: 미해결 (실기기 미확인 — 관찰된 결함은 없다)
@@ -7774,22 +7748,18 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 - **상태**: 미해결 (기획 확인 전)
 - **해소 메모**: 문구가 갈리면 `ToppingArrangeLayout`이 버튼 문구를 인자로 받게 한다.
 
-### [2026-10-02] 배치 수정 화면의 그만두기 팝업이 변경이 없어도 뜨고, 제목·본문이 스펙과 다르다
+### [2026-10-02] 배치 수정 화면 그만두기 팝업의 제목·본문이 스펙과 다르다
 
 - **ID**: OQ-P-415
-- **출처**: `CanvasToppingArrangeViewModel`의 `OnClickClose`·`handleOnSystemBack`,
-  `CanvasToppingArrangeRoute`의 `YGModalQuitEdit` × 피그마 수정 플로우 정책 메모 ·
+- **출처**: `CanvasToppingArrangeRoute`의 `YGModalQuitEdit` ×
   c105-arrange-border-merge 스펙(저쪽 저장소 `docs/superpowers/specs/archive/2026-10-02-c105-arrange-border-merge-design.md`).
-- **항목**: ① 정책 메모는 닫기가 변경사항이 있을 때만 확인을 띄운다고 적는데 구현은 `dirtyToppingIds`를
-  보지 않고 항상 띄운다. 스펙이 알고 고른 차이이고 기획 확인은 받지 않았다. ② 스펙은 팝업 제목을
-  "편집을 그만둘까요?"로 적었는데 구현은 디자인시스템 `YGModalQuitEdit`의 「사진 편집을 그만둘까요?」를
+- **항목**: 스펙은 팝업 제목을
+  "편집을 그만둘까요?"로 적었는데 구현은 `core:ui` `YGModalQuitEdit`의 「사진 편집을 그만둘까요?」를
   쓴다. 본문도 스펙이 가리킨 "기존 편집 내용은 모두 사라지며 캔버스 화면으로 돌아가요"가 아니라
-  디자인시스템 공통 문구(`yg_modal_quit_body`) 「지금까지 진행한 내용은 저장되지 않아요. 정말
+  그만두기 팝업 공통 문구(`yg_modal_quit_body`) 「지금까지 진행한 내용은 저장되지 않아요. 정말
   그만두시겠어요?」다. `YGModalQuit.kt`의 세 변형 가운데 편집용을 고른 것이고 사용자 확인 전이다.
-- **상태**: 미해결 (①은 기획, ②는 사용자 확인 전)
-- **해소 메모**: ①을 정책대로 하면 `dirtyToppingIds`가 비었을 때 팝업 없이 `NavigateBack`을 내고
-  `CanvasToppingArrangeViewModelTest`를 함께 고친다. ②에서 다른 문구가 필요하면 `YGModalQuit.kt`에
-  변형을 더한다.
+- **상태**: 미해결 (사용자 확인 전)
+- **해소 메모**: 다른 문구가 필요하면 `YGModalQuit.kt`에 변형을 더한다.
 
 ### [2026-10-02] 배치·배치 수정·배경 편집 화면의 분석 화면 id가 위키 v7·피그마와 맞지 않는다
 
@@ -7827,7 +7797,7 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
   있어요") × `CanvasMainViewModel#handleOnClickCanvasEdit` — 그 버튼이 여는 `NavKeyCanvasBGEdit`는
   배경만 다룬다. 토핑은 캔버스에서 본인 토핑을 탭해야 고칠 수 있고 튜토리얼에 그 안내가 없다.
 - **항목**: 튜토리얼 문구와 목업 이미지를 고칠지 — 문구는 기획 소관이다.
-- **상태**: 미해결 (기획 확인 전)
+- **상태**: 해소됨 (2026-10-08, PR #587 develop 머지 — 튜토리얼 기능이 통째로 제거됐다. `canvas_tutorial_canvas_edit_description` 문구와 캔버스 튜토리얼이 삭제됐다) — 직전 서술: 미해결 (기획 확인 전)
 - **해소 메모**: 목업 PNG가 실제 화면을 따라가지 않는 문제는 OQ-P-363과 같은 자리다.
 
 ### [2026-10-02] 배치 수정 화면을 피그마·실기기·TalkBack으로 대조한 적이 없다
@@ -7864,8 +7834,8 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 - **항목**: `saveTransforms`·`saveBorder`는 유스케이스가 돌려준 `Result.failure`의 원인을 로그에만 남기고
   실패한 id만 돌려주므로, `handleOnClickConfirm`은 원인이 `AppError.Network`여도 항상
   `TOPPING_SAVE_UNKNOWN`을 낸다. `NETWORK` 문구는 유스케이스가 예외를 **던져** `failToSaveUnexpectedly`로
-  갔을 때만 나온다. 삭제(`failToDeleteTopping`)는 `Result.failure`의 원인도 가린다 — 두 경로가 갈린 것이
-  의도인지 정한 적이 없다.
+  갔을 때만 나온다. 확정이 함께 보내는 삭제(`deletePendingToppings`)도 같은 식으로 접힌다 — 원인을
+  가리지 않는 것이 의도인지 정한 적이 없다.
 - **상태**: 미해결 (정한 적 없음)
 - **해소 메모**: 가리게 하면 `CanvasToppingArrangeViewModelTest`의 `confirm_failure_keepsPanelOpen`이
   기대하는 오류 값을 함께 고친다. 409를 일반 오류로 접는 것은 OQ-P-261.
@@ -7887,10 +7857,8 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 
 - **ID**: OQ-P-424
 - **출처**: `feature/groups/canvas/impl`의 `strings.xml` — `canvas_bg_edit_topping_delete`,
-  `canvas_bg_edit_topping_delete_dialog_title`·`_body`·`_confirm`·`_cancel`,
-  `canvas_bg_edit_topping_save_error_unknown`, `canvas_bg_edit_topping_delete_error_unknown`.
-- **항목**: 읽는 곳은 `CanvasToppingArrangeScreen`의 삭제 모달, `ToppingFocusDecoration`의 삭제 버튼,
-  `CanvasToppingArrangeError`뿐이고 배경 편집 화면(`CanvasBGEdit`)은 쓰지 않는다. 키 이름이 쓰는 화면과 맞지 않는다.
+  `canvas_bg_edit_topping_save_error_unknown`.
+- **항목**: 읽는 곳은 `ToppingFocusDecoration`의 삭제 버튼과 `CanvasToppingArrangeError`뿐이고 배경 편집 화면(`CanvasBGEdit`)은 쓰지 않는다. 키 이름이 쓰는 화면과 맞지 않는다.
 - **상태**: 미해결 (동작 영향 없음)
 - **해소 메모**: 이름을 바꾸면 `canvas_topping_arrange_*`로 맞춘다. `NETWORK` 문구
   `canvas_bg_edit_save_error_network`는 두 화면이 함께 쓴다.
@@ -7928,8 +7896,23 @@ TEAMYG-Android 구현에서 발견된 미결 결정·계약 공백·코드/문�
 ### [2026-10-03] G-001-Empty 안내 애니메이션 정책 원본이 위키에 없다
 - **ID**: OQ-P-427
 - **출처**: `feature/groups/list/impl/model/GroupListEmptyIntroState.kt`·`GroupListEmptyIntroTimeline.kt` × 위키 [[src-G-001-Empty-툴팁-노출-조건-정책-v0.1]] — 더미 그룹 3개의 등장 순서·간격·이징, 툴팁 등장 시각, 3초 이후 탭으로 닫기는 Figma 기준으로 구현했고 `wiki/raw`에 이 애니메이션의 정책 원본이 없다.
-- **항목**: ① 위키는 툴팁이 "0건이면 항상 뜬다"고 적는데 구현은 등장 타임라인 끝(2.5초)에 뜨고, 탭으로 닫으면 화면에 다시 들어올 때까지 안 뜬다. ② 더미 그룹의 존재와 그 문구·시간 표기가 위키에 없다. ③ 에뮬레이터·실기기에서 타이밍과 TalkBack 동작을 확인한 기록이 아직 없다.
-- **상태**: 미해결 (정책 원본 미수신. 위키는 이 저장소가 고치지 않는다)
+- **항목**: ① 위키는 툴팁이 "0건이면 항상 뜬다"고 적는데 구현은 등장 타임라인 끝(2.5초)에 뜨고, 탭으로 닫으면 화면에 다시 들어올 때까지 안 뜬다. ② 더미 그룹의 존재와 그 문구·시간 표기가 위키에 없다. ③ 에뮬레이터·실기기에서 타이밍과 TalkBack 동작을 확인한 기록이 아직 없다. ④ 전부 드러난 뒤(`Shown`) 그룹 추가 칩을 누르는 경우가 정책에 비어 있다 — 구현은 등장 도중 누른 경우와 같게 더미·툴팁을 유지한다.
+- **상태**: 미해결 (정책 「Empty 동작 명세 1. G-001-Empty」 v0.3(2026-10-05)을 받아 구현과 대조했으나 `wiki/raw`에는 아직 없다. 위키는 이 저장소가 고치지 않는다)
 - **해소 메모**: 기획 쪽이 애니메이션 정책을 위키에 반영하면 ①②를 닫고 [OQ-P-047](#2026-08-01-g-001-파르페툴팁이-위키-정책과-미결선--화면-골격만-머지됨) ②와 함께 정리한다. ③은 실기기 확인 뒤 지운다.
 
-<!-- oq-next: 428 -->
+### [2026-10-05] `./gradlew lint`가 Android Lint 오류로 실패한다
+
+- **ID**: OQ-P-428
+- **출처**: `./gradlew lint` — `:feature:segmentation:impl:lintDebug`(오류 5·경고 1)와 `:feature:groups:canvas:impl:lintDebug`(오류 4·경고 1)가 실패한다. 첫 실패는 각각 `ToppingEditRoute.kt`·`CanvasToppingPlaceRoute.kt`에서 `LocalContext.current`로 리소스 값을 읽는 자리다. 병렬 실행을 켜고 끈 두 경우 모두 같은 결과라 스케줄링과는 무관하다.
+- **항목**: ① 오류 9건을 고칠지 baseline으로 묶을지. ② Android Lint를 CI 게이트로 둘지 — 지금 CI는 `ktlintCheck`만 돌려 이 오류가 PR에서 드러나지 않는다.
+- **상태**: 미해결 (코드 수정 대상)
+- **해소 메모**: ②를 넣으면 `gradle-cache-seed.yml`의 시딩 태스크에도 `lint`를 더한다.
+
+### [2026-10-07] 03시 창 갤러리 조회가 미사용으로 남아 있다 — 제한 해제 확정 뒤 지울 것
+- **ID**: OQ-P-429
+- **출처**: `domain/.../usecase/gallery/LoadFilterYGGalleryImageGroupsUseCase.kt` · `GalleryRepository#loadFilterYGGalleryImages` · `GalleryMediaProvider#selection` (PR #599) — 갤러리가 전체 사진을 보여주도록 바뀌면서 화면은 `LoadGalleryImageGroupsUseCase`(`loadGalleryImages`)만 부른다. 03시 창으로 거르던 기존 경로는 **일부러 지우지 않고 호출부 0건으로 남겼다** — 내부 배포 반응을 보고 제한을 되돌릴 수도 있어서다.
+- **항목**: ① 제한 해제가 확정되면 위 세 선언과 `GalleryRepositoryImpl`의 구현을 함께 지운다. ② 되돌리기로 정해지면 `CustomGalleryPickerViewModel`이 부르는 UseCase만 바꾸고, 전체 조회 경로(`loadGalleryImages`)와 갤러리 안내 문구 삭제는 별도로 판단한다.
+- **상태**: 미해결 (의도된 미사용 — 死코드 정리 대상이 아니다)
+- **해소 메모**: 정해지면 [data-layer](../architecture/data-layer.md)의 날짜 그룹 키 서술과 OQ-P-243의 `DayWindow.current()` 소비처를 맞춘다.
+
+<!-- oq-next: 430 -->

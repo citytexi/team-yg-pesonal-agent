@@ -8,7 +8,7 @@ verified: 2026-09-27
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0013, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: state-management
-related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, TokenLocalDataSourceImpl, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, ImageDownloadRemoteDataSource, ImageDownloadRemoteDataSourceImpl, DownloadClient, SegmentationModuleInstaller, ModuleInstallGateway, PlayServicesModuleInstallGateway, ModuleInstallModule, PrepareSegmentationModuleUseCase, NotificationService, NotificationRemoteDataSource, NotificationRemoteDataSourceImpl, DeviceToken, PushDeepLink, PushNotificationType, PushDeepLinkEventBus, PushDeepLinkEventBusImpl, SessionEventBusImpl, NotificationRepository, NotificationRepositoryImpl, DeviceTokenProvider, FirebaseDeviceTokenProvider, RegisterCurrentDeviceTokenUseCase, DataStorePreferences, UserConfigLocalDataSource, UserConfigLocalDataSourceImpl, UserConfigEntity, UserConfigRepository, UserConfigRepositoryImpl, UserConfigVO, TutorialKind, UploadImagePreprocessor, UploadImagePreprocessorImpl, UploadImagePlan, PreparedUploadImage, UploadImageSize, UtilsModule, SubjectCoverage, SourceLongSide, CanvasPollInterval, PastCanvasAlertRepository, PastCanvasAlertRepositoryImpl, PastCanvasAlertLocalDataSource, PastCanvasAlertLocalDataSourceImpl, GetToppingDraftFlowUseCase, StartToppingDraftUseCase, ClearToppingDraftUseCase, RecordToppingDraftUseCase, EnsureDraftSubjectRecordedUseCase
+related_code: RecentImageRepository, ImageSegmentationRepository, SegmentationCacheDir, SegmentationMask, SegmentationCandidate, SegmentationCandidateFilter, AlphaPostProcessor, AlphaComponents, AlphaRefine, AlphaComposite, ArgbExtension, PersistSubjectUseCase, SegmentImageUseCase, ClearSegmentationCacheUseCase, DecodeImageUseCase, JsonModule, NetworkModule, PolicyRemoteDataSource, ApiCaller, TokenLocalDataSourceImpl, AuthService, ParfaitGroupService, AuthRemoteDataSource, ImageService, MemberService, ParfaitImageService, ParfaitImageRemoteDataSource, AuthRepository, AuthRepositoryImpl, AppError, AppErrorMapper, runSuspendCatching, TokenAuthenticator, SessionEventBus, UnauthenticatedClient, EncryptedPreferences, UserInfoLocalDataSource, MemberRepository, MemberRepositoryImpl, UserInfoEntity, ParfaitRepository, ParfaitRepositoryImpl, ParfaitRemoteDataSource, ParfaitGroupRepository, ParfaitGroupRepositoryImpl, GetGroupDetailUseCase, GroupDetailVO, GroupLocalDataSource, GroupLocalDataSourceImpl, CanvasLocalDataSource, CanvasLocalDataSourceImpl, CanvasPoller, ApplicationScope, GetTodayParfaitFlowUseCase, RefreshTodayParfaitDetailUseCase, RequestTodayParfaitRefreshUseCase, ObserveTodayParfaitRefreshFailureUseCase, ObserveParfaitDayBoundaryUseCase, GetMyGroupsFlowUseCase, RefreshMyGroupsUseCase, RefreshGroupDetailUseCase, LogoutUseCase, WithdrawUseCase, ToppingDraftLocalDataSource, ToppingDraftLocalDataSourceImpl, ToppingDraftEntity, ToppingDraftRepository, ToppingDraftRepositoryImpl, ToppingDraft, ToppingRepository, ToppingRepositoryImpl, UpdateToppingBorderUseCase, UpdatedToppingBorderVO, ImageDownloadRemoteDataSource, ImageDownloadRemoteDataSourceImpl, DownloadClient, SegmentationModuleInstaller, ModuleInstallGateway, PlayServicesModuleInstallGateway, ModuleInstallModule, PrepareSegmentationModuleUseCase, NotificationService, NotificationRemoteDataSource, NotificationRemoteDataSourceImpl, DeviceToken, PushDeepLink, PushNotificationType, PushDeepLinkEventBus, PushDeepLinkEventBusImpl, SessionEventBusImpl, NotificationRepository, NotificationRepositoryImpl, DeviceTokenProvider, FirebaseDeviceTokenProvider, RegisterCurrentDeviceTokenUseCase, DataStorePreferences, UploadImagePreprocessor, UploadImagePreprocessorImpl, UploadImagePlan, PreparedUploadImage, UploadImageSize, UtilsModule, SubjectCoverage, SourceLongSide, CanvasPollInterval, PastCanvasAlertRepository, PastCanvasAlertRepositoryImpl, PastCanvasAlertLocalDataSource, PastCanvasAlertLocalDataSourceImpl, GetToppingDraftFlowUseCase, StartToppingDraftUseCase, ClearToppingDraftUseCase, RecordToppingDraftUseCase, EnsureDraftSubjectRecordedUseCase
 tags: [architecture, parfait]
 ---
 # 데이터 레이어 (Repository · DataSource · DI)
@@ -49,9 +49,6 @@ tags: [architecture, parfait]
   한 키에 모으면 그룹을 오갈 때 서로의 확인 여부를 덮는다. 못 읽는 값은 `null` 로 접어 "확인한 적
   없음"과 같게 다룬다 → [past-canvas-alert 스펙](../specs/archive/2026-09-09-past-canvas-alert.md).
   ⚠️ 이 기록은 로그아웃이 지우지 않는다([open-questions](../synthesis/open-questions.md) OQ-P-397).
-  **`UserConfigLocalDataSource`**(#449 — 기기에만 남는 사용자 설정, 평문 JSON 한 키 + `Flow`)가 여기 붙었다. 지금 담는 것은 **끝까지 본 튜토리얼 목록**뿐이고(`UserConfigVO.seenTutorials`), 화면이 늘 때마다 설정에 boolean 을 하나씩 붙이지 않으려고 **집합 하나**로 둔다.
-  - **저장 형태가 도메인 enum 이 아니라 이름 문자열이다**(`UserConfigEntity.seenTutorials: Set<String>`). enum 으로 담으면 **최신 버전이 저장한 값을 구버전이 읽다가** 모르는 항목에서 역직렬화가 터지고, 그 폐기 규칙이 설정을 통째로 날린다. 문자열이면 모르는 항목만 조용히 버리고 나머지를 지킨다 — 같은 이유로 필드마다 기본값을 둔다. 되돌리는 쪽(`toVO`)은 `TutorialKind` 에 없는 이름을 `mapNotNullTo` 로 흘린다. 즉 **`TutorialKind` 의 이름이 곧 저장 키**라 이미 나간 항목을 개명하면 그 튜토리얼을 끝낸 기록이 사라져 다시 뜬다.
-  - 갱신은 저장분이 없어도 반드시 쓴다(`UserConfigRepositoryImpl.markTutorialSeen` — 있을 때만 갱신하면 앱을 처음 켠 사람에게 매번 다시 뜬다). 집합에 더하는 형태라 먼저 끝낸 다른 튜토리얼의 기록을 덮지 않는다. ⚠️ **`clearConfig()` 는 계약과 구현만 있고 호출부가 0건**이라 로그아웃·탈퇴가 이 설정을 지우지 않는다 → [open-questions](../synthesis/open-questions.md) OQ-P-366.
 - **인메모리** — **`GroupLocalDataSource`**(그룹 목록·상세 SSoT, `@Singleton` + `MutableStateFlow`,
   [ADR-0023](../adr/0023-group-in-memory-ssot.md)). 디스크를 쓰지 않아 **모든 함수가 non-suspend**이고
   실패 채널이 없다 — 계정 정보 SSoT와 형태는 같되 영속·암호화만 뺀 갈래다. 목록은
@@ -76,7 +73,7 @@ tags: [architecture, parfait]
   ⚠️ **갱신 실패는 단계를 건드리지 않는다** —
   [canvas-adaptive-polling 스펙](../specs/archive/2026-09-10-canvas-adaptive-polling.md).
 - **암호화 DataStore 프록시** — `EncryptedPreferences`(`data/datastore/`, PR #263). 저장 형태가 값이 아니라 **암호문**인 저장소들이 공유한다(`TokenLocalDataSourceImpl`·`UserInfoLocalDataSourceImpl`) — 아래 "토큰·계정 정보 저장 경로" 참고.
-- **평문 DataStore 프록시** — **`DataStorePreferences`**(`data/datastore/`, #449). 암호화 프록시와 같은 표면(`observe`·`read`·`write`·`remove` + 못 읽는 저장분을 버리는 `decodeOrDiscard`)을 갖되 암호화만 뺀 갈래이고, 쓰는 곳은 `UserConfigLocalDataSourceImpl` 하나다. 계정 정보와 달리 담기는 것이 "튜토리얼을 봤는가" 뿐이라 지킬 것이 없고, 암호화하면 **키 회전 한 번에 설정이 통째로 폐기될 위험만** 남는다는 것이 평문의 근거다. ⚠️ 두 프록시는 암호화 두 줄을 빼면 KDoc까지 같은 **복제**이고 `read` 는 이쪽에서 호출부가 0건이다 → [open-questions](../synthesis/open-questions.md) OQ-P-367.
+- **평문 DataStore 프록시** — **`DataStorePreferences`**(`data/datastore/`, #449). `observe`·`read`·`write`·`remove`와 못 읽는 저장분을 버리는 규칙을 가진 **바닥 층**이고, `EncryptedPreferences`는 이것을 감싸 암복호화만 얹는다 — 폐기 규칙은 이 한 벌뿐이다. **이 프록시를 직접 쓰는 저장소는 없다** — 소비처는 `EncryptedPreferences` 하나이고, 평문 저장소 셋(`ToppingDraftLocalDataSourceImpl`·`PastCanvasAlertLocalDataSourceImpl`·`RecentImageLocalDataSourceImpl`)은 `DataStore<Preferences>`를 직접 잡아 못 읽는 값의 처리를 각자 둔다. ⚠️ 평문·암호문이 **같은 `DataStore<Preferences>` 하나**를 공유해 어느 키가 어느 형태인지는 코드로만 안다 → [open-questions](../synthesis/open-questions.md) OQ-P-367.
 - **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근). **읽기 전용이 아니게 됐다**(#324) —
   `insertPendingImage`·`openOutputStream`·`finalizePendingImage`·`deleteImage`로 `MediaStore`에
   이미지를 쓴다(`GalleryRepository.saveImageToGallery` → `SaveCanvasToGalleryUseCase`, C-001 지난
@@ -102,7 +99,7 @@ tags: [architecture, parfait]
 
 > **표시 포맷은 data가 만들지 않는다**(2026-08-04, PR #191) — `GalleryImageGroup.date`가 문자열에서
 > `LocalDate`로 바뀌고 `GalleryMediaProvider`의 날짜 포맷이 삭제됐다. 포맷은 화면이
-> `core:util:jvm` `DateTextFormat`으로 만든다. 날짜 그룹 키의 하루 경계는 `DayWindow`(도메인 모델) 소관.
+> `core:util:jvm` `DateTextFormat`으로 만든다. 날짜 그룹 키는 기기 시간대의 달력 날짜다(03시 경계 없음).
 >
 > 📌 **같은 원칙이 원격 시각에도 적용됐다(2026-08-15, PR #248)** — `MyParfaitGroupVO.recentImageUploadedAt`이
 > `kotlinx.datetime.LocalDateTime`(벽시계)에서 **`kotlin.time.Instant`(절대 시점)**로 바뀌었고, 상대시간
@@ -117,9 +114,9 @@ tags: [architecture, parfait]
 
 | 모듈 | 제공/바인딩 |
 |------|-------------|
-| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)·**imageFile**(#329)·**notification**(#450)·**pastCanvasAlert**(#477)) + `NonceGenerator`·**`userConfig`**(#449). `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
+| `RepositoryModule` | Repository 인터페이스 ↔ 구현 `@Binds @Singleton`(camera·gallery·image·auth·policy·parfaitGroup·member·**imageUpload·topping**(#322)·**imageFile**(#329)·**notification**(#450)·**pastCanvasAlert**(#477)) + `NonceGenerator`. `@Binds`는 `interface` 모듈에만 되므로 `object`인 `SingletonInjectModule` 대신 여기 모은다 |
 | `ModuleInstallModule` | `ModuleInstallGateway` ↔ `PlayServicesModuleInstallGateway` `@Binds @Singleton`(2026-09-02). 리포지토리 결선이 아니라 `RepositoryModule`에 두지 않았다 — `di/`의 역할당 파일 1개 규약을 따른 것이다 |
-| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenLocalDataSource` ↔ `TokenLocalDataSourceImpl`(PR #534 전 이름 `TokenStore` ↔ `EncryptedTokenStore`)·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)·`ImageFileLocalDataSource` ↔ `ImageFileLocalDataSourceImpl`(#329)·**`CanvasLocalDataSource` ↔ `CanvasLocalDataSourceImpl`**(#404)·**`UserConfigLocalDataSource` ↔ `UserConfigLocalDataSourceImpl`**(#449)·**`PastCanvasAlertLocalDataSource` ↔ `PastCanvasAlertLocalDataSourceImpl`**(#477)) |
+| `LocalDataSourceModule` | 로컬 DataSource 인터페이스 ↔ 구현(파일·DataStore·`TokenLocalDataSource` ↔ `TokenLocalDataSourceImpl`(PR #534 전 이름 `TokenStore` ↔ `EncryptedTokenStore`)·`UserInfoLocalDataSource` ↔ `UserInfoLocalDataSourceImpl`·`GroupLocalDataSource` ↔ `GroupLocalDataSourceImpl`. `ToppingDraftLocalDataSource` ↔ `ToppingDraftLocalDataSourceImpl`(#334)·`ImageFileLocalDataSource` ↔ `ImageFileLocalDataSourceImpl`(#329)·**`CanvasLocalDataSource` ↔ `CanvasLocalDataSourceImpl`**(#404)·**`PastCanvasAlertLocalDataSource` ↔ `PastCanvasAlertLocalDataSourceImpl`**(#477)) |
 | `RemoteDataSourceModule` | 원격 DataSource 인터페이스 ↔ 구현 |
 | `ServiceModule` | Retrofit 서비스 생성(`retrofit.create`). **같은 `AuthService`를 두 번 만든다** — 기본 것과 `@UnauthenticatedClient` 것(재발급 전용, 아래 "401 자동 재발급") |
 | `NetworkModule` | `TokenProvider`(=`TokenProviderImpl`, PR #534 전 이름 `TokenStoreTokenProvider`)·`AuthInterceptor`·`TokenAuthenticator`를 단 `OkHttpClient`·`Retrofit` + **`@UnauthenticatedClient` `OkHttpClient`·`Retrofit`**(독립 `Dispatcher`, 인증기·`AuthInterceptor` 없음) + **`@UploadClient` `OkHttpClient`**(#322 — S3 presigned PUT 전용. Retrofit이 없는 유일한 표면이고 인터셉터를 하나도 안 단다) + **`@DownloadClient` `OkHttpClient`**(#369 — 서버 공개 이미지 GET 전용. 로깅만 달고 타임아웃은 메인과 같으며, `newBuilder()` 파생이 아니라 새 `Builder`여야 `Dispatcher` 격리가 산다) |
@@ -230,8 +227,9 @@ tags: [architecture, parfait]
 사진 확인 화면 진입에 미리 건다** — 촬영·갤러리 두 경로의 유일한 합류점이라 카메라에만 걸면 갤러리로
 고른 사용자가 사전 설치를 안 탄다. 실패는 여전히 `SegmentationException.ModuleNotReady`(일시적,
 재시도 가능) / `Process`(그 외)로 가르고, `Tasks.await`가 원인을 `ExecutionException`으로 감싸므로 한 겹
-벗겨 `MlKitException.UNAVAILABLE`을 판정하는 것도 그대로다. 화면은 그 둘을 `SegmentationErrorKind`로
-받아 문구를 가르고 재시도 버튼을 준다
+벗겨 `MlKitException.UNAVAILABLE`을 판정하는 것도 그대로다. 화면은 그 둘을 가르지 않는다 —
+`SegmentationViewModel`은 어떤 실패든 로그만 남기고 분석 화면을 편집 화면(C-104, `isDetectionFailed`)으로
+치환하며, 재시도 버튼은 없다
 → [segmentation-module-install 스펙](../specs/archive/2026-09-02-segmentation-module-install.md).
 ⚠️ 모듈 판정에 `SubjectSegmenter`를 따로 열면 네이티브 그래프가 둘 떠서 죽는다 — `Feature` 하나만 든
 `OptionalModuleApi`를 쓰고, 그 feature 이름이 ML Kit 내부 값이라는 대가가 남는다
@@ -330,8 +328,7 @@ impl 컨벤션 플러그인이 주는 것은 `:domain`뿐이다). 그래서 **Re
 > 올라왔다. **소비자 없이 열지 않는다**는 방침이 이 Repository에서도 유지된 셈이고, 남은 둘(위치·
 > 테두리 수정)은 아직 부르는 화면이 없어 닫혀 있다. Repository는 여기서도 **에러 변환만** 한다
 > (`mapErrorToAppError`) — 삭제 실패의 처분은 화면 몫이고, `CanvasToppingArrangeViewModel`의
-> `failToDeleteTopping`이 토스트로 알린 뒤 화면에 남는다. 삭제만 확인 즉시 영구인 것은
-> [open-questions](../synthesis/open-questions.md) OQ-P-270.
+> `deletePendingToppings`가 확정 때 대기 중인 삭제를 보내 실패하면 토스트로 알린 뒤 화면에 남는다.
 >
 > 🔁 **셋째 갈래가 같은 날 열렸다(2026-08-23, PR #336)** — `update`가 같은 화면의 확인 버튼과 함께
 > 올라와 **넷 중 셋**이 열렸다. 이 메서드만 파라미터가 전부 널 허용인데 서버 계약이 부분 병합이라
