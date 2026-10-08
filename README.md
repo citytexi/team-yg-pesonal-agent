@@ -12,6 +12,8 @@
 | [`parfait/`](parfait/index.md) | **플랫폼별 구현 문서 루트** — Android 전용은 `parfait/android/`(ADR · architecture · specs · plans · synthesis), 플랫폼 공용은 `api/`(서버 계약) · `pm/`(제품 문서). `wiki/`와 형제 디렉토리, 위키 스키마 미적용 |
 | `wiki/personal-private/` | 민감 개인정보. **private submodule**(별도 접근 권한 필요), 이 repo엔 gitlink만 |
 | `raw/` | 위키의 **불변 원본** 소스 (읽기 전용) |
+| [`bot/`](bot/README.md) | `wiki/`·`parfait/`·코드 사본을 근거로 디스코드에서 답하는 **읽기 전용 질의응답 봇** |
+| `TEAMYG-Android/` | 코드 저장소의 **읽기 전용 submodule**. 문서 기준선 커밋에 고정돼 있고, 로컬 체크아웃이 없는 봇·원격 세션이 코드를 읽는 용도다. 로컬에서는 초기화하지 않는다 |
 | [`docs/`](docs/project-context.md) | 프로젝트 컨텍스트·운영 문서 |
 | [`llm-wiki.md`](llm-wiki.md) | 이 위키 방식의 원리 설명 |
 | [`CLAUDE.md`](CLAUDE.md) | 에이전트 운영 규칙 (진입점) |

@@ -104,6 +104,8 @@ rm -f "$TEAMYG/.orch-write-probe"
 `OK`가 나오면 §3의 배치를 그대로 쓴다. 막히면 **문서 워커만 team-yg worktree에서 띄운다** —
 §3 표의 "실행 위치"를 team-yg repo의 worktree selector로 바꾸고, 그 경우 워커가
 TEAMYG-Android 코드를 읽을 때는 절대경로로 읽는다는 문장을 task spec에 함께 넣는다.
+team-yg repo 루트의 상대경로 `TEAMYG-Android/`는 기준선 커밋에 고정된 봇 전용 서브모듈이고
+로컬에서는 비어 있다. 워커가 그 경로를 읽지 않게 task spec에 함께 적는다.
 구현 워커(§4)는 TEAMYG-Android 안에서만 쓰므로 영향이 없다.
 
 ## 1. 요구사항 수집

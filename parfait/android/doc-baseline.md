@@ -2689,6 +2689,7 @@
 
 ## 점검 절차 (다음 요청 시)
 로컬 경로는 개인정보라 `wiki/personal-private/project-paths.md` 참고(아래 `<TEAMYG-Android>`).
+`<TEAMYG-Android>`는 **기존 로컬 체크아웃의 절대경로**다. 저장소 루트의 서브모듈 경로 `TEAMYG-Android/`가 아니다.
 
 1. **최신화**: `git -C <TEAMYG-Android> fetch origin develop`
 2. **신규 머지 나열**: `git -C <TEAMYG-Android> log --oneline --merges <기준선>..origin/develop`
@@ -2698,6 +2699,9 @@
    - 관련 spec/plan `status`·`related_code`, `architecture/*` 인벤토리, `synthesis/open-questions.md` "미머지" 항목.
    - 드리프트 발견 → 문서 수정. 구현 완료분(develop 머지) spec→`implemented`·`specs/archive/`, plan→`done`·`plans/archive/`.
 4. **기준선 갱신**: 위 "현재 기준선"을 새 `origin/develop` HEAD로 교체하고 아래 이력에 한 줄 추가.
+   같은 커밋으로 서브모듈 gitlink를 올린다 —
+   `git update-index --cacheinfo 160000,$(git -C <TEAMYG-Android> rev-parse <새 기준선>^{commit}),TEAMYG-Android`.
+   gitlink 해시의 앞 9자가 위 "현재 기준선"과 같아야 한다.
 5. **미머지 항목 재확인**: `git -C <TEAMYG-Android> ls-tree -r --name-only origin/develop | grep <심볼>` 로 존재 여부 확정.
 
 > 드리프트는 대개 **문서 검증일 이후 머지된 PR**에서 발생(예: #140 fix/ygbutton). merge 날짜와 문서 `verified` 날짜를 비교하면 후보를 빨리 좁힐 수 있다.

@@ -11,6 +11,7 @@ TEAMYG-Android `develop`에 새로 머지된 것과 parfait 문서의 드리프�
 ## 핵심 규율
 - **전체 재감사 금지** — 기준선 이후 **신규 머지 delta만** 본다(낭비·누락 방지). 드리프트는 대개 문서 `verified` 날짜 **이후 머지된 PR**에서 발생.
 - 로컬 절대경로는 개인정보 → `wiki/personal-private/project-paths.md`의 `TEAMYG-Android` 경로(아래 `<T>`).
+- **서브모듈 `TEAMYG-Android/`는 `<T>`가 아니다.** 기준선 커밋에 고정된 봇 전용 사본이고 로컬에서는 초기화하지 않는다. 점검은 `<T>`에서 하고, gitlink는 인덱스만 고쳐 올린다.
 - 커밋/push/PR은 **CLAUDE.md 규율** — 사용자 확인 후. main 직접 금지, 브랜치→PR→머지.
 
 ## 단계
@@ -20,7 +21,7 @@ TEAMYG-Android `develop`에 새로 머지된 것과 parfait 문서의 드리프�
    - `git -C <T> fetch origin develop`
    - `git -C <T> log --oneline --merges <기준선>..origin/develop` (신규 머지 PR/브랜치)
    - 각 머지: `git -C <T> show --stat <merge-hash>` 로 변경 컴포넌트/모듈 파악
-   - delta 0건이면 기준선 해시만 갱신하고 종료 보고.
+   - delta 0건이면 기준선 해시만 갱신하고 **아래 「gitlink 갱신」을 한 뒤** 종료 보고.
 3. **코드 ↔ 문서 대조** — 변경된 심볼(컴포넌트/토큰/시그니처)이 parfait 문서와 어긋나는지:
    - 관련 `specs/`·`plans/`(status·related_code), `architecture/*` 인벤토리, `open-questions.md` "미머지" 항목, `adr/`.
    - 실제 머지 코드는 `git -C <T> show origin/develop:<path>` 로 확인. 선작성 spec/plan이 있으면 설계 vs 실제 코드 라인별 대조.
@@ -30,8 +31,20 @@ TEAMYG-Android `develop`에 새로 머지된 것과 parfait 문서의 드리프�
    - **이동 시 상대링크 `../` → `../../` 보정**(archive는 한 단계 깊음). 이동 후 링크 resolve 검증.
    - `specs/README.md`·`plans/README.md` active→아카이브 표 등록. 신규 컴포넌트면 spec 신규 작성.
    - 새 드리프트/미결은 `open-questions.md`에 `### [YYYY-MM-DD] 주제` 형식으로 등록(라인번호·색hex 금지, 파일명+심볼명).
-5. **기준선 갱신** — `doc-baseline.md` "현재 기준선"을 새 `origin/develop` HEAD로 교체 + 이력 표에 1줄. `index.md`의 doc-baseline 라인(해시·날짜)도 정정. 미머지 추적 항목은 유지.
+5. **기준선 갱신** — `doc-baseline.md` "현재 기준선"을 새 `origin/develop` HEAD로 교체 + 이력 표에 1줄. `index.md`의 doc-baseline 라인(해시·날짜)도 정정. 미머지 추적 항목은 유지. **아래 「gitlink 갱신」을 한다.**
 6. **보고 → 커밋**(사용자 확인 후) — delta 요약·드리프트 건수·조치 목록 보고. 승인 시 브랜치→commit→push→PR→merge, 로컬 main 동기화.
+
+### gitlink 갱신 (기준선을 올릴 때마다)
+
+불변식: gitlink 해시의 앞 9자 = `doc-baseline.md` "현재 기준선" 해시.
+
+```bash
+full=$(git -C <T> rev-parse <새 기준선 해시>^{commit})
+git update-index --cacheinfo 160000,"$full",TEAMYG-Android
+git ls-files -s TEAMYG-Android   # 해시 앞 9자가 새 기준선과 같아야 한다
+```
+
+`git submodule update --remote`는 쓰지 않는다(gitlink가 기준선을 앞지른다).
 
 ## 경계 — 서버 API 계약과의 분담
 `parfait/api/`의 **계약 절**(엔드포인트·요청/응답 필드·에러코드)은 서버가 정본이라

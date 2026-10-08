@@ -1,6 +1,6 @@
 ---
 name: start-default-session
-description: 이 repo에서 세션 시작 시 기본 온보딩. 사용자가 "/start-default-session", "세션 시작", "온보딩", "먼저 읽어", "claude.md·위키·개인정보 읽어"라고 하거나 새 세션에서 작업 방향을 잡기 전에 사용. repo 3축 구조·작업 라우팅·로컬 경로를 로드한다. 오케스트레이션 파이프라인을 돌릴 때는 start-orchestration-session을 쓴다.
+description: 이 repo에서 세션 시작 시 기본 온보딩. 사용자가 "/start-default-session", "세션 시작", "온보딩", "먼저 읽어", "claude.md·위키·개인정보 읽어"라고 하거나 새 세션에서 작업 방향을 잡기 전에 사용. repo 구성·작업 라우팅·로컬 경로를 로드한다. 오케스트레이션 파이프라인을 돌릴 때는 start-orchestration-session을 쓴다.
 ---
 
 # start-default-session — 세션 온보딩
@@ -10,11 +10,11 @@ description: 이 repo에서 세션 시작 시 기본 온보딩. 사용자가 "/s
 ## 단계
 
 1. **읽기** — 아래 3개 파일을 읽는다:
-   - `CLAUDE.md` — repo 3축(raw/wiki/parfait)·작업 유형별 워크플로 라우팅·Git 규칙
+   - `CLAUDE.md` — repo 구성(raw/wiki/parfait/bot + 읽기 전용 서브모듈 TEAMYG-Android)·작업 유형별 워크플로 라우팅·Git 규칙
    - `wiki/index.md` — 정책 지식 위키 허브(전체 페이지 카탈로그)
    - `wiki/personal-private/project-paths.md` — 로컬 절대경로(코드 대상 `TEAMYG-Android` 경로)
 2. **요약 보고** — 사용자에게 간략히:
-   - repo 3축 요약 + 실제 코드 대상은 별도 repo `TEAMYG-Android`임
+   - repo 구성 요약 + 실제 코드 대상은 별도 repo `TEAMYG-Android`임
    - 작업 라우팅 3갈래: A) 코드 구현→superpowers 체인 / B) 제품 문서→PM-Skills(`parfait/pm/`) / C) 위키→ingest·query·lint
    - Git 3작업(commit/push/PR)은 항상 사용자 확인 필수, `main` 직접 금지
 3. **대기** — "뭐 할까?" 물어보고 사용자 지시를 기다린다.

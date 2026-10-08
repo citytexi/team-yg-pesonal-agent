@@ -1,7 +1,7 @@
 # 저장소 문서 질의응답 디스코드 봇
 
 이 저장소의 문서를 근거로 디스코드에서 질문에 답하는 읽기 전용 봇이다. 근거는 `wiki/`(정책)와
-`parfait/`(구현·서버 계약) 둘이다. 설계는
+`parfait/`(구현·서버 계약), 그리고 기준선 커밋에 고정된 코드 사본 `TEAMYG-Android/` 셋이다. 설계는
 [`specs/2026-09-17-wiki-discord-bot-design.md`](specs/2026-09-17-wiki-discord-bot-design.md)에 있고,
 **답하는 규약은 `.claude/skills/ask/SKILL.md`에 있다** — 봇 코드에는 그 스킬을 로드하라는 한 줄만
 들어 있으므로, 답변 방식을 바꿀 때는 스킬 파일을 고친다.
@@ -20,6 +20,46 @@ cd bot
 npm install
 cp .env.example .env
 ```
+
+## 전용 클론
+
+**봇은 작업 체크아웃과 다른 전용 클론에서 돌린다.** `REPO_ROOT`가 그 클론을 가리킨다. 이유는 둘이다.
+
+- 봇은 `REPO_ROOT`의 작업 트리를 그대로 읽는다. 작업 체크아웃에서 돌리면 작업 중인 feature 브랜치와
+  커밋하지 않은 변경을 근거로 답한다. 전용 클론은 `main`에 둔다.
+- 코드 사본 `TEAMYG-Android/`는 전용 클론에서만 초기화한다. 작업 체크아웃(Obsidian vault로 여는
+  클론)에서는 초기화하지 않는다(루트 `CLAUDE.md` "서브모듈 사본").
+
+```bash
+git clone <이 저장소> <전용 클론 경로>
+cd <전용 클론 경로>
+git submodule update --init TEAMYG-Android
+cd bot && npm install
+cp <기존 bot/.env> .env        # REPO_ROOT를 <전용 클론 경로>로 고친다
+```
+
+`.env`와 `data/`(세션·리포트)는 추적되지 않으므로 직접 옮긴다. 전용 클론에서는
+`git config submodule.TEAMYG-Android.active false`를 설정하지 않는다(그 설정은 작업 체크아웃용이다).
+
+## 저장소 갱신
+
+전용 클론에서 실행한다.
+
+```bash
+git pull
+git submodule update --init TEAMYG-Android
+```
+
+둘째 줄을 빠뜨리면 서브모듈이 gitlink와 다른 커밋에 남아 봇이 낡은 코드로 답한다. 시작 로그에
+`TEAMYG-Android submodule is not at the pinned commit`이 찍히면 이 경우다. 서브모듈을 한 번도
+초기화하지 않았으면 `not initialized`가 찍히고 봇은 문서만으로 답한다.
+
+서브모듈 안에 비추적 파일이나 수정된 파일이 있어도 같은 `not at the pinned commit` 경고가 찍힌다.
+`git status`가 두 경우를 같은 줄로 내기 때문이다.
+
+경로를 반드시 적는다. `wiki/personal-private`는 봇 호스트에서 초기화하지 않아도 된다.
+**서브모듈 안에 `local.properties`·keystore 같은 비추적 파일을 만들지 않는다.** 차단 목록에
+없는 경로는 봇이 읽어 채널에 옮길 수 있다.
 
 ## 실행
 
@@ -73,8 +113,11 @@ npm test
 ## 주의
 
 - 이 봇은 저장소를 읽기만 한다. `claude` 호출에서 `Bash`·`Edit`·`Write`·`NotebookEdit`·
-  `WebFetch`·`WebSearch`·`Agent`·`Read(./bot/**)`·`Grep(./bot/**)` 아홉을 차단한다. 이 인자를
-  고칠 때 `Bash`와 `Read(./bot/**)`가 빠지지 않았는지 반드시 확인한다.
+  `WebFetch`·`WebSearch`·`Agent`·`Read(./bot/**)`·`Grep(./bot/**)`와 서브모듈 경로 다섯
+  (`./TEAMYG-Android/wiki/**`·`docs/**`·`.claude/**`·`.github/**`·`CLAUDE.md`)의 `Read`·`Grep` 짝 열을 더해
+  열아홉을 차단한다. 이 인자를 고칠 때 `Bash`와 `Read(./bot/**)`가 빠지지 않았는지 반드시 확인한다.
+- 서브모듈 경로 다섯은 비밀값이 아니라 **근거 범위**를 지키는 차단이다. 그쪽 `wiki/`·`docs/`는 이
+  저장소의 `wiki/`·`parfait/`와 주제가 겹치는 사본이고, 나머지 셋은 그쪽 저장소의 에이전트 지시문이다.
 - `Grep(./bot/**)`은 지금은 중복이다. 경로 규칙이 도구 이름이 아니라 읽는 대상에 걸려서
   `Read(./bot/**)`만으로도 `bot/` 아래 `Grep` 이 거부된다(2026-09-17 실측). `parfait/` 확장으로
   `Grep` 이 봇의 주 탐색 도구가 됐기 때문에 의도를 표면에 남겨 둔 것이고, 빼도 당장은 동작이

@@ -10,6 +10,7 @@ import { createRateLimiter } from "./rate-limiter.js";
 import { createClaudeRunner } from "./claude-runner.js";
 import { createQuestionHandler } from "./handle-question.js";
 import { createClient, startGateway } from "./gateway.js";
+import { repoWarnings, submoduleMissingWarning } from "./repo-check.js";
 
 const log = (...args) => console.log(new Date().toISOString(), ...args);
 
@@ -19,8 +20,8 @@ function warnIfRepoDirty(repoRoot) {
       cwd: repoRoot,
       encoding: "utf8",
     });
-    if (output.trim().length > 0) {
-      log("WARNING: repo working tree is dirty; the bot must never write", output.slice(0, 500));
+    for (const warning of repoWarnings(output)) {
+      log(warning, output.slice(0, 500));
     }
   } catch (error) {
     log("could not check repo state", error?.message ?? error);
@@ -29,6 +30,10 @@ function warnIfRepoDirty(repoRoot) {
 
 const config = loadConfig(process.env);
 warnIfRepoDirty(config.repoRoot);
+// Startup only. An uninitialized submodule stays that way until the host acts,
+// so repeating this after every question would just be noise.
+const submoduleMissing = submoduleMissingWarning(config.repoRoot);
+if (submoduleMissing) log(submoduleMissing);
 
 const store = createSessionStore({ filePath: config.sessionFile }); // exactly one per process
 const limiter = createRateLimiter({
