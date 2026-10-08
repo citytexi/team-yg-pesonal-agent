@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { spawn as nodeSpawnForTest } from "node:child_process";
-import { createClaudeRunner } from "../src/claude-runner.js";
+import { createClaudeRunner, PERSONA_DIRECTIVE } from "../src/claude-runner.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE = join(here, "fixtures", "fake-claude.mjs");
@@ -66,6 +66,32 @@ test("ask 스킬 지시를 시스템 프롬프트로 붙인다", () => {
   const at = args.indexOf("--append-system-prompt");
   assert.ok(at > -1, "지시가 없으면 봇이 위키만 보던 예전 동작으로 돌아간다");
   assert.match(args[at + 1], /ask/);
+});
+
+test("질문 답변에는 페르소나 지시가 함께 붙는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1" });
+  const prompt = args[args.indexOf("--append-system-prompt") + 1];
+  assert.ok(PERSONA_DIRECTIVE.length > 0);
+  assert.ok(prompt.includes(PERSONA_DIRECTIVE), "페르소나가 빠지면 봇이 존댓말로 돌아간다");
+  assert.match(prompt, /ask/, "페르소나가 스킬 지시를 밀어내면 안 된다");
+});
+
+test("되물음에도 페르소나가 붙는다", () => {
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1", resume: true });
+  const prompt = args[args.indexOf("--append-system-prompt") + 1];
+  assert.ok(prompt.includes(PERSONA_DIRECTIVE));
+});
+
+test("시스템 프롬프트를 따로 주면 페르소나가 섞이지 않는다", () => {
+  // Figma 요약은 자기 지시를 넘긴다. 리포트 요약까지 사나워질 이유가 없다.
+  const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1", systemPrompt: "요약만 하라" });
+  assert.equal(args[args.indexOf("--append-system-prompt") + 1], "요약만 하라");
+});
+
+test("페르소나는 말투만 바꾸고 근거 규약과 선을 남긴다", () => {
+  assert.match(PERSONA_DIRECTIVE, /반말/);
+  assert.match(PERSONA_DIRECTIVE, /지어내지 않는다/);
+  assert.match(PERSONA_DIRECTIVE, /욕설/);
 });
 
 test("되물음에도 같은 지시가 붙는다", () => {
