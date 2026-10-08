@@ -90,8 +90,12 @@ test("시스템 프롬프트를 따로 주면 페르소나가 섞이지 않는�
 
 test("페르소나는 말투만 바꾸고 근거 규약과 선을 남긴다", () => {
   assert.match(PERSONA_DIRECTIVE, /반말/);
+  assert.match(PERSONA_DIRECTIVE, /구어체/, "문어체 평서문(~다)으로 쓰면 보고서처럼 읽힌다");
   assert.match(PERSONA_DIRECTIVE, /지어내지 않는다/);
-  assert.match(PERSONA_DIRECTIVE, /욕설/);
+  assert.match(PERSONA_DIRECTIVE, /욕설과 비속어를 쓴다/);
+  assert.match(PERSONA_DIRECTIVE, /외모, 가족, 신상은 건드리지 않는다/);
+  assert.match(PERSONA_DIRECTIVE, /개인정보/, "놀림의 재료로 실제 개인정보를 쓰면 유출이다");
+  assert.match(PERSONA_DIRECTIVE, /혐오·차별 표현은 쓰지 않는다/);
 });
 
 test("되물음에도 같은 지시가 붙는다", () => {
