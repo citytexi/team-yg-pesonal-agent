@@ -5,8 +5,75 @@
 
 ## 현재 기준선
 - **repo**: `TEAMYG-Android` (`mash-up-kr/TEAMYG-Android`, 구 `TJYG-Android`) `develop`
-- **커밋**: `4c40ddfee` (`Merge pull request #580 from mash-up-kr/feature/#579-group-list-empty-animation`)
-- **요약**: **토핑 테두리를 정하는 자리가 편집 화면에서 배치 화면으로 옮겨 갔고, 이미 놓인 토핑을 고치는
+- **커밋**: `239d4b590` (`Merge pull request #601 from mash-up-kr/feature/#588-sync-develop-baseline-5b71806`)
+- **요약**: **튜토리얼이 통째로 사라졌고, 배치 수정 화면의 삭제가 즉시 반영에서 확정 시점 반영으로 바뀌었다.
+  갤러리는 03시 하루 창을 걷고 기기의 모든 사진을 보여 준다** (delta 9건 — #551·#585·#587·#591·#595·#592·
+  #598·#600·#601, 전부 **머지 트리 = 브랜치 팁**, 충돌 해소 편집 0건). 전체 머지 목록과 첫 부모 선의 차이는
+  #551 브랜치로 develop을 되받은 머지 둘(`b074e159f`·`025e3c670`)뿐이라 스택 PR 문제는 없다. 109파일
+  1503/1743. 유닛 1314 → **1330건**(+16), 계측 **91건** 유지. 아카이브 이동 **0건**(이쪽에 선작성 스펙·계획이
+  없다), 미결 **해소 5건**(OQ-P-270·363·366·369·418) · **부분 해소 3건**(034·114·415) · **재서술 2건**(367·368) ·
+  **신설 2건**(OQ-P-428·429, `oq-next` 428 → **430**).
+
+  **#587 — 튜토리얼 기능 제거(39파일 90/1088, 커밋 7개).** 디자인시스템 `ygtutorial/` 넷(`YGTutorialBox`·
+  `YGTutorialBoxPlacement`·`YGTutorialOverlay`·`YGTutorialProgress`), canvas 모듈의 `CanvasTutorialOverlay`·
+  `CanvasTutorialStep`, 목업 PNG 넷이 삭제됐다. 확인 기록만 담던 사용자 설정 저장소도 계약째 없어졌다
+  (`UserConfigRepository`·`UserConfigLocalDataSource`·`UserConfigEntity`·`UserConfigVO`·`TutorialKind`,
+  `GetTutorialVisibleFlowUseCase`·`CompleteTutorialUseCase`). 그 결과 `DataStorePreferences`를 직접 쓰는
+  저장소가 없어졌고 소비처는 `EncryptedPreferences` 하나다.
+
+  **#595 — 토핑 삭제 플로우(26파일 497/327, 커밋 18개).** 배치 수정 화면의 삭제 버튼은 대상을
+  `pendingDeleteToppingIds`에 모으기만 하고, 확정 버튼이 위치·테두리 PATCH가 전부 성공한 뒤에
+  `deletePendingToppings`로 DELETE를 보낸다. 삭제 확인 모달은 없어졌다. 재시도의 404는
+  `ServerErrorCode`의 `PARFAIT_IMAGE_NOT_FOUND`로 읽어 지워진 것으로 친다. 닫기는 `hasUnsavedChanges`일
+  때만 그만두기 팝업을 띄우고, 토핑 배치·수정·사진 분석 로딩 화면의 시스템 뒤로가기는 묻지 않고 이전
+  화면으로 간다. 카메라·갤러리의 닫기와 뒤로가기는 권한 상태와 무관하게 캔버스로 돌아간다.
+
+  **#600 — 갤러리 날짜 제한 해제(13파일 185/66, 커밋 9개).** 화면이 `LoadGalleryImageGroupsUseCase`
+  (`GalleryRepository.loadGalleryImages`)만 부르고 기기의 모든 사진을 달력 날짜로 묶는다. 03시 창 경로
+  (`LoadFilterYGGalleryImageGroupsUseCase`)는 되돌릴 가능성 때문에 호출부 0건으로 일부러 남겼다(OQ-P-429).
+  상단 제목이 "사진 선택"으로 바뀌고 03시 안내 문구(`gallery_day_boundary_info`)가 삭제됐다.
+  `DayWindow.current()`의 소비처는 최근 이미지 축출(`GetRecentCacheImagesUseCase`)만 남았다.
+
+  **#591 — `core:ui` 의존 변동과 CI(27파일 186/107, 커밋 16개).** `core:ui`가 `:core:designsystem`을
+  `implementation`으로 보게 됐고, 그만두기 팝업 `YGModalQuit.kt`와 전역 Coil 로더 팩토리
+  `newParfaitImageLoader`가 디자인시스템에서 `core:ui`로 옮겨 갔다(디자인시스템에는
+  `ReloadableImageRequest.kt`가 남았다). CI는 계측 컴파일 대상을 `assembleAllDebugAndroidTest`로 모으고,
+  `detect-code-changes` 액션으로 문서 전용 PR을 건너뛴다. `org.gradle.parallel`이 다시 켜졌고 힙과
+  `kotlin.daemon.jvmargs`가 함께 정해졌다(OQ-P-114 ①).
+
+  **#551 — 초대코드 찬 칸 교체(4파일 332/23, 커밋 10개).** `GroupInviteCodeViewModel`이 찬 칸을 다시 눌러
+  입력하면 밀지 않고 그 칸부터 바꾼다(`replacingFilledCellsOrNull`). 지울 때 포커스가 누른 자리에 머물고
+  (`focusedIndexAfterShrink`), 키보드 타입이 IME 조합을 끄려고 `KeyboardType.Password`가 됐다. 아카이브된
+  A-004 스펙에 as-built 메모를 달았다.
+
+  **#592 — 대상 영역 선택 UI(2파일 53/35).** `YGSlider` 높이가 32dp가 되고 막대가 좌우 끝까지 닿는다.
+  `YGEditActionButton` 아이콘이 파일 상수 `ICON_SIZE`(22dp)가 돼 Figma 치수와 같아졌다(OQ-P-034의 Edit-Action
+  쪽이 닫혔다).
+
+  **#598 — G-001 Empty 애니메이션 정책 현행화(8파일 54/15).** 등장 도중 그룹 추가 칩을 누르면 완료 상태로
+  건너뛰고, 버튼이 받은 터치로는 안내를 종료하지 않는다(OQ-P-427 ④ 추가).
+
+  **#585·#601 — 문서만.** 저쪽 `docs/`의 기준선 갱신 둘이다. `.kt` 0건.
+
+  **방법은 직전 회차와 같다 — 저쪽 `docs/`의 delta를 3-way 병합으로 옮겼다.** 저쪽의 `4c40ddfee`판을 공통
+  조상, `239d4b590`판을 저쪽, 이쪽 현재판을 이쪽으로 두고 `git merge-file`로 합쳤다. 대상은 architecture
+  다섯 · ADR-0034 · `api/` 둘 · 미결 · 이쪽에도 있는 아카이브 스펙 둘이다. 저쪽 미결 번호 411 이상은 하나씩
+  뒤로 밀었다(OQ-P-411 📌). 충돌 9건은 ADR-0034 1 · data-layer 3 · design-system 1 · 미결 4이고, 삭제된
+  튜토리얼·삭제 모달을 적은 자리라 저쪽의 현재 상태 서술을 택하되 이쪽 고유 표기(평문 경로·`#534` 이력)는
+  남겼다. 저쪽은 닫힌 미결을 지우지만 이쪽은 `해소됨`으로 남기므로 지워진 다섯을 되살려 상태만 바꿨다.
+  새로 들어온 줄의 심볼 117개를 `origin/develop`에서 전수 조회했고, 없는 것은 전부 삭제를 적은 서술 속
+  옛 이름이었다. 저쪽에만 있는 `status.md`·`log.md`·스펙/계획 README는 옮기지 않았다.
+
+  **조치**: navigation-flow · design-system · state-management · module-structure · data-layer · ADR-0034 📌 ·
+  `api/parfait-image.md`·`api/README.md`(Android 매핑만, `verified`·`android_status`·엔드포인트 표·conventions
+  불변) · 아카이브 스펙 둘(a004-group-invite-code·designsystem-button-missing-components) · 미결.
+  미머지 하나(`feature/debug-mode`) 유지.
+
+  직전 회차 요약(86회차, `4c40ddfee`): **토핑 테두리를 정하는 자리가 배치 화면으로 옮겨 갔고, 이미 놓인 토핑을
+  고치는 화면이 C-301에서 떨어져 나왔으며 누끼 확인 화면이 사라졌다**(#573·#572·#576·#584·#580). 미결 신설
+  14건(OQ-P-413~418·420~427). 아래가 그 회차의 상세다.
+
+  **토핑 테두리를 정하는 자리가 편집 화면에서 배치 화면으로 옮겨 갔고, 이미 놓인 토핑을 고치는
   화면이 C-301에서 떨어져 나왔다. 누끼 확인 화면은 통째로 사라졌다** (delta 5건 — #573·#572·#576·#584·#580,
   전부 **머지 트리 = 브랜치 팁**, 충돌 해소 편집 0건). 첫 부모 선의 머지는 넷이다 — #573(스펙·계획 문서)은
   #572 브랜치로 먼저 들어간 뒤 #572와 함께 develop에 닿았다. 168파일 10974/5200. 유닛 1253 → **1314건**(+61),
@@ -2500,7 +2567,9 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-10-03 (85회차)
+- **검증일**: 2026-10-08 (87회차)
+
+  📌 **이 줄이 또 한 회차치 낡아 있었다**(86회차 `4c40ddfee`, 2026-10-04). **같은 종류의 누락이 여덟 번째**다 — 그 회차의 이력 표 비고는 "검증일 줄 86회차"라고 적었는데 이 줄은 `2026-10-03 (85회차)`에 멈춰 있었다. 번호는 요약 안의 「직전 회차 요약(86회차)」 포인터와 이 줄 + 1이 같다.
 
   📌 84회차(`594f8047e`)에서 엿새 만이다. 번호는 요약 안의 「직전 회차 요약(84회차)」 포인터와 이 줄 + 1이 같다.
 
@@ -2557,6 +2626,7 @@
   멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
   적이 있다) **직전 회차의 이 줄 + 1**이다.
 - **미머지 추적 항목**: **하나**(`feature/debug-mode`, OQ-P-311 계보).
+  📌 **87회차 재확인(2026-10-08)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이고 브랜치 팁도 `ed8e1ec8a` 그대로다. 원격 브랜치는 열셋에서 열로 줄었다 — `bugfix/invite-code-inplace-edit`(#551로 머지)·`feature/#567-topping-place-ui` 계열 셋·`feature/ai/set-up`이 지워지고 `beta/version-1.1.4`(`007b4a646`, 버전 코드 12)와 `chore/rename-tjyg-android-in-docs`가 새로 올라왔다. **새 둘 다 이쪽 parfait 문서가 걸리지 않아 이 줄에 오르지 않는다.** `beta/version-1.1.4`는 `origin/develop`의 조상이 아니다. `origin/release/*`는 계속 0개, 태그는 `1.1.3`까지이고 develop 버전도 `1.1.3`(코드 11)이다.
   📌 **85회차 재확인(2026-10-03)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이고 브랜치 팁도 `ed8e1ec8a` 그대로다. ⚠️ **원격 브랜치가 다섯에서 열셋으로 늘었다** — 새로 올라온 것은 `bugfix/invite-code-inplace-edit`, `feature/#567-topping-place-ui`·`-ui-spec`·`-edit-ui` 셋, `feature/save-video-encoder`·`save-video-timeline-gallery`·`video-5-wiring`, `temp/#521-gallery-cavans-save-video`다. **여덟 다 이쪽 parfait 문서가 걸리지 않아 이 줄에 오르지 않는다**(선작성 문서가 있다면 저쪽 `docs/`에 있다 — OQ-P-411). `origin/release/*`는 계속 0개, 태그는 `1.1.3`까지이고 develop 버전도 `1.1.3`(코드 11)이다.
   📌 **84회차 재확인(2026-09-27)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이다. 원격 브랜치는 `develop`·`main`·`feature/ai/set-up`·`feature/app-link-deeplink`·`feature/debug-mode` 다섯이고(`chore/bump-version-1.1.4-12`가 지워지고 `feature/app-link-deeplink`가 새로 올라왔다), 이 중 parfait 문서가 걸린 것은 이 줄의 하나뿐이다. 이 브랜치의 계획 스니펫 import 경로를 #534에 맞춰 고쳤다. `origin/release/*`는 계속 0개, 태그는 `1.1.3`까지이고 develop 버전도 `1.1.3`(코드 11)이다.
   📌 **83회차 재확인(2026-09-21)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이다.
@@ -2709,6 +2779,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-10-08 | `239d4b590` | Merge #551(초대코드 찬 칸 교체) · #585(저쪽 문서 기준선) · #587(튜토리얼 제거) · #591(`core:ui` 의존 변동·CI) · #595(토핑 삭제 플로우) · #592(대상 영역 선택 UI) · #598(G-001 Empty 애니메이션) · #600(갤러리 날짜 제한 해제) · #601(저쪽 문서 기준선) | delta 9건, **109파일 1503/1743**, 전부 **머지 트리 = 브랜치 팁**. 유닛 1314 → **1330건**, 계측 **91건** 유지. 아카이브 이동 **0건**, 미결 **해소 5건**(OQ-P-270·363·366·369·418) · **부분 해소 3건**(034·114·415) · **재서술 2건**(367·368) · **신설 2건**(OQ-P-428·429, `oq-next` 428 → 430). **#587**: `YGTutorial*`·`CanvasTutorial*`·`UserConfig*` 체인·목업 PNG 삭제, `DataStorePreferences` 소비처는 `EncryptedPreferences` 하나. **#595**: 삭제가 `pendingDeleteToppingIds`에 모였다가 확정 때 `deletePendingToppings`로 나가고 삭제 모달이 없어졌다, 404는 `PARFAIT_IMAGE_NOT_FOUND`로 흡수, 닫기는 `hasUnsavedChanges`일 때만 묻는다. **#600**: `LoadGalleryImageGroupsUseCase`가 전체 사진을 달력 날짜로 묶고 03시 창 경로는 호출부 0건으로 남았다. **#591**: `core:ui` → `:core:designsystem` `implementation`, `YGModalQuit`·`newParfaitImageLoader`가 `core:ui`로, `org.gradle.parallel` 재도입. **#551**: `replacingFilledCellsOrNull`·`KeyboardType.Password`. 방법은 직전 회차와 같은 `git merge-file` 3-way 병합(충돌 9건, 새 심볼 117개 전수 조회, 저쪽이 지운 미결 다섯은 `해소됨`으로 되살림). 조치: architecture 다섯 · ADR-0034 📌 · `api/` 둘(Android 매핑만, `verified` 불변) · 아카이브 스펙 둘 · 미결. 검증일 줄 87회차(86회차 누락분 함께 정정). 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-10-04 | `4c40ddfee` | Merge #573(스펙·계획 문서) · #572(배치 화면 테두리 패널·배치 수정 화면) · #576(누끼 편집 진입 단축) · #584(C-301 배경 변경 화면) · #580(G-001 빈 상태 인트로) | delta 5건, **168파일 10974/5200**, 전부 **머지 트리 = 브랜치 팁**. 유닛 1253 → **1314건**, 계측 61 → **91건**. 아카이브 이동 **0건**, 미결 **해소 8건**(OQ-P-201·276·277·324·337·338·379·380) · **부분 해소 1건**(OQ-P-082) · **신설 14건**(OQ-P-413~418·420~427, 419 결번, `oq-next` 413 → 428) · ADR-0034 신설. **#572**: 테두리가 배치 화면 `ToppingBorderPanel`로, 이미 놓인 토핑은 `NavKeyCanvasToppingArrange`로, C-301은 배경만. `ToppingBorderEditScreen`·`ToppingBorderLayer` 삭제. **#576**: `NavKeySegmentationConfirm`·확인 화면 삭제, 편집 화면 「다음」이 초안을 기록하고 배치 화면으로 직행, `ToppingEditCompletion`·`TOPPING_EDIT_RESULT_KEY` 삭제. **#580**: `GroupListEmptyIntro*`·더미 그룹 신설, `YGTopBarEmpty`가 `title`·`count`로, `model/DateFormat` 삭제. **#584**: C-301이 상단 제목 바 + 하단 「저장하기」. ⚠️ **방법 변경 — 저쪽 `docs/` delta를 `git merge-file` 3-way 병합으로 옮겼다**(저쪽 미결 번호 411 이상은 +1, 충돌 11건은 저쪽 현재 상태 서술 채택, 새 심볼 250개 전수 조회). 조치: architecture 다섯 · ADR-0025·0026·0030·0032·0034·인덱스 · `api/` 셋(Android 매핑만, `verified` 불변) · specs/plans README 메모 · 미결. 검증일 줄 86회차. 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-10-03 | `a1817d357` | Merge #544(Claude 리뷰 워크플로) · #539(저쪽 점검 스킬·`docs/` 정비) · #555(리뷰 모델) · #550(설정 약관 줄을 응답 `title`로) · #553(토핑 핀치 제스처) · #560(캔버스 메뉴 색) · #564(C-101-Loading) · #568(갤러리 03시 안내) | delta 8건, 전부 **머지 트리 = 브랜치 팁**. 유닛 1294 → **1253건**, 계측 46 → **61건**. 아카이브 이동 **0건**, 미결 **해소 2건**(OQ-P-399·401) · **부분 해소 3건**(231·325·400) · **신설 1건**(OQ-P-412, `oq-next` 412 → 413) · 📌 **11건**. **#564**: `SegmentationLoadingScreen` 부활, `SegmentationErrorScreen`·재시도 회복 전체 삭제, 실패는 `NavKeyToppingEdit(completion = RecordAndConfirm)` 직행, `goToSingleClearTop`, 그만두기 팝업. **#553**: 드래그 핸들·`Modifier.dragBy` 삭제 → `toppingTransformInput`, `TOPPING_MIN_SCALE` 공유·배치 화면 상한 삭제, canvas 모듈 첫 `androidTest`. **#550**: 설정 약관 줄이 `state.policies` 순회 + `termsId` 식별. ⚠️ **#553·#564의 스펙·계획은 저쪽 `docs/superpowers/`에만 있고, 저쪽이 다른 주제에 OQ-P-411을 매겨 번호가 충돌했다**(OQ-P-411 ⚠️). 조치: navigation-flow · design-system · module-structure · data-layer · ADR-0012 🔁 · `api/policy.md`(Android 매핑만, `verified` 불변) · 활성 스펙 1·계획 1 · specs/plans README 메모 · 미결. 검증일 줄 85회차. 미머지 하나(`feature/debug-mode`) 유지 — 원격 브랜치는 다섯에서 열셋으로 늘었으나 여덟 다 이쪽 문서 밖이다 |
 | 2026-09-27 | `594f8047e` | Merge #527(실패 토스트 마침표) · #524(TJYG 위키 기능정의서 v7) · #535(개인정보처리방침 문구) · #528(parfait 문서를 TJYG-Android `docs/`로 복사) · #537(CI auto-assign) · #534(data 코드 스타일 리팩터 4) | delta 6건, 전부 **머지 트리 = 브랜치 팁**. 유닛 1298 → **1294건**, 계측 **46건** 유지. 아카이브 이동 **0건**, 미결 **신설 1건**(OQ-P-411, `oq-next` 406 → 412 — 406~410은 저쪽 사본이 먼저 썼다) · 📌 **7건**. **#534**: `.claude/rules/` 셋에 맞춘 개명·패키지 이동(토큰 저장 체인·raw HTTP 두 데이터 소스·`source.topping`·`data.poller`·`model.entity`/`model.mapper`·`domain/provider`), `DeviceTokenRegistrar` → `NotificationRepository.registerCurrentDeviceToken()` 흡수, `RecentImageEditor` 삭제, **중첩 응답 DTO 예외 폐지**. 동작 변경은 토큰 등록 재시도 **3초 고정**과 `ModuleInstallGateway`의 `Deferred` 반환 둘. **#528**: 저쪽 `docs/`가 스스로를 정본이라 선언 — 이 회차는 사용자 지시로 이쪽만 갱신(OQ-P-411). 조치: data-layer · module-structure · ADR 여섯 📌 · `api/` 셋(Android 매핑만, `verified` 불변) · 활성 스펙 1 · 미머지 계획 1 · 미결. 검증일 줄 84회차. 미머지 하나(`feature/debug-mode`) 유지 |
