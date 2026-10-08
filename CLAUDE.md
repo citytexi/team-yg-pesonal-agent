@@ -8,7 +8,7 @@
   위키 스키마 미적용.
 - **`bot/`** — `wiki/`(정책)·`parfait/`(구현·서버 계약)·`TEAMYG-Android/`(기준선 코드)를 근거로 디스코드에서 답하는 **읽기 전용 질의응답 봇**. 답변 규약은 `ask` 스킬. 위키 스키마 미적용.
 - **`TEAMYG-Android/`** — 코드 저장소의 **읽기 전용 서브모듈**. `parfait/android/doc-baseline.md`의 기준선 커밋에
-  고정돼 있고, 로컬 체크아웃이 없는 봇·원격 세션이 코드를 읽는 용도다. **로컬에서는 초기화하지 않는다.**
+  고정돼 있고, 로컬 체크아웃이 없는 봇·원격 세션이 코드를 읽는 용도다. **작업 체크아웃에서는 초기화하지 않는다.**
 
 ## 프로젝트 컨텍스트 (필수)
 
@@ -30,8 +30,11 @@
   정하는 규칙은 이 저장소에서 적용하지 않는다.**
 - 서브모듈 명령은 경로를 명시한다(`git submodule update --init wiki/personal-private`). **경로 없는
   `git submodule update`는 `--init`이 없어도 쓰지 않고, `--recurse-submodules`도 쓰지 않는다.**
-- 클론마다 한 번 `git config submodule.TEAMYG-Android.active false`를 실행한다. 추적되지 않는 로컬
-  설정이고, 이 값이 있으면 경로 없는 `git submodule update`가 이 서브모듈을 건너뛴다.
+- 작업 체크아웃마다 한 번 `git config submodule.TEAMYG-Android.active false`를 실행한다. 추적되지 않는
+  로컬 설정이고, 이 값이 있으면 경로 없는 `git submodule update`가 이 서브모듈을 건너뛴다.
+- **초기화하는 곳은 봇 전용 클론뿐이다.** 봇은 작업 체크아웃(Obsidian vault로 여는 클론)과 다른 전용
+  클론에서 돌리고, 그 클론에서만 `git submodule update --init TEAMYG-Android`를 실행한다
+  ([bot/README.md](bot/README.md) "전용 클론").
 
 자세한 내용은 [docs/project-context.md](docs/project-context.md).
 

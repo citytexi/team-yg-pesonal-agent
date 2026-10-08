@@ -21,7 +21,29 @@ npm install
 cp .env.example .env
 ```
 
+## 전용 클론
+
+**봇은 작업 체크아웃과 다른 전용 클론에서 돌린다.** `REPO_ROOT`가 그 클론을 가리킨다. 이유는 둘이다.
+
+- 봇은 `REPO_ROOT`의 작업 트리를 그대로 읽는다. 작업 체크아웃에서 돌리면 작업 중인 feature 브랜치와
+  커밋하지 않은 변경을 근거로 답한다. 전용 클론은 `main`에 둔다.
+- 코드 사본 `TEAMYG-Android/`는 전용 클론에서만 초기화한다. 작업 체크아웃(Obsidian vault로 여는
+  클론)에서는 초기화하지 않는다(루트 `CLAUDE.md` "서브모듈 사본").
+
+```bash
+git clone <이 저장소> <전용 클론 경로>
+cd <전용 클론 경로>
+git submodule update --init TEAMYG-Android
+cd bot && npm install
+cp <기존 bot/.env> .env        # REPO_ROOT를 <전용 클론 경로>로 고친다
+```
+
+`.env`와 `data/`(세션·리포트)는 추적되지 않으므로 직접 옮긴다. 전용 클론에서는
+`git config submodule.TEAMYG-Android.active false`를 설정하지 않는다(그 설정은 작업 체크아웃용이다).
+
 ## 저장소 갱신
+
+전용 클론에서 실행한다.
 
 ```bash
 git pull
