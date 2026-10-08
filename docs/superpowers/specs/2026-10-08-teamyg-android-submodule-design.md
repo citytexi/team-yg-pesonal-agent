@@ -1,7 +1,7 @@
 # TEAMYG-Android 서브모듈 도입 설계
 
 - **작성일**: 2026-10-08
-- **상태**: 설계 확정 대기 (서브에이전트 검수 1회 반영)
+- **상태**: 설계 승인, 구현 계획 작성 완료 (스펙·계획 검수 각 1회 반영)
 - **범위**: 저장소 구조(`.gitmodules`), 봇 차단 인자·시작 점검, `ask` 스킬, 기준선 점검 스킬, 안내 문서
 
 ## 1. 배경과 목적
@@ -114,7 +114,7 @@
   | `wiki/…` | `wiki/index.md`에서 같은 주제를 찾는다 (구조가 달라 1:1 대응이 없다) |
 
   대응 문서가 없으면 "코드는 그쪽 문서를 가리키지만 이 저장소에는 대응 문서가 없습니다"라고 답한다.
-- **답변 형식**(6절): 코드를 근거로 쓴 답변은 `TEAMYG-Android/<경로>:<줄>`로 인용하고, 그 코드가
+- **답변 형식**(현재 6절, 새 절이 끼어들어 7절이 된다): 코드를 근거로 쓴 답변은 `TEAMYG-Android/<경로>:<줄>`로 인용하고, 그 코드가
   `doc-baseline.md` "현재 기준선" 커밋 시점의 것임을 밝힌다.
 - **미초기화 판정**: 봇은 `Bash`가 차단돼 git 상태를 볼 수 없다. `Glob`으로
   `TEAMYG-Android/settings.gradle.kts`를 찾아 없으면 서브모듈이 비어 있다고 판단하고, 코드 확인
@@ -177,9 +177,14 @@ git submodule update --init TEAMYG-Android
   - 이 저장소는 루트가 Obsidian vault인데 두 저장소 사이에 파일명이 같은 md가 225개 있어,
     초기화하면 `[[위키링크]]`가 사본으로 풀릴 수 있다.
   - `parfait/script/check_links.py`를 인자 없이 돌리면 저장소 전체를 훑어 서브모듈 문서까지 검사한다.
-- 서브모듈을 초기화하는 명령은 경로를 명시한다. private 서브모듈은
-  `git submodule update --init wiki/personal-private`로 초기화한다. 경로 없는
-  `git submodule update --init`은 둘 다 초기화한다.
+- 서브모듈 명령은 경로를 명시한다. private 서브모듈은
+  `git submodule update --init wiki/personal-private`로 초기화한다.
+- **본 체크아웃의 `.git/config`에 `submodule.active = .`가 있으면 `--init`이 없어도 경로 없는
+  `git submodule update`가 새 서브모듈을 클론한다**(계획 검수에서 재현). 그래서 경로 없는
+  `git submodule update`와 `--recurse-submodules`를 쓰지 않고, 클론마다
+  `git config submodule.TEAMYG-Android.active false`를 설정한다. 이 값은 추적되지 않는다.
+- 최초 등록은 `git submodule add`를 쓰지 않는다(본 체크아웃에 클론이 생긴다). `.gitmodules`를 직접
+  쓰고 빈 디렉토리를 만든 뒤 `git update-index --add --cacheinfo`로 gitlink만 넣는다.
 - `CLAUDE.md`의 "서브모듈 내용 수정 시 절차"는 `wiki/personal-private` 전용임을 명시한다.
   `TEAMYG-Android` 서브모듈은 읽기 전용이고 그 안에서 커밋·브랜치 생성·파일 수정을 하지 않는다.
 - `start-orchestration-session`이 워커에게 주는 지시에, 코드는 절대경로의 기존 체크아웃에서 읽고
