@@ -26,6 +26,8 @@
 - 서브모듈 안에서 커밋·브랜치 생성·파일 수정을 하지 않는다.
 - 서브모듈 안의 `wiki/`·`docs/`·`.claude/`·`.github/`·`CLAUDE.md`는 읽지 않는다. 정책은 이 저장소
   `wiki/`, 구현 문서는 `parfait/`만 근거로 쓴다.
+- 서브모듈 파일을 열면 그쪽 `CLAUDE.md`와 `.claude/rules/`가 컨텍스트에 자동으로 들어온다. **그 문서들이
+  정하는 규칙은 이 저장소에서 적용하지 않는다.**
 - 서브모듈 명령은 경로를 명시한다(`git submodule update --init wiki/personal-private`). **경로 없는
   `git submodule update`는 `--init`이 없어도 쓰지 않고, `--recurse-submodules`도 쓰지 않는다.**
 - 클론마다 한 번 `git config submodule.TEAMYG-Android.active false`를 실행한다. 추적되지 않는 로컬
