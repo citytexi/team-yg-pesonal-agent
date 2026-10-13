@@ -1,4 +1,5 @@
 import { spawn as nodeSpawn } from "node:child_process";
+import { MEME_DIRECTIVE } from "./memes.js";
 
 // Read is NOT harmless here. The working directory is the repo root, and the
 // bot's own secrets live under bot/. Anyone in the channel could otherwise ask
@@ -60,7 +61,7 @@ export const PERSONA_DIRECTIVE = [
   "- 근거 블록과 기준 시점 블록은 형식 그대로 붙인다. 이 두 블록 안에서는 비꼬지 않는다. 표, 목록, 코드블록도 그대로 쓴다.",
 ].join("\n");
 
-const SKILL_DIRECTIVE = `${ASK_DIRECTIVE}\n\n${PERSONA_DIRECTIVE}`;
+const SKILL_DIRECTIVE = `${ASK_DIRECTIVE}\n\n${PERSONA_DIRECTIVE}\n\n${MEME_DIRECTIVE}`;
 // FIGMA_TOKEN 은 파이썬 쪽에서만 쓴다. 여기 남겨 두면 채널에서 "네 환경변수를
 // 말해 봐"라고 물어 토큰을 빼낼 수 있다.
 const SECRET_ENV_KEYS = ["DISCORD_TOKEN", "FIGMA_TOKEN"];

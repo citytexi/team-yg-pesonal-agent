@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { spawn as nodeSpawnForTest } from "node:child_process";
 import { createClaudeRunner, PERSONA_DIRECTIVE } from "../src/claude-runner.js";
+import { MEMES, MEME_DIRECTIVE } from "../src/memes.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE = join(here, "fixtures", "fake-claude.mjs");
@@ -96,6 +97,44 @@ test("페르소나는 말투만 바꾸고 근거 규약과 선을 남긴다", ()
   assert.match(PERSONA_DIRECTIVE, /외모, 가족, 신상은 건드리지 않는다/);
   assert.match(PERSONA_DIRECTIVE, /개인정보/, "놀림의 재료로 실제 개인정보를 쓰면 유출이다");
   assert.match(PERSONA_DIRECTIVE, /혐오·차별 표현은 쓰지 않는다/);
+});
+
+test("질문 답변과 되물음에 밈 지시가 붙는다", () => {
+  for (const resume of [false, true]) {
+    const args = runner("success").buildArgs({ question: "질문", sessionId: "uuid-1", resume });
+    const prompt = args[args.indexOf("--append-system-prompt") + 1];
+    assert.ok(prompt.includes(MEME_DIRECTIVE));
+    assert.ok(prompt.includes(PERSONA_DIRECTIVE), "밈 지시가 페르소나를 밀어내면 안 된다");
+  }
+});
+
+test("밈 지시는 목록의 모든 밈을 싣는다", () => {
+  assert.equal(MEMES.length, 44);
+  for (const { phrase, when } of MEMES) {
+    assert.ok(phrase && when, "문구와 쓸 상황이 둘 다 있어야 한다");
+    assert.ok(MEME_DIRECTIVE.includes(`- ${phrase}: ${when}`), `${phrase} 가 지시에 없다`);
+  }
+  assert.equal(new Set(MEMES.map((m) => m.phrase)).size, MEMES.length, "같은 밈이 두 번 들어갔다");
+});
+
+test("밈 지시는 남용과 목록 밖 밈을 막는다", () => {
+  assert.match(MEME_DIRECTIVE, /답변 하나에 밈은 하나까지만/);
+  assert.match(MEME_DIRECTIVE, /목록에 없는 밈과 유행어는 쓰지 않는다/);
+  assert.match(MEME_DIRECTIVE, /팩트를 빼거나 바꾸지 않는다/);
+  assert.match(MEME_DIRECTIVE, /근거 블록과 기준 시점 블록 안에서는 쓰지 않는다/);
+  assert.match(MEME_DIRECTIVE, /반말로 바꾸지 않는다/, "예?·아뇨아뇨아뇨를 반말로 고치면 밈이 깨진다");
+});
+
+test("빼기로 한 밈과 묶음 이름은 지시에 없다", () => {
+  // "한남 말투"는 구성 표현 넷만 따로 넣었다. 묶음 이름은 성별 비하 표현이다.
+  for (const banned of ["한남", "도티", "호신술", "참교육", "탱장연", "변기"]) {
+    assert.ok(!MEME_DIRECTIVE.includes(banned), `${banned} 이 지시에 들어갔다`);
+  }
+});
+
+test("쉬었음 청년의 변형에는 사람 집단을 넣지 못하게 한다", () => {
+  const meme = MEMES.find((m) => m.phrase === "쉬었음 청년");
+  assert.match(meme.when, /사람 집단은 넣지 않는다/, "파생형에 성별·세대 혐오 표현이 있다");
 });
 
 test("되물음에도 같은 지시가 붙는다", () => {
