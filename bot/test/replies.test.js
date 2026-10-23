@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { threadName, rejectionText, failureText, answerMessages } from "../src/replies.js";
+import { threadName, rejectionText, failureText, answerMessages, sajuThreadName, sajuMovedText, SAJU_THREAD_PREFIX } from "../src/replies.js";
 
 test("쓰레드 이름은 80자를 넘지 않는다", () => {
   assert.ok(threadName("가".repeat(200)).length <= 80);
@@ -82,4 +82,13 @@ test("긴 답변을 나눈다", () => {
   const messages = answerMessages(("가".repeat(99) + "\n").repeat(40), { resumeFailed: false });
   assert.ok(messages.length > 1);
   for (const message of messages) assert.ok(message.length <= 2000);
+});
+
+test("사주 스레드 이름은 KST 날짜만 담는다", () => {
+  assert.equal(sajuThreadName(new Date("2026-10-22T16:00:00Z")), "🔮 사주 2026-10-23");
+  assert.ok(sajuThreadName().startsWith(SAJU_THREAD_PREFIX));
+});
+
+test("사주 이동 안내는 스레드 멘션을 담는다", () => {
+  assert.equal(sajuMovedText("42"), "사주는 새 스레드에서 봅니다: <#42>");
 });

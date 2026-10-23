@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { loadConfig } from "./config.js";
 import { createFigmaReportRunner } from "./figma-report.js";
@@ -10,6 +11,9 @@ import { createRateLimiter } from "./rate-limiter.js";
 import { createClaudeRunner } from "./claude-runner.js";
 import { createQuestionHandler } from "./handle-question.js";
 import { createClient, startGateway } from "./gateway.js";
+import { createSajuRunner, buildSajuMcpConfig } from "./saju-runner.js";
+import { loadSajuPrompt } from "./saju-prompt.js";
+import { SAJU_DISABLED } from "./replies.js";
 import { repoWarnings, submoduleMissingWarning } from "./repo-check.js";
 
 const log = (...args) => console.log(new Date().toISOString(), ...args);
@@ -28,14 +32,17 @@ function warnIfRepoDirty(repoRoot) {
   }
 }
 
-const config = loadConfig(process.env);
+// Python runs from bot/ so FIGMA_REPORT_DIR's default ./data/reports lands in
+// bot/data/reports, not the repo root. Saju paths resolve against it too.
+const botRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const config = loadConfig(process.env, { baseDir: botRoot });
 warnIfRepoDirty(config.repoRoot);
 // Startup only. An uninitialized submodule stays that way until the host acts,
 // so repeating this after every question would just be noise.
 const submoduleMissing = submoduleMissingWarning(config.repoRoot);
 if (submoduleMissing) log(submoduleMissing);
 
-const store = createSessionStore({ filePath: config.sessionFile }); // exactly one per process
+const store = createSessionStore({ filePath: config.sessionFile }); // one store per file
 const limiter = createRateLimiter({
   maxConcurrent: config.maxConcurrent,
   perUserPerMin: config.ratePerUserPerMin,
@@ -47,9 +54,6 @@ const runner = createClaudeRunner({
   timeoutMs: config.timeoutMs,
 });
 
-// 파이썬은 bot/ 에서 돈다. FIGMA_REPORT_DIR 의 기본값 ./data/reports 가
-// 저장소 루트가 아니라 bot/data/reports 로 떨어져야 하기 때문이다.
-const botRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const figmaRunner = createFigmaReportRunner({
   pythonBin: config.pythonBin,
   scriptPath: join(botRoot, "scripts", "figma_comment_scheduler.py"),
@@ -80,4 +84,38 @@ const handleFigma = async (args) => {
   return outcome;
 };
 
-await startGateway({ config, handle, handleFigma, client: createClient(), log });
+function buildSajuHandler() {
+  const disabled = ({ replyDirect }) => replyDirect(SAJU_DISABLED);
+  if (!config.sajuSkillDir) {
+    log("saju disabled: SAJU_SKILL_DIR is not set");
+    return disabled;
+  }
+  let systemPrompt;
+  try {
+    systemPrompt = loadSajuPrompt(config.sajuSkillDir);
+  } catch (error) {
+    log("saju disabled: could not load the skill prompt", error?.message ?? error);
+    return disabled;
+  }
+  mkdirSync(config.sajuSandboxDir, { recursive: true });
+  const sajuStore = createSessionStore({ filePath: config.sajuSessionFile });
+  const sajuRunner = createSajuRunner({
+    claudeBin: config.claudeBin,
+    sandboxDir: config.sajuSandboxDir,
+    systemPrompt,
+    mcpConfig: buildSajuMcpConfig({
+      nodeBin: process.execPath,
+      serverPath: join(botRoot, "src", "saju-mcp-server.js"),
+      skillDir: config.sajuSkillDir,
+      pythonBin: config.pythonBin,
+      engineTimeoutMs: config.sajuEngineTimeoutMs,
+    }),
+    timeoutMs: config.sajuTimeoutMs,
+  });
+  // The limiter is shared with the other handlers. No warnIfRepoDirty here:
+  // saju never touches the repo.
+  return createQuestionHandler({ store: sajuStore, limiter, runner: sajuRunner, randomUUID, log });
+}
+const handleSaju = buildSajuHandler();
+
+await startGateway({ config, handle, handleFigma, handleSaju, client: createClient(), log });

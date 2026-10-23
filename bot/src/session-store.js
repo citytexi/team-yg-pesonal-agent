@@ -1,9 +1,9 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-// One store per process. The store keeps every entry in memory and rewrites the
+// One store per file. The store keeps every entry in memory and rewrites the
 // whole file on each write, so two stores sharing a file silently drop each
-// other's entries. The bot creates exactly one in src/index.js.
+// other's entries. src/index.js creates one per file (questions and saju).
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function readAll(filePath) {

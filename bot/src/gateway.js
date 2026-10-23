@@ -1,5 +1,15 @@
 import { Client, GatewayIntentBits, Events, ChannelType } from "discord.js";
-import { threadName, THINKING, figmaThreadName, FIGMA_RUNNING } from "./replies.js";
+import {
+  threadName,
+  THINKING,
+  figmaThreadName,
+  FIGMA_RUNNING,
+  SAJU_THREAD_PREFIX,
+  SAJU_THINKING,
+  SAJU_EMPTY_INPUT,
+  sajuThreadName,
+  sajuMovedText,
+} from "./replies.js";
 import { parseCommand } from "./command.js";
 import { mentionsBot, stripBotMention } from "./mention.js";
 
@@ -21,7 +31,7 @@ export function createClient() {
   });
 }
 
-export async function startGateway({ config, handle, handleFigma, client, log = console.log }) {
+export async function startGateway({ config, handle, handleFigma, handleSaju, client, log = console.log }) {
   client.on(Events.MessageCreate, async (message) => {
     try {
       if (message.author.bot) return;
@@ -38,13 +48,10 @@ export async function startGateway({ config, handle, handleFigma, client, log = 
 
       const command = parseCommand(body);
 
-      const resolveThreadAs = ({ name, waiting }) => async () => {
-        const thread = inThread
-          ? message.channel
-          : await message.startThread({
-              name,
-              type: ChannelType.PublicThread,
-            });
+      // `getThread` runs only when the handler calls resolveThread, i.e. after
+      // the limiter accepted the request. A rejected request opens nothing.
+      const resolveThreadAs = ({ waiting, getThread }) => async () => {
+        const thread = await getThread();
 
         await thread.sendTyping();
         const placeholder = await thread.send({ content: waiting, ...SILENT });
@@ -67,12 +74,56 @@ export async function startGateway({ config, handle, handleFigma, client, log = 
         };
       };
 
+      const startThreadAs = (name) => () =>
+        inThread
+          ? message.channel
+          : message.startThread({ name, type: ChannelType.PublicThread });
+
       const replyDirect = (text) => message.reply({ content: text, ...SILENT });
+
+      const sajuArgs = (input, getThread) => ({
+        userId: message.author.id,
+        question: input.length > 0 ? input : SAJU_EMPTY_INPUT,
+        resolveThread: resolveThreadAs({ waiting: SAJU_THINKING, getThread }),
+        replyDirect,
+      });
+
+      // Checked before parseCommand: inside a saju thread every body is saju
+      // input, including text that would otherwise parse as another command.
+      const inOwnSajuThread =
+        inThread &&
+        message.channel.ownerId === client.user.id &&
+        message.channel.name?.startsWith(SAJU_THREAD_PREFIX);
+      if (inOwnSajuThread) {
+        const input = command.kind === "saju" ? command.input : body;
+        await handleSaju(sajuArgs(input, () => message.channel));
+        return;
+      }
+
+      if (command.kind === "saju") {
+        const getThread = inThread
+          ? async () => {
+              // A saju session must not share a thread with another kind of
+              // conversation, so it moves to a fresh thread beside this one.
+              const created = await message.channel.parent.threads.create({
+                name: sajuThreadName(),
+                type: ChannelType.PublicThread,
+              });
+              await message.reply({ content: sajuMovedText(created.id), ...SILENT });
+              return created;
+            }
+          : startThreadAs(sajuThreadName());
+        await handleSaju(sajuArgs(command.input, getThread));
+        return;
+      }
 
       if (command.kind === "figma") {
         await handleFigma({
           userId: message.author.id,
-          resolveThread: resolveThreadAs({ name: figmaThreadName(), waiting: FIGMA_RUNNING }),
+          resolveThread: resolveThreadAs({
+            waiting: FIGMA_RUNNING,
+            getThread: startThreadAs(figmaThreadName()),
+          }),
           replyDirect,
         });
         return;
@@ -82,8 +133,8 @@ export async function startGateway({ config, handle, handleFigma, client, log = 
         userId: message.author.id,
         question: command.question,
         resolveThread: resolveThreadAs({
-          name: threadName(command.question),
           waiting: THINKING,
+          getThread: startThreadAs(threadName(command.question)),
         }),
         replyDirect,
       });
