@@ -1,3 +1,6 @@
+import { tmpdir } from "node:os";
+import { join, relative, resolve, isAbsolute, sep } from "node:path";
+
 const REQUIRED = ["DISCORD_TOKEN", "GUILD_ID", "ALLOWED_CHANNEL_IDS", "REPO_ROOT", "CLAUDE_BIN"];
 
 function readNumber(env, key, fallback) {
@@ -27,7 +30,12 @@ function readFigmaFiles(raw) {
     });
 }
 
-export function loadConfig(env) {
+function isInside(parent, child) {
+  const rel = relative(parent, child);
+  return rel === "" || (rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel));
+}
+
+export function loadConfig(env, { baseDir = process.cwd() } = {}) {
   for (const key of REQUIRED) {
     if (!env[key]) throw new Error(`Missing required setting: ${key}`);
   }
@@ -39,22 +47,46 @@ export function loadConfig(env) {
     throw new Error("ALLOWED_CHANNEL_IDS must list at least one channel id");
   }
 
+  const sessionFile = env.SESSION_FILE || "./data/sessions.json";
+  const timeoutMs = readNumber(env, "TIMEOUT_MS", 300000);
+
+  // Relative paths resolve against baseDir (bot/), not the process cwd. A
+  // sandbox that moved with the launch directory would break --resume.
+  const sajuSessionFile = resolve(baseDir, env.SAJU_SESSION_FILE || "./data/saju-sessions.json");
+  const sajuSandboxDir = resolve(
+    baseDir,
+    env.SAJU_SANDBOX_DIR || join(tmpdir(), "teamyg-bot-saju-sandbox"),
+  );
+  if (sajuSessionFile === resolve(baseDir, sessionFile)) {
+    throw new Error("SAJU_SESSION_FILE must differ from SESSION_FILE");
+  }
+  // Inside the repo tree, git status and auto memory could leak into saju sessions.
+  if (isInside(resolve(env.REPO_ROOT), sajuSandboxDir)) {
+    throw new Error("SAJU_SANDBOX_DIR must be outside REPO_ROOT");
+  }
+
   return {
     discordToken: env.DISCORD_TOKEN,
     guildId: env.GUILD_ID,
     allowedChannelIds,
     repoRoot: env.REPO_ROOT,
     claudeBin: env.CLAUDE_BIN,
-    sessionFile: env.SESSION_FILE || "./data/sessions.json",
+    sessionFile,
     maxConcurrent: readNumber(env, "MAX_CONCURRENT", 2),
     ratePerUserPerMin: readNumber(env, "RATE_PER_USER_PER_MIN", 2),
     dailyQuota: readNumber(env, "DAILY_QUOTA", 60),
-    timeoutMs: readNumber(env, "TIMEOUT_MS", 300000),
+    timeoutMs,
     // Figma 리포트는 선택 기능이다. 설정이 없으면 목록이 비고, 명령은 거절된다.
     figmaToken: env.FIGMA_TOKEN || "",
     figmaFiles: readFigmaFiles(env.FIGMA_FILES),
     pythonBin: env.PYTHON_BIN || "python3",
     figmaReportDir: env.FIGMA_REPORT_DIR || "./data/reports",
     figmaTimeoutMs: readNumber(env, "FIGMA_TIMEOUT_MS", 120000),
+    // Saju is optional. An empty skill dir disables the command.
+    sajuSkillDir: env.SAJU_SKILL_DIR || "",
+    sajuSandboxDir,
+    sajuSessionFile,
+    sajuTimeoutMs: readNumber(env, "SAJU_TIMEOUT_MS", timeoutMs),
+    sajuEngineTimeoutMs: readNumber(env, "SAJU_ENGINE_TIMEOUT_MS", 30000),
   };
 }

@@ -131,6 +131,31 @@ FIGMA_FILES=<파일키1>:디자인,<파일키2>:기획
 스크립트는 표준 라이브러리만 쓰므로 추가 설치가 없다. `python3` 가 없으면 `PYTHON_BIN` 으로
 경로를 지정한다.
 
+## 사주
+
+허용 채널에서 `@봇 !사주`라고 부르면 사주 전용 스레드(이름이 `🔮 사주`로 시작)를 만들고 입력 폼을
+올린다. `@봇 !사주 1990-05-15 07:30 남 서울`처럼 입력을 붙이면 폼 없이 바로 계산한다. 이후 그
+스레드에서는 멘션만 하면 이어서 답하고, 대운 같은 추가 분석도 같은 세션에서 이어진다.
+`!사주`가 문장 중간에 있으면 명령으로 읽지 않는다.
+
+- 사주 스레드는 문서 질의응답과 세션 파일(`SAJU_SESSION_FILE`)이 따로다. 페르소나·밈·`ask` 스킬도
+  싣지 않는다.
+- 계산은 스킬의 `saju.py`가 한다. 봇이 MCP 서버(`src/saju-mcp-server.js`)로 `saju_calc` 도구
+  하나만 감싸 `claude`에 준다. `claude`가 `saju.py`를 직접 실행하지 않는다.
+- 스레드 판정은 **이름**으로 한다. 서버 관리자가 사주 스레드 이름을 바꾸면 그 스레드는 문서 질문
+  스레드로 읽힌다. 이름을 바꾸지 않는다.
+
+설정은 `.env`의 `SAJU_SKILL_DIR`부터다.
+
+```
+SAJU_SKILL_DIR=<스킬 경로>
+```
+
+스킬은 **저장소 밖**에 둔다. 이 저장소는 public이라 스킬 코드·절기 데이터를 커밋하지 않는다.
+`SAJU_SKILL_DIR`이 비어 있으면 `!사주`는 설정 문제라고 답하고 `claude`를 띄우지 않는다. 나머지 키
+(`SAJU_SESSION_FILE`·`SAJU_SANDBOX_DIR`·`SAJU_TIMEOUT_MS`·`SAJU_ENGINE_TIMEOUT_MS`)는
+`.env.example`에 설명이 있다. 샌드박스는 저장소 git 트리 밖이어야 한다.
+
 ## 테스트
 
 ```bash
@@ -161,3 +186,15 @@ npm test
 - `--allowed-tools` 는 화이트리스트가 아니다. 목록에 없는 도구도 `--permission-mode dontAsk`
   아래에서 그대로 돈다(실측 확인). 그래서 `WebSearch` 와 `Agent` 도 명시적으로 차단한다.
 - 봇은 소유자 한 명의 구독 한도를 쓴다. `DAILY_QUOTA`로 상한을 관리한다.
+- 사주 세션은 `Bash`를 열지 않는다. `--tools ""`로 내장 도구를 모두 끄고 `--strict-mcp-config`로
+  `saju_calc` 하나만 남긴다. `test/claude-live.test.js`의 사주 라이브 테스트가 실제 `claude`로 확인한
+  것은 셋이다. `saju_calc`가 `dontAsk`에서 승인된다, 모델이 대는 도구 목록이 `mcp__saju__saju_calc`
+  하나뿐이다, 같은 격리 인자에서 시스템 프롬프트의 확인 토큰은 읽히지만 `cmux`·`feat/`·`Memory Index`·
+  `TEAMYG`는 컨텍스트에 없다(전역 `CLAUDE.md`·git 상태·메모리 미유입). 이 인자를 고칠 때 `--tools ""`가
+  빠지지 않았는지 확인하고 라이브 테스트를 다시 돌린다.
+- 팀원이 입력한 생년월일시는 봇 호스트의 `~/.claude/projects/` 세션 기록에 남는다. 개인정보라는 점을
+  팀원에게 알리고, 호스트 접근을 제한한다.
+- 음력 입력은 봇 호스트에 `korean-lunar-calendar` 파이썬 패키지가 있어야 한다. 없으면 스킬 오류가 그대로
+  전달된다.
+- 사주 라이브 테스트는 `RUN_LIVE=1 SAJU_SKILL_DIR=<스킬 경로> node --test test/claude-live.test.js`로
+  돌린다. 둘 중 하나라도 없으면 건너뛴다.

@@ -44,7 +44,10 @@ export function threadName(question) {
   // Array.from splits on code points, so a surrogate pair never breaks in half.
   let points = Array.from(flat).slice(0, THREAD_NAME_LIMIT);
   while (points.join("").length > DISCORD_THREAD_NAME_LIMIT) points.pop();
-  return points.join("");
+  const name = points.join("");
+  // A bot-owned name must never look like a saju thread, or doc follow-ups
+  // in it would route to saju.
+  return name.startsWith(SAJU_THREAD_PREFIX) ? name.replace(/^🔮\s*/u, "") || "위키 질문" : name;
 }
 
 export function rejectionText(reason) {
@@ -81,4 +84,20 @@ export function reportMessages(text) {
 
 export function summaryMessages(text) {
   return splitMessage(`${SUMMARY_HEADING}\n\n${text}`, 2000);
+}
+
+export const SAJU_THREAD_PREFIX = "🔮 사주";
+export const SAJU_THINKING = "사주를 계산하는 중입니다. 30초에서 1분 걸립니다.";
+export const SAJU_DISABLED = "사주 기능이 설정돼 있지 않습니다.";
+export const SAJU_EMPTY_INPUT = "사주를 보려고 해. 입력 폼을 보여 줘.";
+
+// The name carries only the date. Birth data typed by the user must never end up
+// in a thread title, which every channel member can read.
+export function sajuThreadName(at = new Date()) {
+  const kst = new Date(at.getTime() + 9 * 60 * 60 * 1000);
+  return `${SAJU_THREAD_PREFIX} ${kst.toISOString().slice(0, 10)}`;
+}
+
+export function sajuMovedText(threadId) {
+  return `사주는 새 스레드에서 봅니다: <#${threadId}>`;
 }

@@ -1,5 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { loadConfig } from "../src/config.js";
 
 const base = {
@@ -91,4 +93,53 @@ test("라벨을 생략하면 키를 라벨로 쓴다", () => {
 
 test("키가 없는 항목은 그 값을 담아 던진다", () => {
   assert.throws(() => loadConfig({ ...base, FIGMA_FILES: ":라벨만 있음" }), /FIGMA_FILES/);
+});
+
+test("사주 기본값을 채운다", () => {
+  const config = loadConfig(base, { baseDir: "/bot" });
+  assert.equal(config.sajuSkillDir, "");
+  assert.equal(config.sajuSandboxDir, join(tmpdir(), "teamyg-bot-saju-sandbox"));
+  assert.equal(config.sajuSessionFile, "/bot/data/saju-sessions.json");
+  assert.equal(config.sajuTimeoutMs, config.timeoutMs);
+  assert.equal(config.sajuEngineTimeoutMs, 30000);
+});
+
+test("사주 타임아웃 기본값은 TIMEOUT_MS를 따른다", () => {
+  assert.equal(loadConfig({ ...base, TIMEOUT_MS: "1000" }).sajuTimeoutMs, 1000);
+});
+
+test("사주 상대 경로는 baseDir 기준 절대 경로가 된다", () => {
+  const config = loadConfig(
+    { ...base, SAJU_SESSION_FILE: "data/x.json", SAJU_SANDBOX_DIR: "sandbox" },
+    { baseDir: "/bot" },
+  );
+  assert.equal(config.sajuSessionFile, "/bot/data/x.json");
+  assert.equal(config.sajuSandboxDir, "/bot/sandbox");
+});
+
+test("SAJU_SESSION_FILE이 SESSION_FILE과 같으면 표기가 달라도 던진다", () => {
+  assert.throws(
+    () => loadConfig({ ...base, SESSION_FILE: "./data/s.json", SAJU_SESSION_FILE: "data/s.json" }, { baseDir: "/bot" }),
+    /SAJU_SESSION_FILE/,
+  );
+});
+
+test("SAJU_SANDBOX_DIR이 REPO_ROOT이거나 그 아래면 던진다", () => {
+  assert.throws(() => loadConfig({ ...base, SAJU_SANDBOX_DIR: "/repo" }), /SAJU_SANDBOX_DIR/);
+  assert.throws(() => loadConfig({ ...base, SAJU_SANDBOX_DIR: "/repo/bot/sandbox" }), /SAJU_SANDBOX_DIR/);
+});
+
+test("REPO_ROOT의 형제 경로는 샌드박스로 쓸 수 있다", () => {
+  assert.equal(loadConfig({ ...base, SAJU_SANDBOX_DIR: "/repo-x" }).sajuSandboxDir, "/repo-x");
+});
+
+test("사주 숫자 설정을 덮어쓸 수 있다", () => {
+  const config = loadConfig({ ...base, SAJU_TIMEOUT_MS: "5", SAJU_ENGINE_TIMEOUT_MS: "7", SAJU_SKILL_DIR: "/skill" });
+  assert.equal(config.sajuTimeoutMs, 5);
+  assert.equal(config.sajuEngineTimeoutMs, 7);
+  assert.equal(config.sajuSkillDir, "/skill");
+});
+
+test("REPO_ROOT 아래의 ..로 시작하는 이름도 안쪽으로 본다", () => {
+  assert.throws(() => loadConfig({ ...base, SAJU_SANDBOX_DIR: "/repo/..hidden" }), /SAJU_SANDBOX_DIR/);
 });
