@@ -187,8 +187,11 @@ npm test
   아래에서 그대로 돈다(실측 확인). 그래서 `WebSearch` 와 `Agent` 도 명시적으로 차단한다.
 - 봇은 소유자 한 명의 구독 한도를 쓴다. `DAILY_QUOTA`로 상한을 관리한다.
 - 사주 세션은 `Bash`를 열지 않는다. `--tools ""`로 내장 도구를 모두 끄고 `--strict-mcp-config`로
-  `saju_calc` 하나만 남긴다. 샌드박스 `cwd`와 `--setting-sources ""` 덕에 저장소 문맥·개인 설정·메모리가
-  세션에 실리지 않는다(실측, 위 라이브 테스트). 이 인자를 고칠 때 `--tools ""`가 빠지지 않았는지 확인한다.
+  `saju_calc` 하나만 남긴다. `test/claude-live.test.js`의 사주 라이브 테스트가 실제 `claude`로 확인한
+  것은 셋이다. `saju_calc`가 `dontAsk`에서 승인된다, 모델이 대는 도구 목록이 `mcp__saju__saju_calc`
+  하나뿐이다, 같은 격리 인자에서 시스템 프롬프트의 확인 토큰은 읽히지만 `cmux`·`feat/`·`Memory Index`·
+  `TEAMYG`는 컨텍스트에 없다(전역 `CLAUDE.md`·git 상태·메모리 미유입). 이 인자를 고칠 때 `--tools ""`가
+  빠지지 않았는지 확인하고 라이브 테스트를 다시 돌린다.
 - 팀원이 입력한 생년월일시는 봇 호스트의 `~/.claude/projects/` 세션 기록에 남는다. 개인정보라는 점을
   팀원에게 알리고, 호스트 접근을 제한한다.
 - 음력 입력은 봇 호스트에 `korean-lunar-calendar` 파이썬 패키지가 있어야 한다. 없으면 스킬 오류가 그대로
