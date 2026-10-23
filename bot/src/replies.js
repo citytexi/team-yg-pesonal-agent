@@ -44,7 +44,10 @@ export function threadName(question) {
   // Array.from splits on code points, so a surrogate pair never breaks in half.
   let points = Array.from(flat).slice(0, THREAD_NAME_LIMIT);
   while (points.join("").length > DISCORD_THREAD_NAME_LIMIT) points.pop();
-  return points.join("");
+  const name = points.join("");
+  // A bot-owned name must never look like a saju thread, or doc follow-ups
+  // in it would route to saju.
+  return name.startsWith(SAJU_THREAD_PREFIX) ? name.replace(/^🔮\s*/u, "") || "위키 질문" : name;
 }
 
 export function rejectionText(reason) {

@@ -10,6 +10,12 @@ test("쓰레드 이름의 개행을 공백으로 바꾼다", () => {
   assert.equal(threadName("첫 줄\n둘째 줄"), "첫 줄 둘째 줄");
 });
 
+test("사주 접두어로 시작하는 질문도 스레드 이름은 사주 접두어를 갖지 않는다", () => {
+  const name = threadName("🔮 사주 정책 뭐야");
+  assert.ok(!name.startsWith(SAJU_THREAD_PREFIX));
+  assert.ok(name.length > 0 && name.length <= 100);
+});
+
 test("빈 질문에도 이름이 있다", () => {
   assert.equal(threadName("   "), "위키 질문");
 });

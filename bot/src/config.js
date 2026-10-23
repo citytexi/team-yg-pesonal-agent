@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import { join, relative, resolve, isAbsolute } from "node:path";
+import { join, relative, resolve, isAbsolute, sep } from "node:path";
 
 const REQUIRED = ["DISCORD_TOKEN", "GUILD_ID", "ALLOWED_CHANNEL_IDS", "REPO_ROOT", "CLAUDE_BIN"];
 
@@ -32,7 +32,7 @@ function readFigmaFiles(raw) {
 
 function isInside(parent, child) {
   const rel = relative(parent, child);
-  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  return rel === "" || (rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel));
 }
 
 export function loadConfig(env, { baseDir = process.cwd() } = {}) {

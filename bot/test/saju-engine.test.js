@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
+import os from "node:os";
 import { personArgs, runSajuCalc } from "../src/saju-engine.js";
 
 const base = { date: "1990-05-15", time: "07:30", gender: "남", region: "서울" };
@@ -104,6 +105,14 @@ test("stderr의 스킬 경로는 <skill>로 가려진다", async () => {
   const { execFile } = fakeExec(() => ({ code: 1, stderr: "File /skills/saju/scripts/saju.py boom" }));
   const r = await runSajuCalc(base, opts(execFile));
   assert.equal(r.error, "File <skill>/scripts/saju.py boom");
+});
+
+test("stderr의 홈 디렉토리는 ~로 가려진다", async () => {
+  const home = os.homedir();
+  const { execFile } = fakeExec(() => ({ code: 1, stderr: `File ${home}/x/y.py boom` }));
+  const r = await runSajuCalc(base, opts(execFile));
+  assert.equal(r.error, "File ~/x/y.py boom");
+  assert.ok(!r.error.includes(home));
 });
 
 test("stderr가 비어 있으면 기본 오류 문구", async () => {

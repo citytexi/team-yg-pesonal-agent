@@ -13,6 +13,7 @@ import { createQuestionHandler } from "./handle-question.js";
 import { createClient, startGateway } from "./gateway.js";
 import { createSajuRunner, buildSajuMcpConfig } from "./saju-runner.js";
 import { loadSajuPrompt } from "./saju-prompt.js";
+import { redactDetail } from "./redact-log.js";
 import { SAJU_DISABLED } from "./replies.js";
 import { repoWarnings, submoduleMissingWarning } from "./repo-check.js";
 
@@ -97,24 +98,36 @@ function buildSajuHandler() {
     log("saju disabled: could not load the skill prompt", error?.message ?? error);
     return disabled;
   }
-  mkdirSync(config.sajuSandboxDir, { recursive: true });
-  const sajuStore = createSessionStore({ filePath: config.sajuSessionFile });
-  const sajuRunner = createSajuRunner({
-    claudeBin: config.claudeBin,
-    sandboxDir: config.sajuSandboxDir,
-    systemPrompt,
-    mcpConfig: buildSajuMcpConfig({
-      nodeBin: process.execPath,
-      serverPath: join(botRoot, "src", "saju-mcp-server.js"),
-      skillDir: config.sajuSkillDir,
-      pythonBin: config.pythonBin,
-      engineTimeoutMs: config.sajuEngineTimeoutMs,
-    }),
-    timeoutMs: config.sajuTimeoutMs,
-  });
-  // The limiter is shared with the other handlers. No warnIfRepoDirty here:
-  // saju never touches the repo.
-  return createQuestionHandler({ store: sajuStore, limiter, runner: sajuRunner, randomUUID, log });
+  try {
+    mkdirSync(config.sajuSandboxDir, { recursive: true });
+    const sajuStore = createSessionStore({ filePath: config.sajuSessionFile });
+    const sajuRunner = createSajuRunner({
+      claudeBin: config.claudeBin,
+      sandboxDir: config.sajuSandboxDir,
+      systemPrompt,
+      mcpConfig: buildSajuMcpConfig({
+        nodeBin: process.execPath,
+        serverPath: join(botRoot, "src", "saju-mcp-server.js"),
+        skillDir: config.sajuSkillDir,
+        pythonBin: config.pythonBin,
+        engineTimeoutMs: config.sajuEngineTimeoutMs,
+      }),
+      timeoutMs: config.sajuTimeoutMs,
+    });
+    // The limiter is shared with the other handlers. No warnIfRepoDirty here:
+    // saju never touches the repo. The log wrapper redacts failure details,
+    // which can echo birth data.
+    return createQuestionHandler({
+      store: sajuStore,
+      limiter,
+      runner: sajuRunner,
+      randomUUID,
+      log: redactDetail(log),
+    });
+  } catch (error) {
+    log("saju disabled: setup failed", error?.message ?? error);
+    return disabled;
+  }
 }
 const handleSaju = buildSajuHandler();
 

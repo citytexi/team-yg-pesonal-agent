@@ -1,4 +1,5 @@
 import { spawn as nodeSpawn } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { MODEL, runClaude, withoutSecrets } from "./claude-runner.js";
 
 export const SAJU_TOOL = "mcp__saju__saju_calc";
@@ -60,6 +61,9 @@ export function createSajuRunner({
   }
 
   function ask({ question, sessionId, resume = false }) {
+    // OS temp cleanup can remove the sandbox while the bot runs. Same path, so
+    // the --resume history location does not change.
+    mkdirSync(sandboxDir, { recursive: true });
     return runClaude({
       claudeBin,
       args: buildArgs({ question, sessionId, resume }),

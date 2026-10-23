@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createSajuRunner, buildSajuMcpConfig, SAJU_TOOL } from "../src/saju-runner.js";
 
 function make(overrides = {}) {
@@ -51,7 +54,7 @@ test("인자 순서가 정해진 그대로다", () => {
   ]);
 });
 
-test("인자에 Bash·Read·저장소 루트가 없다", () => {
+test("인자에 Bash·Read가 없고 buildArgs가 저장소 경로를 직접 넣지 않는다", () => {
   const args = make().runner.buildArgs({ question: "질문", sessionId: "u1" });
   assert.ok(!args.includes("Bash"));
   assert.ok(!args.includes("Read"));
@@ -91,4 +94,18 @@ test("buildSajuMcpConfig 는 사주 서버 하나를 만든다", () => {
   assert.equal(server.env.SAJU_SKILL_DIR, "/skill");
   assert.equal(server.env.PYTHON_BIN, "python3");
   assert.equal(server.env.SAJU_ENGINE_TIMEOUT_MS, "20000");
+});
+
+test("샌드박스가 지워졌어도 ask 는 디렉토리를 다시 만들고 같은 cwd 로 spawn 한다", async () => {
+  const root = mkdtempSync(join(tmpdir(), "saju-runner-test-"));
+  const sandboxDir = join(root, "sandbox");
+  try {
+    const { runner, calls } = make({ sandboxDir });
+    assert.ok(!existsSync(sandboxDir));
+    await runner.ask({ question: "질문", sessionId: "u1" });
+    assert.equal(calls[0].options.cwd, sandboxDir);
+    assert.ok(existsSync(sandboxDir));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

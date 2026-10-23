@@ -65,7 +65,11 @@ function lastStderrLine(stderr, skillDir) {
   const lines = String(stderr ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
   if (!lines.length) return DEFAULT_ERROR;
   const line = lines[lines.length - 1];
-  return skillDir ? line.split(skillDir).join("<skill>") : line;
+  // Mask the skill dir first, then the home dir, so a traceback never carries
+  // absolute host paths to the model or to Discord.
+  const masked = skillDir ? line.split(skillDir).join("<skill>") : line;
+  const home = os.homedir();
+  return home ? masked.split(home).join("~") : masked;
 }
 
 /** Runs the engine once. stdout JSON wins regardless of exit code. */

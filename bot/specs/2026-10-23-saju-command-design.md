@@ -219,8 +219,8 @@ stdio MCP 서버. 봇 코드(`bot/src/saju-mcp-server.js`)이고, `claude`가 `-
 
 - `command.js`: `!사주`, `!사주 <입력>`, `!사주`가 중간에 있는 질문, 기존 figma·question 판정 불변.
 - 격리 인자 빌더: `cwd`가 샌드박스, `--setting-sources ""`, `--tools ""`, `--strict-mcp-config`,
-  `--allowed-tools`가 saju 도구 하나, 페르소나·밈 지시가 **없음**, 저장소 루트·`REPO_ROOT`가 인자 어디에도
-  없음.
+  `--allowed-tools`가 saju 도구 하나, 페르소나·밈 지시가 **없음**, `buildArgs`가 저장소 경로를
+  직접 넣지 않는다(MCP 서버 실행 경로는 `--mcp-config` 안에만 있고 모델 컨텍스트에 실리지 않는다).
 - `saju-mcp-server`: 인자 검증(셸 메타문자, 범위 밖 값 거부), `execFile` 인자 배열, 궁합 임시 파일 정리.
   `saju.py`는 가짜 실행 파일로 대체한다.
 - 스레드 판정: 6.2절 표의 각 행.

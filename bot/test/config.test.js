@@ -139,3 +139,7 @@ test("사주 숫자 설정을 덮어쓸 수 있다", () => {
   assert.equal(config.sajuEngineTimeoutMs, 7);
   assert.equal(config.sajuSkillDir, "/skill");
 });
+
+test("REPO_ROOT 아래의 ..로 시작하는 이름도 안쪽으로 본다", () => {
+  assert.throws(() => loadConfig({ ...base, SAJU_SANDBOX_DIR: "/repo/..hidden" }), /SAJU_SANDBOX_DIR/);
+});
