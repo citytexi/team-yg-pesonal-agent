@@ -1,7 +1,7 @@
 # 사주 명령(`!사주`) 설계
 
 - 작성일: 2026-10-23
-- 상태: 설계 확정 (구현 전)
+- 상태: 구현 완료
 - 범위: 디스코드 봇에 `@봇 !사주` 명령을 추가해, 봇 호스트에 따로 둔 `saju-manseryeok` 스킬로 사주를 본다
 
 ## 1. 목적
@@ -181,6 +181,18 @@ stdio MCP 서버. 봇 코드(`bot/src/saju-mcp-server.js`)이고, `claude`가 `-
 - MCP SDK(`@modelcontextprotocol/sdk`) 버전 선택과 stdio 서버 구현.
 - `--tools ""`일 때도 `--mcp-config`의 도구가 노출되는지, `--allowed-tools mcp__saju__saju_calc`가
   `dontAsk`에서 승인되는지 실측한다.
+
+실측 결과(2026-10-23, `test/claude-live.test.js`, 인자 변경 없이 통과):
+
+- `--tools ""`와 `--mcp-config`를 함께 써도 `saju_calc`는 노출되고, `--allowed-tools
+  mcp__saju__saju_calc`가 `dontAsk`에서 승인된다. 1990-05-15 07:30 남 서울 질의에 일주
+  경진(庚辰)과 진태양시 보정을 돌려줬다.
+- 도구 목록 질의에 모델은 `mcp__saju__saju_calc` 하나만 답했다. `Bash`·`Read`·`Write`는 없다.
+- `cmux`·`Orca` 문맥과 브랜치·`Memory Index`·`TEAMYG` 문맥은 답에 나오지 않았다. 다만 두 질의 모두
+  모델이 "사주 전용 스레드"라며 질문 자체를 거절했다. 유입이 없다는 증거로는 약하다(부재를 직접 보인 것이
+  아니라 시스템 프롬프트 인용 요청을 거절한 것). 인자 빌더 단위 테스트의 격리 검증이 주된 근거다.
+- 수동 실측(봇 실행, 폼 → 입력 → 추가 분석 → 날짜 오류, 긴 결과의 메시지 분할에서 표 중간 잘림 여부):
+  사용자 확인 대기.
 
 ## 8. 사용량
 
