@@ -5,8 +5,87 @@
 
 ## 현재 기준선
 - **repo**: `TEAMYG-Android` (`mash-up-kr/TEAMYG-Android`, 구 `TJYG-Android`) `develop`
-- **커밋**: `239d4b590` (`Merge pull request #601 from mash-up-kr/feature/#588-sync-develop-baseline-5b71806`)
-- **요약**: **튜토리얼이 통째로 사라졌고, 배치 수정 화면의 삭제가 즉시 반영에서 확정 시점 반영으로 바뀌었다.
+- **커밋**: `1a4f93889` (`Merge pull request #633 from mash-up-kr/fix/dismiss-alert-on-button-click`)
+- **요약**: **캔버스를 영상으로 저장할 수 있게 됐고, 초대 링크가 앱을 바로 연다. 화면 계측은 새 모듈 `core:analytics`로
+  나와 feature `ViewModel`이 액션 이벤트를 직접 찍는다** (delta 14건 — #605·#603·#606·#610·#617·#619·#620·#608·#613·
+  #629·#631·#626·#635·#633, 전부 **머지 트리 = 브랜치 팁**, 충돌 해소 편집 0건). 전체 머지 목록과 첫 부모 선의
+  차이는 브랜치로 develop을 되받은 머지 넷(#603 둘·#606·#633)뿐이라 스택 PR 문제는 없다. 159파일 6906/1092.
+  유닛 1330 → **1384건**(+54), 계측 91 → **101건**(+10). 아카이브 이동 **0건**(이쪽에 선작성 스펙·계획이 없다),
+  미결 **부분 해소 1건**(OQ-P-428 ①) · **신설 10건**(OQ-P-430~434·436~439, 그중 433·436은 같은 delta 안에서 해소,
+  `oq-next` 430 → **440**. 435는 저쪽에서 신설된 라운드 안에 닫혀 본문이 없는 결번이다) · OQ-P-239 ② 보강 ·
+  ADR **신설 1건**(0035).
+
+  **#608 — 캔버스 타임랩스 영상 저장(40파일 4548/104, 커밋 34개).** 저장 미리보기의 「영상으로 저장」이 토핑을
+  `positionZ` 순서로 차례로 띄우는 mp4를 만든다. 미리보기 Route가 `CanvasVideoRecordLayer`를 화면에 그리지 않고
+  띄워 프레임마다 읽고, `core:util:android`의 새 `video/` 패키지(`Mp4VideoEncoder`·`BitmapSurfaceWriter`)가
+  `MediaCodec`으로 인코딩한다. 저장은 `SaveCanvasVideoToGalleryUseCase` → `GalleryRepository`다. 결정은
+  ADR-0035로 왔고, 실기기 미확인과 정책 원본 부재가 OQ-P-430, 테두리 판 캐시 미스가 OQ-P-434다.
+
+  **#613 — App Links 초대 진입(41파일 1137/83, 커밋 30개).** 초대 링크가 매니페스트 인텐트 필터로 앱을 열고,
+  `MainRoute`가 스플래시와 목적지 안착을 기다린 뒤(`awaitAppLinkReady`) 코드를 미리 채운 초대코드 화면
+  (`NavKeyGroupInviteCode(inviteCode)`, 이제 `data class`)으로 보낸다. 설치 전이면 Play Install Referrer
+  (`PlayInstallReferrerGateway`)로 같은 링크를 한 번 소비한다(`ConsumeInstallReferrerDeepLinkUseCase`). 통로는
+  `AppLinkDeepLinkEventBus`다. `InviteCode`의 파싱은 메시지용(`parseFromMessageOrNull`)과 코드 전체만 받는
+  링크용(`parseOrNull`)으로 갈렸다. 서버·웹 연동 확인은 같은 delta 안에서 닫혔고(OQ-P-436), 호스트·경로의 세 곳 중복은 보류다(OQ-P-437).
+
+  **#603 — 액션 이벤트 계측(49파일 674/90, 커밋 27개).** `AnalyticsLogger`·`AnalyticsScreen`·`AnalyticsEvent`와
+  `AnalyticsEventType`·`AnalyticsScreenType`, 구현체 `FirebaseAnalyticsLogger`·`AnalyticsModule`이 `:app`에서
+  새 모듈 `core:analytics`로 옮겼다. `ModuleFeatureImplConventionPlugin`이 이 모듈을 feature `impl` 공통 의존으로
+  올려 각 `ViewModel`이 `logEvent`를 직접 부른다. ADR-0013(Firebase 의존의 예외)·ADR-0031(📌 그 라운드가 왔다)에
+  반영했다. 정본 이벤트 문서와 코드의 어긋남이 OQ-P-431·432·438이다.
+
+  **#610 — 세그멘테이션 원본 디코드 상한(8파일 203/11).** `decodeUriToBitmap`이 긴 변 4096으로 줄여 디코드한다
+  (`DecodeSize`). 막는 것은 메모리가 아니라 소프트웨어 비트맵 그리기 제한이다(ADR-0012 「원본 디코드 상한」).
+
+  **#619 — 캔버스 오버레이 간격과 C-103 얼럿(9파일 123/92).** `YGAlertHost`의 자동 소멸이 걷혀 얼럿은 스와이프로만
+  닫혔고, 세그멘테이션 화면의 `GuideBanner`가 삭제되고 「직접 선택」 버튼을 단 `YGAlert`가 그 자리를 맡았다.
+  편집 화면에서 돌아오면 다시 뜬다(OQ-P-439). `YGCanvas` 오버레이가 캔버스 상단보다 조금 위에서 시작한다.
+
+  **#633 — 지난 캔버스 알럿 버튼이 알럿을 닫는다(2파일 3/2).** `YGAlertPolicy`의 `internal clearAlert`가 공개
+  `dismiss`가 됐고, 「보러가기」가 이동 전에 그것을 부른다. #619 뒤로 「보러가기」를 눌러도 배너가 남던 자리다.
+  저쪽 문서 갱신(#631) 뒤에 들어와 이쪽에서 직접 적었다(design-system · 아카이브 스펙 past-canvas-alert).
+
+  **#617 — release/1.1.4 되받기(13파일 69/27).** 지난 캔버스 알럿의 인원 수가 마감 당시 그룹원 수에서 **그날
+  토핑을 올린 사람 수**로 바뀌었다(`contributorCount`, `placedBy.groupMemberId` 중복 제거). 빈 캔버스·세그멘테이션
+  안내·갤러리 저장 실패 문구가 바뀌고 `core:analytics`에 빠졌던 `consumer-rules.pro`가 들어왔다(ADR-0017).
+
+  **#605 — 사용자 문구의 "토핑"을 "사진"으로(5파일 14/15).** 캔버스·알림 권한·온보딩·알림 채널 설명 문구가
+  바뀌고, 토핑 접근성 설명이 `TODO(접근성)` 주석 없이 "사진"이 됐다.
+
+  **#626 — 시스템 카메라·시스템 갤러리 삭제(18파일 10/626).** 도달 불가로 남아 있던 `NavKeyCameraSystem`·
+  `NavKeySystemGalleryPicker`와 그 Route·Screen·ViewModel·문자열·분석 매핑이 지워졌다(OQ-P-239 ②).
+  저쪽 문서는 이 PR을 `#604`로 적었는데 이쪽은 머지 PR 번호 `#626`으로 고쳐 옮겼다.
+
+  **#635 — Lint 오류 수정(2파일 20/14).** `CanvasToppingPlaceRoute`·`ToppingEditRoute`가 토스트 문구를
+  `context.getString` 대신 `stringResource`로 미리 읽는다. OQ-P-428 ①이 닫혔다(이 점검은 `./gradlew lint`를
+  돌려 보지 않았다). CI 게이트(②)는 그대로다.
+
+  **버전·빌드(#606·#620·#629).** `org.gradle.tooling.parallel`이 켜졌다(IDE 동기화 병렬화). 버전은 #617에서
+  1.1.4(코드 13), #620에서 코드 14, #629에서 1.1.5(코드 15)가 됐고 경량 태그 `1.1.4`·`1.1.5`가 각각 #620·#629
+  머지 커밋을 가리킨다(ADR-0003 📌).
+
+  **#631 — 문서만.** 저쪽 `docs/`의 기준선 갱신이다. `.kt` 0건.
+
+  **방법은 직전 회차와 같다 — 저쪽 `docs/`의 delta를 3-way 병합으로 옮겼다.** 저쪽의 `239d4b590`판을 공통 조상,
+  `1a4f93889`판을 저쪽, 이쪽 현재판을 이쪽으로 두고 `git merge-file`로 합쳤다. 대상은 architecture 넷
+  (data-layer · design-system · module-structure · navigation-flow) · ADR 넷(0012·0013·0017·0031)과 인덱스 · 미결 ·
+  활성 스펙 segmentation-preprocessing · 아카이브 스펙 셋(c001-canvas-gallery-save · canvas-save-preview-capture-holder ·
+  past-canvas-alert)이고, ADR-0035는 새로 옮겼다. 병합 전에 저쪽 미결 번호 411 이상을 하나씩 뒤로 밀고 링크를
+  이쪽 경로로 다시 계산했다. 충돌 4건은 ADR-0012 1(이쪽 🔁 후속 메모를 두고 저쪽 새 절만 붙였다) · ADR 인덱스 1
+  (0031 행은 저쪽, 이쪽에 없는 0033 행은 뺐다) · module-structure 2(`related_adr`에서 0033을 빼고, 표 행은 이쪽
+  `#534` 이력 위에 저쪽의 `video/`·App Links 추가만 얹었다)다. 저쪽에만 있는 스펙·계획·`status.md`를 가리키던
+  링크 9건은 평문 경로로 바꿨다. 새로 들어온 줄의 심볼 279개를 `origin/develop`에서 전수 조회했고, 없는 것은
+  전부 삭제를 적은 서술 속 옛 이름이거나 파일명·리소스·이벤트 문자열이었다.
+
+  **조치**: architecture 넷 · ADR-0003 📌 · ADR-0012·0013·0017·0031 · ADR-0035 신설 · ADR 인덱스 · 활성 스펙 하나 ·
+  아카이브 스펙 셋 · specs/plans README 메모 · 미결. `api/`는 이번 delta에 원격 연동 코드가 없어 불변이다.
+  미머지 하나(`feature/debug-mode`) 유지.
+
+  직전 회차 요약(87회차, `239d4b590`): **튜토리얼이 통째로 사라졌고, 배치 수정 화면의 삭제가 확정 시점 반영으로
+  바뀌었으며 갤러리가 03시 하루 창을 걷었다**(#551·#585·#587·#591·#595·#592·#598·#600·#601). 미결 신설 2건
+  (OQ-P-428·429). 아래가 그 회차의 상세다.
+
+  **튜토리얼이 통째로 사라졌고, 배치 수정 화면의 삭제가 즉시 반영에서 확정 시점 반영으로 바뀌었다.
   갤러리는 03시 하루 창을 걷고 기기의 모든 사진을 보여 준다** (delta 9건 — #551·#585·#587·#591·#595·#592·
   #598·#600·#601, 전부 **머지 트리 = 브랜치 팁**, 충돌 해소 편집 0건). 전체 머지 목록과 첫 부모 선의 차이는
   #551 브랜치로 develop을 되받은 머지 둘(`b074e159f`·`025e3c670`)뿐이라 스택 PR 문제는 없다. 109파일
@@ -2567,7 +2646,9 @@
   개명**됐다. 배경 변경은 그 도메인 **첫 쓰기 경로·첫 요청 DTO**이고 쓰기 전용 sealed
   `CanvasBackgroundEdit`로 서버의 조건부 필수를 컴파일에서 막는다. **소비처는 여전히 0건**이고 C-301
   배경 편집은 계속 고른 값을 버린다.
-- **검증일**: 2026-10-08 (87회차)
+- **검증일**: 2026-10-23 (88회차)
+
+  📌 87회차(`239d4b590`)에서 보름 만이다. 번호는 요약 안의 「직전 회차 요약(87회차)」 포인터와 이 줄 + 1이 같다.
 
   📌 **이 줄이 또 한 회차치 낡아 있었다**(86회차 `4c40ddfee`, 2026-10-04). **같은 종류의 누락이 여덟 번째**다 — 그 회차의 이력 표 비고는 "검증일 줄 86회차"라고 적었는데 이 줄은 `2026-10-03 (85회차)`에 멈춰 있었다. 번호는 요약 안의 「직전 회차 요약(86회차)」 포인터와 이 줄 + 1이 같다.
 
@@ -2626,6 +2707,7 @@
   멈춰 있었다. 이번에 맞췄다. 회차 번호의 근거는 이력 표가 아니라(표는 한 회차에 여러 행이 붙은
   적이 있다) **직전 회차의 이 줄 + 1**이다.
 - **미머지 추적 항목**: **하나**(`feature/debug-mode`, OQ-P-311 계보).
+  📌 **88회차 재확인(2026-10-23)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이고 브랜치 팁도 `ed8e1ec8a` 그대로다. 원격 브랜치는 열에서 열하나가 됐다 — `feature/save-video-encoder`·`save-video-timeline-gallery`와 `beta/version-1.1.4`가 지워지고 `bugfix/nametag-chip-text-center`·`feature/canvas-etag-polling-docs`·`feature/canvas-etag-polling-impl`·`feature/text-topping`이 새로 올라왔다. **새 넷 다 이쪽에 선작성 문서가 없어 이 줄에 오르지 않는다** — 다만 `canvas-etag-polling` 둘은 ADR-0029가 「조건부 요청 수단이 생기면 걷는다」고 적은 자리를 건드릴 수 있어 머지되면 그 ADR부터 본다. `origin/release/*`는 계속 0개이고, 태그는 `1.1.5`까지(`1.1.4`·`1.1.5`는 경량, 둘 다 develop 커밋), develop 버전도 `1.1.5`(코드 15)다.
   📌 **87회차 재확인(2026-10-08)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이고 브랜치 팁도 `ed8e1ec8a` 그대로다. 원격 브랜치는 열셋에서 열로 줄었다 — `bugfix/invite-code-inplace-edit`(#551로 머지)·`feature/#567-topping-place-ui` 계열 셋·`feature/ai/set-up`이 지워지고 `beta/version-1.1.4`(`007b4a646`, 버전 코드 12)와 `chore/rename-tjyg-android-in-docs`가 새로 올라왔다. **새 둘 다 이쪽 parfait 문서가 걸리지 않아 이 줄에 오르지 않는다.** `beta/version-1.1.4`는 `origin/develop`의 조상이 아니다. `origin/release/*`는 계속 0개, 태그는 `1.1.3`까지이고 develop 버전도 `1.1.3`(코드 11)이다.
   📌 **85회차 재확인(2026-10-03)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이고 브랜치 팁도 `ed8e1ec8a` 그대로다. ⚠️ **원격 브랜치가 다섯에서 열셋으로 늘었다** — 새로 올라온 것은 `bugfix/invite-code-inplace-edit`, `feature/#567-topping-place-ui`·`-ui-spec`·`-edit-ui` 셋, `feature/save-video-encoder`·`save-video-timeline-gallery`·`video-5-wiring`, `temp/#521-gallery-cavans-save-video`다. **여덟 다 이쪽 parfait 문서가 걸리지 않아 이 줄에 오르지 않는다**(선작성 문서가 있다면 저쪽 `docs/`에 있다 — OQ-P-411). `origin/release/*`는 계속 0개, 태그는 `1.1.3`까지이고 develop 버전도 `1.1.3`(코드 11)이다.
   📌 **84회차 재확인(2026-09-27)** — `origin/develop`에 `DebugMode*` 심볼이 여전히 0건이다. 원격 브랜치는 `develop`·`main`·`feature/ai/set-up`·`feature/app-link-deeplink`·`feature/debug-mode` 다섯이고(`chore/bump-version-1.1.4-12`가 지워지고 `feature/app-link-deeplink`가 새로 올라왔다), 이 중 parfait 문서가 걸린 것은 이 줄의 하나뿐이다. 이 브랜치의 계획 스니펫 import 경로를 #534에 맞춰 고쳤다. `origin/release/*`는 계속 0개, 태그는 `1.1.3`까지이고 develop 버전도 `1.1.3`(코드 11)이다.
@@ -2779,6 +2861,7 @@
 ## 기준선 이력
 | 검증일 | develop 커밋 | 요약 | 비고 |
 |--------|-------------|------|------|
+| 2026-10-23 | `1a4f93889` | Merge #605(사용자 문구 토핑→사진) · #603(액션 이벤트 계측·`core:analytics`) · #606(IDE 동기화 병렬) · #610(세그멘테이션 원본 디코드 상한) · #617(release/1.1.4 되받기) · #619(캔버스 오버레이 간격·C-103 얼럿) · #620(코드 14) · #608(캔버스 타임랩스 영상 저장) · #613(App Links 초대 진입) · #629(1.1.5 코드 15) · #631(저쪽 문서 기준선) · #626(시스템 카메라·갤러리 삭제) · #635(Lint 오류 수정) · #633(지난 캔버스 알럿 버튼이 닫기) | delta 14건, **159파일 6906/1092**, 전부 **머지 트리 = 브랜치 팁**. 유닛 1330 → **1384건**, 계측 91 → **101건**. 아카이브 이동 **0건**, 미결 **부분 해소 1건**(OQ-P-428 ①) · **신설 10건**(OQ-P-430~434·436~439, 그중 433·436은 같은 delta 안에서 해소, 435 결번, `oq-next` 430 → 440) · OQ-P-239 ② 보강 · ADR-0035 신설. **#608**: `CanvasVideoRecordLayer`·`core:util:android` `video/`(`Mp4VideoEncoder`·`BitmapSurfaceWriter`)·`SaveCanvasVideoToGalleryUseCase`. **#613**: `AppLinkDeepLinkEventBus`·`awaitAppLinkReady`·Play Install Referrer·`NavKeyGroupInviteCode(inviteCode)`. **#603**: 계측 계약·구현이 `:app`에서 `core:analytics`로, feature `impl` 공통 의존. **#619·#633**: `YGAlertHost` 자동 소멸 삭제, `GuideBanner` → 「직접 선택」 `YGAlert`, `clearAlert` → 공개 `dismiss`. **#626**: `NavKeyCameraSystem`·`NavKeySystemGalleryPicker` 체인 삭제(저쪽 표기 `#604`를 `#626`으로 고쳤다). 방법은 직전 회차와 같은 `git merge-file` 3-way 병합(충돌 4건, 새 심볼 279개 전수 조회, 저쪽 전용 링크 9건 평문화). #631 뒤에 들어온 #626·#635·#633은 이쪽에서 직접 대조했다. 조치: architecture 넷 · ADR-0003 📌 · ADR-0012·0013·0017·0031 · ADR-0035 · ADR 인덱스 · 활성 스펙 1 · 아카이브 스펙 셋 · specs/plans README 메모 · 미결. `api/` 불변. 검증일 줄 88회차. 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-10-08 | `239d4b590` | Merge #551(초대코드 찬 칸 교체) · #585(저쪽 문서 기준선) · #587(튜토리얼 제거) · #591(`core:ui` 의존 변동·CI) · #595(토핑 삭제 플로우) · #592(대상 영역 선택 UI) · #598(G-001 Empty 애니메이션) · #600(갤러리 날짜 제한 해제) · #601(저쪽 문서 기준선) | delta 9건, **109파일 1503/1743**, 전부 **머지 트리 = 브랜치 팁**. 유닛 1314 → **1330건**, 계측 **91건** 유지. 아카이브 이동 **0건**, 미결 **해소 5건**(OQ-P-270·363·366·369·418) · **부분 해소 3건**(034·114·415) · **재서술 2건**(367·368) · **신설 2건**(OQ-P-428·429, `oq-next` 428 → 430). **#587**: `YGTutorial*`·`CanvasTutorial*`·`UserConfig*` 체인·목업 PNG 삭제, `DataStorePreferences` 소비처는 `EncryptedPreferences` 하나. **#595**: 삭제가 `pendingDeleteToppingIds`에 모였다가 확정 때 `deletePendingToppings`로 나가고 삭제 모달이 없어졌다, 404는 `PARFAIT_IMAGE_NOT_FOUND`로 흡수, 닫기는 `hasUnsavedChanges`일 때만 묻는다. **#600**: `LoadGalleryImageGroupsUseCase`가 전체 사진을 달력 날짜로 묶고 03시 창 경로는 호출부 0건으로 남았다. **#591**: `core:ui` → `:core:designsystem` `implementation`, `YGModalQuit`·`newParfaitImageLoader`가 `core:ui`로, `org.gradle.parallel` 재도입. **#551**: `replacingFilledCellsOrNull`·`KeyboardType.Password`. 방법은 직전 회차와 같은 `git merge-file` 3-way 병합(충돌 9건, 새 심볼 117개 전수 조회, 저쪽이 지운 미결 다섯은 `해소됨`으로 되살림). 조치: architecture 다섯 · ADR-0034 📌 · `api/` 둘(Android 매핑만, `verified` 불변) · 아카이브 스펙 둘 · 미결. 검증일 줄 87회차(86회차 누락분 함께 정정). 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-10-04 | `4c40ddfee` | Merge #573(스펙·계획 문서) · #572(배치 화면 테두리 패널·배치 수정 화면) · #576(누끼 편집 진입 단축) · #584(C-301 배경 변경 화면) · #580(G-001 빈 상태 인트로) | delta 5건, **168파일 10974/5200**, 전부 **머지 트리 = 브랜치 팁**. 유닛 1253 → **1314건**, 계측 61 → **91건**. 아카이브 이동 **0건**, 미결 **해소 8건**(OQ-P-201·276·277·324·337·338·379·380) · **부분 해소 1건**(OQ-P-082) · **신설 14건**(OQ-P-413~418·420~427, 419 결번, `oq-next` 413 → 428) · ADR-0034 신설. **#572**: 테두리가 배치 화면 `ToppingBorderPanel`로, 이미 놓인 토핑은 `NavKeyCanvasToppingArrange`로, C-301은 배경만. `ToppingBorderEditScreen`·`ToppingBorderLayer` 삭제. **#576**: `NavKeySegmentationConfirm`·확인 화면 삭제, 편집 화면 「다음」이 초안을 기록하고 배치 화면으로 직행, `ToppingEditCompletion`·`TOPPING_EDIT_RESULT_KEY` 삭제. **#580**: `GroupListEmptyIntro*`·더미 그룹 신설, `YGTopBarEmpty`가 `title`·`count`로, `model/DateFormat` 삭제. **#584**: C-301이 상단 제목 바 + 하단 「저장하기」. ⚠️ **방법 변경 — 저쪽 `docs/` delta를 `git merge-file` 3-way 병합으로 옮겼다**(저쪽 미결 번호 411 이상은 +1, 충돌 11건은 저쪽 현재 상태 서술 채택, 새 심볼 250개 전수 조회). 조치: architecture 다섯 · ADR-0025·0026·0030·0032·0034·인덱스 · `api/` 셋(Android 매핑만, `verified` 불변) · specs/plans README 메모 · 미결. 검증일 줄 86회차. 미머지 하나(`feature/debug-mode`) 유지 |
 | 2026-10-03 | `a1817d357` | Merge #544(Claude 리뷰 워크플로) · #539(저쪽 점검 스킬·`docs/` 정비) · #555(리뷰 모델) · #550(설정 약관 줄을 응답 `title`로) · #553(토핑 핀치 제스처) · #560(캔버스 메뉴 색) · #564(C-101-Loading) · #568(갤러리 03시 안내) | delta 8건, 전부 **머지 트리 = 브랜치 팁**. 유닛 1294 → **1253건**, 계측 46 → **61건**. 아카이브 이동 **0건**, 미결 **해소 2건**(OQ-P-399·401) · **부분 해소 3건**(231·325·400) · **신설 1건**(OQ-P-412, `oq-next` 412 → 413) · 📌 **11건**. **#564**: `SegmentationLoadingScreen` 부활, `SegmentationErrorScreen`·재시도 회복 전체 삭제, 실패는 `NavKeyToppingEdit(completion = RecordAndConfirm)` 직행, `goToSingleClearTop`, 그만두기 팝업. **#553**: 드래그 핸들·`Modifier.dragBy` 삭제 → `toppingTransformInput`, `TOPPING_MIN_SCALE` 공유·배치 화면 상한 삭제, canvas 모듈 첫 `androidTest`. **#550**: 설정 약관 줄이 `state.policies` 순회 + `termsId` 식별. ⚠️ **#553·#564의 스펙·계획은 저쪽 `docs/superpowers/`에만 있고, 저쪽이 다른 주제에 OQ-P-411을 매겨 번호가 충돌했다**(OQ-P-411 ⚠️). 조치: navigation-flow · design-system · module-structure · data-layer · ADR-0012 🔁 · `api/policy.md`(Android 매핑만, `verified` 불변) · 활성 스펙 1·계획 1 · specs/plans README 메모 · 미결. 검증일 줄 85회차. 미머지 하나(`feature/debug-mode`) 유지 — 원격 브랜치는 다섯에서 열셋으로 늘었으나 여덟 다 이쪽 문서 밖이다 |

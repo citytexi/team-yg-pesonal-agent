@@ -12,6 +12,9 @@ Parfait 프로젝트의 작업 계획 문서를 모읍니다.
 
 ## 아카이브
 
+> 🔁 **2026-10-23 회차(88) 메모** — PR #608(캔버스 타임랩스 영상 저장)의 구현 계획은 이 디렉토리에 없고
+> TEAMYG-Android `docs/superpowers/plans/archive/2026-09-21-canvas-topping-timelapse-video.md`에만 있다.
+
 > 🔁 **2026-10-04 회차(86) 메모** — PR #572·#576·#580의 구현 계획은 이 디렉토리에 없고 TEAMYG-Android
 > `docs/superpowers/plans/`에만 있다(`archive/2026-10-02-c105-arrange-add-flow.md`·`archive/2026-10-02-c105-arrange-edit-flow.md`·
 > `archive/2026-10-03-topping-edit-entry-navigation.md`·`archive/2026-10-03-topping-edit-ui.md`·`2026-10-03-g001-empty-animation.md`).
