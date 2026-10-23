@@ -4,7 +4,7 @@ title: 데이터 레이어 (Repository · DataSource · DI)
 category: architecture
 status: living
 platforms: android
-verified: 2026-09-27
+verified: 2026-10-20
 related_spec: c103-multi-subject-selection, c001-canvas-gallery-save, c301-topping-edit-tab, segmentation-pipeline-hardening, data-network-setup, network-envelope-token-storage, data-api-service-layer, image-api-service-layer, member-parfait-image-api-service-layer, session-token-refresh-infra, user-info-ssot, c001-canvas-today-detail, c201-canvas-calendar-server, group-ssot
 related_adr: ADR-0001, ADR-0004, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0013, ADR-0017, ADR-0019, ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0029
 related_architecture: state-management
@@ -75,13 +75,18 @@ tags: [architecture, parfait]
 - **암호화 DataStore 프록시** — `EncryptedPreferences`(`data/datastore/`, PR #263). 저장 형태가 값이 아니라 **암호문**인 저장소들이 공유한다(`TokenLocalDataSourceImpl`·`UserInfoLocalDataSourceImpl`) — 아래 "토큰·계정 정보 저장 경로" 참고.
 - **평문 DataStore 프록시** — **`DataStorePreferences`**(`data/datastore/`, #449). `observe`·`read`·`write`·`remove`와 못 읽는 저장분을 버리는 규칙을 가진 **바닥 층**이고, `EncryptedPreferences`는 이것을 감싸 암복호화만 얹는다 — 폐기 규칙은 이 한 벌뿐이다. **이 프록시를 직접 쓰는 저장소는 없다** — 소비처는 `EncryptedPreferences` 하나이고, 평문 저장소 셋(`ToppingDraftLocalDataSourceImpl`·`PastCanvasAlertLocalDataSourceImpl`·`RecentImageLocalDataSourceImpl`)은 `DataStore<Preferences>`를 직접 잡아 못 읽는 값의 처리를 각자 둔다. ⚠️ 평문·암호문이 **같은 `DataStore<Preferences>` 하나**를 공유해 어느 키가 어느 형태인지는 코드로만 안다 → [open-questions](../synthesis/open-questions.md) OQ-P-367.
 - **시스템 미디어** — `GalleryMediaProvider`(시스템 갤러리 접근). **읽기 전용이 아니게 됐다**(#324) —
-  `insertPendingImage`·`openOutputStream`·`finalizePendingImage`·`deleteImage`로 `MediaStore`에
+  `insertPendingImage`·`openOutputStream`·`finalizePendingMedia`·`deletePendingMedia`로 `MediaStore`에
   이미지를 쓴다(`GalleryRepository.saveImageToGallery` → `SaveCanvasToGalleryUseCase`, C-001 지난
   캔버스 저장). 쓰기 순서는 **등록(`IS_PENDING`) → 바이트 → 표시로 내림**이고 중간 실패는 등록 자체를
   지운다 — 갤러리에 반쯤 쓰인 파일이 온전한 것처럼 보이지 않게 하려는 것이다. **그 보호와
   `Pictures/Parfait` 경로는 API 29부터만** 걸린다(그 아래는 권한도 함께 필요해
   `core:util:android`의 `GalleryWritePermissionManager`가 판정한다)
   → [c001-canvas-gallery-save 스펙](../specs/archive/2026-08-23-c001-canvas-gallery-save.md).
+  영상도 같은 2단 커밋을 탄다 — `insertPendingVideo`로 `Movies/Parfait`에 등록하고
+  (`GalleryRepository.saveVideoToGallery` → `SaveCanvasVideoToGalleryUseCase`), 압축 없이 캐시의 mp4를
+  스트림으로 복사한다. 등록 규칙은 `insertPendingMedia` 한 벌이 이미지와 영상을 함께 맡는다.
+  **캐시 mp4는 읽기만 한다** — 지우는 것은 만든 쪽(feature)의 몫이다
+  → canvas-topping-timelapse-video 스펙(저쪽 저장소 `docs/superpowers/specs/archive/2026-09-21-canvas-topping-timelapse-video.md`).
 - **원격(raw HTTP)** — **`PresignedUploadRemoteDataSource`**(#322)와 **`ImageDownloadRemoteDataSource`**(#369).
   (📌 2026-09-27 PR #534에서 `source/<도메인>/remote`에는 `RemoteDataSource`로 끝나는 이름만 둔다는 규칙에 맞춰 옛 이름 `PresignedUploadDataSource`·`RemoteImageDownloadDataSource`를 바꿨다.)
   저장소에서 **Retrofit을 거치지 않고 raw OkHttp `Request`를 만드는 두 자리**다(발급받은 presigned
@@ -123,6 +128,8 @@ tags: [architecture, parfait]
 | `SessionModule` | `SessionEventBusImpl` → `SessionEventBus` 바인딩(#260 신설, **#450에서 양쪽 이름이 함께 바뀌었다** — 아래 「이벤트 버스 개명」) |
 | ~~`DeviceTokenRegistrarModule`~~(#450 → **PR #534에서 삭제**) | 등록기가 `NotificationRepositoryImpl`로 합쳐져 바인딩이 `RepositoryModule`의 `notification` 하나로 줄었다. 짝이 되는 `DeviceTokenProvider` 바인딩은 **`:app`의 `DeviceTokenModule`**에 있다 — 구현이 Firebase 의존이라 `:data`로 못 내린다([ADR-0013](../adr/0013-firebase-fcm-crashlytics.md) 경계, [ADR-0004](../adr/0004-hilt-ksp-di.md) 평면 배치 규칙의 첫 예외) |
 | **`PushDeepLinkModule`**(#446) | `PushDeepLinkEventBusImpl` → `PushDeepLinkEventBus` `@Provides @Singleton`. `SessionModule`과 **형태까지 같다**(`object` + `@Provides`) |
+| **`AppLinkDeepLinkModule`** | `AppLinkDeepLinkEventBusImpl` → `AppLinkDeepLinkEventBus` `@Provides @Singleton`. `PushDeepLinkModule`과 같은 형태(`object` + `@Provides`) |
+| **`AppLinkReferrerModule`** | `interface` + `@Binds @Singleton`. Install Referrer 경계(`AppLinkReferrerGateway` ↔ `PlayInstallReferrerGateway`)·`AppLinkReferrerLocalDataSource` ↔ `AppLinkReferrerLocalDataSourceImpl`·`AppLinkReferrerRepository` ↔ `AppLinkReferrerRepositoryImpl`을 `RepositoryModule`·`LocalDataSourceModule`에 나누지 않고 역할 모듈 하나에 모은다 |
 | `DataStoreModule` | `DataStore<Preferences>` 싱글톤 |
 | `JsonModule` | `@LocalJson`·`@RemoteJson` `Json` 2종(현재 설정 동일: `ignoreUnknownKeys`·`coerceInputValues`·`encodeDefaults`) |
 | **`ApplicationScopeModule`**(#404) | `@ApplicationScope CoroutineScope` — 프로세스 수명 스코프. `CanvasPoller`의 주기 루프가 화면 수명(`viewModelScope`)에 걸리면 안 되고, 되감기 직전의 강제 갱신도 호출자 취소에 끊기면 안 된다 |
@@ -140,7 +147,7 @@ tags: [architecture, parfait]
 > 시간순을 지킨다(종류로 묶으면 뭉쳐서 순서가 깨진다).
 
 ## 예: 이미지 세그멘테이션(누끼)
-`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]] — **API 28 미만 갈래는 EXIF 회전을 적용해 세워서 준다**, #349. 색공간·`Bitmap.Config`·해상도 하한은 여전히 손대지 않는다), subject 이미지는 `cacheDir`의 **세그멘테이션 전용 하위 디렉토리**에 PNG로 저장해 경로를 반환. 실패는 `Result<…>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`PersistSubjectUseCase`·`SaveBitmapUseCase`·`ClearSegmentationCacheUseCase`.
+`ImageSegmentationRepositoryImpl`이 온디바이스 ML Kit Subject Segmentation으로 전경을 분리([[0012-mlkit-subject-segmentation]]). `contentResolver.decodeUriToBitmap`로 URI→비트맵 디코딩(반환은 `BitmapWrapper`, [[0011-cross-module-bitmap-abstraction]] — **API 28 미만 갈래는 EXIF 회전을 적용해 세워서 준다**, #349. 긴 변은 4096px 상한(`DecodeSize.LONG_SIDE_LIMIT`)으로 줄여 디코드한다. 색공간·`Bitmap.Config`·해상도 하한은 여전히 손대지 않는다), subject 이미지는 `cacheDir`의 **세그멘테이션 전용 하위 디렉토리**에 PNG로 저장해 경로를 반환. 실패는 `Result<…>` + `SegmentationException`. 소비는 `DecodeImageUseCase`·`SegmentImageUseCase`·`PersistSubjectUseCase`·`SaveBitmapUseCase`·`ClearSegmentationCacheUseCase`.
 
 **결과 모델 재편(2026-08-14, PR #221)** — `SegmentationResult`가 `BitmapWrapper`를 더 이상 담지 않는다.
 `subjectImagePath`(파일 경로) + `subjectBounds: SegmentationBounds?`(원본 픽셀 좌표계 바운딩 박스,
@@ -675,9 +682,11 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   [spec](../specs/archive/2026-08-15-session-token-refresh-infra.md)). `NetworkModuleTest`가 두
   클라이언트가 `Dispatcher`·인증기·`AuthInterceptor`를 공유하지 않는다는 **배선의 구조적 성질**을
   잠근다 — 데드락 자체는 재현하지 않는다(회귀가 실패가 아니라 무한 대기로 나타난다).
-  > 📌 **같은 통로가 둘이 됐다(2026-09-05, PR #446)** — 푸시 딥링크가 `PushDeepLinkEventBus`
+  > 📌 **같은 통로가 셋이다** — App Links 초대 링크도 `AppLinkDeepLinkEventBus`/`AppLinkDeepLinkEventBusImpl`
+  > (`post`·`deepLinks`를 겸하는 도메인 인터페이스, `Channel(CONFLATED)`)로 아래 푸시와 같은 모양이다.
+  > 푸시 딥링크가 `PushDeepLinkEventBus`
   > (`:domain` `event/`)와 `PushDeepLinkEventBusImpl`(`:data` `event/`, 역시
-  > `Channel(CONFLATED)` + `receiveAsFlow()`)로 **같은 모양을 복제했다.** 두 통로가 공유하는 성질은
+  > `Channel(CONFLATED)` + `receiveAsFlow()`)로 **같은 모양을 복제했다.** 세 통로가 공유하는 성질은
   > 셋이다 — 구독자가 없는 순간 발행해도 잃지 않는다 · 단일 소비자다 · **수집은 앱 루트 `MainRoute`
   > 한 곳**이다. 접히는 규칙의 뜻만 다르다: 세션 쪽은 401이 여러 건 터져도 로그아웃 이동이 한 번이면
   > 되고, 푸시 쪽은 알림을 연달아 탭해도 **마지막으로 탭한 곳 하나에만 도착하면 된다.**
@@ -780,6 +789,8 @@ suspend 호출이 있으면 **취소가 실패로 둔갑한다** — 화면을 �
   수명을 가진 협력자와 GMS 경계 셋은 `installer/image/`로 갔다. 후자를 `source/`에 넣지 않은
   것은 이 문서가 정의하는 `source`가 로컬·원격 데이터 접근과 매퍼 쌍이기 때문이다
   → [segmentation-module-install 스펙](../specs/archive/2026-09-02-segmentation-module-install.md).
+  `installer/deeplink/`도 같은 기준이다 — Play Install Referrer SDK 경계(`AppLinkReferrerGateway` ↔
+  `PlayInstallReferrerGateway`)와 그 조회 결과 `ReferrerLookup`이 있다.
   같은 라운드가 **`data/util`을 `data/utils`로 합쳤다** — 같은 뜻의 패키지가 둘이었고 파일이
   더 많은 쪽으로 모았다. 이제 `data/` 아래 헬퍼는 `utils/` 하나다.
 

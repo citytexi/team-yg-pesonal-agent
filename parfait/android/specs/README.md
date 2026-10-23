@@ -16,6 +16,12 @@ Parfait 구현 기능·컴포넌트의 **구현 전 설계 스펙**을 모읍니
 
 ## 아카이브
 
+> 🔁 **2026-10-23 회차(88) 메모** — ① PR #626이 도달 불가 화면이던 시스템 카메라·시스템 갤러리
+> (`NavKeyCameraSystem`·`SystemCamera*`·`NavKeySystemGalleryPicker`·`SystemGalleryPicker*`)를 삭제했다. 그 심볼을 적은
+> 아래 행들은 **당시 기록**이다. ② PR #619가 세그멘테이션 화면의 안내 배너 `GuideBanner`와 그 문구를 지우고, 그 자리에 「직접 선택」 버튼을 단 `YGAlert`를 띄운다. ③ **이 회차의
+> 선작성 스펙은 이 디렉토리에 없다** — TEAMYG-Android `docs/superpowers/specs/`에만 있다
+> (`2026-10-06-user-events-design.md`, `archive/2026-09-21-canvas-topping-timelapse-video.md`). 결정은 ADR-0035로 옮겨 왔다.
+
 > 🔁 **2026-10-04 회차(86) 메모** — ① PR #572·#576이 누끼 확인 화면(`SegmentationConfirm*`)과 테두리 편집 화면
 > (`ToppingBorderEditScreen`·`ToppingBorderLayer`·`borderOnly`)을 삭제하고 C-301의 토핑 편집 탭을 배치 수정 화면
 > (`NavKeyCanvasToppingArrange`)으로 떼어 냈다. 그 심볼을 적은 아래 행들은 **당시 기록**이다. ② PR #580이
